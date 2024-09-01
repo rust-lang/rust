@@ -68,6 +68,7 @@ use intern::{sym, Symbol};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::Edition;
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -1027,7 +1028,11 @@ where
     collector.placeholders.into_iter().collect()
 }
 
-pub fn known_const_to_ast(konst: &Const, db: &dyn HirDatabase) -> Option<ConstArg> {
+pub fn known_const_to_ast(
+    konst: &Const,
+    db: &dyn HirDatabase,
+    edition: Edition,
+) -> Option<ConstArg> {
     if let ConstValue::Concrete(c) = &konst.interned().value {
         match c.interned {
             ConstScalar::UnevaluatedConst(GeneralConstId::InTypeConstId(cid), _) => {
@@ -1037,5 +1042,5 @@ pub fn known_const_to_ast(konst: &Const, db: &dyn HirDatabase) -> Option<ConstAr
             _ => (),
         }
     }
-    Some(make::expr_const_value(konst.display(db).to_string().as_str()))
+    Some(make::expr_const_value(konst.display(db, edition).to_string().as_str()))
 }

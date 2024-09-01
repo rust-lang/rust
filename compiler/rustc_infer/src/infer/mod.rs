@@ -44,6 +44,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use snapshot::undo_log::InferCtxtUndoLogs;
+use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 pub use BoundRegionConversionTime::*;
 pub use RegionVariableOrigin::*;

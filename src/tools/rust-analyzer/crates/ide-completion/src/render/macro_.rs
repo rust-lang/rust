@@ -46,8 +46,10 @@ fn render(
         ctx.source_range()
     };
 
-    let (name, escaped_name) =
-        (name.unescaped().display(ctx.db()).to_smolstr(), name.display(ctx.db()).to_smolstr());
+    let (name, escaped_name) = (
+        name.unescaped().display(ctx.db()).to_smolstr(),
+        name.display(ctx.db(), completion.edition).to_smolstr(),
+    );
     let docs = ctx.docs(macro_);
     let docs_str = docs.as_ref().map(Documentation::as_str).unwrap_or_default();
     let is_fn_like = macro_.is_fn_like(completion.db);
@@ -59,9 +61,10 @@ fn render(
         SymbolKind::from(macro_.kind(completion.db)),
         source_range,
         label(&ctx, needs_bang, bra, ket, &name),
+        completion.edition,
     );
     item.set_deprecated(ctx.is_deprecated(macro_))
-        .detail(macro_.display(completion.db).to_string())
+        .detail(macro_.display(completion.db, completion.edition).to_string())
         .set_documentation(docs)
         .set_relevance(ctx.completion_relevance());
 

@@ -42,6 +42,11 @@ pub struct GlobalStateInner {
     /// they do not have an `AllocExtra`.
     /// This is the inverse of `int_to_ptr_map`.
     base_addr: FxHashMap<AllocId, u64>,
+    /// Temporarily store prepared memory space for global allocations the first time their memory
+    /// address is required. This is used to ensure that the memory is allocated before Miri assigns
+    /// it an internal address, which is important for matching the internal address to the machine
+    /// address so FFI can read from pointers.
+    prepared_alloc_bytes: FxHashMap<AllocId, MiriAllocBytes>,
     /// A pool of addresses we can reuse for future allocations.
     reuse: ReusePool,
     /// Whether an allocation has been exposed or not. This cannot be put
@@ -59,6 +64,7 @@ impl VisitProvenance for GlobalStateInner {
         let GlobalStateInner {
             int_to_ptr_map: _,
             base_addr: _,
+            prepared_alloc_bytes: _,
             reuse: _,
             exposed: _,
             next_base_addr: _,
@@ -78,6 +84,7 @@ impl GlobalStateInner {
         GlobalStateInner {
             int_to_ptr_map: Vec::default(),
             base_addr: FxHashMap::default(),
+            prepared_alloc_bytes: FxHashMap::default(),
             reuse: ReusePool::new(config),
             exposed: FxHashSet::default(),
             next_base_addr: stack_addr,
@@ -166,7 +173,39 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 assert!(!matches!(kind, AllocKind::Dead));
 
                 // This allocation does not have a base address yet, pick or reuse one.
-                let base_addr = if let Some((reuse_addr, clock)) = global_state.reuse.take_addr(
+                let base_addr = if ecx.machine.native_lib.is_some() {
+                    // In native lib mode, we use the "real" address of the bytes for this allocation.
+                    // This ensures the interpreted program and native code have the same view of memory.
+                    match kind {
+                        AllocKind::LiveData => {
+                            let ptr = if ecx.tcx.try_get_global_alloc(alloc_id).is_some() {
+                                // For new global allocations, we always pre-allocate the memory to be able use the machine address directly.
+                                let prepared_bytes = MiriAllocBytes::zeroed(size, align)
+                                    .unwrap_or_else(|| {
+                                        panic!("Miri ran out of memory: cannot create allocation of {size:?} bytes")
+                                    });
+                                let ptr = prepared_bytes.as_ptr();
+                                    // Store prepared allocation space to be picked up for use later.
+                                    global_state.prepared_alloc_bytes.try_insert(alloc_id, prepared_bytes).unwrap();
+                                ptr
+                            } else {
+                                ecx.get_alloc_bytes_unchecked_raw(alloc_id)?
+                            };
+                            // Ensure this pointer's provenance is exposed, so that it can be used by FFI code.
+                            ptr.expose_provenance().try_into().unwrap()
+                        }
+                        AllocKind::Function | AllocKind::VTable => {
+                            // Allocate some dummy memory to get a unique address for this function/vtable.
+                            let alloc_bytes = MiriAllocBytes::from_bytes(&[0u8; 1], Align::from_bytes(1).unwrap());
+                            // We don't need to expose these bytes as nobody is allowed to access them.
+                            let addr = alloc_bytes.as_ptr().addr().try_into().unwrap();
+                            // Leak the underlying memory to ensure it remains unique.
+                            std::mem::forget(alloc_bytes);
+                            addr
+                        }
+                        AllocKind::Dead => unreachable!()
+                    }
+                } else if let Some((reuse_addr, clock)) = global_state.reuse.take_addr(                    
                     &mut *rng,
                     size,
                     align,
@@ -316,6 +355,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
         // Add offset with the right kind of pointer-overflowing arithmetic.
         Ok(base_ptr.wrapping_offset(offset, ecx))
+    }
+
+    // This returns some prepared `MiriAllocBytes`, either because `addr_from_alloc_id` reserved
+    // memory space in the past, or by doing the pre-allocation right upon being called.
+    fn get_global_alloc_bytes(&self, id: AllocId, kind: MemoryKind, bytes: &[u8], align: Align) -> InterpResult<'tcx, MiriAllocBytes> {
+        let ecx = self.eval_context_ref();
+        Ok(if ecx.machine.native_lib.is_some() {
+            // In native lib mode, MiriAllocBytes for global allocations are handled via `prepared_alloc_bytes`.
+            // This additional call ensures that some `MiriAllocBytes` are always prepared.
+            ecx.addr_from_alloc_id(id, kind)?;
+            let mut global_state = ecx.machine.alloc_addresses.borrow_mut();
+            // The memory we need here will have already been allocated during an earlier call to
+            // `addr_from_alloc_id` for this allocation. So don't create a new `MiriAllocBytes` here, instead
+            // fetch the previously prepared bytes from `prepared_alloc_bytes`.
+            let mut prepared_alloc_bytes = global_state
+                .prepared_alloc_bytes
+                .remove(&id)
+                .unwrap_or_else(|| panic!("alloc bytes for {id:?} have not been prepared"));
+            // Sanity-check that the prepared allocation has the right size and alignment.
+            assert!(prepared_alloc_bytes.as_ptr().is_aligned_to(align.bytes_usize()));
+            assert_eq!(prepared_alloc_bytes.len(), bytes.len());
+            // Copy allocation contents into prepared memory.
+            prepared_alloc_bytes.copy_from_slice(bytes);
+            prepared_alloc_bytes
+        } else {
+            MiriAllocBytes::from_bytes(std::borrow::Cow::Borrowed(&*bytes), align)
+        })
     }
 
     /// When a pointer is used for a memory access, this computes where in which allocation the

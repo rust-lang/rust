@@ -17,6 +17,7 @@ use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, ObligationCtxt};
 use rustc_type_ir::TyKind::*;
+use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::method::MethodCallee;

@@ -32,7 +32,7 @@ pub(crate) fn complete_fn_param(
     let comma_wrapper = comma_wrapper(ctx);
     let mut add_new_item_to_acc = |label: &str| {
         let mk_item = |label: &str, range: TextRange| {
-            CompletionItem::new(CompletionItemKind::Binding, range, label)
+            CompletionItem::new(CompletionItemKind::Binding, range, label, ctx.edition)
         };
         let item = match &comma_wrapper {
             Some((fmt, range)) => mk_item(&fmt(label), *range),
@@ -50,7 +50,7 @@ pub(crate) fn complete_fn_param(
         ParamKind::Closure(closure) => {
             let stmt_list = closure.syntax().ancestors().find_map(ast::StmtList::cast)?;
             params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
-                add_new_item_to_acc(&format!("{}: {ty}", name.display(ctx.db)));
+                add_new_item_to_acc(&format!("{}: {ty}", name.display(ctx.db, ctx.edition)));
             });
         }
     }
@@ -101,8 +101,8 @@ fn fill_fn_params(
     if let Some(stmt_list) = function.syntax().parent().and_then(ast::StmtList::cast) {
         params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
             file_params
-                .entry(format!("{}: {ty}", name.display(ctx.db)))
-                .or_insert(name.display(ctx.db).to_string());
+                .entry(format!("{}: {ty}", name.display(ctx.db, ctx.edition)))
+                .or_insert(name.display(ctx.db, ctx.edition).to_string());
         });
     }
     remove_duplicated(&mut file_params, param_list.params());

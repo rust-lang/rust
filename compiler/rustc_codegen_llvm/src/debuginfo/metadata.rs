@@ -216,6 +216,8 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     //        need to make sure that we don't break existing debuginfo consumers
                     //        by doing that (at least not without a warning period).
                     let layout_type = if ptr_type.is_box() {
+                        // The assertion at the start of this function ensures we have a ZST allocator.
+                        // We'll make debuginfo "skip" all ZST allocators, not just the default allocator.
                         Ty::new_mut_ptr(cx.tcx, pointee_type)
                     } else {
                         ptr_type

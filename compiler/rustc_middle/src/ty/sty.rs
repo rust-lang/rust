@@ -1000,7 +1000,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_primitive(self) -> bool {
-        self.kind().is_primitive()
+        matches!(self.kind(), Bool | Char | Int(_) | Uint(_) | Float(_))
     }
 
     #[inline]
@@ -1149,7 +1149,10 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Tests whether this is a Box using the global allocator.
+    /// Tests whether this is a Box definitely using the global allocator.
+    ///
+    /// If the allocator is still generic, the answer is `false`, but it may
+    /// later turn out that it does use the global allocator.
     #[inline]
     pub fn is_box_global(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {

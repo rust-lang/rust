@@ -5,6 +5,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_span::Span;
+use tracing::info;
 
 use crate::infer::canonical::query_response;
 use crate::infer::InferCtxt;

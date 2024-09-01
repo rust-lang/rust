@@ -137,6 +137,8 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                                 // Using `is_box_global` here is a bit sketchy: if this code is
                                 // generic over the allocator, we'll not add a retag! This is a hack
                                 // to make Stacked Borrows compatible with custom allocator code.
+                                // It means the raw pointer inherits the tag of the box, which mostly works
+                                // but can sometimes lead to unexpected aliasing errors.
                                 // Long-term, we'll want to move to an aliasing model where "cast to
                                 // raw pointer" is a complete NOP, and then this will no longer be
                                 // an issue.

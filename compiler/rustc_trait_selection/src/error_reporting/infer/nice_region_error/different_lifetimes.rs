@@ -5,6 +5,7 @@ use rustc_errors::{Diag, ErrorGuaranteed, Subdiagnostic};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::Ty;
 use rustc_middle::ty::{Region, TyCtxt};
+use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::find_anon_type::find_anon_type;
 use crate::error_reporting::infer::nice_region_error::util::AnonymousParamInfo;

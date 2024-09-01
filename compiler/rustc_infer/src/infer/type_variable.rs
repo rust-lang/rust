@@ -9,6 +9,7 @@ use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyVid};
 use rustc_span::Span;
+use tracing::debug;
 
 use crate::infer::InferCtxtUndoLogs;
 

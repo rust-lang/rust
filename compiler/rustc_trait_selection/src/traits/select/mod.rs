@@ -31,6 +31,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
+use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
 use self::SelectionCandidate::*;

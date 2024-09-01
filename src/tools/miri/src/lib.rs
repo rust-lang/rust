@@ -12,6 +12,9 @@
 #![feature(let_chains)]
 #![feature(trait_upcasting)]
 #![feature(strict_overflow_ops)]
+#![feature(strict_provenance)]
+#![feature(exposed_provenance)]
+#![feature(pointer_is_aligned_to)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,

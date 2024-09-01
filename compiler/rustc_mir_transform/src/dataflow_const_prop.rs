@@ -19,6 +19,7 @@ use rustc_mir_dataflow::value_analysis::{
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
+use tracing::{debug, debug_span, instrument};
 
 // These constants are somewhat random guesses and have not been optimized.
 // If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).
@@ -382,7 +383,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         place: PlaceIndex,
         mut operand: OpTy<'tcx>,
         projection: &[PlaceElem<'tcx>],
-    ) -> Option<!> {
+    ) {
         for &(mut proj_elem) in projection {
             if let PlaceElem::Index(index) = proj_elem {
                 if let FlatSet::Elem(index) = state.get(index.into(), &self.map)
@@ -391,10 +392,14 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 {
                     proj_elem = PlaceElem::ConstantIndex { offset, min_length, from_end: false };
                 } else {
-                    return None;
+                    return;
                 }
             }
-            operand = self.ecx.project(&operand, proj_elem).ok()?;
+            operand = if let Ok(operand) = self.ecx.project(&operand, proj_elem) {
+                operand
+            } else {
+                return;
+            }
         }
 
         self.map.for_each_projection_value(
@@ -426,8 +431,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             },
         );
-
-        None
     }
 
     fn binary_op(

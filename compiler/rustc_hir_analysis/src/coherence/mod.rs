@@ -13,6 +13,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, ErrorGuaranteed};
+use tracing::debug;
 
 use crate::errors;
 

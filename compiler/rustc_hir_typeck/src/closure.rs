@@ -19,6 +19,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
+use tracing::{debug, instrument, trace};
 
 use super::{check_fn, CoroutineTypes, Expectation, FnCtxt};
 

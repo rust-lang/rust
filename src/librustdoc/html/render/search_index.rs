@@ -11,6 +11,7 @@ use rustc_span::sym;
 use rustc_span::symbol::{kw, Symbol};
 use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
 use thin_vec::ThinVec;
+use tracing::instrument;
 
 use crate::clean;
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};

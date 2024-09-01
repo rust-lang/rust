@@ -30,8 +30,8 @@ pub(crate) fn unresolved_method(
         DiagnosticCode::RustcHardError("E0599"),
         format!(
             "no method `{}` on type `{}`{suffix}",
-            d.name.display(ctx.sema.db),
-            d.receiver.display(ctx.sema.db)
+            d.name.display(ctx.sema.db, ctx.edition),
+            d.receiver.display(ctx.sema.db, ctx.edition)
         ),
         adjusted_display_range(ctx, d.expr, &|expr| {
             Some(
@@ -154,9 +154,10 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         };
 
         let mut receiver_type_adt_name =
-            receiver_type.as_adt()?.name(db).display_no_db().to_smolstr();
+            receiver_type.as_adt()?.name(db).display_no_db(ctx.edition).to_smolstr();
 
-        let generic_parameters: Vec<SmolStr> = receiver_type.generic_parameters(db).collect();
+        let generic_parameters: Vec<SmolStr> =
+            receiver_type.generic_parameters(db, ctx.edition).collect();
         // if receiver should be pass as first arg in the assoc func,
         // we could omit generic parameters cause compiler can deduce it automatically
         if !need_to_take_receiver_as_first_arg && !generic_parameters.is_empty() {

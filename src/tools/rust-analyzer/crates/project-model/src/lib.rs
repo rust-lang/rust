@@ -186,18 +186,11 @@ fn utf8_stdout(mut cmd: Command) -> anyhow::Result<String> {
     Ok(stdout.trim().to_owned())
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum InvocationStrategy {
     Once,
     #[default]
     PerWorkspace,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub enum InvocationLocation {
-    Root(AbsPathBuf),
-    #[default]
-    Workspace,
 }
 
 /// A set of cfg-overrides per crate.

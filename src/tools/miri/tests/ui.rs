@@ -36,18 +36,25 @@ fn build_native_lib() -> PathBuf {
     // Create the directory if it does not already exist.
     std::fs::create_dir_all(&so_target_dir)
         .expect("Failed to create directory for shared object file");
-    let so_file_path = so_target_dir.join("libtestlib.so");
+    let so_file_path = so_target_dir.join("native-lib.so");
     let cc_output = Command::new(cc)
         .args([
             "-shared",
             "-o",
             so_file_path.to_str().unwrap(),
-            "tests/native-lib/test.c",
+            // FIXME: Automate gathering of all relevant C source files in the directory.
+            "tests/native-lib/scalar_arguments.c",
+            "tests/native-lib/ptr_read_access.c",
             // Only add the functions specified in libcode.version to the shared object file.
             // This is to avoid automatically adding `malloc`, etc.
             // Source: https://anadoxin.org/blog/control-over-symbol-exports-in-gcc.html/
             "-fPIC",
-            "-Wl,--version-script=tests/native-lib/libtest.map",
+            "-Wl,--version-script=tests/native-lib/native-lib.map",
+            // Ensure we notice serious problems in the C code.
+            "-Wall",
+            "-Wextra",
+            "-Wpedantic",
+            "-Werror",
         ])
         .output()
         .expect("failed to generate shared object file for testing native function calls");

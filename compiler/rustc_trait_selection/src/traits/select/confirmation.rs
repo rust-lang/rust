@@ -21,6 +21,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
+use tracing::{debug, instrument};
 
 use super::SelectionCandidate::{self, *};
 use super::{BuiltinImplConditions, SelectionContext};
@@ -600,21 +601,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Check supertraits hold. This is so that their associated type bounds
         // will be checked in the code below.
-        for super_trait in tcx
+        for (supertrait, _) in tcx
             .explicit_super_predicates_of(trait_predicate.def_id())
-            .instantiate(tcx, trait_predicate.trait_ref.args)
-            .predicates
-            .into_iter()
+            .iter_instantiated_copied(tcx, trait_predicate.trait_ref.args)
         {
-            let normalized_super_trait = normalize_with_depth_to(
+            let normalized_supertrait = normalize_with_depth_to(
                 self,
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                super_trait,
+                supertrait,
                 &mut nested,
             );
-            nested.push(obligation.with(tcx, normalized_super_trait));
+            nested.push(obligation.with(tcx, normalized_supertrait));
         }
 
         let assoc_types: Vec<_> = tcx

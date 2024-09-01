@@ -325,7 +325,7 @@ impl Sysroot {
             "nightly".to_owned(),
         );
 
-        let mut res = match CargoWorkspace::fetch_metadata(
+        let (mut res, _) = match CargoWorkspace::fetch_metadata(
             &library_manifest,
             sysroot_src_dir,
             &cargo_config,
@@ -372,18 +372,19 @@ impl Sysroot {
                 .flatten()
         };
 
-        let resolve = res.resolve.as_mut().expect("metadata executed with deps");
-        resolve.nodes.retain_mut(|node| {
-            // Replace `rustc-std-workspace` crate with the actual one in the dependency list
-            node.deps.iter_mut().for_each(|dep| {
-                let real_pkg = patches.clone().find(|((_, fake_id), _)| *fake_id == dep.pkg);
-                if let Some((_, real)) = real_pkg {
-                    dep.pkg = real;
-                }
+        if let Some(resolve) = res.resolve.as_mut() {
+            resolve.nodes.retain_mut(|node| {
+                // Replace `rustc-std-workspace` crate with the actual one in the dependency list
+                node.deps.iter_mut().for_each(|dep| {
+                    let real_pkg = patches.clone().find(|((_, fake_id), _)| *fake_id == dep.pkg);
+                    if let Some((_, real)) = real_pkg {
+                        dep.pkg = real;
+                    }
+                });
+                // Remove this node if it's a fake one
+                !patches.clone().any(|((_, fake), _)| fake == node.id)
             });
-            // Remove this node if it's a fake one
-            !patches.clone().any(|((_, fake), _)| fake == node.id)
-        });
+        }
         // Remove the fake ones from the package list
         patches.map(|((idx, _), _)| idx).sorted().rev().for_each(|idx| {
             res.packages.remove(idx);

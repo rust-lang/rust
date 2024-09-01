@@ -1,10 +1,10 @@
 //! Interface with `rustc_pattern_analysis`.
 
+use std::cell::LazyCell;
 use std::fmt;
 
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
 use intern::sym;
-use once_cell::unsync::Lazy;
 use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     usefulness::{compute_match_usefulness, PlaceValidity, UsefulnessReport},
@@ -384,8 +384,9 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                         let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
 
                         // Whether we must not match the fields of this variant exhaustively.
-                        let is_non_exhaustive = Lazy::new(|| self.is_foreign_non_exhaustive(adt));
-                        let visibilities = Lazy::new(|| self.db.field_visibilities(variant));
+                        let is_non_exhaustive =
+                            LazyCell::new(|| self.is_foreign_non_exhaustive(adt));
+                        let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
 
                         self.list_variant_fields(ty, variant)
                             .map(move |(fid, ty)| {

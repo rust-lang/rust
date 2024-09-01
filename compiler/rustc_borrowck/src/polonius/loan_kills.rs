@@ -4,6 +4,7 @@ use rustc_middle::mir::{
     Terminator, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
+use tracing::debug;
 
 use crate::borrow_set::BorrowSet;
 use crate::facts::AllFacts;

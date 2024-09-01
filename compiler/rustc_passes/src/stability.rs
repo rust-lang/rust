@@ -544,9 +544,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         let is_stable =
             self.tcx.lookup_stability(def_id).is_some_and(|stability| stability.level.is_stable());
         let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
-        let is_reachable = self.effective_visibilities.is_reachable(def_id);
 
-        if is_const && is_stable && missing_const_stability_attribute && is_reachable {
+        if is_const && is_stable && missing_const_stability_attribute {
             let descr = self.tcx.def_descr(def_id.to_def_id());
             self.tcx.dcx().emit_err(errors::MissingConstStabAttr { span, descr });
         }

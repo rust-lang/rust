@@ -1,6 +1,7 @@
 use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
+use tracing::trace;
 
 use crate::lint::lint_body;
 use crate::{validate, MirPass};

@@ -14,9 +14,8 @@ use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget
 use crate::core::build_steps::tool::{self, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
-use crate::core::builder;
 use crate::core::builder::{
-    crate_description, Builder, Compiler, Kind, RunConfig, ShouldRun, Step,
+    self, crate_description, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step,
 };
 use crate::core::config::flags::{get_completion, Subcommand};
 use crate::core::config::TargetSelection;
@@ -2435,18 +2434,14 @@ impl Step for CrateLibrustc {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("rustc-main")
+        run.crate_or_deps("rustc-main").path("compiler")
     }
 
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let crates = run
-            .paths
-            .iter()
-            .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
-            .collect();
+        let crates = run.make_run_crates(Alias::Compiler);
 
         builder.ensure(CrateLibrustc { compiler, target: run.target, crates });
     }

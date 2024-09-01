@@ -7,6 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
+use tracing::{debug, instrument, trace};
 
 use crate::errors::{TaitForwardCompat, TaitForwardCompat2, UnconstrainedOpaqueType};
 

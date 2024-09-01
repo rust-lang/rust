@@ -123,7 +123,7 @@ pub fn transitive_bounds_that_define_assoc_item<'tcx>(
 
             stack.extend(
                 tcx.explicit_supertraits_containing_assoc_item((trait_ref.def_id(), assoc_name))
-                    .instantiate_own_identity()
+                    .iter_identity_copied()
                     .map(|(clause, _)| clause.instantiate_supertrait(tcx, trait_ref))
                     .filter_map(|clause| clause.as_trait_clause())
                     // FIXME: Negative supertraits are elaborated here lol

@@ -15,6 +15,7 @@ use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use tracing::debug;
 
 use crate::location::RichLocation;
 use crate::region_infer::values::{self, LiveLoans};

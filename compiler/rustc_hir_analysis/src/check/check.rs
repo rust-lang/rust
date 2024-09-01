@@ -27,6 +27,7 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_type_ir::fold::TypeFoldable;
+use tracing::{debug, instrument};
 use {rustc_attr as attr, rustc_hir as hir};
 
 use super::compare_impl_item::{check_type_bounds, compare_impl_method, compare_impl_ty};

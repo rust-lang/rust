@@ -35,7 +35,7 @@ use crate::{
 };
 
 /// This is used as a key for indexing impls.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TyFingerprint {
     // These are lang item impls:
     Str,
@@ -542,7 +542,8 @@ impl ReceiverAdjustments {
             }
         }
         if let Some(m) = self.autoref {
-            let a = Adjustment::borrow(m, ty);
+            let lt = table.new_lifetime_var();
+            let a = Adjustment::borrow(m, ty, lt);
             ty = a.target.clone();
             adjust.push(a);
         }
@@ -1066,7 +1067,7 @@ fn iterate_method_candidates_by_receiver(
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that, including raw derefs.
     table.run_in_snapshot(|table| {
-        let mut autoderef = autoderef::Autoderef::new(table, receiver_ty.clone(), true);
+        let mut autoderef = autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true);
         while let Some((self_ty, _)) = autoderef.next() {
             iterate_inherent_methods(
                 &self_ty,
@@ -1081,7 +1082,7 @@ fn iterate_method_candidates_by_receiver(
         ControlFlow::Continue(())
     })?;
     table.run_in_snapshot(|table| {
-        let mut autoderef = autoderef::Autoderef::new(table, receiver_ty.clone(), true);
+        let mut autoderef = autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true);
         while let Some((self_ty, _)) = autoderef.next() {
             if matches!(self_ty.kind(Interner), TyKind::InferenceVar(_, TyVariableKind::General)) {
                 // don't try to resolve methods on unknown types
@@ -1656,7 +1657,7 @@ fn autoderef_method_receiver(
     ty: Ty,
 ) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
     let mut deref_chain: Vec<_> = Vec::new();
-    let mut autoderef = autoderef::Autoderef::new(table, ty, false);
+    let mut autoderef = autoderef::Autoderef::new_no_tracking(table, ty, false);
     while let Some((ty, derefs)) = autoderef.next() {
         deref_chain.push((
             autoderef.table.canonicalize(ty),

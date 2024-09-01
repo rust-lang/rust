@@ -6,6 +6,7 @@
 
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use tracing::{debug, trace};
 
 use super::simplify::simplify_cfg;
 

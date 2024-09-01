@@ -119,8 +119,7 @@ fn lifetime_bounds(p: &mut Parser<'_>) {
 // test type_param_bounds
 // struct S<T: 'a + ?Sized + (Copy) + ~const Drop>;
 pub(super) fn bounds(p: &mut Parser<'_>) {
-    assert!(p.at(T![:]));
-    p.bump(T![:]);
+    p.expect(T![:]);
     bounds_without_colon(p);
 }
 
