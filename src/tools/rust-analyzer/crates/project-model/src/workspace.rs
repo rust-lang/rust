@@ -1554,6 +1554,6 @@ fn add_proc_macro_dep(crate_graph: &mut CrateGraph, from: CrateId, to: CrateId, 
 
 fn add_dep_inner(graph: &mut CrateGraph, from: CrateId, dep: Dependency) {
     if let Err(err) = graph.add_dep(from, dep) {
-        tracing::error!("{}", err)
+        tracing::warn!("{}", err)
     }
 }
