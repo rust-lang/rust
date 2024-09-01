@@ -256,6 +256,8 @@ lint_elided_named_lifetime = elided lifetime has a name
     .label_elided = this elided lifetime gets resolved as `{$name}`
     .label_named = lifetime `{$name}` declared here
 
+lint_elided_named_lifetime_suggestion = consider specifying it explicitly
+
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum

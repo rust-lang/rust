@@ -13,6 +13,10 @@ LL | fn ok2<'a, G: 'a, T>(g: G, dest: &'a mut T) -> impl FnOnce() + '_ + 'a
    |        -- lifetime `'a` declared here                          ^^ this elided lifetime gets resolved as `'a`
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
+help: consider specifying it explicitly
+   |
+LL | fn ok2<'a, G: 'a, T>(g: G, dest: &'a mut T) -> impl FnOnce() + 'a + 'a
+   |                                                                ~~
 
 error[E0700]: hidden type for `impl FnOnce()` captures lifetime that does not appear in bounds
   --> $DIR/missing-lifetimes-in-signature.rs:19:5

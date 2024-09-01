@@ -114,6 +114,10 @@ LL | fn m<'a>(_: &'a Foo<'a>) -> &str { "" }
    |      lifetime `'a` declared here
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
+help: consider specifying it explicitly
+   |
+LL | fn m<'a>(_: &'a Foo<'a>) -> &'a str { "" }
+   |                             ~~~
 
 error: aborting due to 7 previous errors; 1 warning emitted
 

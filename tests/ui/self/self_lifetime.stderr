@@ -7,12 +7,21 @@ LL |     fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
    |            lifetime `'b` declared here
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
+help: consider specifying it explicitly
+   |
+LL |     fn foo<'b>(self: &'b Foo<'a>) -> &'b () { self.0 }
+   |                                      ~~~
 
 warning: elided lifetime has a name
   --> $DIR/self_lifetime.rs:13:46
    |
 LL |     fn bar<'a>(self: &Alias, arg: &'a ()) -> &() { arg }
    |            -- lifetime `'a` declared here    ^ this elided lifetime gets resolved as `'a`
+   |
+help: consider specifying it explicitly
+   |
+LL |     fn bar<'a>(self: &Alias, arg: &'a ()) -> &'a () { arg }
+   |                                              ~~~
 
 warning: 2 warnings emitted
 

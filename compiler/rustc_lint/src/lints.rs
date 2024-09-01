@@ -2627,7 +2627,7 @@ pub(crate) struct ElidedLifetimesInPaths {
 #[diag(lint_elided_named_lifetime)]
 pub(crate) struct ElidedNamedLifetime {
     #[label(lint_label_elided)]
-    pub elided: Span,
+    pub span: Span,
     pub name: Symbol,
     #[label(lint_label_named)]
     pub named_declaration: Option<Span>,

@@ -7,6 +7,10 @@ LL | fn load2<'a>(ss: &'a dyn SomeTrait) -> &dyn SomeTrait {
    |          lifetime `'a` declared here
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
+help: consider specifying it explicitly
+   |
+LL | fn load2<'a>(ss: &'a dyn SomeTrait) -> &'a dyn SomeTrait {
+   |                                        ~~~
 
 error: lifetime may not live long enough
   --> $DIR/object-lifetime-default-elision.rs:73:5

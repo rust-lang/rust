@@ -5,12 +5,21 @@ LL |     fn a<'a>(self: Self, a: &'a str) -> &str {
    |          -- lifetime `'a` declared here ^ this elided lifetime gets resolved as `'a`
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
+help: consider specifying it explicitly
+   |
+LL |     fn a<'a>(self: Self, a: &'a str) -> &'a str {
+   |                                         ~~~
 
 warning: elided lifetime has a name
   --> $DIR/ignore-non-reference-lifetimes.rs:10:44
    |
 LL |     fn b<'a>(self: Foo<'b>, a: &'a str) -> &str {
    |          -- lifetime `'a` declared here    ^ this elided lifetime gets resolved as `'a`
+   |
+help: consider specifying it explicitly
+   |
+LL |     fn b<'a>(self: Foo<'b>, a: &'a str) -> &'a str {
+   |                                            ~~~
 
 warning: 2 warnings emitted
 

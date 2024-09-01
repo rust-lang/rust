@@ -5,6 +5,10 @@ LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
    |      -- lifetime `'a` declared here            ^^ this elided lifetime gets resolved as `'a`
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
+help: consider specifying it explicitly
+   |
+LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + 'a) {
+   |                                                ~~
 
 error[E0792]: expected generic lifetime parameter, found `'_`
   --> $DIR/impl-fn-predefined-lifetimes.rs:7:9
