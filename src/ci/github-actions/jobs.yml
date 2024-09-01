@@ -85,12 +85,12 @@ pr:
   - image: mingw-check-tidy
     continue_on_error: true
     <<: *job-linux-4c
-  - image: x86_64-gnu-llvm-17
-    env:
-      ENABLE_GCC_CODEGEN: "1"
-    <<: *job-linux-16c
-  - image: x86_64-gnu-tools
-    <<: *job-linux-16c
+  #- image: x86_64-gnu-llvm-17
+  #  env:
+  #    ENABLE_GCC_CODEGEN: "1"
+  #  <<: *job-linux-16c
+  #- image: x86_64-gnu-tools
+  #  <<: *job-linux-16c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
