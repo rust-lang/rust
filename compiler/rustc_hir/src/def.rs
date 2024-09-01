@@ -326,41 +326,6 @@ impl DefKind {
             | DefKind::ExternCrate => false,
         }
     }
-
-    /// Whether `query struct_target_features` should be used with this definition.
-    pub fn has_struct_target_features(self) -> bool {
-        match self {
-            DefKind::Struct | DefKind::Union | DefKind::Enum => true,
-            DefKind::Fn
-            | DefKind::AssocFn
-            | DefKind::Ctor(..)
-            | DefKind::Closure
-            | DefKind::Static { .. }
-            | DefKind::Mod
-            | DefKind::Variant
-            | DefKind::Trait
-            | DefKind::TyAlias
-            | DefKind::ForeignTy
-            | DefKind::TraitAlias
-            | DefKind::AssocTy
-            | DefKind::Const
-            | DefKind::AssocConst
-            | DefKind::Macro(..)
-            | DefKind::Use
-            | DefKind::ForeignMod
-            | DefKind::OpaqueTy
-            | DefKind::Impl { .. }
-            | DefKind::Field
-            | DefKind::TyParam
-            | DefKind::ConstParam
-            | DefKind::LifetimeParam
-            | DefKind::AnonConst
-            | DefKind::InlineConst
-            | DefKind::SyntheticCoroutineBody
-            | DefKind::GlobalAsm
-            | DefKind::ExternCrate => false,
-        }
-    }
 }
 
 /// The resolution of a path or export.
