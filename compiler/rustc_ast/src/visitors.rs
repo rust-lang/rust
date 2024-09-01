@@ -545,9 +545,9 @@ macro_rules! make_ast_visitor {
         ) -> result!(V) {
             match binder {
                 ClosureBinder::NotPresent => {}
-                // TODO: skipped span
-                ClosureBinder::For { generic_params, span: _ } => {
-                    visit_list!(vis, visit_generic_param, flat_map_generic_param, generic_params)
+                ClosureBinder::For { generic_params, span } => {
+                    visit_list!(vis, visit_generic_param, flat_map_generic_param, generic_params);
+                    try_v!(visit_span!(vis, span));
                 }
             }
             return_result!(V)
@@ -1383,8 +1383,8 @@ macro_rules! make_ast_visitor {
                     visit_o!(label, |label| vis.visit_label(label));
                     try_v!(vis.visit_block(block));
                 }
-                ExprKind::Gen(_capture_by, body, _kind, decl_span) => {
-                    // TODO: capture_by is ignored
+                ExprKind::Gen(capture_by, body, _kind, decl_span) => {
+                    try_v!(vis.visit_capture_by(capture_by));
                     try_v!(vis.visit_block(body));
                     try_v!(visit_span!(vis, decl_span));
                 }
