@@ -924,6 +924,7 @@ fn codegen_stmt<'tcx>(
         | StatementKind::FakeRead(..)
         | StatementKind::Retag { .. }
         | StatementKind::PlaceMention(..)
+        | StatementKind::BackwardIncompatibleDropHint { .. }
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::Coverage { .. } => unreachable!(),
