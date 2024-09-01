@@ -631,7 +631,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Goto { target } => TerminatorEdges::Single(target),
 
             Assert { target, unwind, expected: _, msg: _, cond: _ }
-            | Drop { target, unwind, place: _, replace: _ }
+            | Drop { target, unwind, place: _, scope: _, replace: _ }
             | FalseUnwind { real_target: target, unwind } => match unwind {
                 UnwindAction::Cleanup(unwind) => TerminatorEdges::Double(target, unwind),
                 UnwindAction::Continue | UnwindAction::Terminate(_) | UnwindAction::Unreachable => {

@@ -511,6 +511,7 @@ macro_rules! make_mir_visitor {
                         target: _,
                         unwind: _,
                         replace: _,
+                        scope: _,
                     } => {
                         self.visit_place(
                             place,

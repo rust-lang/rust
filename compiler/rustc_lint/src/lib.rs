@@ -82,7 +82,6 @@ mod redundant_semicolon;
 mod reference_casting;
 mod shadowed_into_iter;
 mod static_mut_refs;
-mod tail_expr_drop_order;
 mod traits;
 mod types;
 mod unit_bindings;
@@ -123,7 +122,6 @@ use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
 pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use static_mut_refs::*;
-use tail_expr_drop_order::TailExprDropOrder;
 use traits::*;
 use types::*;
 use unit_bindings::*;
@@ -248,7 +246,6 @@ late_lint_methods!(
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
             ImplTraitOvercaptures: ImplTraitOvercaptures,
-            TailExprDropOrder: TailExprDropOrder,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
             UnqualifiedLocalImports: UnqualifiedLocalImports,

@@ -716,11 +716,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
             if let Operand::Move(to_drop) = value_operand {
                 let success = this.cfg.start_new_block();
+                let scope = scope
+                    .and_then(|scope| scope.hir_id(this.region_scope_tree))
+                    .map(|scope| (scope.owner.to_def_id(), scope.local_id));
                 this.cfg.terminate(block, outer_source_info, TerminatorKind::Drop {
                     place: to_drop,
                     target: success,
                     unwind: UnwindAction::Continue,
                     replace: false,
+                    scope,
                 });
                 this.diverge_from(block);
                 block = success;

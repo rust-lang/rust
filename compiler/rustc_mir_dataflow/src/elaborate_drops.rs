@@ -1,5 +1,7 @@
 use std::{fmt, iter};
 
+use rustc_hir::ItemLocalId;
+use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
@@ -167,6 +169,10 @@ where
     path: D::Path,
     succ: BasicBlock,
     unwind: Unwind,
+
+    /// Scope from which the drop is obliged
+    /// which is the HIR node for the "scope"
+    scope: Option<(DefId, ItemLocalId)>,
 }
 
 /// "Elaborates" a drop of `place`/`path` and patches `bb`'s terminator to execute it.
@@ -185,11 +191,12 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     succ: BasicBlock,
     unwind: Unwind,
     bb: BasicBlock,
+    scope: Option<(DefId, ItemLocalId)>,
 ) where
     D: DropElaborator<'b, 'tcx>,
     'tcx: 'b,
 {
-    DropCtxt { elaborator, source_info, place, path, succ, unwind }.elaborate_drop(bb)
+    DropCtxt { elaborator, source_info, place, scope, path, succ, unwind }.elaborate_drop(bb)
 }
 
 impl<'a, 'b, 'tcx, D> DropCtxt<'a, 'b, 'tcx, D>
@@ -238,6 +245,7 @@ where
                     target: self.succ,
                     unwind: self.unwind.into_action(),
                     replace: false,
+                    scope: self.scope,
                 });
             }
             DropStyle::Conditional => {
@@ -299,6 +307,7 @@ where
                 place,
                 succ,
                 unwind,
+                scope: self.scope,
             }
             .elaborated_drop_block()
         } else {
@@ -313,6 +322,7 @@ where
                 // Using `self.path` here to condition the drop on
                 // our own drop flag.
                 path: self.path,
+                scope: self.scope,
             }
             .complete_drop(succ, unwind)
         }
@@ -734,6 +744,7 @@ where
             target: loop_block,
             unwind: unwind.into_action(),
             replace: false,
+            scope: self.scope,
         });
 
         loop_block
@@ -914,6 +925,7 @@ where
             target,
             unwind: unwind.into_action(),
             replace: false,
+            scope: self.scope,
         };
         self.new_block(unwind, block)
     }

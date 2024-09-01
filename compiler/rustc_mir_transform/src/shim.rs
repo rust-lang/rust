@@ -288,6 +288,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
                 return_block,
                 elaborate_drops::Unwind::To(resume_block),
                 START_BLOCK,
+                None,
             );
             elaborator.patch
         };
@@ -616,6 +617,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                     target: unwind,
                     unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                     replace: false,
+                    scope: None,
                 },
                 /* is_cleanup */ true,
             );
@@ -878,6 +880,7 @@ fn build_call_shim<'tcx>(
                 target: BasicBlock::new(2),
                 unwind: UnwindAction::Continue,
                 replace: false,
+                scope: None,
             },
             false,
         );
@@ -894,6 +897,7 @@ fn build_call_shim<'tcx>(
                 target: BasicBlock::new(4),
                 unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                 replace: false,
+                scope: None,
             },
             /* is_cleanup */ true,
         );

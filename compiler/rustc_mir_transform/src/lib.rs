@@ -103,6 +103,7 @@ mod sanity_check;
 mod shim;
 mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
+mod lint_tail_expr_drop_order;
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
@@ -356,6 +357,7 @@ fn mir_promoted(
         &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
+    lint_tail_expr_drop_order::run_lint(tcx, def, &body);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))

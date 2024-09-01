@@ -368,7 +368,8 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     ) -> TerminatorEdges<'mir, 'tcx> {
         let mut edges = terminator.edges();
         if self.skip_unreachable_unwind
-            && let mir::TerminatorKind::Drop { target, unwind, place, replace: _ } = terminator.kind
+            && let mir::TerminatorKind::Drop { target, unwind, place, scope: _, replace: _ } =
+                terminator.kind
             && matches!(unwind, mir::UnwindAction::Cleanup(_))
             && self.is_unwind_dead(place, state)
         {

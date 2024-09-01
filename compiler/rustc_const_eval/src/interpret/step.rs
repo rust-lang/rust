@@ -528,7 +528,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            Drop { place, target, unwind, replace: _ } => {
+            Drop { place, target, unwind, scope: _, replace: _ } => {
                 let place = self.eval_place(place)?;
                 let instance = Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
                 if let ty::InstanceKind::DropGlue(_, None) = instance.def {

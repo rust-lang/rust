@@ -5,14 +5,14 @@
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
 use rustc_data_structures::packed::Pu128;
-use rustc_hir::CoroutineKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{CoroutineKind, ItemLocalId};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
@@ -705,7 +705,13 @@ pub enum TerminatorKind<'tcx> {
     /// The `replace` flag indicates whether this terminator was created as part of an assignment.
     /// This should only be used for diagnostic purposes, and does not have any operational
     /// meaning.
-    Drop { place: Place<'tcx>, target: BasicBlock, unwind: UnwindAction, replace: bool },
+    Drop {
+        place: Place<'tcx>,
+        target: BasicBlock,
+        unwind: UnwindAction,
+        scope: Option<(DefId, ItemLocalId)>,
+        replace: bool,
+    },
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
     /// the referred to function. The operand types must match the argument types of the function.
