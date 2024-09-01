@@ -233,6 +233,7 @@ fn check_statement<'tcx>(
         | StatementKind::PlaceMention(..)
         | StatementKind::Coverage(..)
         | StatementKind::ConstEvalCounter
+        | StatementKind::BackwardIncompatibleDropHint { .. }
         | StatementKind::Nop => Ok(()),
     }
 }

@@ -50,6 +50,7 @@ mod deduce_param_attrs;
 mod errors;
 mod ffi_unwind_calls;
 mod lint;
+mod lint_tail_expr_drop_order;
 mod shim;
 mod ssa;
 
@@ -490,6 +491,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     }
 
     let (body, _) = tcx.mir_promoted(def);
+    lint_tail_expr_drop_order::run_lint(tcx, def, &body.borrow());
     let mut body = body.steal();
 
     if let Some(error_reported) = tainted_by_errors {

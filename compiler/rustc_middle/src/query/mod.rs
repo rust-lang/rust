@@ -1448,6 +1448,28 @@ rustc_queries! {
         cache_on_disk_if { false }
     }
 
+    /// Returns a list of types which (a) have a potentially significant destructor
+    /// and (b) may be dropped as a result of dropping a value of some type `ty`
+    /// (in the given environment).
+    ///
+    /// The idea of "significant" drop is somewhat informal and is used only for
+    /// diagnostics and edition migrations. The idea is that a significant drop may have
+    /// some visible side-effect on execution; freeing memory is NOT considered a side-effect.
+    /// The rules are as follows:
+    /// * Type with no explicit drop impl do not have significant drop.
+    /// * Types with a drop impl are assumed to have significant drop unless they have a `#[rustc_insignificant_dtor]` annotation.
+    ///
+    /// Note that insignificant drop is a "shallow" property. A type like `Vec<LockGuard>` does not
+    /// have significant drop but the type `LockGuard` does, and so if `ty  = Vec<LockGuard>`
+    /// then the return value would be `&[LockGuard]`.
+    /// *IMPORTANT*: *DO NOT* run this query before promoted MIR body is constructed,
+    /// because this query partially depends on that query.
+    /// Otherwise, there is a risk of query cycles.
+    query list_significant_drop_tys(ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx ty::List<Ty<'tcx>> {
+        desc { |tcx| "computing when `{}` has a significant destructor", ty.value }
+        cache_on_disk_if { false }
+    }
+
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
     query layout_of(

@@ -609,6 +609,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
         }
     }
