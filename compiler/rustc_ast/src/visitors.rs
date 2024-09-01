@@ -284,14 +284,6 @@ macro_rules! make_ast_visitor {
                     walk_meta_item(self, meta_item);
                 }
 
-                fn flat_map_assoc_item(
-                    &mut self,
-                    i: P!(AssocItem),
-                    ctxt: AssocCtxt,
-                ) -> SmallVec<[P!(AssocItem); 1]> {
-                    walk_flat_map_assoc_item(self, i, ctxt)
-                }
-
                 fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
                     walk_flat_map_stmt(self, s)
                 }
@@ -399,6 +391,11 @@ macro_rules! make_ast_visitor {
             make_visit!{Const; visit_constness, walk_constness}
             make_visit!{TyAliasWhereClauses; visit_ty_alias_where_clauses, walk_ty_alias_where_clauses}
             make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
+            make_visit!{GenericBound, _ ctxt: BoundKind; visit_param_bound, walk_param_bound}
+            make_visit!{UseTree, id: NodeId, _ nested: bool; visit_use_tree, walk_use_tree}
+            make_visit!{Path, _ id: NodeId; visit_path, walk_path}
+            make_visit!{MacroDef, _ id: NodeId; visit_macro_def, walk_macro_def}
+            make_visit!{Lifetime, _ ctxt: LifetimeCtxt; visit_lifetime, walk_lifetime}
             // FIXME: Remove P!
             make_visit!{P!(Pat); visit_pat, walk_pat}
             make_visit!{P!(Expr); visit_expr, walk_expr}
@@ -416,18 +413,11 @@ macro_rules! make_ast_visitor {
             make_visit!{WherePredicate; visit_where_predicate, walk_where_predicate, flat_map_where_predicate, walk_flat_map_where_predicate}
             make_visit!{P!(Item); visit_item, walk_item, flat_map_item, walk_flat_map_item}
             make_visit!{P!(ForeignItem); visit_foreign_item, walk_item, flat_map_foreign_item, walk_flat_map_foreign_item}
+            make_visit!{P!(AssocItem), ctxt: AssocCtxt; visit_assoc_item, walk_assoc_item, flat_map_assoc_item, walk_flat_map_assoc_item}
 
             /// `MutVisitor`: `Span` and `NodeId` are mutated at the caller site.
             fn visit_fn(&mut self, fk: fn_kind!(), _: Span, _: NodeId) -> result!(){
                 walk_fn(self, fk)
-            }
-
-            fn visit_param_bound(&mut self, tpb: ref_t!(GenericBound), _ctxt: BoundKind) -> result!() {
-                walk_param_bound(self, tpb)
-            }
-
-            fn visit_assoc_item(&mut self, i: ref_t!(AssocItem), ctxt: AssocCtxt) -> result!() {
-                walk_assoc_item(self, i, ctxt)
             }
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
@@ -438,30 +428,6 @@ macro_rules! make_ast_visitor {
             /// It can be removed once that feature is stabilized.
             fn visit_method_receiver_expr(&mut self, ex: ref_t!(P!(Expr))) -> result!() {
                 self.visit_expr(ex)
-            }
-
-            /// Id should be visited by the caller
-            fn visit_use_tree(
-                &mut self,
-                use_tree: ref_t!(UseTree),
-                id: NodeId,
-                _nested: bool,
-            ) -> result!() {
-                walk_use_tree(self, use_tree, id)
-            }
-
-            /// Id should be visited by the caller
-            fn visit_path(&mut self, path: ref_t!(Path), _id: NodeId) -> result!() {
-                walk_path(self, path)
-            }
-
-            /// Id should be visited by the caller
-            fn visit_macro_def(&mut self, def: ref_t!(MacroDef), _id: NodeId) -> result!() {
-                walk_macro_def(self, def)
-            }
-
-            fn visit_lifetime(&mut self, lifetime: ref_t!(Lifetime), _: LifetimeCtxt) -> result!() {
-                walk_lifetime(self, lifetime)
             }
         }
 
@@ -2262,7 +2228,7 @@ pub mod mut_visit {
         mut item: P<Item<AssocItemKind>>,
         ctxt: AssocCtxt,
     ) -> SmallVec<[P<Item<AssocItemKind>>; 1]> {
-        vis.visit_assoc_item(item.deref_mut(), ctxt);
+        vis.visit_assoc_item(&mut item, ctxt);
         smallvec![item]
     }
 
