@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+use std::process::Command;
 use std::str;
 
 /// This macro creates the version string during compilation from the
@@ -32,6 +34,7 @@ macro_rules! get_version_info {
 #[macro_export]
 macro_rules! setup_version_info {
     () => {{
+        let _ = $crate::rerun_if_git_changes();
         println!(
             "cargo:rustc-env=GIT_HASH={}",
             $crate::get_commit_hash().unwrap_or_default()
@@ -100,24 +103,52 @@ impl std::fmt::Debug for VersionInfo {
 }
 
 #[must_use]
-pub fn get_commit_hash() -> Option<String> {
-    let output = std::process::Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .ok()?;
+fn get_output(cmd: &str, args: &[&str]) -> Option<String> {
+    let output = Command::new(cmd).args(args).output().ok()?;
     let mut stdout = output.status.success().then_some(output.stdout)?;
-    stdout.truncate(10);
+    // Remove trailing newlines.
+    while stdout.last().copied() == Some(b'\n') {
+        stdout.pop();
+    }
     String::from_utf8(stdout).ok()
 }
 
 #[must_use]
+pub fn rerun_if_git_changes() -> Option<()> {
+    // Make sure we get rerun when the git commit changes.
+    // We want to watch two files: HEAD, which tracks which branch we are on,
+    // and the file for that branch that tracks which commit is is on.
+
+    // First, find the `HEAD` file. This should work even with worktrees.
+    let git_head_file = PathBuf::from(get_output("git", &["rev-parse", "--git-path", "HEAD"])?);
+    if git_head_file.exists() {
+        println!("cargo::rerun-if-changed={}", git_head_file.display());
+    }
+
+    // Determine the name of the current ref.
+    // This will quit if HEAD is detached.
+    let git_head_ref = get_output("git", &["symbolic-ref", "-q", "HEAD"])?;
+    // Ask git where this ref is stored.
+    let git_head_ref_file = PathBuf::from(get_output("git", &["rev-parse", "--git-path", &git_head_ref])?);
+    // If this ref is packed, the file does not exist. However, the checked-out branch is never (?)
+    // packed, so we should always be able to find this file.
+    if git_head_ref_file.exists() {
+        println!("cargo::rerun-if-changed={}", git_head_ref_file.display());
+    }
+
+    Some(())
+}
+
+#[must_use]
+pub fn get_commit_hash() -> Option<String> {
+    let mut stdout = get_output("git", &["rev-parse", "HEAD"])?;
+    stdout.truncate(10);
+    Some(stdout)
+}
+
+#[must_use]
 pub fn get_commit_date() -> Option<String> {
-    let output = std::process::Command::new("git")
-        .args(["log", "-1", "--date=short", "--pretty=format:%cd"])
-        .output()
-        .ok()?;
-    let stdout = output.status.success().then_some(output.stdout)?;
-    String::from_utf8(stdout).ok()
+    get_output("git", &["log", "-1", "--date=short", "--pretty=format:%cd"])
 }
 
 #[must_use]
@@ -127,15 +158,11 @@ pub fn get_channel() -> String {
     }
 
     // if that failed, try to ask rustc -V, do some parsing and find out
-    if let Ok(output) = std::process::Command::new("rustc").arg("-V").output() {
-        if output.status.success() {
-            if let Ok(rustc_output) = str::from_utf8(&output.stdout) {
-                if rustc_output.contains("beta") {
-                    return String::from("beta");
-                } else if rustc_output.contains("stable") {
-                    return String::from("stable");
-                }
-            }
+    if let Some(rustc_output) = get_output("rustc", &["-V"]) {
+        if rustc_output.contains("beta") {
+            return String::from("beta");
+        } else if rustc_output.contains("stable") {
+            return String::from("stable");
         }
     }
 
