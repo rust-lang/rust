@@ -261,7 +261,6 @@ macro_rules! mut_only_visit {
 
 mut_only_visit! {visit_lazy_tts}
 mut_only_visit! {visit_safety}
-mut_only_visit! {visit_defaultness}
 mut_only_visit! {walk_ty_alias_where_clauses}
 mut_only_visit! {visit_constness}
 mut_only_visit! {visit_polarity}
@@ -379,6 +378,7 @@ macro_rules! make_ast_visitor {
             make_visit!{CoroutineKind, visit_coroutine_kind, walk_coroutine_kind}
             make_visit!{FnHeader, visit_fn_header, walk_fn_header}
             make_visit!{Ident, visit_ident, walk_ident}
+            make_visit!{Defaultness, visit_defaultness, walk_defaultness}
             make_visit!{Option<P<QSelf>>, visit_qself, walk_qself}
             // TODO: Remove P! on implementers
             make_visit!{P!(Pat), visit_pat, walk_pat}
@@ -1508,6 +1508,19 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_defaultness<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            defaultness: ref_t!(Defaultness)
+        ) -> result!(V) {
+            match defaultness {
+                Defaultness::Default(span) => {
+                    try_v!(visit_span!(vis, span))
+                }
+                Defaultness::Final => {}
+            }
+            return_result!(V)
+        }
+
         pub fn walk_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(P!(Item<impl WalkItemKind>)),
@@ -1535,13 +1548,13 @@ macro_rules! make_ast_visitor {
             try_v!(visitor.visit_ident(ident));
             match kind {
                 AssocItemKind::Const(box ConstItem { defaultness, generics, ty, expr }) => {
-                    visit_defaultness!(visitor, defaultness);
+                    try_v!(visitor.visit_defaultness(defaultness));
                     try_v!(visitor.visit_generics(generics));
                     try_v!(visitor.visit_ty(ty));
                     visit_o!(expr, |expr| visitor.visit_expr(expr));
                 }
                 AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                    visit_defaultness!(visitor, defaultness);
+                    try_v!(visitor.visit_defaultness(defaultness));
                     let kind =
                         FnKind::Fn(FnCtxt::Assoc(ctxt), *ident, sig, vis, generics, body);
                     try_v!(visitor.visit_fn(kind, *span, *id));
@@ -1553,7 +1566,7 @@ macro_rules! make_ast_visitor {
                     bounds,
                     ty,
                 }) => {
-                    visit_defaultness!(visitor, defaultness);
+                    try_v!(visitor.visit_defaultness(defaultness));
                     try_v!(visitor.visit_generics(generics));
                     visit_list!(visitor, visit_param_bound, bounds; BoundKind::Bound);
                     visit_o!(ty, |ty| visitor.visit_ty(ty));
@@ -1640,13 +1653,13 @@ macro_rules! make_ast_visitor {
                         visit_o!(expr, |expr| visitor.visit_expr(expr));
                     }
                     ItemKind::Const(box ConstItem { defaultness, generics, ty, expr }) => {
-                        visit_defaultness!(visitor, defaultness);
+                        try_v!(visitor.visit_defaultness(defaultness));
                         try_v!(visitor.visit_generics(generics));
                         try_v!(visitor.visit_ty(ty));
                         visit_o!(expr, |expr| visitor.visit_expr(expr));
                     }
                     ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                        visit_defaultness!(visitor, defaultness);
+                        try_v!(visitor.visit_defaultness(defaultness));
                         let kind = FnKind::Fn(FnCtxt::Free, *ident, sig, vis, generics, body);
                         try_v!(visitor.visit_fn(kind, span, id));
                     }
@@ -1678,7 +1691,7 @@ macro_rules! make_ast_visitor {
                         ty,
                         where_clauses,
                     }) => {
-                        visit_defaultness!(visitor, defaultness);
+                        try_v!(visitor.visit_defaultness(defaultness));
                         try_v!(visitor.visit_generics(generics));
                         visit_list!(visitor, visit_param_bound, bounds; BoundKind::Bound);
                         visit_o!(ty, |ty| visitor.visit_ty(ty));
@@ -1703,7 +1716,7 @@ macro_rules! make_ast_visitor {
                         self_ty,
                         items,
                     }) => {
-                        visit_defaultness!(visitor, defaultness);
+                        try_v!(visitor.visit_defaultness(defaultness));
                         visit_safety!(visitor, safety);
                         try_v!(visitor.visit_generics(generics));
                         visit_constness!(visitor, constness);
@@ -1774,7 +1787,7 @@ macro_rules! make_ast_visitor {
                         visit_o!(expr, |expr| visitor.visit_expr(expr));
                     }
                     ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                        visit_defaultness!(visitor, defaultness);
+                        try_v!(visitor.visit_defaultness(defaultness));
                         let kind =
                             FnKind::Fn(FnCtxt::Foreign, *ident, sig, vis, generics, body);
                         visitor.visit_fn(kind, span, id);
@@ -1786,7 +1799,7 @@ macro_rules! make_ast_visitor {
                         bounds,
                         ty,
                     }) => {
-                        visit_defaultness!(visitor, defaultness);
+                        try_v!(visitor.visit_defaultness(defaultness));
                         try_v!(visitor.visit_generics(generics));
                         visit_list!(visitor, visit_param_bound, bounds; BoundKind::Bound);
                         visit_o!(ty, |ty| visitor.visit_ty(ty));
@@ -2170,14 +2183,6 @@ pub mod mut_visit {
             }
             token::NtPath(path) => vis.visit_path(path, DUMMY_NODE_ID),
             token::NtVis(visib) => vis.visit_vis(visib),
-        }
-    }
-
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    fn visit_defaultness<T: MutVisitor>(vis: &mut T, defaultness: &mut Defaultness) {
-        match defaultness {
-            Defaultness::Default(span) => vis.visit_span(span),
-            Defaultness::Final => {}
         }
     }
 
