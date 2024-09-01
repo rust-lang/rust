@@ -2002,12 +2002,6 @@ pub mod mut_visit {
     }
 
     // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    #[allow(unused)]
-    fn visit_exprs<T: MutVisitor>(vis: &mut T, exprs: &mut Vec<P<Expr>>) {
-        exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
-    }
-
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
     fn visit_delim_args<T: MutVisitor>(vis: &mut T, args: &mut DelimArgs) {
         let DelimArgs { dspan, delim: _, tokens } = args;
         visit_tts(vis, tokens);
