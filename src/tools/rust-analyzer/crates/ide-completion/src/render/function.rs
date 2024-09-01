@@ -1,10 +1,12 @@
 //! Renderer for function calls.
 
+use std::ops::ControlFlow;
+
 use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
-use syntax::{format_smolstr, AstNode, Edition, SmolStr, ToSmolStr};
+use syntax::{ast, format_smolstr, AstNode, Edition, SmolStr, SyntaxKind, ToSmolStr, T};
 
 use crate::{
     context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
@@ -160,7 +162,16 @@ fn render(
         .lookup_by(name.unescaped().display(db).to_smolstr());
 
     if let Some((cap, (self_param, params))) = complete_call_parens {
-        add_call_parens(&mut item, completion, cap, call, escaped_call, self_param, params);
+        add_call_parens(
+            &mut item,
+            completion,
+            cap,
+            call,
+            escaped_call,
+            self_param,
+            params,
+            &ret_type,
+        );
     }
 
     match ctx.import_to_add {
@@ -217,10 +228,11 @@ pub(super) fn add_call_parens<'b>(
     escaped_name: SmolStr,
     self_param: Option<hir::SelfParam>,
     params: Vec<hir::Param>,
+    ret_type: &hir::Type,
 ) -> &'b mut Builder {
     cov_mark::hit!(inserts_parens_for_function_calls);
 
-    let (snippet, label_suffix) = if self_param.is_none() && params.is_empty() {
+    let (mut snippet, label_suffix) = if self_param.is_none() && params.is_empty() {
         (format!("{escaped_name}()$0"), "()")
     } else {
         builder.trigger_call_info();
@@ -265,6 +277,35 @@ pub(super) fn add_call_parens<'b>(
 
         (snippet, "(…)")
     };
+    if ret_type.is_unit() && ctx.config.add_semicolon_to_unit {
+        let next_non_trivia_token =
+            std::iter::successors(ctx.token.next_token(), |it| it.next_token())
+                .find(|it| !it.kind().is_trivia());
+        let in_match_arm = ctx.token.parent_ancestors().try_for_each(|ancestor| {
+            if ast::MatchArm::can_cast(ancestor.kind()) {
+                ControlFlow::Break(true)
+            } else if matches!(ancestor.kind(), SyntaxKind::EXPR_STMT | SyntaxKind::BLOCK_EXPR) {
+                ControlFlow::Break(false)
+            } else {
+                ControlFlow::Continue(())
+            }
+        });
+        // FIXME: This will assume expr macros are not inside match, we need to somehow go to the "parent" of the root node.
+        let in_match_arm = match in_match_arm {
+            ControlFlow::Continue(()) => false,
+            ControlFlow::Break(it) => it,
+        };
+        let complete_token = if in_match_arm { T![,] } else { T![;] };
+        if next_non_trivia_token.map(|it| it.kind()) != Some(complete_token) {
+            cov_mark::hit!(complete_semicolon);
+            let ch = if in_match_arm { ',' } else { ';' };
+            if snippet.ends_with("$0") {
+                snippet.insert(snippet.len() - "$0".len(), ch);
+            } else {
+                snippet.push(ch);
+            }
+        }
+    }
     builder.label(SmolStr::from_iter([&name, label_suffix])).insert_snippet(cap, snippet)
 }
 
@@ -393,7 +434,7 @@ fn main() { no_$0 }
 "#,
             r#"
 fn no_args() {}
-fn main() { no_args()$0 }
+fn main() { no_args();$0 }
 "#,
         );
 
@@ -405,7 +446,7 @@ fn main() { with_$0 }
 "#,
             r#"
 fn with_args(x: i32, y: String) {}
-fn main() { with_args(${1:x}, ${2:y})$0 }
+fn main() { with_args(${1:x}, ${2:y});$0 }
 "#,
         );
 
@@ -414,14 +455,14 @@ fn main() { with_args(${1:x}, ${2:y})$0 }
             r#"
 struct S;
 impl S {
-    fn foo(&self) {}
+    fn foo(&self) -> i32 { 0 }
 }
 fn bar(s: &S) { s.f$0 }
 "#,
             r#"
 struct S;
 impl S {
-    fn foo(&self) {}
+    fn foo(&self) -> i32 { 0 }
 }
 fn bar(s: &S) { s.foo()$0 }
 "#,
@@ -444,7 +485,7 @@ impl S {
     fn foo(&self, x: i32) {}
 }
 fn bar(s: &S) {
-    s.foo(${1:x})$0
+    s.foo(${1:x});$0
 }
 "#,
         );
@@ -463,7 +504,7 @@ impl S {
 struct S {}
 impl S {
     fn foo(&self, x: i32) {
-        self.foo(${1:x})$0
+        self.foo(${1:x});$0
     }
 }
 "#,
@@ -486,7 +527,7 @@ struct S;
 impl S {
     fn foo(&self) {}
 }
-fn main() { S::foo(${1:&self})$0 }
+fn main() { S::foo(${1:&self});$0 }
 "#,
         );
     }
@@ -503,7 +544,7 @@ fn main() { with_$0 }
 "#,
             r#"
 fn with_args(x: i32, y: String) {}
-fn main() { with_args($0) }
+fn main() { with_args($0); }
 "#,
         );
     }
@@ -518,7 +559,7 @@ fn main() { f$0 }
 "#,
             r#"
 fn foo(_foo: i32, ___bar: bool, ho_ge_: String) {}
-fn main() { foo(${1:foo}, ${2:bar}, ${3:ho_ge_})$0 }
+fn main() { foo(${1:foo}, ${2:bar}, ${3:ho_ge_});$0 }
 "#,
         );
     }
@@ -540,7 +581,7 @@ struct Foo {}
 fn ref_arg(x: &Foo) {}
 fn main() {
     let x = Foo {};
-    ref_arg(${1:&x})$0
+    ref_arg(${1:&x});$0
 }
 "#,
         );
@@ -563,7 +604,7 @@ struct Foo {}
 fn ref_arg(x: &mut Foo) {}
 fn main() {
     let x = Foo {};
-    ref_arg(${1:&mut x})$0
+    ref_arg(${1:&mut x});$0
 }
 "#,
         );
@@ -596,7 +637,7 @@ impl Bar {
 fn main() {
     let x = Foo {};
     let y = Bar {};
-    y.apply_foo(${1:&x})$0
+    y.apply_foo(${1:&x});$0
 }
 "#,
         );
@@ -617,7 +658,7 @@ fn main() {
 fn take_mutably(mut x: &i32) {}
 
 fn main() {
-    take_mutably(${1:x})$0
+    take_mutably(${1:x});$0
 }
 "#,
         );
@@ -650,7 +691,7 @@ fn qux(Foo { bar }: Foo) {
 }
 
 fn main() {
-  qux(${1:foo})$0
+  qux(${1:foo});$0
 }
 "#,
         );
@@ -736,6 +777,115 @@ fn g(foo: ()#[baz = "qux"] mut ba$0)
             r#"
 fn f(foo: (), #[baz = "qux"] mut bar: u32) {}
 fn g(foo: (), #[baz = "qux"] mut bar: u32)
+"#,
+        );
+    }
+
+    #[test]
+    fn complete_semicolon_for_unit() {
+        cov_mark::check!(complete_semicolon);
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    foo$0
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    foo();$0
+}
+"#,
+        );
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo$0
+}
+"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo(${1:a});$0
+}
+"#,
+        );
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo$0;
+}
+"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo(${1:a})$0;
+}
+"#,
+        );
+        check_edit_with_config(
+            CompletionConfig { add_semicolon_to_unit: false, ..TEST_CONFIG },
+            r#"foo"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo$0
+}
+"#,
+            r#"
+fn foo(a: i32) {}
+fn bar() {
+    foo(${1:a})$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn complete_comma_for_unit_match_arm() {
+        cov_mark::check!(complete_semicolon);
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match Some(false) {
+        v => fo$0
+    }
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match Some(false) {
+        v => foo(),$0
+    }
+}
+"#,
+        );
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match Some(false) {
+        v => fo$0,
+    }
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match Some(false) {
+        v => foo()$0,
+    }
+}
 "#,
         );
     }

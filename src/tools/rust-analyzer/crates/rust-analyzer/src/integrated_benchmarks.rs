@@ -167,6 +167,7 @@ fn integrated_completion_benchmark() {
             prefer_absolute: false,
             snippets: Vec::new(),
             limit: None,
+            add_semicolon_to_unit: true,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -213,6 +214,7 @@ fn integrated_completion_benchmark() {
             prefer_absolute: false,
             snippets: Vec::new(),
             limit: None,
+            add_semicolon_to_unit: true,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -257,6 +259,7 @@ fn integrated_completion_benchmark() {
             prefer_absolute: false,
             snippets: Vec::new(),
             limit: None,
+            add_semicolon_to_unit: true,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };

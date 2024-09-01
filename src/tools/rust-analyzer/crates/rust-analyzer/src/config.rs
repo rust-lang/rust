@@ -420,6 +420,10 @@ config_data! {
         assist_termSearch_fuel: usize = 1800,
 
 
+        /// Whether to automatically add a semicolon when completing unit-returning functions.
+        ///
+        /// In `match` arms it completes a comma instead.
+        completion_addSemicolonToUnit: bool = true,
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
@@ -1441,6 +1445,7 @@ impl Config {
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
                 CallableCompletionDef::None => None,
             },
+            add_semicolon_to_unit: *self.completion_addSemicolonToUnit(source_root),
             snippet_cap: SnippetCap::new(self.completion_snippet()),
             insert_use: self.insert_use_config(source_root),
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),

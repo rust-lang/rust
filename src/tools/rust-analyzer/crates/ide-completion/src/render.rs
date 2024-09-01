@@ -1185,7 +1185,7 @@ fn main() { fo$0 }
                         label: "main()",
                         source_range: 68..70,
                         delete: 68..70,
-                        insert: "main()$0",
+                        insert: "main();$0",
                         kind: SymbolKind(
                             Function,
                         ),
@@ -1244,7 +1244,7 @@ fn main() { let _: m::Spam = S$0 }
                         label: "main()",
                         source_range: 75..76,
                         delete: 75..76,
-                        insert: "main()$0",
+                        insert: "main();$0",
                         kind: SymbolKind(
                             Function,
                         ),
@@ -1331,7 +1331,7 @@ fn main() { som$0 }
                         label: "main()",
                         source_range: 56..59,
                         delete: 56..59,
-                        insert: "main()$0",
+                        insert: "main();$0",
                         kind: SymbolKind(
                             Function,
                         ),
@@ -1342,7 +1342,7 @@ fn main() { som$0 }
                         label: "something_deprecated()",
                         source_range: 56..59,
                         delete: 56..59,
-                        insert: "something_deprecated()$0",
+                        insert: "something_deprecated();$0",
                         kind: SymbolKind(
                             Function,
                         ),
@@ -1413,7 +1413,7 @@ impl S {
                         label: "bar()",
                         source_range: 94..94,
                         delete: 94..94,
-                        insert: "bar()$0",
+                        insert: "bar();$0",
                         kind: SymbolKind(
                             Method,
                         ),
@@ -1540,7 +1540,7 @@ fn foo(s: S) { s.$0 }
                         label: "the_method()",
                         source_range: 81..81,
                         delete: 81..81,
-                        insert: "the_method()$0",
+                        insert: "the_method();$0",
                         kind: SymbolKind(
                             Method,
                         ),
@@ -2789,7 +2789,7 @@ fn main() {
             r#"
 mod m { pub fn r#type {} }
 fn main() {
-    m::r#type()$0
+    m::r#type();$0
 }
 "#,
         )
@@ -2963,7 +2963,7 @@ fn main() {
                         label: "flush()",
                         source_range: 193..193,
                         delete: 193..193,
-                        insert: "flush()$0",
+                        insert: "flush();$0",
                         kind: SymbolKind(
                             Method,
                         ),
@@ -2990,7 +2990,7 @@ fn main() {
                         label: "write()",
                         source_range: 193..193,
                         delete: 193..193,
-                        insert: "write()$0",
+                        insert: "write();$0",
                         kind: SymbolKind(
                             Method,
                         ),
