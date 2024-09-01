@@ -12,17 +12,7 @@ exclude = [
 ]
 
 [profile.release.package.compiler_builtins]
-# For compiler-builtins we always use a high number of codegen units.
-# The goal here is to place every single intrinsic into its own object
-# file to avoid symbol clashes with the system libgcc if possible. Note
-# that this number doesn't actually produce this many object files, we
-# just don't create more than this number of object files.
-#
-# It's a bit of a bummer that we have to pass this here, unfortunately.
-# Ideally this would be specified through an env var to Cargo so Cargo
-# knows how many CGUs are for this specific crate, but for now
-# per-crate configuration isn't specifiable in the environment.
-codegen-units = 10000
+codegen-units = 1
 
 # These dependencies of the standard library implement symbolication for
 # backtraces on most platforms. Their debuginfo causes both linking to be slower
