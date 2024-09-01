@@ -7,8 +7,6 @@ use syntax::{
     SyntaxNode, SyntaxToken, WalkEvent, T,
 };
 
-// FIXME: It would also be cool to share logic here and in the mbe tests,
-// which are pretty unreadable at the moment.
 /// Renders a [`SyntaxNode`] with whitespace inserted between tokens that require them.
 pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
     let mut indent = 0;

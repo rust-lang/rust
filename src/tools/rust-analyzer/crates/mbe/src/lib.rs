@@ -11,6 +11,8 @@ mod parser;
 
 #[cfg(test)]
 mod benchmark;
+#[cfg(test)]
+mod tests;
 
 use span::{Edition, Span, SyntaxContextId};
 use syntax_bridge::to_parser_input;

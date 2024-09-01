@@ -55,6 +55,7 @@ pub use crate::files::{AstId, ErasedAstId, FileRange, InFile, InMacroFile, InRea
 
 pub use mbe::{DeclarativeMacro, ValueResult};
 pub use span::{HirFileId, MacroCallId, MacroFileId};
+pub use syntax_bridge::insert_whitespace_into_node;
 
 pub mod tt {
     pub use span::Span;
