@@ -1,4 +1,7 @@
 <div class="example-wrap scraped-example{% if !info.needs_expansion +%} expanded{% endif %}" data-locs="{{info.locations}}">
+    <div class="scraped-example-title">
+       {{info.name +}} (<a href="{{info.url}}">{{info.title}}</a>) {# #}
+    </div>
     {# https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag#data-nosnippet-attr
        Do not show "1 2 3 4 5 ..." in web search results. #}
     <div data-nosnippet><pre class="src-line-numbers">
@@ -12,9 +15,6 @@
             {{code_html|safe}}
         </code> {# #}
     </pre> {# #}
-    <div class="scraped-example-title">
-       {{info.name +}} (<a href="{{info.url}}">{{info.title}}</a>) {# #}
-    </div>
     {% if info.needs_prev_next_buttons || info.needs_expansion %}
         <div class="button-holder">
             {% if info.needs_prev_next_buttons %}

@@ -2267,6 +2267,17 @@ in src-script.js and main.js
 		margin: 0;
 		padding: var(--nav-sub-mobile-padding);
 	}
+
+	.example-wrap.scraped-example {
+		flex-wrap: wrap;
+	}
+	.example-wrap .scraped-example-title {
+		width: 100%;
+	}
+	.example-wrap.scraped-example .rust {
+		/* Dirty hacky to force it to remain on the same line as the line numbers. */
+		width: 10px;
+	}
 }
 
 /* Should have min-width: (N + 1)px where N is the mobile breakpoint above. */
