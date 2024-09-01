@@ -925,7 +925,7 @@ impl InferenceContext<'_> {
             }
             Expr::OffsetOf(_) => TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner),
             Expr::InlineAsm(it) => {
-                self.infer_expr_no_expect(it.e);
+                it.template.iter().for_each(|&expr| _ = self.infer_expr_no_expect(expr));
                 self.result.standard_types.unit.clone()
             }
         };

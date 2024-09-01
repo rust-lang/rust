@@ -15,6 +15,7 @@ extend-ignore-re = [
     '"flate2"',
     "raison d'être",
     "inout",
+    "INOUT",
     "optin"
 ]
 

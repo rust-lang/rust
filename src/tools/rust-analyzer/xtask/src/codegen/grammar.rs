@@ -11,9 +11,11 @@ use std::{
     fs,
 };
 
+use either::Either;
 use itertools::Itertools;
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
+use stdx::panic_context;
 use ungrammar::{Grammar, Rule};
 
 use crate::{
@@ -462,6 +464,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
     let tokens = grammar.tokens.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
 
+    // FIXME: This generates enum kinds?
     let nodes = grammar.nodes.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
 
     let ast = quote! {
@@ -711,6 +714,7 @@ fn lower(grammar: &Grammar) -> AstSrc {
     for &node in &nodes {
         let name = grammar[node].name.clone();
         let rule = &grammar[node].rule;
+        let _g = panic_context::enter(name.clone());
         match lower_enum(grammar, rule) {
             Some(variants) => {
                 let enum_src = AstEnumSrc { doc: Vec::new(), name, traits: Vec::new(), variants };
@@ -838,11 +842,16 @@ fn lower_separated_list(
         Rule::Seq(it) => it,
         _ => return false,
     };
-    let (node, repeat, trailing_sep) = match rule.as_slice() {
+
+    let (nt, repeat, trailing_sep) = match rule.as_slice() {
         [Rule::Node(node), Rule::Rep(repeat), Rule::Opt(trailing_sep)] => {
-            (node, repeat, Some(trailing_sep))
+            (Either::Left(node), repeat, Some(trailing_sep))
         }
-        [Rule::Node(node), Rule::Rep(repeat)] => (node, repeat, None),
+        [Rule::Node(node), Rule::Rep(repeat)] => (Either::Left(node), repeat, None),
+        [Rule::Token(token), Rule::Rep(repeat), Rule::Opt(trailing_sep)] => {
+            (Either::Right(token), repeat, Some(trailing_sep))
+        }
+        [Rule::Token(token), Rule::Rep(repeat)] => (Either::Right(token), repeat, None),
         _ => return false,
     };
     let repeat = match &**repeat {
@@ -851,15 +860,28 @@ fn lower_separated_list(
     };
     if !matches!(
         repeat.as_slice(),
-        [comma, Rule::Node(n)]
-            if trailing_sep.map_or(true, |it| comma == &**it) && n == node
+        [comma, nt_]
+            if trailing_sep.map_or(true, |it| comma == &**it) && match (nt, nt_) {
+                (Either::Left(node), Rule::Node(nt_)) => node == nt_,
+                (Either::Right(token), Rule::Token(nt_)) => token == nt_,
+                _ => false,
+            }
     ) {
         return false;
     }
-    let ty = grammar[*node].name.clone();
-    let name = label.cloned().unwrap_or_else(|| pluralize(&to_lower_snake_case(&ty)));
-    let field = Field::Node { name, ty, cardinality: Cardinality::Many };
-    acc.push(field);
+    match nt {
+        Either::Right(token) => {
+            let name = clean_token_name(&grammar[*token].name);
+            let field = Field::Token(name);
+            acc.push(field);
+        }
+        Either::Left(node) => {
+            let ty = grammar[*node].name.clone();
+            let name = label.cloned().unwrap_or_else(|| pluralize(&to_lower_snake_case(&ty)));
+            let field = Field::Node { name, ty, cardinality: Cardinality::Many };
+            acc.push(field);
+        }
+    }
     true
 }
 

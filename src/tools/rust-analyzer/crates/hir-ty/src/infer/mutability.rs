@@ -39,7 +39,10 @@ impl InferenceContext<'_> {
     fn infer_mut_expr_without_adjust(&mut self, tgt_expr: ExprId, mutability: Mutability) {
         match &self.body[tgt_expr] {
             Expr::Missing => (),
-            Expr::InlineAsm(e) => self.infer_mut_expr_without_adjust(e.e, Mutability::Not),
+            Expr::InlineAsm(e) => e
+                .template
+                .iter()
+                .for_each(|&expr| self.infer_mut_expr_without_adjust(expr, Mutability::Not)),
             Expr::OffsetOf(_) => (),
             &Expr::If { condition, then_branch, else_branch } => {
                 self.infer_mut_expr(condition, Mutability::Not);
@@ -129,7 +132,7 @@ impl InferenceContext<'_> {
                                     target,
                                 }) = base_adjustments
                                 {
-                                    // For assignee exprs `IndexMut` obiligations are already applied
+                                    // For assignee exprs `IndexMut` obligations are already applied
                                     if !is_assignee_expr {
                                         if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
                                             base_ty = Some(ty.clone());

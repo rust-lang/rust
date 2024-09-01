@@ -694,8 +694,11 @@ impl ExprCollector<'_> {
             }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
             ast::Expr::AsmExpr(e) => {
-                let e = self.collect_expr_opt(e.expr());
-                self.alloc_expr(Expr::InlineAsm(InlineAsm { e }), syntax_ptr)
+                let template = e.template().map(|it| self.collect_expr(it)).collect();
+                self.alloc_expr(
+                    Expr::InlineAsm(InlineAsm { template, operands: Box::default() }),
+                    syntax_ptr,
+                )
             }
             ast::Expr::OffsetOfExpr(e) => {
                 let container = Interned::new(TypeRef::from_ast_opt(&self.ctx(), e.ty()));

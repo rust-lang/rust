@@ -65,13 +65,62 @@ impl ArrayType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmClobberAbi {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AsmClobberAbi {
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn clobber_abi_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![clobber_abi])
+    }
+    #[inline]
+    pub fn string_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![string]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmConst {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AsmConst {
+    #[inline]
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    #[inline]
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmDirSpec {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AsmDirSpec {
+    #[inline]
+    pub fn in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![in]) }
+    #[inline]
+    pub fn inlateout_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![inlateout])
+    }
+    #[inline]
+    pub fn inout_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![inout]) }
+    #[inline]
+    pub fn lateout_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![lateout]) }
+    #[inline]
+    pub fn out_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![out]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AsmExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for AsmExpr {}
 impl AsmExpr {
     #[inline]
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn asm_operands(&self) -> AstChildren<AsmOperand> { support::children(&self.syntax) }
+    #[inline]
+    pub fn template(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     #[inline]
     pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
     #[inline]
@@ -79,9 +128,131 @@ impl AsmExpr {
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
     #[inline]
+    pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
+    #[inline]
     pub fn asm_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![asm]) }
     #[inline]
     pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmLabel {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AsmLabel {
+    #[inline]
+    pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
+    #[inline]
+    pub fn label_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![label]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmOperandExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AsmOperandExpr {
+    #[inline]
+    pub fn in_expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    #[inline]
+    pub fn out_expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    #[inline]
+    pub fn fat_arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=>]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmOption {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AsmOption {
+    #[inline]
+    pub fn att_syntax_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![att_syntax])
+    }
+    #[inline]
+    pub fn may_unwind_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![may_unwind])
+    }
+    #[inline]
+    pub fn nomem_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![nomem]) }
+    #[inline]
+    pub fn noreturn_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![noreturn])
+    }
+    #[inline]
+    pub fn nostack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![nostack]) }
+    #[inline]
+    pub fn preserves_flags_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![preserves_flags])
+    }
+    #[inline]
+    pub fn pure_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![pure]) }
+    #[inline]
+    pub fn raw_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![raw]) }
+    #[inline]
+    pub fn readonly_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![readonly])
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmOptions {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AsmOptions {
+    #[inline]
+    pub fn asm_option(&self) -> Option<AsmOption> { support::child(&self.syntax) }
+    #[inline]
+    pub fn asm_options(&self) -> AstChildren<AsmOption> { support::children(&self.syntax) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
+    #[inline]
+    pub fn options_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![options]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmRegOperand {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::HasName for AsmRegOperand {}
+impl AsmRegOperand {
+    #[inline]
+    pub fn asm_dir_spec(&self) -> Option<AsmDirSpec> { support::child(&self.syntax) }
+    #[inline]
+    pub fn asm_operand_expr(&self) -> Option<AsmOperandExpr> { support::child(&self.syntax) }
+    #[inline]
+    pub fn asm_reg_spec(&self) -> Option<AsmRegSpec> { support::child(&self.syntax) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmRegSpec {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AsmRegSpec {
+    #[inline]
+    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
+    #[inline]
+    pub fn string_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![string]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmSym {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AsmSym {
+    #[inline]
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    #[inline]
+    pub fn sym_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![sym]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2052,6 +2223,14 @@ impl ast::HasName for Adt {}
 impl ast::HasVisibility for Adt {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AsmOperand {
+    AsmClobberAbi(AsmClobberAbi),
+    AsmLabel(AsmLabel),
+    AsmOptions(AsmOptions),
+    AsmRegOperand(AsmRegOperand),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
     Const(Const),
     Fn(Fn),
@@ -2316,9 +2495,149 @@ impl AstNode for ArrayType {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for AsmClobberAbi {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_CLOBBER_ABI }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmConst {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_CONST }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmDirSpec {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_DIR_SPEC }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for AsmExpr {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_EXPR }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmLabel {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_LABEL }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmOperandExpr {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_OPERAND_EXPR }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmOption {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_OPTION }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmOptions {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_OPTIONS }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmRegOperand {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_REG_OPERAND }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmRegSpec {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_REG_SPEC }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmSym {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_SYM }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -4268,6 +4587,48 @@ impl AstNode for Adt {
         }
     }
 }
+impl From<AsmClobberAbi> for AsmOperand {
+    #[inline]
+    fn from(node: AsmClobberAbi) -> AsmOperand { AsmOperand::AsmClobberAbi(node) }
+}
+impl From<AsmLabel> for AsmOperand {
+    #[inline]
+    fn from(node: AsmLabel) -> AsmOperand { AsmOperand::AsmLabel(node) }
+}
+impl From<AsmOptions> for AsmOperand {
+    #[inline]
+    fn from(node: AsmOptions) -> AsmOperand { AsmOperand::AsmOptions(node) }
+}
+impl From<AsmRegOperand> for AsmOperand {
+    #[inline]
+    fn from(node: AsmRegOperand) -> AsmOperand { AsmOperand::AsmRegOperand(node) }
+}
+impl AstNode for AsmOperand {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(kind, ASM_CLOBBER_ABI | ASM_LABEL | ASM_OPTIONS | ASM_REG_OPERAND)
+    }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            ASM_CLOBBER_ABI => AsmOperand::AsmClobberAbi(AsmClobberAbi { syntax }),
+            ASM_LABEL => AsmOperand::AsmLabel(AsmLabel { syntax }),
+            ASM_OPTIONS => AsmOperand::AsmOptions(AsmOptions { syntax }),
+            ASM_REG_OPERAND => AsmOperand::AsmRegOperand(AsmRegOperand { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            AsmOperand::AsmClobberAbi(it) => &it.syntax,
+            AsmOperand::AsmLabel(it) => &it.syntax,
+            AsmOperand::AsmOptions(it) => &it.syntax,
+            AsmOperand::AsmRegOperand(it) => &it.syntax,
+        }
+    }
+}
 impl From<Const> for AssocItem {
     #[inline]
     fn from(node: Const) -> AssocItem { AssocItem::Const(node) }
@@ -5803,7 +6164,8 @@ impl AstNode for AnyHasName {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
-            CONST
+            ASM_REG_OPERAND
+                | CONST
                 | CONST_PARAM
                 | ENUM
                 | FN
@@ -5831,6 +6193,10 @@ impl AstNode for AnyHasName {
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl From<AsmRegOperand> for AnyHasName {
+    #[inline]
+    fn from(node: AsmRegOperand) -> AnyHasName { AnyHasName { syntax: node.syntax } }
 }
 impl From<Const> for AnyHasName {
     #[inline]
@@ -6072,6 +6438,11 @@ impl std::fmt::Display for Adt {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for AsmOperand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for AssocItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -6142,7 +6513,57 @@ impl std::fmt::Display for ArrayType {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for AsmClobberAbi {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmConst {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmDirSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for AsmExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmLabel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmOperandExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmOption {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmRegOperand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmRegSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmSym {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

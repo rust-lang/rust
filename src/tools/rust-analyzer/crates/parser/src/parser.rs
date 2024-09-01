@@ -131,6 +131,14 @@ impl<'t> Parser<'t> {
         true
     }
 
+    pub(crate) fn eat_contextual_kw(&mut self, kind: SyntaxKind) -> bool {
+        if !self.at_contextual_kw(kind) {
+            return false;
+        }
+        self.bump_remap(kind);
+        true
+    }
+
     fn at_composite2(&self, n: usize, k1: SyntaxKind, k2: SyntaxKind) -> bool {
         self.inp.kind(self.pos + n) == k1
             && self.inp.kind(self.pos + n + 1) == k2

@@ -307,7 +307,8 @@ pub struct OffsetOf {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InlineAsm {
-    pub e: ExprId,
+    pub template: Box<[ExprId]>,
+    pub operands: Box<[()]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -372,7 +373,7 @@ impl Expr {
         match self {
             Expr::Missing => {}
             Expr::Path(_) | Expr::OffsetOf(_) => {}
-            Expr::InlineAsm(it) => f(it.e),
+            Expr::InlineAsm(it) => it.template.iter().copied().for_each(f),
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);
                 f(*then_branch);
