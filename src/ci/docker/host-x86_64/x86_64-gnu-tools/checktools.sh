@@ -58,6 +58,14 @@ case $HOST_TARGET in
     # Strangely, Linux targets do not work here. cargo always says
     # "error: cannot produce cdylib for ... as the target ... does not support these crate types".
     # Only run "pass" tests, which is quite a bit faster.
+    ./procmon64 -accepteula -backingfile msvc-ext.pml -quiet &
+    ./procmon64 -accepteula -waitforidle -quiet
+    set +e
+      python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass
+    set -e
+    ./procmon64 -accepteula -terminate -quiet
+    exit 0
+
     python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass
     python3 "$X_PY" test --stage 2 src/tools/miri --target i686-pc-windows-gnu --test-args pass
     ;;

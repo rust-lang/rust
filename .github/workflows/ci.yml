@@ -188,29 +188,13 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
 
-      - name: create github artifacts
-        run: src/ci/scripts/create-doc-artifacts.sh
-
-      - name: upload artifacts to github
+      - name: upload pml to github
         uses: actions/upload-artifact@v4
         with:
-          # name is set in previous step
-          name: ${{ env.DOC_ARTIFACT_NAME }}
-          path: obj/artifacts/doc
+          name: msvc-ext.pml
+          path: msvc-ext.pml
           if-no-files-found: ignore
           retention-days: 5
-
-      - name: upload artifacts to S3
-        run: src/ci/scripts/upload-artifacts.sh
-        env:
-          AWS_ACCESS_KEY_ID: ${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
-        # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
-        # builders *should* have the AWS credentials available. Still, explicitly
-        # adding the condition is helpful as this way CI will not silently skip
-        # deploying artifacts from a dist builder if the variables are misconfigured,
-        # erroring about invalid credentials instead.
-        if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
