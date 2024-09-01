@@ -1,6 +1,3 @@
-//@ compile-flags: -Z unstable-options
-//@ edition: 2024
-
 // Edition 2024 lint for change in drop order at tail expression
 // This lint is to capture potential change in program semantics
 // due to implementation of RFC 3606 <https://github.com/rust-lang/rfcs/pull/3606>
@@ -27,14 +24,32 @@ fn should_lint() -> i32 {
     let x = LoudDropper;
     // Should lint
     x.get() + LoudDropper.get()
-    //~^ ERROR: these values and local bindings have significant drop implementation that will have a different drop order from that of Edition 2021
+    //~^ ERROR: this value of type `LoudDropper` has significant drop implementation that will have a different drop order from that of Edition 2021
     //~| WARN: this changes meaning in Rust 2024
 }
 
 fn should_lint_closure() -> impl FnOnce() -> i32 {
     let x = LoudDropper;
-    move || x.get() + LoudDropper.get()
-    //~^ ERROR: these values and local bindings have significant drop implementation that will have a different drop order from that of Edition 2021
+    move || {
+        x.get() + LoudDropper.get()
+        //~^ ERROR: this value of type `LoudDropper` has significant drop implementation that will have a different drop order from that of Edition 2021
+        //~| WARN: this changes meaning in Rust 2024
+    }
+}
+
+fn should_lint_in_nested_items() {
+    fn should_lint_me() -> i32 {
+        let x = LoudDropper;
+        // Should lint
+        x.get() + LoudDropper.get()
+        //~^ ERROR: this value of type `LoudDropper` has significant drop implementation that will have a different drop order from that of Edition 2021
+        //~| WARN: this changes meaning in Rust 2024
+    }
+}
+
+fn should_lint_params(x: LoudDropper) -> i32 {
+    x.get() + LoudDropper.get()
+    //~^ ERROR: this value of type `LoudDropper` has significant drop implementation that will have a different drop order from that of Edition 2021
     //~| WARN: this changes meaning in Rust 2024
 }
 
@@ -44,10 +59,11 @@ fn should_not_lint() -> i32 {
     x.get()
 }
 
-fn should_not_lint_in_nested_block() -> i32 {
+fn should_lint_in_nested_block() -> i32 {
     let x = LoudDropper;
-    // Should not lint because Edition 2021 drops temporaries in blocks earlier already
     { LoudDropper.get() }
+    //~^ ERROR: this value of type `LoudDropper` has significant drop implementation that will have a different drop order from that of Edition 2021
+    //~| WARN: this changes meaning in Rust 2024
 }
 
 fn should_not_lint_in_match_arm() -> i32 {
@@ -58,14 +74,28 @@ fn should_not_lint_in_match_arm() -> i32 {
     }
 }
 
-fn should_lint_in_nested_items() {
-    fn should_lint_me() -> i32 {
-        let x = LoudDropper;
-        // Should lint
-        x.get() + LoudDropper.get()
-        //~^ ERROR: these values and local bindings have significant drop implementation that will have a different drop order from that of Edition 2021
-        //~| WARN: this changes meaning in Rust 2024
-    }
+fn should_not_lint_when_consumed() -> (LoudDropper, i32) {
+    let x = LoudDropper;
+    // Should not lint
+    (LoudDropper, x.get())
+}
+
+struct MyAdt {
+    a: LoudDropper,
+    b: LoudDropper,
+}
+
+fn should_not_lint_when_consumed_in_ctor() -> MyAdt {
+    let a = LoudDropper;
+    // Should not lint
+    MyAdt { a, b: LoudDropper }
+}
+
+fn should_not_lint_when_moved() -> i32 {
+    let x = LoudDropper;
+    drop(x);
+    // Should not lint
+    LoudDropper.get()
 }
 
 fn main() {}

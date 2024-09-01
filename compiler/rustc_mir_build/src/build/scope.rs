@@ -151,6 +151,9 @@ struct DropData {
 
     /// Whether this is a value Drop or a StorageDead.
     kind: DropKind,
+
+    /// Scope for which the data is obliged to drop
+    scope: Option<region::Scope>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -274,8 +277,12 @@ impl DropTree {
         // represents the block in the tree that should be jumped to once all
         // of the required drops have been performed.
         let fake_source_info = SourceInfo::outermost(DUMMY_SP);
-        let fake_data =
-            DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
+        let fake_data = DropData {
+            source_info: fake_source_info,
+            local: Local::MAX,
+            kind: DropKind::Storage,
+            scope: None,
+        };
         let drops = IndexVec::from_raw(vec![DropNode { data: fake_data, next: DropIdx::MAX }]);
         Self { drops, entry_points: Vec::new(), existing_drops_map: FxHashMap::default() }
     }
@@ -311,12 +318,13 @@ impl DropTree {
         &mut self,
         cfg: &mut CFG<'tcx>,
         blocks: &mut IndexVec<DropIdx, Option<BasicBlock>>,
+        scope_tree: &region::ScopeTree,
     ) {
         debug!("DropTree::build_mir(drops = {:#?})", self);
         assert_eq!(blocks.len(), self.drops.len());
 
         self.assign_blocks::<T>(cfg, blocks);
-        self.link_blocks(cfg, blocks)
+        self.link_blocks(cfg, blocks, scope_tree)
     }
 
     /// Assign blocks for all of the drops in the drop tree that need them.
@@ -390,17 +398,24 @@ impl DropTree {
         &self,
         cfg: &mut CFG<'tcx>,
         blocks: &IndexSlice<DropIdx, Option<BasicBlock>>,
+        scope_tree: &region::ScopeTree,
     ) {
         for (drop_idx, drop_node) in self.drops.iter_enumerated().rev() {
             let Some(block) = blocks[drop_idx] else { continue };
             match drop_node.data.kind {
                 DropKind::Value => {
+                    let scope = drop_node
+                        .data
+                        .scope
+                        .and_then(|scope| scope.hir_id(scope_tree))
+                        .map(|scope| (scope.owner.to_def_id(), scope.local_id));
                     let terminator = TerminatorKind::Drop {
                         target: blocks[drop_node.next].unwrap(),
                         // The caller will handle this if needed.
                         unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                         place: drop_node.data.local.into(),
                         replace: false,
+                        scope,
                     };
                     cfg.terminate(block, drop_node.data.source_info, terminator);
                 }
@@ -763,7 +778,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let local =
                         place.as_local().unwrap_or_else(|| bug!("projection in tail call args"));
 
-                    Some(DropData { source_info, local, kind: DropKind::Value })
+                    Some(DropData { source_info, local, kind: DropKind::Value, scope: None })
                 }
                 Operand::Constant(_) => None,
             })
@@ -802,11 +817,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         unwind_drops.add_entry_point(block, unwind_entry_point);
 
                         let next = self.cfg.start_new_block();
+                        let scope = scope
+                            .region_scope
+                            .hir_id(self.region_scope_tree)
+                            .map(|scope| (scope.owner.to_def_id(), scope.local_id));
                         self.cfg.terminate(block, source_info, TerminatorKind::Drop {
                             place: local.into(),
                             target: next,
                             unwind: UnwindAction::Continue,
                             replace: false,
+                            scope,
                         });
                         block = next;
                     }
@@ -841,6 +861,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unwind_to,
             is_coroutine && needs_cleanup,
             self.arg_count,
+            self.region_scope_tree,
         )
         .into_block()
     }
@@ -1089,6 +1110,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
                     local,
                     kind: drop_kind,
+                    scope: Some(region_scope),
                 });
 
                 return;
@@ -1280,6 +1302,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             target: assign,
             unwind: UnwindAction::Cleanup(assign_unwind),
             replace: true,
+            scope: None,
         });
         self.diverge_from(block);
 
@@ -1335,6 +1358,7 @@ fn build_scope_drops<'tcx>(
     mut unwind_to: DropIdx,
     storage_dead_on_unwind: bool,
     arg_count: usize,
+    scope_tree: &region::ScopeTree,
 ) -> BlockAnd<()> {
     debug!("build_scope_drops({:?} -> {:?})", block, scope);
 
@@ -1381,11 +1405,16 @@ fn build_scope_drops<'tcx>(
                 unwind_drops.add_entry_point(block, unwind_to);
 
                 let next = cfg.start_new_block();
+                let scope = drop_data
+                    .scope
+                    .and_then(|scope| scope.hir_id(scope_tree))
+                    .map(|scope| (scope.owner.to_def_id(), scope.local_id));
                 cfg.terminate(block, source_info, TerminatorKind::Drop {
                     place: local.into(),
                     target: next,
                     unwind: UnwindAction::Continue,
                     replace: false,
+                    scope,
                 });
                 block = next;
             }
@@ -1419,7 +1448,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
         blocks[ROOT_NODE] = continue_block;
 
-        drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
+        drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks, self.region_scope_tree);
         let is_coroutine = self.coroutine.is_some();
 
         // Link the exit drop tree to unwind drop tree.
@@ -1466,6 +1495,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 &mut self.scopes.unwind_drops,
                 self.fn_span,
                 &mut None,
+                self.region_scope_tree,
             );
         }
     }
@@ -1476,7 +1506,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         let cfg = &mut self.cfg;
         let fn_span = self.fn_span;
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        drops.build_mir::<CoroutineDrop>(cfg, &mut blocks);
+        drops.build_mir::<CoroutineDrop>(cfg, &mut blocks, self.region_scope_tree);
         if let Some(root_block) = blocks[ROOT_NODE] {
             cfg.terminate(
                 root_block,
@@ -1488,7 +1518,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         // Build the drop tree for unwinding in the normal control flow paths.
         let resume_block = &mut None;
         let unwind_drops = &mut self.scopes.unwind_drops;
-        Self::build_unwind_tree(cfg, unwind_drops, fn_span, resume_block);
+        Self::build_unwind_tree(cfg, unwind_drops, fn_span, resume_block, self.region_scope_tree);
 
         // Build the drop tree for unwinding when dropping a suspended
         // coroutine.
@@ -1503,7 +1533,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 drops.entry_points.push((drop_node.next, blocks[drop_idx].unwrap()));
             }
         }
-        Self::build_unwind_tree(cfg, drops, fn_span, resume_block);
+        Self::build_unwind_tree(cfg, drops, fn_span, resume_block, self.region_scope_tree);
     }
 
     fn build_unwind_tree(
@@ -1511,10 +1541,11 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         drops: &mut DropTree,
         fn_span: Span,
         resume_block: &mut Option<BasicBlock>,
+        scope_tree: &region::ScopeTree,
     ) {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
         blocks[ROOT_NODE] = *resume_block;
-        drops.build_mir::<Unwind>(cfg, &mut blocks);
+        drops.build_mir::<Unwind>(cfg, &mut blocks, scope_tree);
         if let (None, Some(resume)) = (*resume_block, blocks[ROOT_NODE]) {
             cfg.terminate(resume, SourceInfo::outermost(fn_span), TerminatorKind::UnwindResume);
 

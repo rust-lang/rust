@@ -150,6 +150,50 @@ pub trait TypeInformationCtxt<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
 }
 
+impl<'tcx> TypeInformationCtxt<'tcx> for (TyCtxt<'tcx>, LocalDefId) {
+    type TypeckResults<'a> = &'tcx ty::TypeckResults<'tcx>
+    where
+        Self: 'a;
+
+    type Error = !;
+
+    fn typeck_results(&self) -> Self::TypeckResults<'_> {
+        self.0.typeck(self.1)
+    }
+
+    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
+        t
+    }
+
+    fn try_structurally_resolve_type(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        ty
+    }
+
+    fn report_error(&self, span: Span, msg: impl ToString) -> Self::Error {
+        span_bug!(span, "{}", msg.to_string())
+    }
+
+    fn error_reported_in_ty(&self, _ty: Ty<'tcx>) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn tainted_by_errors(&self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_copy_modulo_regions(self.0, self.0.param_env(self.1))
+    }
+
+    fn body_owner_def_id(&self) -> LocalDefId {
+        self.1
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.0
+    }
+}
+
 impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
     type TypeckResults<'a>
         = Ref<'a, ty::TypeckResults<'tcx>>

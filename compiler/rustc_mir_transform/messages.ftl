@@ -23,6 +23,9 @@ mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspen
     .help = consider using a block (`{"{ ... }"}`) to shrink the value's scope, ending before the suspend point
 mir_transform_operation_will_panic = this operation will panic at runtime
 
+mir_transform_tail_expr_drop_order = this value of type `{$ty}` has significant drop implementation that will have a different drop order from that of Edition 2021
+    .label = these local bindings with significant drop implementation may observe changes in drop order under Edition 2024
+
 mir_transform_unaligned_packed_ref = reference to packed field is unaligned
     .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
     .note_ub = creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)

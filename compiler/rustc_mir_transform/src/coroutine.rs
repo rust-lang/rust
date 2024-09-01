@@ -1083,15 +1083,15 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, param_env };
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
-        let (target, unwind, source_info) = match block_data.terminator() {
+        let (target, unwind, source_info, &scope) = match block_data.terminator() {
             Terminator {
                 source_info,
-                kind: TerminatorKind::Drop { place, target, unwind, replace: _ },
+                kind: TerminatorKind::Drop { place, target, unwind, scope, replace: _ },
             } => {
                 if let Some(local) = place.as_local()
                     && local == SELF_ARG
                 {
-                    (target, unwind, source_info)
+                    (target, unwind, source_info, scope)
                 } else {
                     continue;
                 }
@@ -1116,6 +1116,7 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             *target,
             unwind,
             block,
+            scope,
         );
     }
     elaborator.patch.apply(body);
@@ -1374,6 +1375,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
         target: return_block,
         unwind: UnwindAction::Continue,
         replace: false,
+        scope: None,
     };
     let source_info = SourceInfo::outermost(body.span);
 

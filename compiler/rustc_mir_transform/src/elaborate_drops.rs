@@ -330,7 +330,8 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
         // This function should mirror what `collect_drop_flags` does.
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
             let terminator = data.terminator();
-            let TerminatorKind::Drop { place, target, unwind, replace } = terminator.kind else {
+            let TerminatorKind::Drop { place, target, unwind, scope, replace } = terminator.kind
+            else {
                 continue;
             };
 
@@ -366,7 +367,16 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                         }
                     };
                     self.init_data.seek_before(self.body.terminator_loc(bb));
-                    elaborate_drop(self, terminator.source_info, place, path, target, unwind, bb)
+                    elaborate_drop(
+                        self,
+                        terminator.source_info,
+                        place,
+                        path,
+                        target,
+                        unwind,
+                        bb,
+                        scope,
+                    )
                 }
                 LookupResult::Parent(None) => {}
                 LookupResult::Parent(Some(_)) => {
