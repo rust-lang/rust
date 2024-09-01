@@ -262,7 +262,6 @@ macro_rules! mut_only_visit {
 mut_only_visit! {visit_lazy_tts}
 mut_only_visit! {walk_ty_alias_where_clauses}
 mut_only_visit! {visit_constness}
-mut_only_visit! {visit_polarity}
 mut_only_visit! {visit_delim_args}
 
 macro_rules! return_result {
@@ -379,6 +378,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Ident, visit_ident, walk_ident}
             make_visit!{Defaultness, visit_defaultness, walk_defaultness}
             make_visit!{Safety, visit_safety, walk_safety}
+            make_visit!{ImplPolarity, visit_polarity, walk_polarity}
             make_visit!{Option<P<QSelf>>, visit_qself, walk_qself}
             // TODO: Remove P! on implementers
             make_visit!{P!(Pat), visit_pat, walk_pat}
@@ -1535,6 +1535,19 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_polarity<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            polarity: ref_t!(ImplPolarity)
+        ) -> result!(V) {
+            match polarity {
+                ImplPolarity::Positive => {}
+                ImplPolarity::Negative(span) => {
+                    try_v!(visit_span!(vis, span));
+                }
+            }
+            return_result!(V)
+        }
+
         pub fn walk_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(P!(Item<impl WalkItemKind>)),
@@ -1734,7 +1747,7 @@ macro_rules! make_ast_visitor {
                         try_v!(visitor.visit_safety(safety));
                         try_v!(visitor.visit_generics(generics));
                         visit_constness!(visitor, constness);
-                        visit_polarity!(visitor, polarity);
+                        try_v!(visitor.visit_polarity(polarity));
                         visit_o!(of_trait, |trait_ref| visitor.visit_trait_ref(trait_ref));
                         try_v!(visitor.visit_ty(self_ty));
                         visit_list!(visitor, visit_assoc_item, flat_map_assoc_item, items; AssocCtxt::Impl);
@@ -2197,14 +2210,6 @@ pub mod mut_visit {
             }
             token::NtPath(path) => vis.visit_path(path, DUMMY_NODE_ID),
             token::NtVis(visib) => vis.visit_vis(visib),
-        }
-    }
-
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    fn visit_polarity<T: MutVisitor>(vis: &mut T, polarity: &mut ImplPolarity) {
-        match polarity {
-            ImplPolarity::Positive => {}
-            ImplPolarity::Negative(span) => vis.visit_span(span),
         }
     }
 
