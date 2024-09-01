@@ -206,6 +206,40 @@ macro_rules! visit_o {
     };
 }
 
+macro_rules! make_visit {
+    (
+        $ty: ty
+        $(,$($arg: ident)? $(_ $ignored_arg: ident)? : $arg_ty: ty)*;
+        $visit: ident, $walk: ident
+    ) => {
+        fn $visit(
+            &mut self,
+            arg: ref_t!($ty)
+            $(, $($arg)? $(#[allow(unused)] $ignored_arg)?: $arg_ty)*
+        ) -> result!() {
+            $walk(self, arg $(,$($arg)?)*)
+        }
+    };
+    (
+        $ty: ty
+        $(,$($arg: ident)? $(_ $ignored_arg: ident)? : $arg_ty: ty)*;
+        $visit: ident, $walk: ident,
+        $flat_map: ident, $walk_flat_map: ident
+    ) => {
+        make_visit!{$ty $(,$($arg)? $(_ $ignored_arg)? : $arg_ty)*; $visit, $walk}
+        if_mut_item!{
+            // Do not ignore $ignored_arg as $walk_flat_map will have to forward it to $visit
+            fn $flat_map(
+                &mut self,
+                arg: $ty
+                $(, $($arg)? $($ignored_arg)? : $arg_ty)*
+            ) -> SmallVec<[$ty; 1]> {
+                $walk_flat_map(self, arg $(,$($arg)? $($ignored_arg)?)*)
+            }
+        }
+    };
+}
+
 macro_rules! make_ast_visitor {
     ($trait: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
 
@@ -214,22 +248,6 @@ macro_rules! make_ast_visitor {
 
         macro_rules! ref_t {
             ($t: ty) => { & $($lt)? $($mut)? $t };
-        }
-
-        macro_rules! make_visit {
-            ($ty: ty, $visit: ident, $walk: ident) => {
-                fn $visit(&mut self, arg: ref_t!($ty)) -> result!() {
-                    $walk(self, arg)
-                }
-            };
-            ($ty: ty, $visit: ident, $walk: ident, $flat_map: ident, $walk_flat_map: ident) => {
-                make_visit!{$ty, $visit, $walk}
-                if_mut_item!{
-                    fn $flat_map(&mut self, arg: $ty) -> SmallVec<[$ty; 1]> {
-                        $walk_flat_map(self, arg)
-                    }
-                }
-            };
         }
 
         macro_rules! make_walk_flat_map {
@@ -343,61 +361,61 @@ macro_rules! make_ast_visitor {
 
             mutability_dependent!{$($mut)?}
 
-            make_visit!{Crate, visit_crate, walk_crate}
-            make_visit!{AnonConst, visit_anon_const, walk_anon_const}
-            make_visit!{FormatArgs, visit_format_args, walk_format_args}
-            make_visit!{InlineAsm, visit_inline_asm, walk_inline_asm}
-            make_visit!{InlineAsmSym, visit_inline_asm_sym, walk_inline_asm_sym}
-            make_visit!{Generics, visit_generics, walk_generics}
-            make_visit!{ClosureBinder, visit_closure_binder, walk_closure_binder}
-            make_visit!{TraitRef, visit_trait_ref, walk_trait_ref}
-            make_visit!{PolyTraitRef, visit_poly_trait_ref, walk_poly_trait_ref}
-            make_visit!{Label, visit_label, walk_label}
-            make_visit!{MacCall, visit_mac_call, walk_mac_call}
-            make_visit!{PathSegment, visit_path_segment, walk_path_segment}
-            make_visit!{GenericArgs, visit_generic_args, walk_generic_args}
-            make_visit!{GenericArg, visit_generic_arg, walk_generic_arg}
-            make_visit!{AssocItemConstraint, visit_assoc_item_constraint, walk_assoc_item_constraint}
-            make_visit!{Visibility, visit_vis, walk_vis}
-            make_visit!{FnRetTy, visit_fn_ret_ty, walk_fn_ret_ty}
-            make_visit!{AngleBracketedArgs, visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
-            make_visit!{ParenthesizedArgs, visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
-            make_visit!{ForeignMod, visit_foreign_mod, walk_foreign_mod}
-            make_visit!{MutTy, visit_mt, walk_mt}
-            make_visit!{WhereClause, visit_where_clause, walk_where_clause}
-            make_visit!{EnumDef, visit_enum_def, walk_enum_def}
-            make_visit!{CaptureBy, visit_capture_by, walk_capture_by}
-            make_visit!{VariantData, visit_variant_data, walk_variant_data}
-            make_visit!{FnDecl, visit_fn_decl, walk_fn_decl}
-            make_visit!{Local, visit_local, walk_local}
-            make_visit!{PreciseCapturingArg, visit_precise_capturing_arg, walk_precise_capturing_arg}
-            make_visit!{Block, visit_block, walk_block}
-            make_visit!{CoroutineKind, visit_coroutine_kind, walk_coroutine_kind}
-            make_visit!{FnHeader, visit_fn_header, walk_fn_header}
-            make_visit!{Ident, visit_ident, walk_ident}
-            make_visit!{Defaultness, visit_defaultness, walk_defaultness}
-            make_visit!{Safety, visit_safety, walk_safety}
-            make_visit!{ImplPolarity, visit_polarity, walk_polarity}
-            make_visit!{Const, visit_constness, walk_constness}
-            make_visit!{TyAliasWhereClauses, visit_ty_alias_where_clauses, walk_ty_alias_where_clauses}
-            make_visit!{Option<P<QSelf>>, visit_qself, walk_qself}
+            make_visit!{Crate; visit_crate, walk_crate}
+            make_visit!{AnonConst; visit_anon_const, walk_anon_const}
+            make_visit!{FormatArgs; visit_format_args, walk_format_args}
+            make_visit!{InlineAsm; visit_inline_asm, walk_inline_asm}
+            make_visit!{InlineAsmSym; visit_inline_asm_sym, walk_inline_asm_sym}
+            make_visit!{Generics; visit_generics, walk_generics}
+            make_visit!{ClosureBinder; visit_closure_binder, walk_closure_binder}
+            make_visit!{TraitRef; visit_trait_ref, walk_trait_ref}
+            make_visit!{PolyTraitRef; visit_poly_trait_ref, walk_poly_trait_ref}
+            make_visit!{Label; visit_label, walk_label}
+            make_visit!{MacCall; visit_mac_call, walk_mac_call}
+            make_visit!{PathSegment; visit_path_segment, walk_path_segment}
+            make_visit!{GenericArgs; visit_generic_args, walk_generic_args}
+            make_visit!{GenericArg; visit_generic_arg, walk_generic_arg}
+            make_visit!{AssocItemConstraint; visit_assoc_item_constraint, walk_assoc_item_constraint}
+            make_visit!{Visibility; visit_vis, walk_vis}
+            make_visit!{FnRetTy; visit_fn_ret_ty, walk_fn_ret_ty}
+            make_visit!{AngleBracketedArgs; visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
+            make_visit!{ParenthesizedArgs; visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
+            make_visit!{ForeignMod; visit_foreign_mod, walk_foreign_mod}
+            make_visit!{MutTy; visit_mt, walk_mt}
+            make_visit!{WhereClause; visit_where_clause, walk_where_clause}
+            make_visit!{EnumDef; visit_enum_def, walk_enum_def}
+            make_visit!{CaptureBy; visit_capture_by, walk_capture_by}
+            make_visit!{VariantData; visit_variant_data, walk_variant_data}
+            make_visit!{FnDecl; visit_fn_decl, walk_fn_decl}
+            make_visit!{Local; visit_local, walk_local}
+            make_visit!{PreciseCapturingArg; visit_precise_capturing_arg, walk_precise_capturing_arg}
+            make_visit!{Block; visit_block, walk_block}
+            make_visit!{CoroutineKind; visit_coroutine_kind, walk_coroutine_kind}
+            make_visit!{FnHeader; visit_fn_header, walk_fn_header}
+            make_visit!{Ident; visit_ident, walk_ident}
+            make_visit!{Defaultness; visit_defaultness, walk_defaultness}
+            make_visit!{Safety; visit_safety, walk_safety}
+            make_visit!{ImplPolarity; visit_polarity, walk_polarity}
+            make_visit!{Const; visit_constness, walk_constness}
+            make_visit!{TyAliasWhereClauses; visit_ty_alias_where_clauses, walk_ty_alias_where_clauses}
+            make_visit!{Option<P<QSelf>>; visit_qself, walk_qself}
             // FIXME: Remove P!
-            make_visit!{P!(Pat), visit_pat, walk_pat}
-            make_visit!{P!(Expr), visit_expr, walk_expr}
-            make_visit!{P!(Ty), visit_ty, walk_ty}
+            make_visit!{P!(Pat); visit_pat, walk_pat}
+            make_visit!{P!(Expr); visit_expr, walk_expr}
+            make_visit!{P!(Ty); visit_ty, walk_ty}
 
             // flat_maps
-            make_visit!{Arm, visit_arm, walk_arm, flat_map_arm, walk_flat_map_arm}
-            make_visit!{Attribute, visit_attribute, walk_attribute, flat_map_attribute, walk_flat_map_attribute}
-            make_visit!{ExprField, visit_expr_field, walk_expr_field, flat_map_expr_field, walk_flat_map_expr_field}
-            make_visit!{GenericParam, visit_generic_param, walk_generic_param, flat_map_generic_param, walk_flat_map_generic_param}
-            make_visit!{FieldDef, visit_field_def, walk_field_def, flat_map_field_def, walk_flat_map_field_def}
-            make_visit!{Param, visit_param, walk_param, flat_map_param, walk_flat_map_param}
-            make_visit!{PatField, visit_pat_field, walk_pat_field, flat_map_pat_field, walk_flat_map_pat_field}
-            make_visit!{Variant, visit_variant, walk_variant, flat_map_variant, walk_flat_map_variant}
-            make_visit!{WherePredicate, visit_where_predicate, walk_where_predicate, flat_map_where_predicate, walk_flat_map_where_predicate}
-            make_visit!{P!(Item), visit_item, walk_item, flat_map_item, walk_flat_map_item}
-            make_visit!{P!(ForeignItem), visit_foreign_item, walk_item, flat_map_foreign_item, walk_flat_map_foreign_item}
+            make_visit!{Arm; visit_arm, walk_arm, flat_map_arm, walk_flat_map_arm}
+            make_visit!{Attribute; visit_attribute, walk_attribute, flat_map_attribute, walk_flat_map_attribute}
+            make_visit!{ExprField; visit_expr_field, walk_expr_field, flat_map_expr_field, walk_flat_map_expr_field}
+            make_visit!{GenericParam; visit_generic_param, walk_generic_param, flat_map_generic_param, walk_flat_map_generic_param}
+            make_visit!{FieldDef; visit_field_def, walk_field_def, flat_map_field_def, walk_flat_map_field_def}
+            make_visit!{Param; visit_param, walk_param, flat_map_param, walk_flat_map_param}
+            make_visit!{PatField; visit_pat_field, walk_pat_field, flat_map_pat_field, walk_flat_map_pat_field}
+            make_visit!{Variant; visit_variant, walk_variant, flat_map_variant, walk_flat_map_variant}
+            make_visit!{WherePredicate; visit_where_predicate, walk_where_predicate, flat_map_where_predicate, walk_flat_map_where_predicate}
+            make_visit!{P!(Item); visit_item, walk_item, flat_map_item, walk_flat_map_item}
+            make_visit!{P!(ForeignItem); visit_foreign_item, walk_item, flat_map_foreign_item, walk_flat_map_foreign_item}
 
             /// `MutVisitor`: `Span` and `NodeId` are mutated at the caller site.
             fn visit_fn(&mut self, fk: fn_kind!(), _: Span, _: NodeId) -> result!(){
