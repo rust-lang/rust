@@ -56,10 +56,19 @@ store-value: (offset_y, 4)
 assert-position: (".scraped-example", {"y": 226})
 assert-position: (".scraped-example .prev", {"y": 226 + |offset_y|})
 
+// Gradient background should be at the top of the code block.
+assert-css: (".scraped-example::before", {"top": "0px"})
+assert-css: (".scraped-example::after", {"bottom": "0px"})
+
 // Then with mobile
 set-window-size: (600, 600)
+store-size: (".example-wrap.scraped-example .scraped-example-title", {"height": title_height})
 assert-position: (".scraped-example", {"y": 284})
-assert-position: (".scraped-example .prev", {"y": 284 + |offset_y|})
+assert-position: (".scraped-example .prev", {"y": 284 + |offset_y| + |title_height|})
+
+// Gradient background should be at the top of the code block, which is now below the "title".
+assert-css: (".scraped-example::before", {"top": |title_height| + "px"})
+assert-css: (".scraped-example::after", {"bottom": "0px"})
 
 define-function: (
     "check_title_and_code_position",

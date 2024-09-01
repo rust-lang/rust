@@ -2282,7 +2282,12 @@ in src-script.js and main.js
 	.example-wrap.scraped-example .button-holder {
 		top: calc(var(--pre-line-height) + 4px);
 	}
+	.scraped-example:not(.expanded)::before {
+		/* The gradient effect needs to be moved under the title */
+		top: var(--pre-line-height);
+	}
 }
+
 
 /* Should have min-width: (N + 1)px where N is the mobile breakpoint above. */
 @media (min-width: 701px) {
@@ -2304,6 +2309,12 @@ in src-script.js and main.js
 	}
 	.item-table > li > div {
 		overflow-wrap: anywhere;
+	}
+
+	/* Starting this width, the "title" of scraped example will be in the code block so we can
+	put the background gradient at the top. */
+	.scraped-example:not(.expanded)::before {
+		top: 0;
 	}
 }
 
@@ -2395,7 +2406,6 @@ in src-script.js and main.js
 	z-index: 1;
 }
 .scraped-example:not(.expanded)::before {
-	top: 0;
 	background: linear-gradient(to bottom,
 		var(--scrape-example-code-wrapper-background-start),
 		var(--scrape-example-code-wrapper-background-end));
