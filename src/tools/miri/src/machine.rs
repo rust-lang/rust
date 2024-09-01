@@ -1277,12 +1277,12 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
     {
         let kind = Self::GLOBAL_KIND.unwrap().into();
-        let alloc = alloc.adjust_from_tcx(&ecx.tcx,
+        let alloc = alloc.adjust_from_tcx(
+            &ecx.tcx,
             |bytes, align| ecx.get_global_alloc_bytes(id, kind, bytes, align),
             |ptr| ecx.global_root_pointer(ptr),
         )?;
-        let extra =
-            Self::init_alloc_extra(ecx, id, kind, alloc.size(), alloc.align)?;
+        let extra = Self::init_alloc_extra(ecx, id, kind, alloc.size(), alloc.align)?;
         Ok(Cow::Owned(alloc.with_extra(extra)))
     }
 
