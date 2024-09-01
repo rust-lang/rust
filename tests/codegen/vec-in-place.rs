@@ -73,7 +73,7 @@ pub fn vec_iterator_cast_deaggregate_tra(vec: Vec<Bar>) -> Vec<[u64; 4]> {
 
     // Safety: For the purpose of this test we assume that Bar layout matches [u64; 4].
     // This currently is not guaranteed for repr(Rust) types, but it happens to work here and
-    // the UCG may add additional guarantees for homogenous types in the future that would make this
+    // the UCG may add additional guarantees for homogeneous types in the future that would make this
     // correct.
     vec.into_iter().map(|e| unsafe { std::mem::transmute(e) }).collect()
 }
@@ -86,7 +86,7 @@ pub fn vec_iterator_cast_deaggregate_fold(vec: Vec<Baz>) -> Vec<[u64; 4]> {
 
     // Safety: For the purpose of this test we assume that Bar layout matches [u64; 4].
     // This currently is not guaranteed for repr(Rust) types, but it happens to work here and
-    // the UCG may add additional guarantees for homogenous types in the future that would make this
+    // the UCG may add additional guarantees for homogeneous types in the future that would make this
     // correct.
     vec.into_iter().map(|e| unsafe { std::mem::transmute(e) }).collect()
 }

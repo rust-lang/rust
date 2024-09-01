@@ -19,7 +19,7 @@ impl RegistryId {
     /// index within the registry. This panics if the current thread is not associated with this
     /// registry.
     ///
-    /// Note that there's a race possible where the identifer in `THREAD_DATA` could be reused
+    /// Note that there's a race possible where the identifier in `THREAD_DATA` could be reused
     /// so this can succeed from a different registry.
     #[cfg(parallel_compiler)]
     fn verify(self) -> usize {
@@ -50,7 +50,7 @@ struct ThreadData {
 }
 
 thread_local! {
-    /// A thread local which contains the identifer of `REGISTRY` but allows for faster access.
+    /// A thread local which contains the identifier of `REGISTRY` but allows for faster access.
     /// It also holds the index of the current thread.
     static THREAD_DATA: ThreadData = const { ThreadData {
         registry_id: Cell::new(RegistryId(ptr::null())),
@@ -66,7 +66,7 @@ impl Registry {
 
     /// Gets the registry associated with the current thread. Panics if there's no such registry.
     pub fn current() -> Self {
-        REGISTRY.with(|registry| registry.get().cloned().expect("No assocated registry"))
+        REGISTRY.with(|registry| registry.get().cloned().expect("No associated registry"))
     }
 
     /// Registers the current thread with the registry so worker locals can be used on it.
@@ -92,7 +92,7 @@ impl Registry {
         }
     }
 
-    /// Gets the identifer of this registry.
+    /// Gets the identifier of this registry.
     fn id(&self) -> RegistryId {
         RegistryId(&*self.0)
     }

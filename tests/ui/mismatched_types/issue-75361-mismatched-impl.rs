@@ -1,4 +1,4 @@
-// Regresison test for issue #75361
+// Regression test for issue #75361
 // Tests that we don't ICE on mismatched types with inference variables
 
 

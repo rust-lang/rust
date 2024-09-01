@@ -30,7 +30,7 @@ enum Animal {
     ) = 3,
     Fox(/* tuple variant closer on const fn call */) = some_const_fn(),
     Ant(/* tuple variant closer on macro call */) = some_macro!(),
-    Snake {/* stuct variant closer in comment -> } */} = 6,
+    Snake {/* struct variant closer in comment -> } */} = 6,
     #[hell{world}]
     Cobra {/* struct variant close in leading attribute */} = 6,
     Eagle {

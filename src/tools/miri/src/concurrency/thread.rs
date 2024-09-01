@@ -46,7 +46,7 @@ pub trait UnblockCallback<'tcx>: VisitProvenance {
     /// i.e. whatever event it was blocking on has happened.
     fn unblock(self: Box<Self>, ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>) -> InterpResult<'tcx>;
 
-    /// Will be invoked when the timeout ellapsed without the event the
+    /// Will be invoked when the timeout elapsed without the event the
     /// thread was blocking on having occurred.
     fn timeout(self: Box<Self>, _ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>)
     -> InterpResult<'tcx>;
@@ -644,7 +644,7 @@ impl<'tcx> ThreadManager<'tcx> {
                 self.active_thread, joined_thread_id
             );
             // The joined thread is still running, we need to wait for it.
-            // Unce we get unblocked, perform the appropriate synchronization.
+            // Once we get unblocked, perform the appropriate synchronization.
             self.block_thread(
                 BlockReason::Join(joined_thread_id),
                 None,

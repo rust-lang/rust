@@ -1,6 +1,6 @@
 //! Optional checks for file types other than Rust source
 //!
-//! Handles python tool version managment via a virtual environment in
+//! Handles python tool version management via a virtual environment in
 //! `build/venv`.
 //!
 //! # Functional outline

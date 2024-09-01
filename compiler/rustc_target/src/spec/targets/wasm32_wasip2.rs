@@ -53,7 +53,7 @@ pub fn target() -> Target {
     options.entry_name = "__main_void".into();
 
     // Default to PIC unlike base wasm. This makes precompiled objects such as
-    // the standard library more suitable to be used with shared libaries a la
+    // the standard library more suitable to be used with shared libraries a la
     // emscripten's dynamic linking convention.
     options.relocation_model = RelocModel::Pic;
 

@@ -28,11 +28,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         if flags & this.eval_libc_i32("MREMAP_FIXED") != 0 {
-            throw_unsup_format!("Miri does not support mremap wth MREMAP_FIXED");
+            throw_unsup_format!("Miri does not support mremap with MREMAP_FIXED");
         }
 
         if flags & this.eval_libc_i32("MREMAP_DONTUNMAP") != 0 {
-            throw_unsup_format!("Miri does not support mremap wth MREMAP_DONTUNMAP");
+            throw_unsup_format!("Miri does not support mremap with MREMAP_DONTUNMAP");
         }
 
         if flags & this.eval_libc_i32("MREMAP_MAYMOVE") == 0 {

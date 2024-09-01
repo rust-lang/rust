@@ -1,4 +1,4 @@
-// This test checks the diplay of "/* private fields */" sentence in tuple structs.
+// This test checks the display of "/* private fields */" sentence in tuple structs.
 #![crate_name = "foo"]
 
 //@ has 'foo/struct.A.html' '//*[@class="rust item-decl"]/code' 'pub struct A(pub u8, _);'

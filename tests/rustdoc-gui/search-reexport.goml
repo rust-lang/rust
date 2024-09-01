@@ -1,5 +1,5 @@
 // Checks that the reexports are present in the search index, can have
-// doc aliases and are highligted when their ID is the hash of the page.
+// doc aliases and are highlighted when their ID is the hash of the page.
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 call-function: ("switch-theme", {"theme": "dark"})

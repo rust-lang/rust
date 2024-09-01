@@ -44,10 +44,10 @@ fn main() {
 
             assert!(!Path::new("outer").exists());
 
-            // trying to remove a nonexistant top-level directory should
+            // trying to remove a nonexistent top-level directory should
             // still result in an error.
             let Err(err) = remove_dir_all("outer") else {
-                panic!("removing nonexistant dir did not result in an error");
+                panic!("removing nonexistent dir did not result in an error");
             };
             assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
         }

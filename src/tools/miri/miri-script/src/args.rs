@@ -129,7 +129,7 @@ impl Args {
         Some(next)
     }
 
-    /// Return the rest of the aguments entirely unparsed.
+    /// Return the rest of the arguments entirely unparsed.
     pub fn remainder(self) -> Vec<String> {
         self.args.collect()
     }

@@ -1,35 +1,35 @@
-error[E0433]: failed to resolve: you might be missing crate `nonexistant`
+error[E0433]: failed to resolve: you might be missing crate `nonexistent`
   --> $DIR/editions-crate-root-2015.rs:4:26
    |
-LL |     fn global_inner(_: ::nonexistant::Foo) {
-   |                          ^^^^^^^^^^^ you might be missing crate `nonexistant`
+LL |     fn global_inner(_: ::nonexistent::Foo) {
+   |                          ^^^^^^^^^^^ you might be missing crate `nonexistent`
    |
-help: consider importing the `nonexistant` crate
+help: consider importing the `nonexistent` crate
    |
-LL + extern crate nonexistant;
+LL + extern crate nonexistent;
    |
 
-error[E0433]: failed to resolve: you might be missing crate `nonexistant`
+error[E0433]: failed to resolve: you might be missing crate `nonexistent`
   --> $DIR/editions-crate-root-2015.rs:7:30
    |
-LL |     fn crate_inner(_: crate::nonexistant::Foo) {
-   |                              ^^^^^^^^^^^ you might be missing crate `nonexistant`
+LL |     fn crate_inner(_: crate::nonexistent::Foo) {
+   |                              ^^^^^^^^^^^ you might be missing crate `nonexistent`
    |
-help: consider importing the `nonexistant` crate
+help: consider importing the `nonexistent` crate
    |
-LL + extern crate nonexistant;
+LL + extern crate nonexistent;
    |
 
-error[E0412]: cannot find type `nonexistant` in the crate root
+error[E0412]: cannot find type `nonexistent` in the crate root
   --> $DIR/editions-crate-root-2015.rs:11:25
    |
-LL |     fn bare_global(_: ::nonexistant) {
+LL |     fn bare_global(_: ::nonexistent) {
    |                         ^^^^^^^^^^^ not found in the crate root
 
-error[E0412]: cannot find type `nonexistant` in the crate root
+error[E0412]: cannot find type `nonexistent` in the crate root
   --> $DIR/editions-crate-root-2015.rs:14:29
    |
-LL |     fn bare_crate(_: crate::nonexistant) {
+LL |     fn bare_crate(_: crate::nonexistent) {
    |                             ^^^^^^^^^^^ not found in the crate root
 
 error: aborting due to 4 previous errors

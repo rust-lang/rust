@@ -23,7 +23,7 @@ fn test_elseif3() {
     assert!((rs));
 }
 
-fn test_inferrence() {
+fn test_inference() {
     let rs = if true { true } else { false };
     assert!((rs));
 }
@@ -46,7 +46,7 @@ pub fn main() {
     test_elseif1();
     test_elseif2();
     test_elseif3();
-    test_inferrence();
+    test_inference();
     test_if_as_if_condition();
     test_if_as_block_result();
 }

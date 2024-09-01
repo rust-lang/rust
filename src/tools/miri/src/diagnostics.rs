@@ -389,7 +389,7 @@ pub fn report_error<'tcx>(
     let mut show_all_threads = false;
 
     // We want to dump the allocation if this is `InvalidUninitBytes`.
-    // Since `format_interp_error` consumes `e`, we compute the outut early.
+    // Since `format_interp_error` consumes `e`, we compute the output early.
     let mut extra = String::new();
     match e.kind() {
         UndefinedBehavior(InvalidUninitBytes(Some((alloc_id, access)))) => {

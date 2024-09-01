@@ -29,10 +29,10 @@ fn simple_two() {
 struct Global;
 fn trait_() {
     mod posts {
-        pub trait AdjecentTo {}
+        pub trait AdjacentTo {}
     }
 
-    impl posts::AdjecentTo for Global {}
+    impl posts::AdjacentTo for Global {}
 }
 
 fn main() {}

@@ -1508,7 +1508,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.on_stack_pop(frame)?;
         }
-        // tracing-tree can autoamtically annotate scope changes, but it gets very confused by our
+        // tracing-tree can automatically annotate scope changes, but it gets very confused by our
         // concurrency and what it prints is just plain wrong. So we print our own information
         // instead. (Cc https://github.com/rust-lang/miri/issues/2266)
         info!("Leaving {}", ecx.frame().instance());

@@ -6,7 +6,7 @@ This folder contains `rustc`'s
 ## Test Directives (Headers)
 
 Typically, a UI test will have some test directives / headers which are
-special comments that tell compiletest how to build and intepret a test.
+special comments that tell compiletest how to build and interpret a test.
 
 As part of an on-going effort to rewrite compiletest
 (see <https://github.com/rust-lang/compiler-team/issues/536>), a major

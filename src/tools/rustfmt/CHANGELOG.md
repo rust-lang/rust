@@ -73,7 +73,7 @@
 ### Changed
 
 - `hide_parse_errors` has been soft deprecated and it's been renamed to `show_parse_errors` [#5961](https://github.com/rust-lang/rustfmt/pull/5961).
-- The diff output produced by `rustfmt --check` is more compatable with editors that support navigating directly to line numbers [#5971](https://github.com/rust-lang/rustfmt/pull/5971)
+- The diff output produced by `rustfmt --check` is more compatible with editors that support navigating directly to line numbers [#5971](https://github.com/rust-lang/rustfmt/pull/5971)
 - When using `version=Two`, the `trace!` macro from the [log crate] is now formatted similarly to `debug!`, `info!`, `warn!`, and `error!` [#5987](https://github.com/rust-lang/rustfmt/issues/5987).
 
   [log crate]: https://crates.io/crates/log

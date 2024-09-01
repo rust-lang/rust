@@ -1,4 +1,4 @@
-// Do not try to evaluate static initalizers that reference
+// Do not try to evaluate static initializers that reference
 // ill-defined types. This used to be an ICE.
 // See issues #125842 and #124464.
 struct Struct {

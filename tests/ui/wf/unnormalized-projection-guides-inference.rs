@@ -18,7 +18,7 @@ impl<T, U: EqualTo<Ty = T>> MyTrait<U> for T {
 
 fn main() {
     let _: <_ as MyTrait<u8>>::Out;
-    // We shoud be able to infer a value for the inference variable above.
+    // We should be able to infer a value for the inference variable above.
     // The WF of the unnormalized projection requires `u8: EqualTo<Ty = _>`,
     // which is sufficient to guide inference.
 }

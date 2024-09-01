@@ -26,7 +26,7 @@ where
     // so defer to `classify_arg_ty`.
     let mut arg_gprs_left = NUM_RET_GPRS;
     classify_arg_ty(arg, &mut arg_gprs_left, MAX_RET_IN_REGS_SIZE);
-    // Ret args cannot be passed via stack, we lower to indirect and let the backend handle the invisble reference
+    // Ret args cannot be passed via stack, we lower to indirect and let the backend handle the invisible reference
     match arg.mode {
         super::PassMode::Indirect { attrs: _, meta_attrs: _, ref mut on_stack } => {
             *on_stack = false;

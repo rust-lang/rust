@@ -31,7 +31,7 @@ fn main() {
     my_faulty_macro!();
     my_recursive_macro!();
     test!();
-    non_exisiting!();
+    non_existing!();
     derive!(Debug);
     let a = pat_macro!();
 }

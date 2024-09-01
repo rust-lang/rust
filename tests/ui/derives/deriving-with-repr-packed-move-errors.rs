@@ -22,7 +22,7 @@ struct StructA(String);
 //~| ERROR: cannot move out of `self` which is behind a shared reference
 
 
-// Unrelated impl: additinal diagnostic should NOT be emitted
+// Unrelated impl: additional diagnostic should NOT be emitted
 impl StructA {
     fn fmt(&self) -> String {
         self.0 //~ ERROR: cannot move out of `self` which is behind a shared reference
@@ -56,11 +56,11 @@ impl PartialOrd for StructB {
     }
 }
 
-// NOT packed + derives: additinal diagnostic should NOT be emitted
+// NOT packed + derives: additional diagnostic should NOT be emitted
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
 struct StructC(String);
 
-// NOT packed + manual impls: additinal dignostic should NOT be emitted
+// NOT packed + manual impls: additional dignostic should NOT be emitted
 struct StructD(String);
 
 impl Debug for StructD {
@@ -87,7 +87,7 @@ impl PartialOrd for StructD {
 }
 
 // Packed + derives but the move is outside of a derive
-// expansion: additinal diagnostic should NOT be emitted
+// expansion: additional diagnostic should NOT be emitted
 fn func(arg: &StructA) -> String {
     arg.0 //~ ERROR: cannot move out of `arg` which is behind a shared reference
 }

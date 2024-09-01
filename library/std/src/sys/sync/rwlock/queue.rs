@@ -506,7 +506,7 @@ impl RwLock {
 
                 // There are no set `tail` links before the node pointed to by
                 // `state`, so the first non-null tail field will be current
-                // (invariant 2). Invariant 4 is fullfilled since `find_tail`
+                // (invariant 2). Invariant 4 is fulfilled since `find_tail`
                 // was called on this node, which ensures all backlinks are set.
                 unsafe {
                     to_node(state).as_ref().tail.set(Some(prev));

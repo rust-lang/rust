@@ -347,7 +347,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         retval_dest: Option<(Scalar, MPlaceTy<'tcx>)>,
     ) {
         let this = self.eval_context_mut();
-        assert!(this.mutex_is_locked(id), "queing on unlocked mutex");
+        assert!(this.mutex_is_locked(id), "queuing on unlocked mutex");
         let thread = this.active_thread();
         this.machine.sync.mutexes[id].queue.push_back(thread);
         this.block_thread(

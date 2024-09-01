@@ -33,7 +33,7 @@ fn two_phase_raw() {
     let x: &mut Vec<i32> = &mut vec![];
     x.push({
         // Unfortunately this does not trigger the problem of creating a
-        // raw ponter from a pointer that had a two-phase borrow derived from
+        // raw pointer from a pointer that had a two-phase borrow derived from
         // it because of the implicit &mut reborrow.
         let raw = x as *mut _;
         unsafe {

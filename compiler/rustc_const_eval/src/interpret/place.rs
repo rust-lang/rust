@@ -186,7 +186,7 @@ pub(super) enum Place<Prov: Provenance = CtfeProvenance> {
     /// `Local` places always refer to the current stack frame, so they are unstable under
     /// function calls/returns and switching betweens stacks of different threads!
     /// We carry around the address of the `locals` buffer of the correct stack frame as a sanity
-    /// chec to be able to catch some cases of using a dangling `Place`.
+    /// check to be able to catch some cases of using a dangling `Place`.
     ///
     /// This variant shall not be used for unsized types -- those must always live in memory.
     Local { local: mir::Local, offset: Option<Size>, locals_addr: usize },

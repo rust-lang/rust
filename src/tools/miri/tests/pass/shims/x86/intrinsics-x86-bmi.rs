@@ -49,7 +49,7 @@ unsafe fn test_bmi_32() {
             assert_eq!(_bextr_u32(u32::MAX, i, 0), 0);
         }
 
-        // Test cases with completly random values. These cases also test
+        // Test cases with completely random values. These cases also test
         // that the function works even if upper bits of the control value are set.
         assert_eq!(_bextr2_u32(0x7408a392, 0x54ef705), 0x3a0451c);
         assert_eq!(_bextr2_u32(0xbc5a3494, 0xdd193203), 0x178b4692);
@@ -146,7 +146,7 @@ unsafe fn test_bmi_64() {
             assert_eq!(_bextr_u64(u64::MAX, i, 0), 0);
         }
 
-        // Test cases with completly random values. These cases also test
+        // Test cases with completely random values. These cases also test
         // that the function works even if upper bits of the control value are set.
         assert_eq!(_bextr2_u64(0x4ff6cfbcea75f055, 0x216642e228425719), 0x27fb67de75);
         assert_eq!(_bextr2_u64(0xb05e991e6f6e1b6, 0xc76dd5d7f67dfc14), 0xb05e991e6f);

@@ -101,7 +101,7 @@
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
-// Do not check link redundancy on bootstraping phase
+// Do not check link redundancy on bootstrapping phase
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
 //

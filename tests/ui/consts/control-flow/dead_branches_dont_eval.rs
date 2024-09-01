@@ -1,6 +1,6 @@
 //@ build-pass
 
-// issue 122301 - currently the only way to supress
+// issue 122301 - currently the only way to suppress
 // const eval and codegen of code conditional on some other const
 
 struct Foo<T, const N: usize>(T);

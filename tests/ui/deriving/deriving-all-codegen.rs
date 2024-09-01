@@ -22,7 +22,7 @@
 struct Empty;
 
 // A basic struct. Note: because this derives `Copy`, it gets the simple
-// `clone` implemention that just does `*self`.
+// `clone` implementation that just does `*self`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Point {
     x: u32,
@@ -30,7 +30,7 @@ struct Point {
 }
 
 // A basic packed struct. Note: because this derives `Copy`, it gets the simple
-// `clone` implemention that just does `*self`.
+// `clone` implementation that just does `*self`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(packed)]
 struct PackedPoint {
@@ -39,31 +39,31 @@ struct PackedPoint {
 }
 
 // A large struct. Note: because this derives `Copy`, it gets the simple
-// `clone` implemention that just does `*self`.
+// `clone` implementation that just does `*self`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Big {
     b1: u32, b2: u32, b3: u32, b4: u32, b5: u32, b6: u32, b7: u32, b8: u32,
 }
 
 // A struct that doesn't impl `Copy`, which means it gets the non-simple
-// `clone` implemention that clones the fields individually.
+// `clone` implementation that clones the fields individually.
 #[derive(Clone)]
 struct NonCopy(u32);
 
 // A packed struct that doesn't impl `Copy`, which means it gets the non-simple
-// `clone` implemention that clones the fields individually.
+// `clone` implementation that clones the fields individually.
 #[derive(Clone)]
 #[repr(packed)]
 struct PackedNonCopy(u32);
 
 // A struct that impls `Copy` manually, which means it gets the non-simple
-// `clone` implemention that clones the fields individually.
+// `clone` implementation that clones the fields individually.
 #[derive(Clone)]
 struct ManualCopy(u32);
 impl Copy for ManualCopy {}
 
 // A packed struct that impls `Copy` manually, which means it gets the
-// non-simple `clone` implemention that clones the fields individually.
+// non-simple `clone` implementation that clones the fields individually.
 #[derive(Clone)]
 #[repr(packed)]
 struct PackedManualCopy(u32);

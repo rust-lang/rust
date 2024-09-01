@@ -345,7 +345,7 @@ fn fully_replacable_locals(ssa: &SsaLocals) -> BitSet<Local> {
     replacable
 }
 
-/// Utility to help performing subtitution of `*pattern` by `target`.
+/// Utility to help performing substitution of `*pattern` by `target`.
 struct Replacer<'tcx> {
     tcx: TyCtxt<'tcx>,
     targets: IndexVec<Local, Value<'tcx>>,

@@ -70,7 +70,7 @@ changes in this changelog.
 - `run` and `run_fail` (like `Command::{run, run_fail}`) for running binaries, which sets suitable
   env vars (like `LD_LIB_PATH` or equivalent, `TARGET_RPATH_ENV`, `PATH` on Windows).
 - Pseudo command `diff` which has similar functionality as the cli util but not the same API.
-- Convenience panic-on-fail helpers `env_var`, `env_var_os`, `cwd` for their `std::env` conterparts.
+- Convenience panic-on-fail helpers `env_var`, `env_var_os`, `cwd` for their `std::env` counterparts.
 - Convenience panic-on-fail helpers for reading respective env vars: `target`, `source_root`.
 - Platform check helpers: `is_windows`, `is_msvc`, `cygpath_windows`, `uname`.
 - fs helpers: `copy_dir_all`.

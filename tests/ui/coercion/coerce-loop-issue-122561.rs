@@ -44,7 +44,7 @@ fn for_in_arg(a: &[(); for x in 0..2 {}]) -> bool {
     true
 }
 
-fn while_inifinite() -> bool {
+fn while_infinite() -> bool {
     while true {
     //~^ ERROR mismatched types
     //~| WARN denote infinite loops with `loop { ... }` [while_true]

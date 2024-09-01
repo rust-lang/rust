@@ -740,7 +740,7 @@ impl ScrapedDocTest {
             item_path.push(' ');
         }
         let name =
-            format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly());
+            format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionally());
 
         Self { filename, line, langstr, text, name }
     }

@@ -500,7 +500,7 @@ pub mod diagnostics {
                         // - created as Reserved { conflicted: false },
                         //   then Active -> Disabled is forbidden
                         // A potential `Reserved { conflicted: false }
-                        //   -> Reserved { conflicted: true }` is inexistant or irrelevant,
+                        //   -> Reserved { conflicted: true }` is inexistent or irrelevant,
                         // and so is the `Reserved { conflicted: false } -> Active`
                         (Active, Frozen) => false,
                         (ReservedFrz { conflicted: true }, _) => false,

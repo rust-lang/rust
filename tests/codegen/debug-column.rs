@@ -10,7 +10,7 @@ fn main() {
         // CHECK: call void @giraffe(){{( #[0-9]+)?}}, !dbg [[A:!.*]]
         giraffe();
 
-        // Column numbers use byte offests. Regression test for #67360
+        // Column numbers use byte offsets. Regression test for #67360
         // CHECK: call void @turtle(){{( #[0-9]+)?}}, !dbg [[B:!.*]]
 /* ż */ turtle();
 

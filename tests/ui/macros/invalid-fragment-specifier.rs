@@ -3,7 +3,7 @@ macro_rules! test {
 } //~^ ERROR: invalid fragment specifier `id`
 
 // guard against breaking raw identifier diagnostic
-macro_rules! test_raw_identifer {
+macro_rules! test_raw_identifier {
     ($wrong:r#if) => {};
 } //~^ ERROR: invalid fragment specifier `r#if`
 

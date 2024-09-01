@@ -176,7 +176,7 @@ LL | fn for_single_line() -> bool { for i in 0.. { return false; } /* `bool` val
 error[E0308]: mismatched types
   --> $DIR/coerce-loop-issue-122561.rs:48:5
    |
-LL |   fn while_inifinite() -> bool {
+LL |   fn while_infinite() -> bool {
    |                           ---- expected `bool` because of return type
 LL | /     while true {
 LL | |

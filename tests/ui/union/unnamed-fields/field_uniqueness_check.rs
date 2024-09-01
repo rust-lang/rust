@@ -39,7 +39,7 @@ union A {
     // nested field in a named adt
     _: Foo, //~ ERROR field `a` is already declared
     _: Bar, //~ ERROR field `a` is already declared
-    // nested field in a named adt in an anoymous adt
+    // nested field in a named adt in an anonymous adt
     _: struct {
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
@@ -69,7 +69,7 @@ struct B {
         // nested field in a named adt (within the same anonymous adt)
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
-        // nested field in a named adt in an anoymous adt (within the same anonymous adt)
+        // nested field in a named adt in an anonymous adt (within the same anonymous adt)
         _: struct {
             _: Foo, //~ ERROR field `a` is already declared
             _: Bar, //~ ERROR field `a` is already declared
@@ -91,7 +91,7 @@ struct B {
     // nested field in a named adt
     _: Foo, //~ ERROR field `a` is already declared
     _: Bar, //~ ERROR field `a` is already declared
-    // nested field in a named adt in an anoymous adt
+    // nested field in a named adt in an anonymous adt
     _: struct {
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
@@ -122,7 +122,7 @@ union C {
             // nested field in a named adt (within the same anonymous adt)
             _: Foo, //~ ERROR field `a` is already declared
             _: Bar, //~ ERROR field `a` is already declared
-            // nested field in a named adt in an anoymous adt (within the same anonymous adt)
+            // nested field in a named adt in an anonymous adt (within the same anonymous adt)
             _: struct {
                 _: Foo, //~ ERROR field `a` is already declared
                 _: Bar, //~ ERROR field `a` is already declared
@@ -144,7 +144,7 @@ union C {
         // nested field in a named adt (within the direct outer anonymous adt)
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
-        // nested field in a named adt in an anoymous adt (within the direct outer anonymous adt)
+        // nested field in a named adt in an anonymous adt (within the direct outer anonymous adt)
         _: struct {
             _: Foo, //~ ERROR field `a` is already declared
             _: Bar, //~ ERROR field `a` is already declared
@@ -165,7 +165,7 @@ union C {
     // nested field in a named adt
     _: Foo, //~ ERROR field `a` is already declared
     _: Bar, //~ ERROR field `a` is already declared
-    // nested field in a named adt in an anoymous adt
+    // nested field in a named adt in an anonymous adt
     _: union {
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
@@ -194,7 +194,7 @@ struct D {
     // nested field in another named adt
     _: Foo, //~ ERROR field `a` is already declared
     _: Bar, //~ ERROR field `a` is already declared
-    // nested field in a named adt in an anoymous adt
+    // nested field in a named adt in an anonymous adt
     _: union {
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
@@ -223,7 +223,7 @@ union D2 {
     // nested field in another named adt
     _: Foo, //~ ERROR field `a` is already declared
     _: Bar, //~ ERROR field `a` is already declared
-    // nested field in a named adt in an anoymous adt
+    // nested field in a named adt in an anonymous adt
     _: union {
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
@@ -253,7 +253,7 @@ struct E {
         // nested field in a named adt (within the same anonymous adt)
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
-        // nested field in a named adt in an anoymous adt (within the same anonymous adt)
+        // nested field in a named adt in an anonymous adt (within the same anonymous adt)
         _: struct {
             _: Foo, //~ ERROR field `a` is already declared
             _: Bar, //~ ERROR field `a` is already declared
@@ -275,7 +275,7 @@ struct E {
     // nested field in another named adt
     _: Foo, //~ ERROR field `a` is already declared
     _: Bar, //~ ERROR field `a` is already declared
-    // nested field in a named adt in an anoymous adt
+    // nested field in a named adt in an anonymous adt
     _: union {
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
@@ -305,7 +305,7 @@ union E2 {
         // nested field in a named adt (within the same anonymous adt)
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared
-        // nested field in a named adt in an anoymous adt (within the same anonymous adt)
+        // nested field in a named adt in an anonymous adt (within the same anonymous adt)
         _: struct {
             _: Foo, //~ ERROR field `a` is already declared
             _: Bar, //~ ERROR field `a` is already declared
@@ -327,7 +327,7 @@ union E2 {
     // nested field in another named adt
     _: Foo, //~ ERROR field `a` is already declared
     _: Bar, //~ ERROR field `a` is already declared
-    // nested field in a named adt in an anoymous adt
+    // nested field in a named adt in an anonymous adt
     _: union {
         _: Foo, //~ ERROR field `a` is already declared
         _: Bar, //~ ERROR field `a` is already declared

@@ -37,7 +37,7 @@ impl<F: Float> Fuzz<F> {
             // to catch failures from e.g. high bit patterns before exhaustive tests would get to them.
             (F::Int::MAX >> (F::BITS / 2)).try_into().unwrap()
         } else {
-            // Eveything bigger gets a fuzz test with as many iterations as `f32` exhaustive.
+            // Everything bigger gets a fuzz test with as many iterations as `f32` exhaustive.
             u32::MAX.into()
         };
 

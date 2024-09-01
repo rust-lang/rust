@@ -730,9 +730,9 @@ mod spurious_read {
                         "For pattern '{}', inserting a spurious read through x makes the final state '{}' instead of '{}' which is observable",
                         pat, final_target, final_source
                     );
-                    eprintln!("  (arbitrary code instanciated with '{}')", opaque);
+                    eprintln!("  (arbitrary code instantiated with '{}')", opaque);
                     err += 1;
-                    // We found an instanciation of the opaque code that makes this Pattern
+                    // We found an instantiation of the opaque code that makes this Pattern
                     // fail, we don't really need to check the rest.
                     break;
                 }

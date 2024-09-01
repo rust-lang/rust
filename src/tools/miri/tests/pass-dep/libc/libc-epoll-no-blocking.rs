@@ -417,7 +417,7 @@ fn test_event_overwrite() {
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 }
 
-// An epoll notification will be provided for every succesful read in a socketpair.
+// An epoll notification will be provided for every successful read in a socketpair.
 // This behaviour differs from the real system.
 fn test_socketpair_read() {
     // Create an epoll instance.

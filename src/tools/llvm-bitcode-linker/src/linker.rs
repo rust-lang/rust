@@ -61,7 +61,7 @@ impl Session {
             .arg("-o")
             .arg(&self.link_path)
             .output()
-            .context("An error occured when calling llvm-link. Make sure the llvm-tools component is installed.")?;
+            .context("An error occurred when calling llvm-link. Make sure the llvm-tools component is installed.")?;
 
         if !llvm_link_output.status.success() {
             tracing::error!(
@@ -108,7 +108,7 @@ impl Session {
         }
 
         let opt_output = opt_cmd.output().context(
-            "An error occured when calling opt. Make sure the llvm-tools component is installed.",
+            "An error occurred when calling opt. Make sure the llvm-tools component is installed.",
         )?;
 
         if !opt_output.status.success() {
@@ -138,7 +138,7 @@ impl Session {
             .arg(&self.opt_path)
             .arg("-o").arg(&self.out_path)
             .output()
-            .context("An error occured when calling llc. Make sure the llvm-tools component is installed.")?;
+            .context("An error occurred when calling llc. Make sure the llvm-tools component is installed.")?;
 
         if !lcc_output.status.success() {
             tracing::error!(

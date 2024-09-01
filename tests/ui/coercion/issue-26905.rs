@@ -1,6 +1,6 @@
 #![feature(unsize, coerce_unsized)]
 
-// Verfies that non-PhantomData ZSTs still cause coercions to fail.
+// Verifies that non-PhantomData ZSTs still cause coercions to fail.
 // They might have additional semantics that we don't want to bulldoze.
 
 use std::marker::{Unsize, PhantomData};

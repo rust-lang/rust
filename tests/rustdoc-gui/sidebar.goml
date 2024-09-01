@@ -122,7 +122,7 @@ assert-text: (".sidebar > .location", "Module module")
 assert-count: (".sidebar .location", 1)
 assert-text: (".sidebar-elems ul.block > li.current > a", "module")
 // Module page requires three headings:
-//   - Presistent crate branding (name and version)
+//   - Persistent crate branding (name and version)
 //   - Module name, followed by TOC for module headings
 //   - "In crate [name]" parent pointer, followed by sibling navigation
 assert-count: (".sidebar h2", 3)

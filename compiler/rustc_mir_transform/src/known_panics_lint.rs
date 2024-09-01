@@ -914,7 +914,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
     fn visit_place(&mut self, place: &Place<'tcx>, mut context: PlaceContext, loc: Location) {
         use rustc_middle::mir::visit::PlaceContext::*;
 
-        // Dereferencing just read the addess of `place.local`.
+        // Dereferencing just read the address of `place.local`.
         if place.projection.first() == Some(&PlaceElem::Deref) {
             context = NonMutatingUse(NonMutatingUseContext::Copy);
         }

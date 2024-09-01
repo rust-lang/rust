@@ -1,5 +1,5 @@
 // Check that ref mut patterns within a const pattern don't get considered
-// unsafe because they're within a pattern for a layout constrained stuct.
+// unsafe because they're within a pattern for a layout constrained struct.
 //@ check-pass
 
 #![feature(rustc_attrs)]

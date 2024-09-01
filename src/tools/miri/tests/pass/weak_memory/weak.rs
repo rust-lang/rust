@@ -114,7 +114,7 @@ fn faa_replaced_by_load() -> bool {
     let y = static_atomic(0);
     let z = static_atomic(0);
 
-    // Since each thread is so short, we need to make sure that they truely run at the same time
+    // Since each thread is so short, we need to make sure that they truly run at the same time
     // Otherwise t1 will finish before t2 even starts
     let go = static_atomic(0);
 

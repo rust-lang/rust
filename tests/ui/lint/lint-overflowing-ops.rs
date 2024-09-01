@@ -1,5 +1,5 @@
 // Tests that overflowing or bound-exceeding operations
-// are correclty linted including when they are const promoted
+// are correctly linted including when they are const promoted
 
 // We are using "-Z deduplicate-diagnostics=yes" because different
 // build configurations emit different number of duplicate diagnostics

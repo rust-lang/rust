@@ -1,4 +1,4 @@
-// This test check that even if we mixup target feature of function with homogenous floats,
+// This test check that even if we mixup target feature of function with homogeneous floats,
 // the abi is sound and still produce the right answer.
 //
 // This is basically the same test as tests/ui/simd/target-feature-mixup.rs but for floats and

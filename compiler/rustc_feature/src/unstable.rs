@@ -248,7 +248,7 @@ declare_features! (
     /// Allows using the `vectorcall` ABI.
     (unstable, abi_vectorcall, "1.7.0", Some(124485)),
     /// Allows features specific to auto traits.
-    /// Renamed from `optin_builtin_traits`.
+    /// Renamed from `option_builtin_traits`.
     (unstable, auto_traits, "1.50.0", Some(13231)),
     /// Allows using `box` in patterns (RFC 469).
     (unstable, box_patterns, "1.0.0", Some(29641)),
@@ -585,7 +585,7 @@ declare_features! (
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
     (unstable, sha512_sm_x86, "CURRENT_RUSTC_VERSION", Some(126624)),
-    /// Shortern the tail expression lifetime
+    /// Shorten the tail expression lifetime
     (unstable, shorter_tail_lifetimes, "1.79.0", Some(123739)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),

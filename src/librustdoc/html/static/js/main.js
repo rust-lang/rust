@@ -1543,7 +1543,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     // 300px, and the RUSTDOC_MOBILE_BREAKPOINT is 700px, so BODY_MIN must be
     // at most 400px. Otherwise, it would start out at the default size, then
     // grabbing the resize handle would suddenly cause it to jank to
-    // its contraint-generated maximum.
+    // its constraint-generated maximum.
     const RUSTDOC_MOBILE_BREAKPOINT = 700;
     const BODY_MIN = 400;
     // At half-way past the minimum size, vanish the sidebar entirely

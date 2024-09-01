@@ -17,7 +17,7 @@ use std::thread;
 // - thread 1: retag and activate `x` (protected)
 // - thread 2: retag but do not initialize (lazy) `y` as Reserved with interior mutability
 // - thread 1: spurious write through `x` would go here
-// - thread 2: function exit (noop due to lazyness)
+// - thread 2: function exit (noop due to laziness)
 // - thread 1: function exit (no permanent effect on `y` because it is now Reserved IM unprotected)
 // - thread 2: write through `y`
 // In the source code nothing happens to `y`

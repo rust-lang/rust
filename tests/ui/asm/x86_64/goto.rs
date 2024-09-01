@@ -7,7 +7,7 @@
 
 use std::arch::asm;
 
-fn goto_fallthough() {
+fn goto_fallthrough() {
     unsafe {
         asm!(
             "/* {} */",
@@ -100,7 +100,7 @@ fn goto_noreturn_diverge() {
 }
 
 fn main() {
-    goto_fallthough();
+    goto_fallthrough();
     goto_jump();
     // goto_out_fallthrough();
     // goto_out_jump();

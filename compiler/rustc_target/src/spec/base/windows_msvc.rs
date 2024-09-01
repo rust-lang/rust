@@ -29,7 +29,7 @@ pub fn opts() -> TargetOptions {
         // they bring in.
         //
         // See also https://learn.microsoft.com/en-us/cpp/preprocessor/comment-c-cpp?view=msvc-170#lib
-        // for documention on including library dependencies in C/C++ code.
+        // for documentation on including library dependencies in C/C++ code.
         no_default_libraries: false,
         has_thread_local: true,
 

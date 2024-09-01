@@ -24,7 +24,7 @@ where
 {
     // When borrowchechking this function we normalize `<Q as QueryBase>::Db` in the
     // function signature to `<Self as QueryFunction<'?x>>::SendDb`, where `'?x` is an
-    // unconstrained region variable. We then addd `<Self as QueryFunction<'?x>>::SendDb: 'a`
+    // unconstrained region variable. We then add `<Self as QueryFunction<'?x>>::SendDb: 'a`
     // as an implied bound. We currently a structural equality to decide whether this bound
     // should be used to prove the bound  `<Self as QueryFunction<'?x>>::SendDb: 'a`. For this
     // to work we may have to structurally resolve regions as the actually used vars may

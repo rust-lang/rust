@@ -15,7 +15,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.init_once_get_or_create_id(init_once_op, this.windows_ty_layout("INIT_ONCE"), 0)
     }
 
-    /// Returns `true` if we were succssful, `false` if we would block.
+    /// Returns `true` if we were successful, `false` if we would block.
     fn init_once_try_begin(
         &mut self,
         id: InitOnceId,

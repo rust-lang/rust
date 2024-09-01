@@ -143,7 +143,7 @@ where
     assert_forall_epsilon_zeta_satisfies_eta::<B::Gamma>(gamma)
 }
 
-pub fn desugared_contraint_region_forall<B>(beta: B) -> usize
+pub fn desugared_constraint_region_forall<B>(beta: B) -> usize
 where
     for<'a> &'a B: Beta,
     for<'a> <&'a B as Beta>::Gamma: Alpha,

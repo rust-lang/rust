@@ -11,7 +11,7 @@
 // functions and the modules are enclosed in `[]`), and add a new call `D <- C`,
 // yielding the new call-graph: `[A] -> [B -> D] <- [C]`
 //
-// The effect of this is that the compiler previously classfied `D` as internal
+// The effect of this is that the compiler previously classified `D` as internal
 // and the import-set of `[A]` to be just `B`. But after adding the `D <- C` call,
 // `D` is no longer classified as internal, and the import-set of `[A]` becomes
 // both `B` and `D`.

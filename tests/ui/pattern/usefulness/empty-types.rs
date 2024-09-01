@@ -306,7 +306,7 @@ fn nested_validity_tracking(bundle: NeverBundle) {
 
 // Test we don't allow empty matches on empty types if the scrutinee is `!known_valid`.
 fn invalid_empty_match(bundle: NeverBundle) {
-    // We allow these two for backwards-compability.
+    // We allow these two for backwards-compatibility.
     let x: &! = &bundle.never;
     match *x {}
     let x: &Void = &bundle.void;

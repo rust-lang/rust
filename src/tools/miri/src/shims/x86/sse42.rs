@@ -213,7 +213,7 @@ fn deconstruct_args<'tcx>(
     };
 
     // The fourth letter of each string comparison intrinsic is either 'e' for "explicit" or 'i' for "implicit".
-    // The distinction will correspond to the intrinsics type signature. In this constext, "explicit" and "implicit"
+    // The distinction will correspond to the intrinsics type signature. In this context, "explicit" and "implicit"
     // refer to the way the string length is determined. The length is either passed explicitly in the "explicit"
     // case or determined by a null terminator in the "implicit" case.
     let is_explicit = match unprefixed_name.as_bytes().get(4) {

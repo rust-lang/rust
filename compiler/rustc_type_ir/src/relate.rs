@@ -550,7 +550,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
 /// Any semantic equality, e.g. of unevaluated consts, and inference variables have
 /// to be handled by the caller.
 ///
-/// FIXME: This is not totally structual, which probably should be fixed.
+/// FIXME: This is not totally structural, which probably should be fixed.
 /// See the HACKs below.
 pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
     relation: &mut R,

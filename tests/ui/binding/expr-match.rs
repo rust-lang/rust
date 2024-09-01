@@ -12,7 +12,7 @@ fn test_basic() {
     assert!((rs));
 }
 
-fn test_inferrence() {
+fn test_inference() {
     let rs = match true { true => { true } false => { false } };
     assert!((rs));
 }
@@ -39,7 +39,7 @@ fn test_alt_as_block_result() {
 
 pub fn main() {
     test_basic();
-    test_inferrence();
+    test_inference();
     test_alt_as_alt_head();
     test_alt_as_block_result();
 }

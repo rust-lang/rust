@@ -701,7 +701,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
             match ty.kind() {
                 ty::Int(ity) => {
                     // FIXME: directly extract the bits from a valtree instead of evaluating an
-                    // alreay evaluated `Const` in order to get the bits.
+                    // already evaluated `Const` in order to get the bits.
                     let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     write!(output, "{val}")

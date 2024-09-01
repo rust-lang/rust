@@ -240,7 +240,7 @@ impl<'tcx> Const<'tcx> {
         match self {
             Const::Ty(ty, ct) => {
                 match ct.kind() {
-                    // Dont use the outter ty as on invalid code we can wind up with them not being the same.
+                    // Dont use the outer ty as on invalid code we can wind up with them not being the same.
                     // this then results in allowing const eval to add `1_i64 + 1_usize` in cases where the mir
                     // was originally `({N: usize} + 1_usize)` under `generic_const_exprs`.
                     ty::ConstKind::Value(ty, _) => ty,
@@ -271,7 +271,7 @@ impl<'tcx> Const<'tcx> {
             Const::Ty(_, c) => match c.kind() {
                 ty::ConstKind::Value(ty, valtree) if ty.is_primitive() => {
                     // A valtree of a type where leaves directly represent the scalar const value.
-                    // Just checking whether it is a leaf is insufficient as e.g. references are leafs
+                    // Just checking whether it is a leaf is insufficient as e.g. references are leaves
                     // but the leaf value is the value they point to, not the reference itself!
                     Some(valtree.unwrap_leaf().into())
                 }

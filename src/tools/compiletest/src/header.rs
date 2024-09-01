@@ -736,7 +736,7 @@ pub fn line_directive<'line>(
     }
 }
 
-// To prevent duplicating the list of commmands between `compiletest`,`htmldocck` and `jsondocck`,
+// To prevent duplicating the list of commands between `compiletest`,`htmldocck` and `jsondocck`,
 // we put it into a common file which is included in rust code and parsed here.
 // FIXME: This setup is temporary until we figure out how to improve this situation.
 //        See <https://github.com/rust-lang/rust/issues/125813#issuecomment-2141953780>.

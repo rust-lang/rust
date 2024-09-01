@@ -39,7 +39,7 @@ fn test_abbreviate_long_string() {
 }
 
 #[test]
-fn test_abbreviate_filterss_are_detected() {
+fn test_abbreviate_filters_are_detected() {
     let mut out = ProcOutput::new();
     let filters = &["foo".to_string(), "quux".to_string()];
 

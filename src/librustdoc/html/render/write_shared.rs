@@ -362,7 +362,7 @@ impl CratesIndexPart {
         }
     }
 
-    /// Might return parts that are duplicate with ones in prexisting index.html
+    /// Might return parts that are duplicate with ones in preexisting index.html
     fn get(crate_name: &str, external_crates: &[String]) -> Result<PartsAndLocations<Self>, Error> {
         let mut ret = PartsAndLocations::default();
         let path = PathBuf::from("index.html");

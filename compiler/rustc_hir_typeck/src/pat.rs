@@ -2162,13 +2162,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         expected = self.try_structurally_resolve_type(pat.span, expected);
         if new_match_ergonomics {
-            if let ByRef::Yes(inh_mut) = pat_info.binding_mode {
+            if let ByRef::Yes(in_mut) = pat_info.binding_mode {
                 if !ref_pat_eat_one_layer_2024 && let ty::Ref(_, _, r_mutbl) = *expected.kind() {
                     // Don't attempt to consume inherited reference
                     pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(r_mutbl);
                 } else {
                     // ref pattern attempts to consume inherited reference
-                    if pat_mutbl > inh_mut {
+                    if pat_mutbl > in_mut {
                         // Tried to match inherited `ref` with `&mut`
                         if !ref_pat_eat_one_layer_2024_structural {
                             let err_msg = "mismatched types";
