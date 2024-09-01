@@ -223,7 +223,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 // we must create two defs.
                 let coroutine_def =
                     self.create_def(coroutine_kind.closure_id(), kw::Empty, DefKind::Closure, span);
-                self.with_parent(coroutine_def, |this| visit::walk_expr(this, body));
+                self.with_parent(coroutine_def, |this| this.visit_expr(body));
             }
             _ => visit::walk_fn(self, fn_kind),
         }
