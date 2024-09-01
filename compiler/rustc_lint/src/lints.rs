@@ -2639,6 +2639,13 @@ impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
         if let Some(declaration) = declaration {
             diag.span_label(declaration, fluent::lint_label_named);
         }
+        // FIXME(GrigorenkoPV): this `if` and `return` should be removed,
+        //  but currently this lint's suggestions can conflict with those of `clippy::needless_lifetimes`:
+        //  https://github.com/rust-lang/rust/pull/129840#issuecomment-2323349119
+        // HACK: `'static` suggestions will never sonflict, emit only those for now.
+        if name != rustc_span::symbol::kw::StaticLifetime {
+            return;
+        }
         match kind {
             MissingLifetimeKind::Underscore => diag.span_suggestion_verbose(
                 span,

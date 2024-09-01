@@ -8,10 +8,6 @@ LL |     ) -> &dyn Foo
    |          ^ this elided lifetime gets resolved as `'a`
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
-help: consider specifying it explicitly
-   |
-LL |     ) -> &'a dyn Foo
-   |           ++
 
 error[E0621]: explicit lifetime required in the type of `foo`
   --> $DIR/issue-63388-1.rs:13:5

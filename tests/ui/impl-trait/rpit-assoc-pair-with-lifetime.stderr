@@ -5,10 +5,6 @@ LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = 
    |             -- lifetime `'a` declared here                                       ^ this elided lifetime gets resolved as `'a`
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
-help: consider specifying it explicitly
-   |
-LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = (u32, &'a u32)> {
-   |                                                                                   ++
 
 warning: 1 warning emitted
 

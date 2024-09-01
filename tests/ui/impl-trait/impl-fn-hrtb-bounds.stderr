@@ -17,10 +17,6 @@ LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
    |                    -- lifetime `'a` declared here  ^^ this elided lifetime gets resolved as `'a`
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
-help: consider specifying it explicitly
-   |
-LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
-   |                                                    ~~
 
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
   --> $DIR/impl-fn-hrtb-bounds.rs:4:41

@@ -131,10 +131,6 @@ LL | fn resolved_anonymous<'a, T: 'a>(f: impl Fn(&'a str) -> &T) {
    |                       -- lifetime `'a` declared here    ^ this elided lifetime gets resolved as `'a`
    |
    = note: `#[warn(elided_named_lifetimes)]` on by default
-help: consider specifying it explicitly
-   |
-LL | fn resolved_anonymous<'a, T: 'a>(f: impl Fn(&'a str) -> &'a T) {
-   |                                                          ++
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:6:35
