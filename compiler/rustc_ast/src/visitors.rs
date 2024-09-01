@@ -1,3 +1,20 @@
+use std::ops::DerefMut;
+use std::panic;
+
+use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
+use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::sync::Lrc;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::Ident;
+use rustc_span::Span;
+use smallvec::{smallvec, Array, SmallVec};
+use thin_vec::ThinVec;
+
+use crate::ast::*;
+use crate::ptr::P;
+use crate::token::{self, Token};
+use crate::tokenstream::*;
+
 macro_rules! mutability_dependent {
     ($($lf: lifetime)?) => {
         fn visit_stmt(&mut self, s: &'ast Stmt) -> Self::Result {
@@ -5,11 +22,6 @@ macro_rules! mutability_dependent {
         }
     };
     (mut $($lf: lifetime)?) => {
-        /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
-        /// used otherwise. Token visitor would be entirely separate from the regular visitor if
-        /// the marker didn't have to visit AST fragments in nonterminal tokens.
-        const VISIT_TOKENS: bool = false;
-
         // Methods in this trait have one of three forms:
         //
         //   fn visit_t(&mut self, t: &mut T);                      // common
@@ -186,29 +198,103 @@ macro_rules! visit_list {
     };
 }
 
+macro_rules! result {
+    () => {
+        result!(Self)
+    };
+    ($V: ty) => {
+        if_mut_ty!((), <$V>::Result)
+    };
+}
+
+macro_rules! P {
+    ($t: ty) => {
+        if_mut_ty!(P<$t>, $t)
+    };
+}
+
+macro_rules! deref_P {
+    ($p: expr) => {
+        if_mut_expr!($p.deref_mut(), $p)
+    };
+}
+
+macro_rules! visit_span {
+    ($vis: ident, $span: ident) => {
+        if_mut_expr!(
+            $vis.visit_span($span),
+            // assign to _ to prevent unused_variable warnings
+            {
+                let _ = (&$vis, &$span);
+            }
+        )
+    };
+}
+
+macro_rules! visit_id {
+    ($vis: ident, $id: ident) => {
+        if_mut_expr!(
+            $vis.visit_id($id),
+            // assign to _ to prevent unused_variable warnings
+            {
+                let _ = (&$vis, &$id);
+            }
+        )
+    };
+}
+
+macro_rules! mut_only_visit {
+    ($name: ident) => {
+        macro_rules! $name {
+            ($vis: expr, $arg: expr) => {
+                if_mut_expr!(
+                    $name($vis, $arg),
+                    // assign to _ to prevent unused_variable warnings
+                    {
+                        let _ = (&$vis, &$arg);
+                    }
+                );
+            };
+        }
+    };
+}
+
+mut_only_visit! {visit_lazy_tts}
+mut_only_visit! {visit_safety}
+mut_only_visit! {visit_defaultness}
+mut_only_visit! {walk_ty_alias_where_clauses}
+mut_only_visit! {visit_constness}
+mut_only_visit! {visit_polarity}
+mut_only_visit! {visit_delim_args}
+
+macro_rules! return_result {
+    ($V: ty) => {
+        if_mut_expr!({}, { <$V>::Result::output() })
+    };
+}
+
+macro_rules! try_v {
+    ($visit: expr) => {
+        if_mut_expr!($visit, try_visit!($visit))
+    };
+}
+
+macro_rules! visit_o {
+    ($opt: expr, $fn: expr) => {
+        if let Some(elem) = $opt {
+            try_v!($fn(elem))
+        }
+    };
+}
+
 macro_rules! make_ast_visitor {
     ($trait: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
 
         mutability_helpers!($($mut)?);
         lifetime_helpers!($($lt)?);
 
-        macro_rules! result {
-            () => { result!(Self) };
-            ($V: ty) => { if_mut_ty!((), <$V>::Result) };
-        }
-
         macro_rules! ref_t {
             ($t: ty) => { & $($lt)? $($mut)? $t };
-        }
-
-        macro_rules! P {
-            ($t: ty) => { if_mut_ty!(P<$t>, $t) }
-        }
-
-        // TODO: if still unused, remove
-        #[allow(unused)]
-        macro_rules! deref_P {
-            ($p: expr) => { if_mut_expr!($p.deref_mut(), $p) }
         }
 
         macro_rules! make_visit {
@@ -249,7 +335,10 @@ macro_rules! make_ast_visitor {
         /// new default implementation gets introduced.)
         pub trait $trait$(<$lt>)?: Sized {
             if_mut_item!{
-
+                /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
+                /// used otherwise. Token visitor would be entirely separate from the regular visitor if
+                /// the marker didn't have to visit AST fragments in nonterminal tokens.
+                const VISIT_TOKENS: bool = false;
             ,
                 /// The result type of the `visit_*` methods. Can be either `()`,
                 /// or `ControlFlow<T>`.
@@ -354,77 +443,6 @@ macro_rules! make_ast_visitor {
 
             fn visit_lifetime(&mut self, lifetime: ref_t!(Lifetime), _: LifetimeCtxt) -> result!() {
                 walk_lifetime(self, lifetime)
-            }
-        }
-
-        macro_rules! visit_span {
-            ($vis: ident, $span: ident) => {
-                if_mut_expr!(
-                    $vis.visit_span($span)
-                ,
-                    // assign to _ to prevent unused_variable warnings
-                    {let _ = (&$vis, &$span);}
-                )
-            }
-        }
-
-        macro_rules! visit_id {
-            ($vis: ident, $id: ident) => {
-                if_mut_expr!(
-                    $vis.visit_id($id)
-                ,
-                    // assign to _ to prevent unused_variable warnings
-                    {let _ = (&$vis, &$id);}
-                )
-            }
-        }
-
-        macro_rules! mut_only_visit {
-            ($name: ident) => {
-                macro_rules! $name {
-                    ($vis: expr, $arg: expr) => {
-                        if_mut_expr!(
-                            $name($vis, $arg)
-                        ,
-                            // assign to _ to prevent unused_variable warnings
-                            { let _ = (&$vis, &$arg); }
-                        );
-                    }
-                }
-            }
-        }
-
-        mut_only_visit!{visit_lazy_tts}
-        mut_only_visit!{visit_safety}
-        mut_only_visit!{visit_defaultness}
-        mut_only_visit!{walk_ty_alias_where_clauses}
-        mut_only_visit!{visit_constness}
-        mut_only_visit!{visit_polarity}
-        mut_only_visit!{visit_delim_args}
-
-        macro_rules! return_result {
-            ($V: ty) => { if_mut_expr!({}, {
-                <$V>::Result::output()
-            }) }
-        }
-
-        // TODO: temporary name
-        macro_rules! try_v {
-            ($visit: expr) => {
-                if_mut_expr!(
-                    $visit
-                ,
-                    try_visit!($visit)
-                )
-            }
-        }
-
-        // TODO: temporary name
-        macro_rules! visit_o {
-            ($opt: expr, $fn: expr) => {
-                if let Some(elem) = $opt {
-                    try_v!($fn(elem))
-                }
             }
         }
 
@@ -1505,7 +1523,6 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
-
         pub fn walk_assoc_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(Item<AssocItemKind>),
@@ -1815,13 +1832,8 @@ pub mod visit {
 
     pub use rustc_ast_ir::visit::VisitorResult;
     pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
-    use rustc_data_structures::stack::ensure_sufficient_stack;
-    use rustc_span::Span;
-    use rustc_span::source_map::Spanned;
-    use rustc_span::symbol::Ident;
 
-    use crate::ast::*;
-    use crate::ptr::P;
+    use super::*;
 
     #[derive(Copy, Clone, Debug, PartialEq)]
     pub enum AssocCtxt {
@@ -1934,22 +1946,7 @@ pub mod mut_visit {
     //! a `MutVisitor` renaming item names in a module will miss all of those
     //! that are created by the expansion of a macro.
 
-    use std::ops::DerefMut;
-    use std::panic;
-
-    use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-    use rustc_data_structures::stack::ensure_sufficient_stack;
-    use rustc_data_structures::sync::Lrc;
-    use rustc_span::Span;
-    use rustc_span::source_map::Spanned;
-    use rustc_span::symbol::Ident;
-    use smallvec::{Array, SmallVec, smallvec};
-    use thin_vec::ThinVec;
-
-    use crate::ast::*;
-    use crate::ptr::P;
-    use crate::token::{self, Token};
-    use crate::tokenstream::*;
+    use super::*;
     use crate::visit::{AssocCtxt, BoundKind, FnCtxt, LifetimeCtxt};
 
     pub trait ExpectOne<A: Array> {
