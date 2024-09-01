@@ -561,9 +561,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         )
                     } else {
                         let indent = self.block_indent;
-                        let rewrite = self.rewrite_required_fn(
-                            indent, item.ident, sig, &item.vis, generics, item.span,
-                        );
+                        let rewrite = self
+                            .rewrite_required_fn(
+                                indent, item.ident, sig, &item.vis, generics, item.span,
+                            )
+                            .ok();
                         self.push_rewrite(item.span, rewrite);
                     }
                 }
@@ -610,7 +612,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             self.block_indent,
             visitor_kind,
             span,
-        );
+        )
+        .ok();
         self.push_rewrite(span, rewrite);
     }
 
@@ -656,8 +659,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     );
                 } else {
                     let indent = self.block_indent;
-                    let rewrite =
-                        self.rewrite_required_fn(indent, ai.ident, sig, &ai.vis, generics, ai.span);
+                    let rewrite = self
+                        .rewrite_required_fn(indent, ai.ident, sig, &ai.vis, generics, ai.span)
+                        .ok();
                     self.push_rewrite(ai.span, rewrite);
                 }
             }
