@@ -6,6 +6,9 @@ set -x # so one can see where we are in the script
 
 X_PY="$1"
 
+python3 "$X_PY" --stage 2 test src/tools/cargo -- --no-run
+python3 "$X_PY" --stage 2 build src/tools/cargo
+
 # Try to test the toolstate-tracked tools and store the build/test success in the TOOLSTATE_FILE.
 
 # Pre-build the compiler and the library first to output a better error message when the build

@@ -294,7 +294,7 @@ impl Step for Cargo {
         let compiler = builder.compiler(self.stage, self.host);
 
         builder.ensure(tool::Cargo { compiler, target: self.host });
-        let cargo = tool::prepare_tool_cargo(
+        let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
             Mode::ToolRustc,
@@ -304,6 +304,7 @@ impl Step for Cargo {
             SourceType::Submodule,
             &[],
         );
+        cargo.arg("--no-run");
 
         // NOTE: can't use `run_cargo_test` because we need to overwrite `PATH`
         let mut cargo = prepare_cargo_test(cargo, &[], &[], "cargo", compiler, self.host, builder);
