@@ -10,7 +10,7 @@ LL |     fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
 help: consider specifying it explicitly
    |
 LL |     fn foo<'b>(self: &'b Foo<'a>) -> &'b () { self.0 }
-   |                                      ~~~
+   |                                       ++
 
 warning: elided lifetime has a name
   --> $DIR/self_lifetime.rs:13:46
@@ -21,7 +21,7 @@ LL |     fn bar<'a>(self: &Alias, arg: &'a ()) -> &() { arg }
 help: consider specifying it explicitly
    |
 LL |     fn bar<'a>(self: &Alias, arg: &'a ()) -> &'a () { arg }
-   |                                              ~~~
+   |                                               ++
 
 warning: 2 warnings emitted
 

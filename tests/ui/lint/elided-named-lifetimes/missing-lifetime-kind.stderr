@@ -14,7 +14,7 @@ LL | #![deny(elided_named_lifetimes)]
 help: consider specifying it explicitly
    |
 LL | fn ampersand<'a>(x: &'a u8) -> &'a u8 {
-   |                                ~~~
+   |                                 ++
 
 error: elided lifetime has a name
   --> $DIR/missing-lifetime-kind.rs:10:31
@@ -27,7 +27,7 @@ LL | fn brackets<'a>(x: &'a u8) -> Brackets {
 help: consider specifying it explicitly
    |
 LL | fn brackets<'a>(x: &'a u8) -> Brackets<'a> {
-   |                               ~~~~~~~~~~~~
+   |                                       ++++
 
 error: elided lifetime has a name
   --> $DIR/missing-lifetime-kind.rs:17:33
@@ -40,7 +40,7 @@ LL | fn comma<'a>(x: &'a u8) -> Comma<u8> {
 help: consider specifying it explicitly
    |
 LL | fn comma<'a>(x: &'a u8) -> Comma<'a, u8> {
-   |                                 ~~~~
+   |                                  +++
 
 error: elided lifetime has a name
   --> $DIR/missing-lifetime-kind.rs:22:34

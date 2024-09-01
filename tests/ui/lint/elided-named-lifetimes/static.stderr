@@ -12,7 +12,7 @@ LL | #![deny(elided_named_lifetimes)]
 help: consider specifying it explicitly
    |
 LL | fn ampersand(x: &'static u8) -> &'static u8 {
-   |                                 ~~~~~~~~
+   |                                  +++++++
 
 error: elided lifetime has a name
   --> $DIR/static.rs:23:32
@@ -23,7 +23,7 @@ LL | fn brackets(x: &'static u8) -> Brackets {
 help: consider specifying it explicitly
    |
 LL | fn brackets(x: &'static u8) -> Brackets<'static> {
-   |                                ~~~~~~~~~~~~~~~~~
+   |                                        +++++++++
 
 error: elided lifetime has a name
   --> $DIR/static.rs:30:34
@@ -34,7 +34,7 @@ LL | fn comma(x: &'static u8) -> Comma<u8> {
 help: consider specifying it explicitly
    |
 LL | fn comma(x: &'static u8) -> Comma<'static, u8> {
-   |                                  ~~~~~~~~~
+   |                                   ++++++++
 
 error: elided lifetime has a name
   --> $DIR/static.rs:35:35

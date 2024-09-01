@@ -8,7 +8,7 @@ LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = 
 help: consider specifying it explicitly
    |
 LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = (u32, &'a u32)> {
-   |                                                                                  ~~~
+   |                                                                                   ++
 
 warning: 1 warning emitted
 

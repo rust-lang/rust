@@ -255,8 +255,7 @@ lint_duplicate_matcher_binding = duplicate matcher binding
 lint_elided_named_lifetime = elided lifetime has a name
     .label_elided = this elided lifetime gets resolved as `{$name}`
     .label_named = lifetime `{$name}` declared here
-
-lint_elided_named_lifetime_suggestion = consider specifying it explicitly
+    .suggestion = consider specifying it explicitly
 
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type

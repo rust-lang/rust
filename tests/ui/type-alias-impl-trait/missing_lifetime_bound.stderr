@@ -10,7 +10,7 @@ LL | fn defining<'a, T>(x: &'a i32) -> Opaque<T> { x }
 help: consider specifying it explicitly
    |
 LL | fn defining<'a, T>(x: &'a i32) -> Opaque<'a, T> { x }
-   |                                         ~~~~
+   |                                          +++
 
 error[E0700]: hidden type for `Opaque2<T>` captures lifetime that does not appear in bounds
   --> $DIR/missing_lifetime_bound.rs:5:47

@@ -8,7 +8,7 @@ LL |     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<N>>::Ta
 help: consider specifying it explicitly
    |
 LL |     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<'a, N>>::Target
-   |                                                                    ~~~~
+   |                                                                     +++
 
 warning: 1 warning emitted
 

@@ -134,7 +134,7 @@ LL | fn resolved_anonymous<'a, T: 'a>(f: impl Fn(&'a str) -> &T) {
 help: consider specifying it explicitly
    |
 LL | fn resolved_anonymous<'a, T: 'a>(f: impl Fn(&'a str) -> &'a T) {
-   |                                                         ~~~
+   |                                                          ++
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:6:35

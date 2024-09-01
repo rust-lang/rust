@@ -7,7 +7,6 @@ use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
     elided_lifetime_in_path_suggestion, Applicability, Diag, DiagArgValue, LintDiagnostic,
 };
-use rustc_hir::MissingLifetimeKind;
 use rustc_middle::middle::stability;
 use rustc_session::lint::{BuiltinLintDiag, ElidedLifetimeResolution};
 use rustc_session::Session;
@@ -15,7 +14,6 @@ use rustc_span::symbol::kw;
 use rustc_span::BytePos;
 use tracing::debug;
 
-use crate::fluent_generated;
 use crate::lints::{self, ElidedNamedLifetime};
 
 mod check_cfg;
@@ -445,31 +443,15 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)
         }
         BuiltinLintDiag::ElidedNamedLifetimes { elided: (span, kind), resolution } => {
-            let (name, named_declaration) = match resolution {
-                ElidedLifetimeResolution::Static => (kw::StaticLifetime, None),
-                ElidedLifetimeResolution::Param(name, declaration) => (name, Some(declaration)),
-            };
-            ElidedNamedLifetime { span, name, named_declaration }.decorate_lint(diag);
-
-            let (applicability, suggestion) = match kind {
-                MissingLifetimeKind::Underscore => {
-                    (Applicability::MachineApplicable, format!("{name}"))
+            match resolution {
+                ElidedLifetimeResolution::Static => {
+                    ElidedNamedLifetime { span, kind, name: kw::StaticLifetime, declaration: None }
                 }
-                MissingLifetimeKind::Ampersand => {
-                    (Applicability::MachineApplicable, format!("&{name} "))
+                ElidedLifetimeResolution::Param(name, declaration) => {
+                    ElidedNamedLifetime { span, kind, name, declaration: Some(declaration) }
                 }
-                MissingLifetimeKind::Comma => (Applicability::Unspecified, format!("<{name}, ")),
-                MissingLifetimeKind::Brackets => (
-                    Applicability::Unspecified,
-                    format!("{}<{name}>", sess.source_map().span_to_snippet(span).unwrap()),
-                ),
-            };
-            diag.span_suggestion_verbose(
-                span,
-                fluent_generated::lint_elided_named_lifetime_suggestion,
-                suggestion,
-                applicability,
-            );
+            }
+            .decorate_lint(diag)
         }
     }
 }

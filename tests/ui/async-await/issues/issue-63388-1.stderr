@@ -11,7 +11,7 @@ LL |     ) -> &dyn Foo
 help: consider specifying it explicitly
    |
 LL |     ) -> &'a dyn Foo
-   |          ~~~
+   |           ++
 
 error[E0621]: explicit lifetime required in the type of `foo`
   --> $DIR/issue-63388-1.rs:13:5

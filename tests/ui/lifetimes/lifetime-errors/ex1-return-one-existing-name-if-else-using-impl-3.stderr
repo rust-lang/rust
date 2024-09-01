@@ -10,7 +10,7 @@ LL |   fn foo<'a>(&'a self, x: &i32) -> &i32 {
 help: consider specifying it explicitly
    |
 LL |   fn foo<'a>(&'a self, x: &i32) -> &'a i32 {
-   |                                    ~~~
+   |                                     ++
 
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/ex1-return-one-existing-name-if-else-using-impl-3.rs:9:36

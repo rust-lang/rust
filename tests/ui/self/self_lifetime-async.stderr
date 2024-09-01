@@ -10,7 +10,7 @@ LL |     async fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
 help: consider specifying it explicitly
    |
 LL |     async fn foo<'b>(self: &'b Foo<'a>) -> &'b () { self.0 }
-   |                                            ~~~
+   |                                             ++
 
 warning: elided lifetime has a name
   --> $DIR/self_lifetime-async.rs:12:52
@@ -21,7 +21,7 @@ LL |     async fn bar<'a>(self: &Alias, arg: &'a ()) -> &() { arg }
 help: consider specifying it explicitly
    |
 LL |     async fn bar<'a>(self: &Alias, arg: &'a ()) -> &'a () { arg }
-   |                                                    ~~~
+   |                                                     ++
 
 warning: 2 warnings emitted
 
