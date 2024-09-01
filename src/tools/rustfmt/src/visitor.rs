@@ -547,14 +547,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                             _ => visit::FnCtxt::Foreign,
                         };
                         self.visit_fn(
-                            visit::FnKind::Fn(
-                                fn_ctxt,
-                                item.ident,
-                                sig,
-                                &item.vis,
-                                generics,
-                                body,
-                            ),
+                            visit::FnKind::Fn(fn_ctxt, item.ident, sig, &item.vis, generics, body),
                             &sig.decl,
                             item.span,
                             defaultness,

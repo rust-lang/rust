@@ -3441,14 +3441,7 @@ impl Rewrite for ast::ForeignItem {
                     let inner_attrs = inner_attributes(&self.attrs);
                     let fn_ctxt = visit::FnCtxt::Foreign;
                     visitor.visit_fn(
-                        visit::FnKind::Fn(
-                            fn_ctxt,
-                            self.ident,
-                            sig,
-                            &self.vis,
-                            generics,
-                            body,
-                        ),
+                        visit::FnKind::Fn(fn_ctxt, self.ident, sig, &self.vis, generics, body),
                         &sig.decl,
                         self.span,
                         defaultness,
