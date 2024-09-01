@@ -15,80 +15,6 @@ use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
 
-macro_rules! mutability_dependent {
-    ($($lf: lifetime)?) => {
-        fn visit_stmt(&mut self, s: &'ast Stmt) -> Self::Result {
-            walk_stmt(self, s)
-        }
-    };
-    (mut $($lf: lifetime)?) => {
-        // Methods in this trait have one of three forms:
-        //
-        //   fn visit_t(&mut self, t: &mut T);                      // common
-        //   fn flat_map_t(&mut self, t: T) -> SmallVec<[T; 1]>;    // rare
-        //   fn filter_map_t(&mut self, t: T) -> Option<T>;         // rarest
-        //
-        // Any additions to this trait should happen in form of a call to a public
-        // `noop_*` function that only calls out to the visitor again, not other
-        // `noop_*` functions. This is a necessary API workaround to the problem of
-        // not being able to call out to the super default method in an overridden
-        // default method.
-        //
-        // When writing these methods, it is better to use destructuring like this:
-        //
-        //   fn visit_abc(&mut self, ABC { a, b, c: _ }: &mut ABC) {
-        //       visit_a(a);
-        //       visit_b(b);
-        //   }
-        //
-        // than to use field access like this:
-        //
-        //   fn visit_abc(&mut self, abc: &mut ABC) {
-        //       visit_a(&mut abc.a);
-        //       visit_b(&mut abc.b);
-        //       // ignore abc.c
-        //   }
-        //
-        // As well as being more concise, the former is explicit about which fields
-        // are skipped. Furthermore, if a new field is added, the destructuring
-        // version will cause a compile error, which is good. In comparison, the
-        // field access version will continue working and it would be easy to
-        // forget to add handling for it.
-
-        fn visit_meta_list_item(&mut self, list_item: &mut MetaItemInner) {
-            walk_meta_list_item(self, list_item);
-        }
-
-        fn visit_meta_item(&mut self, meta_item: &mut MetaItem) {
-            walk_meta_item(self, meta_item);
-        }
-
-        fn flat_map_assoc_item(
-            &mut self,
-            i: P<AssocItem>,
-            ctxt: AssocCtxt,
-        ) -> SmallVec<[P<AssocItem>; 1]> {
-            walk_flat_map_assoc_item(self, i, ctxt)
-        }
-
-        fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
-            walk_flat_map_stmt(self, s)
-        }
-
-        fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
-            noop_filter_map_expr(self, e)
-        }
-
-        fn visit_id(&mut self, _id: &mut NodeId) {
-            // Do nothing.
-        }
-
-        fn visit_span(&mut self, _sp: &mut Span) {
-            // Do nothing.
-        }
-    };
-}
-
 macro_rules! mutability_helpers {
     () => {
         macro_rules! if_mut_ty {
@@ -319,6 +245,47 @@ macro_rules! make_ast_visitor {
             }
         }
 
+        macro_rules! mutability_dependent {
+            () => {
+                fn visit_stmt(&mut self, s: ref_t!(Stmt)) -> result!() {
+                    walk_stmt(self, s)
+                }
+            };
+            (mut) => {
+                fn visit_id(&mut self, _id: ref_t!(NodeId)) -> result!() {
+                    // Do nothing.
+                }
+
+                fn visit_span(&mut self, _sp: ref_t!(Span)) -> result!() {
+                    // Do nothing.
+                }
+
+                fn visit_meta_list_item(&mut self, list_item: ref_t!(MetaItemInner)) -> result!() {
+                    walk_meta_list_item(self, list_item)
+                }
+
+                fn visit_meta_item(&mut self, meta_item: ref_t!(MetaItem)) -> result!() {
+                    walk_meta_item(self, meta_item);
+                }
+
+                fn flat_map_assoc_item(
+                    &mut self,
+                    i: P!(AssocItem),
+                    ctxt: AssocCtxt,
+                ) -> SmallVec<[P!(AssocItem); 1]> {
+                    walk_flat_map_assoc_item(self, i, ctxt)
+                }
+
+                fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
+                    walk_flat_map_stmt(self, s)
+                }
+
+                fn filter_map_expr(&mut self, e: P!(Expr)) -> Option<P!(Expr)> {
+                    noop_filter_map_expr(self, e)
+                }
+            };
+        }
+
         /// Each method of the `Visitor` trait is a hook to be potentially
         /// overridden. Each method's default implementation recursively visits
         /// the substructure of the input via the corresponding `walk` method;
@@ -329,6 +296,42 @@ macro_rules! make_ast_visitor {
         /// to monitor future changes to `Visitor` in case a new method with a
         /// new default implementation gets introduced.)
         pub trait $trait$(<$lt>)?: Sized {
+            // Methods in the immutable version of trait have the form:
+            //
+            //   fn visit_t(&mut self, t: ref_t!(T)) -> result!();
+            //
+            // Meanwhile the mutable version also has methods of the form:
+            //
+            //   fn flat_map_t(&mut self, t: T) -> SmallVec<[T; 1]>;
+            //   fn filter_map_t(&mut self, t: T) -> Option<T>;
+            //
+            // Any additions to this trait should happen in form of a call to a public
+            // `walk_*` function that only calls out to the visitor again, not other
+            // `walk_*` functions. This is a necessary API workaround to the problem of
+            // not being able to call out to the super default method in an overridden
+            // default method.
+            //
+            // When writing these methods, it is better to use destructuring like this:
+            //
+            //   fn visit_abc(&mut self, ABC { a, b, c: _ }: &mut ABC) {
+            //       visit_a(a);
+            //       visit_b(b);
+            //   }
+            //
+            // than to use field access like this:
+            //
+            //   fn visit_abc(&mut self, abc: &mut ABC) {
+            //       visit_a(&mut abc.a);
+            //       visit_b(&mut abc.b);
+            //       // ignore abc.c
+            //   }
+            //
+            // As well as being more concise, the former is explicit about which fields
+            // are skipped. Furthermore, if a new field is added, the destructuring
+            // version will cause a compile error, which is good. In comparison, the
+            // field access version will continue working and it would be easy to
+            // forget to add handling for it.
+
             if_mut_item!{
                 /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
                 /// used otherwise. Token visitor would be entirely separate from the regular visitor if
@@ -340,7 +343,7 @@ macro_rules! make_ast_visitor {
                 type Result: VisitorResult = ();
             }
 
-            mutability_dependent!{$($mut)? $($lt)?}
+            mutability_dependent!{$($mut)?}
 
             make_visit!{Crate, visit_crate, walk_crate}
             make_visit!{AnonConst, visit_anon_const, walk_anon_const}
