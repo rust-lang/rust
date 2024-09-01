@@ -441,6 +441,17 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # struct X;
+    /// impl X {
+    ///     fn as_str(&self) -> &'static str {
+    ///         // ..
+    /// # ""
+    ///     }
+    /// }
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub WRONG_SELF_CONVENTION,
     style,
