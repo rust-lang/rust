@@ -637,7 +637,8 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
         "https://github.com/BurntSushi/memchr",
         "https://github.com/dtolnay/itoa",
         "https://github.com/rust-lang/cfg-if",
-        "https://github.com/rust-lang-nursery/lazy-static.rs",
+        //"https://github.com/rust-lang-nursery/lazy-static.rs", // TODO: re-enable when the
+        //failing test is fixed upstream.
         //"https://github.com/marshallpierce/rust-base64", // FIXME: one test is OOM-killed.
         // TODO: ignore the base64 test that is OOM-killed.
         "https://github.com/time-rs/time",

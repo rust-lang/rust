@@ -386,6 +386,7 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
             cx.declare_global_with_linkage(sym, cx.type_i8(), base::global_linkage_to_gcc(linkage));
 
         if linkage == Linkage::ExternalWeak {
+            #[cfg(feature = "master")]
             global1.add_attribute(VarAttribute::Weak);
         }
 
