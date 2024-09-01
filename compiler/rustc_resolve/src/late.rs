@@ -1010,7 +1010,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             this.in_func_body = previous_state;
                         }
                     }
-                    FnKind::Closure(binder, declaration, body) => {
+                    FnKind::Closure(binder, _, declaration, body) => {
                         this.visit_closure_binder(binder);
 
                         this.with_lifetime_rib(
