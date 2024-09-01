@@ -900,7 +900,7 @@ make_backup = false
             Config::default_with_style_edition(style_edition)
                 .all_options()
                 .to_toml()
-                .unwrap();
+                .unwrap()
         };
         let edition2015 = get_edition_toml(StyleEdition::Edition2015);
         let edition2018 = get_edition_toml(StyleEdition::Edition2018);
