@@ -112,9 +112,7 @@ macro_rules! visit_list {
         if_mut_expr!(
             $list.flat_map_in_place(|x| $visitor.$flat_map(x $(, $($arg),*)?))
         ,
-            for elem in $list {
-                try_v!($visitor.$visit(elem $(, $($arg),*)?));
-            }
+            visit_list!($visitor, $visit, $list $(; $($arg),*)?)
         )
     };
     ($visitor: expr, $visit: ident, $list: expr $(; $($arg: expr),*)?) => {
