@@ -837,7 +837,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided(kind))
             }
-            LifetimeRes::Static | LifetimeRes::Error => return None,
+            LifetimeRes::Static { .. } | LifetimeRes::Error => return None,
             res => panic!(
                 "Unexpected lifetime resolution {:?} for {:?} at {:?}",
                 res, ident, ident.span
@@ -1656,7 +1656,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
 
                 // Opaques do not capture `'static`
-                LifetimeRes::Static | LifetimeRes::Error => {
+                LifetimeRes::Static { .. } | LifetimeRes::Error => {
                     continue;
                 }
 
@@ -2069,7 +2069,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::LifetimeName::Param(param)
             }
             LifetimeRes::Infer => hir::LifetimeName::Infer,
-            LifetimeRes::Static => hir::LifetimeName::Static,
+            LifetimeRes::Static { .. } => hir::LifetimeName::Static,
             LifetimeRes::Error => hir::LifetimeName::Error,
             res => panic!(
                 "Unexpected lifetime resolution {:?} for {:?} at {:?}",
