@@ -209,7 +209,7 @@ impl ChainItemKind {
     fn is_tup_field_access(expr: &ast::Expr) -> bool {
         match expr.kind {
             ast::ExprKind::Field(_, ref field) => {
-                field.name.to_string().chars().all(|c| c.is_digit(10))
+                field.name.as_str().chars().all(|c| c.is_digit(10))
             }
             _ => false,
         }
