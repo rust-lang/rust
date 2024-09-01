@@ -250,7 +250,7 @@ pub(crate) fn parse(
                 }
             }
             ArgRef::Name(name, span) => {
-                let name = Name::new(name, tt::IdentIsRaw::No, call_ctx);
+                let name = Name::new(name, call_ctx);
                 if let Some((index, _)) = args.by_name(&name) {
                     record_usage(name, span);
                     // Name found in `args`, so we resolve it to its index.

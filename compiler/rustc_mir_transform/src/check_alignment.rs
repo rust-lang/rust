@@ -5,6 +5,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
+use tracing::{debug, trace};
 
 pub struct CheckAlignment;
 

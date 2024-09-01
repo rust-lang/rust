@@ -13,6 +13,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
+use tracing::instrument;
 
 use super::delegate::SolverDelegate;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};

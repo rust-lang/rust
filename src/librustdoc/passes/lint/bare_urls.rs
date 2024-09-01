@@ -9,6 +9,7 @@ use pulldown_cmark::{Event, Parser, Tag};
 use regex::Regex;
 use rustc_errors::Applicability;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
+use tracing::trace;
 
 use crate::clean::*;
 use crate::core::DocContext;

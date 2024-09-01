@@ -8,6 +8,7 @@ use hir_expand::name::Name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
+use span::Edition;
 use stdx::{format_to, TupleExt};
 use syntax::ToSmolStr;
 use triomphe::Arc;
@@ -66,7 +67,12 @@ impl ImportMap {
         for (k, v) in self.item_to_info_map.iter() {
             format_to!(out, "{:?} ({:?}) -> ", k, v.1);
             for v in &v.0 {
-                format_to!(out, "{}:{:?}, ", v.name.display(db.upcast()), v.container);
+                format_to!(
+                    out,
+                    "{}:{:?}, ",
+                    v.name.display(db.upcast(), Edition::CURRENT),
+                    v.container
+                );
             }
             format_to!(out, "\n");
         }
@@ -83,7 +89,7 @@ impl ImportMap {
             // We've only collected items, whose name cannot be tuple field so unwrapping is fine.
             .flat_map(|(&item, (info, _))| {
                 info.iter().enumerate().map(move |(idx, info)| {
-                    (item, info.name.display(db.upcast()).to_smolstr(), idx as u32)
+                    (item, info.name.unescaped().display(db.upcast()).to_smolstr(), idx as u32)
                 })
             })
             .collect();
@@ -461,7 +467,7 @@ fn search_maps(
                     query.search_mode.check(
                         &query.query,
                         query.case_sensitive,
-                        &info.name.display(db.upcast()).to_smolstr(),
+                        &info.name.unescaped().display(db.upcast()).to_smolstr(),
                     )
                 });
             res.extend(iter.map(TupleExt::head));
@@ -577,7 +583,7 @@ mod tests {
         Some(format!(
             "{}::{}",
             render_path(db, &trait_info[0]),
-            assoc_item_name.display(db.upcast())
+            assoc_item_name.display(db.upcast(), Edition::CURRENT)
         ))
     }
 
@@ -616,7 +622,7 @@ mod tests {
             module = parent;
         }
 
-        segments.iter().rev().map(|it| it.display(db.upcast())).join("::")
+        segments.iter().rev().map(|it| it.display(db.upcast(), Edition::CURRENT)).join("::")
     }
 
     #[test]

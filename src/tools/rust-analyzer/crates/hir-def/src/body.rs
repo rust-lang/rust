@@ -14,7 +14,7 @@ use hir_expand::{name::Name, ExpandError, InFile};
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::MacroFileId;
+use span::{Edition, MacroFileId};
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 use triomphe::Arc;
 
@@ -201,8 +201,13 @@ impl Body {
         self.block_scopes.iter().map(move |&block| (block, db.block_def_map(block)))
     }
 
-    pub fn pretty_print(&self, db: &dyn DefDatabase, owner: DefWithBodyId) -> String {
-        pretty::print_body_hir(db, self, owner)
+    pub fn pretty_print(
+        &self,
+        db: &dyn DefDatabase,
+        owner: DefWithBodyId,
+        edition: Edition,
+    ) -> String {
+        pretty::print_body_hir(db, self, owner, edition)
     }
 
     pub fn pretty_print_expr(
@@ -210,8 +215,9 @@ impl Body {
         db: &dyn DefDatabase,
         owner: DefWithBodyId,
         expr: ExprId,
+        edition: Edition,
     ) -> String {
-        pretty::print_expr_hir(db, self, owner, expr)
+        pretty::print_expr_hir(db, self, owner, expr, edition)
     }
 
     fn new(

@@ -10,6 +10,7 @@ use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::DUMMY_SP;
+use tracing::{debug, info, instrument};
 
 use super::NoSolution;
 use crate::error_reporting::traits::OverflowCause;

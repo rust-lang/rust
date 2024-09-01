@@ -31,6 +31,7 @@ pub fn with_placeholders(args: Vec<Arg>) -> Vec<String> {
         .collect()
 }
 
+// FIXME Remove this, we have this information in the HIR now
 /// Parser for a format-like string. It is more allowing in terms of string contents,
 /// as we expect variable placeholders to be filled with expressions.
 ///

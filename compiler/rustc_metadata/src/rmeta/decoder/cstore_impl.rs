@@ -32,10 +32,17 @@ trait ProcessQueryValue<'tcx, T> {
     fn process_decoded(self, _tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> T;
 }
 
-impl<T> ProcessQueryValue<'_, Option<T>> for Option<T> {
+impl<T> ProcessQueryValue<'_, T> for T {
     #[inline(always)]
-    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<T> {
+    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> T {
         self
+    }
+}
+
+impl<'tcx, T> ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, T>> for T {
+    #[inline(always)]
+    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> ty::EarlyBinder<'tcx, T> {
+        ty::EarlyBinder::bind(self)
     }
 }
 
@@ -66,6 +73,24 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
     #[inline(always)]
     fn process_decoded(self, tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> &'tcx [T] {
         if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { &[] }
+    }
+}
+
+impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
+    ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, &'tcx [T]>>
+    for Option<DecodeIterator<'a, 'tcx, T>>
+{
+    #[inline(always)]
+    fn process_decoded(
+        self,
+        tcx: TyCtxt<'tcx>,
+        _err: impl Fn() -> !,
+    ) -> ty::EarlyBinder<'tcx, &'tcx [T]> {
+        ty::EarlyBinder::bind(if let Some(iter) = self {
+            tcx.arena.alloc_from_iter(iter)
+        } else {
+            &[]
+        })
     }
 }
 
@@ -103,7 +128,12 @@ macro_rules! provide_one {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
                 let lazy = $cdata.root.tables.$name.get($cdata, $def_id.index);
-                if lazy.is_default() { &[] } else { $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx))) }
+                let value = if lazy.is_default() {
+                    &[] as &[_]
+                } else {
+                    $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)))
+                };
+                value.process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }
     };
@@ -212,15 +242,15 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
 }
 
 provide! { tcx, def_id, other, cdata,
-    explicit_item_bounds => { cdata.get_explicit_item_bounds(def_id.index, tcx) }
-    explicit_item_super_predicates => { cdata.get_explicit_item_super_predicates(def_id.index, tcx) }
+    explicit_item_bounds => { table_defaulted_array }
+    explicit_item_super_predicates => { table_defaulted_array }
     explicit_predicates_of => { table }
     generics_of => { table }
     inferred_outlives_of => { table_defaulted_array }
     explicit_super_predicates_of => { table }
     explicit_implied_predicates_of => { table }
     type_of => { table }
-    type_alias_is_lazy => { cdata.root.tables.type_alias_is_lazy.get(cdata, def_id.index) }
+    type_alias_is_lazy => { table_direct }
     variances_of => { table }
     fn_sig => { table }
     codegen_fn_attrs => { table }
@@ -241,7 +271,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    unused_generic_params => { cdata.root.tables.unused_generic_params.get(cdata, def_id.index) }
+    unused_generic_params => { table_direct }
     def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
     defaultness => { table_direct }
@@ -287,9 +317,7 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
 
-    associated_type_for_effects => {
-        table
-    }
+    associated_type_for_effects => { table }
     associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
 
     visibility => { cdata.get_visibility(def_id.index) }
@@ -310,7 +338,7 @@ provide! { tcx, def_id, other, cdata,
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
-    cross_crate_inlinable => { cdata.cross_crate_inlinable(def_id.index) }
+    cross_crate_inlinable => { table_direct }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_private_dep => { cdata.private_dep }

@@ -10,6 +10,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{sym, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
+use tracing::debug;
 
 use crate::errors::DumpVTableEntries;
 use crate::traits::{impossible_predicates, is_vtable_safe_method};
@@ -120,8 +121,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
 
             let mut direct_super_traits_iter = tcx
                 .explicit_super_predicates_of(inner_most_trait_ref.def_id())
-                .predicates
-                .into_iter()
+                .iter_identity_copied()
                 .filter_map(move |(pred, _)| {
                     pred.instantiate_supertrait(tcx, inner_most_trait_ref).as_trait_clause()
                 });

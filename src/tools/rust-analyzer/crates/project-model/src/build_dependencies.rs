@@ -19,8 +19,8 @@ use serde::Deserialize;
 use toolchain::Tool;
 
 use crate::{
-    utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
-    InvocationStrategy, ManifestPath, Package, Sysroot, TargetKind,
+    utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationStrategy, ManifestPath,
+    Package, Sysroot, TargetKind,
 };
 
 /// Output of the build script and proc-macro building steps for a workspace.
@@ -63,10 +63,7 @@ impl WorkspaceBuildScripts {
         progress: &dyn Fn(String),
         sysroot: &Sysroot,
     ) -> io::Result<WorkspaceBuildScripts> {
-        let current_dir = match &config.invocation_location {
-            InvocationLocation::Root(root) if config.run_build_script_command.is_some() => root,
-            _ => workspace.workspace_root(),
-        };
+        let current_dir = workspace.workspace_root();
 
         let allowed_features = workspace.workspace_features();
         let cmd = Self::build_command(
@@ -85,25 +82,16 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         workspaces: &[&CargoWorkspace],
         progress: &dyn Fn(String),
-        workspace_root: &AbsPathBuf,
+        working_directory: &AbsPathBuf,
     ) -> io::Result<Vec<WorkspaceBuildScripts>> {
         assert_eq!(config.invocation_strategy, InvocationStrategy::Once);
 
-        let current_dir = match &config.invocation_location {
-            InvocationLocation::Root(root) => root,
-            InvocationLocation::Workspace => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Cannot run build scripts from workspace with invocation strategy `once`",
-                ))
-            }
-        };
         let cmd = Self::build_command(
             config,
             &Default::default(),
             // This is not gonna be used anyways, so just construct a dummy here
-            &ManifestPath::try_from(workspace_root.clone()).unwrap(),
-            current_dir,
+            &ManifestPath::try_from(working_directory.clone()).unwrap(),
+            working_directory,
             &Sysroot::empty(),
         )?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and

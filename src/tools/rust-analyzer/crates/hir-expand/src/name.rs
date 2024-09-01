@@ -3,22 +3,22 @@
 use std::fmt;
 
 use intern::{sym, Symbol};
-use span::SyntaxContextId;
-use syntax::{ast, utils::is_raw_identifier};
+use span::{Edition, SyntaxContextId};
+use syntax::ast;
+use syntax::utils::is_raw_identifier;
 
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
 /// not there yet!
 ///
-/// Note that `Name` holds and prints escaped name i.e. prefixed with "r#" when it
-/// is a raw identifier. Use [`unescaped()`][Name::unescaped] when you need the
-/// name without "r#".
+/// Note that the rawness (`r#`) of names does not depend on whether they are written raw.
+/// This is because we want to show (in completions etc.) names as raw depending on the needs
+/// of the current crate, for example if it is edition 2021 complete `gen` even if the defining
+/// crate is in edition 2024 and wrote `r#gen`, and the opposite holds as well.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     symbol: Symbol,
     ctx: (),
-    // FIXME: We should probably encode rawness as a property here instead, once we have hygiene
-    // in here we've got 4 bytes of padding to fill anyways
 }
 
 impl fmt::Debug for Name {
@@ -42,6 +42,7 @@ impl PartialOrd for Name {
     }
 }
 
+// No need to strip `r#`, all comparisons are done against well-known symbols.
 impl PartialEq<Symbol> for Name {
     fn eq(&self, sym: &Symbol) -> bool {
         self.symbol == *sym
@@ -55,16 +56,16 @@ impl PartialEq<Name> for Symbol {
 }
 
 /// Wrapper of `Name` to print the name without "r#" even when it is a raw identifier.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnescapedName<'a>(&'a Name);
 
-impl UnescapedName<'_> {
-    pub fn display(&self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + '_ {
+impl<'a> UnescapedName<'a> {
+    pub fn display(self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
         _ = db;
         UnescapedDisplay { name: self }
     }
     #[doc(hidden)]
-    pub fn display_no_db(&self) -> impl fmt::Display + '_ {
+    pub fn display_no_db(self) -> impl fmt::Display + 'a {
         UnescapedDisplay { name: self }
     }
 }
@@ -77,16 +78,9 @@ impl Name {
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
-    pub fn new(text: &str, raw: tt::IdentIsRaw, ctx: SyntaxContextId) -> Name {
+    pub fn new(text: &str, ctx: SyntaxContextId) -> Name {
         _ = ctx;
-        Name {
-            symbol: if raw.yes() {
-                Symbol::intern(&format!("{}{text}", raw.as_str()))
-            } else {
-                Symbol::intern(text)
-            },
-            ctx: (),
-        }
+        Self::new_text(text)
     }
 
     pub fn new_tuple_field(idx: usize) -> Name {
@@ -97,23 +91,9 @@ impl Name {
         Name { symbol: Symbol::intern(lt.text().as_str()), ctx: () }
     }
 
-    /// Shortcut to create a name from a string literal.
-    fn new_ref(text: &str) -> Name {
-        Name { symbol: Symbol::intern(text), ctx: () }
-    }
-
     /// Resolve a name from the text of token.
     fn resolve(raw_text: &str) -> Name {
-        match raw_text.strip_prefix("r#") {
-            // When `raw_text` starts with "r#" but the name does not coincide with any
-            // keyword, we never need the prefix so we strip it.
-            Some(text) if !is_raw_identifier(text) => Name::new_ref(text),
-            // Keywords (in the current edition) *can* be used as a name in earlier editions of
-            // Rust, e.g. "try" in Rust 2015. Even in such cases, we keep track of them in their
-            // escaped form.
-            None if is_raw_identifier(raw_text) => Name::new_text(&format!("r#{}", raw_text)),
-            _ => Name::new_text(raw_text),
-        }
+        Name::new_text(raw_text.trim_start_matches("r#"))
     }
 
     /// A fake name for things missing in the source code.
@@ -159,19 +139,23 @@ impl Name {
         UnescapedName(self)
     }
 
-    pub fn is_escaped(&self) -> bool {
-        self.symbol.as_str().starts_with("r#")
+    pub fn is_escaped(&self, edition: Edition) -> bool {
+        is_raw_identifier(self.symbol.as_str(), edition)
     }
 
-    pub fn display<'a>(&'a self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
+    pub fn display<'a>(
+        &'a self,
+        db: &dyn crate::db::ExpandDatabase,
+        edition: Edition,
+    ) -> impl fmt::Display + 'a {
         _ = db;
-        Display { name: self }
+        self.display_no_db(edition)
     }
 
     // FIXME: Remove this
     #[doc(hidden)]
-    pub fn display_no_db(&self) -> impl fmt::Display + '_ {
-        Display { name: self }
+    pub fn display_no_db(&self, edition: Edition) -> impl fmt::Display + '_ {
+        Display { name: self, needs_escaping: is_raw_identifier(self.symbol.as_str(), edition) }
     }
 
     pub fn symbol(&self) -> &Symbol {
@@ -183,39 +167,39 @@ impl Name {
         Self { symbol, ctx: () }
     }
 
-    pub fn new_symbol_maybe_raw(sym: Symbol, raw: tt::IdentIsRaw, ctx: SyntaxContextId) -> Self {
-        if raw.no() {
-            Self { symbol: sym, ctx: () }
-        } else {
-            Name::new(sym.as_str(), raw, ctx)
-        }
-    }
-
     // FIXME: This needs to go once we have hygiene
     pub const fn new_symbol_root(sym: Symbol) -> Self {
         Self { symbol: sym, ctx: () }
+    }
+
+    #[inline]
+    pub fn eq_ident(&self, ident: &str) -> bool {
+        self.as_str() == ident.trim_start_matches("r#")
     }
 }
 
 struct Display<'a> {
     name: &'a Name,
+    needs_escaping: bool,
 }
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.needs_escaping {
+            write!(f, "r#")?;
+        }
         fmt::Display::fmt(self.name.symbol.as_str(), f)
     }
 }
 
 struct UnescapedDisplay<'a> {
-    name: &'a UnescapedName<'a>,
+    name: UnescapedName<'a>,
 }
 
 impl fmt::Display for UnescapedDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let symbol = &self.name.0.symbol.as_str();
-        let text = symbol.strip_prefix("r#").unwrap_or(symbol);
-        fmt::Display::fmt(&text, f)
+        let symbol = self.name.0.symbol.as_str();
+        fmt::Display::fmt(symbol, f)
     }
 }
 

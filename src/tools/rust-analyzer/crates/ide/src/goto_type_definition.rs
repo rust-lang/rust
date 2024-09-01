@@ -1,4 +1,4 @@
-use hir::{DescendPreference, GenericParam};
+use hir::GenericParam;
 use ide_db::{base_db::Upcast, defs::Definition, helpers::pick_best_token, RootDatabase};
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
 
@@ -69,7 +69,7 @@ pub(crate) fn goto_type_definition(
     }
 
     let range = token.text_range();
-    sema.descend_into_macros(DescendPreference::None, token)
+    sema.descend_into_macros(token)
         .into_iter()
         .filter_map(|token| {
             let ty = sema

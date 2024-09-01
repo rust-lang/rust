@@ -57,6 +57,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, FileName, RealFileName, DUMMY_SP};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
+use tracing::{debug, info};
 
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};

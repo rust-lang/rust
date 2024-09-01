@@ -131,7 +131,7 @@ pub(super) mod token_stream {
                 call_site,
                 src,
             )
-            .ok_or("lexing error")?;
+            .ok_or_else(|| format!("lexing error: {src}"))?;
 
             Ok(TokenStream::with_subtree(subtree))
         }

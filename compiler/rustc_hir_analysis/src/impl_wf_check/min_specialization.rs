@@ -77,6 +77,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, translate_args_with_cause, wf, ObligationCtxt};
+use tracing::{debug, instrument};
 
 use crate::errors::GenericArgsOnOverriddenImpl;
 use crate::{constrained_generic_params as cgp, errors};

@@ -51,6 +51,7 @@ use rustc_mir_dataflow::lattice::HasBottom;
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{TagEncoding, Variants};
+use tracing::{debug, instrument, trace};
 
 use crate::cost_checker::CostChecker;
 
@@ -191,26 +192,26 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
 
     /// Recursion entry point to find threading opportunities.
     #[instrument(level = "trace", skip(self))]
-    fn start_from_switch(&mut self, bb: BasicBlock) -> Option<!> {
+    fn start_from_switch(&mut self, bb: BasicBlock) {
         let bbdata = &self.body[bb];
         if bbdata.is_cleanup || self.loop_headers.contains(bb) {
-            return None;
+            return;
         }
-        let (discr, targets) = bbdata.terminator().kind.as_switch()?;
-        let discr = discr.place()?;
+        let Some((discr, targets)) = bbdata.terminator().kind.as_switch() else { return };
+        let Some(discr) = discr.place() else { return };
         debug!(?discr, ?bb);
 
         let discr_ty = discr.ty(self.body, self.tcx).ty;
-        let discr_layout = self.ecx.layout_of(discr_ty).ok()?;
+        let Ok(discr_layout) = self.ecx.layout_of(discr_ty) else { return };
 
-        let discr = self.map.find(discr.as_ref())?;
+        let Some(discr) = self.map.find(discr.as_ref()) else { return };
         debug!(?discr);
 
         let cost = CostChecker::new(self.tcx, self.param_env, None, self.body);
         let mut state = State::new_reachable();
 
         let conds = if let Some((value, then, else_)) = targets.as_static_if() {
-            let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
+            let Some(value) = ScalarInt::try_from_uint(value, discr_layout.size) else { return };
             self.arena.alloc_from_iter([
                 Condition { value, polarity: Polarity::Eq, target: then },
                 Condition { value, polarity: Polarity::Ne, target: else_ },
@@ -225,7 +226,6 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         state.insert_value_idx(discr, conds, self.map);
 
         self.find_opportunity(bb, state, cost, 0);
-        None
     }
 
     /// Recursively walk statements backwards from this bb's terminator to find threading
@@ -364,18 +364,17 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         lhs: PlaceIndex,
         rhs: ImmTy<'tcx>,
         state: &mut State<ConditionSet<'a>>,
-    ) -> Option<!> {
+    ) {
         let register_opportunity = |c: Condition| {
             debug!(?bb, ?c.target, "register");
             self.opportunities.push(ThreadingOpportunity { chain: vec![bb], target: c.target })
         };
 
-        let conditions = state.try_get_idx(lhs, self.map)?;
-        if let Immediate::Scalar(Scalar::Int(int)) = *rhs {
+        if let Some(conditions) = state.try_get_idx(lhs, self.map)
+            && let Immediate::Scalar(Scalar::Int(int)) = *rhs
+        {
             conditions.iter_matches(int).for_each(register_opportunity);
         }
-
-        None
     }
 
     /// If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
@@ -428,22 +427,23 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         lhs: PlaceIndex,
         rhs: &Operand<'tcx>,
         state: &mut State<ConditionSet<'a>>,
-    ) -> Option<!> {
+    ) {
         match rhs {
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
             Operand::Constant(constant) => {
-                let constant =
-                    self.ecx.eval_mir_constant(&constant.const_, constant.span, None).ok()?;
+                let Ok(constant) =
+                    self.ecx.eval_mir_constant(&constant.const_, constant.span, None)
+                else {
+                    return;
+                };
                 self.process_constant(bb, lhs, constant, state);
             }
             // Transfer the conditions on the copied rhs.
             Operand::Move(rhs) | Operand::Copy(rhs) => {
-                let rhs = self.map.find(rhs.as_ref())?;
+                let Some(rhs) = self.map.find(rhs.as_ref()) else { return };
                 state.insert_place_idx(rhs, lhs, self.map);
             }
         }
-
-        None
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -453,16 +453,14 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         lhs_place: &Place<'tcx>,
         rhs: &Rvalue<'tcx>,
         state: &mut State<ConditionSet<'a>>,
-    ) -> Option<!> {
-        let lhs = self.map.find(lhs_place.as_ref())?;
+    ) {
+        let Some(lhs) = self.map.find(lhs_place.as_ref()) else { return };
         match rhs {
-            Rvalue::Use(operand) => self.process_operand(bb, lhs, operand, state)?,
+            Rvalue::Use(operand) => self.process_operand(bb, lhs, operand, state),
             // Transfer the conditions on the copy rhs.
-            Rvalue::CopyForDeref(rhs) => {
-                self.process_operand(bb, lhs, &Operand::Copy(*rhs), state)?
-            }
+            Rvalue::CopyForDeref(rhs) => self.process_operand(bb, lhs, &Operand::Copy(*rhs), state),
             Rvalue::Discriminant(rhs) => {
-                let rhs = self.map.find_discr(rhs.as_ref())?;
+                let Some(rhs) = self.map.find_discr(rhs.as_ref()) else { return };
                 state.insert_place_idx(rhs, lhs, self.map);
             }
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
@@ -470,7 +468,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 let agg_ty = lhs_place.ty(self.body, self.tcx).ty;
                 let lhs = match kind {
                     // Do not support unions.
-                    AggregateKind::Adt(.., Some(_)) => return None,
+                    AggregateKind::Adt(.., Some(_)) => return,
                     AggregateKind::Adt(_, variant_index, ..) if agg_ty.is_enum() => {
                         if let Some(discr_target) = self.map.apply(lhs, TrackElem::Discriminant)
                             && let Ok(discr_value) =
@@ -478,7 +476,11 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                         {
                             self.process_immediate(bb, discr_target, discr_value, state);
                         }
-                        self.map.apply(lhs, TrackElem::Variant(*variant_index))?
+                        if let Some(idx) = self.map.apply(lhs, TrackElem::Variant(*variant_index)) {
+                            idx
+                        } else {
+                            return;
+                        }
                     }
                     _ => lhs,
                 };
@@ -490,8 +492,8 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             }
             // Transfer the conditions on the copy rhs, after inversing polarity.
             Rvalue::UnaryOp(UnOp::Not, Operand::Move(place) | Operand::Copy(place)) => {
-                let conditions = state.try_get_idx(lhs, self.map)?;
-                let place = self.map.find(place.as_ref())?;
+                let Some(conditions) = state.try_get_idx(lhs, self.map) else { return };
+                let Some(place) = self.map.find(place.as_ref()) else { return };
                 let conds = conditions.map(self.arena, Condition::inv);
                 state.insert_value_idx(place, conds, self.map);
             }
@@ -502,21 +504,25 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 box (Operand::Move(place) | Operand::Copy(place), Operand::Constant(value))
                 | box (Operand::Constant(value), Operand::Move(place) | Operand::Copy(place)),
             ) => {
-                let conditions = state.try_get_idx(lhs, self.map)?;
-                let place = self.map.find(place.as_ref())?;
+                let Some(conditions) = state.try_get_idx(lhs, self.map) else { return };
+                let Some(place) = self.map.find(place.as_ref()) else { return };
                 let equals = match op {
                     BinOp::Eq => ScalarInt::TRUE,
                     BinOp::Ne => ScalarInt::FALSE,
-                    _ => return None,
+                    _ => return,
                 };
                 if value.const_.ty().is_floating_point() {
                     // Floating point equality does not follow bit-patterns.
                     // -0.0 and NaN both have special rules for equality,
                     // and therefore we cannot use integer comparisons for them.
                     // Avoid handling them, though this could be extended in the future.
-                    return None;
+                    return;
                 }
-                let value = value.const_.normalize(self.tcx, self.param_env).try_to_scalar_int()?;
+                let Some(value) =
+                    value.const_.normalize(self.tcx, self.param_env).try_to_scalar_int()
+                else {
+                    return;
+                };
                 let conds = conditions.map(self.arena, |c| Condition {
                     value,
                     polarity: if c.matches(equals) { Polarity::Eq } else { Polarity::Ne },
@@ -527,8 +533,6 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
 
             _ => {}
         }
-
-        None
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -537,7 +541,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         bb: BasicBlock,
         stmt: &Statement<'tcx>,
         state: &mut State<ConditionSet<'a>>,
-    ) -> Option<!> {
+    ) {
         let register_opportunity = |c: Condition| {
             debug!(?bb, ?c.target, "register");
             self.opportunities.push(ThreadingOpportunity { chain: vec![bb], target: c.target })
@@ -550,12 +554,12 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             // If we expect `discriminant(place) ?= A`,
             // we have an opportunity if `variant_index ?= A`.
             StatementKind::SetDiscriminant { box place, variant_index } => {
-                let discr_target = self.map.find_discr(place.as_ref())?;
+                let Some(discr_target) = self.map.find_discr(place.as_ref()) else { return };
                 let enum_ty = place.ty(self.body, self.tcx).ty;
                 // `SetDiscriminant` may be a no-op if the assigned variant is the untagged variant
                 // of a niche encoding. If we cannot ensure that we write to the discriminant, do
                 // nothing.
-                let enum_layout = self.ecx.layout_of(enum_ty).ok()?;
+                let Ok(enum_layout) = self.ecx.layout_of(enum_ty) else { return };
                 let writes_discriminant = match enum_layout.variants {
                     Variants::Single { index } => {
                         assert_eq!(index, *variant_index);
@@ -568,24 +572,25 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                     } => *variant_index != untagged_variant,
                 };
                 if writes_discriminant {
-                    let discr = self.ecx.discriminant_for_variant(enum_ty, *variant_index).ok()?;
-                    self.process_immediate(bb, discr_target, discr, state)?;
+                    let Ok(discr) = self.ecx.discriminant_for_variant(enum_ty, *variant_index)
+                    else {
+                        return;
+                    };
+                    self.process_immediate(bb, discr_target, discr, state);
                 }
             }
             // If we expect `lhs ?= true`, we have an opportunity if we assume `lhs == true`.
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(
                 Operand::Copy(place) | Operand::Move(place),
             )) => {
-                let conditions = state.try_get(place.as_ref(), self.map)?;
+                let Some(conditions) = state.try_get(place.as_ref(), self.map) else { return };
                 conditions.iter_matches(ScalarInt::TRUE).for_each(register_opportunity);
             }
             StatementKind::Assign(box (lhs_place, rhs)) => {
-                self.process_assign(bb, lhs_place, rhs, state)?;
+                self.process_assign(bb, lhs_place, rhs, state);
             }
             _ => {}
         }
-
-        None
     }
 
     #[instrument(level = "trace", skip(self, state, cost))]
@@ -638,17 +643,17 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         targets: &SwitchTargets,
         target_bb: BasicBlock,
         state: &mut State<ConditionSet<'a>>,
-    ) -> Option<!> {
+    ) {
         debug_assert_ne!(target_bb, START_BLOCK);
         debug_assert_eq!(self.body.basic_blocks.predecessors()[target_bb].len(), 1);
 
-        let discr = discr.place()?;
+        let Some(discr) = discr.place() else { return };
         let discr_ty = discr.ty(self.body, self.tcx).ty;
-        let discr_layout = self.ecx.layout_of(discr_ty).ok()?;
-        let conditions = state.try_get(discr.as_ref(), self.map)?;
+        let Ok(discr_layout) = self.ecx.layout_of(discr_ty) else { return };
+        let Some(conditions) = state.try_get(discr.as_ref(), self.map) else { return };
 
         if let Some((value, _)) = targets.iter().find(|&(_, target)| target == target_bb) {
-            let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
+            let Some(value) = ScalarInt::try_from_uint(value, discr_layout.size) else { return };
             debug_assert_eq!(targets.iter().filter(|&(_, target)| target == target_bb).count(), 1);
 
             // We are inside `target_bb`. Since we have a single predecessor, we know we passed
@@ -662,7 +667,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         } else if let Some((value, _, else_bb)) = targets.as_static_if()
             && target_bb == else_bb
         {
-            let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
+            let Some(value) = ScalarInt::try_from_uint(value, discr_layout.size) else { return };
 
             // We only know that `discr != value`. That's much weaker information than
             // the equality we had in the previous arm. All we can conclude is that
@@ -675,8 +680,6 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 }
             }
         }
-
-        None
     }
 }
 

@@ -74,6 +74,13 @@ impl LangItemTarget {
             _ => None,
         }
     }
+
+    pub fn as_type_alias(self) -> Option<TypeAliasId> {
+        match self {
+            LangItemTarget::TypeAlias(id) => Some(id),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -117,11 +124,19 @@ impl LangItems {
                 match def {
                     ModuleDefId::TraitId(trait_) => {
                         lang_items.collect_lang_item(db, trait_, LangItemTarget::Trait);
-                        db.trait_data(trait_).items.iter().for_each(|&(_, assoc_id)| {
-                            if let AssocItemId::FunctionId(f) = assoc_id {
-                                lang_items.collect_lang_item(db, f, LangItemTarget::Function);
-                            }
-                        });
+                        db.trait_data(trait_).items.iter().for_each(
+                            |&(_, assoc_id)| match assoc_id {
+                                AssocItemId::FunctionId(f) => {
+                                    lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                                }
+                                AssocItemId::TypeAliasId(alias) => lang_items.collect_lang_item(
+                                    db,
+                                    alias,
+                                    LangItemTarget::TypeAlias,
+                                ),
+                                AssocItemId::ConstId(_) => {}
+                            },
+                        );
                     }
                     ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                         lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
@@ -453,6 +468,7 @@ language_item_table! {
 
     Context,                 sym::Context,             context,                    Target::Struct,         GenericRequirement::None;
     FuturePoll,              sym::poll,                future_poll_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    FutureOutput,            sym::future_output,       future_output,              Target::TypeAlias,      GenericRequirement::None;
 
     Option,                  sym::Option,              option_type,                Target::Enum,           GenericRequirement::None;
     OptionSome,              sym::Some,                option_some_variant,        Target::Variant,        GenericRequirement::None;
@@ -467,6 +483,7 @@ language_item_table! {
     IntoFutureIntoFuture,    sym::into_future,         into_future_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     IntoIterIntoIter,        sym::into_iter,           into_iter_fn,               Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     IteratorNext,            sym::next,                next_fn,                    Target::Method(MethodKind::Trait { body: false}), GenericRequirement::None;
+    Iterator,                sym::iterator,            iterator,                   Target::Trait,           GenericRequirement::None;
 
     PinNewUnchecked,         sym::new_unchecked,       new_unchecked_fn,           Target::Method(MethodKind::Inherent), GenericRequirement::None;
 

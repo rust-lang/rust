@@ -5,6 +5,7 @@ use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, TyCtxt, TypeVisitableExt};
 use rustc_session::Limit;
 use rustc_span::sym;
+use tracing::{instrument, trace};
 
 // FIXME: check whether it is cheaper to precompute the entire call graph instead of invoking
 // this query ridiculously often.

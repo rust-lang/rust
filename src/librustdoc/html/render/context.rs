@@ -12,6 +12,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::{sym, FileName, Symbol};
+use tracing::info;
 
 use super::print_item::{full_path, item_path, print_item};
 use super::sidebar::{print_sidebar, sidebar_module_like, Sidebar};

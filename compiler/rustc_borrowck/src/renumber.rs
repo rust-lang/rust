@@ -4,6 +4,7 @@ use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::{Body, ConstOperand, Location, Promoted};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Symbol;
+use tracing::{debug, instrument};
 
 use crate::BorrowckInferCtxt;
 

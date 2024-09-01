@@ -14,6 +14,7 @@ use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
+use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;

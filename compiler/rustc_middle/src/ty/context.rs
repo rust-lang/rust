@@ -349,16 +349,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        ty::EarlyBinder::bind(self.explicit_super_predicates_of(def_id).instantiate_identity(self))
+        self.explicit_super_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
     fn explicit_implied_predicates_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        ty::EarlyBinder::bind(
-            self.explicit_implied_predicates_of(def_id).instantiate_identity(self),
-        )
+        self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
     fn has_target_features(self, def_id: DefId) -> bool {
@@ -3095,10 +3093,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 Some(stability) if stability.is_const_unstable() => {
                     // has a `rustc_const_unstable` attribute, check whether the user enabled the
                     // corresponding feature gate.
-                    self.features()
-                        .declared_lib_features
-                        .iter()
-                        .any(|&(sym, _)| sym == stability.feature)
+                    self.features().declared(stability.feature)
                 }
                 // functions without const stability are either stable user written
                 // const fn or the user is using feature gates and we thus don't

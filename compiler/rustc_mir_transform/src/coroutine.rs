@@ -78,6 +78,7 @@ use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
+use tracing::{debug, instrument, trace};
 
 use crate::deref_separator::deref_finder;
 use crate::{abort_unwinding_calls, errors, pass_manager as pm, simplify};

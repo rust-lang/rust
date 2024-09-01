@@ -6,6 +6,7 @@
 use rustc_middle::mir::{Body, LocalKind, Location, START_BLOCK};
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
+use tracing::debug;
 
 use crate::borrow_set::BorrowSet;
 use crate::facts::{AllFacts, PoloniusRegionVid};

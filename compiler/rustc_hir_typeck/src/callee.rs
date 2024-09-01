@@ -20,6 +20,7 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use tracing::{debug, instrument, trace};
 
 use super::method::probe::ProbeScope;
 use super::method::MethodCallee;

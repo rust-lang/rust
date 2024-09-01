@@ -1,5 +1,6 @@
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use tracing::trace;
 
 pub enum SimplifyConstCondition {
     AfterConstProp,

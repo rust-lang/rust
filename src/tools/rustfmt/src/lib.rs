@@ -5,8 +5,8 @@
 #![allow(clippy::match_like_matches_macro)]
 #![allow(unreachable_pub)]
 
-#[macro_use]
-extern crate tracing;
+// #[macro_use]
+// extern crate tracing;
 
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;

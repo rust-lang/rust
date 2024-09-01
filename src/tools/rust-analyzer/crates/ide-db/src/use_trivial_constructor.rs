@@ -1,6 +1,7 @@
 //! Functionality for generating trivial constructors
 
 use hir::StructKind;
+use span::Edition;
 use syntax::{
     ast::{make, Expr, Path},
     ToSmolStr,
@@ -11,6 +12,7 @@ pub fn use_trivial_constructor(
     db: &crate::RootDatabase,
     path: Path,
     ty: &hir::Type,
+    edition: Edition,
 ) -> Option<Expr> {
     match ty.as_adt() {
         Some(hir::Adt::Enum(x)) => {
@@ -19,7 +21,7 @@ pub fn use_trivial_constructor(
                     let path = make::path_qualified(
                         path,
                         make::path_segment(make::name_ref(
-                            &variant.name(db).display_no_db().to_smolstr(),
+                            &variant.name(db).display_no_db(edition).to_smolstr(),
                         )),
                     );
 

@@ -15,9 +15,6 @@
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
 use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
 use rustc_const_eval::util;
@@ -39,6 +36,7 @@ use rustc_middle::{bug, query, span_bug};
 use rustc_span::source_map::Spanned;
 use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
+use tracing::{debug, trace};
 
 #[macro_use]
 mod pass_manager;

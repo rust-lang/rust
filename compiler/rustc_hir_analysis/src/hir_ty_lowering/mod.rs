@@ -50,6 +50,7 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
+use tracing::{debug, debug_span, instrument};
 
 use crate::bounds::Bounds;
 use crate::errors::{AmbiguousLifetimeBound, WildPatTy};
@@ -136,7 +137,7 @@ pub trait HirTyLowerer<'tcx> {
         span: Span,
         def_id: LocalDefId,
         assoc_name: Ident,
-    ) -> ty::GenericPredicates<'tcx>;
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]>;
 
     /// Lower an associated type to a projection.
     ///
@@ -831,13 +832,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?ty_param_def_id, ?assoc_name, ?span);
         let tcx = self.tcx();
 
-        let predicates = &self.probe_ty_param_bounds(span, ty_param_def_id, assoc_name).predicates;
+        let predicates = &self.probe_ty_param_bounds(span, ty_param_def_id, assoc_name);
         debug!("predicates={:#?}", predicates);
 
         self.probe_single_bound_for_assoc_item(
             || {
                 let trait_refs = predicates
-                    .iter()
+                    .iter_identity_copied()
                     .filter_map(|(p, _)| Some(p.as_trait_clause()?.map_bound(|t| t.trait_ref)));
                 traits::transitive_bounds_that_define_assoc_item(tcx, trait_refs, assoc_name)
             },

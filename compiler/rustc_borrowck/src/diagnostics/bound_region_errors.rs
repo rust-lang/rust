@@ -19,6 +19,7 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::query::type_op;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_traits::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_with_cause};
+use tracing::{debug, instrument};
 
 use crate::region_infer::values::RegionElement;
 use crate::session_diagnostics::{

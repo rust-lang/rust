@@ -868,9 +868,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // Calling an unstable function *always* requires that the corresponding gate
                     // (or implied gate) be enabled, even if the function has
                     // `#[rustc_allow_const_fn_unstable(the_gate)]`.
-                    let gate_declared = |gate| {
-                        tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == gate)
-                    };
+                    let gate_declared = |gate| tcx.features().declared(gate);
                     let feature_gate_declared = gate_declared(gate);
                     let implied_gate_declared = implied_by.is_some_and(gate_declared);
                     if !feature_gate_declared && !implied_gate_declared {

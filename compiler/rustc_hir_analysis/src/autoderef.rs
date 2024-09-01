@@ -4,6 +4,7 @@ use rustc_session::Limit;
 use rustc_span::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_span::Span;
 use rustc_trait_selection::traits::ObligationCtxt;
+use tracing::{debug, instrument};
 
 use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits;

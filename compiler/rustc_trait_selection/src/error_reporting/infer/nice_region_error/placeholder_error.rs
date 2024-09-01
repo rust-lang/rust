@@ -8,6 +8,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
 use rustc_middle::ty::{self, GenericArgsRef, RePlaceholder, Region, TyCtxt};
+use tracing::{debug, instrument};
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{

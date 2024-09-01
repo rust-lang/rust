@@ -3,6 +3,7 @@
 
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use tracing::{debug, instrument};
 
 use super::RelateResult;
 use crate::infer::snapshot::CombinedSnapshot;

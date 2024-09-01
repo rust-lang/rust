@@ -38,6 +38,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
+use tracing::{debug, instrument};
 
 use super::{
     DefIdOrName, FindExprBySpan, ImplCandidate, Obligation, ObligationCause, ObligationCauseCode,
