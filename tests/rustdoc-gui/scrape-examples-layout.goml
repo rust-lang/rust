@@ -1,6 +1,8 @@
 // Check that the line number column has the correct layout.
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
 
+set-window-size: (1000, 1000)
+
 // Check that it's not zero.
 assert-property-false: (
     ".more-scraped-examples .scraped-example .src-line-numbers",
@@ -33,6 +35,18 @@ assert-property: (
     {"clientWidth": |clientWidth|}
 )
 
+// The "title" should be located at the right bottom corner of the code example.
+store-position: (".example-wrap.scraped-example", {"x": x, "y": y})
+store-size: (".example-wrap.scraped-example", {"width": width, "height": height})
+store-size: (".example-wrap.scraped-example .scraped-example-title", {
+    "width": title_width,
+    "height": title_height,
+})
+assert-position: (".example-wrap.scraped-example .scraped-example-title", {
+    "x": |x| + |width| - |title_width| - 5,
+    "y": |y| + |height| - |title_height| - 8,
+})
+
 // Check that for both mobile and desktop sizes, the buttons in scraped examples are displayed
 // correctly.
 
@@ -46,3 +60,32 @@ assert-position: (".scraped-example .prev", {"y": 226 + |offset_y|})
 set-window-size: (600, 600)
 assert-position: (".scraped-example", {"y": 284})
 assert-position: (".scraped-example .prev", {"y": 284 + |offset_y|})
+
+define-function: (
+    "check_title_and_code_position",
+    [],
+    block {
+        // Title should be above the code.
+        store-position: (".example-wrap.scraped-example .src-line-numbers", {"x": x, "y": y})
+        store-size: (".example-wrap.scraped-example .scraped-example-title", { "height": title_height })
+
+        assert-position: (".example-wrap.scraped-example .scraped-example-title", {
+            "x": |x|, // same X position.
+            "y": |y| - |title_height|,
+        })
+
+        // Line numbers should be right beside the code.
+        compare-elements-position: (
+            ".example-wrap.scraped-example .src-line-numbers",
+            ".example-wrap.scraped-example .rust",
+            ["y"],
+        )
+    }
+)
+
+// Check that the title is now above the code.
+call-function: ("check_title_and_code_position", {})
+
+// Then with small mobile
+set-window-size: (300, 300)
+call-function: ("check_title_and_code_position", {})
