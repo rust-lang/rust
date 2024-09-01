@@ -1,17 +1,12 @@
  .text
  .global __hexagon_mindf3
  .global __hexagon_maxdf3
- .global fmin
- .type fmin,@function
- .global fmax
- .type fmax,@function
  .type __hexagon_mindf3,@function
  .type __hexagon_maxdf3,@function
  .global __qdsp_mindf3 ; .set __qdsp_mindf3, __hexagon_mindf3
  .global __qdsp_maxdf3 ; .set __qdsp_maxdf3, __hexagon_maxdf3
  .p2align 5
 __hexagon_mindf3:
-fmin:
  {
   p0 = dfclass(r1:0,#0x10)
   p1 = dfcmp.gt(r1:0,r3:2)
@@ -31,7 +26,6 @@ fmin:
 .size __hexagon_mindf3,.-__hexagon_mindf3
  .falign
 __hexagon_maxdf3:
-fmax:
  {
   p0 = dfclass(r1:0,#0x10)
   p1 = dfcmp.gt(r3:2,r1:0)
