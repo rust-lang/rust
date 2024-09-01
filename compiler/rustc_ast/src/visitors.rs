@@ -381,7 +381,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Const, visit_constness, walk_constness}
             make_visit!{TyAliasWhereClauses, visit_ty_alias_where_clauses, walk_ty_alias_where_clauses}
             make_visit!{Option<P<QSelf>>, visit_qself, walk_qself}
-            // TODO: Remove P! on implementers
+            // FIXME: Remove P!
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
             make_visit!{P!(Ty), visit_ty, walk_ty}
