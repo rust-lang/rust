@@ -533,10 +533,11 @@ impl ItemizedBlock {
 
     /// Returns the block as a string, with each line trimmed at the start.
     fn trimmed_block_as_string(&self) -> String {
-        self.lines
-            .iter()
-            .map(|line| format!("{} ", line.trim_start()))
-            .collect::<String>()
+        self.lines.iter().fold(String::new(), |mut acc, line| {
+            acc.push_str(line.trim_start());
+            acc.push(' ');
+            acc
+        })
     }
 
     /// Returns the block as a string under its original form.
