@@ -1485,7 +1485,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         let disallowed = (!tilde_const_allowed).then(|| match fk {
             FnKind::Fn(_, ident, _, _, _, _) => TildeConstReason::Function { ident: ident.span },
-            FnKind::Closure(_, _, _) => TildeConstReason::Closure,
+            FnKind::Closure(..) => TildeConstReason::Closure,
         });
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
     }

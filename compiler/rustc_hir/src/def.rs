@@ -863,8 +863,13 @@ pub enum LifetimeRes {
     /// This variant is used for anonymous lifetimes that we did not resolve during
     /// late resolution. Those lifetimes will be inferred by typechecking.
     Infer,
-    /// Explicit `'static` lifetime.
-    Static,
+    /// `'static` lifetime.
+    Static {
+        /// We do not want to emit `elided_named_lifetimes`
+        /// when we are inside of a const item or a static,
+        /// because it would get too annoying.
+        suppress_elision_warning: bool,
+    },
     /// Resolution failure.
     Error,
     /// HACK: This is used to recover the NodeId of an elided lifetime.

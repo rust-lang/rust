@@ -3,7 +3,8 @@
 use super::{from_raw_parts, memchr};
 use crate::cmp::{self, BytewiseEq, Ordering};
 use crate::intrinsics::compare_bytes;
-use crate::mem;
+use crate::num::NonZero;
+use crate::{ascii, mem};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, U> PartialEq<[U]> for [T]
@@ -182,19 +183,41 @@ impl<A: Ord> SliceOrd for A {
     }
 }
 
-// `compare_bytes` compares a sequence of unsigned bytes lexicographically.
-// this matches the order we want for [u8], but no others (not even [i8]).
-impl SliceOrd for u8 {
+/// Marks that a type should be treated as an unsigned byte for comparisons.
+///
+/// # Safety
+/// * The type must be readable as an `u8`, meaning it has to have the same
+///   layout as `u8` and always be initialized.
+/// * For every `x` and `y` of this type, `Ord(x, y)` must return the same
+///   value as `Ord::cmp(transmute::<_, u8>(x), transmute::<_, u8>(y))`.
+#[rustc_specialization_trait]
+unsafe trait UnsignedBytewiseOrd {}
+
+unsafe impl UnsignedBytewiseOrd for bool {}
+unsafe impl UnsignedBytewiseOrd for u8 {}
+unsafe impl UnsignedBytewiseOrd for NonZero<u8> {}
+unsafe impl UnsignedBytewiseOrd for Option<NonZero<u8>> {}
+unsafe impl UnsignedBytewiseOrd for ascii::Char {}
+
+// `compare_bytes` compares a sequence of unsigned bytes lexicographically, so
+// use it if the requirements for `UnsignedBytewiseOrd` are fulfilled.
+impl<A: Ord + UnsignedBytewiseOrd> SliceOrd for A {
     #[inline]
     fn compare(left: &[Self], right: &[Self]) -> Ordering {
-        // Since the length of a slice is always less than or equal to isize::MAX, this never underflows.
+        // Since the length of a slice is always less than or equal to
+        // isize::MAX, this never underflows.
         let diff = left.len() as isize - right.len() as isize;
-        // This comparison gets optimized away (on x86_64 and ARM) because the subtraction updates flags.
+        // This comparison gets optimized away (on x86_64 and ARM) because the
+        // subtraction updates flags.
         let len = if left.len() < right.len() { left.len() } else { right.len() };
-        // SAFETY: `left` and `right` are references and are thus guaranteed to be valid.
-        // We use the minimum of both lengths which guarantees that both regions are
-        // valid for reads in that interval.
-        let mut order = unsafe { compare_bytes(left.as_ptr(), right.as_ptr(), len) as isize };
+        let left = left.as_ptr().cast();
+        let right = right.as_ptr().cast();
+        // SAFETY: `left` and `right` are references and are thus guaranteed to
+        // be valid. `UnsignedBytewiseOrd` is only implemented for types that
+        // are valid u8s and can be compared the same way. We use the minimum
+        // of both lengths which guarantees that both regions are valid for
+        // reads in that interval.
+        let mut order = unsafe { compare_bytes(left, right, len) as isize };
         if order == 0 {
             order = diff;
         }

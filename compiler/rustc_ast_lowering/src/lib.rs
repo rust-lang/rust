@@ -45,7 +45,6 @@ use std::collections::hash_map::Entry;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
-use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
@@ -837,7 +836,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided(kind))
             }
-            LifetimeRes::Static | LifetimeRes::Error => return None,
+            LifetimeRes::Static { .. } | LifetimeRes::Error => return None,
             res => panic!(
                 "Unexpected lifetime resolution {:?} for {:?} at {:?}",
                 res, ident, ident.span
@@ -1399,24 +1398,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.tcx.dcx().emit_err(errors::NoPreciseCapturesOnApit { span });
                         }
 
-                        let span = t.span;
-
-                        // HACK: pprust breaks strings with newlines when the type
-                        // gets too long. We don't want these to show up in compiler
-                        // output or built artifacts, so replace them here...
-                        // Perhaps we should instead format APITs more robustly.
-                        let ident = Ident::from_str_and_span(
-                            &pprust::ty_to_string(t).replace('\n', " "),
-                            span,
-                        );
-
-                        self.create_def(
-                            self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
-                            *def_node_id,
-                            ident.name,
-                            DefKind::TyParam,
-                            span,
-                        );
+                        let def_id = self.local_def_id(*def_node_id);
+                        let name = self.tcx.item_name(def_id.to_def_id());
+                        let ident = Ident::new(name, span);
                         let (param, bounds, path) = self.lower_universal_param_and_bounds(
                             *def_node_id,
                             span,
@@ -1618,13 +1602,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         opaque_ty_span: Span,
         lower_item_bounds: impl FnOnce(&mut Self) -> &'hir [hir::GenericBound<'hir>],
     ) -> hir::TyKind<'hir> {
-        let opaque_ty_def_id = self.create_def(
-            self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
-            opaque_ty_node_id,
-            kw::Empty,
-            DefKind::OpaqueTy,
-            opaque_ty_span,
-        );
+        let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
         debug!(?opaque_ty_def_id);
 
         // Map from captured (old) lifetime to synthetic (new) lifetime.
@@ -1656,7 +1634,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
 
                 // Opaques do not capture `'static`
-                LifetimeRes::Static | LifetimeRes::Error => {
+                LifetimeRes::Static { .. } | LifetimeRes::Error => {
                     continue;
                 }
 
@@ -2069,7 +2047,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::LifetimeName::Param(param)
             }
             LifetimeRes::Infer => hir::LifetimeName::Infer,
-            LifetimeRes::Static => hir::LifetimeName::Static,
+            LifetimeRes::Static { .. } => hir::LifetimeName::Static,
             LifetimeRes::Error => hir::LifetimeName::Error,
             res => panic!(
                 "Unexpected lifetime resolution {:?} for {:?} at {:?}",
