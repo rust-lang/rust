@@ -291,14 +291,8 @@ impl Config {
         let mut file = File::open(&file_path)?;
         let mut toml = String::new();
         file.read_to_string(&mut toml)?;
-        Config::from_toml_for_style_edition(
-            &toml,
-            file_path.parent().unwrap(),
-            edition,
-            style_edition,
-            version,
-        )
-        .map_err(|err| Error::new(ErrorKind::InvalidData, err))
+        Config::from_toml_for_style_edition(&toml, file_path, edition, style_edition, version)
+            .map_err(|err| Error::new(ErrorKind::InvalidData, err))
     }
 
     /// Resolves the config for input in `dir`.
@@ -370,13 +364,13 @@ impl Config {
     }
 
     #[allow(dead_code)]
-    pub(super) fn from_toml(toml: &str, dir: &Path) -> Result<Config, String> {
-        Self::from_toml_for_style_edition(toml, dir, None, None, None)
+    pub(super) fn from_toml(toml: &str, file_path: &Path) -> Result<Config, String> {
+        Self::from_toml_for_style_edition(toml, file_path, None, None, None)
     }
 
     pub(crate) fn from_toml_for_style_edition(
         toml: &str,
-        dir: &Path,
+        file_path: &Path,
         edition: Option<Edition>,
         style_edition: Option<StyleEdition>,
         version: Option<Version>,
@@ -400,13 +394,19 @@ impl Config {
                 if !err.is_empty() {
                     eprint!("{err}");
                 }
+                let dir = file_path.parent().ok_or_else(|| {
+                    format!("failed to get parent directory for {}", file_path.display())
+                })?;
+
                 Ok(parsed_config.to_parsed_config(style_edition, edition, version, dir))
             }
             Err(e) => {
-                err.push_str("Error: Decoding config file failed:\n");
-                err.push_str(format!("{e}\n").as_str());
-                err.push_str("Please check your config file.");
-                Err(err)
+                let err_msg = format!(
+                    "The file `{}` failed to parse.\nError details: {e}",
+                    file_path.display()
+                );
+                err.push_str(&err_msg);
+                Err(err_msg)
             }
         }
     }
@@ -674,7 +674,7 @@ mod test {
 
     #[test]
     fn test_was_set() {
-        let config = Config::from_toml("hard_tabs = true", Path::new("")).unwrap();
+        let config = Config::from_toml("hard_tabs = true", Path::new("./rustfmt.toml")).unwrap();
 
         assert_eq!(config.was_set().hard_tabs(), true);
         assert_eq!(config.was_set().verbose(), false);
@@ -933,7 +933,8 @@ make_backup = false
     #[nightly_only_test]
     #[test]
     fn test_unstable_from_toml() {
-        let config = Config::from_toml("unstable_features = true", Path::new("")).unwrap();
+        let config =
+            Config::from_toml("unstable_features = true", Path::new("./rustfmt.toml")).unwrap();
         assert_eq!(config.was_set().unstable_features(), true);
         assert_eq!(config.unstable_features(), true);
     }
@@ -963,7 +964,7 @@ make_backup = false
                 unstable_features = true
                 merge_imports = true
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.imports_granularity(), ImportGranularity::Crate);
         }
 
@@ -975,7 +976,7 @@ make_backup = false
                 merge_imports = true
                 imports_granularity = "Preserve"
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.imports_granularity(), ImportGranularity::Preserve);
         }
 
@@ -986,7 +987,7 @@ make_backup = false
                 unstable_features = true
                 merge_imports = true
             "#;
-            let mut config = Config::from_toml(toml, Path::new("")).unwrap();
+            let mut config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             config.override_value("imports_granularity", "Preserve");
             assert_eq!(config.imports_granularity(), ImportGranularity::Preserve);
         }
@@ -998,7 +999,7 @@ make_backup = false
                 unstable_features = true
                 imports_granularity = "Module"
             "#;
-            let mut config = Config::from_toml(toml, Path::new("")).unwrap();
+            let mut config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             config.override_value("merge_imports", "true");
             // no effect: the new option always takes precedence
             assert_eq!(config.imports_granularity(), ImportGranularity::Module);
@@ -1015,7 +1016,7 @@ make_backup = false
                 use_small_heuristics = "Default"
                 max_width = 200
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.array_width(), 120);
             assert_eq!(config.attr_fn_like_width(), 140);
             assert_eq!(config.chain_width(), 120);
@@ -1031,7 +1032,7 @@ make_backup = false
                 use_small_heuristics = "Max"
                 max_width = 120
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.array_width(), 120);
             assert_eq!(config.attr_fn_like_width(), 120);
             assert_eq!(config.chain_width(), 120);
@@ -1047,7 +1048,7 @@ make_backup = false
                 use_small_heuristics = "Off"
                 max_width = 100
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.array_width(), usize::max_value());
             assert_eq!(config.attr_fn_like_width(), usize::max_value());
             assert_eq!(config.chain_width(), usize::max_value());
@@ -1069,7 +1070,7 @@ make_backup = false
                 struct_lit_width = 30
                 struct_variant_width = 34
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.array_width(), 20);
             assert_eq!(config.attr_fn_like_width(), 40);
             assert_eq!(config.chain_width(), 20);
@@ -1091,7 +1092,7 @@ make_backup = false
                 struct_lit_width = 30
                 struct_variant_width = 34
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.array_width(), 20);
             assert_eq!(config.attr_fn_like_width(), 40);
             assert_eq!(config.chain_width(), 20);
@@ -1113,7 +1114,7 @@ make_backup = false
                 struct_lit_width = 30
                 struct_variant_width = 34
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.array_width(), 20);
             assert_eq!(config.attr_fn_like_width(), 40);
             assert_eq!(config.chain_width(), 20);
@@ -1129,7 +1130,7 @@ make_backup = false
                 max_width = 90
                 fn_call_width = 95
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.fn_call_width(), 90);
         }
 
@@ -1139,7 +1140,7 @@ make_backup = false
                 max_width = 80
                 attr_fn_like_width = 90
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.attr_fn_like_width(), 80);
         }
 
@@ -1149,7 +1150,7 @@ make_backup = false
                 max_width = 78
                 struct_lit_width = 90
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.struct_lit_width(), 78);
         }
 
@@ -1159,7 +1160,7 @@ make_backup = false
                 max_width = 80
                 struct_variant_width = 90
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.struct_variant_width(), 80);
         }
 
@@ -1169,7 +1170,7 @@ make_backup = false
                 max_width = 60
                 array_width = 80
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.array_width(), 60);
         }
 
@@ -1179,7 +1180,7 @@ make_backup = false
                 max_width = 80
                 chain_width = 90
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.chain_width(), 80);
         }
 
@@ -1189,7 +1190,7 @@ make_backup = false
                 max_width = 70
                 single_line_if_else_max_width = 90
             "#;
-            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
             assert_eq!(config.single_line_if_else_max_width(), 70);
         }
 

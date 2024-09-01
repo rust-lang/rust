@@ -219,3 +219,16 @@ fn rustfmt_generates_no_error_if_failed_format_code_in_doc_comments() {
     assert!(stderr.is_empty());
     assert!(stdout.is_empty());
 }
+
+#[test]
+fn rustfmt_error_improvement_regarding_invalid_toml() {
+    // See also https://github.com/rust-lang/rustfmt/issues/6302
+    let invalid_toml_config = "tests/config/issue-6302.toml";
+    let args = ["--config-path", invalid_toml_config];
+    let (_stdout, stderr) = rustfmt(&args);
+
+    let toml_path = Path::new(invalid_toml_config).canonicalize().unwrap();
+    let expected_error_message = format!("The file `{}` failed to parse", toml_path.display());
+
+    assert!(stderr.contains(&expected_error_message));
+}
