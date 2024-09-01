@@ -383,7 +383,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   file descriptors will be mixed up.
   This is **work in progress**; currently, only integer arguments and return values are
   supported (and no, pointer/integer casts to work around this limitation will not work;
-  they will fail horribly). It also only works on Linux hosts for now.
+  they will fail horribly). It also only works on Unix hosts for now.
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file inside a directory called `<name>`, and can be processed
