@@ -462,16 +462,15 @@ fn print_version() {
 
 fn determine_operation(matches: &Matches) -> Result<Operation, OperationError> {
     if matches.opt_present("h") {
-        let topic = matches.opt_str("h");
-        if topic.is_none() {
+        let Some(topic) = matches.opt_str("h") else {
             return Ok(Operation::Help(HelpOp::None));
-        } else if topic == Some("config".to_owned()) {
-            return Ok(Operation::Help(HelpOp::Config));
-        } else if topic == Some("file-lines".to_owned()) && is_nightly() {
-            return Ok(Operation::Help(HelpOp::FileLines));
-        } else {
-            return Err(OperationError::UnknownHelpTopic(topic.unwrap()));
-        }
+        };
+
+        return match topic.as_str() {
+            "config" => Ok(Operation::Help(HelpOp::Config)),
+            "file-lines" if is_nightly() => Ok(Operation::Help(HelpOp::FileLines)),
+            _ => Err(OperationError::UnknownHelpTopic(topic)),
+        };
     }
     let mut free_matches = matches.free.iter();
 
