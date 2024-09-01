@@ -185,8 +185,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                         panic!("Miri ran out of memory: cannot create allocation of {size:?} bytes")
                                     });
                                 let ptr = prepared_bytes.as_ptr();
-                                    // Store prepared allocation space to be picked up for use later.
-                                    global_state.prepared_alloc_bytes.try_insert(alloc_id, prepared_bytes).unwrap();
+                                // Store prepared allocation space to be picked up for use later.
+                                global_state
+                                    .prepared_alloc_bytes
+                                    .try_insert(alloc_id, prepared_bytes)
+                                    .unwrap();
                                 ptr
                             } else {
                                 ecx.get_alloc_bytes_unchecked_raw(alloc_id)?
@@ -196,16 +199,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                         AllocKind::Function | AllocKind::VTable => {
                             // Allocate some dummy memory to get a unique address for this function/vtable.
-                            let alloc_bytes = MiriAllocBytes::from_bytes(&[0u8; 1], Align::from_bytes(1).unwrap());
+                            let alloc_bytes = MiriAllocBytes::from_bytes(
+                                &[0u8; 1],
+                                Align::from_bytes(1).unwrap(),
+                            );
                             // We don't need to expose these bytes as nobody is allowed to access them.
                             let addr = alloc_bytes.as_ptr().addr().try_into().unwrap();
                             // Leak the underlying memory to ensure it remains unique.
                             std::mem::forget(alloc_bytes);
                             addr
                         }
-                        AllocKind::Dead => unreachable!()
+                        AllocKind::Dead => unreachable!(),
                     }
-                } else if let Some((reuse_addr, clock)) = global_state.reuse.take_addr(                    
+                } else if let Some((reuse_addr, clock)) = global_state.reuse.take_addr(
                     &mut *rng,
                     size,
                     align,
@@ -359,7 +365,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     // This returns some prepared `MiriAllocBytes`, either because `addr_from_alloc_id` reserved
     // memory space in the past, or by doing the pre-allocation right upon being called.
-    fn get_global_alloc_bytes(&self, id: AllocId, kind: MemoryKind, bytes: &[u8], align: Align) -> InterpResult<'tcx, MiriAllocBytes> {
+    fn get_global_alloc_bytes(
+        &self,
+        id: AllocId,
+        kind: MemoryKind,
+        bytes: &[u8],
+        align: Align,
+    ) -> InterpResult<'tcx, MiriAllocBytes> {
         let ecx = self.eval_context_ref();
         Ok(if ecx.machine.native_lib.is_some() {
             // In native lib mode, MiriAllocBytes for global allocations are handled via `prepared_alloc_bytes`.
