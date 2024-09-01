@@ -34,6 +34,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 </g></svg>');
 	--button-left-margin: 4px;
 	--button-border-radius: 2px;
+	--pre-line-height: 1.5rem;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -365,7 +366,7 @@ code, pre, .code-header {
 }
 pre {
 	padding: 14px;
-	line-height: 1.5; /* https://github.com/rust-lang/rust/issues/105906 */
+	line-height: var(--pre-line-height); /* https://github.com/rust-lang/rust/issues/105906 */
 }
 pre.item-decl {
 	overflow-x: auto;
@@ -2277,6 +2278,9 @@ in src-script.js and main.js
 	.example-wrap.scraped-example .rust {
 		/* Dirty hacky to force it to remain on the same line as the line numbers. */
 		width: 10px;
+	}
+	.example-wrap.scraped-example .button-holder {
+		top: calc(var(--pre-line-height) + 4px);
 	}
 }
 
