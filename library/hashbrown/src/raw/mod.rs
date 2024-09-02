@@ -1372,6 +1372,20 @@ impl<T, A: Allocator> RawTable<T, A> {
         self.table.iter()
     }
 
+    /// Returns an iterator over occupied buckets that could match a given hash.
+    ///
+    /// `RawTable` only stores 7 bits of the hash value, so this iterator may
+    /// return items that have a hash value different than the one provided. You
+    /// should always validate the returned values before using them.
+    ///
+    /// It is up to the caller to ensure that the `RawTable` outlives the
+    /// `RawIterHash`. Because we cannot make the `next` method unsafe on the
+    /// `RawIterHash` struct, we have to make the `iter_hash` method unsafe.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub unsafe fn iter_hash(&self, hash: u64) -> RawIterHash<T> {
+        RawIterHash::new(self, hash)
+    }
+
     /// Returns an iterator which removes all elements from the table without
     /// freeing the memory.
     #[cfg_attr(feature = "inline-more", inline)]
@@ -3995,6 +4009,122 @@ impl<T, A: Allocator> Iterator for RawDrain<'_, T, A> {
 
 impl<T, A: Allocator> ExactSizeIterator for RawDrain<'_, T, A> {}
 impl<T, A: Allocator> FusedIterator for RawDrain<'_, T, A> {}
+
+/// Iterator over occupied buckets that could match a given hash.
+///
+/// `RawTable` only stores 7 bits of the hash value, so this iterator may return
+/// items that have a hash value different than the one provided. You should
+/// always validate the returned values before using them.
+///
+/// For maximum flexibility this iterator is not bound by a lifetime, but you
+/// must observe several rules when using it:
+/// - You must not free the hash table while iterating (including via growing/shrinking).
+/// - It is fine to erase a bucket that has been yielded by the iterator.
+/// - Erasing a bucket that has not yet been yielded by the iterator may still
+///   result in the iterator yielding that bucket.
+/// - It is unspecified whether an element inserted after the iterator was
+///   created will be yielded by that iterator.
+/// - The order in which the iterator yields buckets is unspecified and may
+///   change in the future.
+pub struct RawIterHash<T> {
+    inner: RawIterHashInner,
+    _marker: PhantomData<T>,
+}
+
+struct RawIterHashInner {
+    // See `RawTableInner`'s corresponding fields for details.
+    // We can't store a `*const RawTableInner` as it would get
+    // invalidated by the user calling `&mut` methods on `RawTable`.
+    bucket_mask: usize,
+    ctrl: NonNull<u8>,
+
+    // The top 7 bits of the hash.
+    h2_hash: u8,
+
+    // The sequence of groups to probe in the search.
+    probe_seq: ProbeSeq,
+
+    group: Group,
+
+    // The elements within the group with a matching h2-hash.
+    bitmask: BitMaskIter,
+}
+
+impl<T> RawIterHash<T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn new<A: Allocator>(table: &RawTable<T, A>, hash: u64) -> Self {
+        RawIterHash {
+            inner: RawIterHashInner::new(&table.table, hash),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl RawIterHashInner {
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn new(table: &RawTableInner, hash: u64) -> Self {
+        let h2_hash = h2(hash);
+        let probe_seq = table.probe_seq(hash);
+        let group = Group::load(table.ctrl(probe_seq.pos));
+        let bitmask = group.match_byte(h2_hash).into_iter();
+
+        RawIterHashInner {
+            bucket_mask: table.bucket_mask,
+            ctrl: table.ctrl,
+            h2_hash,
+            probe_seq,
+            group,
+            bitmask,
+        }
+    }
+}
+
+impl<T> Iterator for RawIterHash<T> {
+    type Item = Bucket<T>;
+
+    fn next(&mut self) -> Option<Bucket<T>> {
+        unsafe {
+            match self.inner.next() {
+                Some(index) => {
+                    // Can't use `RawTable::bucket` here as we don't have
+                    // an actual `RawTable` reference to use.
+                    debug_assert!(index <= self.inner.bucket_mask);
+                    let bucket = Bucket::from_base_index(self.inner.ctrl.cast(), index);
+                    Some(bucket)
+                }
+                None => None,
+            }
+        }
+    }
+}
+
+impl Iterator for RawIterHashInner {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe {
+            loop {
+                if let Some(bit) = self.bitmask.next() {
+                    let index = (self.probe_seq.pos + bit) & self.bucket_mask;
+                    return Some(index);
+                }
+                if likely(self.group.match_empty().any_bit_set()) {
+                    return None;
+                }
+                self.probe_seq.move_next(self.bucket_mask);
+
+                // Can't use `RawTableInner::ctrl` here as we don't have
+                // an actual `RawTableInner` reference to use.
+                let index = self.probe_seq.pos;
+                debug_assert!(index < self.bucket_mask + 1 + Group::WIDTH);
+                let group_ctrl = self.ctrl.as_ptr().add(index);
+
+                self.group = Group::load(group_ctrl);
+                self.bitmask = self.group.match_byte(self.h2_hash).into_iter();
+            }
+        }
+    }
+}
 
 pub(crate) struct RawExtractIf<'a, T, A: Allocator> {
     pub iter: RawIter<T>,
