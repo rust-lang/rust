@@ -2304,7 +2304,7 @@ impl<'a, I, A: Allocator> !Iterator for &'a Box<[I], A> {}
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
 impl<'a, I, A: Allocator> !Iterator for &'a mut Box<[I], A> {}
 
-// Note: the `#[rustc_skip_during_method_dispatch(boxed_slice)]` on `trait IntoIterator`
+// Note: the `rustc_skip_during_method_dispatch` attribute on `trait IntoIterator`
 // hides this implementation from explicit `.into_iter()` calls on editions < 2024,
 // so those calls will still resolve to the slice implementation, by reference.
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]

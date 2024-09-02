@@ -7,6 +7,7 @@ use super::mir::{Body, Mutability, Safety};
 use super::{with, DefId, Error, Symbol};
 use crate::abi::{FnAbi, Layout};
 use crate::crate_def::{CrateDef, CrateDefType};
+use crate::edition::Edition;
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
@@ -1317,6 +1318,13 @@ pub enum TraitSpecializationKind {
     AlwaysApplicable,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum GatedReceiver {
+    Array,
+    BoxedSlice,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct TraitDecl {
     pub def_id: TraitDef,
@@ -1325,8 +1333,7 @@ pub struct TraitDecl {
     pub has_auto_impl: bool,
     pub is_marker: bool,
     pub is_coinductive: bool,
-    pub skip_array_during_method_dispatch: bool,
-    pub skip_boxed_slice_during_method_dispatch: bool,
+    pub skip_during_method_dispatch: Vec<(GatedReceiver, Edition)>,
     pub specialization_kind: TraitSpecializationKind,
     pub must_implement_one_of: Option<Vec<Ident>>,
     pub implement_via_object: bool,

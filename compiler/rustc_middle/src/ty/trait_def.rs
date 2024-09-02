@@ -1,4 +1,5 @@
 use std::iter;
+use std::str::FromStr;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
@@ -6,12 +7,56 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_span::edition::Edition;
+use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::query::LocalCrate;
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use crate::ty::{Ident, Ty, TyCtxt};
+
+/// The `receiver` from the `#[rustc_skip_during_method_dispatch]` attribute.
+/// Effectively represents a set of types.
+#[derive(Copy, Clone, PartialEq, Eq, HashStable, Encodable, Decodable)]
+pub enum GatedReceiver {
+    Array,
+    BoxedSlice,
+}
+
+impl GatedReceiver {
+    #[must_use]
+    /// Checks whether a method call with a receiver of the given type
+    /// falls under `#[rustc_skip_during_method_dispatch]`'s jurisdiction
+    /// and should be dispatched only past a certain edition.
+    pub fn matches(self, ty: Ty<'_>) -> bool {
+        match self {
+            GatedReceiver::Array => ty.is_array(),
+            GatedReceiver::BoxedSlice => ty.is_box() && ty.boxed_ty().is_slice(),
+        }
+    }
+}
+
+impl std::fmt::Display for GatedReceiver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Array => "array",
+            Self::BoxedSlice => "boxed_slice",
+        })
+    }
+}
+
+impl FromStr for GatedReceiver {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "array" => Ok(Self::Array),
+            "boxed_slice" => Ok(Self::BoxedSlice),
+            _ => Err(()),
+        }
+    }
+}
 
 /// A trait's definition with type information.
 #[derive(HashStable, Encodable, Decodable)]
@@ -50,15 +95,10 @@ pub struct TraitDef {
     /// added in the future.
     pub is_fundamental: bool,
 
-    /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(array)]`
-    /// attribute, indicating that editions before 2021 should not consider this trait
-    /// during method dispatch if the receiver is an array.
-    pub skip_array_during_method_dispatch: bool,
-
-    /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(boxed_slice)]`
-    /// attribute, indicating that editions before 2024 should not consider this trait
-    /// during method dispatch if the receiver is a boxed slice.
-    pub skip_boxed_slice_during_method_dispatch: bool,
+    /// If not empty, then this trait has the `#[rustc_skip_during_method_dispatch]` attribute,
+    /// indicating it should not be considered during method dispatch
+    /// for certain receivers before a specific edition.
+    pub skip_during_method_dispatch: ThinVec<(GatedReceiver, Edition)>,
 
     /// Used to determine whether the standard library is allowed to specialize
     /// on this trait.

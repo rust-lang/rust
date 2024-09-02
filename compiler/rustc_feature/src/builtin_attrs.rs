@@ -969,11 +969,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[rustc_main]` attribute is used internally to specify test entry point function",
     ),
     rustc_attr!(
-        rustc_skip_during_method_dispatch, Normal, template!(List: "array, boxed_slice"), WarnFollowing,
-        EncodeCrossCrate::No,
+        rustc_skip_during_method_dispatch, Normal,
+        template!(List: r#"receiver = "name", before_edition = "N""#),
+        DuplicatesOk, EncodeCrossCrate::No,
         "the `#[rustc_skip_during_method_dispatch]` attribute is used to exclude a trait \
-        from method dispatch when the receiver is of the following type, for compatibility in \
-        editions < 2021 (array) or editions < 2024 (boxed_slice)."
+        from method dispatch when the receiver is of the type `receiver`, \
+        for compatibility in editions < `before_edition`."
     ),
     rustc_attr!(
         rustc_must_implement_one_of, Normal, template!(List: "function1, function2, ..."),

@@ -1,7 +1,9 @@
 //! Conversion of internal Rust compiler `ty` items to stable ones.
 
+use rustc_middle::ty::trait_def::GatedReceiver;
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
+use rustc_span::edition::Edition;
 use stable_mir::ty::{
     AdtKind, FloatTy, GenericArgs, GenericParamDef, IntTy, Region, RigidTy, TyKind, UintTy,
 };
@@ -532,6 +534,30 @@ impl<'tcx> Stable<'tcx> for ty::trait_def::TraitSpecializationKind {
     }
 }
 
+impl Stable<'_> for Edition {
+    type T = stable_mir::edition::Edition;
+
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        match self {
+            Self::Edition2015 => Self::T::Edition2015,
+            Self::Edition2018 => Self::T::Edition2018,
+            Self::Edition2021 => Self::T::Edition2021,
+            Self::Edition2024 => Self::T::Edition2024,
+        }
+    }
+}
+
+impl Stable<'_> for GatedReceiver {
+    type T = stable_mir::ty::GatedReceiver;
+
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        match self {
+            Self::Array => Self::T::Array,
+            Self::BoxedSlice => Self::T::BoxedSlice,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::TraitDef {
     type T = stable_mir::ty::TraitDecl;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
@@ -545,8 +571,11 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
             has_auto_impl: self.has_auto_impl,
             is_marker: self.is_marker,
             is_coinductive: self.is_coinductive,
-            skip_array_during_method_dispatch: self.skip_array_during_method_dispatch,
-            skip_boxed_slice_during_method_dispatch: self.skip_boxed_slice_during_method_dispatch,
+            skip_during_method_dispatch: self
+                .skip_during_method_dispatch
+                .iter()
+                .map(|x| x.stable(tables))
+                .collect(),
             specialization_kind: self.specialization_kind.stable(tables),
             must_implement_one_of: self
                 .must_implement_one_of

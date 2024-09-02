@@ -18,7 +18,9 @@ use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
-use rustc_ast::Recovered;
+use rustc_ast::{
+    self as ast, Attribute, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, Recovered,
+};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
@@ -33,15 +35,18 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::trait_def::GatedReceiver;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
+use rustc_span::edition::Edition;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
@@ -1205,6 +1210,60 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
     tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr, is_anonymous)
 }
 
+fn parse_rustc_skip_during_method_dispatch(
+    dcx: DiagCtxtHandle<'_>,
+    attr: &Attribute,
+) -> Result<(GatedReceiver, Edition), ErrorGuaranteed> {
+    debug_assert!(attr.has_name(sym::rustc_skip_during_method_dispatch));
+    let mut receiver: Option<GatedReceiver> = None;
+    let mut before: Option<Edition> = None;
+    for arg in attr.meta_item_list().unwrap_or_default() {
+        let arg_span = arg.span();
+        if let NestedMetaItem::MetaItem(MetaItem {
+            path: ast::Path { segments, span: key_span, .. },
+            kind: MetaItemKind::NameValue(MetaItemLit { symbol: value, span: value_span, .. }),
+            ..
+        }) = arg
+            && let [ast::PathSegment { ident: key, .. }] = segments.as_slice()
+        {
+            match key.as_str() {
+                "receiver" => {
+                    if receiver
+                        .replace(value.as_str().parse().map_err(|()| {
+                            dcx.span_err(value_span, "Expected `array` or `boxed_slice`")
+                        })?)
+                        .is_some()
+                    {
+                        Err(dcx.span_err(arg_span, "`receiver` should be specified only once"))?
+                    }
+                }
+
+                "before" => {
+                    if before
+                        .replace(
+                            value.as_str().parse().map_err(|()| {
+                                dcx.span_err(value_span, "Could not parse edition")
+                            })?,
+                        )
+                        .is_some()
+                    {
+                        Err(dcx.span_err(arg_span, "`before` should be specified only once"))?
+                    }
+                }
+                _ => Err(dcx.span_err(key_span, "Expected either `receiver` or `before`"))?,
+            }
+        } else {
+            Err(dcx
+                .span_err(arg_span, "Expected either `receiver = \"...\"` or `before = \"...\"`"))?
+        };
+    }
+
+    Ok((
+        receiver.ok_or_else(|| dcx.span_err(attr.span, "Missing `receiver`"))?,
+        before.ok_or_else(|| dcx.span_err(attr.span, "Missing `before`"))?,
+    ))
+}
+
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir().expect_item(def_id);
 
@@ -1234,20 +1293,19 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let rustc_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
     let is_fundamental = tcx.has_attr(def_id, sym::fundamental);
 
-    // FIXME: We could probably do way better attribute validation here.
-    let mut skip_array_during_method_dispatch = false;
-    let mut skip_boxed_slice_during_method_dispatch = false;
+    let mut skip_during_method_dispatch: ThinVec<(GatedReceiver, Edition)> = ThinVec::new();
     for attr in tcx.get_attrs(def_id, sym::rustc_skip_during_method_dispatch) {
-        if let Some(lst) = attr.meta_item_list() {
-            for item in lst {
-                if let Some(ident) = item.ident() {
-                    match ident.as_str() {
-                        "array" => skip_array_during_method_dispatch = true,
-                        "boxed_slice" => skip_boxed_slice_during_method_dispatch = true,
-                        _ => (),
-                    }
-                }
+        if let Ok(parsed) = parse_rustc_skip_during_method_dispatch(tcx.dcx(), attr) {
+            if skip_during_method_dispatch.iter().any(|prev| prev.0 == parsed.0) {
+                tcx.dcx().span_err(
+                    attr.span,
+                    format!(
+                        "Duplicate `#[rustc_skip_during_method_dispatch(receiver = \"{}\")]`",
+                        parsed.0
+                    ),
+                );
             }
+            skip_during_method_dispatch.push(parsed);
         }
     }
 
@@ -1386,8 +1444,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         is_marker,
         is_coinductive: rustc_coinductive || is_auto,
         is_fundamental,
-        skip_array_during_method_dispatch,
-        skip_boxed_slice_during_method_dispatch,
+        skip_during_method_dispatch,
         specialization_kind,
         must_implement_one_of,
         implement_via_object,
