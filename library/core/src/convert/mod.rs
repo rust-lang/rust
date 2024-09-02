@@ -850,6 +850,24 @@ impl AsMut<str> for str {
     }
 }
 
+#[cfg(not(bootstrap))]
+#[stable(feature = "array_as_ref_impl", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> AsRef<[T; N]> for [T; N] {
+    #[inline(always)]
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "array_as_ref_impl", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> AsMut<[T; N]> for [T; N] {
+    #[inline(always)]
+    fn as_mut(&mut self) -> &mut Self {
+        self
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // THE NO-ERROR ERROR TYPE
 ////////////////////////////////////////////////////////////////////////////////
