@@ -817,7 +817,7 @@ impl<'a> DiagCtxtHandle<'a> {
                 );
             }
             // We delay a bug here so that `-Ztreat-err-as-bug -Zeagerly-emit-delayed-bugs`
-            // can be used to create a backtrace at the stashing site insted of whenever the
+            // can be used to create a backtrace at the stashing site instead of whenever the
             // diagnostic context is dropped and thus delayed bugs are emitted.
             Error => Some(self.span_delayed_bug(span, format!("stashing {key:?}"))),
             DelayedBug => {

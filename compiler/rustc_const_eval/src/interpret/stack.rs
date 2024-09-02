@@ -1,5 +1,5 @@
 //! Manages the low-level pushing and popping of stack frames and the (de)allocation of local variables.
-//! For hadling of argument passing and return values, see the `call` module.
+//! For handling of argument passing and return values, see the `call` module.
 use std::cell::Cell;
 use std::{fmt, mem};
 
