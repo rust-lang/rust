@@ -60,22 +60,6 @@ impl RawWaker {
         RawWaker { data, vtable }
     }
 
-    /// Gets the `data` pointer used to create this `RawWaker`.
-    #[inline]
-    #[must_use]
-    #[unstable(feature = "waker_getters", issue = "96992")]
-    pub fn data(&self) -> *const () {
-        self.data
-    }
-
-    /// Gets the `vtable` pointer used to create this `RawWaker`.
-    #[inline]
-    #[must_use]
-    #[unstable(feature = "waker_getters", issue = "96992")]
-    pub fn vtable(&self) -> &'static RawWakerVTable {
-        self.vtable
-    }
-
     #[unstable(feature = "noop_waker", issue = "98286")]
     const NOOP: RawWaker = {
         const VTABLE: RawWakerVTable = RawWakerVTable::new(
@@ -565,12 +549,20 @@ impl Waker {
         WAKER
     }
 
-    /// Gets a reference to the underlying [`RawWaker`].
+    /// Gets the `data` pointer used to create this `Waker`.
     #[inline]
     #[must_use]
     #[unstable(feature = "waker_getters", issue = "96992")]
-    pub fn as_raw(&self) -> &RawWaker {
-        &self.waker
+    pub fn data(&self) -> *const () {
+        self.waker.data
+    }
+
+    /// Gets the `vtable` pointer used to create this `Waker`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "96992")]
+    pub fn vtable(&self) -> &'static RawWakerVTable {
+        self.waker.vtable
     }
 }
 
@@ -831,12 +823,20 @@ impl LocalWaker {
         WAKER
     }
 
-    /// Gets a reference to the underlying [`RawWaker`].
+    /// Gets the `data` pointer used to create this `LocalWaker`.
     #[inline]
     #[must_use]
     #[unstable(feature = "waker_getters", issue = "96992")]
-    pub fn as_raw(&self) -> &RawWaker {
-        &self.waker
+    pub fn data(&self) -> *const () {
+        self.waker.data
+    }
+
+    /// Gets the `vtable` pointer used to create this `LocalWaker`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "96992")]
+    pub fn vtable(&self) -> &'static RawWakerVTable {
+        self.waker.vtable
     }
 }
 #[unstable(feature = "local_waker", issue = "118959")]
