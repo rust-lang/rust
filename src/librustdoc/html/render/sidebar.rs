@@ -95,7 +95,7 @@ pub(crate) mod filters {
 }
 
 pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
-    let blocks: Vec<LinkBlock<'_>> = match *it.kind {
+    let blocks: Vec<LinkBlock<'_>> = match it.kind {
         clean::StructItem(ref s) => sidebar_struct(cx, it, s),
         clean::TraitItem(ref t) => sidebar_trait(cx, it, t),
         clean::PrimitiveItem(_) => sidebar_primitive(cx, it),
@@ -123,7 +123,7 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
         || it.is_type_alias()
     {
         (
-            match *it.kind {
+            match it.kind {
                 clean::ModuleItem(..) => "Module ",
                 _ => "",
             },
@@ -154,7 +154,7 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
 fn get_struct_fields_name<'a>(fields: &'a [clean::Item]) -> Vec<Link<'a>> {
     let mut fields = fields
         .iter()
-        .filter(|f| matches!(*f.kind, clean::StructFieldItem(..)))
+        .filter(|f| matches!(f.kind, clean::StructFieldItem(..)))
         .filter_map(|f| {
             f.name.as_ref().map(|name| Link::new(format!("structfield.{name}"), name.as_str()))
         })
@@ -399,7 +399,7 @@ fn sidebar_deref_methods<'a>(
 
     debug!("found Deref: {impl_:?}");
     if let Some((target, real_target)) =
-        impl_.inner_impl().items.iter().find_map(|item| match *item.kind {
+        impl_.inner_impl().items.iter().find_map(|item| match item.kind {
             clean::AssocTypeItem(box ref t, _) => Some(match *t {
                 clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
@@ -505,7 +505,7 @@ fn sidebar_module(items: &[clean::Item]) -> LinkBlock<'static> {
                 && it
                     .name
                     .or_else(|| {
-                        if let clean::ImportItem(ref i) = *it.kind
+                        if let clean::ImportItem(ref i) = it.kind
                             && let clean::ImportKind::Simple(s) = i.kind
                         {
                             Some(s)

@@ -49,7 +49,7 @@ impl JsonRenderer<'_> {
         let visibility = item.visibility(self.tcx);
         let clean::Item { name, item_id, .. } = item;
         let id = id_from_item(&item, self.tcx);
-        let inner = match *item.kind {
+        let inner = match item.kind {
             clean::KeywordItem => return None,
             clean::StrippedItem(ref inner) => {
                 match &**inner {
@@ -294,7 +294,7 @@ pub(crate) fn id_from_item_inner(
 }
 
 pub(crate) fn id_from_item(item: &clean::Item, tcx: TyCtxt<'_>) -> Id {
-    match *item.kind {
+    match item.kind {
         clean::ItemKind::ImportItem(ref import) => {
             let extra =
                 import.source.did.map(ItemId::from).map(|i| id_from_item_inner(i, tcx, None, None));
@@ -310,7 +310,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
     let is_crate = item.is_crate();
     let header = item.fn_header(tcx);
 
-    match *item.kind {
+    match item.inner.kind {
         ModuleItem(m) => {
             ItemEnum::Module(Module { is_crate, items: ids(m.items, tcx), is_stripped: false })
         }

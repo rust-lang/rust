@@ -89,7 +89,7 @@ impl<'a, 'tcx> Stripper<'a, 'tcx> {
 impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         let has_doc_hidden = i.is_doc_hidden();
-        let is_impl_or_exported_macro = match *i.kind {
+        let is_impl_or_exported_macro = match i.kind {
             clean::ImplItem(..) => true,
             // If the macro has the `#[macro_export]` attribute, it means it's accessible at the
             // crate level so it should be handled differently.
@@ -138,7 +138,7 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
         // module it's defined in. Both of these are marked "stripped," and
         // not included in the final docs, but since they still have an effect
         // on the final doc, cannot be completely removed from the Clean IR.
-        match *i.kind {
+        match i.kind {
             clean::StructFieldItem(..) | clean::ModuleItem(..) | clean::VariantItem(..) => {
                 // We need to recurse into stripped modules to
                 // strip things like impl methods but when doing so

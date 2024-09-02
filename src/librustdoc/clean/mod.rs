@@ -203,8 +203,8 @@ fn generate_item_with_correct_attrs(
     let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
 
     let name = renamed.or(Some(name));
-    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, Box::new(attrs), cfg);
-    item.inline_stmt_id = import_id.map(|local| local.to_def_id());
+    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
+    item.inline_stmt_id = import_id;
     item
 }
 
@@ -2927,7 +2927,7 @@ fn clean_extern_crate<'tcx>(
         })
         && !cx.output_format.is_json();
 
-    let krate_owner_def_id = krate.owner_id.to_def_id();
+    let krate_owner_def_id = krate.owner_id.def_id;
     if please_inline {
         if let Some(items) = inline::try_inline(
             cx,
@@ -2941,7 +2941,7 @@ fn clean_extern_crate<'tcx>(
     }
 
     vec![Item::from_def_id_and_parts(
-        krate_owner_def_id,
+        krate_owner_def_id.to_def_id(),
         Some(name),
         ExternCrateItem { src: orig_name },
         cx,
@@ -2988,7 +2988,7 @@ fn clean_use_statement_inner<'tcx>(
     let inline_attr = attrs.lists(sym::doc).get_word_attr(sym::inline);
     let pub_underscore = visibility.is_public() && name == kw::Underscore;
     let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
-    let import_def_id = import.owner_id.def_id.to_def_id();
+    let import_def_id = import.owner_id.def_id;
 
     // The parent of the module in which this import resides. This
     // is the same as `current_mod` if that's already the top
@@ -3071,7 +3071,7 @@ fn clean_use_statement_inner<'tcx>(
             )
         {
             items.push(Item::from_def_id_and_parts(
-                import_def_id,
+                import_def_id.to_def_id(),
                 None,
                 ImportItem(Import::new_simple(name, resolve_use_source(cx, path), false)),
                 cx,
@@ -3081,7 +3081,7 @@ fn clean_use_statement_inner<'tcx>(
         Import::new_simple(name, resolve_use_source(cx, path), true)
     };
 
-    vec![Item::from_def_id_and_parts(import_def_id, None, ImportItem(inner), cx)]
+    vec![Item::from_def_id_and_parts(import_def_id.to_def_id(), None, ImportItem(inner), cx)]
 }
 
 fn clean_maybe_renamed_foreign_item<'tcx>(

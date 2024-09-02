@@ -36,7 +36,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     // understood by rustdoc.
     let mut module = clean_doc_module(&module, cx);
 
-    match *module.kind {
+    match module.kind {
         ItemKind::ModuleItem(ref module) => {
             for it in &module.items {
                 // `compiler_builtins` should be masked too, but we can't apply
@@ -60,7 +60,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);
     {
-        let ItemKind::ModuleItem(ref mut m) = *module.kind else { unreachable!() };
+        let ItemKind::ModuleItem(ref mut m) = &mut module.inner.kind else { unreachable!() };
         m.items.extend(primitives.iter().map(|&(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
@@ -281,7 +281,7 @@ pub(crate) fn build_deref_target_impls(
     let tcx = cx.tcx;
 
     for item in items {
-        let target = match *item.kind {
+        let target = match item.kind {
             ItemKind::AssocTypeItem(ref t, _) => &t.type_,
             _ => continue,
         };

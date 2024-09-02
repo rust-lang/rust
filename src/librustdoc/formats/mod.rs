@@ -16,7 +16,7 @@ pub(crate) struct Impl {
 
 impl Impl {
     pub(crate) fn inner_impl(&self) -> &clean::Impl {
-        match *self.impl_item.kind {
+        match self.impl_item.kind {
             clean::ImplItem(ref impl_) => impl_,
             _ => panic!("non-impl item found in impl"),
         }

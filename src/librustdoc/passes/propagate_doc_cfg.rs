@@ -31,7 +31,7 @@ impl<'a, 'tcx> CfgPropagator<'a, 'tcx> {
     // Some items need to merge their attributes with their parents' otherwise a few of them
     // (mostly `cfg` ones) will be missing.
     fn merge_with_parent_attributes(&mut self, item: &mut Item) {
-        let check_parent = match &*item.kind {
+        let check_parent = match &item.kind {
             // impl blocks can be in different modules with different cfg and we need to get them
             // as well.
             ItemKind::ImplItem(_) => false,
