@@ -389,7 +389,9 @@ fn hints_(
         }
         (None, allocated_lifetimes) => on_missing_gpl(acc, allocated_lifetimes),
     }
-    ctx.lifetime_stacks.last_mut().unwrap().extend(allocated_lifetimes);
+    if let Some(stack) = ctx.lifetime_stacks.last_mut() {
+        stack.extend(allocated_lifetimes);
+    }
     Some(())
 }
 
@@ -542,6 +544,22 @@ fn fn_trait(a: &impl Fn(&()) -> &()) {}
                   // ^^ for<'1>
                       //^'1
                              // ^'1
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_in_non_gen_defs() {
+        check_with_config(
+            InlayHintsConfig {
+                lifetime_elision_hints: LifetimeElisionHints::Always,
+                ..TEST_CONFIG
+            },
+            r#"
+const _: fn(&()) -> &();
+       //^^ for<'0>
+          //^'0
+                  //^'0
 "#,
         );
     }
