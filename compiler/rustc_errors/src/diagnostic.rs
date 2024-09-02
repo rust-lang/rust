@@ -479,7 +479,7 @@ pub struct Subdiag {
 /// - The `EmissionGuarantee`, which determines the type returned from `emit`.
 ///
 /// Each constructed `Diag` must be consumed by a function such as `emit`,
-/// `cancel`, `delay_as_bug`, or `into_diag`. A panic occurrs if a `Diag`
+/// `cancel`, `delay_as_bug`, or `into_diag`. A panic occurs if a `Diag`
 /// is dropped without being consumed by one of these functions.
 ///
 /// If there is some state in a downstream crate you would like to access in

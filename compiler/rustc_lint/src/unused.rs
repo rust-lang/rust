@@ -734,7 +734,7 @@ trait UnusedDelimLint {
             return false;
         }
 
-        // Check if we need parens for `match &( Struct { feild:  }) {}`.
+        // Check if we need parens for `match &( Struct { field:  }) {}`.
         {
             let mut innermost = inner;
             loop {

@@ -650,7 +650,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // cannot distinguish. This would cause us to erroneously discard a cast which will
                         // lead to a borrowck error like #113257.
                         // We still did a coercion above to unify inference variables for `ptr as _` casts.
-                        // This does cause us to miss some trivial casts in the trival cast lint.
+                        // This does cause us to miss some trivial casts in the trivial cast lint.
                         debug!(" -> PointerCast");
                     } else {
                         self.trivial_cast_lint(fcx);
