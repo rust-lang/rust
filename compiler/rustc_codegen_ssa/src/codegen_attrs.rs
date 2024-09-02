@@ -9,11 +9,11 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_hir::{LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, TargetFeature,
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_middle::ty::{self as ty, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
 use rustc_span::symbol::Ident;
@@ -79,6 +79,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
 
+    let fn_sig_outer = || {
+        use DefKind::*;
+
+        let def_kind = tcx.def_kind(did);
+        if let Fn | AssocFn | Variant | Ctor(..) = def_kind { Some(tcx.fn_sig(did)) } else { None }
+    };
+
     for attr in attrs.iter() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
         // pass that check that they aren't used anywhere else, rather this module.
@@ -86,16 +93,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         // functions (such as calling `fn_sig`, which ICEs if given a non-function). We also
         // report a delayed bug, just in case `check_attr` isn't doing its job.
         let fn_sig = || {
-            use DefKind::*;
-
-            let def_kind = tcx.def_kind(did);
-            if let Fn | AssocFn | Variant | Ctor(..) = def_kind {
-                Some(tcx.fn_sig(did))
-            } else {
+            let sig = fn_sig_outer();
+            if sig.is_none() {
                 tcx.dcx()
                     .span_delayed_bug(attr.span, "this attribute can only be applied to functions");
-                None
             }
+            sig
         };
 
         let Some(Ident { name, .. }) = attr.ident() else {
@@ -596,7 +599,30 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    // If a function uses #[target_feature] it can't be inlined into general
+    if let Some(sig) = fn_sig_outer() {
+        for ty in sig.skip_binder().inputs().skip_binder() {
+            let additional_tf =
+                tcx.struct_reachable_target_features(tcx.param_env(did.to_def_id()).and(*ty));
+            // FIXME(struct_target_features): is this really necessary?
+            if !additional_tf.is_empty() && sig.skip_binder().abi() != abi::Abi::Rust {
+                tcx.dcx().span_err(
+                    tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
+                    "cannot use a struct with target features in a function with non-Rust ABI",
+                );
+            }
+            if !additional_tf.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
+                tcx.dcx().span_err(
+                    tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
+                    "cannot use a struct with target features in a #[inline(always)] function",
+                );
+            }
+            codegen_fn_attrs
+                .target_features
+                .extend(additional_tf.iter().map(|tf| TargetFeature { implied: true, ..*tf }));
+        }
+    }
+
+    // If a function uses non-default target_features it can't be inlined into general
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
@@ -779,6 +805,47 @@ fn check_link_name_xor_ordinal(
     }
 }
 
+fn struct_target_features(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[TargetFeature] {
+    let mut features = vec![];
+    let supported_features = tcx.supported_target_features(LOCAL_CRATE);
+    for attr in tcx.get_attrs(def_id, sym::target_feature) {
+        from_target_feature(tcx, attr, supported_features, &mut features);
+    }
+    tcx.arena.alloc_slice(&features)
+}
+
+fn struct_reachable_target_features<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> &'tcx [TargetFeature] {
+    // Collect target features from types reachable from `env.value` by dereferencing a certain
+    // number of references and resolving aliases.
+
+    let mut ty = env.value;
+    if matches!(ty.kind(), ty::Alias(..)) {
+        ty = match tcx.try_normalize_erasing_regions(env.param_env, ty) {
+            Ok(ty) => ty,
+            Err(_) => return tcx.arena.alloc_slice(&[]),
+        };
+    }
+    while let ty::Ref(_, inner, _) = ty.kind() {
+        ty = *inner;
+    }
+
+    let tf = if let ty::Adt(adt_def, ..) = ty.kind() {
+        tcx.struct_target_features(adt_def.did())
+    } else {
+        &[]
+    };
+    tcx.arena.alloc_slice(tf)
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
+    *providers = Providers {
+        codegen_fn_attrs,
+        should_inherit_track_caller,
+        struct_target_features,
+        struct_reachable_target_features,
+        ..*providers
+    };
 }

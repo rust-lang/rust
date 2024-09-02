@@ -59,6 +59,7 @@ trivially_parameterized_over_tcx! {
     std::string::String,
     crate::metadata::ModChild,
     crate::middle::codegen_fn_attrs::CodegenFnAttrs,
+    crate::middle::codegen_fn_attrs::TargetFeature,
     crate::middle::debugger_visualizer::DebuggerVisualizerFile,
     crate::middle::exported_symbols::SymbolExportInfo,
     crate::middle::lib_features::FeatureStability,

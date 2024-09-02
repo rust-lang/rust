@@ -254,6 +254,7 @@ provide! { tcx, def_id, other, cdata,
     variances_of => { table }
     fn_sig => { table }
     codegen_fn_attrs => { table }
+    struct_target_features => { table_defaulted_array }
     impl_trait_header => { table }
     const_param_default => { table }
     object_lifetime_default => { table }
