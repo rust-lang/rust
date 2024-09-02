@@ -86,7 +86,7 @@ fn add_move_for_packed_drop<'tcx>(
 
     let source_info = terminator.source_info;
     let ty = place.ty(body, tcx).ty;
-    let temp = patch.new_temp(ty, terminator.source_info.span);
+    let temp = patch.new_temp(ty, source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData {
         statements: vec![Statement { source_info, kind: StatementKind::StorageDead(temp) }],
