@@ -1,4 +1,5 @@
 use hir::TypeInfo;
+use ide_db::syntax_helpers::suggest_name;
 use syntax::{
     ast::{self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasName},
     ted, NodeOrToken,
@@ -6,7 +7,7 @@ use syntax::{
     SyntaxNode, T,
 };
 
-use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: extract_variable
 //

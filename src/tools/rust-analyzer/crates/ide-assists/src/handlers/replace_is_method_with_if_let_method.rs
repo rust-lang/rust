@@ -1,9 +1,10 @@
+use ide_db::syntax_helpers::suggest_name;
 use syntax::{
     ast::{self, make, AstNode},
     ted,
 };
 
-use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_is_some_with_if_let_some
 //

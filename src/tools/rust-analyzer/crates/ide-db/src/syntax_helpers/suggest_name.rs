@@ -1,13 +1,15 @@
 //! This module contains functions to suggest names for expressions, functions and other items
 
 use hir::Semantics;
-use ide_db::{FxHashSet, RootDatabase};
 use itertools::Itertools;
+use rustc_hash::FxHashSet;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, HasName},
     match_ast, AstNode, Edition, SmolStr,
 };
+
+use crate::RootDatabase;
 
 /// Trait names, that will be ignored when in `impl Trait` and `dyn Trait`
 const USELESS_TRAITS: &[&str] = &["Send", "Sync", "Copy", "Clone", "Eq", "PartialEq"];
@@ -66,10 +68,7 @@ const USELESS_METHODS: &[&str] = &[
 /// The function checks if the name conflicts with existing generic parameters.
 /// If so, it will try to resolve the conflict by adding a number suffix, e.g.
 /// `T`, `T0`, `T1`, ...
-pub(crate) fn for_unique_generic_name(
-    name: &str,
-    existing_params: &ast::GenericParamList,
-) -> SmolStr {
+pub fn for_unique_generic_name(name: &str, existing_params: &ast::GenericParamList) -> SmolStr {
     let param_names = existing_params
         .generic_params()
         .map(|param| match param {
@@ -101,7 +100,7 @@ pub(crate) fn for_unique_generic_name(
 ///
 /// If the name conflicts with existing generic parameters, it will try to
 /// resolve the conflict with `for_unique_generic_name`.
-pub(crate) fn for_impl_trait_as_generic(
+pub fn for_impl_trait_as_generic(
     ty: &ast::ImplTraitType,
     existing_params: &ast::GenericParamList,
 ) -> SmolStr {
@@ -132,7 +131,7 @@ pub(crate) fn for_impl_trait_as_generic(
 ///
 /// Currently it sticks to the first name found.
 // FIXME: Microoptimize and return a `SmolStr` here.
-pub(crate) fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> String {
+pub fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> String {
     // `from_param` does not benefit from stripping
     // it need the largest context possible
     // so we check firstmost
@@ -184,7 +183,7 @@ fn normalize(name: &str) -> Option<String> {
 
 fn is_valid_name(name: &str) -> bool {
     matches!(
-        ide_db::syntax_helpers::LexedStr::single_token(syntax::Edition::CURRENT_FIXME, name),
+        super::LexedStr::single_token(syntax::Edition::CURRENT_FIXME, name),
         Some((syntax::SyntaxKind::IDENT, _error))
     )
 }
