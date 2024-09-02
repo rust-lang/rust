@@ -235,7 +235,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "pmuv3") => Some(LLVMFeature::new("perfmon")),
         ("aarch64", "paca") => Some(LLVMFeature::new("pauth")),
         ("aarch64", "pacg") => Some(LLVMFeature::new("pauth")),
-        ("aarch64", "sve-b16b16") => Some(LLVMFeature::new("b16b16")),
+        ("aarch64", "sve-b16b16") => {
+            Some(LLVMFeature::new(if get_version().0 < 20 { "b16b16" } else { "sve-b16b16" }))
+        }
         ("aarch64", "flagm2") => Some(LLVMFeature::new("altnzcv")),
         // Rust ties fp and neon together.
         ("aarch64", "neon") => {
