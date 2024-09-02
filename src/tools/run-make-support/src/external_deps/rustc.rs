@@ -36,10 +36,13 @@ pub struct Rustc {
 
 crate::macros::impl_common_helpers!(Rustc);
 
+pub fn rustc_path() -> String {
+    env_var("RUSTC")
+}
+
 #[track_caller]
 fn setup_common() -> Command {
-    let rustc = env_var("RUSTC");
-    let mut cmd = Command::new(rustc);
+    let mut cmd = Command::new(rustc_path());
     set_host_rpath(&mut cmd);
     cmd
 }
