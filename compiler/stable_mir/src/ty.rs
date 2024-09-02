@@ -267,7 +267,7 @@ impl Span {
         with(|c| c.get_filename(self))
     }
 
-    /// Return lines that corespond to this `Span`
+    /// Return lines that correspond to this `Span`
     pub fn get_lines(&self) -> LineInfo {
         with(|c| c.get_lines(self))
     }
