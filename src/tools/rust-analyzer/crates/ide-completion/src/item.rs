@@ -242,7 +242,7 @@ impl CompletionRelevance {
     /// See is_relevant if you need to make some judgement about score
     /// in an absolute sense.
     pub fn score(self) -> u32 {
-        let mut score = 0;
+        let mut score = !0 / 2;
         let CompletionRelevance {
             exact_name_match,
             type_match,
@@ -255,73 +255,69 @@ impl CompletionRelevance {
             function,
         } = self;
 
+        // only applicable for completions within use items
+        // lower rank for conflicting import names
+        if is_name_already_imported {
+            score -= 1;
+        }
+        // slightly prefer locals
+        if is_local {
+            score += 1;
+        }
+
         // lower rank private things
         if !is_private_editable {
             score += 1;
         }
 
         if let Some(trait_) = trait_ {
-            if trait_.notable_trait {
-                score += 1;
+            // lower rank trait methods unless its notable
+            if !trait_.notable_trait {
+                score -= 5;
             }
             // lower rank trait op methods
-            if !trait_.is_op_method {
-                score += 10;
+            if trait_.is_op_method {
+                score -= 5;
             }
-        } else {
-            // lower rank trait op methods
-            score += 10;
         }
-        // lower rank for conflicting import names
-        if !is_name_already_imported {
-            score += 1;
-        }
-        // lower rank for items that don't need an import
-        if !requires_import {
-            score += 1;
+        // lower rank for items that need an import
+        if requires_import {
+            score -= 1;
         }
         if exact_name_match {
-            score += 10;
+            score += 20;
         }
-        score += match postfix_match {
-            Some(CompletionRelevancePostfixMatch::Exact) => 100,
-            Some(CompletionRelevancePostfixMatch::NonExact) => 0,
-            None => 3,
+        match postfix_match {
+            Some(CompletionRelevancePostfixMatch::Exact) => score += 100,
+            Some(CompletionRelevancePostfixMatch::NonExact) => score -= 5,
+            None => (),
         };
         score += match type_match {
-            Some(CompletionRelevanceTypeMatch::Exact) => 8,
-            Some(CompletionRelevanceTypeMatch::CouldUnify) => 3,
+            Some(CompletionRelevanceTypeMatch::Exact) => 18,
+            Some(CompletionRelevanceTypeMatch::CouldUnify) => 5,
             None => 0,
         };
-        // slightly prefer locals
-        if is_local {
-            score += 1;
-        }
-        score += function
-            .map(|asf| {
-                let mut fn_score = match asf.return_type {
-                    CompletionRelevanceReturnType::DirectConstructor => 15,
-                    CompletionRelevanceReturnType::Builder => 10,
-                    CompletionRelevanceReturnType::Constructor => 5,
-                    CompletionRelevanceReturnType::Other => 0,
-                };
+        if let Some(function) = function {
+            let mut fn_score = match function.return_type {
+                CompletionRelevanceReturnType::DirectConstructor => 15,
+                CompletionRelevanceReturnType::Builder => 10,
+                CompletionRelevanceReturnType::Constructor => 5,
+                CompletionRelevanceReturnType::Other => 0u32,
+            };
 
-                // When a fn is bumped due to return type:
-                // Bump Constructor or Builder methods with no arguments,
-                // over them than with self arguments
-                if fn_score > 0 {
-                    if !asf.has_params {
-                        // bump associated functions
-                        fn_score += 1;
-                    } else if asf.has_self_param {
-                        // downgrade methods (below Constructor)
-                        fn_score = 1;
-                    }
-                }
+            // When a fn is bumped due to return type:
+            // Bump Constructor or Builder methods with no arguments,
+            // over them than with self arguments
+            if function.has_params {
+                // bump associated functions
+                fn_score = fn_score.saturating_sub(1);
+            } else if function.has_self_param {
+                // downgrade methods (below Constructor)
+                fn_score = fn_score.min(1);
+            }
 
-                fn_score
-            })
-            .unwrap_or_default();
+            score += fn_score;
+        };
 
         score
     }
