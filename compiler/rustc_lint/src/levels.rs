@@ -115,34 +115,6 @@ impl LintLevelSets {
     }
 }
 
-fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExpectation)> {
-    let store = unerased_lint_store(tcx.sess);
-
-    let mut builder = LintLevelsBuilder {
-        sess: tcx.sess,
-        features: tcx.features(),
-        provider: QueryMapExpectationsWrapper {
-            tcx,
-            cur: hir::CRATE_HIR_ID,
-            specs: ShallowLintLevelMap::default(),
-            expectations: Vec::new(),
-            unstable_to_stable_ids: FxIndexMap::default(),
-            empty: FxIndexMap::default(),
-        },
-        lint_added_lints: false,
-        store,
-        registered_tools: tcx.registered_tools(()),
-    };
-
-    builder.add_command_line();
-    builder.add_id(hir::CRATE_HIR_ID);
-    tcx.hir().walk_toplevel_module(&mut builder);
-
-    tcx.dcx().update_unstable_expectation_id(&builder.provider.unstable_to_stable_ids);
-
-    builder.provider.expectations
-}
-
 #[instrument(level = "trace", skip(tcx), ret)]
 fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLevelMap {
     let store = unerased_lint_store(tcx.sess);
@@ -207,7 +179,7 @@ pub trait LintLevelsProvider {
     fn current_specs(&self) -> &FxIndexMap<LintId, LevelAndSource>;
     fn insert(&mut self, id: LintId, lvl: LevelAndSource);
     fn get_lint_level(&self, lint: &'static Lint, sess: &Session) -> LevelAndSource;
-    fn push_expectation(&mut self, _id: LintExpectationId, _expectation: LintExpectation) {}
+    fn push_expectation(&mut self, id: LintExpectationId, expectation: LintExpectation);
 }
 
 impl LintLevelsProvider for TopDown {
@@ -222,6 +194,8 @@ impl LintLevelsProvider for TopDown {
     fn get_lint_level(&self, lint: &'static Lint, sess: &Session) -> LevelAndSource {
         self.sets.get_lint_level(lint, self.cur, Some(self.current_specs()), sess)
     }
+
+    fn push_expectation(&mut self, _: LintExpectationId, _: LintExpectation) {}
 }
 
 struct LintLevelQueryMap<'tcx> {
@@ -243,47 +217,8 @@ impl LintLevelsProvider for LintLevelQueryMap<'_> {
     fn get_lint_level(&self, lint: &'static Lint, _: &Session) -> LevelAndSource {
         self.specs.lint_level_id_at_node(self.tcx, LintId::of(lint), self.cur)
     }
-}
-
-struct QueryMapExpectationsWrapper<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    /// HirId of the currently investigated element.
-    cur: HirId,
-    /// Level map for `cur`.
-    specs: ShallowLintLevelMap,
-    expectations: Vec<(LintExpectationId, LintExpectation)>,
-    unstable_to_stable_ids: FxIndexMap<LintExpectationId, LintExpectationId>,
-    /// Empty hash map to simplify code.
-    empty: FxIndexMap<LintId, LevelAndSource>,
-}
-
-impl LintLevelsProvider for QueryMapExpectationsWrapper<'_> {
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelAndSource> {
-        self.specs.specs.get(&self.cur.local_id).unwrap_or(&self.empty)
-    }
-    fn insert(&mut self, id: LintId, lvl: LevelAndSource) {
-        self.specs.specs.get_mut_or_insert_default(self.cur.local_id).insert(id, lvl);
-    }
-    fn get_lint_level(&self, lint: &'static Lint, _: &Session) -> LevelAndSource {
-        // We cannot use `tcx.lint_level_at_node` because we want to know in which order the
-        // attributes have been inserted, in particular whether an `expect` follows a `forbid`.
-        self.specs.lint_level_id_at_node(self.tcx, LintId::of(lint), self.cur)
-    }
     fn push_expectation(&mut self, id: LintExpectationId, expectation: LintExpectation) {
-        let LintExpectationId::Stable { attr_id: Some(attr_id), hir_id, attr_index, .. } = id
-        else {
-            bug!("unstable expectation id should already be mapped")
-        };
-        let key = LintExpectationId::Unstable { attr_id, lint_index: None };
-
-        self.unstable_to_stable_ids.entry(key).or_insert(LintExpectationId::Stable {
-            hir_id,
-            attr_index,
-            lint_index: None,
-            attr_id: None,
-        });
-
-        self.expectations.push((id.normalize(), expectation));
+        self.specs.expectations.push((id, expectation))
     }
 }
 
@@ -335,80 +270,6 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn visit_expr_field(&mut self, f: &'tcx hir::ExprField<'tcx>) {
         self.add_id(f.hir_id);
         intravisit::walk_expr_field(self, f);
-    }
-
-    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
-        self.add_id(s.hir_id);
-        intravisit::walk_field_def(self, s);
-    }
-
-    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
-        self.add_id(v.hir_id);
-        intravisit::walk_variant(self, v);
-    }
-
-    fn visit_local(&mut self, l: &'tcx hir::LetStmt<'tcx>) {
-        self.add_id(l.hir_id);
-        intravisit::walk_local(self, l);
-    }
-
-    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
-        self.add_id(a.hir_id);
-        intravisit::walk_arm(self, a);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.add_id(trait_item.hir_id());
-        intravisit::walk_trait_item(self, trait_item);
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        self.add_id(impl_item.hir_id());
-        intravisit::walk_impl_item(self, impl_item);
-    }
-}
-
-impl<'tcx> LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'tcx>> {
-    fn add_id(&mut self, hir_id: HirId) {
-        // Change both the `HirId` and the associated specs.
-        self.provider.cur = hir_id;
-        self.provider.specs.specs.clear();
-        self.add(self.provider.tcx.hir().attrs(hir_id), hir_id == hir::CRATE_HIR_ID, Some(hir_id));
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'tcx>> {
-    type NestedFilter = nested_filter::All;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.provider.tcx.hir()
-    }
-
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.add_id(param.hir_id);
-        intravisit::walk_param(self, param);
-    }
-
-    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        self.add_id(it.hir_id());
-        intravisit::walk_item(self, it);
-    }
-
-    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
-        self.add_id(it.hir_id());
-        intravisit::walk_foreign_item(self, it);
-    }
-
-    fn visit_stmt(&mut self, e: &'tcx hir::Stmt<'tcx>) {
-        // We will call `add_id` when we walk
-        // the `StmtKind`. The outer statement itself doesn't
-        // define the lint levels.
-        intravisit::walk_stmt(self, e);
-    }
-
-    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        self.add_id(e.hir_id);
-        intravisit::walk_expr(self, e);
     }
 
     fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
@@ -625,13 +486,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Attempts to insert the `id` to `level_src` map entry. If unsuccessful
     /// (e.g. if a forbid was already inserted on the same scope), then emits a
     /// diagnostic with no change to `specs`.
-    fn insert_spec(&mut self, id: LintId, (mut level, src): LevelAndSource) {
+    fn insert_spec(&mut self, id: LintId, (level, src): LevelAndSource) {
         let (old_level, old_src) = self.provider.get_lint_level(id.lint, self.sess);
-        if let Level::Expect(id) = &mut level
-            && let LintExpectationId::Stable { .. } = id
-        {
-            *id = id.normalize();
-        }
+
         // Setting to a non-forbid level is an error if the lint previously had
         // a forbid level. Note that this is not necessarily true even with a
         // `#[forbid(..)]` attribute present, as that is overridden by `--cap-lints`.
@@ -743,17 +600,15 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 // This is the only lint level with a `LintExpectationId` that can be created from
                 // an attribute.
                 Some(Level::Expect(unstable_id)) if let Some(hir_id) = source_hir_id => {
-                    let LintExpectationId::Unstable { attr_id, lint_index } = unstable_id else {
+                    let LintExpectationId::Unstable { lint_index: None, attr_id: _ } = unstable_id
+                    else {
                         bug!("stable id Level::from_attr")
                     };
 
                     let stable_id = LintExpectationId::Stable {
                         hir_id,
                         attr_index: attr_index.try_into().unwrap(),
-                        lint_index,
-                        // We pass the previous unstable attr_id such that we can trace the ast id
-                        // when building a map to go from unstable to stable id.
-                        attr_id: Some(attr_id),
+                        lint_index: None,
                     };
 
                     Level::Expect(stable_id)
@@ -840,59 +695,20 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 let name = pprust::path_to_string(&meta_item.path);
                 let lint_result =
                     self.store.check_lint_name(&name, tool_name, self.registered_tools);
-                match &lint_result {
+
+                let (ids, name) = match lint_result {
                     CheckLintNameResult::Ok(ids) => {
-                        // This checks for instances where the user writes
-                        // `#[expect(unfulfilled_lint_expectations)]` in that case we want to avoid
-                        // overriding the lint level but instead add an expectation that can't be
-                        // fulfilled. The lint message will include an explanation, that the
-                        // `unfulfilled_lint_expectations` lint can't be expected.
-                        if let Level::Expect(expect_id) = level {
-                            // The `unfulfilled_lint_expectations` lint is not part of any lint
-                            // groups. Therefore. we only need to check the slice if it contains a
-                            // single lint.
-                            let is_unfulfilled_lint_expectations = match ids {
-                                [lint] => *lint == LintId::of(UNFULFILLED_LINT_EXPECTATIONS),
-                                _ => false,
-                            };
-                            self.provider.push_expectation(
-                                expect_id,
-                                LintExpectation::new(
-                                    reason,
-                                    sp,
-                                    is_unfulfilled_lint_expectations,
-                                    tool_name,
-                                ),
-                            );
-                        }
-                        let src = LintLevelSource::Node {
-                            name: meta_item
-                                .path
-                                .segments
-                                .last()
-                                .expect("empty lint name")
-                                .ident
-                                .name,
-                            span: sp,
-                            reason,
-                        };
-                        for &id in *ids {
-                            if self.check_gated_lint(id, attr.span, false) {
-                                self.insert_spec(id, (level, src));
-                            }
-                        }
+                        let name =
+                            meta_item.path.segments.last().expect("empty lint name").ident.name;
+                        (ids, name)
                     }
 
                     CheckLintNameResult::Tool(ids, new_lint_name) => {
-                        let src = match new_lint_name {
+                        let name = match new_lint_name {
                             None => {
                                 let complete_name =
                                     &format!("{}::{}", tool_ident.unwrap().name, name);
-                                LintLevelSource::Node {
-                                    name: Symbol::intern(complete_name),
-                                    span: sp,
-                                    reason,
-                                }
+                                Symbol::intern(complete_name)
                             }
                             Some(new_lint_name) => {
                                 self.emit_span_lint(
@@ -901,27 +717,13 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                     DeprecatedLintName {
                                         name,
                                         suggestion: sp,
-                                        replace: new_lint_name,
+                                        replace: &new_lint_name,
                                     },
                                 );
-                                LintLevelSource::Node {
-                                    name: Symbol::intern(new_lint_name),
-                                    span: sp,
-                                    reason,
-                                }
+                                Symbol::intern(&new_lint_name)
                             }
                         };
-                        for &id in *ids {
-                            if self.check_gated_lint(id, attr.span, false) {
-                                self.insert_spec(id, (level, src));
-                            }
-                        }
-                        if let Level::Expect(expect_id) = level {
-                            self.provider.push_expectation(
-                                expect_id,
-                                LintExpectation::new(reason, sp, false, tool_name),
-                            );
-                        }
+                        (ids, name)
                     }
 
                     CheckLintNameResult::MissingTool => {
@@ -929,9 +731,10 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         // exist in the tool or the code was not compiled with the tool and
                         // therefore the lint was never added to the `LintStore`. To detect
                         // this is the responsibility of the lint tool.
+                        continue;
                     }
 
-                    &CheckLintNameResult::NoTool => {
+                    CheckLintNameResult::NoTool => {
                         sess.dcx().emit_err(UnknownToolInScopedLint {
                             span: tool_ident.map(|ident| ident.span),
                             tool_name: tool_name.unwrap(),
@@ -941,57 +744,87 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         continue;
                     }
 
-                    _ if !self.lint_added_lints => {}
-
                     CheckLintNameResult::Renamed(ref replace) => {
-                        let suggestion =
-                            RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
-                        let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                        let lint = RenamedLint { name: name.as_str(), suggestion };
-                        self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
+                        if self.lint_added_lints {
+                            let suggestion =
+                                RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
+                            let name =
+                                tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                            let lint = RenamedLint { name: name.as_str(), suggestion };
+                            self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
+                        }
+
+                        // If this lint was renamed, apply the new lint instead of ignoring the
+                        // attribute. Ignore any errors or warnings that happen because the new
+                        // name is inaccurate.
+                        // NOTE: `new_name` already includes the tool name, so we don't
+                        // have to add it again.
+                        let CheckLintNameResult::Ok(ids) =
+                            self.store.check_lint_name(replace, None, self.registered_tools)
+                        else {
+                            panic!("renamed lint does not exist: {replace}");
+                        };
+
+                        (ids, Symbol::intern(&replace))
                     }
 
                     CheckLintNameResult::Removed(ref reason) => {
-                        let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                        let lint = RemovedLint { name: name.as_str(), reason };
-                        self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
+                        if self.lint_added_lints {
+                            let name =
+                                tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                            let lint = RemovedLint { name: name.as_str(), reason };
+                            self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
+                        }
+                        continue;
                     }
 
                     CheckLintNameResult::NoLint(suggestion) => {
-                        let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                        let suggestion = suggestion.map(|(replace, from_rustc)| {
-                            UnknownLintSuggestion::WithSpan { suggestion: sp, replace, from_rustc }
-                        });
-                        let lint = UnknownLint { name, suggestion };
-                        self.emit_span_lint(UNKNOWN_LINTS, sp.into(), lint);
+                        if self.lint_added_lints {
+                            let name =
+                                tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                            let suggestion = suggestion.map(|(replace, from_rustc)| {
+                                UnknownLintSuggestion::WithSpan {
+                                    suggestion: sp,
+                                    replace,
+                                    from_rustc,
+                                }
+                            });
+                            let lint = UnknownLint { name, suggestion };
+                            self.emit_span_lint(UNKNOWN_LINTS, sp.into(), lint);
+                        }
+                        continue;
+                    }
+                };
+
+                let src = LintLevelSource::Node { name, span: sp, reason };
+                for &id in ids {
+                    if self.check_gated_lint(id, attr.span, false) {
+                        self.insert_spec(id, (level, src));
                     }
                 }
-                // If this lint was renamed, apply the new lint instead of ignoring the attribute.
-                // This happens outside of the match because the new lint should be applied even if
-                // we don't warn about the name change.
-                if let CheckLintNameResult::Renamed(new_name) = lint_result {
-                    // Ignore any errors or warnings that happen because the new name is inaccurate
-                    // NOTE: `new_name` already includes the tool name, so we don't have to add it
-                    // again.
-                    let CheckLintNameResult::Ok(ids) =
-                        self.store.check_lint_name(&new_name, None, self.registered_tools)
-                    else {
-                        panic!("renamed lint does not exist: {new_name}");
-                    };
 
-                    let src =
-                        LintLevelSource::Node { name: Symbol::intern(&new_name), span: sp, reason };
-                    for &id in ids {
-                        if self.check_gated_lint(id, attr.span, false) {
-                            self.insert_spec(id, (level, src));
-                        }
-                    }
-                    if let Level::Expect(expect_id) = level {
-                        self.provider.push_expectation(
-                            expect_id,
-                            LintExpectation::new(reason, sp, false, tool_name),
-                        );
-                    }
+                // This checks for instances where the user writes
+                // `#[expect(unfulfilled_lint_expectations)]` in that case we want to avoid
+                // overriding the lint level but instead add an expectation that can't be
+                // fulfilled. The lint message will include an explanation, that the
+                // `unfulfilled_lint_expectations` lint can't be expected.
+                if let Level::Expect(expect_id) = level {
+                    // The `unfulfilled_lint_expectations` lint is not part of any lint
+                    // groups. Therefore. we only need to check the slice if it contains a
+                    // single lint.
+                    let is_unfulfilled_lint_expectations = match ids {
+                        [lint] => *lint == LintId::of(UNFULFILLED_LINT_EXPECTATIONS),
+                        _ => false,
+                    };
+                    self.provider.push_expectation(
+                        expect_id,
+                        LintExpectation::new(
+                            reason,
+                            sp,
+                            is_unfulfilled_lint_expectations,
+                            tool_name,
+                        ),
+                    );
                 }
             }
         }
@@ -1100,7 +933,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { shallow_lint_levels_on, lint_expectations, ..*providers };
+    *providers = Providers { shallow_lint_levels_on, ..*providers };
 }
 
 pub(crate) fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {

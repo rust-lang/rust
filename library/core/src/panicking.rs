@@ -264,7 +264,7 @@ pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
@@ -276,7 +276,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
     panic!("index out of bounds: the len is {len} but the index is {index}")
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
@@ -301,7 +301,7 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 ///
 /// This function is called directly by the codegen backend, and must not have
 /// any extra arguments (including those synthesized by track_caller).
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[lang = "panic_cannot_unwind"] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
@@ -317,7 +317,7 @@ fn panic_cannot_unwind() -> ! {
 ///
 /// This function is called directly by the codegen backend, and must not have
 /// any extra arguments (including those synthesized by track_caller).
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[lang = "panic_in_cleanup"] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
@@ -350,7 +350,7 @@ pub enum AssertKind {
 }
 
 /// Internal function for `assert_eq!` and `assert_ne!` macros
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[doc(hidden)]
@@ -368,7 +368,7 @@ where
 }
 
 /// Internal function for `assert_match!`
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[doc(hidden)]
@@ -388,7 +388,7 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
 }
 
 /// Non-generic version of the above functions, to avoid code bloat.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 fn assert_failed_inner(

@@ -3,14 +3,14 @@
     field_tys: {
         _0: CoroutineSavedTy {
             ty: Coroutine(
-                DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
+                DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
                 [
                     (),
                     std::future::ResumeTy,
                     (),
                     (),
                     CoroutineWitness(
-                        DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
+                        DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
                         [],
                     ),
                     (),
@@ -24,14 +24,14 @@
         },
         _1: CoroutineSavedTy {
             ty: Coroutine(
-                DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
+                DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
                 [
                     (),
                     std::future::ResumeTy,
                     (),
                     (),
                     CoroutineWitness(
-                        DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
+                        DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
                         [],
                     ),
                     (),

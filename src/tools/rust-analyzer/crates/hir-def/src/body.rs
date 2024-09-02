@@ -197,7 +197,7 @@ impl Body {
     pub fn blocks<'a>(
         &'a self,
         db: &'a dyn DefDatabase,
-    ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + '_ {
+    ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + 'a {
         self.block_scopes.iter().map(move |&block| (block, db.block_def_map(block)))
     }
 
