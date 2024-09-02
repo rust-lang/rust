@@ -24,7 +24,7 @@ pub use self::once::{once, Once};
 pub use self::once_with::{once_with, OnceWith};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::repeat::{repeat, Repeat};
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 pub use self::repeat_n::{repeat_n, RepeatN};
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub use self::repeat_with::{repeat_with, RepeatWith};
