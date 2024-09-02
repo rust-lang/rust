@@ -7,6 +7,7 @@
 
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty;
+use tracing::debug;
 
 use super::constraints::*;
 use super::terms::VarianceTerm::*;
@@ -21,7 +22,7 @@ struct SolveContext<'a, 'tcx> {
     solutions: Vec<ty::Variance>,
 }
 
-pub fn solve_constraints<'tcx>(
+pub(crate) fn solve_constraints<'tcx>(
     constraints_cx: ConstraintContext<'_, 'tcx>,
 ) -> ty::CrateVariancesMap<'tcx> {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;

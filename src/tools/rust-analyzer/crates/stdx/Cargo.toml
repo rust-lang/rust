@@ -1,7 +1,8 @@
 [package]
 name = "stdx"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Missing batteries for standard libraries for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -16,7 +17,7 @@ backtrace = { version = "0.3.67", optional = true }
 always-assert = { version = "0.2.0", features = ["tracing"] }
 jod-thread = "0.1.2"
 libc.workspace = true
-crossbeam-channel = "0.5.5"
+crossbeam-channel.workspace = true
 itertools.workspace = true
 # Think twice before adding anything here
 

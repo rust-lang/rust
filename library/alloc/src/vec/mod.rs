@@ -1334,7 +1334,7 @@ impl<T, A: Allocator> Vec<T, A> {
         self.buf.ptr()
     }
 
-    /// Returns an unsafe mutable pointer to the vector's buffer, or a dangling
+    /// Returns a raw mutable pointer to the vector's buffer, or a dangling
     /// raw pointer valid for zero sized reads if the vector didn't allocate.
     ///
     /// The caller must ensure that the vector outlives the pointer this
@@ -1349,7 +1349,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// or references to specific elements you are planning on accessing through this pointer,
     /// may still invalidate this pointer.
     /// See the second example below for how this guarantee can be used.
-    ///
     ///
     /// # Examples
     ///
@@ -1520,6 +1519,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("swap_remove index (is {index}) should be < len (is {len})");
         }
@@ -1568,6 +1568,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("insertion index (is {index}) should be <= len (is {len})");
         }
@@ -1630,6 +1631,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("removal index (is {index}) should be < len (is {len})");
         }
@@ -2318,6 +2320,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(at: usize, len: usize) -> ! {
             panic!("`at` split index (is {at}) should be <= len (is {len})");
         }

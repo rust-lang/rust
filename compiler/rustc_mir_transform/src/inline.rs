@@ -20,6 +20,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
+use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::CostChecker;
 use crate::deref_separator::deref_finder;
@@ -341,7 +342,6 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceKind::FnPtrShim(..)
             | InstanceKind::ClosureOnceShim { .. }
             | InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | InstanceKind::CoroutineKindShim { .. }
             | InstanceKind::DropGlue(..)
             | InstanceKind::CloneShim(..)
             | InstanceKind::ThreadLocalShim(..)
@@ -726,7 +726,7 @@ impl<'tcx> Inliner<'tcx> {
 
         // Insert all of the (mapped) parts of the callee body into the caller.
         caller_body.local_decls.extend(callee_body.drain_vars_and_temps());
-        caller_body.source_scopes.extend(&mut callee_body.source_scopes.drain(..));
+        caller_body.source_scopes.append(&mut callee_body.source_scopes);
         if self
             .tcx
             .sess
@@ -740,7 +740,7 @@ impl<'tcx> Inliner<'tcx> {
             // still getting consistent results from the mir-opt tests.
             caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
         }
-        caller_body.basic_blocks_mut().extend(callee_body.basic_blocks_mut().drain(..));
+        caller_body.basic_blocks_mut().append(callee_body.basic_blocks_mut());
 
         caller_body[callsite.block].terminator = Some(Terminator {
             source_info: callsite.source_info,

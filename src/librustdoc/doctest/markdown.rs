@@ -73,7 +73,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
     use rustc_session::config::Input;
     let input_str = match &options.input {
         Input::File(path) => {
-            read_to_string(&path).map_err(|err| format!("{}: {err}", path.display()))?
+            read_to_string(path).map_err(|err| format!("{}: {err}", path.display()))?
         }
         Input::Str { name: _, input } => input.clone(),
     };

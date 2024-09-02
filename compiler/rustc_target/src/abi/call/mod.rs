@@ -652,6 +652,21 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         }
     }
 
+    /// Same as `make_indirect`, but for arguments that are ignored. Only needed for ABIs that pass
+    /// ZSTs indirectly.
+    pub fn make_indirect_from_ignore(&mut self) {
+        match self.mode {
+            PassMode::Ignore => {
+                self.mode = Self::indirect_pass_mode(&self.layout);
+            }
+            PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
+                // already indirect
+                return;
+            }
+            _ => panic!("Tried to make {:?} indirect (expected `PassMode::Ignore`)", self.mode),
+        }
+    }
+
     /// Pass this argument indirectly, by placing it at a fixed stack offset.
     /// This corresponds to the `byval` LLVM argument attribute.
     /// This is only valid for sized arguments.
@@ -730,10 +745,25 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
     /// Checks if these two `ArgAbi` are equal enough to be considered "the same for all
     /// function call ABIs".
-    pub fn eq_abi(&self, other: &Self) -> bool {
+    pub fn eq_abi(&self, other: &Self) -> bool
+    where
+        Ty: PartialEq,
+    {
         // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
         // at the type.
-        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode)
+        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode) && {
+            // `fn_arg_sanity_check` accepts `PassMode::Direct` for some aggregates.
+            // That elevates any type difference to an ABI difference since we just use the
+            // full Rust type as the LLVM argument/return type.
+            if matches!(self.mode, PassMode::Direct(..))
+                && matches!(self.layout.abi, Abi::Aggregate { .. })
+            {
+                // For aggregates in `Direct` mode to be compatible, the types need to be equal.
+                self.layout.ty == other.layout.ty
+            } else {
+                true
+            }
+        }
     }
 }
 
@@ -871,10 +901,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             "x86_64" => match abi {
                 spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
-                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(self),
+                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(cx, self),
                 _ => {
                     if cx.target_spec().is_like_windows {
-                        x86_win64::compute_abi_info(self)
+                        x86_win64::compute_abi_info(cx, self)
                     } else {
                         x86_64::compute_abi_info(cx, self)
                     }
@@ -898,7 +928,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "csky" => csky::compute_abi_info(self),
             "mips" | "mips32r6" => mips::compute_abi_info(cx, self),
             "mips64" | "mips64r6" => mips64::compute_abi_info(cx, self),
-            "powerpc" => powerpc::compute_abi_info(self),
+            "powerpc" => powerpc::compute_abi_info(cx, self),
             "powerpc64" => powerpc64::compute_abi_info(cx, self),
             "s390x" => s390x::compute_abi_info(cx, self),
             "msp430" => msp430::compute_abi_info(self),

@@ -64,10 +64,13 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                     ctx.config.import_path_config(),
                 )?;
 
+                let edition = current_module.krate().edition(ctx.db());
+
                 let expr = use_trivial_constructor(
                     ctx.sema.db,
-                    ide_db::helpers::mod_path_to_ast(&type_path),
+                    ide_db::helpers::mod_path_to_ast(&type_path, edition),
                     &ty,
+                    edition,
                 )?;
 
                 Some(make::record_expr_field(make::name_ref(&name.text()), Some(expr)))
@@ -109,6 +112,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             params,
             body,
             Some(ret_type),
+            false,
             false,
             false,
             false,

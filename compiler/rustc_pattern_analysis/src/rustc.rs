@@ -774,17 +774,16 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         }
     }
 
-    /// Convert to a [`print::Pat`] for diagnostic purposes.
-    fn hoist_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> print::Pat<'tcx> {
-        use print::{Pat, PatKind};
+    /// Prints an [`IntRange`] to a string for diagnostic purposes.
+    fn print_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> String {
         use MaybeInfiniteInt::*;
         let cx = self;
-        let kind = if matches!((range.lo, range.hi), (NegInfinity, PosInfinity)) {
-            PatKind::Wild
+        if matches!((range.lo, range.hi), (NegInfinity, PosInfinity)) {
+            "_".to_string()
         } else if range.is_singleton() {
             let lo = cx.hoist_pat_range_bdy(range.lo, ty);
             let value = lo.as_finite().unwrap();
-            PatKind::Constant { value }
+            value.to_string()
         } else {
             // We convert to an inclusive range for diagnostics.
             let mut end = rustc_hir::RangeEnd::Included;
@@ -807,32 +806,24 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 range.hi
             };
             let hi = cx.hoist_pat_range_bdy(hi, ty);
-            PatKind::Range(Box::new(PatRange { lo, hi, end, ty: ty.inner() }))
-        };
-
-        Pat { ty: ty.inner(), kind }
+            PatRange { lo, hi, end, ty: ty.inner() }.to_string()
+        }
     }
 
     /// Prints a [`WitnessPat`] to an owned string, for diagnostic purposes.
+    ///
+    /// This panics for patterns that don't appear in diagnostics, like float ranges.
     pub fn print_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> String {
-        // This works by converting the witness pattern to a `print::Pat`
-        // and then printing that, but callers don't need to know that.
-        self.hoist_witness_pat(pat).to_string()
-    }
-
-    /// Convert to a [`print::Pat`] for diagnostic purposes. This panics for patterns that don't
-    /// appear in diagnostics, like float ranges.
-    fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> print::Pat<'tcx> {
-        use print::{FieldPat, Pat, PatKind};
         let cx = self;
-        let hoist = |p| Box::new(cx.hoist_witness_pat(p));
-        let kind = match pat.ctor() {
-            Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
-            IntRange(range) => return self.hoist_pat_range(range, *pat.ty()),
+        let print = |p| cx.print_witness_pat(p);
+        match pat.ctor() {
+            Bool(b) => b.to_string(),
+            Str(s) => s.to_string(),
+            IntRange(range) => return self.print_pat_range(range, *pat.ty()),
             Struct if pat.ty().is_box() => {
                 // Outside of the `alloc` crate, the only way to create a struct pattern
                 // of type `Box` is to use a `box` pattern via #[feature(box_patterns)].
-                PatKind::Box { subpattern: hoist(&pat.fields[0]) }
+                format!("box {}", print(&pat.fields[0]))
             }
             Struct | Variant(_) | UnionField => {
                 let enum_info = match *pat.ty().kind() {
@@ -847,12 +838,29 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 let subpatterns = pat
                     .iter_fields()
                     .enumerate()
-                    .map(|(i, pat)| FieldPat { field: FieldIdx::new(i), pattern: hoist(pat) })
+                    .map(|(i, pat)| print::FieldPat {
+                        field: FieldIdx::new(i),
+                        pattern: print(pat),
+                        is_wildcard: would_print_as_wildcard(cx.tcx, pat),
+                    })
                     .collect::<Vec<_>>();
 
-                PatKind::StructLike { enum_info, subpatterns }
+                let mut s = String::new();
+                print::write_struct_like(
+                    &mut s,
+                    self.tcx,
+                    pat.ty().inner(),
+                    &enum_info,
+                    &subpatterns,
+                )
+                .unwrap();
+                s
             }
-            Ref => PatKind::Deref { subpattern: hoist(&pat.fields[0]) },
+            Ref => {
+                let mut s = String::new();
+                print::write_ref_like(&mut s, pat.ty().inner(), &print(&pat.fields[0])).unwrap();
+                s
+            }
             Slice(slice) => {
                 let (prefix_len, has_dot_dot) = match slice.kind {
                     SliceKind::FixedLen(len) => (len, false),
@@ -879,14 +887,15 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                 }
 
-                let prefix = prefix.iter().map(hoist).collect();
-                let suffix = suffix.iter().map(hoist).collect();
+                let prefix = prefix.iter().map(print).collect::<Vec<_>>();
+                let suffix = suffix.iter().map(print).collect::<Vec<_>>();
 
-                PatKind::Slice { prefix, has_dot_dot, suffix }
+                let mut s = String::new();
+                print::write_slice_like(&mut s, &prefix, has_dot_dot, &suffix).unwrap();
+                s
             }
-            &Str(value) => PatKind::Constant { value },
-            Never if self.tcx.features().never_patterns => PatKind::Never,
-            Never | Wildcard | NonExhaustive | Hidden | PrivateUninhabited => PatKind::Wild,
+            Never if self.tcx.features().never_patterns => "!".to_string(),
+            Never | Wildcard | NonExhaustive | Hidden | PrivateUninhabited => "_".to_string(),
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
@@ -894,9 +903,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             F16Range(..) | F32Range(..) | F64Range(..) | F128Range(..) | Opaque(..) | Or => {
                 bug!("can't convert to pattern: {:?}", pat)
             }
-        };
-
-        Pat { ty: pat.ty().inner(), kind }
+        }
     }
 }
 
@@ -972,7 +979,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         overlaps_on: IntRange,
         overlaps_with: &[&crate::pat::DeconstructedPat<Self>],
     ) {
-        let overlap_as_pat = self.hoist_pat_range(&overlaps_on, *pat.ty());
+        let overlap_as_pat = self.print_pat_range(&overlaps_on, *pat.ty());
         let overlaps: Vec<_> = overlaps_with
             .iter()
             .map(|pat| pat.data().span)
@@ -1012,7 +1019,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
             suggested_range.end = rustc_hir::RangeEnd::Included;
             suggested_range.to_string()
         };
-        let gap_as_pat = self.hoist_pat_range(&gap, *pat.ty());
+        let gap_as_pat = self.print_pat_range(&gap, *pat.ty());
         if gapped_with.is_empty() {
             // If `gapped_with` is empty, `gap == T::MAX`.
             self.tcx.emit_node_span_lint(

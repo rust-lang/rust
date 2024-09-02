@@ -5,6 +5,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserType};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument};
 
 use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
 use crate::traits::ObligationCtxt;

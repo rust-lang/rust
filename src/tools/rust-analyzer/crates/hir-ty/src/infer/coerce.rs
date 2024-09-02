@@ -18,14 +18,13 @@ use triomphe::Arc;
 use crate::{
     autoderef::{Autoderef, AutoderefKind},
     db::HirDatabase,
-    error_lifetime,
     infer::{
         Adjust, Adjustment, AutoBorrow, InferOk, InferenceContext, OverloadedDeref, PointerCast,
         TypeError, TypeMismatch,
     },
     utils::ClosureSubst,
-    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Solution,
-    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
+    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Lifetime,
+    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 use super::unify::InferenceTable;
@@ -276,16 +275,16 @@ impl InferenceTable<'_> {
             return success(simple(Adjust::NeverToAny)(to_ty.clone()), to_ty.clone(), vec![]);
         }
 
-        // If we are coercing into an ATPIT, coerce into its proxy inference var, instead.
+        // If we are coercing into a TAIT, coerce into its proxy inference var, instead.
         let mut to_ty = to_ty;
         let _to;
-        if let Some(atpit_table) = &self.atpit_coercion_table {
+        if let Some(tait_table) = &self.tait_coercion_table {
             if let TyKind::OpaqueType(opaque_ty_id, _) = to_ty.kind(Interner) {
                 if !matches!(
                     from_ty.kind(Interner),
                     TyKind::InferenceVar(..) | TyKind::OpaqueType(..)
                 ) {
-                    if let Some(ty) = atpit_table.get(opaque_ty_id) {
+                    if let Some(ty) = tait_table.get(opaque_ty_id) {
                         _to = ty.clone();
                         to_ty = &_to;
                     }
@@ -301,7 +300,7 @@ impl InferenceTable<'_> {
         // Examine the supertype and consider auto-borrowing.
         match to_ty.kind(Interner) {
             TyKind::Raw(mt, _) => return self.coerce_ptr(from_ty, to_ty, *mt),
-            TyKind::Ref(mt, _, _) => return self.coerce_ref(from_ty, to_ty, *mt),
+            TyKind::Ref(mt, lt, _) => return self.coerce_ref(from_ty, to_ty, *mt, lt),
             _ => {}
         }
 
@@ -377,11 +376,17 @@ impl InferenceTable<'_> {
     /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
     /// To match `A` with `B`, autoderef will be performed,
     /// calling `deref`/`deref_mut` where necessary.
-    fn coerce_ref(&mut self, from_ty: Ty, to_ty: &Ty, to_mt: Mutability) -> CoerceResult {
-        let from_mt = match from_ty.kind(Interner) {
-            &TyKind::Ref(mt, _, _) => {
-                coerce_mutabilities(mt, to_mt)?;
-                mt
+    fn coerce_ref(
+        &mut self,
+        from_ty: Ty,
+        to_ty: &Ty,
+        to_mt: Mutability,
+        to_lt: &Lifetime,
+    ) -> CoerceResult {
+        let (_from_lt, from_mt) = match from_ty.kind(Interner) {
+            TyKind::Ref(mt, lt, _) => {
+                coerce_mutabilities(*mt, to_mt)?;
+                (lt.clone(), *mt) // clone is probably not good?
             }
             _ => return self.unify_and(&from_ty, to_ty, identity),
         };
@@ -427,8 +432,8 @@ impl InferenceTable<'_> {
             // compare those. Note that this means we use the target
             // mutability [1], since it may be that we are coercing
             // from `&mut T` to `&U`.
-            let lt = error_lifetime(); // FIXME: handle lifetimes correctly, see rustc
-            let derefd_from_ty = TyKind::Ref(to_mt, lt, referent_ty).intern(Interner);
+            let lt = to_lt; // FIXME: Involve rustc LUB and SUB flag checks
+            let derefd_from_ty = TyKind::Ref(to_mt, lt.clone(), referent_ty).intern(Interner);
             match autoderef.table.try_unify(&derefd_from_ty, to_ty) {
                 Ok(result) => {
                     found = Some(result.map(|()| derefd_from_ty));
@@ -472,8 +477,10 @@ impl InferenceTable<'_> {
         }
 
         let mut adjustments = auto_deref_adjust_steps(&autoderef);
-        adjustments
-            .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(to_mt)), target: ty.clone() });
+        adjustments.push(Adjustment {
+            kind: Adjust::Borrow(AutoBorrow::Ref(to_lt.clone(), to_mt)),
+            target: ty.clone(),
+        });
 
         success(adjustments, ty, goals)
     }
@@ -621,11 +628,11 @@ impl InferenceTable<'_> {
             (TyKind::Ref(from_mt, _, from_inner), &TyKind::Ref(to_mt, _, _)) => {
                 coerce_mutabilities(*from_mt, to_mt)?;
 
-                let lt = error_lifetime();
+                let lt = self.new_lifetime_var();
                 Some((
                     Adjustment { kind: Adjust::Deref(None), target: from_inner.clone() },
                     Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(to_mt)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(lt.clone(), to_mt)),
                         target: TyKind::Ref(to_mt, lt, from_inner.clone()).intern(Interner),
                     },
                 ))

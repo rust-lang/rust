@@ -396,7 +396,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
@@ -415,7 +415,6 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::Virtual(..)
                             | InstanceKind::ClosureOnceShim { .. }
                             | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                            | InstanceKind::CoroutineKindShim { .. }
                             | InstanceKind::DropGlue(..)
                             | InstanceKind::CloneShim(..)
                             | InstanceKind::ThreadLocalShim(..)

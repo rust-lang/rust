@@ -1,4 +1,5 @@
 use rustc_span::{BytePos, Pos, Span};
+use tracing::debug;
 
 use crate::comment::{is_last_comment_block, rewrite_comment, CodeCharKind, CommentCodeSlices};
 use crate::config::file_lines::FileLines;

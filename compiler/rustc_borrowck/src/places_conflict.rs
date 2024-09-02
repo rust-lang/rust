@@ -59,6 +59,7 @@ use rustc_middle::mir::{
     Body, BorrowKind, FakeBorrowKind, MutBorrowKind, Place, PlaceElem, PlaceRef, ProjectionElem,
 };
 use rustc_middle::ty::{self, TyCtxt};
+use tracing::{debug, instrument};
 
 use crate::{AccessDepth, ArtificialField, Deep, Overlap, Shallow};
 
@@ -201,7 +202,7 @@ fn place_components_conflict<'tcx>(
 
             let base_ty = base.ty(body, tcx).ty;
 
-            match (elem, &base_ty.kind(), access) {
+            match (elem, base_ty.kind(), access) {
                 (_, _, Shallow(Some(ArtificialField::ArrayLength)))
                 | (_, _, Shallow(Some(ArtificialField::FakeBorrow))) => {
                     // The array length is like additional fields on the

@@ -6,7 +6,7 @@
 //@ [x86_64] needs-llvm-components: x86
 //@ [aarch64] needs-llvm-components: aarch64
 
-#![feature(no_core, lang_items, rustc_attrs, asm_const)]
+#![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]
 
 #[rustc_builtin_macro]

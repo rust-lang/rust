@@ -562,10 +562,8 @@ impl<'a> AstValidator<'a> {
         FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
     ) {
         let report_err = |span| {
-            self.dcx().emit_err(errors::FnQualifierInExtern {
-                span: span,
-                block: self.current_extern_span(),
-            });
+            self.dcx()
+                .emit_err(errors::FnQualifierInExtern { span, block: self.current_extern_span() });
         };
         match coroutine_kind {
             Some(knd) => report_err(knd.span()),
@@ -887,7 +885,7 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.features, &self.session.psess, attr);
+        validate_attr::check_attr(&self.session.psess, attr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -963,14 +961,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self_ty,
                 items,
             }) => {
-                let error =
-                    |annotation_span, annotation, only_trait: bool| errors::InherentImplCannot {
-                        span: self_ty.span,
-                        annotation_span,
-                        annotation,
-                        self_ty: self_ty.span,
-                        only_trait: only_trait.then_some(()),
-                    };
+                let error = |annotation_span, annotation, only_trait| errors::InherentImplCannot {
+                    span: self_ty.span,
+                    annotation_span,
+                    annotation,
+                    self_ty: self_ty.span,
+                    only_trait,
+                };
 
                 self.with_in_trait_impl(None, |this| {
                     this.visibility_not_permitted(
@@ -1195,7 +1192,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 } else if where_clauses.after.has_where_token {
                     self.dcx().emit_err(errors::WhereClauseAfterTypeAlias {
                         span: where_clauses.after.span,
-                        help: self.session.is_nightly_build().then_some(()),
+                        help: self.session.is_nightly_build(),
                     });
                 }
             }
@@ -1488,7 +1485,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         let disallowed = (!tilde_const_allowed).then(|| match fk {
             FnKind::Fn(_, ident, _, _, _, _) => TildeConstReason::Function { ident: ident.span },
-            FnKind::Closure(_, _, _) => TildeConstReason::Closure,
+            FnKind::Closure(..) => TildeConstReason::Closure,
         });
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
     }

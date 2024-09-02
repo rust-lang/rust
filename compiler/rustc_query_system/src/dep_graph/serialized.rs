@@ -547,7 +547,7 @@ impl<D: Deps> EncoderState<D> {
     /// Encodes a node that was promoted from the previous graph. It reads the information directly from
     /// the previous dep graph for performance reasons.
     ///
-    /// This differs from `encode_node` where you have to explictly provide the relevant `NodeInfo`.
+    /// This differs from `encode_node` where you have to explicitly provide the relevant `NodeInfo`.
     ///
     /// It expects all edges to already have a new dep node index assigned.
     #[inline]
@@ -617,14 +617,14 @@ impl<D: Deps> EncoderState<D> {
     }
 }
 
-pub struct GraphEncoder<D: Deps> {
+pub(crate) struct GraphEncoder<D: Deps> {
     profiler: SelfProfilerRef,
     status: Lock<Option<EncoderState<D>>>,
     record_graph: Option<Lock<DepGraphQuery>>,
 }
 
 impl<D: Deps> GraphEncoder<D> {
-    pub fn new(
+    pub(crate) fn new(
         encoder: FileEncoder,
         prev_node_count: usize,
         record_graph: bool,
@@ -723,7 +723,7 @@ impl<D: Deps> GraphEncoder<D> {
         )
     }
 
-    pub fn finish(&self) -> FileEncodeResult {
+    pub(crate) fn finish(&self) -> FileEncodeResult {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph_finish");
 
         self.status.lock().take().unwrap().finish(&self.profiler)

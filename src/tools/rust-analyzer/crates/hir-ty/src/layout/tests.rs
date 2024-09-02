@@ -42,19 +42,20 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
                 hir_def::ModuleDefId::AdtId(x) => {
                     let name = match x {
                         hir_def::AdtId::StructId(x) => {
-                            db.struct_data(x).name.display_no_db().to_smolstr()
+                            db.struct_data(x).name.display_no_db(file_id.edition()).to_smolstr()
                         }
                         hir_def::AdtId::UnionId(x) => {
-                            db.union_data(x).name.display_no_db().to_smolstr()
+                            db.union_data(x).name.display_no_db(file_id.edition()).to_smolstr()
                         }
                         hir_def::AdtId::EnumId(x) => {
-                            db.enum_data(x).name.display_no_db().to_smolstr()
+                            db.enum_data(x).name.display_no_db(file_id.edition()).to_smolstr()
                         }
                     };
                     (name == "Goal").then_some(Either::Left(x))
                 }
                 hir_def::ModuleDefId::TypeAliasId(x) => {
-                    let name = db.type_alias_data(x).name.display_no_db().to_smolstr();
+                    let name =
+                        db.type_alias_data(x).name.display_no_db(file_id.edition()).to_smolstr();
                     (name == "Goal").then_some(Either::Right(x))
                 }
                 _ => None,
@@ -94,7 +95,7 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::FunctionId(x) => {
-                let name = db.function_data(x).name.display_no_db().to_smolstr();
+                let name = db.function_data(x).name.display_no_db(file_id.edition()).to_smolstr();
                 (name == "main").then_some(x)
             }
             _ => None,
@@ -104,7 +105,7 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
     let b = hir_body
         .bindings
         .iter()
-        .find(|x| x.1.name.display_no_db().to_smolstr() == "goal")
+        .find(|x| x.1.name.display_no_db(file_id.edition()).to_smolstr() == "goal")
         .unwrap()
         .0;
     let infer = db.infer(function_id.into());

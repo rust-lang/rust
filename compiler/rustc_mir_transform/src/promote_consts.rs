@@ -27,6 +27,7 @@ use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::source_map::Spanned;
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
 /// A `MirPass` for promotion.
 ///
@@ -551,7 +552,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(rhs)?;
             }
 
-            Rvalue::AddressOf(_, place) => {
+            Rvalue::RawPtr(_, place) => {
                 // We accept `&raw *`, i.e., raw reborrows -- creating a raw pointer is
                 // no problem, only using it is.
                 if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection()

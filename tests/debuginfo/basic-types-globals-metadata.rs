@@ -1,52 +1,35 @@
-//@ min-lldb-version: 310
-//@ ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
-
 //@ compile-flags:-g
+
 // gdb-command:run
-// gdbg-command:whatis 'basic_types_globals_metadata::B'
-// gdbr-command:whatis basic_types_globals_metadata::B
+// gdb-command:whatis basic_types_globals_metadata::B
 // gdb-check:type = bool
-// gdbg-command:whatis 'basic_types_globals_metadata::I'
-// gdbr-command:whatis basic_types_globals_metadata::I
+// gdb-command:whatis basic_types_globals_metadata::I
 // gdb-check:type = isize
-// gdbg-command:whatis 'basic_types_globals_metadata::C'
-// gdbr-command:whatis basic_types_globals_metadata::C
+// gdb-command:whatis basic_types_globals_metadata::C
 // gdb-check:type = char
-// gdbg-command:whatis 'basic_types_globals_metadata::I8'
-// gdbr-command:whatis basic_types_globals_metadata::I8
+// gdb-command:whatis basic_types_globals_metadata::I8
 // gdb-check:type = i8
-// gdbg-command:whatis 'basic_types_globals_metadata::I16'
-// gdbr-command:whatis basic_types_globals_metadata::I16
+// gdb-command:whatis basic_types_globals_metadata::I16
 // gdb-check:type = i16
-// gdbg-command:whatis 'basic_types_globals_metadata::I32'
-// gdbr-command:whatis basic_types_globals_metadata::I32
+// gdb-command:whatis basic_types_globals_metadata::I32
 // gdb-check:type = i32
-// gdbg-command:whatis 'basic_types_globals_metadata::I64'
-// gdbr-command:whatis basic_types_globals_metadata::I64
+// gdb-command:whatis basic_types_globals_metadata::I64
 // gdb-check:type = i64
-// gdbg-command:whatis 'basic_types_globals_metadata::U'
-// gdbr-command:whatis basic_types_globals_metadata::U
+// gdb-command:whatis basic_types_globals_metadata::U
 // gdb-check:type = usize
-// gdbg-command:whatis 'basic_types_globals_metadata::U8'
-// gdbr-command:whatis basic_types_globals_metadata::U8
+// gdb-command:whatis basic_types_globals_metadata::U8
 // gdb-check:type = u8
-// gdbg-command:whatis 'basic_types_globals_metadata::U16'
-// gdbr-command:whatis basic_types_globals_metadata::U16
+// gdb-command:whatis basic_types_globals_metadata::U16
 // gdb-check:type = u16
-// gdbg-command:whatis 'basic_types_globals_metadata::U32'
-// gdbr-command:whatis basic_types_globals_metadata::U32
+// gdb-command:whatis basic_types_globals_metadata::U32
 // gdb-check:type = u32
-// gdbg-command:whatis 'basic_types_globals_metadata::U64'
-// gdbr-command:whatis basic_types_globals_metadata::U64
+// gdb-command:whatis basic_types_globals_metadata::U64
 // gdb-check:type = u64
-// gdbg-command:whatis 'basic_types_globals_metadata::F16'
-// gdbr-command:whatis basic_types_globals_metadata::F16
+// gdb-command:whatis basic_types_globals_metadata::F16
 // gdb-check:type = f16
-// gdbg-command:whatis 'basic_types_globals_metadata::F32'
-// gdbr-command:whatis basic_types_globals_metadata::F32
+// gdb-command:whatis basic_types_globals_metadata::F32
 // gdb-check:type = f32
-// gdbg-command:whatis 'basic_types_globals_metadata::F64'
-// gdbr-command:whatis basic_types_globals_metadata::F64
+// gdb-command:whatis basic_types_globals_metadata::F64
 // gdb-check:type = f64
 // gdb-command:continue
 

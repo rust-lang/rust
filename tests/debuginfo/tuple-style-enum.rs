@@ -1,5 +1,3 @@
-// Require a gdb or lldb that can read DW_TAG_variant_part.
-//@ min-gdb-version: 8.2
 //@ min-lldb-version: 1800
 
 //@ compile-flags:-g
@@ -10,16 +8,16 @@
 // gdb-command:run
 
 // gdb-command:print case1
-// gdbr-check:$1 = tuple_style_enum::Regular::Case1(0, 31868, 31868, 31868, 31868)
+// gdb-check:$1 = tuple_style_enum::Regular::Case1(0, 31868, 31868, 31868, 31868)
 
 // gdb-command:print case2
-// gdbr-check:$2 = tuple_style_enum::Regular::Case2(0, 286331153, 286331153)
+// gdb-check:$2 = tuple_style_enum::Regular::Case2(0, 286331153, 286331153)
 
 // gdb-command:print case3
-// gdbr-check:$3 = tuple_style_enum::Regular::Case3(0, 6438275382588823897)
+// gdb-check:$3 = tuple_style_enum::Regular::Case3(0, 6438275382588823897)
 
 // gdb-command:print univariant
-// gdbr-check:$4 = tuple_style_enum::Univariant::TheOnlyCase(-1)
+// gdb-check:$4 = tuple_style_enum::Univariant::TheOnlyCase(-1)
 
 
 // === LLDB TESTS ==================================================================================
@@ -27,20 +25,16 @@
 // lldb-command:run
 
 // lldb-command:v case1
-// lldbg-check:(tuple_style_enum::Regular) case1 = { value = { 0 = 0 1 = 31868 2 = 31868 3 = 31868 4 = 31868 } $discr$ = 0 }
-// lldbr-check:(tuple_style_enum::Regular::Case1) case1 = { = 0 = 31868 = 31868 = 31868 = 31868 }
+// lldb-check:(tuple_style_enum::Regular) case1 = { value = { 0 = 0 1 = 31868 2 = 31868 3 = 31868 4 = 31868 } $discr$ = 0 }
 
 // lldb-command:v case2
-// lldbg-check:(tuple_style_enum::Regular) case2 = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
-// lldbr-check:(tuple_style_enum::Regular::Case2) case2 = Case2 { Case1: 0, Case2: 286331153, Case3: 286331153 }
+// lldb-check:(tuple_style_enum::Regular) case2 = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
 
 // lldb-command:v case3
-// lldbg-check:(tuple_style_enum::Regular) case3 = { value = { 0 = 0 1 = 6438275382588823897 } $discr$ = 2 }
-// lldbr-check:(tuple_style_enum::Regular::Case3) case3 = Case3 { Case1: 0, Case2: 6438275382588823897 }
+// lldb-check:(tuple_style_enum::Regular) case3 = { value = { 0 = 0 1 = 6438275382588823897 } $discr$ = 2 }
 
 // lldb-command:v univariant
-// lldbg-check:(tuple_style_enum::Univariant) univariant = { value = { 0 = -1 } }
-// lldbr-check:(tuple_style_enum::Univariant) univariant = { TheOnlyCase = { = -1 } }
+// lldb-check:(tuple_style_enum::Univariant) univariant = { value = { 0 = -1 } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

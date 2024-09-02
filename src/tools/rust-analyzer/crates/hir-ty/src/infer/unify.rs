@@ -17,12 +17,12 @@ use triomphe::Arc;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
-    consteval::unknown_const, db::HirDatabase, error_lifetime, fold_generic_args,
-    fold_tys_and_consts, to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical,
-    Const, ConstValue, DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData,
-    Guidance, InEnvironment, InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy,
-    ProjectionTyExt, Scalar, Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
-    TyKind, VariableKind, WhereClause,
+    consteval::unknown_const, db::HirDatabase, fold_generic_args, fold_tys_and_consts,
+    to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue,
+    DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment,
+    InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar,
+    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
+    WhereClause,
 };
 
 impl InferenceContext<'_> {
@@ -105,7 +105,7 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
                 VariableKind::Ty(TyVariableKind::Float) => ctx.new_float_var().cast(Interner),
                 // Chalk can sometimes return new lifetime variables. We just replace them by errors
                 // for now.
-                VariableKind::Lifetime => error_lifetime().cast(Interner),
+                VariableKind::Lifetime => ctx.new_lifetime_var().cast(Interner),
                 VariableKind::Const(ty) => ctx.new_const_var(ty.clone()).cast(Interner),
             }),
         );
@@ -224,7 +224,7 @@ type ChalkInferenceTable = chalk_solve::infer::InferenceTable<Interner>;
 pub(crate) struct InferenceTable<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment>,
-    pub(crate) atpit_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
+    pub(crate) tait_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
     var_unification_table: ChalkInferenceTable,
     type_variable_table: SmallVec<[TypeVariableFlags; 16]>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
@@ -244,7 +244,7 @@ impl<'a> InferenceTable<'a> {
         InferenceTable {
             db,
             trait_env,
-            atpit_coercion_table: None,
+            tait_coercion_table: None,
             var_unification_table: ChalkInferenceTable::new(),
             type_variable_table: SmallVec::new(),
             pending_obligations: Vec::new(),

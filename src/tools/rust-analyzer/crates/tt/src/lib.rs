@@ -603,7 +603,7 @@ pub fn pretty<S>(tkns: &[TokenTree<S>]) -> String {
             TokenTree::Leaf(Leaf::Ident(ident)) => {
                 format!("{}{}", ident.is_raw.as_str(), ident.sym)
             }
-            TokenTree::Leaf(Leaf::Literal(literal)) => literal.symbol.as_str().to_owned(),
+            TokenTree::Leaf(Leaf::Literal(literal)) => format!("{literal}"),
             TokenTree::Leaf(Leaf::Punct(punct)) => format!("{}", punct.char),
             TokenTree::Subtree(subtree) => {
                 let content = pretty(&subtree.token_trees);

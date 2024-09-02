@@ -30,10 +30,10 @@ LL |     fn a(&self) -> impl Iterator {
 LL |         self.0.iter_mut()
    |         ^^^^^^^^^^^^^^^^^
    |
-help: to declare that `impl Iterator` captures `'_`, you can add an explicit `'_` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'_`
    |
-LL |     fn a(&self) -> impl Iterator + '_ {
-   |                                  ++++
+LL |     fn a(&self) -> impl Iterator + use<'_> {
+   |                                  +++++++++
 
 error: aborting due to 3 previous errors
 

@@ -1014,7 +1014,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ///
     /// We do this so Miri's allocation access tracking does not show the validation
     /// reads as spurious accesses.
-    pub(super) fn run_for_validation<R>(&self, f: impl FnOnce() -> R) -> R {
+    pub fn run_for_validation<R>(&self, f: impl FnOnce() -> R) -> R {
         // This deliberately uses `==` on `bool` to follow the pattern
         // `assert!(val.replace(new) == old)`.
         assert!(

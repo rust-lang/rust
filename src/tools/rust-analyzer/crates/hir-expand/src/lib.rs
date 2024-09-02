@@ -176,7 +176,12 @@ impl ExpandErrorKind {
             &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
                 match db.proc_macros().get_error_for_crate(def_crate) {
                     Some((e, hard_err)) => (e.to_owned(), hard_err),
-                    None => ("missing expander".to_owned(), true),
+                    None => (
+                        format!(
+                            "internal error: proc-macro map is missing error entry for crate {def_crate:?}"
+                        ),
+                        true,
+                    ),
                 }
             }
             ExpandErrorKind::MacroDefinition => {
@@ -187,7 +192,7 @@ impl ExpandErrorKind {
                 ("overflow expanding the original macro".to_owned(), true)
             }
             ExpandErrorKind::Other(e) => ((**e).to_owned(), true),
-            ExpandErrorKind::ProcMacroPanic(e) => ((**e).to_owned(), true),
+            ExpandErrorKind::ProcMacroPanic(e) => (format!("proc-macro panicked: {e}"), true),
         }
     }
 }
@@ -274,6 +279,7 @@ pub enum MacroCallKind {
 }
 
 pub trait HirFileIdExt {
+    fn edition(self, db: &dyn ExpandDatabase) -> Edition;
     /// Returns the original file of this macro call hierarchy.
     fn original_file(self, db: &dyn ExpandDatabase) -> EditionedFileId;
 
@@ -288,6 +294,12 @@ pub trait HirFileIdExt {
 }
 
 impl HirFileIdExt for HirFileId {
+    fn edition(self, db: &dyn ExpandDatabase) -> Edition {
+        match self.repr() {
+            HirFileIdRepr::FileId(file_id) => file_id.edition(),
+            HirFileIdRepr::MacroFile(m) => m.macro_call_id.lookup(db).def.edition,
+        }
+    }
     fn original_file(self, db: &dyn ExpandDatabase) -> EditionedFileId {
         let mut file_id = self;
         loop {

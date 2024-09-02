@@ -4,6 +4,10 @@
 //! but were uplifted in the process of making the new trait solver generic.
 //! So if you got to this crate from the old solver, it's totally normal.
 
+// tidy-alphabetical-start
+#![warn(unreachable_pub)]
+// tidy-alphabetical-end
+
 pub mod canonicalizer;
 pub mod coherence;
 pub mod delegate;

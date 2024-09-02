@@ -14,6 +14,7 @@ use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
+use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
@@ -57,7 +58,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 }
 
-pub struct NllTypeRelating<'me, 'bccx, 'tcx> {
+struct NllTypeRelating<'me, 'bccx, 'tcx> {
     type_checker: &'me mut TypeChecker<'bccx, 'tcx>,
 
     /// Where (and why) is this relation taking place?
@@ -82,7 +83,7 @@ pub struct NllTypeRelating<'me, 'bccx, 'tcx> {
 }
 
 impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
-    pub fn new(
+    fn new(
         type_checker: &'me mut TypeChecker<'bccx, 'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,

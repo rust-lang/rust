@@ -14,11 +14,17 @@
 //!       that `RUSTC_ICE_PATH` takes precedence and no ICE dump is emitted under `METRICS_PATH`.
 //!
 //! See <https://github.com/rust-lang/rust/pull/108714>.
+//!
+//! # Test history
+//!
+//! - The previous rmake.rs iteration of this test was flakey for unknown reason on `i686-mingw`
+//!   *specifically*, so assertion failures in this test was made extremely verbose to help
+//!   diagnose why the ICE messages was different *specifically* on `i686-mingw`.
+//! - An attempt is made to re-enable this test on `i686-mingw` (by removing `ignore-windows`). If
+//!   this test is still flakey, please restore the `ignore-windows` directive.
 
 //@ ignore-windows
-// FIXME(#128911): @jieyouxu: This test is sometimes for whatever forsaken reason flakey in
-// `i686-mingw`, and I cannot reproduce it locally. The error messages upon assertion failure in
-// this test is intentionally extremely verbose to aid debugging that issue.
+//FIXME(#128911): still flakey on i686-mingw.
 
 use std::cell::OnceCell;
 use std::path::{Path, PathBuf};

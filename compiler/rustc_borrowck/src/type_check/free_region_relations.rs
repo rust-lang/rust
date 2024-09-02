@@ -15,6 +15,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::solve::deeply_normalize;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
+use tracing::{debug, instrument};
 use type_op::TypeOpOutput;
 
 use crate::type_check::{constraint_conversion, Locations, MirTypeckRegionConstraints};

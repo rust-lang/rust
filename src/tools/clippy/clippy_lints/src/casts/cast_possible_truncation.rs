@@ -4,7 +4,7 @@ use clippy_utils::expr_or_init;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
-use rustc_errors::{Applicability, Diag, SuggestionStyle};
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -190,12 +190,10 @@ fn offer_suggestion(
         format!("{cast_to_snip}::try_from({})", Sugg::hir(cx, cast_expr, ".."))
     };
 
-    diag.span_suggestion_with_style(
+    diag.span_suggestion_verbose(
         expr.span,
         "... or use `try_from` and handle the error accordingly",
         suggestion,
         Applicability::Unspecified,
-        // always show the suggestion in a separate line
-        SuggestionStyle::ShowAlways,
     );
 }

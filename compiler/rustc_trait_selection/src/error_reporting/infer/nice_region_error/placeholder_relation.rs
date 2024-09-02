@@ -11,7 +11,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     pub(super) fn try_report_placeholder_relation(&self) -> Option<Diag<'tcx>> {
         match &self.error {
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::RelateRegionParamBound(span),
+                SubregionOrigin::RelateRegionParamBound(span, _),
                 Region(Interned(
                     RePlaceholder(ty::Placeholder {
                         bound: ty::BoundRegion { kind: sub_name, .. },

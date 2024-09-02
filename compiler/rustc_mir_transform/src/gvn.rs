@@ -45,7 +45,7 @@
 //!
 //! # Handling of references
 //!
-//! We handle references by assigning a different "provenance" index to each Ref/AddressOf rvalue.
+//! We handle references by assigning a different "provenance" index to each Ref/RawPtr rvalue.
 //! This ensure that we do not spuriously merge borrows that should not be merged. Meanwhile, we
 //! consider all the derefs of an immutable reference to a freeze type to give the same value:
 //! ```ignore (MIR)
@@ -105,6 +105,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
+use tracing::{debug, instrument, trace};
 
 use crate::ssa::{AssignedValue, SsaLocals};
 
@@ -832,7 +833,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
             }
-            Rvalue::AddressOf(mutbl, ref mut place) => {
+            Rvalue::RawPtr(mutbl, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
             }

@@ -44,6 +44,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
+use tracing::{debug, instrument};
 
 use super::FnCtxt;
 use crate::{errors, type_error_struct};
@@ -505,7 +506,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     span: self.span,
                     expr_ty: self.expr_ty,
                     cast_ty: fcx.ty_to_string(self.cast_ty),
-                    teach: fcx.tcx.sess.teach(E0607).then_some(()),
+                    teach: fcx.tcx.sess.teach(E0607),
                 });
             }
             CastError::IntToFatCast(known_metadata) => {
@@ -967,7 +968,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // need to special-case obtaining a raw pointer
                 // from a region pointer to a vector.
 
-                // Coerce to a raw pointer so that we generate AddressOf in MIR.
+                // Coerce to a raw pointer so that we generate RawPtr in MIR.
                 let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr.ty, m_expr.mutbl);
                 fcx.coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {

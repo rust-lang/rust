@@ -4,6 +4,7 @@ use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Region, Ty};
 use rustc_span::symbol::kw;
+use tracing::debug;
 
 use super::ObligationCauseAsDiagArg;
 use crate::error_reporting::infer::{note_and_explain_region, TypeErrCtxt};
@@ -52,7 +53,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .add_to_diag(err);
                 }
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, _) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_relate_region_param_bound }
                     .add_to_diag(err);
             }
@@ -199,7 +200,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     note,
                 })
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, _) => {
                 let param_instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,

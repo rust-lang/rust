@@ -32,6 +32,9 @@ codegen_ssa_dlltool_fail_import_library =
 codegen_ssa_error_calling_dlltool =
     Error calling dlltool '{$dlltool_path}': {$error}
 
+codegen_ssa_error_creating_import_library =
+    Error creating import library for {$lib_name}: {$error}
+
 codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
 
 codegen_ssa_error_writing_def_file =

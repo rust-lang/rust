@@ -13,6 +13,7 @@ use rustc_span::{sym, ErrorGuaranteed, Span, Symbol};
 use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
 use crate::bounds::Bounds;
 use crate::errors;

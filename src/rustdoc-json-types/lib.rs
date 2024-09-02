@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use rustc_hash::FxHashMap;
+pub use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 /// The version of JSON output that this crate represents.

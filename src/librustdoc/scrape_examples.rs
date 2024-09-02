@@ -18,6 +18,7 @@ use rustc_session::getopts;
 use rustc_span::def_id::{CrateNum, DefPathHash, LOCAL_CRATE};
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, FileName, SourceFile};
+use tracing::{debug, trace, warn};
 
 use crate::formats::renderer::FormatRenderer;
 use crate::html::render::Context;

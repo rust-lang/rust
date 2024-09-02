@@ -21,10 +21,10 @@
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(maybe_uninit_slice)]
-#![feature(new_uninit)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(strict_provenance)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::alloc::Layout;

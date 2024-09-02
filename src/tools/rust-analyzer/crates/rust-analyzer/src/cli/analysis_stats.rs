@@ -17,13 +17,13 @@ use hir_def::{
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
 use ide::{
-    Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, InlayFieldsToResolve,
+    Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
 };
 use ide_db::{
     base_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
-        SourceDatabase, SourceDatabaseExt,
+        SourceDatabase, SourceRootDatabase,
     },
     EditionedFileId, LineIndexDatabase, SnippetCap,
 };
@@ -64,7 +64,6 @@ impl flags::AnalysisStats {
                 true => None,
                 false => Some(RustLibSource::Discover),
             },
-            sysroot_query_metadata: self.query_sysroot_metadata,
             ..Default::default()
         };
         let no_progress = &|_| ();
@@ -310,7 +309,7 @@ impl flags::AnalysisStats {
         let mut fail = 0;
         for &c in consts {
             all += 1;
-            let Err(error) = c.render_eval(db) else {
+            let Err(error) = c.render_eval(db, Edition::LATEST) else {
                 continue;
             };
             if verbosity.is_spammy() {
@@ -443,6 +442,7 @@ impl flags::AnalysisStats {
                                 prefer_prelude: true,
                                 prefer_absolute: false,
                             },
+                            Edition::LATEST,
                         )
                         .unwrap();
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
@@ -564,7 +564,7 @@ impl flags::AnalysisStats {
                     .rev()
                     .filter_map(|it| it.name(db))
                     .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
-                    .map(|it| it.display(db).to_string())
+                    .map(|it| it.display(db, Edition::LATEST).to_string())
                     .join("::");
                 println!("Mir body for {full_name} failed due {e:?}");
             }
@@ -629,12 +629,14 @@ impl flags::AnalysisStats {
                             .filter_map(|it| it.name(db))
                             .rev()
                             .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
-                            .map(|it| it.display(db).to_string()),
+                            .map(|it| it.display(db, Edition::LATEST).to_string()),
                     )
                     .join("::")
             };
             if let Some(only_name) = self.only.as_deref() {
-                if name.display(db).to_string() != only_name && full_name() != only_name {
+                if name.display(db, Edition::LATEST).to_string() != only_name
+                    && full_name() != only_name
+                {
                     continue;
                 }
             }
@@ -688,7 +690,10 @@ impl flags::AnalysisStats {
                                 end.col,
                             ));
                         } else {
-                            bar.println(format!("{}: Unknown type", name.display(db)));
+                            bar.println(format!(
+                                "{}: Unknown type",
+                                name.display(db, Edition::LATEST)
+                            ));
                         }
                     }
                     true
@@ -709,17 +714,20 @@ impl flags::AnalysisStats {
                             start.col,
                             end.line + 1,
                             end.col,
-                            ty.display(db)
+                            ty.display(db, Edition::LATEST)
                         ));
                     } else {
-                        bar.println(format!("unknown location: {}", ty.display(db)));
+                        bar.println(format!(
+                            "unknown location: {}",
+                            ty.display(db, Edition::LATEST)
+                        ));
                     }
                 }
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
                         location_csv_expr(db, vfs, &sm(), expr_id),
-                        ty.display(db)
+                        ty.display(db, Edition::LATEST)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
@@ -734,15 +742,15 @@ impl flags::AnalysisStats {
                                 start.col,
                                 end.line + 1,
                                 end.col,
-                                mismatch.expected.display(db),
-                                mismatch.actual.display(db)
+                                mismatch.expected.display(db, Edition::LATEST),
+                                mismatch.actual.display(db, Edition::LATEST)
                             ));
                         } else {
                             bar.println(format!(
                                 "{}: Expected {}, got {}",
-                                name.display(db),
-                                mismatch.expected.display(db),
-                                mismatch.actual.display(db)
+                                name.display(db, Edition::LATEST),
+                                mismatch.expected.display(db, Edition::LATEST),
+                                mismatch.actual.display(db, Edition::LATEST)
                             ));
                         }
                     }
@@ -750,8 +758,8 @@ impl flags::AnalysisStats {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
                             location_csv_expr(db, vfs, &sm(), expr_id),
-                            mismatch.expected.display(db),
-                            mismatch.actual.display(db)
+                            mismatch.expected.display(db, Edition::LATEST),
+                            mismatch.actual.display(db, Edition::LATEST)
                         );
                     }
                 }
@@ -786,7 +794,10 @@ impl flags::AnalysisStats {
                                 end.col,
                             ));
                         } else {
-                            bar.println(format!("{}: Unknown type", name.display(db)));
+                            bar.println(format!(
+                                "{}: Unknown type",
+                                name.display(db, Edition::LATEST)
+                            ));
                         }
                     }
                     true
@@ -807,17 +818,20 @@ impl flags::AnalysisStats {
                             start.col,
                             end.line + 1,
                             end.col,
-                            ty.display(db)
+                            ty.display(db, Edition::LATEST)
                         ));
                     } else {
-                        bar.println(format!("unknown location: {}", ty.display(db)));
+                        bar.println(format!(
+                            "unknown location: {}",
+                            ty.display(db, Edition::LATEST)
+                        ));
                     }
                 }
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
                         location_csv_pat(db, vfs, &sm(), pat_id),
-                        ty.display(db)
+                        ty.display(db, Edition::LATEST)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_pat(pat_id) {
@@ -831,15 +845,15 @@ impl flags::AnalysisStats {
                                 start.col,
                                 end.line + 1,
                                 end.col,
-                                mismatch.expected.display(db),
-                                mismatch.actual.display(db)
+                                mismatch.expected.display(db, Edition::LATEST),
+                                mismatch.actual.display(db, Edition::LATEST)
                             ));
                         } else {
                             bar.println(format!(
                                 "{}: Expected {}, got {}",
-                                name.display(db),
-                                mismatch.expected.display(db),
-                                mismatch.actual.display(db)
+                                name.display(db, Edition::LATEST),
+                                mismatch.expected.display(db, Edition::LATEST),
+                                mismatch.actual.display(db, Edition::LATEST)
                             ));
                         }
                     }
@@ -847,8 +861,8 @@ impl flags::AnalysisStats {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
                             location_csv_pat(db, vfs, &sm(), pat_id),
-                            mismatch.expected.display(db),
-                            mismatch.actual.display(db)
+                            mismatch.expected.display(db, Edition::LATEST),
+                            mismatch.actual.display(db, Edition::LATEST)
                         );
                     }
                 }
@@ -924,12 +938,16 @@ impl flags::AnalysisStats {
                             .filter_map(|it| it.name(db))
                             .rev()
                             .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
-                            .map(|it| it.display(db).to_string()),
+                            .map(|it| it.display(db, Edition::LATEST).to_string()),
                     )
                     .join("::")
             };
             if let Some(only_name) = self.only.as_deref() {
-                if body_id.name(db).unwrap_or_else(Name::missing).display(db).to_string()
+                if body_id
+                    .name(db)
+                    .unwrap_or_else(Name::missing)
+                    .display(db, Edition::LATEST)
+                    .to_string()
                     != only_name
                     && full_name() != only_name
                 {
@@ -977,7 +995,7 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
 
         for &file_id in &file_ids {
-            _ = analysis.diagnostics(
+            _ = analysis.full_diagnostics(
                 &DiagnosticsConfig {
                     enabled: true,
                     proc_macros_enabled: true,

@@ -42,6 +42,7 @@ declare_lint_pass! {
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
+        ELIDED_NAMED_LIFETIMES,
         EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
@@ -142,7 +143,6 @@ declare_lint_pass! {
         USELESS_DEPRECATED,
         WARNINGS,
         WASM_C_ABI,
-        WRITES_THROUGH_IMMUTABLE_POINTER,
         // tidy-alphabetical-end
     ]
 }
@@ -251,7 +251,7 @@ declare_lint! {
     Deny,
     "conflicts between `#[repr(..)]` hints that were previously accepted and used in practice",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #68585 <https://github.com/rust-lang/rust/issues/68585>",
     };
 }
@@ -1861,6 +1861,38 @@ declare_lint! {
     pub ELIDED_LIFETIMES_IN_PATHS,
     Allow,
     "hidden lifetime parameters in types are deprecated"
+}
+
+declare_lint! {
+    /// The `elided_named_lifetimes` lint detects when an elided
+    /// lifetime ends up being a named lifetime, such as `'static`
+    /// or some lifetime parameter `'a`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(elided_named_lifetimes)]
+    /// struct Foo;
+    /// impl Foo {
+    ///     pub fn get_mut(&'static self, x: &mut u8) -> &mut u8 {
+    ///         unsafe { &mut *(x as *mut _) }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Lifetime elision is quite useful, because it frees you from having
+    /// to give each lifetime its own name, but sometimes it can produce
+    /// somewhat surprising resolutions. In safe code, it is mostly okay,
+    /// because the borrow checker prevents any unsoundness, so the worst
+    /// case scenario is you get a confusing error message in some other place.
+    /// But with `unsafe` code, such unexpected resolutions may lead to unsound code.
+    pub ELIDED_NAMED_LIFETIMES,
+    Warn,
+    "detects when an elided lifetime gets resolved to be `'static` or some named parameter"
 }
 
 declare_lint! {
@@ -4697,40 +4729,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `writes_through_immutable_pointer` lint detects writes through pointers derived from
-    /// shared references.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![feature(const_mut_refs)]
-    /// const WRITE_AFTER_CAST: () = unsafe {
-    ///     let mut x = 0;
-    ///     let ptr = &x as *const i32 as *mut i32;
-    ///     *ptr = 0;
-    /// };
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Shared references are immutable (when there is no `UnsafeCell` involved),
-    /// and writing through them or through pointers derived from them is Undefined Behavior.
-    /// The compiler recently learned to detect such Undefined Behavior during compile-time
-    /// evaluation, and in the future this will raise a hard error.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub WRITES_THROUGH_IMMUTABLE_POINTER,
-    Warn,
-    "shared references are immutable, and pointers derived from them must not be written to",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #X <https://github.com/rust-lang/rust/issues/X>",
-    };
-}
-
-declare_lint! {
     /// The `private_macro_use` lint detects private macros that are imported
     /// with `#[macro_use]`.
     ///
@@ -4806,7 +4804,7 @@ declare_lint! {
     /// version of Rust this will be fixed and therefore dependencies relying
     /// on the non-spec-compliant C ABI will stop functioning.
     pub WASM_C_ABI,
-    Warn,
+    Deny,
     "detects dependencies that are incompatible with the Wasm C ABI",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
@@ -4971,7 +4969,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(unsafe_attributes)]
     /// #![warn(unsafe_attr_outside_unsafe)]
     ///
     /// #[no_mangle]

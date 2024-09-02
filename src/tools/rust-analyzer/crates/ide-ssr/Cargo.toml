@@ -1,8 +1,8 @@
 [package]
 name = "ide-ssr"
 version = "0.0.0"
-description = "Structural search and replace of Rust code"
-repository = "https://github.com/rust-lang/rust-analyzer"
+repository.workspace = true
+description = "Structural search and replace of Rust code for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

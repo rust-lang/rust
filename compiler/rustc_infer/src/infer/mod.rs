@@ -44,6 +44,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use snapshot::undo_log::InferCtxtUndoLogs;
+use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 pub use BoundRegionConversionTime::*;
 pub use RegionVariableOrigin::*;
@@ -390,7 +391,7 @@ pub enum SubregionOrigin<'tcx> {
 
     /// The given region parameter was instantiated with a region
     /// that must outlive some other region.
-    RelateRegionParamBound(Span),
+    RelateRegionParamBound(Span, Option<Ty<'tcx>>),
 
     /// Creating a pointer `b` to contents of another reference.
     Reborrow(Span),
@@ -859,7 +860,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         self.enter_forall(predicate, |ty::OutlivesPredicate(r_a, r_b)| {
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
-                RelateRegionParamBound(cause.span)
+                RelateRegionParamBound(cause.span, None)
             });
             self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
         })
@@ -1685,7 +1686,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             Subtype(ref a) => a.span(),
             RelateObjectBound(a) => a,
             RelateParamBound(a, ..) => a,
-            RelateRegionParamBound(a) => a,
+            RelateRegionParamBound(a, _) => a,
             Reborrow(a) => a,
             ReferenceOutlivesReferent(_, a) => a,
             CompareImplItemObligation { span, .. } => span,
@@ -1724,6 +1725,10 @@ impl<'tcx> SubregionOrigin<'tcx> {
 
             traits::ObligationCauseCode::AscribeUserTypeProvePredicate(span) => {
                 SubregionOrigin::AscribeUserTypeProvePredicate(span)
+            }
+
+            traits::ObligationCauseCode::ObjectTypeBound(ty, _reg) => {
+                SubregionOrigin::RelateRegionParamBound(cause.span, Some(ty))
             }
 
             _ => default(),

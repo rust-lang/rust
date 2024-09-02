@@ -20,7 +20,7 @@
   
       bb1: {
           StorageDead(_2);
--         switchInt(_1) -> [7: bb4, 42: bb3, otherwise: bb2];
+-         switchInt(copy _1) -> [7: bb4, 42: bb3, otherwise: bb2];
 +         switchInt(const <T as MyTrait>::ASSOC_INT) -> [7: bb4, 42: bb3, otherwise: bb2];
       }
   

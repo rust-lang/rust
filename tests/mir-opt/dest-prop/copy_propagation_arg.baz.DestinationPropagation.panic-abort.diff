@@ -8,14 +8,14 @@
   
       bb0: {
 -         StorageLive(_2);
--         _2 = _1;
+-         _2 = copy _1;
 -         _1 = move _2;
 -         StorageDead(_2);
 +         nop;
 +         nop;
 +         nop;
 +         nop;
-          _0 = _1;
+          _0 = copy _1;
           return;
       }
   }

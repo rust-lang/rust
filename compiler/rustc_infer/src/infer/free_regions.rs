@@ -5,6 +5,7 @@
 
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_middle::ty::{Region, TyCtxt};
+use tracing::debug;
 
 /// Combines a `FreeRegionMap` and a `TyCtxt`.
 ///
@@ -18,11 +19,11 @@ pub(crate) struct RegionRelations<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, free_regions: &'a FreeRegionMap<'tcx>) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, free_regions: &'a FreeRegionMap<'tcx>) -> Self {
         Self { tcx, free_regions }
     }
 
-    pub fn lub_param_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> Region<'tcx> {
+    pub(crate) fn lub_param_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> Region<'tcx> {
         self.free_regions.lub_param_regions(self.tcx, r_a, r_b)
     }
 }
@@ -80,7 +81,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
     /// cases, this is more conservative than necessary, in order to
     /// avoid making arbitrary choices. See
     /// `TransitiveRelation::postdom_upper_bound` for more details.
-    pub fn lub_param_regions(
+    pub(crate) fn lub_param_regions(
         &self,
         tcx: TyCtxt<'tcx>,
         r_a: Region<'tcx>,

@@ -1,7 +1,8 @@
 [package]
 name = "proc-macro-srv-cli"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "A standalone binary for the `proc-macro-srv` crate of rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

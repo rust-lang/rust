@@ -3,6 +3,7 @@ use std::ops::Deref;
 use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
 use rustc_ast::ptr;
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
+use tracing::debug;
 
 use crate::comment::{combine_strs_with_missing_comments, contains_comment};
 use crate::config::lists::*;

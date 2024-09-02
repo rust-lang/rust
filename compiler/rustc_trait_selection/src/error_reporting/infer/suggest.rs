@@ -15,6 +15,7 @@ use rustc_middle::traits::{
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{sym, Span};
+use tracing::debug;
 
 use crate::error_reporting::infer::hir::Path;
 use crate::error_reporting::TypeErrCtxt;
@@ -382,7 +383,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if !expected_inner.is_fn() || !found_inner.is_fn() {
             return;
         }
-        match (&expected_inner.kind(), &found_inner.kind()) {
+        match (expected_inner.kind(), found_inner.kind()) {
             (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
                 let sig = sig_tys.with(*hdr);
                 let expected_sig = &(self.normalize_fn_sig)(sig);

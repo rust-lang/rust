@@ -1,5 +1,11 @@
-//! This checks the output of some `--print` options when
-//! output to a file (instead of stdout)
+//! This checks the output of some `--print` options when output to a file (instead of stdout)
+
+// ignore-tidy-linelength
+//@ needs-llvm-components: aarch64 arm avr bpf csky hexagon loongarch m68k mips msp430 nvptx powerpc riscv sparc systemz webassembly x86
+// FIXME(jieyouxu): there has to be a better way to do this, without the needs-llvm-components it
+// will fail on LLVM built without all of the components listed above. If adding a new target that
+// relies on a llvm component not listed above, it will need to be added to the required llvm
+// components above.
 
 use std::path::PathBuf;
 

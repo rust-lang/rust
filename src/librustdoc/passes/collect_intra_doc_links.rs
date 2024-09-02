@@ -27,6 +27,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::BytePos;
 use smallvec::{smallvec, SmallVec};
+use tracing::{debug, info, instrument, trace};
 
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, Crate, Item, ItemLink, PrimitiveType};
@@ -53,7 +54,7 @@ fn filter_assoc_items_by_name_and_namespace<'a>(
     assoc_items_of: DefId,
     ident: Ident,
     ns: Namespace,
-) -> impl Iterator<Item = &ty::AssocItem> + 'a {
+) -> impl Iterator<Item = &'a ty::AssocItem> + 'a {
     tcx.associated_items(assoc_items_of).filter_by_name_unhygienic(ident.name).filter(move |item| {
         item.kind.namespace() == ns && tcx.hygienic_eq(ident, item.ident(tcx), assoc_items_of)
     })
@@ -1950,7 +1951,9 @@ fn resolution_failure(
                             | TraitAlias
                             | TyParam
                             | Static { .. } => "associated item",
-                            Impl { .. } | GlobalAsm => unreachable!("not a path"),
+                            Impl { .. } | GlobalAsm | SyntheticCoroutineBody => {
+                                unreachable!("not a path")
+                            }
                         }
                     } else {
                         "associated item"

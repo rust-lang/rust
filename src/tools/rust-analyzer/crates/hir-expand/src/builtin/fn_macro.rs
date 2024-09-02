@@ -4,13 +4,14 @@ use base_db::AnchoredPath;
 use cfg::CfgExpr;
 use either::Either;
 use intern::{sym, Symbol};
-use mbe::{parse_exprs_with_sep, parse_to_token_tree, DelimiterKind};
+use mbe::{expect_fragment, DelimiterKind};
 use span::{Edition, EditionedFileId, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{
     format_smolstr,
     unescape::{unescape_byte, unescape_char, unescape_unicode, Mode},
 };
+use syntax_bridge::parse_to_token_tree;
 
 use crate::{
     builtin::quote::{dollar_crate, quote},
@@ -228,20 +229,22 @@ fn assert_expand(
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
     let call_site_span = span_with_call_site_ctxt(db, span, id);
-    let args = parse_exprs_with_sep(tt, ',', call_site_span, Edition::CURRENT_FIXME);
+
+    let mut iter = ::tt::iter::TtIter::new(tt);
+
+    let cond = expect_fragment(
+        &mut iter,
+        parser::PrefixEntryPoint::Expr,
+        db.crate_graph()[id.lookup(db).krate].edition,
+        tt::DelimSpan { open: tt.delimiter.open, close: tt.delimiter.close },
+    );
+    _ = iter.expect_char(',');
+    let rest = iter.as_slice();
+
     let dollar_crate = dollar_crate(span);
-    let expanded = match &*args {
-        [cond, panic_args @ ..] => {
-            let comma = tt::Subtree {
-                delimiter: tt::Delimiter::invisible_spanned(call_site_span),
-                token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
-                    char: ',',
-                    spacing: tt::Spacing::Alone,
-                    span: call_site_span,
-                }))]),
-            };
-            let cond = cond.clone();
-            let panic_args = itertools::Itertools::intersperse(panic_args.iter().cloned(), comma);
+    let expanded = match cond.value {
+        Some(cond) => {
+            let panic_args = rest.iter().cloned();
             let mac = if use_panic_2021(db, span) {
                 quote! {call_site_span => #dollar_crate::panic::panic_2021!(##panic_args) }
             } else {
@@ -253,10 +256,13 @@ fn assert_expand(
                 }
             }}
         }
-        [] => quote! {call_site_span =>{}},
+        None => quote! {call_site_span =>{}},
     };
 
-    ExpandResult::ok(expanded)
+    match cond.err {
+        Some(err) => ExpandResult::new(expanded, err.into()),
+        None => ExpandResult::ok(expanded),
+    }
 }
 
 fn file_expand(

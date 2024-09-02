@@ -110,39 +110,43 @@ impl<'a> Argument<'a> {
     }
 
     #[inline(always)]
-    pub fn new_display<'b, T: Display>(x: &'b T) -> Argument<'_> {
+    pub fn new_display<'b, T: Display>(x: &'b T) -> Argument<'b> {
         Self::new(x, Display::fmt)
     }
     #[inline(always)]
-    pub fn new_debug<'b, T: Debug>(x: &'b T) -> Argument<'_> {
+    pub fn new_debug<'b, T: Debug>(x: &'b T) -> Argument<'b> {
         Self::new(x, Debug::fmt)
     }
     #[inline(always)]
-    pub fn new_octal<'b, T: Octal>(x: &'b T) -> Argument<'_> {
+    pub fn new_debug_noop<'b, T: Debug>(x: &'b T) -> Argument<'b> {
+        Self::new(x, |_, _| Ok(()))
+    }
+    #[inline(always)]
+    pub fn new_octal<'b, T: Octal>(x: &'b T) -> Argument<'b> {
         Self::new(x, Octal::fmt)
     }
     #[inline(always)]
-    pub fn new_lower_hex<'b, T: LowerHex>(x: &'b T) -> Argument<'_> {
+    pub fn new_lower_hex<'b, T: LowerHex>(x: &'b T) -> Argument<'b> {
         Self::new(x, LowerHex::fmt)
     }
     #[inline(always)]
-    pub fn new_upper_hex<'b, T: UpperHex>(x: &'b T) -> Argument<'_> {
+    pub fn new_upper_hex<'b, T: UpperHex>(x: &'b T) -> Argument<'b> {
         Self::new(x, UpperHex::fmt)
     }
     #[inline(always)]
-    pub fn new_pointer<'b, T: Pointer>(x: &'b T) -> Argument<'_> {
+    pub fn new_pointer<'b, T: Pointer>(x: &'b T) -> Argument<'b> {
         Self::new(x, Pointer::fmt)
     }
     #[inline(always)]
-    pub fn new_binary<'b, T: Binary>(x: &'b T) -> Argument<'_> {
+    pub fn new_binary<'b, T: Binary>(x: &'b T) -> Argument<'b> {
         Self::new(x, Binary::fmt)
     }
     #[inline(always)]
-    pub fn new_lower_exp<'b, T: LowerExp>(x: &'b T) -> Argument<'_> {
+    pub fn new_lower_exp<'b, T: LowerExp>(x: &'b T) -> Argument<'b> {
         Self::new(x, LowerExp::fmt)
     }
     #[inline(always)]
-    pub fn new_upper_exp<'b, T: UpperExp>(x: &'b T) -> Argument<'_> {
+    pub fn new_upper_exp<'b, T: UpperExp>(x: &'b T) -> Argument<'b> {
         Self::new(x, UpperExp::fmt)
     }
     #[inline(always)]

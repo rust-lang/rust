@@ -564,12 +564,12 @@ pub enum ArchiveKind {
 }
 
 // LLVMRustThinLTOData
-extern "C" {
+unsafe extern "C" {
     pub type ThinLTOData;
 }
 
 // LLVMRustThinLTOBuffer
-extern "C" {
+unsafe extern "C" {
     pub type ThinLTOBuffer;
 }
 
@@ -621,7 +621,7 @@ pub enum MemoryEffects {
     InaccessibleMemOnly,
 }
 
-extern "C" {
+unsafe extern "C" {
     type Opaque;
 }
 #[repr(C)]
@@ -631,54 +631,54 @@ struct InvariantOpaque<'a> {
 }
 
 // Opaque pointer types
-extern "C" {
+unsafe extern "C" {
     pub type Module;
 }
-extern "C" {
+unsafe extern "C" {
     pub type Context;
 }
-extern "C" {
+unsafe extern "C" {
     pub type Type;
 }
-extern "C" {
+unsafe extern "C" {
     pub type Value;
 }
-extern "C" {
+unsafe extern "C" {
     pub type ConstantInt;
 }
-extern "C" {
+unsafe extern "C" {
     pub type Attribute;
 }
-extern "C" {
+unsafe extern "C" {
     pub type Metadata;
 }
-extern "C" {
+unsafe extern "C" {
     pub type BasicBlock;
 }
 #[repr(C)]
 pub struct Builder<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct PassManager<'a>(InvariantOpaque<'a>);
-extern "C" {
+unsafe extern "C" {
     pub type Pass;
 }
-extern "C" {
+unsafe extern "C" {
     pub type TargetMachine;
 }
-extern "C" {
+unsafe extern "C" {
     pub type Archive;
 }
 #[repr(C)]
 pub struct ArchiveIterator<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct ArchiveChild<'a>(InvariantOpaque<'a>);
-extern "C" {
+unsafe extern "C" {
     pub type Twine;
 }
-extern "C" {
+unsafe extern "C" {
     pub type DiagnosticInfo;
 }
-extern "C" {
+unsafe extern "C" {
     pub type SMDiagnostic;
 }
 #[repr(C)]
@@ -688,7 +688,7 @@ pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct Linker<'a>(InvariantOpaque<'a>);
 
-extern "C" {
+unsafe extern "C" {
     pub type DiagnosticHandler;
 }
 
@@ -823,7 +823,7 @@ bitflags! {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     pub type ModuleBuffer;
 }
 
@@ -834,7 +834,7 @@ pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 pub type GetSymbolsCallback = unsafe extern "C" fn(*mut c_void, *const c_char) -> *mut c_void;
 pub type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
 
-extern "C" {
+unsafe extern "C" {
     // Create and destroy contexts.
     pub fn LLVMContextDispose(C: &'static mut Context);
     pub fn LLVMGetMDKindIDInContext(C: &Context, Name: *const c_char, SLen: c_uint) -> c_uint;
@@ -1518,7 +1518,7 @@ extern "C" {
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
-extern "C" {
+unsafe extern "C" {
     pub fn LLVMRustInstallErrorHandlers();
     pub fn LLVMRustDisableSystemDialogsOnCrash();
 
@@ -1860,6 +1860,8 @@ extern "C" {
         CSKind: ChecksumKind,
         Checksum: *const c_char,
         ChecksumLen: size_t,
+        Source: *const c_char,
+        SourceLen: size_t,
     ) -> &'a DIFile;
 
     pub fn LLVMRustDIBuilderCreateSubroutineType<'a>(
@@ -2223,6 +2225,7 @@ extern "C" {
         IsLinkerPluginLTO: bool,
         NoPrepopulatePasses: bool,
         VerifyIR: bool,
+        LintIR: bool,
         UseThinLTOBuffers: bool,
         MergeFunctions: bool,
         UnrollLoops: bool,

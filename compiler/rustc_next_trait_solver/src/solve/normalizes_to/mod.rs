@@ -862,7 +862,7 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        panic!("`BikeshedIntrinsicFrom` does not have an associated type: {:?}", goal)
+        panic!("`TransmuteFrom` does not have an associated type: {:?}", goal)
     }
 
     fn consider_builtin_effects_intersection_candidate(

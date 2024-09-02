@@ -44,8 +44,9 @@ pub(crate) fn codegen_fn<'tcx>(
     let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
         with_no_trimmed_paths!({
-            rustc_middle::mir::pretty::write_mir_fn(tcx, mir, &mut |_, _| Ok(()), &mut buf)
-                .unwrap();
+            use rustc_middle::mir::pretty;
+            let options = pretty::PrettyPrintMirOptions::from_cli(tcx);
+            pretty::write_mir_fn(tcx, mir, &mut |_, _| Ok(()), &mut buf, options).unwrap();
         });
         String::from_utf8_lossy(&buf).into_owned()
     });
@@ -595,7 +596,7 @@ fn codegen_stmt<'tcx>(
                     let val = cplace.to_cvalue(fx);
                     lval.write_cvalue(fx, val)
                 }
-                Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+                Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
                     let place = codegen_place(fx, place);
                     let ref_ = place.place_ref(fx, lval.layout());
                     lval.write_cvalue(fx, ref_);

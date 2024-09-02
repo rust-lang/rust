@@ -144,6 +144,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
 use rustc_mir_dataflow::points::{save_as_intervals, DenseLocationMap, PointIndex};
 use rustc_mir_dataflow::Analysis;
+use tracing::{debug, trace};
 
 use crate::MirPass;
 
@@ -576,7 +577,7 @@ impl WriteInfo {
                     Rvalue::ThreadLocalRef(_)
                     | Rvalue::NullaryOp(_, _)
                     | Rvalue::Ref(_, _, _)
-                    | Rvalue::AddressOf(_, _)
+                    | Rvalue::RawPtr(_, _)
                     | Rvalue::Len(_)
                     | Rvalue::Discriminant(_)
                     | Rvalue::CopyForDeref(_) => (),

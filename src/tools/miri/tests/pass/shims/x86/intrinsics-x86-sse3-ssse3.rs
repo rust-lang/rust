@@ -6,7 +6,7 @@
 //@ignore-target-avr
 //@ignore-target-s390x
 //@ignore-target-thumbv7em
-//@ignore-target-wasm32
+//@ignore-target-wasm
 // SSSE3 implicitly enables SSE3
 //@compile-flags: -C target-feature=+ssse3
 

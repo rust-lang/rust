@@ -117,7 +117,7 @@ impl Attrs {
 }
 
 impl Attrs {
-    pub fn by_key<'attrs>(&'attrs self, key: &'attrs Symbol) -> AttrQuery<'_> {
+    pub fn by_key<'attrs>(&'attrs self, key: &'attrs Symbol) -> AttrQuery<'attrs> {
         AttrQuery { attrs: self, key }
     }
 
@@ -594,7 +594,7 @@ impl<'attr> AttrQuery<'attr> {
     /// #[doc(html_root_url = "url")]
     ///       ^^^^^^^^^^^^^ key
     /// ```
-    pub fn find_string_value_in_tt(self, key: &'attr Symbol) -> Option<&str> {
+    pub fn find_string_value_in_tt(self, key: &'attr Symbol) -> Option<&'attr str> {
         self.tt_values().find_map(|tt| {
             let name = tt.token_trees.iter()
                 .skip_while(|tt| !matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { sym, ..} )) if *sym == *key))
@@ -657,9 +657,9 @@ mod tests {
     use triomphe::Arc;
 
     use hir_expand::span_map::{RealSpanMap, SpanMap};
-    use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode};
     use span::FileId;
     use syntax::{ast, AstNode, TextRange};
+    use syntax_bridge::{syntax_node_to_token_tree, DocCommentDesugarMode};
 
     use crate::attr::{DocAtom, DocExpr};
 

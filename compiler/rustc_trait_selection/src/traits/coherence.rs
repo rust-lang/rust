@@ -21,6 +21,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 pub use rustc_next_trait_solver::coherence::*;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument, warn};
 
 use super::ObligationCtxt;
 use crate::error_reporting::traits::suggest_new_overflow_limit;

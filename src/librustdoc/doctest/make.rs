@@ -14,6 +14,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
+use tracing::debug;
 
 use super::GlobalTestOptions;
 use crate::html::markdown::LangString;
@@ -311,7 +312,7 @@ fn parse_source(
             }
             ast::ItemKind::ExternCrate(original) => {
                 if !info.found_extern_crate
-                    && let Some(ref crate_name) = crate_name
+                    && let Some(crate_name) = crate_name
                 {
                     info.found_extern_crate = match original {
                         Some(name) => name.as_str() == *crate_name,

@@ -1,6 +1,3 @@
-// Disabling on android for the time being
-// See https://github.com/rust-lang/rust/issues/73535#event-3477699747
-#![cfg(not(target_os = "android"))]
 // Disabling in Miri as these would take too long.
 #![cfg(not(miri))]
 #![feature(btree_extract_if)]

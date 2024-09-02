@@ -20,6 +20,7 @@ use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
+use tracing::{debug, instrument};
 
 use super::{find_use, RegionName, UseSpans};
 use crate::borrow_set::BorrowData;

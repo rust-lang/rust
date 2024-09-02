@@ -93,7 +93,7 @@ fn main() -> () {
         StorageLive(_11);
         StorageLive(_12);
         _12 = &raw mut (*_10);
-        _11 = _12;
+        _11 = copy _12;
         StorageDead(_12);
         _2 = const ();
         StorageDead(_11);
@@ -109,7 +109,7 @@ fn main() -> () {
         StorageDead(_14);
         StorageLive(_15);
         StorageLive(_16);
-        _16 = _13;
+        _16 = copy _13;
         StorageLive(_17);
         StorageLive(_18);
         _18 = &_1;
@@ -150,7 +150,7 @@ fn main() -> () {
         StorageLive(_25);
         StorageLive(_26);
         _26 = &raw const (*_15);
-        _25 = _26;
+        _25 = copy _26;
         StorageDead(_26);
         StorageLive(_27);
         _27 = array_casts() -> [return: bb6, unwind continue];

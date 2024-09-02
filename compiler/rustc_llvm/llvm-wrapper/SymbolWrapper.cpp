@@ -77,22 +77,18 @@ LLVMRustGetSymbols(char *BufPtr, size_t BufLen, void *State,
   Expected<std::unique_ptr<object::SymbolicFile>> ObjOrErr =
       getSymbolicFile(Buf->getMemBufferRef(), Context);
   if (!ObjOrErr) {
-    Error E = ObjOrErr.takeError();
-    SmallString<0> ErrorBuf;
-    auto Error = raw_svector_ostream(ErrorBuf);
-    Error << E << '\0';
-    return ErrorCallback(Error.str().data());
+    return ErrorCallback(toString(ObjOrErr.takeError()).c_str());
   }
   std::unique_ptr<object::SymbolicFile> Obj = std::move(*ObjOrErr);
+  if (Obj == nullptr) {
+    return 0;
+  }
 
   for (const object::BasicSymbolRef &S : Obj->symbols()) {
     if (!isArchiveSymbol(S))
       continue;
     if (Error E = S.printName(SymName)) {
-      SmallString<0> ErrorBuf;
-      auto Error = raw_svector_ostream(ErrorBuf);
-      Error << E << '\0';
-      return ErrorCallback(Error.str().data());
+      return ErrorCallback(toString(std::move(E)).c_str());
     }
     SymName << '\0';
     if (void *E = Callback(State, SymNameBuf.str().data())) {

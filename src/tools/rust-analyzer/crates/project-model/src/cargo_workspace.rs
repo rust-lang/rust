@@ -13,7 +13,7 @@ use serde_json::from_value;
 use span::Edition;
 use toolchain::Tool;
 
-use crate::{utf8_stdout, InvocationLocation, ManifestPath, Sysroot};
+use crate::{utf8_stdout, ManifestPath, Sysroot};
 use crate::{CfgOverrides, InvocationStrategy};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
@@ -85,8 +85,6 @@ pub struct CargoConfig {
     pub target: Option<String>,
     /// Sysroot loading behavior
     pub sysroot: Option<RustLibSource>,
-    /// Whether to invoke `cargo metadata` on the sysroot crate.
-    pub sysroot_query_metadata: bool,
     pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
     pub rustc_source: Option<RustLibSource>,
@@ -100,7 +98,6 @@ pub struct CargoConfig {
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, String>,
     pub invocation_strategy: InvocationStrategy,
-    pub invocation_location: InvocationLocation,
     /// Optional path to use instead of `target` when building
     pub target_dir: Option<Utf8PathBuf>,
 }
@@ -244,6 +241,10 @@ impl TargetKind {
     pub fn is_executable(self) -> bool {
         matches!(self, TargetKind::Bin | TargetKind::Example)
     }
+
+    pub fn is_proc_macro(self) -> bool {
+        matches!(self, TargetKind::Lib { is_proc_macro: true })
+    }
 }
 
 // Deserialize helper for the cargo metadata
@@ -254,13 +255,29 @@ struct PackageMetadata {
 }
 
 impl CargoWorkspace {
+    /// Fetches the metadata for the given `cargo_toml` manifest.
+    /// A successful result may contain another metadata error if the initial fetching failed but
+    /// the `--no-deps` retry succeeded.
     pub fn fetch_metadata(
         cargo_toml: &ManifestPath,
         current_dir: &AbsPath,
         config: &CargoConfig,
         sysroot: &Sysroot,
+        locked: bool,
         progress: &dyn Fn(String),
-    ) -> anyhow::Result<cargo_metadata::Metadata> {
+    ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
+        Self::fetch_metadata_(cargo_toml, current_dir, config, sysroot, locked, false, progress)
+    }
+
+    fn fetch_metadata_(
+        cargo_toml: &ManifestPath,
+        current_dir: &AbsPath,
+        config: &CargoConfig,
+        sysroot: &Sysroot,
+        locked: bool,
+        no_deps: bool,
+        progress: &dyn Fn(String),
+    ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
         let targets = find_list_of_build_targets(config, cargo_toml, sysroot);
 
         let cargo = sysroot.tool(Tool::Cargo);
@@ -312,6 +329,12 @@ impl CargoWorkspace {
             // opt into it themselves.
             other_options.push("-Zscript".to_owned());
         }
+        if locked {
+            other_options.push("--locked".to_owned());
+        }
+        if no_deps {
+            other_options.push("--no-deps".to_owned());
+        }
         meta.other_options(other_options);
 
         // FIXME: Fetching metadata is a slow process, as it might require
@@ -319,19 +342,42 @@ impl CargoWorkspace {
         // unclear whether cargo itself supports it.
         progress("metadata".to_owned());
 
-        (|| -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
+        (|| -> anyhow::Result<(_, _)> {
             let output = meta.cargo_command().output()?;
             if !output.status.success() {
-                return Err(cargo_metadata::Error::CargoMetadata {
+                let error = cargo_metadata::Error::CargoMetadata {
                     stderr: String::from_utf8(output.stderr)?,
-                });
+                }
+                .into();
+                if !no_deps {
+                    // If we failed to fetch metadata with deps, try again without them.
+                    // This makes r-a still work partially when offline.
+                    if let Ok((metadata, _)) = Self::fetch_metadata_(
+                        cargo_toml,
+                        current_dir,
+                        config,
+                        sysroot,
+                        locked,
+                        true,
+                        progress,
+                    ) {
+                        return Ok((metadata, Some(error)));
+                    }
+                }
+                return Err(error);
             }
             let stdout = from_utf8(&output.stdout)?
                 .lines()
                 .find(|line| line.starts_with('{'))
                 .ok_or(cargo_metadata::Error::NoJson)?;
-            cargo_metadata::MetadataCommand::parse(stdout)
+            Ok((cargo_metadata::MetadataCommand::parse(stdout)?, None))
         })()
+        .map(|(metadata, error)| {
+            (
+                metadata,
+                error.map(|e| e.context(format!("Failed to run `{:?}`", meta.cargo_command()))),
+            )
+        })
         .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))
     }
 
@@ -429,8 +475,7 @@ impl CargoWorkspace {
                 pkg_data.targets.push(tgt);
             }
         }
-        let resolve = meta.resolve.expect("metadata executed with deps");
-        for mut node in resolve.nodes {
+        for mut node in meta.resolve.map_or_else(Vec::new, |it| it.nodes) {
             let &source = pkg_by_id.get(&node.id).unwrap();
             node.deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
             let dependencies = node

@@ -11,6 +11,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use thin_vec::{thin_vec, ThinVec};
+use tracing::{debug, warn};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::clean::auto_trait::synthesize_auto_trait_impls;
@@ -321,9 +322,9 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             "({})",
             elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
         ),
-        PatKind::Box(p) => return name_from_pat(&*p),
-        PatKind::Deref(p) => format!("deref!({})", name_from_pat(&*p)),
-        PatKind::Ref(p, _) => return name_from_pat(&*p),
+        PatKind::Box(p) => return name_from_pat(p),
+        PatKind::Deref(p) => format!("deref!({})", name_from_pat(p)),
+        PatKind::Ref(p, _) => return name_from_pat(p),
         PatKind::Lit(..) => {
             warn!(
                 "tried to get argument name from PatKind::Lit, which is silly in function arguments"
@@ -333,7 +334,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         PatKind::Range(..) => return kw::Underscore,
         PatKind::Slice(begin, ref mid, end) => {
             let begin = begin.iter().map(|p| name_from_pat(p).to_string());
-            let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
+            let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(p))).into_iter();
             let end = end.iter().map(|p| name_from_pat(p).to_string());
             format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
         }
@@ -344,7 +345,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args: _ }) => {
             let s = if let Some(def) = def.as_local() {
-                rendered_const(cx.tcx, &cx.tcx.hir().body_owned_by(def), def)
+                rendered_const(cx.tcx, cx.tcx.hir().body_owned_by(def), def)
             } else {
                 inline::print_inlined_const(cx.tcx, def)
             };
@@ -383,7 +384,7 @@ pub(crate) fn print_evaluated_const(
 
 fn format_integer_with_underscore_sep(num: &str) -> String {
     let num_chars: Vec<_> = num.chars().collect();
-    let mut num_start_index = if num_chars.get(0) == Some(&'-') { 1 } else { 0 };
+    let mut num_start_index = if num_chars.first() == Some(&'-') { 1 } else { 0 };
     let chunk_size = match num[num_start_index..].as_bytes() {
         [b'0', b'b' | b'x', ..] => {
             num_start_index += 2;

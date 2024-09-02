@@ -27,13 +27,9 @@
 #![feature(iterator_try_collect)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
-#![feature(try_blocks)]
-#![feature(yeet_expr)]
 #![recursion_limit = "512"] // For rustdoc
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
-
-#[macro_use]
-extern crate tracing;
 
 mod errors;
 pub mod infer;

@@ -8,6 +8,7 @@
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use field_offset::offset_of;
@@ -214,7 +215,7 @@ pub fn query_system<'tcx>(
             local_providers,
             extern_providers,
             encode_query_results: encode_all_query_results,
-            try_mark_green: try_mark_green,
+            try_mark_green,
         },
         jobs: AtomicU64::new(1),
     }

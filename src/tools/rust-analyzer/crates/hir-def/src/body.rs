@@ -14,7 +14,7 @@ use hir_expand::{name::Name, ExpandError, InFile};
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::MacroFileId;
+use span::{Edition, MacroFileId};
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 use triomphe::Arc;
 
@@ -118,6 +118,7 @@ pub enum BodyDiagnostic {
     MacroError { node: InFile<AstPtr<ast::MacroCall>>, err: ExpandError },
     UnresolvedMacroCall { node: InFile<AstPtr<ast::MacroCall>>, path: ModPath },
     UnreachableLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
+    AwaitOutsideOfAsync { node: InFile<AstPtr<ast::AwaitExpr>>, location: String },
     UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
 }
 
@@ -157,7 +158,7 @@ impl Body {
                             }),
                         )
                     });
-                    is_async_fn = data.has_async_kw();
+                    is_async_fn = data.is_async();
                     src.map(|it| it.body().map(ast::Expr::from))
                 }
                 DefWithBodyId::ConstId(c) => {
@@ -196,12 +197,17 @@ impl Body {
     pub fn blocks<'a>(
         &'a self,
         db: &'a dyn DefDatabase,
-    ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + '_ {
+    ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + 'a {
         self.block_scopes.iter().map(move |&block| (block, db.block_def_map(block)))
     }
 
-    pub fn pretty_print(&self, db: &dyn DefDatabase, owner: DefWithBodyId) -> String {
-        pretty::print_body_hir(db, self, owner)
+    pub fn pretty_print(
+        &self,
+        db: &dyn DefDatabase,
+        owner: DefWithBodyId,
+        edition: Edition,
+    ) -> String {
+        pretty::print_body_hir(db, self, owner, edition)
     }
 
     pub fn pretty_print_expr(
@@ -209,8 +215,9 @@ impl Body {
         db: &dyn DefDatabase,
         owner: DefWithBodyId,
         expr: ExprId,
+        edition: Edition,
     ) -> String {
-        pretty::print_expr_hir(db, self, owner, expr)
+        pretty::print_expr_hir(db, self, owner, expr, edition)
     }
 
     fn new(

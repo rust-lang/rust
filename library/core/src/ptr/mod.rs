@@ -56,6 +56,44 @@
 //! has size 0, i.e., even if memory is not actually touched. Consider using
 //! [`NonNull::dangling`] in such cases.
 //!
+//! ## Pointer to reference conversion
+//!
+//! When converting a pointer to a reference (e.g. via `&*ptr` or `&mut *ptr`),
+//! there are several rules that must be followed:
+//!
+//! * The pointer must be properly aligned.
+//!
+//! * It must be non-null.
+//!
+//! * It must be "dereferenceable" in the sense defined above.
+//!
+//! * The pointer must point to a [valid value] of type `T`.
+//!
+//! * You must enforce Rust's aliasing rules. The exact aliasing rules are not decided yet, so we
+//!   only give a rough overview here. The rules also depend on whether a mutable or a shared
+//!   reference is being created.
+//!   * When creating a mutable reference, then while this reference exists, the memory it points to
+//!     must not get accessed (read or written) through any other pointer or reference not derived
+//!     from this reference.
+//!   * When creating a shared reference, then while this reference exists, the memory it points to
+//!     must not get mutated (except inside `UnsafeCell`).
+//!
+//! If a pointer follows all of these rules, it is said to be
+//! *convertible to a (mutable or shared) reference*.
+// ^ we use this term instead of saying that the produced reference must
+// be valid, as the validity of a reference is easily confused for the
+// validity of the thing it refers to, and while the two concepts are
+// closly related, they are not identical.
+//!
+//! These rules apply even if the result is unused!
+//! (The part about being initialized is not yet fully decided, but until
+//! it is, the only safe approach is to ensure that they are indeed initialized.)
+//!
+//! An example of the implications of the above rules is that an expression such
+//! as `unsafe { &*(0 as *const u8) }` is Immediate Undefined Behavior.
+//!
+//! [valid value]: ../../reference/behavior-considered-undefined.html#invalid-values
+//!
 //! ## Allocated object
 //!
 //! An *allocated object* is a subset of program memory which is addressable
@@ -2130,6 +2168,33 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
     (p as *const ()) == (q as *const ())
 }
 
+/// Compares the *addresses* of the two function pointers for equality.
+///
+/// Function pointers comparisons can have surprising results since
+/// they are never guaranteed to be unique and could vary between different
+/// code generation units. Furthermore, different functions could have the
+/// same address after being merged together.
+///
+/// This is the same as `f == g` but using this function makes clear
+/// that you are aware of these potentially surprising semantics.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(ptr_fn_addr_eq)]
+/// use std::ptr;
+///
+/// fn a() { println!("a"); }
+/// fn b() { println!("b"); }
+/// assert!(!ptr::fn_addr_eq(a as fn(), b as fn()));
+/// ```
+#[unstable(feature = "ptr_fn_addr_eq", issue = "129322")]
+#[inline(always)]
+#[must_use = "function pointer comparison produces a value"]
+pub fn fn_addr_eq<T: FnPtr, U: FnPtr>(f: T, g: U) -> bool {
+    f.addr() == g.addr()
+}
+
 /// Hash a raw pointer.
 ///
 /// This can be used to hash a `&T` reference (which coerces to `*const T` implicitly)
@@ -2209,6 +2274,9 @@ impl<F: FnPtr> fmt::Debug for F {
 
 /// Creates a `const` raw pointer to a place, without creating an intermediate reference.
 ///
+/// `addr_of!(expr)` is equivalent to `&raw const expr`. The macro is *soft-deprecated*;
+/// use `&raw const` instead.
+///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,
 /// raw pointers should be used instead. However, `&expr as *const _` creates a reference
@@ -2282,6 +2350,9 @@ pub macro addr_of($place:expr) {
 }
 
 /// Creates a `mut` raw pointer to a place, without creating an intermediate reference.
+///
+/// `addr_of_mut!(expr)` is equivalent to `&raw mut expr`. The macro is *soft-deprecated*;
+/// use `&raw mut` instead.
 ///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,

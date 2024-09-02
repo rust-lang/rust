@@ -28,7 +28,8 @@ pub(super) fn complete_macro_use(
                 continue;
             }
 
-            let item = CompletionItem::new(SymbolKind::Macro, ctx.source_range(), mac_name);
+            let item =
+                CompletionItem::new(SymbolKind::Macro, ctx.source_range(), mac_name, ctx.edition);
             item.add_to(acc, ctx.db);
         }
     }

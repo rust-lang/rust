@@ -25,6 +25,7 @@ pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{lint, Session};
 use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span};
+use tracing::{debug, info};
 
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
@@ -288,7 +289,7 @@ pub(crate) fn create_config(
                 let hir = tcx.hir();
                 let body = hir.body_owned_by(def_id);
                 debug!("visiting body for {def_id:?}");
-                EmitIgnoredResolutionErrors::new(tcx).visit_body(&body);
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),

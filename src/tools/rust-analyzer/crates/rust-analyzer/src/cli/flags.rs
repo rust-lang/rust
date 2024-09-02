@@ -71,9 +71,6 @@ xflags::xflags! {
             optional --with-deps
             /// Don't load sysroot crates (`std`, `core` & friends).
             optional --no-sysroot
-            /// Run cargo metadata on the sysroot to analyze its third-party dependencies.
-            /// Requires --no-sysroot to not be set.
-            optional --query-sysroot-metadata
 
             /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
             optional --disable-build-scripts
@@ -141,6 +138,9 @@ xflags::xflags! {
 
         cmd lsif {
             required path: PathBuf
+
+            /// Exclude code from vendored libraries from the resulting index.
+            optional --exclude-vendored-libraries
         }
 
         cmd scip {
@@ -151,6 +151,9 @@ xflags::xflags! {
 
             /// A path to an json configuration file that can be used to customize cargo behavior.
             optional --config-path config_path: PathBuf
+
+            /// Exclude code from vendored libraries from the resulting index.
+            optional --exclude-vendored-libraries
         }
     }
 }
@@ -214,7 +217,6 @@ pub struct AnalysisStats {
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
-    pub query_sysroot_metadata: bool,
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
     pub skip_lowering: bool,
@@ -263,6 +265,8 @@ pub struct Search {
 #[derive(Debug)]
 pub struct Lsif {
     pub path: PathBuf,
+
+    pub exclude_vendored_libraries: bool,
 }
 
 #[derive(Debug)]
@@ -271,6 +275,7 @@ pub struct Scip {
 
     pub output: Option<PathBuf>,
     pub config_path: Option<PathBuf>,
+    pub exclude_vendored_libraries: bool,
 }
 
 impl RustAnalyzer {

@@ -4,6 +4,7 @@ use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
 use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey, RegionVidKey};
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey};
+use tracing::debug;
 
 use crate::infer::{region_constraints, type_variable, InferCtxtInner};
 use crate::traits;
@@ -158,7 +159,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
 }
 
 impl<'tcx> InferCtxtUndoLogs<'tcx> {
-    pub fn start_snapshot(&mut self) -> Snapshot<'tcx> {
+    pub(crate) fn start_snapshot(&mut self) -> Snapshot<'tcx> {
         self.num_open_snapshots += 1;
         Snapshot { undo_len: self.logs.len(), _marker: PhantomData }
     }

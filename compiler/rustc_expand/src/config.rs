@@ -265,12 +265,7 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
-        validate_attr::check_attribute_safety(
-            self.features.unwrap_or(&Features::default()),
-            &self.sess.psess,
-            AttributeSafety::Normal,
-            &cfg_attr,
-        );
+        validate_attr::check_attribute_safety(&self.sess.psess, AttributeSafety::Normal, &cfg_attr);
 
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(cfg_attr, &self.sess.psess)
@@ -395,11 +390,7 @@ impl<'a> StripUnconfigured<'a> {
             }
         };
 
-        validate_attr::deny_builtin_meta_unsafety(
-            self.features.unwrap_or(&Features::default()),
-            &self.sess.psess,
-            &meta_item,
-        );
+        validate_attr::deny_builtin_meta_unsafety(&self.sess.psess, &meta_item);
 
         (
             parse_cfg(&meta_item, self.sess).map_or(true, |meta_item| {

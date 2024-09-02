@@ -123,32 +123,27 @@ impl Sysroot {
 // FIXME: Expose a builder api as loading the sysroot got way too modular and complicated.
 impl Sysroot {
     /// Attempts to discover the toolchain's sysroot from the given `dir`.
-    pub fn discover(
-        dir: &AbsPath,
-        extra_env: &FxHashMap<String, String>,
-        metadata: bool,
-    ) -> Sysroot {
+    pub fn discover(dir: &AbsPath, extra_env: &FxHashMap<String, String>) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(dir, extra_env);
         let sysroot_src_dir = sysroot_dir.as_ref().ok().map(|sysroot_dir| {
             discover_sysroot_src_dir_or_add_component(sysroot_dir, dir, extra_env)
         });
-        Sysroot::load_core_check(Some(sysroot_dir), sysroot_src_dir, metadata)
+        Sysroot::load_core_check(Some(sysroot_dir), sysroot_src_dir)
     }
 
     pub fn discover_with_src_override(
         current_dir: &AbsPath,
         extra_env: &FxHashMap<String, String>,
         sysroot_src_dir: AbsPathBuf,
-        metadata: bool,
     ) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(current_dir, extra_env);
-        Sysroot::load_core_check(Some(sysroot_dir), Some(Ok(sysroot_src_dir)), metadata)
+        Sysroot::load_core_check(Some(sysroot_dir), Some(Ok(sysroot_src_dir)))
     }
 
-    pub fn discover_sysroot_src_dir(sysroot_dir: AbsPathBuf, metadata: bool) -> Sysroot {
+    pub fn discover_sysroot_src_dir(sysroot_dir: AbsPathBuf) -> Sysroot {
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir)
             .ok_or_else(|| format_err!("can't find standard library sources in {sysroot_dir}"));
-        Sysroot::load_core_check(Some(Ok(sysroot_dir)), Some(sysroot_src_dir), metadata)
+        Sysroot::load_core_check(Some(Ok(sysroot_dir)), Some(sysroot_src_dir))
     }
 
     pub fn discover_rustc_src(&self) -> Option<ManifestPath> {
@@ -191,20 +186,15 @@ impl Sysroot {
             })
     }
 
-    pub fn load(
-        sysroot_dir: Option<AbsPathBuf>,
-        sysroot_src_dir: Option<AbsPathBuf>,
-        metadata: bool,
-    ) -> Sysroot {
-        Self::load_core_check(sysroot_dir.map(Ok), sysroot_src_dir.map(Ok), metadata)
+    pub fn load(sysroot_dir: Option<AbsPathBuf>, sysroot_src_dir: Option<AbsPathBuf>) -> Sysroot {
+        Self::load_core_check(sysroot_dir.map(Ok), sysroot_src_dir.map(Ok))
     }
 
     fn load_core_check(
         sysroot_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
         sysroot_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
-        metadata: bool,
     ) -> Sysroot {
-        let mut sysroot = Self::load_(sysroot_dir, sysroot_src_dir, metadata);
+        let mut sysroot = Self::load_(sysroot_dir, sysroot_src_dir);
         if sysroot.error.is_none() {
             if let Some(src_root) = &sysroot.src_root {
                 let has_core = match &sysroot.mode {
@@ -230,7 +220,6 @@ impl Sysroot {
     fn load_(
         sysroot_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
         sysroot_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
-        metadata: bool,
     ) -> Sysroot {
         let sysroot_dir = match sysroot_dir {
             Some(Ok(sysroot_dir)) => Some(sysroot_dir),
@@ -263,119 +252,16 @@ impl Sysroot {
                 }
             }
         };
-        if metadata {
-            let sysroot: Option<_> = (|| {
-                let sysroot_cargo_toml = ManifestPath::try_from(
-                    AbsPathBuf::try_from(&*format!("{sysroot_src_dir}/sysroot/Cargo.toml")).ok()?,
-                )
-                .ok()?;
-                let current_dir =
-                    AbsPathBuf::try_from(&*format!("{sysroot_src_dir}/sysroot")).ok()?;
-
-                let mut cargo_config = CargoConfig::default();
-                // the sysroot uses `public-dependency`, so we make cargo think it's a nightly
-                cargo_config.extra_env.insert(
-                    "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS".to_owned(),
-                    "nightly".to_owned(),
-                );
-
-                let res = CargoWorkspace::fetch_metadata(
-                    &sysroot_cargo_toml,
-                    &current_dir,
-                    &cargo_config,
-                    &Sysroot::empty(),
-                    &|_| (),
-                )
-                .map_err(|e| {
-                    tracing::error!(
-                        "failed to load sysroot `{sysroot_src_dir}/sysroot/Cargo.toml`: {}",
-                        e
-                    );
-                    e
-                });
-                if let Err(e) =
-                    std::fs::remove_file(format!("{sysroot_src_dir}/sysroot/Cargo.lock"))
-                {
-                    tracing::error!(
-                        "failed to remove sysroot `{sysroot_src_dir}/sysroot/Cargo.lock`: {}",
-                        e
-                    )
-                }
-                let mut res = res.ok()?;
-
-                // Patch out `rustc-std-workspace-*` crates to point to the real crates.
-                // This is done prior to `CrateGraph` construction to avoid having duplicate `std` targets.
-
-                let mut fake_core = None;
-                let mut fake_alloc = None;
-                let mut fake_std = None;
-                let mut real_core = None;
-                let mut real_alloc = None;
-                let mut real_std = None;
-                res.packages.iter().enumerate().for_each(|(idx, package)| {
-                    match package.name.strip_prefix("rustc-std-workspace-") {
-                        Some("core") => fake_core = Some((idx, package.id.clone())),
-                        Some("alloc") => fake_alloc = Some((idx, package.id.clone())),
-                        Some("std") => fake_std = Some((idx, package.id.clone())),
-                        Some(_) => {
-                            tracing::warn!("unknown rustc-std-workspace-* crate: {}", package.name)
-                        }
-                        None => match &*package.name {
-                            "core" => real_core = Some(package.id.clone()),
-                            "alloc" => real_alloc = Some(package.id.clone()),
-                            "std" => real_std = Some(package.id.clone()),
-                            _ => (),
-                        },
-                    }
-                });
-
-                let patches =
-                    [fake_core.zip(real_core), fake_alloc.zip(real_alloc), fake_std.zip(real_std)]
-                        .into_iter()
-                        .flatten();
-
-                let resolve = res.resolve.as_mut().expect("metadata executed with deps");
-                let mut remove_nodes = vec![];
-                for (idx, node) in resolve.nodes.iter_mut().enumerate() {
-                    // Replace them in the dependency list
-                    node.deps.iter_mut().for_each(|dep| {
-                        if let Some((_, real)) =
-                            patches.clone().find(|((_, fake_id), _)| *fake_id == dep.pkg)
-                        {
-                            dep.pkg = real;
-                        }
-                    });
-                    if patches.clone().any(|((_, fake), _)| fake == node.id) {
-                        remove_nodes.push(idx);
-                    }
-                }
-                // Remove the fake ones from the resolve data
-                remove_nodes.into_iter().rev().for_each(|r| {
-                    resolve.nodes.remove(r);
-                });
-                // Remove the fake ones from the packages
-                patches.map(|((r, _), _)| r).sorted().rev().for_each(|r| {
-                    res.packages.remove(r);
-                });
-
-                res.workspace_members = res
-                    .packages
-                    .iter()
-                    .filter(|&package| RELEVANT_SYSROOT_CRATES.contains(&&*package.name))
-                    .map(|package| package.id.clone())
-                    .collect();
-                let cargo_workspace = CargoWorkspace::new(res, sysroot_cargo_toml);
-                Some(Sysroot {
-                    root: sysroot_dir.clone(),
-                    src_root: Some(sysroot_src_dir.clone()),
-                    mode: SysrootMode::Workspace(cargo_workspace),
-                    error: None,
-                })
-            })();
-            if let Some(sysroot) = sysroot {
+        let library_manifest = ManifestPath::try_from(sysroot_src_dir.join("Cargo.toml")).unwrap();
+        if fs::metadata(&library_manifest).is_ok() {
+            if let Some(sysroot) =
+                Self::load_library_via_cargo(library_manifest, &sysroot_dir, &sysroot_src_dir)
+            {
                 return sysroot;
             }
         }
+        tracing::debug!("Stitching sysroot library: {sysroot_src_dir}");
+
         let mut stitched = Stitched { crates: Arena::default() };
 
         for path in SYSROOT_CRATES.trim().lines() {
@@ -384,7 +270,7 @@ impl Sysroot {
                 .into_iter()
                 .map(|it| sysroot_src_dir.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())
-                .find(|it| fs::metadata(it.as_ref()).is_ok());
+                .find(|it| fs::metadata(it).is_ok());
 
             if let Some(root) = root {
                 stitched.crates.alloc(SysrootCrateData {
@@ -424,6 +310,93 @@ impl Sysroot {
             mode: SysrootMode::Stitched(stitched),
             error: None,
         }
+    }
+
+    fn load_library_via_cargo(
+        library_manifest: ManifestPath,
+        sysroot_dir: &Option<AbsPathBuf>,
+        sysroot_src_dir: &AbsPathBuf,
+    ) -> Option<Sysroot> {
+        tracing::debug!("Loading library metadata: {library_manifest}");
+        let mut cargo_config = CargoConfig::default();
+        // the sysroot uses `public-dependency`, so we make cargo think it's a nightly
+        cargo_config.extra_env.insert(
+            "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS".to_owned(),
+            "nightly".to_owned(),
+        );
+
+        let (mut res, _) = match CargoWorkspace::fetch_metadata(
+            &library_manifest,
+            sysroot_src_dir,
+            &cargo_config,
+            &Sysroot::empty(),
+            // Make sure we never attempt to write to the sysroot
+            true,
+            &|_| (),
+        ) {
+            Ok(it) => it,
+            Err(e) => {
+                tracing::error!("`cargo metadata` failed on `{library_manifest}` : {e}");
+                return None;
+            }
+        };
+
+        // Patch out `rustc-std-workspace-*` crates to point to the real crates.
+        // This is done prior to `CrateGraph` construction to prevent de-duplication logic from failing.
+        let patches = {
+            let mut fake_core = None;
+            let mut fake_alloc = None;
+            let mut fake_std = None;
+            let mut real_core = None;
+            let mut real_alloc = None;
+            let mut real_std = None;
+            res.packages.iter().enumerate().for_each(|(idx, package)| {
+                match package.name.strip_prefix("rustc-std-workspace-") {
+                    Some("core") => fake_core = Some((idx, package.id.clone())),
+                    Some("alloc") => fake_alloc = Some((idx, package.id.clone())),
+                    Some("std") => fake_std = Some((idx, package.id.clone())),
+                    Some(_) => {
+                        tracing::warn!("unknown rustc-std-workspace-* crate: {}", package.name)
+                    }
+                    None => match &*package.name {
+                        "core" => real_core = Some(package.id.clone()),
+                        "alloc" => real_alloc = Some(package.id.clone()),
+                        "std" => real_std = Some(package.id.clone()),
+                        _ => (),
+                    },
+                }
+            });
+
+            [fake_core.zip(real_core), fake_alloc.zip(real_alloc), fake_std.zip(real_std)]
+                .into_iter()
+                .flatten()
+        };
+
+        if let Some(resolve) = res.resolve.as_mut() {
+            resolve.nodes.retain_mut(|node| {
+                // Replace `rustc-std-workspace` crate with the actual one in the dependency list
+                node.deps.iter_mut().for_each(|dep| {
+                    let real_pkg = patches.clone().find(|((_, fake_id), _)| *fake_id == dep.pkg);
+                    if let Some((_, real)) = real_pkg {
+                        dep.pkg = real;
+                    }
+                });
+                // Remove this node if it's a fake one
+                !patches.clone().any(|((_, fake), _)| fake == node.id)
+            });
+        }
+        // Remove the fake ones from the package list
+        patches.map(|((idx, _), _)| idx).sorted().rev().for_each(|idx| {
+            res.packages.remove(idx);
+        });
+
+        let cargo_workspace = CargoWorkspace::new(res, library_manifest);
+        Some(Sysroot {
+            root: sysroot_dir.clone(),
+            src_root: Some(sysroot_src_dir.clone()),
+            mode: SysrootMode::Workspace(cargo_workspace),
+            error: None,
+        })
     }
 }
 
@@ -471,13 +444,13 @@ fn discover_sysroot_src_dir_or_add_component(
             get_rust_src(sysroot_path)
         })
         .ok_or_else(|| {
-            format_err!(
-                "\
+            let error = "\
 can't load standard library from sysroot
 {sysroot_path}
 (discovered via `rustc --print sysroot`)
-try installing the Rust source the same way you installed rustc",
-            )
+try installing the Rust source the same way you installed rustc";
+            tracing::error!(error);
+            format_err!(error)
         })
 }
 
@@ -485,7 +458,7 @@ fn get_rustc_src(sysroot_path: &AbsPath) -> Option<ManifestPath> {
     let rustc_src = sysroot_path.join("lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml");
     let rustc_src = ManifestPath::try_from(rustc_src).ok()?;
     tracing::debug!("checking for rustc source code: {rustc_src}");
-    if fs::metadata(rustc_src.as_ref()).is_ok() {
+    if fs::metadata(&rustc_src).is_ok() {
         Some(rustc_src)
     } else {
         None
@@ -531,5 +504,3 @@ test";
 const PROC_MACRO_DEPS: &str = "
 std
 core";
-
-const RELEVANT_SYSROOT_CRATES: &[&str] = &["core", "alloc", "std", "test", "proc_macro"];

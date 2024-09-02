@@ -9,6 +9,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{Region, RegionVid};
+use tracing::debug;
 
 use super::*;
 use crate::errors::UnableToConstructConstantValue;
@@ -770,7 +771,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                     let reported =
                                         tcx.dcx().emit_err(UnableToConstructConstantValue {
                                             span: tcx.def_span(unevaluated.def),
-                                            unevaluated: unevaluated,
+                                            unevaluated,
                                         });
                                     Err(ErrorHandled::Reported(reported.into(), tcx.def_span(unevaluated.def)))
                                 }

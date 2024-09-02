@@ -913,7 +913,7 @@ cc = ["@kobzol"]
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
-users_on_vacation = ["jyn514", "jhpratt", "oli-obk", "michaelwoerister"]
+users_on_vacation = ["jyn514", "jhpratt", "oli-obk", "kobzol", "joboet"]
 
 [assign.adhoc_groups]
 compiler-team = [
@@ -951,6 +951,7 @@ libs = [
     "@joboet",
     "@jhpratt",
     "@tgross35",
+    "@thomcc",
 ]
 bootstrap = [
     "@Mark-Simulacrum",
@@ -970,7 +971,6 @@ rustdoc = [
 docs = [
     "@ehuss",
     "@GuillaumeGomez",
-    "@JohnTitor",
 ]
 query-system = [
     "@cjgillot",

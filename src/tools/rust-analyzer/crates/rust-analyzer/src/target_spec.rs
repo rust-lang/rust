@@ -62,6 +62,7 @@ pub(crate) struct CargoTargetSpec {
 
 #[derive(Clone, Debug)]
 pub(crate) struct ProjectJsonTargetSpec {
+    pub(crate) crate_id: CrateId,
     pub(crate) label: String,
     pub(crate) target_kind: TargetKind,
     pub(crate) shell_runnables: Vec<Runnable>,
@@ -263,10 +264,13 @@ mod tests {
     use super::*;
 
     use ide::Edition;
-    use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, DummyTestSpanMap, DUMMY};
     use syntax::{
         ast::{self, AstNode},
         SmolStr,
+    };
+    use syntax_bridge::{
+        dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
+        syntax_node_to_token_tree, DocCommentDesugarMode,
     };
 
     fn check(cfg: &str, expected_features: &[&str]) {

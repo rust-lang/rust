@@ -4,7 +4,7 @@
 #![feature(generic_const_exprs)]
 
 mod assert {
-    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    use std::mem::{Assume, TransmuteFrom};
 
     pub fn is_transmutable<
         Src,
@@ -15,7 +15,7 @@ mod assert {
         const ASSUME_VALIDITY: bool,
     >()
     where
-        Dst: BikeshedIntrinsicFrom<
+        Dst: TransmuteFrom<
             Src,
             {  }
         >,

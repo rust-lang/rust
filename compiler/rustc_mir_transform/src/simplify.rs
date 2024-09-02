@@ -31,7 +31,9 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
+use tracing::{debug, trace};
 
 pub enum SimplifyCfg {
     Initial,
@@ -318,6 +320,7 @@ pub(crate) fn remove_dead_blocks(body: &mut Body<'_>) {
     let mut orig_index = 0;
     let mut used_index = 0;
     let mut kept_unreachable = None;
+    let mut deduplicated_unreachable = false;
     basic_blocks.raw.retain(|bbdata| {
         let orig_bb = BasicBlock::new(orig_index);
         if !reachable.contains(orig_bb) {
@@ -330,6 +333,7 @@ pub(crate) fn remove_dead_blocks(body: &mut Body<'_>) {
             let kept_unreachable = *kept_unreachable.get_or_insert(used_bb);
             if kept_unreachable != used_bb {
                 replacements[orig_index] = kept_unreachable;
+                deduplicated_unreachable = true;
                 orig_index += 1;
                 return false;
             }
@@ -340,6 +344,14 @@ pub(crate) fn remove_dead_blocks(body: &mut Body<'_>) {
         orig_index += 1;
         true
     });
+
+    // If we deduplicated unreachable blocks we erase their source_info as we
+    // can no longer attribute their code to a particular location in the
+    // source.
+    if deduplicated_unreachable {
+        basic_blocks[kept_unreachable.unwrap()].terminator_mut().source_info =
+            SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE };
+    }
 
     for block in basic_blocks {
         for target in block.terminator_mut().successors_mut() {

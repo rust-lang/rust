@@ -29,8 +29,10 @@ pub(crate) mod search_index;
 mod tests;
 
 mod context;
+mod ordered_json;
 mod print_item;
 pub(crate) mod sidebar;
+mod sorted_template;
 mod span_map;
 mod type_layout;
 mod write_shared;
@@ -55,6 +57,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, FileName, RealFileName, DUMMY_SP};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
+use tracing::{debug, info};
 
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
@@ -1728,6 +1731,7 @@ fn render_impl(
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
+                render_rightside(w, cx, item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
                     write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");
@@ -1749,6 +1753,7 @@ fn render_impl(
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
+                render_rightside(w, cx, item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
                     write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");

@@ -1,7 +1,7 @@
 use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait};
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{can_mut_borrow_both, fn_def_id, get_parent_expr, path_to_local};
@@ -40,7 +40,7 @@ pub fn check_for_loop_iter(
         && let Some(ForLoop { pat, body, .. }) = ForLoop::hir(grandparent)
         && let (clone_or_copy_needed, references_to_binding) = clone_or_copy_needed(cx, pat, body)
         && !clone_or_copy_needed
-        && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
+        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
     {
         // Issue 12098
         // https://github.com/rust-lang/rust-clippy/issues/12098
@@ -100,7 +100,7 @@ pub fn check_for_loop_iter(
             && implements_trait(cx, collection_ty, into_iterator_trait_id, &[])
             && let Some(into_iter_item_ty) = cx.get_associated_type(collection_ty, into_iterator_trait_id, "Item")
             && iter_item_ty == into_iter_item_ty
-            && let Some(collection_snippet) = snippet_opt(cx, collection.span)
+            && let Some(collection_snippet) = collection.span.get_source_text(cx)
         {
             collection_snippet
         } else {
@@ -122,7 +122,7 @@ pub fn check_for_loop_iter(
                 } else {
                     Applicability::MachineApplicable
                 };
-                diag.span_suggestion(expr.span, "use", snippet, applicability);
+                diag.span_suggestion(expr.span, "use", snippet.to_owned(), applicability);
                 if !references_to_binding.is_empty() {
                     diag.multipart_suggestion(
                         "remove any references to the binding",

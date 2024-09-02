@@ -584,7 +584,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::CopyForDeref(place) => {
                 self.codegen_operand(bx, &mir::Operand::Copy(place))
             }
-            mir::Rvalue::AddressOf(mutability, place) => {
+            mir::Rvalue::RawPtr(mutability, place) => {
                 let mk_ptr =
                     move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| Ty::new_ptr(tcx, ty, mutability);
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
@@ -813,7 +813,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         cg_value.len(bx.cx())
     }
 
-    /// Codegen an `Rvalue::AddressOf` or `Rvalue::Ref`
+    /// Codegen an `Rvalue::RawPtr` or `Rvalue::Ref`
     fn codegen_place_to_pointer(
         &mut self,
         bx: &mut Bx,
@@ -1085,7 +1085,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::Rvalue::Ref(..) |
             mir::Rvalue::CopyForDeref(..) |
-            mir::Rvalue::AddressOf(..) |
+            mir::Rvalue::RawPtr(..) |
             mir::Rvalue::Len(..) |
             mir::Rvalue::Cast(..) | // (*)
             mir::Rvalue::ShallowInitBox(..) | // (*)

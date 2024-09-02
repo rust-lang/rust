@@ -9,7 +9,7 @@ fn main() -> () {
         StorageLive(_1);
         StorageLive(_2);
         _2 = const {ALLOC4: &&Packed};
-        _1 = (*_2);
+        _1 = copy (*_2);
         StorageDead(_2);
         StorageDead(_1);
         _0 = const ();

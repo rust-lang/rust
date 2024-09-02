@@ -7,6 +7,7 @@ use rustc_middle::span_bug;
 pub use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;
+use tracing::{debug, instrument};
 
 use crate::infer::InferCtxt;
 use crate::traits::{ObligationCause, ObligationCtxt};

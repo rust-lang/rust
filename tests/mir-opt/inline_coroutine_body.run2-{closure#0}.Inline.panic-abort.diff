@@ -85,7 +85,7 @@
 -     }
 - 
 -     bb2: {
-+         _4 = Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}> { __pointer: _5 };
++         _4 = Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}> { __pointer: copy _5 };
           StorageDead(_5);
           StorageLive(_6);
           StorageLive(_7);
@@ -160,7 +160,7 @@
 +         StorageLive(_14);
 +         _14 = ();
 +         StorageLive(_41);
-+         _41 = Option::<()>::Some(_14);
++         _41 = Option::<()>::Some(copy _14);
 +         _13 = std::future::Ready::<()>(move _41);
 +         StorageDead(_41);
 +         StorageDead(_14);
@@ -193,7 +193,7 @@
 +         StorageLive(_22);
 +         StorageLive(_23);
 +         StorageLive(_24);
-+         _24 = _31;
++         _24 = copy _31;
 +         _23 = move _24;
 +         _22 = &mut (*_23);
 +         StorageDead(_24);
@@ -231,8 +231,8 @@
 + 
 +     bb10: {
 +         StorageLive(_26);
-+         _26 = ((_18 as Ready).0: ());
-+         _30 = _26;
++         _26 = copy ((_18 as Ready).0: ());
++         _30 = copy _26;
 +         StorageDead(_26);
 +         StorageDead(_23);
 +         StorageDead(_21);

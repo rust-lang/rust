@@ -11,6 +11,7 @@ use rustc_middle::ty::{
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::symbol::{kw, sym};
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
 use super::{HirTyLowerer, IsMethodCall};
 use crate::errors::wrong_number_of_generic_args::{GenericArgsInfo, WrongNumberOfGenericArgs};

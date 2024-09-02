@@ -1,11 +1,7 @@
 use crate::{utils, AssistContext, Assists};
-use hir::DescendPreference;
 use ide_db::{
     assists::{AssistId, AssistKind},
-    syntax_helpers::{
-        format_string::is_format_string,
-        format_string_exprs::{parse_format_exprs, Arg},
-    },
+    syntax_helpers::format_string_exprs::{parse_format_exprs, Arg},
 };
 use itertools::Itertools;
 use syntax::{
@@ -40,13 +36,7 @@ pub(crate) fn extract_expressions_from_format_string(
     let tt = fmt_string.syntax().parent().and_then(ast::TokenTree::cast)?;
     let tt_delimiter = tt.left_delimiter_token()?.kind();
 
-    let expanded_t = ast::String::cast(
-        ctx.sema
-            .descend_into_macros_single(DescendPreference::SameKind, fmt_string.syntax().clone()),
-    )?;
-    if !is_format_string(&expanded_t) {
-        return None;
-    }
+    let _ = ctx.sema.as_format_args_parts(&fmt_string)?;
 
     let (new_fmt, extracted_args) = parse_format_exprs(fmt_string.text()).ok()?;
     if extracted_args.is_empty() {

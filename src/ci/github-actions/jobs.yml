@@ -285,8 +285,10 @@ auto:
 
   - image: dist-apple-various
     env:
-      SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
-      RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
+      SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim,aarch64-apple-ios-macabi,x86_64-apple-ios-macabi
+      # Mac Catalyst cannot currently compile the sanitizer:
+      # https://github.com/rust-lang/rust/issues/129069
+      RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set target.aarch64-apple-ios-macabi.sanitizers=false --set target.x86_64-apple-ios-macabi.sanitizers=false
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       MACOSX_DEPLOYMENT_TARGET: 10.12
       SELECT_XCODE: /Applications/Xcode_14.3.1.app

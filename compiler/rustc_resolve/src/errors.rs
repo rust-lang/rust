@@ -850,7 +850,7 @@ pub(crate) struct MacroExternDeprecated {
     #[primary_span]
     pub(crate) span: Span,
     #[help]
-    pub inner_attribute: Option<()>,
+    pub inner_attribute: bool,
 }
 
 #[derive(Diagnostic)]

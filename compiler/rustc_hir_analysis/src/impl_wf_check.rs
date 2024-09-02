@@ -53,7 +53,10 @@ mod min_specialization;
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
 /// //   ^ 'a is unused and appears in assoc type, error
 /// ```
-pub fn check_impl_wf(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn check_impl_wf(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     let min_specialization = tcx.features().min_specialization;
     let mut res = Ok(());
     debug_assert_matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. });
@@ -137,8 +140,7 @@ fn enforce_impl_params_are_constrained(
             }
         };
         if err {
-            let const_param_note =
-                matches!(param.kind, ty::GenericParamDefKind::Const { .. }).then_some(());
+            let const_param_note = matches!(param.kind, ty::GenericParamDefKind::Const { .. });
             let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
                 span: tcx.def_span(param.def_id),
                 param_name: param.name,

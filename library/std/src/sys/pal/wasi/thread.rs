@@ -1,3 +1,5 @@
+#![forbid(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::CStr;
 use crate::num::NonZero;
 use crate::sys::unsupported;
@@ -73,13 +75,13 @@ impl Thread {
         if #[cfg(target_feature = "atomics")] {
             pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
                 let p = Box::into_raw(Box::new(p));
-                let mut native: libc::pthread_t = mem::zeroed();
-                let mut attr: libc::pthread_attr_t = mem::zeroed();
-                assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+                let mut native: libc::pthread_t = unsafe { mem::zeroed() };
+                let mut attr: libc::pthread_attr_t = unsafe { mem::zeroed() };
+                assert_eq!(unsafe { libc::pthread_attr_init(&mut attr) }, 0);
 
                 let stack_size = cmp::max(stack, DEFAULT_MIN_STACK_SIZE);
 
-                match libc::pthread_attr_setstacksize(&mut attr, stack_size) {
+                match unsafe { libc::pthread_attr_setstacksize(&mut attr, stack_size) } {
                     0 => {}
                     n => {
                         assert_eq!(n, libc::EINVAL);
@@ -90,20 +92,20 @@ impl Thread {
                         let page_size = os::page_size();
                         let stack_size =
                             (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
-                        assert_eq!(libc::pthread_attr_setstacksize(&mut attr, stack_size), 0);
+                        assert_eq!(unsafe { libc::pthread_attr_setstacksize(&mut attr, stack_size) }, 0);
                     }
                 };
 
-                let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
+                let ret = unsafe { libc::pthread_create(&mut native, &attr, thread_start, p as *mut _) };
                 // Note: if the thread creation fails and this assert fails, then p will
                 // be leaked. However, an alternative design could cause double-free
                 // which is clearly worse.
-                assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+                assert_eq!(unsafe {libc::pthread_attr_destroy(&mut attr) }, 0);
 
                 return if ret != 0 {
                     // The thread failed to start and as a result p was not consumed. Therefore, it is
                     // safe to reconstruct the box so that it gets deallocated.
-                    drop(Box::from_raw(p));
+                    unsafe { drop(Box::from_raw(p)); }
                     Err(io::Error::from_raw_os_error(ret))
                 } else {
                     Ok(Thread { id: native })
@@ -134,36 +136,37 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        let nanos = dur.as_nanos();
-        assert!(nanos <= u64::MAX as u128);
+        let mut nanos = dur.as_nanos();
+        while nanos > 0 {
+            const USERDATA: wasi::Userdata = 0x0123_45678;
 
-        const USERDATA: wasi::Userdata = 0x0123_45678;
+            let clock = wasi::SubscriptionClock {
+                id: wasi::CLOCKID_MONOTONIC,
+                timeout: u64::try_from(nanos).unwrap_or(u64::MAX),
+                precision: 0,
+                flags: 0,
+            };
+            nanos -= u128::from(clock.timeout);
 
-        let clock = wasi::SubscriptionClock {
-            id: wasi::CLOCKID_MONOTONIC,
-            timeout: nanos as u64,
-            precision: 0,
-            flags: 0,
-        };
-
-        let in_ = wasi::Subscription {
-            userdata: USERDATA,
-            u: wasi::SubscriptionU { tag: 0, u: wasi::SubscriptionUU { clock } },
-        };
-        unsafe {
-            let mut event: wasi::Event = mem::zeroed();
-            let res = wasi::poll_oneoff(&in_, &mut event, 1);
-            match (res, event) {
-                (
-                    Ok(1),
-                    wasi::Event {
-                        userdata: USERDATA,
-                        error: wasi::ERRNO_SUCCESS,
-                        type_: wasi::EVENTTYPE_CLOCK,
-                        ..
-                    },
-                ) => {}
-                _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
+            let in_ = wasi::Subscription {
+                userdata: USERDATA,
+                u: wasi::SubscriptionU { tag: 0, u: wasi::SubscriptionUU { clock } },
+            };
+            unsafe {
+                let mut event: wasi::Event = mem::zeroed();
+                let res = wasi::poll_oneoff(&in_, &mut event, 1);
+                match (res, event) {
+                    (
+                        Ok(1),
+                        wasi::Event {
+                            userdata: USERDATA,
+                            error: wasi::ERRNO_SUCCESS,
+                            type_: wasi::EVENTTYPE_CLOCK,
+                            ..
+                        },
+                    ) => {}
+                    _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
+                }
             }
         }
     }

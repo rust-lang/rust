@@ -36,8 +36,10 @@ pub mod rfs {
 // Re-exports of third-party library crates.
 pub use bstr;
 pub use gimli;
+pub use libc;
 pub use object;
 pub use regex;
+pub use serde_json;
 pub use wasmparser;
 
 // Re-exports of external dependencies.
@@ -63,7 +65,7 @@ pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 pub use diff::{diff, Diff};
 
 /// Panic-on-fail [`std::env::var`] and [`std::env::var_os`] wrappers.
-pub use env::{env_var, env_var_os};
+pub use env::{env_var, env_var_os, set_current_dir};
 
 /// Convenience helpers for running binaries and other commands.
 pub use run::{cmd, run, run_fail, run_with_args};
@@ -87,7 +89,7 @@ pub use path_helpers::{
 pub use scoped_run::{run_in_tmpdir, test_while_readonly};
 
 pub use assertion_helpers::{
-    assert_contains, assert_contains_regex, assert_dirs_are_equal, assert_equals,
+    assert_contains, assert_contains_regex, assert_count_is, assert_dirs_are_equal, assert_equals,
     assert_not_contains, assert_not_contains_regex,
 };
 

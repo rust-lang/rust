@@ -407,7 +407,7 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 
 // Note: the vectors could be created and dropped within `parse_tt`, but to avoid excess
 // allocations we have a single vector for each kind that is cleared and reused repeatedly.
-pub struct TtParser {
+pub(crate) struct TtParser {
     macro_name: Ident,
 
     /// The set of current mps to be processed. This should be empty by the end of a successful

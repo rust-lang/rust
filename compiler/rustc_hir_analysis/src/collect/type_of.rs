@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, Article, IsSuggestable, Ty, TyCtxt, TypeVisitableEx
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
+use tracing::debug;
 
 use super::{bad_placeholder, ItemCtxt};
 use crate::errors::TypeofReservedKeywordUsed;
@@ -725,7 +726,7 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
     }
 }
 
-pub fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+pub(crate) fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
     use hir::intravisit::Visitor;
     if tcx.features().lazy_type_alias {
         return true;

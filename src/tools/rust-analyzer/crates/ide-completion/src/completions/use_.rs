@@ -107,7 +107,11 @@ pub(crate) fn complete_use_path(
                             let item = CompletionItem::new(
                                 CompletionItemKind::SymbolKind(SymbolKind::Enum),
                                 ctx.source_range(),
-                                format_smolstr!("{}::", e.name(ctx.db).display(ctx.db)),
+                                format_smolstr!(
+                                    "{}::",
+                                    e.name(ctx.db).display(ctx.db, ctx.edition)
+                                ),
+                                ctx.edition,
                             );
                             acc.add(item.build(ctx.db));
                         }

@@ -51,7 +51,7 @@
 -         _5 = (move _6, move _7);
 +         StorageLive(_8);
 +         _8 = Temp { x: const 40_u8 };
-+         _7 = (_8.0: u8);
++         _7 = copy (_8.0: u8);
 +         _6 = Add(move _7, const 2_u8);
           StorageDead(_7);
 -         StorageDead(_6);
@@ -67,7 +67,7 @@
 -         StorageLive(_10);
 -         StorageLive(_11);
 -         _11 = Temp { x: const 40_u8 };
--         _10 = (_11.0: u8);
+-         _10 = copy (_11.0: u8);
 -         _9 = Add(move _10, const 2_u8);
 -         StorageDead(_10);
 -         _8 = use_u8(move _9) -> [return: bb2, unwind continue];

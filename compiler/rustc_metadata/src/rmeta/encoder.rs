@@ -872,7 +872,8 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::Field
         | DefKind::Impl { .. }
-        | DefKind::Closure => true,
+        | DefKind::Closure
+        | DefKind::SyntheticCoroutineBody => true,
         DefKind::ForeignMod | DefKind::GlobalAsm => false,
     }
 }
@@ -902,6 +903,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         // https://github.com/model-checking/kani and is not a performance
         // or maintenance issue for us.
         DefKind::Closure => true,
+        DefKind::SyntheticCoroutineBody => false,
         DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Ctor(..)
@@ -948,7 +950,8 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Closure => false,
+        | DefKind::Closure
+        | DefKind::SyntheticCoroutineBody => false,
     }
 }
 
@@ -984,7 +987,8 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
         | DefKind::Closure
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::SyntheticCoroutineBody => false,
     }
 }
 
@@ -1019,7 +1023,8 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::SyntheticCoroutineBody => false,
     }
 }
 
@@ -1061,6 +1066,7 @@ fn should_encode_mir(
         }
         // Coroutines require optimized MIR to compute layout.
         DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => (false, true),
+        DefKind::SyntheticCoroutineBody => (false, true),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
@@ -1109,7 +1115,8 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::SyntheticCoroutineBody => false,
         DefKind::TyAlias => tcx.type_alias_is_lazy(def_id),
     }
 }
@@ -1137,7 +1144,8 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Field
         | DefKind::TyParam
-        | DefKind::Closure => true,
+        | DefKind::Closure
+        | DefKind::SyntheticCoroutineBody => true,
         DefKind::Mod
         | DefKind::ForeignMod
         | DefKind::ConstParam
@@ -1168,7 +1176,8 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Closure
         | DefKind::ConstParam
         | DefKind::AnonConst
-        | DefKind::InlineConst => true,
+        | DefKind::InlineConst
+        | DefKind::SyntheticCoroutineBody => true,
 
         DefKind::OpaqueTy => {
             let origin = tcx.opaque_type_origin(def_id);
@@ -1240,7 +1249,8 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::SyntheticCoroutineBody => false,
     }
 }
 
@@ -1277,7 +1287,8 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::SyntheticCoroutineBody => false,
     }
 }
 
@@ -1310,7 +1321,8 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::SyntheticCoroutineBody => false,
     }
 }
 
@@ -1431,8 +1443,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Trait = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record!(self.tables.explicit_super_predicates_of[def_id] <- self.tcx.explicit_super_predicates_of(def_id));
-                record!(self.tables.explicit_implied_predicates_of[def_id] <- self.tcx.explicit_implied_predicates_of(def_id));
+                record_array!(self.tables.explicit_super_predicates_of[def_id] <-
+                    self.tcx.explicit_super_predicates_of(def_id).skip_binder());
+                record_array!(self.tables.explicit_implied_predicates_of[def_id] <-
+                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
 
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
@@ -1440,8 +1454,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::TraitAlias = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record!(self.tables.explicit_super_predicates_of[def_id] <- self.tcx.explicit_super_predicates_of(def_id));
-                record!(self.tables.explicit_implied_predicates_of[def_id] <- self.tcx.explicit_implied_predicates_of(def_id));
+                record_array!(self.tables.explicit_super_predicates_of[def_id] <-
+                    self.tcx.explicit_super_predicates_of(def_id).skip_binder());
+                record_array!(self.tables.explicit_implied_predicates_of[def_id] <-
+                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
             }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
@@ -1458,7 +1474,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record!(self.tables.associated_type_for_effects[def_id] <- assoc_def_id);
                 }
             }
-            if def_kind == DefKind::Closure
+            if let DefKind::Closure | DefKind::SyntheticCoroutineBody = def_kind
                 && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)
             {
                 self.tables.coroutine_kind.set(def_id.index, Some(coroutine_kind))
@@ -2294,7 +2310,7 @@ fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Erro
     Ok(())
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         doc_link_resolutions: |tcx, def_id| {
             tcx.resolutions(())

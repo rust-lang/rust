@@ -83,9 +83,9 @@ fn main() -> () {
         StorageDead(_3);
         PlaceMention(_2);
         StorageLive(_8);
-        _8 = (_2.0: &&[u8]);
+        _8 = copy (_2.0: &&[u8]);
         StorageLive(_9);
-        _9 = (_2.1: &&[u8; 4]);
+        _9 = copy (_2.1: &&[u8; 4]);
         StorageLive(_10);
         StorageLive(_11);
         _11 = &(*_8);
@@ -187,9 +187,9 @@ fn main() -> () {
         StorageDead(_24);
         PlaceMention(_23);
         StorageLive(_28);
-        _28 = (_23.0: &&[u8]);
+        _28 = copy (_23.0: &&[u8]);
         StorageLive(_29);
-        _29 = (_23.1: &&[u8; 4]);
+        _29 = copy (_23.1: &&[u8; 4]);
         StorageLive(_30);
         StorageLive(_31);
         _31 = &(*_28);

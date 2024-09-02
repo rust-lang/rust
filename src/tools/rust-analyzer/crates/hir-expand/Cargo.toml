@@ -1,7 +1,8 @@
 [package]
 name = "hir-expand"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Macro expansion for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -33,6 +34,7 @@ mbe.workspace = true
 limit.workspace = true
 span.workspace = true
 parser.workspace = true
+syntax-bridge.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"

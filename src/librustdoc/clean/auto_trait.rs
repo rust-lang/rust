@@ -7,6 +7,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_trait_selection::traits::auto_trait::{self, RegionTarget};
 use thin_vec::ThinVec;
+use tracing::{debug, instrument};
 
 use crate::clean::{
     self, clean_generic_param_def, clean_middle_ty, clean_predicate,
@@ -341,7 +342,7 @@ fn clean_region_outlives_constraints<'tcx>(
                 .map(|&region| {
                     let lifetime = early_bound_region_name(region)
                         .inspect(|name| assert!(region_params.contains(name)))
-                        .map(|name| Lifetime(name))
+                        .map(Lifetime)
                         .unwrap_or(Lifetime::statik());
                     clean::GenericBound::Outlives(lifetime)
                 })

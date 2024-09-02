@@ -9,6 +9,7 @@ use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
 use rustc_span::FileName;
 use serde::Serialize;
+use tracing::debug;
 
 use crate::clean;
 use crate::core::DocContext;

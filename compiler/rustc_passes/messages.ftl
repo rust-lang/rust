@@ -430,6 +430,10 @@ passes_link_section =
     .warn = {-passes_previously_accepted}
     .label = not a function or static
 
+passes_linkage =
+    attribute should be applied to a function or static
+    .label = not a function definition or static
+
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions
 
@@ -439,6 +443,9 @@ passes_macro_export_on_decl_macro =
 
 passes_macro_use =
     `#[{$name}]` only has an effect on `extern crate` and modules
+
+passes_may_dangle =
+    `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
 
 passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
 passes_missing_const_err =
@@ -471,12 +478,8 @@ passes_multiple_start_functions =
     .previous = previous `#[start]` function here
 
 passes_must_not_suspend =
-    `must_not_suspend` attribute should be applied to a struct, enum, or trait
-    .label = is not a struct, enum, or trait
-
-passes_must_use_async =
-    `must_use` attribute on `async` functions applies to the anonymous `Future` returned by the function, not the value within
-    .label = this attribute does nothing, the `Future`s returned by async functions are already `must_use`
+    `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
+    .label = is not a struct, enum, union, or trait
 
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
@@ -649,6 +652,10 @@ passes_rustc_lint_opt_deny_field_access =
 passes_rustc_lint_opt_ty =
     `#[rustc_lint_opt_ty]` should be applied to a struct
     .label = not a struct
+
+passes_rustc_pub_transparent =
+    attribute should be applied to `#[repr(transparent)]` types
+    .label = not a `#[repr(transparent)]` type
 
 passes_rustc_safe_intrinsic =
     attribute should be applied to intrinsic functions

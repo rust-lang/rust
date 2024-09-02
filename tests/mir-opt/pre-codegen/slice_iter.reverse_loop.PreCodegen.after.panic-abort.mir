@@ -65,10 +65,10 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_6);
         StorageLive(_4);
         StorageLive(_5);
-        _3 = PtrMetadata(_1);
+        _3 = PtrMetadata(copy _1);
         _4 = &raw const (*_1);
-        _5 = _4 as *const T (PtrToPtr);
-        _6 = NonNull::<T> { pointer: _5 };
+        _5 = copy _4 as *const T (PtrToPtr);
+        _6 = NonNull::<T> { pointer: copy _5 };
         StorageLive(_9);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
@@ -76,8 +76,8 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb1: {
         StorageLive(_8);
         StorageLive(_7);
-        _7 = _4 as *mut T (PtrToPtr);
-        _8 = Offset(_7, _3);
+        _7 = copy _4 as *mut T (PtrToPtr);
+        _8 = Offset(copy _7, copy _3);
         StorageDead(_7);
         _9 = move _8 as *const T (PtrToPtr);
         StorageDead(_8);
@@ -85,24 +85,24 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb2: {
-        _9 = _3 as *const T (Transmute);
+        _9 = copy _3 as *const T (Transmute);
         goto -> bb3;
     }
 
     bb3: {
         StorageLive(_10);
-        _10 = _9;
-        _11 = std::slice::Iter::<'_, T> { ptr: _6, end_or_len: move _10, _marker: const ZeroSized: PhantomData<&T> };
+        _10 = copy _9;
+        _11 = std::slice::Iter::<'_, T> { ptr: copy _6, end_or_len: move _10, _marker: const ZeroSized: PhantomData<&T> };
         StorageDead(_10);
         StorageDead(_9);
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_6);
         StorageDead(_3);
-        _12 = Rev::<std::slice::Iter<'_, T>> { iter: _11 };
+        _12 = Rev::<std::slice::Iter<'_, T>> { iter: copy _11 };
         StorageDead(_11);
         StorageLive(_13);
-        _13 = _12;
+        _13 = copy _12;
         goto -> bb4;
     }
 
@@ -130,11 +130,11 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb8: {
-        _17 = ((_15 as Some).0: &T);
+        _17 = copy ((_15 as Some).0: &T);
         StorageLive(_18);
         _18 = &_2;
         StorageLive(_19);
-        _19 = (_17,);
+        _19 = (copy _17,);
         _20 = <impl Fn(&T) as Fn<(&T,)>>::call(move _18, move _19) -> [return: bb9, unwind unreachable];
     }
 

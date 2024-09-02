@@ -20,6 +20,7 @@ fn load_cargo_with_fake_sysroot(file: &str) -> ProjectWorkspace {
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
+            error: None,
         },
         sysroot: get_fake_sysroot(),
         rustc_cfg: Vec::new(),
@@ -69,7 +70,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert_utf8(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), false)
+    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir))
 }
 
 #[test]
@@ -93,7 +94,7 @@ fn test_deduplicate_origin_dev() {
         }
     }
 
-    assert!(crates_named_p2.len() == 1);
+    assert_eq!(crates_named_p2.len(), 1);
     let p2 = crates_named_p2[0];
     assert!(p2.origin.is_local());
 }
@@ -119,7 +120,7 @@ fn test_deduplicate_origin_dev_rev() {
         }
     }
 
-    assert!(crates_named_p2.len() == 1);
+    assert_eq!(crates_named_p2.len(), 1);
     let p2 = crates_named_p2[0];
     assert!(p2.origin.is_local());
 }

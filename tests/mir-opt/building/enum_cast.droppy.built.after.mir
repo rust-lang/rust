@@ -31,8 +31,8 @@ fn droppy() -> () {
         StorageLive(_4);
         _4 = move _2;
         _5 = discriminant(_4);
-        _6 = _5 as u8 (IntToInt);
-        _7 = Le(_6, const 2_u8);
+        _6 = copy _5 as u8 (IntToInt);
+        _7 = Le(copy _6, const 2_u8);
         assume(move _7);
         _3 = move _5 as usize (IntToInt);
         drop(_4) -> [return: bb1, unwind: bb4];

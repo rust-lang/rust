@@ -328,6 +328,10 @@ impl DefMap {
     /// The module id of a crate or block root.
     pub const ROOT: LocalModuleId = LocalModuleId::from_raw(la_arena::RawIdx::from_u32(0));
 
+    pub fn edition(&self) -> Edition {
+        self.data.edition
+    }
+
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, crate_id: CrateId) -> Arc<DefMap> {
         let crate_graph = db.crate_graph();
         let krate = &crate_graph[crate_id];
@@ -550,7 +554,7 @@ impl DefMap {
             for (name, child) in
                 map.modules[module].children.iter().sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
             {
-                let path = format!("{path}::{}", name.display(db.upcast()));
+                let path = format!("{path}::{}", name.display(db.upcast(), Edition::LATEST));
                 buf.push('\n');
                 go(buf, db, map, &path, *child);
             }

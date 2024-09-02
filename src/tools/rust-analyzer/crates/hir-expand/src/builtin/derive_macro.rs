@@ -2,10 +2,10 @@
 
 use intern::sym;
 use itertools::izip;
-use mbe::DocCommentDesugarMode;
 use rustc_hash::FxHashSet;
 use span::{MacroCallId, Span};
 use stdx::never;
+use syntax_bridge::DocCommentDesugarMode;
 use tracing::debug;
 
 use crate::{
@@ -209,9 +209,9 @@ struct BasicAdtInfo {
 }
 
 fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandError> {
-    let (parsed, tm) = &mbe::token_tree_to_syntax_node(
+    let (parsed, tm) = &syntax_bridge::token_tree_to_syntax_node(
         tt,
-        mbe::TopEntryPoint::MacroItems,
+        syntax_bridge::TopEntryPoint::MacroItems,
         parser::Edition::CURRENT_FIXME,
     );
     let macro_items = ast::MacroItems::cast(parsed.syntax_node())
@@ -268,7 +268,7 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
                 match this {
                     Some(it) => {
                         param_type_set.insert(it.as_name());
-                        mbe::syntax_node_to_token_tree(
+                        syntax_bridge::syntax_node_to_token_tree(
                             it.syntax(),
                             tm,
                             call_site,
@@ -282,7 +282,7 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
             };
             let bounds = match &param {
                 ast::TypeOrConstParam::Type(it) => it.type_bound_list().map(|it| {
-                    mbe::syntax_node_to_token_tree(
+                    syntax_bridge::syntax_node_to_token_tree(
                         it.syntax(),
                         tm,
                         call_site,
@@ -295,7 +295,7 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
                 let ty = param
                     .ty()
                     .map(|ty| {
-                        mbe::syntax_node_to_token_tree(
+                        syntax_bridge::syntax_node_to_token_tree(
                             ty.syntax(),
                             tm,
                             call_site,
@@ -316,7 +316,7 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
     let where_clause = if let Some(w) = where_clause {
         w.predicates()
             .map(|it| {
-                mbe::syntax_node_to_token_tree(
+                syntax_bridge::syntax_node_to_token_tree(
                     it.syntax(),
                     tm,
                     call_site,
@@ -353,7 +353,7 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
             param_type_set.contains(&name).then_some(p)
         })
         .map(|it| {
-            mbe::syntax_node_to_token_tree(
+            syntax_bridge::syntax_node_to_token_tree(
                 it.syntax(),
                 tm,
                 call_site,

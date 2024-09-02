@@ -14,6 +14,7 @@ use rustc_middle::ty::{
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{

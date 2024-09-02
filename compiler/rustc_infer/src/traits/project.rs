@@ -2,8 +2,9 @@
 
 use rustc_data_structures::snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage};
 use rustc_data_structures::undo_log::Rollback;
-pub use rustc_middle::traits::{EvaluationResult, Reveal};
+use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty;
+use tracing::{debug, info};
 
 use super::PredicateObligation;
 use crate::infer::snapshot::undo_log::InferCtxtUndoLogs;

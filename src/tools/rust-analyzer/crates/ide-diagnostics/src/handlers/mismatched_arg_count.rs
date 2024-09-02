@@ -472,4 +472,18 @@ fn f(
 "#,
         )
     }
+
+    #[test]
+    fn no_type_mismatches_when_arg_count_mismatch() {
+        check_diagnostics(
+            r#"
+fn foo((): (), (): ()) {
+    foo(1, 2, 3);
+           // ^^ error: expected 2 arguments, found 3
+    foo(1);
+      // ^ error: expected 2 arguments, found 1
+}
+"#,
+        );
+    }
 }

@@ -14,12 +14,11 @@ use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
-                                        `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
-                                        `literal`, `path`, `meta`, `tt`, `item` and `vis`";
-pub const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
-                                             `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, \
-                                             `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
-                                             `item` and `vis`";
+    `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
+    `item` and `vis`";
+pub(crate) const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
+    `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, \
+    `meta`, `tt`, `item` and `vis`";
 
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a
@@ -54,18 +53,24 @@ pub(super) fn parse(
 
     // For each token tree in `input`, parse the token into a `self::TokenTree`, consuming
     // additional trees if need be.
-    let mut trees = input.trees();
+    let mut trees = input.trees().peekable();
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
         let tree = parse_tree(tree, &mut trees, parsing_patterns, sess, node_id, features, edition);
         match tree {
             TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
-                let span = match trees.next() {
+                // Not consuming the next token immediately, as it may not be a colon
+                let span = match trees.peek() {
                     Some(&tokenstream::TokenTree::Token(
                         Token { kind: token::Colon, span: colon_span },
                         _,
                     )) => {
+                        // Consume the colon first
+                        trees.next();
+
+                        // It's ok to consume the next tree no matter how,
+                        // since if it's not a token then it will be an invalid declaration.
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
                                 Some((fragment, _)) => {
@@ -125,12 +130,13 @@ pub(super) fn parse(
                                 }
                                 _ => token.span,
                             },
-                            Some(tree) => tree.span(),
-                            None => colon_span,
+                            // Invalid, return a nice source location
+                            _ => colon_span.with_lo(start_sp.lo()),
                         }
                     }
-                    Some(tree) => tree.span(),
-                    None => start_sp,
+                    // Whether it's none or some other tree, it doesn't belong to
+                    // the current meta variable, returning the original span.
+                    _ => start_sp,
                 };
 
                 result.push(TokenTree::MetaVarDecl(span, ident, None));

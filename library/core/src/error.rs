@@ -1,9 +1,6 @@
 #![doc = include_str!("error.md")]
 #![stable(feature = "error_in_core", since = "1.81.0")]
 
-#[cfg(test)]
-mod tests;
-
 use crate::any::TypeId;
 use crate::fmt::{Debug, Display, Formatter, Result};
 

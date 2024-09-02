@@ -13,6 +13,7 @@ use rustc_middle::ty::{
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use tracing::{debug, instrument};
 
 use super::RegionInferenceContext;
 use crate::session_diagnostics::{LifetimeMismatchOpaqueParam, NonGenericOpaqueTypeParam};
@@ -473,20 +474,20 @@ struct LazyOpaqueTyEnv<'tcx> {
 }
 
 impl<'tcx> LazyOpaqueTyEnv<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         Self { tcx, def_id, canonical_args: std::cell::OnceCell::new() }
     }
 
-    pub fn param_equal_static(&self, param_index: usize) -> bool {
+    fn param_equal_static(&self, param_index: usize) -> bool {
         self.get_canonical_args()[param_index].expect_region().is_static()
     }
 
-    pub fn params_equal(&self, param1: usize, param2: usize) -> bool {
+    fn params_equal(&self, param1: usize, param2: usize) -> bool {
         let canonical_args = self.get_canonical_args();
         canonical_args[param1] == canonical_args[param2]
     }
 
-    pub fn param_is_error(&self, param_index: usize) -> Result<(), ErrorGuaranteed> {
+    fn param_is_error(&self, param_index: usize) -> Result<(), ErrorGuaranteed> {
         self.get_canonical_args()[param_index].error_reported()
     }
 

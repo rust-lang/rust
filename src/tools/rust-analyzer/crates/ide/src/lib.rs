@@ -65,7 +65,7 @@ use hir::{sym, ChangeWithProcMacros};
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
-        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, SourceDatabaseExt, VfsPath,
+        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, SourceRootDatabase, VfsPath,
     },
     prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
@@ -104,7 +104,9 @@ pub use crate::{
     rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId},
     signature_help::SignatureHelp,
-    static_index::{StaticIndex, StaticIndexedFile, TokenId, TokenStaticData},
+    static_index::{
+        StaticIndex, StaticIndexedFile, TokenId, TokenStaticData, VendoredLibrariesConfig,
+    },
     syntax_highlighting::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
         HighlightConfig, HlRange,
@@ -286,7 +288,7 @@ impl Analysis {
 
     /// Gets the text of the source file.
     pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
-        self.with_db(|db| SourceDatabaseExt::file_text(db, file_id))
+        self.with_db(|db| SourceDatabase::file_text(db, file_id))
     }
 
     /// Gets the syntax tree of the file.
@@ -672,14 +674,33 @@ impl Analysis {
             .unwrap_or_default())
     }
 
-    /// Computes the set of diagnostics for the given file.
-    pub fn diagnostics(
+    /// Computes the set of parser level diagnostics for the given file.
+    pub fn syntax_diagnostics(
+        &self,
+        config: &DiagnosticsConfig,
+        file_id: FileId,
+    ) -> Cancellable<Vec<Diagnostic>> {
+        self.with_db(|db| ide_diagnostics::syntax_diagnostics(db, config, file_id))
+    }
+
+    /// Computes the set of semantic diagnostics for the given file.
+    pub fn semantic_diagnostics(
         &self,
         config: &DiagnosticsConfig,
         resolve: AssistResolveStrategy,
         file_id: FileId,
     ) -> Cancellable<Vec<Diagnostic>> {
-        self.with_db(|db| ide_diagnostics::diagnostics(db, config, &resolve, file_id))
+        self.with_db(|db| ide_diagnostics::semantic_diagnostics(db, config, &resolve, file_id))
+    }
+
+    /// Computes the set of both syntax and semantic diagnostics for the given file.
+    pub fn full_diagnostics(
+        &self,
+        config: &DiagnosticsConfig,
+        resolve: AssistResolveStrategy,
+        file_id: FileId,
+    ) -> Cancellable<Vec<Diagnostic>> {
+        self.with_db(|db| ide_diagnostics::full_diagnostics(db, config, &resolve, file_id))
     }
 
     /// Convenience function to return assists + quick fixes for diagnostics
@@ -697,7 +718,7 @@ impl Analysis {
 
         self.with_db(|db| {
             let diagnostic_assists = if diagnostics_config.enabled && include_fixes {
-                ide_diagnostics::diagnostics(db, diagnostics_config, &resolve, frange.file_id)
+                ide_diagnostics::full_diagnostics(db, diagnostics_config, &resolve, frange.file_id)
                     .into_iter()
                     .flat_map(|it| it.fixes.unwrap_or_default())
                     .filter(|it| it.target.intersect(frange.range).is_some())

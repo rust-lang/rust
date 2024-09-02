@@ -15,8 +15,10 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
-// Use the crates.io version unconditionally until the API settles enough that we can switch to
-// using the in-tree one.
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_pattern_analysis;
+
+#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
 mod builder;
@@ -66,6 +68,7 @@ use intern::{sym, Symbol};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::Edition;
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -595,7 +598,7 @@ impl TypeFoldable<Interner> for CallableSig {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
     ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx),
-    AssociatedTypeImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
+    TypeAliasImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 impl InternValueTrivial for ImplTraitId {}
@@ -1025,7 +1028,11 @@ where
     collector.placeholders.into_iter().collect()
 }
 
-pub fn known_const_to_ast(konst: &Const, db: &dyn HirDatabase) -> Option<ConstArg> {
+pub fn known_const_to_ast(
+    konst: &Const,
+    db: &dyn HirDatabase,
+    edition: Edition,
+) -> Option<ConstArg> {
     if let ConstValue::Concrete(c) = &konst.interned().value {
         match c.interned {
             ConstScalar::UnevaluatedConst(GeneralConstId::InTypeConstId(cid), _) => {
@@ -1035,5 +1042,5 @@ pub fn known_const_to_ast(konst: &Const, db: &dyn HirDatabase) -> Option<ConstAr
             _ => (),
         }
     }
-    Some(make::expr_const_value(konst.display(db).to_string().as_str()))
+    Some(make::expr_const_value(konst.display(db, edition).to_string().as_str()))
 }

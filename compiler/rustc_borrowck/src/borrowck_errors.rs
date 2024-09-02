@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
 impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
-    pub fn dcx(&self) -> DiagCtxtHandle<'infcx> {
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'infcx> {
         self.infcx.dcx()
     }
 
@@ -290,7 +290,7 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         ty: Ty<'_>,
         is_index: Option<bool>,
     ) -> Diag<'infcx> {
-        let type_name = match (&ty.kind(), is_index) {
+        let type_name = match (ty.kind(), is_index) {
             (&ty::Array(_, _), Some(true)) | (&ty::Array(_, _), None) => "array",
             (&ty::Slice(_), _) => "slice",
             _ => span_bug!(move_from_span, "this path should not cause illegal move"),

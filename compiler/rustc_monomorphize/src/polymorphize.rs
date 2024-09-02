@@ -19,7 +19,7 @@ use tracing::{debug, instrument};
 use crate::errors::UnusedGenericParamsHint;
 
 /// Provide implementations of queries relating to polymorphization analysis.
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.unused_generic_params = unused_generic_params;
 }
 
@@ -127,7 +127,7 @@ fn mark_used_by_default_parameters<'tcx>(
     unused_parameters: &mut UnusedGenericParams,
 ) {
     match tcx.def_kind(def_id) {
-        DefKind::Closure => {
+        DefKind::Closure | DefKind::SyntheticCoroutineBody => {
             for param in &generics.own_params {
                 debug!(?param, "(closure/gen)");
                 unused_parameters.mark_used(param.index);

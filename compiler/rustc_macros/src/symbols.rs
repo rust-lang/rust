@@ -131,7 +131,7 @@ impl Errors {
     }
 }
 
-pub fn symbols(input: TokenStream) -> TokenStream {
+pub(super) fn symbols(input: TokenStream) -> TokenStream {
     let (mut output, errors) = symbols_with_errors(input);
 
     // If we generated any errors, then report them as compiler_error!() macro calls.

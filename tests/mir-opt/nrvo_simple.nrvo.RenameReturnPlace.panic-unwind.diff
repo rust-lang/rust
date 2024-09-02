@@ -20,7 +20,7 @@
 +         _0 = [const 0_u8; 1024];
           StorageLive(_3);
           StorageLive(_4);
-          _4 = _1;
+          _4 = copy _1;
           StorageLive(_5);
           StorageLive(_6);
 -         _6 = &mut _2;
@@ -34,7 +34,7 @@
           StorageDead(_4);
           StorageDead(_6);
           StorageDead(_3);
--         _0 = _2;
+-         _0 = copy _2;
 -         StorageDead(_2);
           return;
       }

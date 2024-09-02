@@ -26,6 +26,7 @@ use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
+use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::coercion::CoerceMany;
@@ -45,7 +46,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Default)]
-pub enum DivergingBlockBehavior {
+pub(crate) enum DivergingBlockBehavior {
     /// This is the current stable behavior:
     ///
     /// ```rust
@@ -406,9 +407,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ) {
                     let (sugg_span, replace, help) =
                         if let Ok(snippet) = sess.source_map().span_to_snippet(span) {
-                            (Some(span), format!("{snippet} as {cast_ty}"), None)
+                            (Some(span), format!("{snippet} as {cast_ty}"), false)
                         } else {
-                            (None, "".to_string(), Some(()))
+                            (None, "".to_string(), true)
                         };
 
                     sess.dcx().emit_err(errors::PassToVariadicFunction {
@@ -418,7 +419,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         help,
                         replace,
                         sugg_span,
-                        teach: sess.teach(E0617).then_some(()),
+                        teach: sess.teach(E0617),
                     });
                 }
 
@@ -1556,7 +1557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_struct_path(
+    pub(crate) fn check_struct_path(
         &self,
         qpath: &QPath<'tcx>,
         hir_id: HirId,
@@ -1622,7 +1623,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_decl_initializer(
+    fn check_decl_initializer(
         &self,
         hir_id: HirId,
         pat: &'tcx hir::Pat<'tcx>,
@@ -1700,7 +1701,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Type check a `let` statement.
-    pub fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
+    fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
         self.check_decl(local.into());
         if local.pat.is_never_pattern() {
             self.diverges.set(Diverges::Always {
@@ -1710,7 +1711,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
+    fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
@@ -1745,7 +1746,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.diverges.set(self.diverges.get() | old_diverges);
     }
 
-    pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
+    pub(crate) fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
         let unit = self.tcx.types.unit;
         let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
 
