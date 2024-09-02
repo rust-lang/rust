@@ -1,3 +1,4 @@
 /target
 /ci
+/.vscode
 Cargo.lock
