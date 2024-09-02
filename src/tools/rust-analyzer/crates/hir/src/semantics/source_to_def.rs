@@ -281,7 +281,7 @@ impl SourceToDefCtx<'_, '_> {
         let (body, source_map) = self.db.body_with_source_map(container);
         let src = src.cloned().map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
-        // the pattern could resolve to a constant, verify that that is not the case
+        // the pattern could resolve to a constant, verify that this is not the case
         if let crate::Pat::Bind { id, .. } = body[pat_id] {
             Some((container, id))
         } else {
