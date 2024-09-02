@@ -75,8 +75,8 @@ impl SyntaxEdit {
         &self.root
     }
 
-    /// Which syntax elements in the modified syntax tree were modified as part
-    /// of the edit.
+    /// Which syntax elements in the modified syntax tree were inserted or
+    /// modified as part of the edit.
     ///
     /// Note that for syntax nodes, only the upper-most parent of a set of
     /// changes is included, not any child elements that may have been modified.
@@ -343,11 +343,22 @@ mod tests {
         editor.replace(to_wrap.syntax(), new_block.syntax());
         // editor.replace(to_replace.syntax(), name_ref.syntax());
 
-        // dbg!(&editor.mappings);
         let edit = editor.finish();
 
-        let expect = expect![];
+        dbg!(&edit.annotations);
+
+        let expect = expect![[r#"
+            _ => {
+                let var_name = 2 + 2;
+                (var_name, true)
+            }"#]];
         expect.assert_eq(&edit.root.to_string());
+
         assert_eq!(edit.find_annotation(placeholder_snippet).len(), 2);
+        assert!(edit
+            .annotations
+            .iter()
+            .flat_map(|(_, elements)| elements)
+            .all(|element| element.ancestors().any(|it| &it == edit.root())))
     }
 }

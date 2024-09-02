@@ -1,9 +1,10 @@
 use std::{collections::VecDeque, ops::RangeInclusive};
 
 use rowan::TextRange;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    syntax_editor::{Change, ChangeKind},
+    syntax_editor::{mapping::MissingMapping, Change, ChangeKind},
     ted, SyntaxElement, SyntaxNode, SyntaxNodePtr,
 };
 
@@ -28,9 +29,6 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
     // - Propagate annotations
 
     let SyntaxEditor { root, mut changes, mappings, annotations } = editor;
-
-    dbg!(("initial: ", &root));
-    dbg!(&changes);
 
     // Sort changes by range then change kind, so that we can:
     // - ensure that parent edits are ordered before child edits
@@ -102,15 +100,18 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         }
     }
 
-    dbg!(("before: ", &changes, &dependent_changes, &independent_changes));
-
     // Map change targets to the correct syntax nodes
     let tree_mutator = TreeMutator::new(&root);
+    let mut changed_elements = vec![];
 
     for index in independent_changes {
         match &mut changes[index as usize] {
-            Change::Replace(target, _) => {
+            Change::Replace(target, new_node) => {
                 *target = tree_mutator.make_element_mut(target);
+
+                if let Some(new_node) = new_node {
+                    changed_elements.push(new_node.clone());
+                }
             }
         }
     }
@@ -124,14 +125,19 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             Change::Replace(_, None) => continue, // silently drop outdated change
         };
 
+        let upmap_target = |target: &SyntaxElement| {
+            match mappings.upmap_child_element(target, &input_ancestor, &output_ancestor) {
+                Ok(it) => it,
+                Err(MissingMapping(current)) => unreachable!("no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"),
+            }
+        };
+
         match &mut changes[child as usize] {
             Change::Replace(target, _) => {
-                *target = mappings.upmap_child_element(target, &input_ancestor, output_ancestor)
+                *target = upmap_target(&target);
             }
         }
     }
-
-    dbg!(("after: ", &changes));
 
     // Apply changes
     for change in changes {
@@ -141,9 +147,29 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         }
     }
 
-    dbg!(("modified:", tree_mutator.mutable_clone));
+    // Propagate annotations
+    let annotations = annotations.into_iter().filter_map(|(element, annotation)| {
+        match mappings.upmap_element(&element, &tree_mutator.mutable_clone) {
+            // Needed to follow the new tree to find the resulting element
+            Some(Ok(mapped)) => Some((mapped, annotation)),
+            // Element did not need to be mapped
+            None => Some((element, annotation)),
+            // Element did not make it to the final tree
+            Some(Err(_)) => None,
+        }
+    });
 
-    todo!("draw the rest of the owl")
+    let mut annotation_groups = FxHashMap::default();
+
+    for (element, annotation) in annotations {
+        annotation_groups.entry(annotation).or_insert(vec![]).push(element);
+    }
+
+    SyntaxEdit {
+        root: tree_mutator.mutable_clone,
+        changed_elements,
+        annotations: annotation_groups,
+    }
 }
 
 fn to_owning_node(element: &SyntaxElement) -> SyntaxNode {
