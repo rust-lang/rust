@@ -327,7 +327,7 @@ rustc_queries! {
         }
     }
 
-    /// Returns the list of bounds that are required to be satsified
+    /// Returns the list of bounds that are required to be satisfied
     /// by a implementation or definition. For associated types, these
     /// must be satisfied for an implementation to be well-formed,
     /// and for opaque types, these are required to be satisfied by
