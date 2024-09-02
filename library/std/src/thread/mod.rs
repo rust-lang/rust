@@ -432,7 +432,7 @@ impl Builder {
     /// ```
     ///
     /// [`io::Result`]: crate::io::Result
-    #[stable(feature = "thread_spawn_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "thread_spawn_unchecked", since = "1.82.0")]
     pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>>
     where
         F: FnOnce() -> T,

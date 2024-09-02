@@ -436,7 +436,7 @@ pub use self::sources::{once, Once};
 pub use self::sources::{once_with, OnceWith};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{repeat, Repeat};
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 pub use self::sources::{repeat_n, RepeatN};
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub use self::sources::{repeat_with, RepeatWith};
