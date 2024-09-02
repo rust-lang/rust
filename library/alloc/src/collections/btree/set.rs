@@ -2298,7 +2298,7 @@ impl<'a, T: Ord, A: Allocator + Clone> CursorMut<'a, T, A> {
         self.inner.remove_next().map(|(k, _)| k)
     }
 
-    /// Removes the precending element from the `BTreeSet`.
+    /// Removes the preceding element from the `BTreeSet`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).
@@ -2384,7 +2384,7 @@ impl<'a, T: Ord, A: Allocator + Clone> CursorMutKey<'a, T, A> {
         self.inner.remove_next().map(|(k, _)| k)
     }
 
-    /// Removes the precending element from the `BTreeSet`.
+    /// Removes the preceding element from the `BTreeSet`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).
