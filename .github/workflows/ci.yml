@@ -155,8 +155,8 @@ jobs:
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
 
-      - name: install MinGW
-        run: src/ci/scripts/install-mingw.sh
+      # - name: install MinGW
+      #   run: src/ci/scripts/install-mingw.sh
 
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
