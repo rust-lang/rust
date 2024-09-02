@@ -58,7 +58,7 @@ pub enum Reveal {
     All,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SolverMode {
     /// Ordinary trait solving, using everywhere except for coherence.
     Normal,
