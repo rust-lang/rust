@@ -36,13 +36,13 @@ assert-property: (
 )
 
 // The "title" should be located at the right bottom corner of the code example.
-store-position: (".example-wrap.scraped-example", {"x": x, "y": y})
-store-size: (".example-wrap.scraped-example", {"width": width, "height": height})
-store-size: (".example-wrap.scraped-example .scraped-example-title", {
+store-position: (".scraped-example .example-wrap", {"x": x, "y": y})
+store-size: (".scraped-example .example-wrap", {"width": width, "height": height})
+store-size: (".scraped-example .scraped-example-title", {
     "width": title_width,
     "height": title_height,
 })
-assert-position: (".example-wrap.scraped-example .scraped-example-title", {
+assert-position: (".scraped-example .scraped-example-title", {
     "x": |x| + |width| - |title_width| - 5,
     "y": |y| + |height| - |title_height| - 8,
 })
@@ -57,36 +57,32 @@ assert-position: (".scraped-example", {"y": 226})
 assert-position: (".scraped-example .prev", {"y": 226 + |offset_y|})
 
 // Gradient background should be at the top of the code block.
-assert-css: (".scraped-example::before", {"top": "0px"})
-assert-css: (".scraped-example::after", {"bottom": "0px"})
+assert-css: (".scraped-example .example-wrap::before", {"top": "0px"})
+assert-css: (".scraped-example .example-wrap::after", {"bottom": "0px"})
 
 // Then with mobile
 set-window-size: (600, 600)
-store-size: (".example-wrap.scraped-example .scraped-example-title", {"height": title_height})
+store-size: (".scraped-example .scraped-example-title", {"height": title_height})
 assert-position: (".scraped-example", {"y": 284})
 assert-position: (".scraped-example .prev", {"y": 284 + |offset_y| + |title_height|})
-
-// Gradient background should be at the top of the code block, which is now below the "title".
-assert-css: (".scraped-example::before", {"top": |title_height| + "px"})
-assert-css: (".scraped-example::after", {"bottom": "0px"})
 
 define-function: (
     "check_title_and_code_position",
     [],
     block {
         // Title should be above the code.
-        store-position: (".example-wrap.scraped-example .src-line-numbers", {"x": x, "y": y})
-        store-size: (".example-wrap.scraped-example .scraped-example-title", { "height": title_height })
+        store-position: (".scraped-example .example-wrap .src-line-numbers", {"x": x, "y": y})
+        store-size: (".scraped-example .scraped-example-title", { "height": title_height })
 
-        assert-position: (".example-wrap.scraped-example .scraped-example-title", {
+        assert-position: (".scraped-example .scraped-example-title", {
             "x": |x|, // same X position.
             "y": |y| - |title_height|,
         })
 
         // Line numbers should be right beside the code.
         compare-elements-position: (
-            ".example-wrap.scraped-example .src-line-numbers",
-            ".example-wrap.scraped-example .rust",
+            ".scraped-example .example-wrap .src-line-numbers",
+            ".scraped-example .example-wrap .rust",
             ["y"],
         )
     }

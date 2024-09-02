@@ -67,11 +67,11 @@ define-function: (
     [theme, background_color_start, background_color_end],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
-        assert-css: (".scraped-example:not(.expanded)::before", {
+        assert-css: (".scraped-example:not(.expanded) .example-wrap::before", {
             "background-image": "linear-gradient(" + |background_color_start| + ", " +
                 |background_color_end| + ")",
         })
-        assert-css: (".scraped-example:not(.expanded)::after", {
+        assert-css: (".scraped-example:not(.expanded) .example-wrap::after", {
             "background-image": "linear-gradient(to top, " + |background_color_start| + ", " +
                 |background_color_end| + ")",
         })

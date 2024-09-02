@@ -109,7 +109,7 @@ assert-local-storage: {"rustdoc-line-numbers": "true" }
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
 
 assert-css: (
-    ".scraped-example pre.src-line-numbers",
+    ".scraped-example .src-line-numbers",
     {
         // There should not be a radius on the right of the line numbers.
         "border-top-left-radius": "6px",

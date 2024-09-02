@@ -13,7 +13,7 @@
 
     // Scroll code block to the given code location
     function scrollToLoc(elt, loc, isHidden) {
-        const lines = elt.querySelector(".src-line-numbers");
+        const lines = elt.querySelector(".src-line-numbers > pre");
         let scrollOffset;
 
         // If the block is greater than the size of the viewer,
@@ -32,7 +32,7 @@
             scrollOffset = offsetMid - halfHeight;
         }
 
-        lines.scrollTo(0, scrollOffset);
+        lines.parentElement.scrollTo(0, scrollOffset);
         elt.querySelector(".rust").scrollTo(0, scrollOffset);
     }
 

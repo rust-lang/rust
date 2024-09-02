@@ -34,7 +34,6 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 </g></svg>');
 	--button-left-margin: 4px;
 	--button-border-radius: 2px;
-	--pre-line-height: 1.5rem;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -366,7 +365,7 @@ code, pre, .code-header {
 }
 pre {
 	padding: 14px;
-	line-height: var(--pre-line-height); /* https://github.com/rust-lang/rust/issues/105906 */
+	line-height: 1.5; /* https://github.com/rust-lang/rust/issues/105906 */
 }
 pre.item-decl {
 	overflow-x: auto;
@@ -379,7 +378,7 @@ pre.item-decl {
 .src .content pre {
 	padding: 20px;
 }
-.rustdoc.src .example-wrap pre.src-line-numbers  {
+.rustdoc.src .example-wrap .src-line-numbers  {
 	padding: 20px 0 20px 4px;
 }
 
@@ -766,6 +765,10 @@ both the code example and the line numbers, so we need to remove the radius in t
 	border-bottom-left-radius: 0;
 }
 
+.rustdoc .scraped-example {
+	position: relative;
+}
+
 /* For the last child of a div, the margin will be taken care of
 	by the margin-top of the next item. */
 .rustdoc .example-wrap:last-child {
@@ -777,7 +780,7 @@ both the code example and the line numbers, so we need to remove the radius in t
 	flex-grow: 1;
 }
 
-.scraped-example:not(.expanded) {
+.scraped-example:not(.expanded) .example-wrap {
 	/* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
 	 * of lines shown in the un-expanded example code viewer. This pre needs to have
 	 * a max-height equal to line-height * N. The line-height is currently 1.5em,
@@ -785,11 +788,10 @@ both the code example and the line numbers, so we need to remove the radius in t
 	max-height: calc(1.5em * 5 + 10px);
 }
 
-.rustdoc:not(.src) .scraped-example:not(.expanded) pre.src-line-numbers,
+.rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers,
 .rustdoc:not(.src) .scraped-example:not(.expanded) pre.rust {
 	padding-bottom: 0;
 	/* See above comment, should be the same max-height. */
-	max-height: calc(1.5em * 5 + 10px);
 	overflow: auto hidden;
 }
 
@@ -798,7 +800,7 @@ both the code example and the line numbers, so we need to remove the radius in t
 }
 
 .rustdoc .example-wrap pre.example-line-numbers,
-.rustdoc .example-wrap pre.src-line-numbers {
+.rustdoc .example-wrap .src-line-numbers {
 	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
 	flex-grow: 0;
 	text-align: right;
@@ -808,7 +810,7 @@ both the code example and the line numbers, so we need to remove the radius in t
 	color: var(--src-line-numbers-span-color);
 }
 
-.rustdoc .scraped-example pre.src-line-numbers {
+.rustdoc .scraped-example .src-line-numbers {
 	padding: 14px 0;
 }
 .src-line-numbers a, .src-line-numbers span {
@@ -2268,24 +2270,6 @@ in src-script.js and main.js
 		margin: 0;
 		padding: var(--nav-sub-mobile-padding);
 	}
-
-	.example-wrap.scraped-example {
-		flex-wrap: wrap;
-	}
-	.example-wrap .scraped-example-title {
-		width: 100%;
-	}
-	.example-wrap.scraped-example .rust {
-		/* Dirty hacky to force it to remain on the same line as the line numbers. */
-		width: 10px;
-	}
-	.example-wrap.scraped-example .button-holder {
-		top: calc(var(--pre-line-height) + 4px);
-	}
-	.scraped-example:not(.expanded)::before {
-		/* The gradient effect needs to be moved under the title */
-		top: var(--pre-line-height);
-	}
 }
 
 
@@ -2309,12 +2293,6 @@ in src-script.js and main.js
 	}
 	.item-table > li > div {
 		overflow-wrap: anywhere;
-	}
-
-	/* Starting this width, the "title" of scraped example will be in the code block so we can
-	put the background gradient at the top. */
-	.scraped-example:not(.expanded)::before {
-		top: 0;
 	}
 }
 
@@ -2397,20 +2375,21 @@ in src-script.js and main.js
 	color: var(--scrape-example-help-hover-color);
 }
 
-.scraped-example:not(.expanded)::before,
-.scraped-example:not(.expanded)::after {
+.scraped-example:not(.expanded) .example-wrap::before,
+.scraped-example:not(.expanded) .example-wrap::after {
 	content: " ";
 	width: 100%;
 	height: 5px;
 	position: absolute;
 	z-index: 1;
 }
-.scraped-example:not(.expanded)::before {
+.scraped-example:not(.expanded) .example-wrap::before {
+	top: 0;
 	background: linear-gradient(to bottom,
 		var(--scrape-example-code-wrapper-background-start),
 		var(--scrape-example-code-wrapper-background-end));
 }
-.scraped-example:not(.expanded)::after {
+.scraped-example:not(.expanded) .example-wrap::after {
 	bottom: 0;
 	background: linear-gradient(to top,
 		var(--scrape-example-code-wrapper-background-start),
