@@ -164,7 +164,7 @@ where
             // - `Bound` cannot exist as we don't have a binder around the self Type
             // - `Expr` is part of `feature(generic_const_exprs)` and is not implemented yet
             ty::ConstKind::Param(_) | ty::ConstKind::Bound(_, _) | ty::ConstKind::Expr(_) => {
-                panic!("unexpect const kind: {:?}", ct)
+                panic!("unexpected const kind: {:?}", ct)
             }
         }
     }

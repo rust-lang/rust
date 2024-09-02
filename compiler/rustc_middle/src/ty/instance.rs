@@ -38,7 +38,7 @@ pub struct Instance<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
-/// Describes why a `ReifyShim` was created. This is needed to distingish a ReifyShim created to
+/// Describes why a `ReifyShim` was created. This is needed to distinguish a ReifyShim created to
 /// adjust for things like `#[track_caller]` in a vtable from a `ReifyShim` created to produce a
 /// function pointer from a vtable entry.
 /// Currently, this is only used when KCFI is enabled, as only KCFI needs to treat those two

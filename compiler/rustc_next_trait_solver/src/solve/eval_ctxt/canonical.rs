@@ -238,7 +238,7 @@ where
         (normalization_nested_goals.clone(), certainty)
     }
 
-    /// This returns the canoncial variable values to instantiate the bound variables of
+    /// This returns the canonical variable values to instantiate the bound variables of
     /// the canonical response. This depends on the `original_values` for the
     /// bound variables.
     fn compute_query_response_instantiation_values<T: ResponseT<I>>(
