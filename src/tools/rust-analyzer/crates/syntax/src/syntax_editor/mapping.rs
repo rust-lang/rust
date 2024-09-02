@@ -14,7 +14,7 @@ pub struct SyntaxMapping {
 
     // mappings ->  parents
     entry_parents: Vec<SyntaxNode>,
-    node_mappings: FxHashMap<SyntaxNode, (u32, u32)>,
+    node_mappings: FxHashMap<SyntaxNode, MappingEntry>,
 }
 
 impl SyntaxMapping {
@@ -80,11 +80,10 @@ impl SyntaxMapping {
                     return None;
                 }
 
-                if let Some(next) = self.upmap_node(&parent) {
-                    Some((parent.index(), next))
-                } else {
-                    Some((parent.index(), parent))
-                }
+                Some((parent.index(), match self.upmap_node(&parent) {
+                    Some(next) => next,
+                    None => parent
+                }))
             }).map(|(i, _)| i).collect::<Vec<_>>()
         } else {
             vec![]
@@ -100,7 +99,7 @@ impl SyntaxMapping {
                 .children_with_tokens()
                 .nth(index)
                 .and_then(|it| it.into_node())
-                .expect("yep");
+                .expect("equivalent ancestor node should be present in target tree");
         }
 
         debug_assert_eq!(child.kind(), target.kind());
@@ -109,7 +108,7 @@ impl SyntaxMapping {
     }
 
     pub fn upmap_node(&self, input: &SyntaxNode) -> Option<SyntaxNode> {
-        let (parent, child_slot) = self.node_mappings.get(input)?;
+        let MappingEntry { parent, child_slot } = self.node_mappings.get(input)?;
 
         let output = self.entry_parents[*parent as usize]
             .children_with_tokens()
@@ -121,14 +120,25 @@ impl SyntaxMapping {
         Some(output)
     }
 
+    pub fn merge(&mut self, mut other: SyntaxMapping) {
+        // Remap other's entry parents to be after the current list of entry parents
+        let remap_base: u32 = self.entry_parents.len().try_into().unwrap();
+
+        self.entry_parents.append(&mut other.entry_parents);
+        self.node_mappings.extend(other.node_mappings.into_iter().map(|(node, entry)| {
+            (node, MappingEntry { parent: entry.parent + remap_base, ..entry })
+        }));
+    }
+
     fn add_mapping(&mut self, syntax_mapping: SyntaxMappingBuilder) {
         let SyntaxMappingBuilder { parent_node, node_mappings } = syntax_mapping;
 
-        let parent_entry: u32 = self.entry_parents.len() as u32;
+        let parent_entry: u32 = self.entry_parents.len().try_into().unwrap();
         self.entry_parents.push(parent_node);
 
-        let node_entries =
-            node_mappings.into_iter().map(|(node, slot)| (node, (parent_entry, slot)));
+        let node_entries = node_mappings
+            .into_iter()
+            .map(|(node, slot)| (node, MappingEntry { parent: parent_entry, child_slot: slot }));
 
         self.node_mappings.extend(node_entries);
     }
@@ -171,4 +181,10 @@ impl SyntaxMappingBuilder {
     pub fn finish(self, editor: &mut SyntaxEditor) {
         editor.mappings.add_mapping(self);
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MappingEntry {
+    parent: u32,
+    child_slot: u32,
 }

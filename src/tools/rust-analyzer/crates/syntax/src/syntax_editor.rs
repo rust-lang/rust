@@ -37,8 +37,17 @@ impl SyntaxEditor {
         self.annotations.push((element.syntax_element(), annotation))
     }
 
-    pub fn combine(&mut self, other: SyntaxEditor) {
-        todo!()
+    pub fn merge(&mut self, mut other: SyntaxEditor) {
+        debug_assert!(
+            self.root == other.root || other.root.ancestors().any(|node| node == self.root),
+            "{:?} is not in the same tree as {:?}",
+            other.root,
+            self.root
+        );
+
+        self.changes.append(&mut other.changes);
+        self.mappings.merge(other.mappings);
+        self.annotations.append(&mut other.annotations);
     }
 
     pub fn delete(&mut self, element: impl Element) {
@@ -290,7 +299,7 @@ mod tests {
     }
 
     #[test]
-    fn it() {
+    fn basic_usage() {
         let root = make::match_arm(
             [make::wildcard_pat().into()],
             None,
