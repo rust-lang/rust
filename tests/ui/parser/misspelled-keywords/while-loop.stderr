@@ -1,0 +1,8 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `a`
+  --> $DIR/while-loop.rs:2:12
+   |
+LL |     whilee a < b {
+   |            ^ expected one of 8 possible tokens
+
+error: aborting due to 1 previous error
+

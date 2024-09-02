@@ -1,0 +1,8 @@
+error: expected one of `!` or `::`, found `Human`
+  --> $DIR/impl-block.rs:3:6
+   |
+LL | ipml Human {}
+   |      ^^^^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+

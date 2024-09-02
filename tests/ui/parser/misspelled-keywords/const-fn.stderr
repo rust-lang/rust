@@ -1,0 +1,8 @@
+error: expected one of `!` or `::`, found keyword `fn`
+  --> $DIR/const-fn.rs:1:6
+   |
+LL | cnst fn code() {}
+   |      ^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+

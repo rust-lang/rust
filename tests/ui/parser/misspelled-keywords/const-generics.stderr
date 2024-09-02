@@ -1,0 +1,8 @@
+error: expected one of `,`, `:`, `=`, or `>`, found `N`
+  --> $DIR/const-generics.rs:1:15
+   |
+LL | fn foo<consta N: usize>(_arr: [i32; N]) {}
+   |               ^ expected one of `,`, `:`, `=`, or `>`
+
+error: aborting due to 1 previous error
+
