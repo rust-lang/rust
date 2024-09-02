@@ -58,6 +58,9 @@ codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
+codegen_ssa_forbidden_target_feature_attr =
+    target feature `{$feature}` cannot be toggled with `#[target_feature]`: {$reason}
+
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 
 codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files were produced
