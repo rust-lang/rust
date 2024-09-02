@@ -3302,7 +3302,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
         Some(kv)
     }
 
-    /// Removes the precending element from the `BTreeMap`.
+    /// Removes the preceding element from the `BTreeMap`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).
@@ -3408,7 +3408,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
         self.inner.remove_next()
     }
 
-    /// Removes the precending element from the `BTreeMap`.
+    /// Removes the preceding element from the `BTreeMap`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).

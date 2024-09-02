@@ -470,7 +470,7 @@ mod uefi_command_internal {
             let st_size = unsafe { (*self.st.as_ptr()).hdr.header_size as usize };
             let mut crc32: u32 = 0;
 
-            // Set crc to 0 before calcuation
+            // Set crc to 0 before calculation
             unsafe {
                 (*self.st.as_mut_ptr()).hdr.crc32 = 0;
             }

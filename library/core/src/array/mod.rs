@@ -37,7 +37,7 @@ pub use iter::IntoIter;
 ///
 /// # Example
 ///
-/// Creating muliple copies of a `String`:
+/// Creating multiple copies of a `String`:
 /// ```rust
 /// #![feature(array_repeat)]
 ///
