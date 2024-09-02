@@ -23,4 +23,3 @@ serde = { version = "1.0", features = ["derive"] }
 [features]
 default = ["std"]
 std = ["serde?/std"]
-serde = ["dep:serde"]
