@@ -70,7 +70,7 @@ pub struct TyAndLayout {
 /// The layout of a type in memory.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct LayoutShape {
-    /// The fields location withing the layout
+    /// The fields location within the layout
     pub fields: FieldsShape,
 
     /// Encodes information about multi-variant layouts.
