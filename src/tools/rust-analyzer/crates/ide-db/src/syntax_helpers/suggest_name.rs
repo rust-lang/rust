@@ -60,6 +60,21 @@ const USELESS_METHODS: &[&str] = &[
     "into_future",
 ];
 
+/// Suggest a name for given type.
+///
+/// The function will strip references first, and suggest name from the inner type.
+///
+/// - If `ty` is an ADT, it will suggest the name of the ADT.
+///   + If `ty` is wrapped in `Box`, `Option` or `Result`, it will suggest the name from the inner type.
+/// - If `ty` is a trait, it will suggest the name of the trait.
+/// - If `ty` is an `impl Trait`, it will suggest the name of the first trait.
+///
+/// If the suggested name conflicts with reserved keywords, it will return `None`.
+pub fn for_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<String> {
+    let ty = ty.strip_references();
+    name_of_type(&ty, db, edition)
+}
+
 /// Suggest a unique name for generic parameter.
 ///
 /// `existing_params` is used to check if the name conflicts with existing
@@ -269,10 +284,9 @@ fn var_name_from_pat(pat: &ast::Pat) -> Option<ast::Name> {
 
 fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<String> {
     let ty = sema.type_of_expr(expr)?.adjusted();
-    let ty = ty.remove_ref().unwrap_or(ty);
     let edition = sema.scope(expr.syntax())?.krate().edition(sema.db);
 
-    name_of_type(&ty, sema.db, edition)
+    for_type(&ty, sema.db, edition)
 }
 
 fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<String> {

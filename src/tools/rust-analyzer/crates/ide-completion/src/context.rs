@@ -264,6 +264,7 @@ pub(crate) struct PatternContext {
     pub(crate) refutability: PatternRefutability,
     pub(crate) param_ctx: Option<ParamContext>,
     pub(crate) has_type_ascription: bool,
+    pub(crate) should_suggest_name: bool,
     pub(crate) parent_pat: Option<ast::Pat>,
     pub(crate) ref_token: Option<SyntaxToken>,
     pub(crate) mut_token: Option<SyntaxToken>,
