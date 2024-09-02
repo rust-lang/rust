@@ -827,7 +827,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let (size, align) = if nested {
                     // Nested anonymous statics are untyped, so let's get their
-                    // size and alignment from the allocaiton itself. This always
+                    // size and alignment from the allocation itself. This always
                     // succeeds, as the query is fed at DefId creation time, so no
                     // evaluation actually occurs.
                     let alloc = self.tcx.eval_static_initializer(def_id).unwrap();

@@ -20,7 +20,7 @@ use super::{
 };
 use crate::fluent_generated as fluent;
 
-/// An argment passed to a function.
+/// An argument passed to a function.
 #[derive(Clone, Debug)]
 pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// Pass a copy of the given operand.
@@ -123,7 +123,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
         };
         let inner = self.unfold_transparent(inner, /* may_unfold */ |def| {
-            // Stop at NPO tpyes so that we don't miss that attribute in the check below!
+            // Stop at NPO types so that we don't miss that attribute in the check below!
             def.is_struct() && !is_npo(def)
         });
         Ok(match inner.ty.kind() {

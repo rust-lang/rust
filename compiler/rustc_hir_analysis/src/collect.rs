@@ -1037,7 +1037,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
 
     /// Check the uniqueness of fields in a struct variant, and recursively
     /// check the nested fields if it is an unnamed field with type of an
-    /// annoymous adt.
+    /// anonymous adt.
     fn check_field(&mut self, field: &hir::FieldDef<'_>) {
         if field.ident.name != kw::Underscore {
             self.check_field_decl(field.ident, field.span.into());
@@ -1491,7 +1491,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
         Some(ty) => {
             let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
             // Typeck doesn't expect erased regions to be returned from `type_of`.
-            // This is a heuristic approach. If the scope has region paramters,
+            // This is a heuristic approach. If the scope has region parameters,
             // we should change fn_sig's lifetime from `ReErased` to `ReError`,
             // otherwise to `ReStatic`.
             let has_region_params = generics.params.iter().any(|param| match param.kind {

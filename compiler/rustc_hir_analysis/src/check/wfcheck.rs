@@ -1016,7 +1016,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                             sym::adt_const_params,
                         )])
                     }
-                    // Implments `ConstParamTy`, suggest adding the feature to enable.
+                    // Implements `ConstParamTy`, suggest adding the feature to enable.
                     Ok(..) => Some(vec![(adt_const_params_feature_string, sym::adt_const_params)]),
                 };
                 if let Some(features) = may_suggest_feature {
