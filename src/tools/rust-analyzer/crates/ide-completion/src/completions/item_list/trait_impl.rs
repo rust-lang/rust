@@ -221,7 +221,7 @@ fn add_function_impl_(
     let mut item = CompletionItem::new(completion_kind, replacement_range, label, ctx.edition);
     item.lookup_by(format!("{}fn {}", async_, fn_name.display(ctx.db, ctx.edition)))
         .set_documentation(func.docs(ctx.db))
-        .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
+        .set_relevance(CompletionRelevance { exact_name_match: true, ..Default::default() });
 
     if let Some(source) = ctx.sema.source(func) {
         if let Some(transformed_fn) =
@@ -366,7 +366,7 @@ fn add_type_alias_impl(
         CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label, ctx.edition);
     item.lookup_by(format!("type {alias_name}"))
         .set_documentation(type_alias.docs(ctx.db))
-        .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
+        .set_relevance(CompletionRelevance { exact_name_match: true, ..Default::default() });
 
     if let Some(source) = ctx.sema.source(type_alias) {
         let assoc_item = ast::AssocItem::TypeAlias(source.value);
@@ -440,7 +440,7 @@ fn add_const_impl(
                 item.lookup_by(format_smolstr!("const {const_name}"))
                     .set_documentation(const_.docs(ctx.db))
                     .set_relevance(CompletionRelevance {
-                        is_item_from_trait: true,
+                        exact_name_match: true,
                         ..Default::default()
                     });
                 match ctx.config.snippet_cap {

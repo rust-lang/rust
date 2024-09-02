@@ -10,7 +10,7 @@ use crate::{
     context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
     item::{
         Builder, CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevanceFn,
-        CompletionRelevanceReturnType,
+        CompletionRelevanceReturnType, CompletionRelevanceTraitInfo,
     },
     render::{
         compute_exact_name_match, compute_ref_match, compute_type_match, match_types, RenderContext,
@@ -88,11 +88,13 @@ fn render(
     let ret_type = func.ret_type(db);
     let assoc_item = func.as_assoc_item(db);
 
-    let trait_ = assoc_item.and_then(|trait_| trait_.container_or_implemented_trait(db));
-    let is_op_method = trait_.map_or(false, |trait_| completion.is_ops_trait(trait_));
-
-    let is_item_from_notable_trait =
-        trait_.map_or(false, |trait_| completion.is_doc_notable_trait(trait_));
+    let trait_info =
+        assoc_item.and_then(|trait_| trait_.container_or_implemented_trait(db)).map(|trait_| {
+            CompletionRelevanceTraitInfo {
+                notable_trait: completion.is_doc_notable_trait(trait_),
+                is_op_method: completion.is_ops_trait(trait_),
+            }
+        });
 
     let (has_dot_receiver, has_call_parens, cap) = match func_kind {
         FuncKind::Function(&PathCompletionCtx {
@@ -129,8 +131,7 @@ fn render(
         },
         exact_name_match: compute_exact_name_match(completion, &call),
         function,
-        is_op_method,
-        is_item_from_notable_trait,
+        trait_: trait_info,
         ..ctx.completion_relevance()
     });
 

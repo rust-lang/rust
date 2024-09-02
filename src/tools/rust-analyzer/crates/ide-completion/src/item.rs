@@ -19,8 +19,10 @@ use crate::{
 };
 
 /// `CompletionItem` describes a single completion entity which expands to 1 or more entries in the
-/// editor pop-up. It is basically a POD with various properties. To construct a
-/// [`CompletionItem`], use [`Builder::new`] method and the [`Builder`] struct.
+/// editor pop-up.
+///
+/// It is basically a POD with various properties. To construct a [`CompletionItem`],
+/// use [`Builder::new`] method and the [`Builder`] struct.
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct CompletionItem {
@@ -129,7 +131,8 @@ impl fmt::Debug for CompletionItem {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct CompletionRelevance {
-    /// This is set in cases like these:
+    /// This is set when the identifier being completed matches up with the name that is expected,
+    /// like in a function argument.
     ///
     /// ```
     /// fn f(spam: String) {}
@@ -139,9 +142,9 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub exact_name_match: bool,
-    /// See CompletionRelevanceTypeMatch doc comments for cases where this is set.
+    /// See [`CompletionRelevanceTypeMatch`].
     pub type_match: Option<CompletionRelevanceTypeMatch>,
-    /// This is set in cases like these:
+    /// Set for local variables.
     ///
     /// ```
     /// fn foo(a: u32) {
@@ -150,24 +153,25 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub is_local: bool,
-    /// This is set when trait items are completed in an impl of that trait.
-    pub is_item_from_trait: bool,
-    /// This is set for when trait items are from traits with `#[doc(notable_trait)]`
-    pub is_item_from_notable_trait: bool,
-    /// This is set when an import is suggested whose name is already imported.
+    /// Populated when the completion item comes from a trait (impl).
+    pub trait_: Option<CompletionRelevanceTraitInfo>,
+    /// This is set when an import is suggested in a use item whose name is already imported.
     pub is_name_already_imported: bool,
     /// This is set for completions that will insert a `use` item.
     pub requires_import: bool,
-    /// Set for method completions of the `core::ops` and `core::cmp` family.
-    pub is_op_method: bool,
     /// Set for item completions that are private but in the workspace.
     pub is_private_editable: bool,
     /// Set for postfix snippet item completions
     pub postfix_match: Option<CompletionRelevancePostfixMatch>,
-    /// This is set for type inference results
-    pub is_definite: bool,
     /// This is set for items that are function (associated or method)
     pub function: Option<CompletionRelevanceFn>,
+}
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct CompletionRelevanceTraitInfo {
+    /// The trait this item is from is a `#[doc(notable_trait)]`
+    pub notable_trait: bool,
+    /// Set for method completions of the `core::ops` and `core::cmp` family.
+    pub is_op_method: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -182,7 +186,7 @@ pub enum CompletionRelevanceTypeMatch {
     /// }
     /// ```
     CouldUnify,
-    /// This is set in cases like these:
+    /// This is set in cases where the type matches the expected type, like:
     ///
     /// ```
     /// fn f(spam: String) {}
@@ -243,14 +247,11 @@ impl CompletionRelevance {
             exact_name_match,
             type_match,
             is_local,
-            is_item_from_trait,
             is_name_already_imported,
             requires_import,
-            is_op_method,
             is_private_editable,
             postfix_match,
-            is_definite,
-            is_item_from_notable_trait,
+            trait_,
             function,
         } = self;
 
@@ -258,8 +259,17 @@ impl CompletionRelevance {
         if !is_private_editable {
             score += 1;
         }
-        // lower rank trait op methods
-        if !is_op_method {
+
+        if let Some(trait_) = trait_ {
+            if trait_.notable_trait {
+                score += 1;
+            }
+            // lower rank trait op methods
+            if !trait_.is_op_method {
+                score += 10;
+            }
+        } else {
+            // lower rank trait op methods
             score += 10;
         }
         // lower rank for conflicting import names
@@ -287,16 +297,6 @@ impl CompletionRelevance {
         if is_local {
             score += 1;
         }
-        if is_item_from_trait {
-            score += 1;
-        }
-        if is_item_from_notable_trait {
-            score += 1;
-        }
-        if is_definite {
-            score += 10;
-        }
-
         score += function
             .map(|asf| {
                 let mut fn_score = match asf.return_type {
@@ -701,8 +701,21 @@ mod tests {
         // that any items in the same vec have the same score.
         let expected_relevance_order = vec![
             vec![],
-            vec![Cr { is_op_method: true, is_private_editable: true, ..default }],
-            vec![Cr { is_op_method: true, ..default }],
+            vec![Cr {
+                trait_: Some(crate::item::CompletionRelevanceTraitInfo {
+                    notable_trait: false,
+                    is_op_method: true,
+                }),
+                is_private_editable: true,
+                ..default
+            }],
+            vec![Cr {
+                trait_: Some(crate::item::CompletionRelevanceTraitInfo {
+                    notable_trait: false,
+                    is_op_method: true,
+                }),
+                ..default
+            }],
             vec![Cr { postfix_match: Some(CompletionRelevancePostfixMatch::NonExact), ..default }],
             vec![Cr { is_private_editable: true, ..default }],
             vec![default],
