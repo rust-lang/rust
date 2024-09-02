@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 extern crate alloc;
@@ -316,6 +316,29 @@ impl AsRef<str> for SmolStr {
     #[inline(always)]
     fn as_ref(&self) -> &str {
         self.as_str()
+    }
+}
+
+impl AsRef<[u8]> for SmolStr {
+    #[inline(always)]
+    fn as_ref(&self) -> &[u8] {
+        self.as_str().as_bytes()
+    }
+}
+
+#[cfg(feature = "std")]
+impl AsRef<std::ffi::OsStr> for SmolStr {
+    #[inline(always)]
+    fn as_ref(&self) -> &std::ffi::OsStr {
+        AsRef::<std::ffi::OsStr>::as_ref(self.as_str())
+    }
+}
+
+#[cfg(feature = "std")]
+impl AsRef<std::path::Path> for SmolStr {
+    #[inline(always)]
+    fn as_ref(&self) -> &std::path::Path {
+        AsRef::<std::path::Path>::as_ref(self.as_str())
     }
 }
 
