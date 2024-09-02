@@ -17,6 +17,19 @@ pub(crate) struct UnknownCTargetFeature<'a> {
     pub rust_feature: PossibleFeature<'a>,
 }
 
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_unstable_ctarget_feature)]
+#[note]
+pub(crate) struct UnstableCTargetFeature<'a> {
+    pub feature: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_forbidden_ctarget_feature)]
+pub(crate) struct ForbiddenCTargetFeature<'a> {
+    pub feature: &'a str,
+}
+
 #[derive(Subdiagnostic)]
 pub(crate) enum PossibleFeature<'a> {
     #[help(codegen_gcc_possible_feature)]
