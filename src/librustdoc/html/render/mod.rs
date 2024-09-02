@@ -1250,6 +1250,7 @@ fn render_assoc_items_inner(
     let Some(v) = cache.impls.get(&it) else { return };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
+        let mut close_tags = <Vec<&str>>::with_capacity(1);
         let mut tmp_buf = Buffer::html();
         let (render_mode, id, class_html) = match what {
             AssocItemRender::All => {
@@ -1260,6 +1261,8 @@ fn render_assoc_items_inner(
                 let id =
                     cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
                 let derived_id = cx.derive_id(&id);
+                tmp_buf.write_str("<details class=\"toggle big-toggle\" open><summary>");
+                close_tags.push("</details>");
                 write_impl_section_heading(
                     &mut tmp_buf,
                     &format!(
@@ -1269,6 +1272,7 @@ fn render_assoc_items_inner(
                     ),
                     &id,
                 );
+                tmp_buf.write_str("</summary>");
                 if let Some(def_id) = type_.def_id(cx.cache()) {
                     cx.deref_id_map.insert(def_id, id);
                 }
@@ -1302,6 +1306,9 @@ fn render_assoc_items_inner(
                 impls_buf.into_inner()
             )
             .unwrap();
+            for tag in close_tags.into_iter().rev() {
+                w.write_str(tag).unwrap();
+            }
         }
     }
 
@@ -1558,7 +1565,7 @@ fn render_impl(
     let cache = &shared.cache;
     let traits = &cache.traits;
     let trait_ = i.trait_did().map(|did| &traits[&did]);
-    let mut close_tags = String::new();
+    let mut close_tags = <Vec<&str>>::with_capacity(2);
 
     // For trait implementations, the `interesting` output contains all methods that have doc
     // comments, and the `boring` output contains all methods that do not. The distinction is
@@ -1870,7 +1877,7 @@ fn render_impl(
     if render_mode == RenderMode::Normal {
         let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
         if toggled {
-            close_tags.insert_str(0, "</details>");
+            close_tags.push("</details>");
             write!(
                 w,
                 "<details class=\"toggle implementors-toggle\"{}>\
@@ -1916,14 +1923,16 @@ fn render_impl(
         }
         if !default_impl_items.is_empty() || !impl_items.is_empty() {
             w.write_str("<div class=\"impl-items\">");
-            close_tags.insert_str(0, "</div>");
+            close_tags.push("</div>");
         }
     }
     if !default_impl_items.is_empty() || !impl_items.is_empty() {
         w.push_buffer(default_impl_items);
         w.push_buffer(impl_items);
     }
-    w.write_str(&close_tags);
+    for tag in close_tags.into_iter().rev() {
+        w.write_str(tag);
+    }
 }
 
 // Render the items that appear on the right side of methods, impls, and
