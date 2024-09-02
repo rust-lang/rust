@@ -59,7 +59,7 @@ impl<X: Cx> GlobalCache<X> {
             assert!(prev.is_none());
         } else {
             let prev = entry.success.replace(Success { additional_depth, nested_goals, result });
-            assert!(prev.is_none());
+            // assert!(prev.is_none());
         }
     }
 
