@@ -61,16 +61,28 @@ pub struct SyntaxEdit {
 }
 
 impl SyntaxEdit {
+    /// Root of the modified syntax tree
     pub fn root(&self) -> &SyntaxNode {
         &self.root
     }
 
+    /// Which syntax elements in the modified syntax tree were modified as part
+    /// of the edit.
+    ///
+    /// Note that for syntax nodes, only the upper-most parent of a set of
+    /// changes is included, not any child elements that may have been modified.
     pub fn changed_elements(&self) -> &[SyntaxElement] {
         self.changed_elements.as_slice()
     }
 
-    pub fn find_annotation(&self, annotation: SyntaxAnnotation) -> Option<&[SyntaxElement]> {
-        self.annotations.get(&annotation).as_ref().map(|it| it.as_slice())
+    /// Finds which syntax elements have been annotated with the given
+    /// annotation.
+    ///
+    /// Note that an annotation might not appear in the modified syntax tree if
+    /// the syntax elements that were annotated did not make it into the final
+    /// syntax tree.
+    pub fn find_annotation(&self, annotation: SyntaxAnnotation) -> &[SyntaxElement] {
+        self.annotations.get(&annotation).as_ref().map_or(&[], |it| it.as_slice())
     }
 }
 
@@ -83,9 +95,8 @@ impl SyntaxAnnotation {
     pub fn new() -> Self {
         static COUNTER: AtomicU32 = AtomicU32::new(1);
 
-        // We want the id to be unique across threads, but we don't want to
-        // tie it to other `SeqCst` operations.
-        let id = COUNTER.fetch_add(1, Ordering::AcqRel);
+        // Only consistency within a thread matters, as SyntaxElements are !Send
+        let id = COUNTER.fetch_add(1, Ordering::Relaxed);
 
         Self(NonZeroU32::new(id).expect("syntax annotation id overflow"))
     }
@@ -328,6 +339,6 @@ mod tests {
 
         let expect = expect![];
         expect.assert_eq(&edit.root.to_string());
-        assert_eq!(edit.find_annotation(placeholder_snippet).map(|it| it.len()), Some(2));
+        assert_eq!(edit.find_annotation(placeholder_snippet).len(), 2);
     }
 }
