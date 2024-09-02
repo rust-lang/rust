@@ -71,8 +71,8 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
     for Option<DecodeIterator<'a, 'tcx, T>>
 {
     #[inline(always)]
-    fn process_decoded(self, tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> &'tcx [T] {
-        if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { &[] }
+    fn process_decoded(self, tcx: TyCtxt<'tcx>, err: impl Fn() -> !) -> &'tcx [T] {
+        if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { err() }
     }
 }
 
@@ -84,12 +84,12 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
     fn process_decoded(
         self,
         tcx: TyCtxt<'tcx>,
-        _err: impl Fn() -> !,
+        err: impl Fn() -> !,
     ) -> ty::EarlyBinder<'tcx, &'tcx [T]> {
         ty::EarlyBinder::bind(if let Some(iter) = self {
             tcx.arena.alloc_from_iter(iter)
         } else {
-            &[]
+            err()
         })
     }
 }
@@ -300,7 +300,20 @@ provide! { tcx, def_id, other, cdata,
             .unwrap_or_else(|| panic!("{def_id:?} does not have eval_static_initializer")))
     }
     trait_def => { table }
-    deduced_param_attrs => { table }
+    deduced_param_attrs => {
+        // FIXME: `deduced_param_attrs` has some sketchy encoding settings,
+        // where we don't encode unless we're optimizing, doing codegen,
+        // and not incremental (see `encoder.rs`). I don't think this is right!
+        cdata
+            .root
+            .tables
+            .deduced_param_attrs
+            .get(cdata, def_id.index)
+            .map(|lazy| {
+                &*tcx.arena.alloc_from_iter(lazy.decode((cdata, tcx)))
+            })
+            .unwrap_or_default()
+    }
     is_type_alias_impl_trait => {
         debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
         cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
