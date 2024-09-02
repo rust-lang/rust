@@ -789,10 +789,17 @@ both the code example and the line numbers, so we need to remove the radius in t
 }
 
 .rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers,
+.rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers > pre,
 .rustdoc:not(.src) .scraped-example:not(.expanded) pre.rust {
 	padding-bottom: 0;
 	/* See above comment, should be the same max-height. */
 	overflow: auto hidden;
+}
+.rustdoc:not(.src) .scraped-example .src-line-numbers {
+	padding-top: 0;
+}
+.rustdoc:not(.src) .scraped-example.expanded .src-line-numbers {
+	padding-bottom: 0;
 }
 
 .rustdoc:not(.src) .example-wrap pre {

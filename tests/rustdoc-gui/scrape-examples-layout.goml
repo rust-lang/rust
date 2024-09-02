@@ -47,6 +47,25 @@ assert-position: (".scraped-example .scraped-example-title", {
     "y": |y| + |height| - |title_height| - 8,
 })
 
+// Check that the expand button works and also that line number aligns with code.
+move-cursor-to: ".scraped-example .rust"
+click: ".scraped-example .button-holder .expand"
+wait-for: ".scraped-example.expanded"
+// They should have the same y position.
+compare-elements-position: (
+    ".scraped-example.expanded .src-line-numbers pre span",
+    ".scraped-example.expanded .rust code",
+    ["y"],
+)
+// And they should have the same height.
+compare-elements-size: (
+    ".scraped-example.expanded .src-line-numbers",
+    ".scraped-example.expanded .rust",
+    ["height"],
+)
+// Collapse code again.
+click: ".scraped-example .button-holder .expand"
+
 // Check that for both mobile and desktop sizes, the buttons in scraped examples are displayed
 // correctly.
 

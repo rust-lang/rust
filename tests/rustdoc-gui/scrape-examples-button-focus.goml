@@ -29,10 +29,10 @@ assert-property: (".scraped-example-list > .scraped-example .rust", {
 
 // The expand button increases the scrollHeight of the minimized code viewport
 store-property: (".scraped-example-list > .scraped-example pre", {"offsetHeight": smallOffsetHeight})
-assert-property-false: (".scraped-example-list > .scraped-example .src-line-numbers", {
+assert-property: (".scraped-example-list > .scraped-example .src-line-numbers", {
     "scrollHeight": |smallOffsetHeight|
 }, NEAR)
-assert-property-false: (".scraped-example-list > .scraped-example .rust", {
+assert-property: (".scraped-example-list > .scraped-example .rust", {
     "scrollHeight": |smallOffsetHeight|
 }, NEAR)
 focus: ".scraped-example-list > .scraped-example .expand"
