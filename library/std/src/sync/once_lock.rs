@@ -517,7 +517,7 @@ impl<T> OnceLock<T> {
                     res = Err(e);
 
                     // Treat the underlying `Once` as poisoned since we
-                    // failed to initialize our value. Calls
+                    // failed to initialize our value.
                     p.poison();
                 }
             }

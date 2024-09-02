@@ -1819,7 +1819,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_attrs(did, attr).next().is_some()
     }
 
-    /// Determines whether an item is annotated with a multi-segement attribute
+    /// Determines whether an item is annotated with a multi-segment attribute
     pub fn has_attrs_with_path(self, did: impl Into<DefId>, attrs: &[Symbol]) -> bool {
         self.get_attrs_by_path(did.into(), attrs).next().is_some()
     }

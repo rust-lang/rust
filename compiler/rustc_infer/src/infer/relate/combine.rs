@@ -153,7 +153,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
             // During coherence, opaque types should be treated as *possibly*
             // equal to any other type (except for possibly itself). This is an
-            // extremely heavy hammer, but can be relaxed in a fowards-compatible
+            // extremely heavy hammer, but can be relaxed in a forwards-compatible
             // way later.
             (&ty::Alias(ty::Opaque, _), _) | (_, &ty::Alias(ty::Opaque, _)) if self.intercrate => {
                 relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);

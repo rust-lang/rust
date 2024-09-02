@@ -91,9 +91,9 @@ pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 /// `Ok(Err(ty))` indicates the constant was fine, but the valtree couldn't be constructed
-/// because the value containts something of type `ty` that is not valtree-compatible.
+/// because the value contains something of type `ty` that is not valtree-compatible.
 /// The caller can then show an appropriate error; the query does not have the
-/// necssary context to give good user-facing errors for this case.
+/// necessary context to give good user-facing errors for this case.
 pub type EvalToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, ErrorHandled>;
 
 #[cfg(target_pointer_width = "64")]
@@ -231,7 +231,7 @@ pub enum CheckInAllocMsg {
 pub enum CheckAlignMsg {
     /// The accessed pointer did not have proper alignment.
     AccessedPtr,
-    /// The access ocurred with a place that was based on a misaligned pointer.
+    /// The access occurred with a place that was based on a misaligned pointer.
     BasedOn,
 }
 

@@ -435,7 +435,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             escape_dep_filename(&file.prefer_local().to_string())
         };
 
-        // The entries will be used to declare dependencies beween files in a
+        // The entries will be used to declare dependencies between files in a
         // Makefile-like output, so the iteration order does not matter.
         #[allow(rustc::potential_query_instability)]
         let extra_tracked_files =

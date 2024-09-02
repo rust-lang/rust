@@ -38,7 +38,7 @@
 //!   not contain any indirection through a pointer or any indexing projections.
 //!
 //! * `p` and `q` must have the **same type**. If we replace a local with a subtype or supertype,
-//!   we may end up with a differnet vtable for that local. See the `subtyping-impacts-selection`
+//!   we may end up with a different vtable for that local. See the `subtyping-impacts-selection`
 //!   tests for an example where that causes issues.
 //!
 //! * We need to make sure that the goal of "merging the memory" is actually structurally possible

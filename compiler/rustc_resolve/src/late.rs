@@ -133,7 +133,7 @@ pub(crate) enum NoConstantGenericsReason {
     /// Const arguments are only allowed to use generic parameters when:
     /// - `feature(generic_const_exprs)` is enabled
     /// or
-    /// - the const argument is a sole const generic paramater, i.e. `foo::<{ N }>()`
+    /// - the const argument is a sole const generic parameter, i.e. `foo::<{ N }>()`
     ///
     /// If neither of the above are true then this is used as the cause.
     NonTrivialConstArg,
@@ -4486,7 +4486,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// There are a few places that we need to resolve an anon const but we did not parse an
     /// anon const so cannot provide an `&'ast AnonConst`. Right now this is just unbraced
-    /// const arguments that were parsed as type arguments, and `legact_const_generics` which
+    /// const arguments that were parsed as type arguments, and `legacy_const_generics` which
     /// parse as normal function argument expressions. To avoid duplicating the code for resolving
     /// an anon const we have this function which lets the caller manually call `resolve_expr` or
     /// `smart_resolve_path`.
