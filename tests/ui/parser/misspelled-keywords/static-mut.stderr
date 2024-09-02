@@ -3,6 +3,11 @@ error: expected one of `:`, `;`, or `=`, found `a`
    |
 LL | static muta a: u8 = 0;
    |             ^ expected one of `:`, `;`, or `=`
+   |
+help: there is a keyword `mut` with a similar name
+   |
+LL | static mut a: u8 = 0;
+   |        ~~~
 
 error: missing type for `static` item
   --> $DIR/static-mut.rs:1:12

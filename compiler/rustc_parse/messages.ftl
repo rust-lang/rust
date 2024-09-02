@@ -381,6 +381,7 @@ parse_invalid_char_in_escape_msg = invalid character in {$is_hex ->
     *[false] unicode
     } escape
 
+
 parse_invalid_comparison_operator = invalid comparison operator `{$invalid}`
     .use_instead = `{$invalid}` is not a valid comparison operator, use `{$correct}`
     .spaceship_operator_invalid = `<=>` is not a valid comparison operator, use `std::cmp::Ordering`
@@ -580,6 +581,11 @@ parse_missing_struct_for_struct_definition = missing `struct` for struct definit
 parse_missing_trait_in_trait_impl = missing trait in a trait impl
     .suggestion_add_trait = add a trait here
     .suggestion_remove_for = for an inherent impl, drop this `for`
+
+parse_misspelled_kw = {$is_incorrect_case ->
+                    [true] write keyword `{$similar_kw}` in lowercase
+                    *[false] there is a keyword `{$similar_kw}` with a similar name
+}
 
 parse_modifier_lifetime = `{$modifier}` may only modify trait bounds, not lifetime bounds
     .suggestion = remove the `{$modifier}`

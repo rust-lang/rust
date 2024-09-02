@@ -2,9 +2,16 @@ error: expected one of `)`, `,`, `@`, or `|`, found `list`
   --> $DIR/ref.rs:4:19
    |
 LL |         Some(refe list) => println!("{list:?}"),
-   |                  -^^^^ expected one of `)`, `,`, `@`, or `|`
-   |                  |
-   |                  help: missing `,`
+   |                   ^^^^ expected one of `)`, `,`, `@`, or `|`
+   |
+help: there is a keyword `ref` with a similar name
+   |
+LL |         Some(ref list) => println!("{list:?}"),
+   |              ~~~
+help: missing `,`
+   |
+LL |         Some(refe, list) => println!("{list:?}"),
+   |                  +
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 1 field
   --> $DIR/ref.rs:4:14

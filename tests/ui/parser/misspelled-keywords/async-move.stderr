@@ -3,6 +3,11 @@ error: expected one of `move`, `|`, or `||`, found `Move`
    |
 LL |     async Move {}
    |           ^^^^ expected one of `move`, `|`, or `||`
+   |
+help: write keyword `move` in lowercase
+   |
+LL |     async move {}
+   |           ~~~~
 
 error: aborting due to 1 previous error
 

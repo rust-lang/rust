@@ -20,7 +20,8 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // If you modify this list, adjust `is_special` and `is_used_keyword`/`is_unused_keyword`.
+    // If you modify this list, adjust `is_special`, `is_used_keyword`/`is_unused_keyword`
+    // and `AllKeywords`.
     // But this should rarely be necessary if the keywords are kept in alphabetic order.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
@@ -2575,5 +2576,44 @@ impl Ident {
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
+    }
+}
+
+/// An iterator over all the keywords in Rust.
+#[derive(Copy, Clone)]
+pub struct AllKeywords {
+    curr_idx: u32,
+    end_idx: u32,
+}
+
+impl AllKeywords {
+    /// Initialize a new iterator over all the keywords.
+    ///
+    /// *Note:* Please update this if a new keyword is added beyond the current
+    /// range.
+    pub fn new() -> Self {
+        AllKeywords { curr_idx: kw::Empty.as_u32(), end_idx: kw::Yeet.as_u32() }
+    }
+
+    /// Collect all the keywords in a given edition into a vector.
+    pub fn collect_used(&self, edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
+        self.filter(|&keyword| {
+            keyword.is_used_keyword_always() || keyword.is_used_keyword_conditional(edition)
+        })
+        .collect()
+    }
+}
+
+impl Iterator for AllKeywords {
+    type Item = Symbol;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.curr_idx <= self.end_idx {
+            let keyword = Symbol::new(self.curr_idx);
+            self.curr_idx += 1;
+            Some(keyword)
+        } else {
+            None
+        }
     }
 }

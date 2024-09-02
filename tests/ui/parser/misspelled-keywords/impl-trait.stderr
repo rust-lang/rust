@@ -4,6 +4,10 @@ error: expected one of `(`, `+`, `,`, `::`, `<`, `=`, or `>`, found `Debug`
 LL | fn code<T: impll Debug>() -> u8 {}
    |                  ^^^^^ expected one of 7 possible tokens
    |
+help: there is a keyword `impl` with a similar name
+   |
+LL | fn code<T: impl Debug>() -> u8 {}
+   |            ~~~~
 help: you might have meant to end the type parameters here
    |
 LL | fn code<T: impll> Debug>() -> u8 {}
