@@ -170,7 +170,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             return guar;
                         }
-                        // Silence redundant errors on binding acccess that are already
+                        // Silence redundant errors on binding access that are already
                         // reported on the binding definition (#56607).
                         if let Err(guar) = self.fn_arg_obligation(&obligation) {
                             return guar;
@@ -898,7 +898,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut suggested = false;
         let mut chain = vec![];
 
-        // The following logic is simlar to `point_at_chain`, but that's focused on associated types
+        // The following logic is similar to `point_at_chain`, but that's focused on associated types
         let mut expr = expr;
         while let hir::ExprKind::MethodCall(path_segment, rcvr_expr, args, span) = expr.kind {
             // Point at every method call in the chain with the `Result` type.

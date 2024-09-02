@@ -991,7 +991,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     };
 
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        // Only really excercised by generic_const_exprs
+                        // Only really exercised by generic_const_exprs
                         DefineOpaqueTypes::Yes,
                         ct_ty,
                         ty,

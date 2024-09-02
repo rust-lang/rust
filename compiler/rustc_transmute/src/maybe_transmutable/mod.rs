@@ -242,7 +242,7 @@ where
                 //   }
                 // ...if `refs_answer` was computed lazily. The below early
                 // returns can be deleted without impacting the correctness of
-                // the algoritm; only its performance.
+                // the algorithm; only its performance.
                 debug!(?bytes_answer);
                 match bytes_answer {
                     Answer::No(_) if !self.assume.validity => return bytes_answer,

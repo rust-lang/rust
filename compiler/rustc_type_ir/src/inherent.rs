@@ -162,7 +162,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     /// Returns `true` when the outermost type cannot be further normalized,
     /// resolved, or instantiated. This includes all primitive types, but also
-    /// things like ADTs and trait objects, sice even if their arguments or
+    /// things like ADTs and trait objects, since even if their arguments or
     /// nested types may be further simplified, the outermost [`ty::TyKind`] or
     /// type constructor remains the same.
     fn is_known_rigid(self) -> bool {

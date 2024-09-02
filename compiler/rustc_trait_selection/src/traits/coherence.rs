@@ -723,7 +723,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                     // FIXME: While this matches the behavior of the
                     // old solver, it is not the only way in which the unknowable
                     // candidates *weaken* coherence, they can also force otherwise
-                    // sucessful normalization to be ambiguous.
+                    // successful normalization to be ambiguous.
                     Ok(Certainty::Maybe(_) | Certainty::Yes) => {
                         ambiguity_cause = None;
                         break;
