@@ -112,7 +112,6 @@
 #![feature(unsize)]
 #![feature(unsized_tuple_coercion)]
 #![feature(unwrap_infallible)]
-#![feature(waker_getters)]
 // tidy-alphabetical-end
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]

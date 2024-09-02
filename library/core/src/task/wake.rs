@@ -552,7 +552,7 @@ impl Waker {
     /// Gets the `data` pointer used to create this `Waker`.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "96992")]
+    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
     pub fn data(&self) -> *const () {
         self.waker.data
     }
@@ -560,7 +560,7 @@ impl Waker {
     /// Gets the `vtable` pointer used to create this `Waker`.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "96992")]
+    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
     pub fn vtable(&self) -> &'static RawWakerVTable {
         self.waker.vtable
     }
@@ -826,7 +826,7 @@ impl LocalWaker {
     /// Gets the `data` pointer used to create this `LocalWaker`.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "96992")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub fn data(&self) -> *const () {
         self.waker.data
     }
@@ -834,7 +834,7 @@ impl LocalWaker {
     /// Gets the `vtable` pointer used to create this `LocalWaker`.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "96992")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub fn vtable(&self) -> &'static RawWakerVTable {
         self.waker.vtable
     }
