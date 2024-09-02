@@ -4,8 +4,8 @@ use rowan::TextRange;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    syntax_editor::{mapping::MissingMapping, Change, ChangeKind},
-    ted, SyntaxElement, SyntaxNode, SyntaxNodePtr,
+    syntax_editor::{mapping::MissingMapping, Change, ChangeKind, Position, PositionRepr},
+    SyntaxElement, SyntaxNode, SyntaxNodePtr,
 };
 
 use super::{SyntaxEdit, SyntaxEditor};
@@ -94,6 +94,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
 
         // Add to changed ancestors, if applicable
         match change {
+            Change::Insert(_, _) | Change::InsertAll(_, _) => {}
             Change::Replace(target, _) => {
                 changed_ancestors.push_back(ChangedAncestor::single(target, change_index))
             }
@@ -106,23 +107,46 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
 
     for index in independent_changes {
         match &mut changes[index as usize] {
-            Change::Replace(target, new_node) => {
-                *target = tree_mutator.make_element_mut(target);
-
-                if let Some(new_node) = new_node {
-                    changed_elements.push(new_node.clone());
-                }
+            Change::Insert(target, _) | Change::InsertAll(target, _) => {
+                match &mut target.repr {
+                    PositionRepr::FirstChild(parent) => {
+                        *parent = tree_mutator.make_syntax_mut(parent);
+                    }
+                    PositionRepr::After(child) => {
+                        *child = tree_mutator.make_element_mut(child);
+                    }
+                };
             }
+            Change::Replace(target, _) => {
+                *target = tree_mutator.make_element_mut(target);
+            }
+        }
+
+        // Collect changed elements
+        match &changes[index as usize] {
+            Change::Insert(_, element) => changed_elements.push(element.clone()),
+            Change::InsertAll(_, elements) => changed_elements.extend(elements.iter().cloned()),
+            Change::Replace(_, Some(element)) => changed_elements.push(element.clone()),
+            Change::Replace(_, None) => {}
         }
     }
 
     for DependentChange { parent, child } in dependent_changes.into_iter() {
         let (input_ancestor, output_ancestor) = match &changes[parent as usize] {
-            // insert? unreachable
+            // No change will depend on an insert since changes can only depend on nodes in the root tree
+            Change::Insert(_, _) | Change::InsertAll(_, _) => unreachable!(),
             Change::Replace(target, Some(new_target)) => {
                 (to_owning_node(target), to_owning_node(new_target))
             }
-            Change::Replace(_, None) => continue, // silently drop outdated change
+            // Silently drop outdated change
+            Change::Replace(_, None) => continue,
+        };
+
+        let upmap_target_node = |target: &SyntaxNode| {
+            match mappings.upmap_child(target, &input_ancestor, &output_ancestor) {
+                Ok(it) => it,
+                Err(MissingMapping(current)) => unreachable!("no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"),
+            }
         };
 
         let upmap_target = |target: &SyntaxElement| {
@@ -133,6 +157,14 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         };
 
         match &mut changes[child as usize] {
+            Change::Insert(target, _) | Change::InsertAll(target, _) => match &mut target.repr {
+                PositionRepr::FirstChild(parent) => {
+                    *parent = upmap_target_node(parent);
+                }
+                PositionRepr::After(child) => {
+                    *child = upmap_target(child);
+                }
+            },
             Change::Replace(target, _) => {
                 *target = upmap_target(&target);
             }
@@ -142,8 +174,21 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
     // Apply changes
     for change in changes {
         match change {
-            Change::Replace(target, None) => ted::remove(target),
-            Change::Replace(target, Some(new_target)) => ted::replace(target, new_target),
+            Change::Insert(position, element) => {
+                let (parent, index) = position.place();
+                parent.splice_children(index..index, vec![element]);
+            }
+            Change::InsertAll(position, elements) => {
+                let (parent, index) = position.place();
+                parent.splice_children(index..index, elements);
+            }
+            Change::Replace(target, None) => {
+                target.detach();
+            }
+            Change::Replace(target, Some(new_target)) => {
+                let parent = target.parent().unwrap();
+                parent.splice_children(target.index()..target.index() + 1, vec![new_target]);
+            }
         }
     }
 

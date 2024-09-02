@@ -50,6 +50,14 @@ impl SyntaxEditor {
         self.annotations.append(&mut other.annotations);
     }
 
+    pub fn insert(&mut self, position: Position, element: impl Element) {
+        self.changes.push(Change::Insert(position, element.syntax_element()))
+    }
+
+    pub fn insert_all(&mut self, position: Position, elements: Vec<SyntaxElement>) {
+        self.changes.push(Change::InsertAll(position, elements))
+    }
+
     pub fn delete(&mut self, element: impl Element) {
         self.changes.push(Change::Replace(element.syntax_element(), None));
     }
@@ -117,6 +125,19 @@ pub struct Position {
     repr: PositionRepr,
 }
 
+impl Position {
+    pub(crate) fn parent(&self) -> SyntaxNode {
+        self.place().0
+    }
+
+    pub(crate) fn place(&self) -> (SyntaxNode, usize) {
+        match &self.repr {
+            PositionRepr::FirstChild(parent) => (parent.clone(), 0),
+            PositionRepr::After(child) => (child.parent().unwrap(), child.index() + 1),
+        }
+    }
+}
+
 #[derive(Debug)]
 enum PositionRepr {
     FirstChild(SyntaxNode),
@@ -155,6 +176,8 @@ impl Position {
 
 #[derive(Debug)]
 enum Change {
+    Insert(Position, SyntaxElement),
+    InsertAll(Position, Vec<SyntaxElement>),
     /// Represents both a replace single element and a delete element operation.
     Replace(SyntaxElement, Option<SyntaxElement>),
 }
@@ -162,18 +185,27 @@ enum Change {
 impl Change {
     fn target_range(&self) -> TextRange {
         match self {
+            Change::Insert(target, _) | Change::InsertAll(target, _) => match &target.repr {
+                PositionRepr::FirstChild(parent) => TextRange::at(
+                    parent.first_child_or_token().unwrap().text_range().start(),
+                    0.into(),
+                ),
+                PositionRepr::After(child) => TextRange::at(child.text_range().end(), 0.into()),
+            },
             Change::Replace(target, _) => target.text_range(),
         }
     }
 
     fn target_parent(&self) -> SyntaxNode {
         match self {
+            Change::Insert(target, _) | Change::InsertAll(target, _) => target.parent(),
             Change::Replace(target, _) => target.parent().unwrap(),
         }
     }
 
     fn change_kind(&self) -> ChangeKind {
         match self {
+            Change::Insert(_, _) | Change::InsertAll(_, _) => ChangeKind::Insert,
             Change::Replace(_, _) => ChangeKind::Replace,
         }
     }
