@@ -240,7 +240,7 @@ impl<'tcx> Const<'tcx> {
         match self {
             Const::Ty(ty, ct) => {
                 match ct.kind() {
-                    // Dont use the outter ty as on invalid code we can wind up with them not being the same.
+                    // Dont use the outer ty as on invalid code we can wind up with them not being the same.
                     // this then results in allowing const eval to add `1_i64 + 1_usize` in cases where the mir
                     // was originally `({N: usize} + 1_usize)` under `generic_const_exprs`.
                     ty::ConstKind::Value(ty, _) => ty,

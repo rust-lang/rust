@@ -267,7 +267,7 @@ pub(super) fn unexpected_cfg_value(
     // encouraged to do so.
     let can_suggest_adding_value = !sess.psess.check_config.well_known_names.contains(&name)
         // Except when working on rustc or the standard library itself, in which case we want to
-        // suggest adding these cfgs to the "normal" place because of bootstraping reasons. As a
+        // suggest adding these cfgs to the "normal" place because of bootstrapping reasons. As a
         // basic heuristic, we use the "cheat" unstable feature enable method and the
         // non-ui-testing enabled option.
         || (matches!(sess.psess.unstable_features, rustc_feature::UnstableFeatures::Cheat)
