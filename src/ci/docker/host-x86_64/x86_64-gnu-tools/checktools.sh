@@ -64,6 +64,7 @@ case $HOST_TARGET in
       python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass
     set -e
     ./procmon64 -accepteula -terminate -quiet
+    sleep 3s
     exit 0
 
     python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass
