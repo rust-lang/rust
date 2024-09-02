@@ -90,7 +90,7 @@ fn test_partial_eq() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
-#[cfg_attr(miri, ignore)] // We'd like to run Miri with layout randomization
+#[cfg_attr(any(miri, randomized_layouts), ignore)] // We'd like to run Miri with layout randomization
 fn test_sizes() {
     assert_eq!(core::mem::size_of::<LeafNode<(), ()>>(), 16);
     assert_eq!(core::mem::size_of::<LeafNode<i64, i64>>(), 16 + CAPACITY * 2 * 8);
