@@ -2,13 +2,14 @@ use std::cell::LazyCell;
 use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
+use itertools::Itertools;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir::ItemKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{GenericParamKind, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_macros::LintDiagnostic;
@@ -378,7 +379,7 @@ fn check_trait_item<'tcx>(
         _ => (None, trait_item.span),
     };
     check_dyn_incompatible_self_trait_by_name(tcx, trait_item);
-    let mut res = check_associated_item(tcx, def_id, span, method_sig);
+    let mut res = check_associated_item(tcx, def_id, span, method_sig, None);
 
     if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {
         for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
@@ -386,6 +387,7 @@ fn check_trait_item<'tcx>(
                 tcx,
                 assoc_ty_def_id.expect_local(),
                 tcx.def_span(assoc_ty_def_id),
+                None,
                 None,
             ));
         }
@@ -904,8 +906,13 @@ fn check_impl_item<'tcx>(
         hir::ImplItemKind::Type(ty) if ty.span != DUMMY_SP => (None, ty.span),
         _ => (None, impl_item.span),
     };
-
-    check_associated_item(tcx, impl_item.owner_id.def_id, span, method_sig)
+    check_associated_item(
+        tcx,
+        impl_item.owner_id.def_id,
+        span,
+        method_sig,
+        Some(impl_item.generics),
+    )
 }
 
 fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), ErrorGuaranteed> {
@@ -1038,6 +1045,7 @@ fn check_associated_item(
     item_id: LocalDefId,
     span: Span,
     sig_if_method: Option<&hir::FnSig<'_>>,
+    generics: Option<&hir::Generics<'_>>,
 ) -> Result<(), ErrorGuaranteed> {
     let loc = Some(WellFormedLoc::Ty(item_id));
     enter_wf_checking_ctxt(tcx, span, item_id, |wfcx| {
@@ -1070,7 +1078,7 @@ fn check_associated_item(
                     hir_sig.decl,
                     item.def_id.expect_local(),
                 );
-                check_method_receiver(wfcx, hir_sig, item, self_ty)
+                check_method_receiver(wfcx, hir_sig, item, self_ty, generics)
             }
             ty::AssocKind::Type => {
                 if let ty::AssocItemContainer::TraitContainer = item.container {
@@ -1692,6 +1700,7 @@ fn check_method_receiver<'tcx>(
     fn_sig: &hir::FnSig<'_>,
     method: ty::AssocItem,
     self_ty: Ty<'tcx>,
+    generics: Option<&hir::Generics<'_>>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = wfcx.tcx();
 
@@ -1726,7 +1735,9 @@ fn check_method_receiver<'tcx>(
         None
     };
 
-    if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, arbitrary_self_types_level) {
+    let receiver_validity =
+        receiver_is_valid(wfcx, span, receiver_ty, self_ty, arbitrary_self_types_level, generics);
+    if let Err(receiver_validity_err) = receiver_validity {
         return Err(match arbitrary_self_types_level {
             // Wherever possible, emit a message advising folks that the features
             // `arbitrary_self_types` or `arbitrary_self_types_pointers` might
@@ -1737,7 +1748,9 @@ fn check_method_receiver<'tcx>(
                 receiver_ty,
                 self_ty,
                 Some(ArbitrarySelfTypesLevel::Basic),
-            ) =>
+                generics,
+            )
+            .is_ok() =>
             {
                 // Report error; would have worked with `arbitrary_self_types`.
                 feature_err(
@@ -1759,7 +1772,9 @@ fn check_method_receiver<'tcx>(
                     receiver_ty,
                     self_ty,
                     Some(ArbitrarySelfTypesLevel::WithPointers),
-                ) =>
+                    generics,
+                )
+                .is_ok() =>
             {
                 // Report error; would have worked with `arbitrary_self_types_pointers`.
                 feature_err(
@@ -1777,9 +1792,49 @@ fn check_method_receiver<'tcx>(
             _ =>
             // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
             {
-                tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
+                match receiver_validity_err {
+                    ReceiverValidityError::DoesNotDeref => {
+                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
+                    }
+                    ReceiverValidityError::MethodGenericParamUsed => {
+                        tcx.dcx().emit_err(errors::InvalidGenericReceiverTy { span, receiver_ty })
+                    }
+                }
             }
         });
+    }
+    Ok(())
+}
+
+/// Error cases which may be returned from `receiver_is_valid`. These error
+/// cases are generated in this function as they may be unearthed as we explore
+/// the `autoderef` chain, but they're converted to diagnostics in the caller.
+enum ReceiverValidityError {
+    /// The self type does not get to the receiver type by following the
+    /// autoderef chain.
+    DoesNotDeref,
+    /// A type was found which is a method type parameter, and that's not allowed.
+    MethodGenericParamUsed,
+}
+
+/// Confirms that a type is not a type parameter referring to one of the
+/// method's type params.
+fn confirm_type_is_not_a_method_generic_param(
+    ty: Ty<'_>,
+    method_generics: Option<&hir::Generics<'_>>,
+) -> Result<(), ReceiverValidityError> {
+    if let ty::Param(param) = ty.kind() {
+        if let Some(generics) = method_generics {
+            if generics
+                .params
+                .iter()
+                .filter(|g| matches!(g.kind, GenericParamKind::Type { .. }))
+                .map(|g| g.name.ident().name)
+                .contains(&param.name)
+            {
+                return Err(ReceiverValidityError::MethodGenericParamUsed);
+            }
+        }
     }
     Ok(())
 }
@@ -1799,7 +1854,8 @@ fn receiver_is_valid<'tcx>(
     receiver_ty: Ty<'tcx>,
     self_ty: Ty<'tcx>,
     arbitrary_self_types_enabled: Option<ArbitrarySelfTypesLevel>,
-) -> bool {
+    generics: Option<&hir::Generics<'_>>,
+) -> Result<(), ReceiverValidityError> {
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
     let cause =
@@ -1811,8 +1867,10 @@ fn receiver_is_valid<'tcx>(
         ocx.eq(&cause, wfcx.param_env, self_ty, receiver_ty)?;
         if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(NoSolution) }
     }) {
-        return true;
+        return Ok(());
     }
+
+    confirm_type_is_not_a_method_generic_param(receiver_ty, generics)?;
 
     let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_def_id, span, receiver_ty);
 
@@ -1830,6 +1888,8 @@ fn receiver_is_valid<'tcx>(
             potential_self_ty, self_ty
         );
 
+        confirm_type_is_not_a_method_generic_param(potential_self_ty, generics)?;
+
         // Check if the self type unifies. If it does, then commit the result
         // since it may have region side-effects.
         if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
@@ -1838,7 +1898,7 @@ fn receiver_is_valid<'tcx>(
             if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(NoSolution) }
         }) {
             wfcx.register_obligations(autoderef.into_obligations());
-            return true;
+            return Ok(());
         }
 
         // Without `feature(arbitrary_self_types)`, we require that each step in the
@@ -1865,7 +1925,7 @@ fn receiver_is_valid<'tcx>(
     }
 
     debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
-    false
+    Err(ReceiverValidityError::DoesNotDeref)
 }
 
 fn receiver_is_implemented<'tcx>(
