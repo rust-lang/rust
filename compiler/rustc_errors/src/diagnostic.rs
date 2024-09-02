@@ -12,7 +12,7 @@ use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{AttrId, Span, DUMMY_SP};
 use tracing::debug;
 
 use crate::snippet::Style;
@@ -356,24 +356,19 @@ impl DiagInner {
 
     pub(crate) fn update_unstable_expectation_id(
         &mut self,
-        unstable_to_stable: &FxIndexMap<LintExpectationId, LintExpectationId>,
+        unstable_to_stable: &FxIndexMap<AttrId, LintExpectationId>,
     ) {
         if let Level::Expect(expectation_id) | Level::ForceWarning(Some(expectation_id)) =
             &mut self.level
+            && let LintExpectationId::Unstable { attr_id, lint_index } = *expectation_id
         {
-            if expectation_id.is_stable() {
-                return;
-            }
-
             // The unstable to stable map only maps the unstable `AttrId` to a stable `HirId` with an attribute index.
             // The lint index inside the attribute is manually transferred here.
-            let lint_index = expectation_id.get_lint_index();
-            expectation_id.set_lint_index(None);
-            let mut stable_id = unstable_to_stable
-                .get(expectation_id)
-                .expect("each unstable `LintExpectationId` must have a matching stable id")
-                .normalize();
+            let Some(stable_id) = unstable_to_stable.get(&attr_id) else {
+                panic!("{expectation_id:?} must have a matching stable id")
+            };
 
+            let mut stable_id = *stable_id;
             stable_id.set_lint_index(lint_index);
             *expectation_id = stable_id;
         }

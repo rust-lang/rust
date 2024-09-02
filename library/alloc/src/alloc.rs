@@ -372,6 +372,7 @@ extern "Rust" {
 #[rustc_const_unstable(feature = "const_alloc_error", issue = "92523")]
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[cold]
+#[optimize(size)]
 pub const fn handle_alloc_error(layout: Layout) -> ! {
     const fn ct_error(_: Layout) -> ! {
         panic!("allocation failed");

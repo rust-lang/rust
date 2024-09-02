@@ -87,16 +87,6 @@ pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_target_feature_requires_unsafe, code = E0133)]
-#[note]
-pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithTargetFeatureRequiresUnsafe {
-    #[label]
-    pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_mutable_static_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
@@ -261,37 +251,12 @@ pub(crate) struct InitializingTypeWithRequiresUnsafe {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_initializing_type_with_target_feature_requires_unsafe, code = E0133)]
-#[note]
-pub(crate) struct InitializingTypeWithTargetFeatureRequiresUnsafe {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     mir_build_initializing_type_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
     code = E0133
 )]
 #[note]
 pub(crate) struct InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    mir_build_initializing_type_with_target_feature_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
-    code = E0133
-)]
-#[note]
-pub(crate) struct InitializingTypeWithTargetFeatureRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub(crate) span: Span,

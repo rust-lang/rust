@@ -1010,7 +1010,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             this.in_func_body = previous_state;
                         }
                     }
-                    FnKind::Closure(binder, declaration, body) => {
+                    FnKind::Closure(binder, _, declaration, body) => {
                         this.visit_closure_binder(binder);
 
                         this.with_lifetime_rib(
@@ -1557,14 +1557,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         if ident.name == kw::StaticLifetime {
             self.record_lifetime_res(
                 lifetime.id,
-                LifetimeRes::Static,
+                LifetimeRes::Static { suppress_elision_warning: false },
                 LifetimeElisionCandidate::Named,
             );
             return;
         }
 
         if ident.name == kw::UnderscoreLifetime {
-            return self.resolve_anonymous_lifetime(lifetime, false);
+            return self.resolve_anonymous_lifetime(lifetime, lifetime.id, false);
         }
 
         let mut lifetime_rib_iter = self.lifetime_ribs.iter().rev();
@@ -1667,13 +1667,23 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn resolve_anonymous_lifetime(&mut self, lifetime: &Lifetime, elided: bool) {
+    fn resolve_anonymous_lifetime(
+        &mut self,
+        lifetime: &Lifetime,
+        id_for_lint: NodeId,
+        elided: bool,
+    ) {
         debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
 
         let kind =
             if elided { MissingLifetimeKind::Ampersand } else { MissingLifetimeKind::Underscore };
-        let missing_lifetime =
-            MissingLifetime { id: lifetime.id, span: lifetime.ident.span, kind, count: 1 };
+        let missing_lifetime = MissingLifetime {
+            id: lifetime.id,
+            span: lifetime.ident.span,
+            kind,
+            count: 1,
+            id_for_lint,
+        };
         let elision_candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
         for (i, rib) in self.lifetime_ribs.iter().enumerate().rev() {
             debug!(?rib.kind);
@@ -1697,7 +1707,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     if lifetimes_in_scope.is_empty() {
                         self.record_lifetime_res(
                             lifetime.id,
-                            LifetimeRes::Static,
+                            // We are inside a const item, so do not warn.
+                            LifetimeRes::Static { suppress_elision_warning: true },
                             elision_candidate,
                         );
                         return;
@@ -1800,7 +1811,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             LifetimeRes::ElidedAnchor { start: id, end: NodeId::from_u32(id.as_u32() + 1) },
             LifetimeElisionCandidate::Ignore,
         );
-        self.resolve_anonymous_lifetime(&lt, true);
+        self.resolve_anonymous_lifetime(&lt, anchor_id, true);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1916,6 +1927,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             };
             let missing_lifetime = MissingLifetime {
                 id: node_ids.start,
+                id_for_lint: segment_id,
                 span: elided_lifetime_span,
                 kind,
                 count: expected_lifetimes,
@@ -2039,8 +2051,44 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!("lifetime {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)")
         }
+
+        match candidate {
+            LifetimeElisionCandidate::Missing(missing @ MissingLifetime { .. }) => {
+                debug_assert_eq!(id, missing.id);
+                match res {
+                    LifetimeRes::Static { suppress_elision_warning } => {
+                        if !suppress_elision_warning {
+                            self.r.lint_buffer.buffer_lint(
+                                lint::builtin::ELIDED_NAMED_LIFETIMES,
+                                missing.id_for_lint,
+                                missing.span,
+                                BuiltinLintDiag::ElidedIsStatic { elided: missing.span },
+                            );
+                        }
+                    }
+                    LifetimeRes::Param { param, binder: _ } => {
+                        let tcx = self.r.tcx();
+                        self.r.lint_buffer.buffer_lint(
+                            lint::builtin::ELIDED_NAMED_LIFETIMES,
+                            missing.id_for_lint,
+                            missing.span,
+                            BuiltinLintDiag::ElidedIsParam {
+                                elided: missing.span,
+                                param: (tcx.item_name(param.into()), tcx.source_span(param)),
+                            },
+                        );
+                    }
+                    LifetimeRes::Fresh { .. }
+                    | LifetimeRes::Infer
+                    | LifetimeRes::Error
+                    | LifetimeRes::ElidedAnchor { .. } => {}
+                }
+            }
+            LifetimeElisionCandidate::Ignore | LifetimeElisionCandidate::Named => {}
+        }
+
         match res {
-            LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
+            LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static { .. } => {
                 if let Some(ref mut candidates) = self.lifetime_elision_candidates {
                     candidates.push((res, candidate));
                 }
@@ -2558,9 +2606,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             ItemKind::Static(box ast::StaticItem { ref ty, ref expr, .. }) => {
                 self.with_static_rib(def_kind, |this| {
-                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
-                        this.visit_ty(ty);
-                    });
+                    this.with_lifetime_rib(
+                        LifetimeRibKind::Elided(LifetimeRes::Static {
+                            suppress_elision_warning: true,
+                        }),
+                        |this| {
+                            this.visit_ty(ty);
+                        },
+                    );
                     if let Some(expr) = expr {
                         // We already forbid generic params because of the above item rib,
                         // so it doesn't matter whether this is a trivial constant.
@@ -2589,7 +2642,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         this.visit_generics(generics);
 
                         this.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Static),
+                            LifetimeRibKind::Elided(LifetimeRes::Static {
+                                suppress_elision_warning: true,
+                            }),
                             |this| this.visit_ty(ty),
                         );
 
