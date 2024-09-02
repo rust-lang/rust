@@ -25,7 +25,7 @@ runners:
     <<: *base-job
 
   - &job-windows-8c
-    os: windows-2022-8core-32gb
+    os: windows-2022
     <<: *base-job
 
   - &job-windows-16c
@@ -85,7 +85,7 @@ pr:
       CODEGEN_BACKENDS: llvm
       SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools2.sh x.py /tmp/toolstate/toolstates.json windows
       HOST_TARGET: x86_64-pc-windows-msvc
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json --set build.cargo=C:/a/rust/rust/cargo.exe
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json --set build.cargo=D:/a/rust/rust/cargo.exe
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows-8c
   - image: x86_64-msvc-ext2
@@ -93,7 +93,7 @@ pr:
       CODEGEN_BACKENDS: llvm
       SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools2.sh x.py /tmp/toolstate/toolstates.json windows
       HOST_TARGET: x86_64-pc-windows-msvc
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json --set build.cargo=C:/a/rust/rust/cargo.exe
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json --set build.cargo=D:/a/rust/rust/cargo.exe
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows-8c
 
