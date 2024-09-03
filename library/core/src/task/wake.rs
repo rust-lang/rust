@@ -493,6 +493,37 @@ impl Waker {
         a_data == b_data && ptr::eq(a_vtable, b_vtable)
     }
 
+    /// Creates a new `Waker` from the provided `data` pointer and `vtable`.
+    ///
+    /// The `data` pointer can be used to store arbitrary data as required
+    /// by the executor. This could be e.g. a type-erased pointer to an `Arc`
+    /// that is associated with the task.
+    /// The value of this pointer will get passed to all functions that are part
+    /// of the `vtable` as the first parameter.
+    ///
+    /// It is important to consider that the `data` pointer must point to a
+    /// thread safe type such as an `Arc`.
+    ///
+    /// The `vtable` customizes the behavior of a `Waker`. For each operation
+    /// on the `Waker`, the associated function in the `vtable` will be called.
+    ///
+    /// # Safety
+    ///
+    /// The behavior of the returned `Waker` is undefined if the contract defined
+    /// in [`RawWakerVTable`]'s documentation is not upheld.
+    ///
+    /// (Authors wishing to avoid unsafe code may implement the [`Wake`] trait instead, at the
+    /// cost of a required heap allocation.)
+    ///
+    /// [`Wake`]: ../../alloc/task/trait.Wake.html
+    #[inline]
+    #[must_use]
+    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
+    pub const unsafe fn new(data: *const (), vtable: &'static RawWakerVTable) -> Self {
+        Waker { waker: RawWaker { data, vtable } }
+    }
+
     /// Creates a new `Waker` from [`RawWaker`].
     ///
     /// # Safety
@@ -768,6 +799,30 @@ impl LocalWaker {
         let RawWaker { data: a_data, vtable: a_vtable } = self.waker;
         let RawWaker { data: b_data, vtable: b_vtable } = other.waker;
         a_data == b_data && ptr::eq(a_vtable, b_vtable)
+    }
+
+    /// Creates a new `LocalWaker` from the provided `data` pointer and `vtable`.
+    ///
+    /// The `data` pointer can be used to store arbitrary data as required
+    /// by the executor. This could be e.g. a type-erased pointer to an `Arc`
+    /// that is associated with the task.
+    /// The value of this pointer will get passed to all functions that are part
+    /// of the `vtable` as the first parameter.
+    ///
+    /// The `vtable` customizes the behavior of a `LocalWaker`. For each
+    /// operation on the `LocalWaker`, the associated function in the `vtable`
+    /// will be called.
+    ///
+    /// # Safety
+    ///
+    /// The behavior of the returned `Waker` is undefined if the contract defined
+    /// in [`RawWakerVTable`]'s documentation is not upheld.
+    ///
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "local_waker", issue = "118959")]
+    pub const unsafe fn new(data: *const (), vtable: &'static RawWakerVTable) -> Self {
+        LocalWaker { waker: RawWaker { data, vtable } }
     }
 
     /// Creates a new `LocalWaker` from [`RawWaker`].
