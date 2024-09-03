@@ -59,7 +59,7 @@ const fn c_name(name: &'static str) -> &'static str {
 /// A streamlined trait that you can implement to create a pass; the
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
-pub trait MirPass<'tcx> {
+pub(super) trait MirPass<'tcx> {
     fn name(&self) -> &'static str {
         // FIXME Simplify the implementation once more `str` methods get const-stable.
         // See copypaste in `MirLint`
@@ -86,7 +86,7 @@ pub trait MirPass<'tcx> {
 }
 
 /// Just like `MirPass`, except it cannot mutate `Body`.
-pub trait MirLint<'tcx> {
+pub(super) trait MirLint<'tcx> {
     fn name(&self) -> &'static str {
         // FIXME Simplify the implementation once more `str` methods get const-stable.
         // See copypaste in `MirPass`
@@ -105,7 +105,7 @@ pub trait MirLint<'tcx> {
 
 /// An adapter for `MirLint`s that implements `MirPass`.
 #[derive(Debug, Clone)]
-pub struct Lint<T>(pub T);
+pub(super) struct Lint<T>(pub T);
 
 impl<'tcx, T> MirPass<'tcx> for Lint<T>
 where
@@ -128,7 +128,7 @@ where
     }
 }
 
-pub struct WithMinOptLevel<T>(pub u32, pub T);
+pub(super) struct WithMinOptLevel<T>(pub u32, pub T);
 
 impl<'tcx, T> MirPass<'tcx> for WithMinOptLevel<T>
 where
@@ -149,7 +149,7 @@ where
 
 /// Run the sequence of passes without validating the MIR after each pass. The MIR is still
 /// validated at the end.
-pub fn run_passes_no_validate<'tcx>(
+pub(super) fn run_passes_no_validate<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     passes: &[&dyn MirPass<'tcx>],
@@ -159,7 +159,7 @@ pub fn run_passes_no_validate<'tcx>(
 }
 
 /// The optional `phase_change` is applied after executing all the passes, if present
-pub fn run_passes<'tcx>(
+pub(super) fn run_passes<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     passes: &[&dyn MirPass<'tcx>],
@@ -168,7 +168,7 @@ pub fn run_passes<'tcx>(
     run_passes_inner(tcx, body, passes, phase_change, true);
 }
 
-pub fn should_run_pass<'tcx, P>(tcx: TyCtxt<'tcx>, pass: &P) -> bool
+pub(super) fn should_run_pass<'tcx, P>(tcx: TyCtxt<'tcx>, pass: &P) -> bool
 where
     P: MirPass<'tcx> + ?Sized,
 {
@@ -264,11 +264,11 @@ fn run_passes_inner<'tcx>(
     }
 }
 
-pub fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
+pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
     validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
 }
 
-pub fn dump_mir_for_pass<'tcx>(
+pub(super) fn dump_mir_for_pass<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     pass_name: &str,
@@ -284,7 +284,7 @@ pub fn dump_mir_for_pass<'tcx>(
     );
 }
 
-pub fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+pub(super) fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     assert_eq!(body.pass_count, 0);
     mir::dump_mir(tcx, true, body.phase.name(), &"after", body, |_, _| Ok(()))
 }
