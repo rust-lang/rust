@@ -344,6 +344,7 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+    pub initial_cargo_clippy: Option<PathBuf>,
 
     #[cfg(not(test))]
     initial_rustfmt: RefCell<RustfmtState>,
@@ -834,6 +835,7 @@ define_config! {
         cargo: Option<PathBuf> = "cargo",
         rustc: Option<PathBuf> = "rustc",
         rustfmt: Option<PathBuf> = "rustfmt",
+        cargo_clippy: Option<PathBuf> = "cargo-clippy",
         docs: Option<bool> = "docs",
         compiler_docs: Option<bool> = "compiler-docs",
         library_docs_private_items: Option<bool> = "library-docs-private-items",
@@ -1439,6 +1441,7 @@ impl Config {
             cargo,
             rustc,
             rustfmt,
+            cargo_clippy,
             docs,
             compiler_docs,
             library_docs_private_items,
@@ -1490,6 +1493,14 @@ impl Config {
             // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
             config.out = absolute(&config.out).expect("can't make empty path absolute");
         }
+
+        if cargo_clippy.is_some() && rustc.is_none() {
+            println!(
+                "WARNING: Using `build.cargo-clippy` without `build.rustc` usually fails due to toolchain conflict."
+            );
+        }
+
+        config.initial_cargo_clippy = cargo_clippy;
 
         config.initial_rustc = if let Some(rustc) = rustc {
             if !flags.skip_stage0_validation {
