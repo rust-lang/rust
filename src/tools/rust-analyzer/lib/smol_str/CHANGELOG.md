@@ -16,4 +16,4 @@
 ## 0.2.2 - 2024-05-14
 
 - Add `StrExt` trait providing `to_lowercase_smolstr`, `replace_smolstr` and similar
-- Add `PartialEq` optimisation for `ptr_eq`-able representations
+- Add `PartialEq` optimization for `ptr_eq`-able representations
