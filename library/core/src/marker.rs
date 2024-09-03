@@ -293,7 +293,7 @@ marker_impls! {
 ///
 /// ```
 /// #[derive(Clone)]
-/// struct MyStruct<T>;
+/// struct MyStruct<T>(T);
 ///
 /// impl<T: Copy> Copy for MyStruct<T> { } 
 /// ```
