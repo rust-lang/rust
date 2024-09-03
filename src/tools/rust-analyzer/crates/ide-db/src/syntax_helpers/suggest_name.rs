@@ -1,12 +1,14 @@
 //! This module contains functions to suggest names for expressions, functions and other items
 
+use std::{collections::hash_map::Entry, str::FromStr};
+
 use hir::Semantics;
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
+use rustc_hash::FxHashMap;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, HasName},
-    match_ast, AstNode, Edition, SmolStr,
+    match_ast, AstNode, Edition, SmolStr, SmolStrBuilder,
 };
 
 use crate::RootDatabase;
@@ -62,71 +64,131 @@ const USELESS_METHODS: &[&str] = &[
     "into_future",
 ];
 
-/// Suggest a name for given type.
+/// Generator for new names
 ///
-/// The function will strip references first, and suggest name from the inner type.
+/// The generator keeps track of existing names and suggests new names that do
+/// not conflict with existing names.
 ///
-/// - If `ty` is an ADT, it will suggest the name of the ADT.
-///   + If `ty` is wrapped in `Box`, `Option` or `Result`, it will suggest the name from the inner type.
-/// - If `ty` is a trait, it will suggest the name of the trait.
-/// - If `ty` is an `impl Trait`, it will suggest the name of the first trait.
+/// The generator will try to resolve conflicts by adding a numeric suffix to
+/// the name, e.g. `a`, `a1`, `a2`, ...
 ///
-/// If the suggested name conflicts with reserved keywords, it will return `None`.
-pub fn for_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<String> {
-    let ty = ty.strip_references();
-    name_of_type(&ty, db, edition)
+/// # Examples
+/// ```rust
+/// let mut generator = NameGenerator::new();
+/// assert_eq!(generator.suggest_name("a"), "a");
+/// assert_eq!(generator.suggest_name("a"), "a1");
+///
+/// assert_eq!(generator.suggest_name("b2"), "b2");
+/// assert_eq!(generator.suggest_name("b"), "b3");
+/// ```
+#[derive(Debug, Default)]
+pub struct NameGenerator {
+    pool: FxHashMap<SmolStr, usize>,
 }
 
-/// Suggest a unique name for generic parameter.
-///
-/// `existing_params` is used to check if the name conflicts with existing
-/// generic parameters.
-///
-/// The function checks if the name conflicts with existing generic parameters.
-/// If so, it will try to resolve the conflict by adding a number suffix, e.g.
-/// `T`, `T0`, `T1`, ...
-pub fn for_unique_generic_name(name: &str, existing_params: &ast::GenericParamList) -> SmolStr {
-    let param_names = existing_params
-        .generic_params()
-        .map(|param| match param {
-            ast::GenericParam::TypeParam(t) => t.name().unwrap().to_string(),
-            p => p.to_string(),
-        })
-        .collect::<FxHashSet<_>>();
-    let mut name = name.to_owned();
-    let base_len = name.len();
-    let mut count = 0;
-    while param_names.contains(&name) {
-        name.truncate(base_len);
-        name.push_str(&count.to_string());
-        count += 1;
+impl NameGenerator {
+    /// Create a new empty generator
+    pub fn new() -> Self {
+        Self { pool: FxHashMap::default() }
     }
 
-    name.into()
-}
+    /// Create a new generator with existing names. When suggesting a name, it will
+    /// avoid conflicts with existing names.
+    pub fn new_with_names<'a>(existing_names: impl Iterator<Item = &'a str>) -> Self {
+        let mut generator = Self::new();
+        existing_names.for_each(|name| generator.insert(name));
+        generator
+    }
 
-/// Suggest name of impl trait type
-///
-/// `existing_params` is used to check if the name conflicts with existing
-/// generic parameters.
-///
-/// # Current implementation
-///
-/// In current implementation, the function tries to get the name from the first
-/// character of the name for the first type bound.
-///
-/// If the name conflicts with existing generic parameters, it will try to
-/// resolve the conflict with `for_unique_generic_name`.
-pub fn for_impl_trait_as_generic(
-    ty: &ast::ImplTraitType,
-    existing_params: &ast::GenericParamList,
-) -> SmolStr {
-    let c = ty
-        .type_bound_list()
-        .and_then(|bounds| bounds.syntax().text().char_at(0.into()))
-        .unwrap_or('T');
+    /// Suggest a name without conflicts. If the name conflicts with existing names,
+    /// it will try to resolve the conflict by adding a numeric suffix.
+    pub fn suggest_name(&mut self, name: &str) -> SmolStr {
+        let (prefix, suffix) = Self::split_numeric_suffix(name);
+        let prefix = SmolStr::new(prefix);
+        let suffix = suffix.unwrap_or(0);
 
-    for_unique_generic_name(c.encode_utf8(&mut [0; 4]), existing_params)
+        match self.pool.entry(prefix.clone()) {
+            Entry::Vacant(entry) => {
+                entry.insert(suffix);
+                SmolStr::from_str(name).unwrap()
+            }
+            Entry::Occupied(mut entry) => {
+                let count = entry.get_mut();
+                *count = (*count + 1).max(suffix);
+
+                let mut new_name = SmolStrBuilder::new();
+                new_name.push_str(&prefix);
+                new_name.push_str(count.to_string().as_str());
+                new_name.finish()
+            }
+        }
+    }
+
+    /// Suggest a name for given type.
+    ///
+    /// The function will strip references first, and suggest name from the inner type.
+    ///
+    /// - If `ty` is an ADT, it will suggest the name of the ADT.
+    ///   + If `ty` is wrapped in `Box`, `Option` or `Result`, it will suggest the name from the inner type.
+    /// - If `ty` is a trait, it will suggest the name of the trait.
+    /// - If `ty` is an `impl Trait`, it will suggest the name of the first trait.
+    ///
+    /// If the suggested name conflicts with reserved keywords, it will return `None`.
+    pub fn for_type(
+        &mut self,
+        ty: &hir::Type,
+        db: &RootDatabase,
+        edition: Edition,
+    ) -> Option<SmolStr> {
+        let name = name_of_type(ty, db, edition)?;
+        Some(self.suggest_name(&name))
+    }
+
+    /// Suggest name of impl trait type
+    ///
+    /// # Current implementation
+    ///
+    /// In current implementation, the function tries to get the name from the first
+    /// character of the name for the first type bound.
+    ///
+    /// If the name conflicts with existing generic parameters, it will try to
+    /// resolve the conflict with `for_unique_generic_name`.
+    pub fn for_impl_trait_as_generic(&mut self, ty: &ast::ImplTraitType) -> SmolStr {
+        let c = ty
+            .type_bound_list()
+            .and_then(|bounds| bounds.syntax().text().char_at(0.into()))
+            .unwrap_or('T');
+
+        self.suggest_name(&c.to_string())
+    }
+
+    /// Insert a name into the pool
+    fn insert(&mut self, name: &str) {
+        let (prefix, suffix) = Self::split_numeric_suffix(name);
+        let prefix = SmolStr::new(prefix);
+        let suffix = suffix.unwrap_or(0);
+
+        match self.pool.entry(prefix) {
+            Entry::Vacant(entry) => {
+                entry.insert(suffix);
+            }
+            Entry::Occupied(mut entry) => {
+                let count = entry.get_mut();
+                *count = (*count).max(suffix);
+            }
+        }
+    }
+
+    /// Remove the numeric suffix from the name
+    ///
+    /// # Examples
+    /// `a1b2c3` -> `a1b2c`
+    fn split_numeric_suffix(name: &str) -> (&str, Option<usize>) {
+        let pos =
+            name.rfind(|c: char| !c.is_numeric()).expect("Name cannot be empty or all-numeric");
+        let (prefix, suffix) = name.split_at(pos + 1);
+        (prefix, suffix.parse().ok())
+    }
 }
 
 /// Suggest name of variable for given expression
@@ -290,9 +352,10 @@ fn var_name_from_pat(pat: &ast::Pat) -> Option<ast::Name> {
 
 fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<String> {
     let ty = sema.type_of_expr(expr)?.adjusted();
+    let ty = ty.remove_ref().unwrap_or(ty);
     let edition = sema.scope(expr.syntax())?.krate().edition(sema.db);
 
-    for_type(&ty, sema.db, edition)
+    name_of_type(&ty, sema.db, edition)
 }
 
 fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<String> {
@@ -924,5 +987,30 @@ fn main() {
 "#,
             "bar",
         );
+    }
+
+    #[test]
+    fn conflicts_with_existing_names() {
+        let mut generator = NameGenerator::new();
+        assert_eq!(generator.suggest_name("a"), "a");
+        assert_eq!(generator.suggest_name("a"), "a1");
+        assert_eq!(generator.suggest_name("a"), "a2");
+        assert_eq!(generator.suggest_name("a"), "a3");
+
+        assert_eq!(generator.suggest_name("b"), "b");
+        assert_eq!(generator.suggest_name("b2"), "b2");
+        assert_eq!(generator.suggest_name("b"), "b3");
+        assert_eq!(generator.suggest_name("b"), "b4");
+        assert_eq!(generator.suggest_name("b3"), "b5");
+
+        // ---------
+        let mut generator = NameGenerator::new_with_names(["a", "b", "b2", "c4"].into_iter());
+        assert_eq!(generator.suggest_name("a"), "a1");
+        assert_eq!(generator.suggest_name("a"), "a2");
+
+        assert_eq!(generator.suggest_name("b"), "b3");
+        assert_eq!(generator.suggest_name("b2"), "b4");
+
+        assert_eq!(generator.suggest_name("c"), "c5");
     }
 }

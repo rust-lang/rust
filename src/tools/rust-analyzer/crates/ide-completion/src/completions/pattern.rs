@@ -48,11 +48,12 @@ pub(crate) fn complete_pattern(
 
     // Suggest name only in let-stmt and fn param
     if pattern_ctx.should_suggest_name {
+        let mut name_generator = suggest_name::NameGenerator::new();
         if let Some(suggested) = ctx
             .expected_type
             .as_ref()
             .map(|ty| ty.strip_references())
-            .and_then(|ty| suggest_name::for_type(&ty, ctx.db, ctx.edition))
+            .and_then(|ty| name_generator.for_type(&ty, ctx.db, ctx.edition))
         {
             acc.suggest_name(ctx, &suggested);
         }
