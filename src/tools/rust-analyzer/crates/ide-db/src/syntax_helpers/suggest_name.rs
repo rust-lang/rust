@@ -18,7 +18,9 @@ const USELESS_TRAITS: &[&str] = &["Send", "Sync", "Copy", "Clone", "Eq", "Partia
 ///
 /// **NOTE**: they all must be snake lower case
 const USELESS_NAMES: &[&str] =
-    &["new", "default", "option", "some", "none", "ok", "err", "str", "string"];
+    &["new", "default", "option", "some", "none", "ok", "err", "str", "string", "from", "into"];
+
+const USELESS_NAME_PREFIXES: &[&str] = &["from_", "with_", "into_"];
 
 /// Generic types replaced by their first argument
 ///
@@ -186,6 +188,10 @@ fn normalize(name: &str) -> Option<String> {
     let name = to_lower_snake_case(name);
 
     if USELESS_NAMES.contains(&name.as_str()) {
+        return None;
+    }
+
+    if USELESS_NAME_PREFIXES.iter().any(|prefix| name.starts_with(prefix)) {
         return None;
     }
 
@@ -829,6 +835,94 @@ struct S<T> {
 fn foo<T>(some_struct: S<T>) { $0some_struct.some_field$0 }
 "#,
             "some_field",
+        );
+    }
+
+    #[test]
+    fn from_and_to_func() {
+        check(
+            r#"
+//- minicore: from
+struct Foo;
+struct Bar;
+
+impl From<Foo> for Bar {
+    fn from(_: Foo) -> Self {
+        Bar;
+    }
+}
+
+fn f(_: Bar) {}
+
+fn main() {
+    let foo = Foo {};
+    f($0Bar::from(foo)$0);
+}
+"#,
+            "bar",
+        );
+
+        check(
+            r#"
+//- minicore: from
+struct Foo;
+struct Bar;
+
+impl From<Foo> for Bar {
+    fn from(_: Foo) -> Self {
+        Bar;
+    }
+}
+
+fn f(_: Bar) {}
+
+fn main() {
+    let foo = Foo {};
+    f($0Into::<Bar>::into(foo)$0);
+}
+"#,
+            "bar",
+        );
+    }
+
+    #[test]
+    fn useless_name_prefix() {
+        check(
+            r#"
+struct Foo;
+struct Bar;
+
+impl Bar {
+    fn from_foo(_: Foo) -> Self {
+        Foo {}
+    }
+}
+
+fn main() {
+    let foo = Foo {};
+    let _ = $0Bar::from_foo(foo)$0;
+}
+"#,
+            "bar",
+        );
+
+        check(
+            r#"
+struct Foo;
+struct Bar;
+
+impl Bar {
+    fn with_foo(_: Foo) -> Self {
+        Bar {}
+    }
+}
+
+fn main() {
+    let foo = Foo {};
+    let _ = $0Bar::with_foo(foo)$0;
+}
+"#,
+            "bar",
         );
     }
 }
