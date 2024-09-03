@@ -201,7 +201,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         bx.context.new_bitcast(None, shuffled, v_type)
     };
 
-    if name == sym::simd_bswap || name == sym::simd_bitreverse {
+    if matches!(name, sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctpop) {
         require!(
             bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
             InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
@@ -210,6 +210,22 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
     if name == sym::simd_bswap {
         return Ok(simd_bswap(bx, args[0].immediate()));
+    }
+
+    let simd_ctpop = |bx: &mut Builder<'a, 'gcc, 'tcx>, vector: RValue<'gcc>| -> RValue<'gcc> {
+        let mut vector_elements = vec![];
+        let elem_ty = bx.element_type(llret_ty);
+        for i in 0..in_len {
+            let index = bx.context.new_rvalue_from_long(bx.ulong_type, i as i64);
+            let element = bx.extract_element(vector, index).to_rvalue();
+            let result = bx.context.new_cast(None, bx.pop_count(element), elem_ty);
+            vector_elements.push(result);
+        }
+        bx.context.new_rvalue_from_vector(None, llret_ty, &vector_elements)
+    };
+
+    if name == sym::simd_ctpop {
+        return Ok(simd_ctpop(bx, args[0].immediate()));
     }
 
     // We use a different algorithm from non-vector bitreverse to take advantage of most
