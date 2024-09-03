@@ -36,7 +36,7 @@ pub struct Validator {
     pub mir_phase: MirPhase,
 }
 
-impl<'tcx> MirPass<'tcx> for Validator {
+impl<'tcx> crate::MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // FIXME(JakobDegen): These bodies never instantiated in codegend anyway, so it's not
         // terribly important that they pass the validator. However, I think other passes might

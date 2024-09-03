@@ -6,8 +6,6 @@ use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{move_path_children_matching, Analysis, MaybeReachable};
 use rustc_target::abi::FieldIdx;
 
-use crate::MirPass;
-
 /// Removes `Drop` terminators whose target is known to be uninitialized at
 /// that point.
 ///
@@ -18,7 +16,7 @@ use crate::MirPass;
 /// [#90770]: https://github.com/rust-lang/rust/issues/90770
 pub struct RemoveUninitDrops;
 
-impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
+impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
         let move_data =

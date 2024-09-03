@@ -1,5 +1,5 @@
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{self, Location, MentionedItem, MirPass};
+use rustc_middle::mir::{self, Location, MentionedItem};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
@@ -13,7 +13,7 @@ struct MentionedItemsVisitor<'a, 'tcx> {
     mentioned_items: &'a mut Vec<Spanned<MentionedItem<'tcx>>>,
 }
 
-impl<'tcx> MirPass<'tcx> for MentionedItems {
+impl<'tcx> crate::MirPass<'tcx> for MentionedItems {
     fn is_enabled(&self, _sess: &Session) -> bool {
         // If this pass is skipped the collector assume that nothing got mentioned! We could
         // potentially skip it in opt-level 0 if we are sure that opt-level will never *remove* uses
