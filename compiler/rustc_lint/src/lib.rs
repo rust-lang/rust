@@ -598,6 +598,7 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see PR #125380 \
          <https://github.com/rust-lang/rust/pull/125380> for more information",
     );
+    store.register_removed("unsupported_calling_conventions", "converted into hard error");
 }
 
 fn register_internals(store: &mut LintStore) {
