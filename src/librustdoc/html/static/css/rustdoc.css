@@ -746,7 +746,8 @@ ul.block, .block li {
 }
 
 .rustdoc .example-wrap > pre,
-.rustdoc .scraped-example .src-line-numbers {
+.rustdoc .scraped-example .src-line-numbers,
+.rustdoc .scraped-example .src-line-numbers > pre {
 	border-radius: 6px;
 }
 
@@ -755,7 +756,8 @@ If the code example line numbers are displayed, there will be a weird radius in 
 both the code example and the line numbers, so we need to remove the radius in this case.
 */
 .rustdoc .example-wrap > .example-line-numbers,
-.rustdoc .scraped-example .src-line-numbers {
+.rustdoc .scraped-example .src-line-numbers,
+.rustdoc .scraped-example .src-line-numbers > pre {
 	border-top-right-radius: 0;
 	border-bottom-right-radius: 0;
 }
