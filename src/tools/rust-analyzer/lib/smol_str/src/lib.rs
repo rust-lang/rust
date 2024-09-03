@@ -19,7 +19,7 @@ use core::{
 /// * Strings are stack-allocated if they are:
 ///     * Up to 23 bytes long
 ///     * Longer than 23 bytes, but substrings of `WS` (see below). Such strings consist
-///     solely of consecutive newlines, followed by consecutive spaces
+///       solely of consecutive newlines, followed by consecutive spaces
 /// * If a string does not satisfy the aforementioned conditions, it is heap-allocated
 /// * Additionally, a `SmolStr` can be explicitly created from a `&'static str` without allocation
 ///
