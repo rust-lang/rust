@@ -1385,7 +1385,7 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 #[doc(hidden)]
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
-#[rustc_const_stable(feature = "const_int_from_str", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
@@ -1435,7 +1435,7 @@ macro_rules! from_str_radix {
             #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_str_radix(\"A\", 16), Ok(10));")]
             /// ```
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_from_str", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<$int_ty, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
@@ -1565,7 +1565,7 @@ macro_rules! from_str_radix_size_impl {
         #[doc = concat!("assert_eq!(", stringify!($size), "::from_str_radix(\"A\", 16), Ok(10));")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_from_str", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
         pub const fn from_str_radix(src: &str, radix: u32) -> Result<$size, ParseIntError> {
             match <$t>::from_str_radix(src, radix) {
                 Ok(x) => Ok(x as $size),
