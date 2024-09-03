@@ -102,16 +102,23 @@ impl SyntaxEditor {
     }
 }
 
+/// Represents a completed [`SyntaxEditor`] operation.
 pub struct SyntaxEdit {
-    root: SyntaxNode,
+    old_root: SyntaxNode,
+    new_root: SyntaxNode,
     changed_elements: Vec<SyntaxElement>,
     annotations: FxHashMap<SyntaxAnnotation, Vec<SyntaxElement>>,
 }
 
 impl SyntaxEdit {
-    /// Root of the modified syntax tree
-    pub fn root(&self) -> &SyntaxNode {
-        &self.root
+    /// Root of the initial unmodified syntax tree.
+    pub fn old_root(&self) -> &SyntaxNode {
+        &self.old_root
+    }
+
+    /// Root of the modified syntax tree.
+    pub fn new_root(&self) -> &SyntaxNode {
+        &self.new_root
     }
 
     /// Which syntax elements in the modified syntax tree were inserted or
@@ -441,14 +448,14 @@ mod tests {
                 let var_name = 2 + 2;
                 (var_name, true)
             }"#]];
-        expect.assert_eq(&edit.root.to_string());
+        expect.assert_eq(&edit.new_root.to_string());
 
         assert_eq!(edit.find_annotation(placeholder_snippet).len(), 2);
         assert!(edit
             .annotations
             .iter()
             .flat_map(|(_, elements)| elements)
-            .all(|element| element.ancestors().any(|it| &it == edit.root())))
+            .all(|element| element.ancestors().any(|it| &it == edit.new_root())))
     }
 
     #[test]
@@ -495,7 +502,7 @@ mod tests {
             let first = 1;{
                 let second = 2;let third = 3;
             }"#]];
-        expect.assert_eq(&edit.root.to_string());
+        expect.assert_eq(&edit.new_root.to_string());
     }
 
     #[test]
@@ -556,7 +563,7 @@ mod tests {
             }
             }
             }"#]];
-        expect.assert_eq(&edit.root.to_string());
+        expect.assert_eq(&edit.new_root.to_string());
     }
 
     #[test]
@@ -599,6 +606,6 @@ mod tests {
                 let second = 2;
             }
             }"#]];
-        expect.assert_eq(&edit.root.to_string());
+        expect.assert_eq(&edit.new_root.to_string());
     }
 }

@@ -81,7 +81,12 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         "some replace change ranges intersect: {:?}",
         changes
     ) {
-        return SyntaxEdit { root, annotations: Default::default(), changed_elements: vec![] };
+        return SyntaxEdit {
+            old_root: root.clone(),
+            new_root: root,
+            annotations: Default::default(),
+            changed_elements: vec![],
+        };
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -273,7 +278,12 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         annotation_groups.entry(annotation).or_insert(vec![]).push(element);
     }
 
-    SyntaxEdit { root, changed_elements, annotations: annotation_groups }
+    SyntaxEdit {
+        old_root: tree_mutator.immutable,
+        new_root: root,
+        changed_elements,
+        annotations: annotation_groups,
+    }
 }
 
 fn to_owning_node(element: &SyntaxElement) -> SyntaxNode {
@@ -329,6 +339,7 @@ impl ChangedAncestor {
 }
 
 struct TreeMutator {
+    immutable: SyntaxNode,
     mutable_clone: SyntaxNode,
 }
 
@@ -336,7 +347,7 @@ impl TreeMutator {
     fn new(immutable: &SyntaxNode) -> TreeMutator {
         let immutable = immutable.clone();
         let mutable_clone = immutable.clone_for_update();
-        TreeMutator { mutable_clone }
+        TreeMutator { immutable, mutable_clone }
     }
 
     fn make_element_mut(&self, element: &SyntaxElement) -> SyntaxElement {
