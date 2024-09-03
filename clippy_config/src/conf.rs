@@ -378,6 +378,7 @@ define_Conf! {
         rc_buffer,
         rc_mutex,
         redundant_allocation,
+        ref_option,
         single_call_fn,
         trivially_copy_pass_by_ref,
         unnecessary_box_returns,
