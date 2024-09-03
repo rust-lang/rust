@@ -802,6 +802,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.mask.cmp.b.128" => "__builtin_ia32_cmpb128_mask",
         "llvm.x86.xrstor" => "__builtin_ia32_xrstor",
         "llvm.x86.xsavec" => "__builtin_ia32_xsavec",
+        "llvm.x86.xsave64" => "__builtin_ia32_xsave64",
         "llvm.x86.addcarry.32" => "__builtin_ia32_addcarryx_u32",
         "llvm.x86.subborrow.32" => "__builtin_ia32_sbb_u32",
         "llvm.x86.avx512.mask.compress.store.w.512" => "__builtin_ia32_compressstoreuhi512_mask",
