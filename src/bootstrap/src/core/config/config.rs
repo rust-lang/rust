@@ -268,7 +268,6 @@ pub struct Config {
     pub rust_debuginfo_level_std: DebuginfoLevel,
     pub rust_debuginfo_level_tools: DebuginfoLevel,
     pub rust_debuginfo_level_tests: DebuginfoLevel,
-    pub rust_split_debuginfo_for_build_triple: Option<SplitDebuginfo>, // FIXME: Deprecated field. Remove in Q3'24.
     pub rust_rpath: bool,
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
@@ -1099,7 +1098,6 @@ define_config! {
         debuginfo_level_std: Option<DebuginfoLevel> = "debuginfo-level-std",
         debuginfo_level_tools: Option<DebuginfoLevel> = "debuginfo-level-tools",
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
-        split_debuginfo: Option<String> = "split-debuginfo",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
         parallel_compiler: Option<bool> = "parallel-compiler",
@@ -1636,7 +1634,6 @@ impl Config {
                 debuginfo_level_std: debuginfo_level_std_toml,
                 debuginfo_level_tools: debuginfo_level_tools_toml,
                 debuginfo_level_tests: debuginfo_level_tests_toml,
-                split_debuginfo,
                 backtrace,
                 incremental,
                 parallel_compiler,
@@ -1694,18 +1691,6 @@ impl Config {
             debuginfo_level_tools = debuginfo_level_tools_toml;
             debuginfo_level_tests = debuginfo_level_tests_toml;
             lld_enabled = lld_enabled_toml;
-
-            config.rust_split_debuginfo_for_build_triple = split_debuginfo
-                .as_deref()
-                .map(SplitDebuginfo::from_str)
-                .map(|v| v.expect("invalid value for rust.split-debuginfo"));
-
-            if config.rust_split_debuginfo_for_build_triple.is_some() {
-                println!(
-                    "WARNING: specifying `rust.split-debuginfo` is deprecated, use `target.{}.split-debuginfo` instead",
-                    config.build
-                );
-            }
 
             optimize = optimize_toml;
             omit_git_hash = omit_git_hash_toml;
@@ -2504,9 +2489,6 @@ impl Config {
         self.target_config
             .get(&target)
             .and_then(|t| t.split_debuginfo)
-            .or_else(|| {
-                if self.build == target { self.rust_split_debuginfo_for_build_triple } else { None }
-            })
             .unwrap_or_else(|| SplitDebuginfo::default_for_platform(target))
     }
 
@@ -2927,7 +2909,6 @@ fn check_incompatible_options_for_ci_rustc(
         debuginfo_level_std: _,
         debuginfo_level_tools: _,
         debuginfo_level_tests: _,
-        split_debuginfo: _,
         backtrace: _,
         parallel_compiler: _,
         musl_root: _,
