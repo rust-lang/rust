@@ -244,6 +244,8 @@ impl EnumSizeOpt {
         let ptr_sized_int = data_layout.ptr_sized_integer();
         let target_bytes = ptr_sized_int.size().bytes() as usize;
         let mut data = vec![0; target_bytes * num_discrs];
+
+        // We use a macro because `$bytes` can be u32 or u64.
         macro_rules! encode_store {
             ($curr_idx: expr, $endian: expr, $bytes: expr) => {
                 let bytes = match $endian {
