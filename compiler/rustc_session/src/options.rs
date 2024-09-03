@@ -1615,7 +1615,7 @@ options! {
     save_temps: bool = (false, parse_bool, [UNTRACKED],
         "save all temporary output files during compilation (default: no)"),
     soft_float: bool = (false, parse_bool, [TRACKED],
-        "use soft float ABI (*eabihf targets only) (default: no)"),
+        "deprecated option: use soft float ABI (*eabihf targets only) (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::split_debuginfo` instead of this field")]
     split_debuginfo: Option<SplitDebuginfo> = (None, parse_split_debuginfo, [TRACKED],
         "how to handle split-debuginfo, a platform-specific option"),

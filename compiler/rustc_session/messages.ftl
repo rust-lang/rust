@@ -107,6 +107,16 @@ session_sanitizer_not_supported = {$us} sanitizer is not supported for this targ
 session_sanitizers_not_supported = {$us} sanitizers are not supported for this target
 
 session_skipping_const_checks = skipping const checks
+
+session_soft_float_deprecated =
+    `-Csoft-float` is unsound and deprecated; use a corresponding *eabi target instead
+    .note = it will be removed or ignored in a future version of Rust
+session_soft_float_deprecated_issue = see issue #129893 <https://github.com/rust-lang/rust/issues/129893> for more information
+
+session_soft_float_ignored =
+    `-Csoft-float` is ignored on this target; it only has an effect on *eabihf targets
+    .note = this may become a hard error in a future version of Rust
+
 session_split_debuginfo_unstable_platform = `-Csplit-debuginfo={$debuginfo}` is unstable on this platform
 
 session_split_lto_unit_requires_lto = `-Zsplit-lto-unit` requires `-Clto`, `-Clto=thin`, or `-Clinker-plugin-lto`
