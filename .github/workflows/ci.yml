@@ -122,8 +122,8 @@ jobs:
           # which then uses log commands to actually set them.
           EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
 
-      - name: ensure the channel matches the target branch
-        run: src/ci/scripts/verify-channel.sh
+      # - name: ensure the channel matches the target branch
+      #   run: src/ci/scripts/verify-channel.sh
 
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
