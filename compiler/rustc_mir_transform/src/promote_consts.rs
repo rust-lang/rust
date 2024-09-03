@@ -41,7 +41,7 @@ pub struct PromoteTemps<'tcx> {
     pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
 }
 
-impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
+impl<'tcx> crate::MirPass<'tcx> for PromoteTemps<'tcx> {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //

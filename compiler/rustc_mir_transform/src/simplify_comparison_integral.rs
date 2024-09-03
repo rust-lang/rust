@@ -9,8 +9,6 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
 
-use super::MirPass;
-
 /// Pass to convert `if` conditions on integrals into switches on the integral.
 /// For an example, it turns something like
 ///
@@ -27,7 +25,7 @@ use super::MirPass;
 /// ```
 pub struct SimplifyComparisonIntegral;
 
-impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
+impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

@@ -22,7 +22,7 @@ use rustc_target::spec::PanicStrategy;
 #[derive(PartialEq)]
 pub struct AbortUnwindingCalls;
 
-impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
+impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
         let kind = tcx.def_kind(def_id);

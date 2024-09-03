@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 
 pub struct RevealAll;
 
-impl<'tcx> MirPass<'tcx> for RevealAll {
+impl<'tcx> crate::MirPass<'tcx> for RevealAll {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         RevealAllVisitor { tcx, param_env }.visit_body_preserves_cfg(body);

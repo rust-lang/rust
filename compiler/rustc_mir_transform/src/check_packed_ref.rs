@@ -3,11 +3,11 @@ use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::{errors, util, MirLint};
+use crate::{errors, util};
 
 pub struct CheckPackedRef;
 
-impl<'tcx> MirLint<'tcx> for CheckPackedRef {
+impl<'tcx> crate::MirLint<'tcx> for CheckPackedRef {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
         let source_info = SourceInfo::outermost(body.span);
