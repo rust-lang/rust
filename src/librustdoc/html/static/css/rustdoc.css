@@ -34,6 +34,8 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 </g></svg>');
 	--button-left-margin: 4px;
 	--button-border-radius: 2px;
+	--toolbar-button-border-radius: 6px;
+	--code-block-border-radius: 6px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -183,7 +185,7 @@ h1, h2, h3, h4 {
 	grid-template-columns: 1fr max-content;
 	grid-template-rows: 25px min-content min-content;
 	padding-bottom: 6px;
-	margin-bottom: 15px;
+	margin-bottom: 11px;
 }
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
@@ -904,6 +906,7 @@ both the code example and the line numbers, so we need to remove the radius in t
 	flex-grow: 0;
 	grid-area: main-heading-sub-heading;
 	line-height: 1.25;
+	padding-bottom: 4px;
 }
 
 .main-heading rustdoc-toolbar, .main-heading .out-of-band {
@@ -918,6 +921,7 @@ rustdoc-toolbar {
 .docblock code, .docblock-short code,
 pre, .rustdoc.src .example-wrap {
 	background-color: var(--code-block-background-color);
+	border-radius: var(--code-block-border-radius);
 }
 
 #main-content {
@@ -1315,14 +1319,14 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 #settings.popover {
 	--popover-arrow-offset: 202px;
-	top: calc(100% - 12px);
+	top: calc(100% - 16px);
 }
 
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
 	max-width: 600px;
 	--popover-arrow-offset: 118px;
-	top: calc(100% - 12px);
+	top: calc(100% - 16px);
 }
 
 #help dt {
@@ -1838,6 +1842,7 @@ a.tooltip:hover::after {
 }
 #settings-menu > a, #help-button > a, button#toggle-all-docs {
 	width: 80px;
+	border-radius: var(--toolbar-button-border-radius);
 }
 #sidebar-button > a {
 	background-color: var(--button-background-color);
@@ -1924,6 +1929,7 @@ button[disabled]#toggle-all-docs:hover {
 rustdoc-toolbar span.label {
 	font-size: 1rem;
 	flex-grow: 1;
+	padding-bottom: 4px;
 }
 
 #sidebar-button > a:before {
