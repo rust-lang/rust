@@ -1,8 +1,11 @@
 #include <stdio.h>
 
+// See comments in build_native_lib()
+#define EXPORT __attribute__((visibility("default")))
+
 /* Test: test_pointer */
 
-void print_pointer(const int *ptr) {
+EXPORT void print_pointer(const int *ptr) {
   printf("printing pointer dereference from C: %d\n", *ptr);
 }
 
@@ -12,7 +15,7 @@ typedef struct Simple {
   int field;
 } Simple;
 
-int access_simple(const Simple *s_ptr) {
+EXPORT int access_simple(const Simple *s_ptr) {
   return s_ptr->field;
 }
 
@@ -24,7 +27,7 @@ typedef struct Nested {
 } Nested;
 
 // Returns the innermost/last value of a Nested pointer chain.
-int access_nested(const Nested *n_ptr) {
+EXPORT int access_nested(const Nested *n_ptr) {
   // Edge case: `n_ptr == NULL` (i.e. first Nested is None).
   if (!n_ptr) { return 0; }
 
@@ -42,6 +45,6 @@ typedef struct Static {
     struct Static *recurse;
 } Static;
 
-int access_static(const Static *s_ptr) {
+EXPORT int access_static(const Static *s_ptr) {
   return s_ptr->recurse->recurse->value;
 }

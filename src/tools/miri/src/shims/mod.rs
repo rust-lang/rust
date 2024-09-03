@@ -2,7 +2,7 @@
 
 mod alloc;
 mod backtrace;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 mod native_lib;
 mod unix;
 mod wasi;
