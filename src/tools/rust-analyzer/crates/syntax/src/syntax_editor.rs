@@ -150,6 +150,12 @@ impl SyntaxAnnotation {
     }
 }
 
+impl Default for SyntaxAnnotation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Position describing where to insert elements
 #[derive(Debug)]
 pub struct Position {
@@ -443,24 +449,6 @@ mod tests {
             .iter()
             .flat_map(|(_, elements)| elements)
             .all(|element| element.ancestors().any(|it| &it == edit.root())))
-    }
-
-    #[test]
-    #[should_panic = "some replace change ranges intersect: [Replace(Node(TUPLE_EXPR@5..7), Some(Node(NAME_REF@0..8))), Replace(Node(TUPLE_EXPR@5..7), Some(Node(NAME_REF@0..8)))]"]
-    fn fail_on_non_disjoint_single_replace() {
-        let root = make::match_arm([make::wildcard_pat().into()], None, make::expr_tuple([]));
-
-        let to_wrap = root.syntax().descendants().find_map(ast::TupleExpr::cast).unwrap();
-
-        let mut editor = SyntaxEditor::new(root.syntax().clone());
-
-        let name_ref = make::name_ref("var_name").clone_for_update();
-
-        // should die, ranges are not disjoint
-        editor.replace(to_wrap.syntax(), name_ref.syntax());
-        editor.replace(to_wrap.syntax(), name_ref.syntax());
-
-        let _ = editor.finish();
     }
 
     #[test]

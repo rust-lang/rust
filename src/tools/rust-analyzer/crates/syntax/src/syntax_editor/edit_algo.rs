@@ -1,3 +1,5 @@
+//! Implementation of applying changes to a syntax tree.
+
 use std::{cmp::Ordering, collections::VecDeque, ops::RangeInclusive};
 
 use rowan::TextRange;
@@ -209,7 +211,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
                 }
             },
             Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
-                *target = upmap_target(&target);
+                *target = upmap_target(target);
             }
             Change::ReplaceAll(range, _) => {
                 *range = upmap_target(range.start())..=upmap_target(range.end());
@@ -233,7 +235,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             Change::Replace(target, None) => {
                 target.detach();
             }
-            Change::Replace(SyntaxElement::Node(target), Some(new_target)) if &target == &root => {
+            Change::Replace(SyntaxElement::Node(target), Some(new_target)) if target == root => {
                 root = new_target.into_node().expect("root node replacement should be a node");
             }
             Change::Replace(target, Some(new_target)) => {
@@ -288,7 +290,7 @@ struct ChangedAncestor {
 
 enum ChangedAncestorKind {
     Single { node: SyntaxNode },
-    Range { _changed_elements: RangeInclusive<SyntaxElement>, in_parent: SyntaxNode },
+    Range { _changed_elements: RangeInclusive<SyntaxElement>, _in_parent: SyntaxNode },
 }
 
 impl ChangedAncestor {
@@ -307,7 +309,7 @@ impl ChangedAncestor {
         Self {
             kind: ChangedAncestorKind::Range {
                 _changed_elements: range.clone(),
-                in_parent: range.start().parent().unwrap(),
+                _in_parent: range.start().parent().unwrap(),
             },
             change_index,
         }
@@ -316,7 +318,7 @@ impl ChangedAncestor {
     fn affected_range(&self) -> TextRange {
         match &self.kind {
             ChangedAncestorKind::Single { node } => node.text_range(),
-            ChangedAncestorKind::Range { _changed_elements: changed_nodes, in_parent: _ } => {
+            ChangedAncestorKind::Range { _changed_elements: changed_nodes, _in_parent: _ } => {
                 TextRange::new(
                     changed_nodes.start().text_range().start(),
                     changed_nodes.end().text_range().end(),
@@ -339,7 +341,7 @@ impl TreeMutator {
 
     fn make_element_mut(&self, element: &SyntaxElement) -> SyntaxElement {
         match element {
-            SyntaxElement::Node(node) => SyntaxElement::Node(self.make_syntax_mut(&node)),
+            SyntaxElement::Node(node) => SyntaxElement::Node(self.make_syntax_mut(node)),
             SyntaxElement::Token(token) => {
                 let parent = self.make_syntax_mut(&token.parent().unwrap());
                 parent.children_with_tokens().nth(token.index()).unwrap()

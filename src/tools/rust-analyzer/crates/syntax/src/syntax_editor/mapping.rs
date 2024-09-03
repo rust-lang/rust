@@ -1,3 +1,7 @@
+//! Maps syntax elements through disjoint syntax nodes.
+//!
+//! [`SyntaxMappingBuilder`] should be used to create mappings to add to a [`SyntaxEditor`]
+
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 
@@ -168,11 +172,11 @@ impl SyntaxMapping {
         match (input_mapping, input_ancestor) {
             (Some(input_mapping), _) => {
                 // A mapping exists at the input, follow along the tree
-                Some(self.upmap_child(&input_mapping, &input_mapping, &output_root))
+                Some(self.upmap_child(&input_mapping, &input_mapping, output_root))
             }
             (None, Some(input_ancestor)) => {
                 // A mapping exists at an ancestor, follow along the tree
-                Some(self.upmap_child(input, &input_ancestor, &output_root))
+                Some(self.upmap_child(input, &input_ancestor, output_root))
             }
             (None, None) => {
                 // No mapping exists at all, is the same position in the final tree
