@@ -122,6 +122,7 @@ fn aarch64_linux() {
     println!("fp8dot2: {}", is_aarch64_feature_detected!("fp8dot2"));
     println!("wfxt: {}", is_aarch64_feature_detected!("wfxt"));
     println!("sme: {}", is_aarch64_feature_detected!("sme"));
+    println!("sme-b16b16: {}", is_aarch64_feature_detected!("sme-b16b16"));
     println!("sme-i16i64: {}", is_aarch64_feature_detected!("sme-i16i64"));
     println!("sme-f64f64: {}", is_aarch64_feature_detected!("sme-f64f64"));
     println!("sme-fa64: {}", is_aarch64_feature_detected!("sme-fa64"));

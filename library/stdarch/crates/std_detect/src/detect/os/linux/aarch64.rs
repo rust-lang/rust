@@ -469,11 +469,7 @@ impl AtHwcap {
                 self.svesha3 && sve2 && self.sha512 && self.sha3 && self.sha1 && self.sha2,
             );
             enable_feature(Feature::sve2_bitperm, self.svebitperm && self.sve2);
-            // SVE_B16B16 can be implemented either for SVE or SME
-            enable_feature(
-                Feature::sve_b16b16,
-                self.bf16 && (self.sveb16b16 || self.smeb16b16),
-            );
+            enable_feature(Feature::sve_b16b16, self.bf16 && self.sveb16b16);
             enable_feature(Feature::hbc, self.hbc);
             enable_feature(Feature::mops, self.mops);
             enable_feature(Feature::ecv, self.ecv);
@@ -497,6 +493,10 @@ impl AtHwcap {
             let sme2 = self.sme2 && sme;
             enable_feature(Feature::sme2, sme2);
             enable_feature(Feature::sme2p1, self.sme2p1 && sme2);
+            enable_feature(
+                Feature::sme_b16b16,
+                sme2 && self.bf16 && self.sveb16b16 && self.smeb16b16,
+            );
             enable_feature(Feature::sme_f16f16, self.smef16f16 && sme2);
             enable_feature(Feature::sme_lutv2, self.smelutv2);
             let sme_f8f32 = self.smef8f32 && sme2 && fp8;

@@ -62,6 +62,7 @@ features! {
     /// * `"sha3"` - FEAT_SHA512 & FEAT_SHA3
     /// * `"sm4"` - FEAT_SM3 & FEAT_SM4
     /// * `"sme"` - FEAT_SME
+    /// * `"sme-b16b16"` - FEAT_SME_B16B16
     /// * `"sme-f16f16"` - FEAT_SME_F16F16
     /// * `"sme-f64f64"` - FEAT_SME_F64F64
     /// * `"sme-f8f16"` - FEAT_SME_F8F16
@@ -76,7 +77,7 @@ features! {
     /// * `"ssve-fp8dot4"` - FEAT_SSVE_FP8DOT4
     /// * `"ssve-fp8fma"` - FEAT_SSVE_FP8FMA
     /// * `"sve"` - FEAT_SVE
-    /// * `"sve-b16b16"` - FEAT_SVE_B16B16
+    /// * `"sve-b16b16"` - FEAT_SVE_B16B16 (SVE or SME Z-targeting instructions)
     /// * `"sve2"` - FEAT_SVE2
     /// * `"sve2-aes"` - FEAT_SVE_AES & FEAT_SVE_PMULL128 (SVE2 AES crypto)
     /// * `"sve2-bitperm"` - FEAT_SVE2_BitPerm
@@ -207,6 +208,8 @@ features! {
     /// FEAT_SME2 (SME Version 2)
     @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme2p1: "sme2p1";
     /// FEAT_SME2p1 (SME Version 2.1)
+    @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_b16b16: "sme-b16b16";
+    /// FEAT_SME_B16B16
     @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_f16f16: "sme-f16f16";
     /// FEAT_SME_F16F16 (Non-widening half-precision FP16 to FP16 arithmetic for SME2)
     @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sme_f64f64: "sme-f64f64";
@@ -238,7 +241,7 @@ features! {
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sve2_aes: "sve2-aes";
     /// FEAT_SVE_AES & FEAT_SVE_PMULL128 (SVE2 AES crypto)
     @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] sve_b16b16: "sve-b16b16";
-    /// FEAT_SVE_B16B16 (SVE or SME Instructions)
+    /// FEAT_SVE_B16B16 (SVE or SME Z-targeting instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sve2_bitperm: "sve2-bitperm";
     /// FEAT_SVE_BitPerm (SVE2 bit permutation instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sve2_sha3: "sve2-sha3";
