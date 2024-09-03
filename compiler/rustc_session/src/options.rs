@@ -1511,6 +1511,7 @@ options! {
     // - src/doc/rustc/src/codegen-options/index.md
 
     // tidy-alphabetical-start
+    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     ar: String = (String::new(), parse_string, [UNTRACKED],
         "this option is deprecated and does nothing"),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
@@ -1543,6 +1544,7 @@ options! {
         "force use of unwind tables"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
+    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
         "this option is deprecated and does nothing \
         (consider using `-Cllvm-args=--inline-threshold=...`)"),
@@ -1579,6 +1581,7 @@ options! {
         "give an empty list of passes to the pass manager"),
     no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "disable the use of the redzone"),
+    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     no_stack_check: bool = (false, parse_no_flag, [UNTRACKED],
         "this option is deprecated and does nothing"),
     no_vectorize_loops: bool = (false, parse_no_flag, [TRACKED],
