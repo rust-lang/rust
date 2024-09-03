@@ -10,8 +10,8 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for expressions like `x.count_ones() == 1` or `x & (x - 1) == 0` which are manual
-    /// reimplementations of `x.is_power_of_two()``
+    /// Checks for expressions like `x.count_ones() == 1` or `x & (x - 1) == 0`, which are manual
+    /// reimplementations of `x.is_power_of_two()`.
     /// ### Why is this bad?
     /// Manual reimplementations of `is_power_of_two` increase code complexity for little benefit.
     /// ### Example
