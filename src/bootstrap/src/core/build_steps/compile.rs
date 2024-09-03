@@ -931,7 +931,12 @@ impl Step for Rustc {
         // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
         if builder.download_rustc() && compiler.stage != 0 {
-            builder.ensure(Sysroot { compiler, force_recompile: false });
+            let sysroot = builder.ensure(Sysroot { compiler, force_recompile: false });
+            cp_rustc_component_to_ci_sysroot(
+                builder,
+                &sysroot,
+                builder.config.ci_rustc_dev_contents(),
+            );
             return compiler.stage;
         }
 
