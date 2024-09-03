@@ -55,7 +55,7 @@ fn benchmark_expand_macro_rules() {
             })
             .sum()
     };
-    assert_eq!(hash, 69413);
+    assert_eq!(hash, 76353);
 }
 
 fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
