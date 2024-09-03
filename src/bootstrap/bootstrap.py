@@ -616,12 +616,6 @@ class RustBuild(object):
                 print('Choosing a pool size of', pool_size, 'for the unpacking of the tarballs')
             p = Pool(pool_size)
             try:
-                # FIXME: A cheap workaround for https://github.com/rust-lang/rust/issues/125578,
-                # remove this once the issue is closed.
-                bootstrap_out = self.bootstrap_out()
-                if os.path.exists(bootstrap_out):
-                    shutil.rmtree(bootstrap_out)
-
                 p.map(unpack_component, tarballs_download_info)
             finally:
                 p.close()
