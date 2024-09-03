@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, ops::RangeInclusive};
+use std::{cmp::Ordering, collections::VecDeque, ops::RangeInclusive};
 
 use rowan::TextRange;
 use rustc_hash::FxHashMap;
@@ -30,7 +30,12 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
 
     let SyntaxEditor { root, mut changes, mappings, annotations } = editor;
 
-    // Sort changes by range then change kind, so that we can:
+    let mut node_depths = FxHashMap::<SyntaxNode, usize>::default();
+    let mut get_node_depth = |node: SyntaxNode| {
+        *node_depths.entry(node).or_insert_with_key(|node| node.ancestors().count())
+    };
+
+    // Sort changes by range, then depth, then change kind, so that we can:
     // - ensure that parent edits are ordered before child edits
     // - ensure that inserts will be guaranteed to be inserted at the right range
     // - easily check for disjoint replace ranges
@@ -38,6 +43,16 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         a.target_range()
             .start()
             .cmp(&b.target_range().start())
+            .then_with(|| {
+                let a_target = a.target_parent();
+                let b_target = b.target_parent();
+
+                if a_target == b_target {
+                    return Ordering::Equal;
+                }
+
+                get_node_depth(a_target).cmp(&get_node_depth(b_target))
+            })
             .then(a.change_kind().cmp(&b.change_kind()))
     });
 
@@ -49,8 +64,8 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             l.change_kind() == ChangeKind::Replace && r.change_kind() == ChangeKind::Replace
         })
         .all(|(l, r)| {
-            (l.target_parent() != r.target_parent()
-                || l.target_range().intersect(r.target_range()).is_none())
+            get_node_depth(l.target_parent()) != get_node_depth(r.target_parent())
+                || l.target_range().intersect(r.target_range()).is_none()
         });
 
     if stdx::never!(
