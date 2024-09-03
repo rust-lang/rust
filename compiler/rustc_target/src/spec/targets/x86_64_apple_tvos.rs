@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{opts, tvos_sim_llvm_target, Arch, TargetAbi};
 use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let arch = Arch::X86_64;
     // x86_64-apple-tvos is a simulator target, even though it isn't declared
     // that way in the target name like the other ones...

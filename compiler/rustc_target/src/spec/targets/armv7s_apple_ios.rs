@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{ios_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let arch = Arch::Armv7s;
     Target {
         llvm_target: ios_llvm_target(arch).into(),

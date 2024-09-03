@@ -32,6 +32,7 @@
 #![feature(unwrap_infallible)]
 #![feature(yeet_expr)]
 #![recursion_limit = "512"] // For rustdoc
+#![warn(unreachable_pub)] // For rustdoc
 // tidy-alphabetical-end
 
 pub mod error_reporting;

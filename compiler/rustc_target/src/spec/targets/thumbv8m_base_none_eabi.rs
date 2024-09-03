@@ -2,7 +2,7 @@
 
 use crate::spec::{base, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv8m.base-none-eabi".into(),
         metadata: crate::spec::TargetMetadata {

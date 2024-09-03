@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{ios_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let arch = Arch::Arm64e;
     let mut base = opts("ios", arch, TargetAbi::Normal);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;

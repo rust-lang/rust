@@ -2,7 +2,7 @@ use crate::abi::Endian;
 use crate::spec::base::xtensa;
 use crate::spec::{cvs, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "xtensa-none-elf".into(),
         pointer_width: 32,

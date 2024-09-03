@@ -1,6 +1,6 @@
 use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::hurd_gnu::opts();
     base.cpu = "pentiumpro".into();
     base.max_atomic_width = Some(64);

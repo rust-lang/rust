@@ -20,7 +20,7 @@ fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {
 // because we need to get `Ty` of the const we are trying to create, to do that
 // we need to have access to `ConstantKind` but we can't access that inside Stable impl.
 #[allow(rustc::usage_of_qualified_ty)]
-pub fn new_allocation<'tcx>(
+pub(crate) fn new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
@@ -30,7 +30,7 @@ pub fn new_allocation<'tcx>(
 }
 
 #[allow(rustc::usage_of_qualified_ty)]
-pub fn try_new_allocation<'tcx>(
+pub(crate) fn try_new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,

@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{opts, Arch, TargetAbi};
 use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let arch = Arch::Armv7k;
     Target {
         llvm_target: "armv7k-apple-watchos".into(),

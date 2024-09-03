@@ -1,6 +1,6 @@
 use crate::spec::{base, SanitizerSet, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "arm-linux-androideabi".into(),
         metadata: crate::spec::TargetMetadata {
