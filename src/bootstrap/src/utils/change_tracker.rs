@@ -235,4 +235,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The `build.profiler` option now tries to use source code from `download-ci-llvm` if possible, instead of checking out the `src/llvm-project` submodule.",
     },
+    ChangeInfo {
+        change_id: 129152,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.cargo-clippy` added for supporting the use of custom/external clippy.",
+    },
 ];

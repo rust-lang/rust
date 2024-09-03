@@ -230,6 +230,13 @@
 # use this rustfmt binary instead as the stage0 snapshot rustfmt.
 #rustfmt = "/path/to/rustfmt"
 
+# Instead of downloading the src/stage0 version of cargo-clippy specified,
+# use this cargo-clippy binary instead as the stage0 snapshot cargo-clippy.
+#
+# Note that this option should be used with the same toolchain as the `rustc` option above. 
+# Otherwise, clippy is likely to fail due to a toolchain conflict.
+#cargo-clippy = "/path/to/cargo-clippy"
+
 # Whether to build documentation by default. If false, rustdoc and
 # friends will still be compiled but they will not be used to generate any
 # documentation.

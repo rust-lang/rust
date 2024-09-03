@@ -1501,6 +1501,7 @@ Executed at: {executed_at}"#,
                     "refs/remotes/origin/{}..HEAD",
                     self.config.stage0_metadata.config.nightly_branch
                 ))
+                .run_always()
                 .run_capture(self)
                 .stdout()
         });
