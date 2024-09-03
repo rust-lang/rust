@@ -177,11 +177,20 @@ h1, h2, h3, h4 {
 	position: relative;
 	display: grid;
 	grid-template-areas:
+		"main-heading-breadcrumbs main-heading-breadcrumbs"
 		"main-heading-h1 main-heading-toolbar"
 		"main-heading-sub-heading main-heading-toolbar";
 	grid-template-columns: 1fr max-content;
+	grid-template-rows: 25px min-content min-content;
 	padding-bottom: 6px;
 	margin-bottom: 15px;
+}
+.rustdoc-breadcrumbs {
+	grid-area: main-heading-breadcrumbs;
+	height: 25px;
+	line-height: 1.25;
+	display: flex;
+	align-items: end;
 }
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
@@ -228,6 +237,7 @@ a.src,
 rustdoc-toolbar,
 summary.hideme,
 .scraped-example-list,
+.rustdoc-breadcrumbs,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
@@ -890,9 +900,10 @@ both the code example and the line numbers, so we need to remove the radius in t
 }
 
 .sub-heading {
+	font-size: 1rem;
 	flex-grow: 0;
-	font-size: 1.125rem;
 	grid-area: main-heading-sub-heading;
+	line-height: 1.25;
 }
 
 .main-heading rustdoc-toolbar, .main-heading .out-of-band {
@@ -953,7 +964,7 @@ div.where {
 nav.sub {
 	flex-grow: 1;
 	flex-flow: row nowrap;
-	margin: 4px 0 25px 0;
+	margin: 4px 0 0 0;
 	display: flex;
 	align-items: center;
 }
@@ -964,7 +975,7 @@ nav.sub {
 	flex-grow: 1;
 }
 .src nav.sub {
-	margin: 0 0 15px 0;
+	margin: 0 0 -10px 0;
 }
 
 .section-header {
@@ -1073,6 +1084,11 @@ table,
 	/* make things look like in a line, despite the fact that we're using a layout
 	with boxes (i.e. from the flex layout) */
 	align-items: baseline;
+}
+.search-results-title + .sub-heading {
+	color: var(--main-color);
+	display: flex;
+	align-items: center;
 }
 #crate-search-div {
 	/* ensures that 100% in properties of #crate-search-div:after
@@ -1298,15 +1314,15 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 #settings.popover {
-	--popover-arrow-offset: 118px;
-	top: 26px;
+	--popover-arrow-offset: 202px;
+	top: calc(100% - 12px);
 }
 
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
 	max-width: 600px;
-	--popover-arrow-offset: 36px;
-	top: 26px;
+	--popover-arrow-offset: 118px;
+	top: calc(100% - 12px);
 }
 
 #help dt {
@@ -1722,7 +1738,6 @@ a.tooltip:hover::after {
 }
 
 #search-tabs {
-	grid-area: main-heading-sub-heading;
 	margin-top: 0.25rem;
 	display: flex;
 	flex-direction: row;
@@ -1788,7 +1803,7 @@ a.tooltip:hover::after {
 #settings-menu, #help-button, button#toggle-all-docs {
 	margin-left: var(--button-left-margin);
 	display: flex;
-	line-height: initial;
+	line-height: 1.25;
 }
 #sidebar-button {
 	display: none;
@@ -1873,7 +1888,8 @@ button#toggle-all-docs:before {
 	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg" fill="none">\
 	<circle r="5.25" cx="6" cy="6" stroke-width="1.25" stroke="black"/>\
-	<text x="4.25" y="9" style="font:8px sans-serif;font-weight:1000" fill="black">?</text></svg>');
+	<text x="6" y="7" style="font:8px sans-serif;font-weight:1000" text-anchor="middle" \
+		dominant-baseline="middle" fill="black">?</text></svg>');
 	width: 18px;
 	height: 18px;
 	filter: var(--settings-menu-filter);
@@ -1894,10 +1910,19 @@ button#toggle-all-docs:before,
 	}
 }
 
+button[disabled]#toggle-all-docs {
+	opacity: 0.25;
+	border: solid 1px var(--main-background-color);
+	background-size: cover;
+}
+
+button[disabled]#toggle-all-docs:hover {
+	border: solid 1px var(--main-background-color);
+	cursor: not-allowed;
+}
+
 rustdoc-toolbar span.label {
-	font-size: initial;
-	font-variant-caps: small-caps;
-	text-transform: lowercase;
+	font-size: 1rem;
 	flex-grow: 1;
 }
 
@@ -2155,15 +2180,6 @@ However, it's not needed with smaller screen width because the doc/code block is
 	opacity: 0.75;
 }
 
-/* help button is mostly for search */
-#help-button:not(.help-open),
-#alternative-display #toggle-all-docs {
-	display: none;
-}
-#alternative-display #help-button {
-	display: flex;
-}
-
 /* Media Queries */
 
 /* Make sure all the buttons line wrap at the same time */
@@ -2206,12 +2222,10 @@ in src-script.js and main.js
 		width: 33px;
 	}
 	#settings.popover {
-		--popover-arrow-offset: 48px;
-		top: calc(100% - 8px);
+		--popover-arrow-offset: 86px;
 	}
 	#help.popover {
-		--popover-arrow-offset: 12px;
-		top: calc(100% - 8px);
+		--popover-arrow-offset: 48px;
 	}
 
 	.rustdoc {
@@ -2256,6 +2270,9 @@ in src-script.js and main.js
 	}
 	.src .search-form {
 		margin-left: 40px;
+	}
+	.src .main-heading {
+		margin-left: 8px;
 	}
 	.hide-sidebar .search-form {
 		margin-left: 32px;
@@ -2394,7 +2411,7 @@ in src-script.js and main.js
 	}
 
 	.src nav.sub {
-		margin: 0;
+		margin: 0 0 -25px 0;
 		padding: var(--nav-sub-mobile-padding);
 	}
 }

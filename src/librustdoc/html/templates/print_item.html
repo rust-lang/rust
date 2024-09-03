@@ -1,11 +1,16 @@
 <div class="main-heading"> {# #}
-    <h1>
-        {{typ}}
-        {# The breadcrumbs of the item path, like std::string #}
+    {% if !path_components.is_empty() %}
+    <span class="rustdoc-breadcrumbs">
         {% for component in path_components %}
             <a href="{{component.path|safe}}index.html">{{component.name}}</a>::<wbr>
         {% endfor %}
-        <a class="{{item_type}}" href="#">{{name}}</a> {# #}
+    </span>
+    {% endif %}
+    <h1>
+        {{typ}}
+        <span{% if item_type != "mod" +%} class="{{item_type}}"{% endif %}>
+        {{name}}
+        </span> {# #}
         <button id="copy-path" title="Copy item path to clipboard"> {# #}
             Copy item path {# #}
         </button> {# #}

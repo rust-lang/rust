@@ -19,6 +19,10 @@ function resourcePath(basename, extension) {
 
 function hideMain() {
     addClass(document.getElementById(MAIN_ID), "hidden");
+    const toggle = document.getElementById("toggle-all-docs");
+    if (toggle) {
+        toggle.setAttribute("disabled", "disabled");
+    }
 }
 
 function showMain() {
@@ -30,6 +34,10 @@ function showMain() {
             searchState.rustdocToolbar.parentElement.removeChild(searchState.rustdocToolbar);
         }
         mainHeading.appendChild(searchState.rustdocToolbar);
+    }
+    const toggle = document.getElementById("toggle-all-docs");
+    if (toggle) {
+        toggle.removeAttribute("disabled");
     }
 }
 

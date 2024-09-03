@@ -3597,16 +3597,16 @@ async function showResults(results, go_to_first, filterCrates) {
 
     let crates = "";
     if (rawSearchIndex.size > 1) {
-        crates = " in&nbsp;<div id=\"crate-search-div\"><select id=\"crate-search\">" +
-            "<option value=\"all crates\">all crates</option>";
+        crates = "<div class=\"sub-heading\"> in&nbsp;<div id=\"crate-search-div\">" +
+            "<select id=\"crate-search\"><option value=\"all crates\">all crates</option>";
         for (const c of rawSearchIndex.keys()) {
             crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
         }
-        crates += "</select></div>";
+        crates += "</select></div></div>";
     }
 
     let output = `<div class="main-heading">\
-        <h1 class="search-results-title">Results${crates}</h1></div>`;
+        <h1 class="search-results-title">Results</h1>${crates}</div>`;
     if (results.query.error !== null) {
         const error = results.query.error;
         error.forEach((value, index) => {

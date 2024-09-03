@@ -50,7 +50,7 @@ compare-elements-size-near: (
 set-window-size: (900, 900)
 
 // First we check the current width, height and position.
-assert-css: ("#crate-search", {"width": "223px"})
+assert-css: ("#crate-search", {"width": "159px"})
 store-size: (".search-results-title", {
     "height": search_results_title_height,
     "width": search_results_title_width,
@@ -64,7 +64,7 @@ set-text: (
 )
 
 // Then we compare again to confirm the height didn't change.
-assert-size: ("#crate-search", {"width": 760})
+assert-size: ("#crate-search", {"width": 509})
 assert-size: (".search-results-title", {
     "height": |search_results_title_height|,
 })

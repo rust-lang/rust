@@ -293,10 +293,10 @@ class RustdocToolbarElement extends HTMLElement {
         <div id="settings-menu" tabindex="-1">
             <a href="${rootPath}settings.html"><span class="label">Settings</span></a>
         </div>
-        <button id="toggle-all-docs"><span class="label">Summary</span></button>
         <div id="help-button" tabindex="-1">
             <a href="${rootPath}help.html"><span class="label">Help</span></a>
-        </div>`;
+        </div>
+        <button id="toggle-all-docs"><span class="label">Summary</span></button>`;
     }
 }
 window.customElements.define("rustdoc-toolbar", RustdocToolbarElement);
