@@ -1029,6 +1029,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.vpdpbusds.128" => "__builtin_ia32_vpdpbusds_v4si",
         "llvm.x86.xsave" => "__builtin_ia32_xsave",
         "llvm.x86.xsaveopt" => "__builtin_ia32_xsaveopt",
+        "llvm.x86.xsaveopt64" => "__builtin_ia32_xsaveopt64",
         "llvm.x86.avx512.mask.loadu.w.512" => "__builtin_ia32_loaddquhi512_mask",
         "llvm.x86.avx512.mask.loadu.b.512" => "__builtin_ia32_loaddquqi512_mask",
         "llvm.x86.avx512.mask.loadu.w.256" => "__builtin_ia32_loaddquhi256_mask",
