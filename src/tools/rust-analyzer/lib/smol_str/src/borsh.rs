@@ -40,19 +40,3 @@ impl BorshDeserialize for SmolStr {
         }
     }
 }
-
-#[cfg(feature = "borsh/unstable__schema")]
-mod schema {
-    use alloc::collections::BTreeMap;
-    use borsh::schema::{Declaration, Definition};
-    use borsh::BorshSchema;
-    impl BorshSchema for SmolStr {
-        fn add_definitions_recursively(definitions: &mut BTreeMap<Declaration, Definition>) {
-            str::add_definitions_recursively(definitions)
-        }
-
-        fn declaration() -> Declaration {
-            str::declaration()
-        }
-    }
-}
