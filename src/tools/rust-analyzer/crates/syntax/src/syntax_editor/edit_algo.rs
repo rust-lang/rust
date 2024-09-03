@@ -1,10 +1,10 @@
 use std::{collections::VecDeque, ops::RangeInclusive};
 
 use rowan::TextRange;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::{
-    syntax_editor::{mapping::MissingMapping, Change, ChangeKind, Position, PositionRepr},
+    syntax_editor::{mapping::MissingMapping, Change, ChangeKind, PositionRepr},
     SyntaxElement, SyntaxNode, SyntaxNodePtr,
 };
 
@@ -41,12 +41,17 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             .then(a.change_kind().cmp(&b.change_kind()))
     });
 
-    let disjoint_replaces_ranges = changes.iter().zip(changes.iter().skip(1)).all(|(l, r)| {
-        l.change_kind() == ChangeKind::Replace
-            && r.change_kind() == ChangeKind::Replace
-            && (l.target_parent() != r.target_parent()
+    let disjoint_replaces_ranges = changes
+        .iter()
+        .zip(changes.iter().skip(1))
+        .filter(|(l, r)| {
+            // We only care about checking for disjoint replace ranges
+            l.change_kind() == ChangeKind::Replace && r.change_kind() == ChangeKind::Replace
+        })
+        .all(|(l, r)| {
+            (l.target_parent() != r.target_parent()
                 || l.target_range().intersect(r.target_range()).is_none())
-    });
+        });
 
     if stdx::never!(
         !disjoint_replaces_ranges,
