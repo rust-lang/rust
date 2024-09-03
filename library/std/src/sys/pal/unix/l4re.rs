@@ -54,6 +54,10 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn read_buf(&self, _: BorrowedCursor<'_>) -> io::Result<()> {
+            unimpl!();
+        }
+
         pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
             unimpl!();
         }
