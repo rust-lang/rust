@@ -22,7 +22,7 @@ impl BorshDeserialize for SmolStr {
                 Error::new(ErrorKind::InvalidData, msg)
             })?;
             Ok(SmolStr(Repr::Inline {
-                len: unsafe { transmute(len as u8) },
+                len: unsafe { transmute::<u8, crate::InlineSize>(len as u8) },
                 buf,
             }))
         } else {
