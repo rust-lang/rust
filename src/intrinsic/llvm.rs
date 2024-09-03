@@ -384,8 +384,10 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 );
                 args = vec![arg.get_address(None)].into();
             }
-            "__builtin_ia32_cvtqq2pd512_mask" | "__builtin_ia32_cvtqq2ps512_mask" | "__builtin_ia32_cvtuqq2pd512_mask" |
-                "__builtin_ia32_cvtuqq2ps512_mask" => {
+            "__builtin_ia32_cvtqq2pd512_mask"
+            | "__builtin_ia32_cvtqq2ps512_mask"
+            | "__builtin_ia32_cvtuqq2pd512_mask"
+            | "__builtin_ia32_cvtuqq2ps512_mask" => {
                 let mut old_args = args.to_vec();
                 let mut new_args = vec![];
                 new_args.push(old_args.swap_remove(0));
@@ -497,10 +499,19 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let new_args = args.to_vec();
                 args = vec![new_args[1], new_args[0], new_args[2]].into();
             }
-            "__builtin_ia32_rangesd128_mask_round" | "__builtin_ia32_rangess128_mask_round"
-                | "__builtin_ia32_reducesd_mask_round" => {
+            "__builtin_ia32_rangesd128_mask_round"
+            | "__builtin_ia32_rangess128_mask_round"
+            | "__builtin_ia32_reducesd_mask_round" => {
                 let new_args = args.to_vec();
-                args = vec![new_args[0], new_args[1], new_args[4], new_args[2], new_args[3], new_args[5]].into();
+                args = vec![
+                    new_args[0],
+                    new_args[1],
+                    new_args[4],
+                    new_args[2],
+                    new_args[3],
+                    new_args[5],
+                ]
+                .into();
             }
             _ => (),
         }
