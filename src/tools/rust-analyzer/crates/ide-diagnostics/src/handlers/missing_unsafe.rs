@@ -99,8 +99,9 @@ mod tests {
     fn missing_unsafe_diagnostic_with_raw_ptr() {
         check_diagnostics(
             r#"
+//- minicore: sized
 fn main() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     unsafe { let _y = *x; }
     let _z = *x;
 }          //^^💡 error: this operation is unsafe and requires an unsafe function or block
@@ -112,17 +113,18 @@ fn main() {
     fn missing_unsafe_diagnostic_with_unsafe_call() {
         check_diagnostics(
             r#"
+//- minicore: sized
 struct HasUnsafe;
 
 impl HasUnsafe {
     unsafe fn unsafe_fn(&self) {
-        let x = &5 as *const usize;
+        let x = &5_usize as *const usize;
         let _y = *x;
     }
 }
 
 unsafe fn unsafe_fn() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let _y = *x;
 }
 
@@ -250,14 +252,15 @@ fn main() {
     fn add_unsafe_block_when_dereferencing_a_raw_pointer() {
         check_fix(
             r#"
+//- minicore: sized
 fn main() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let _z = *x$0;
 }
 "#,
             r#"
 fn main() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let _z = unsafe { *x };
 }
 "#,
@@ -268,8 +271,9 @@ fn main() {
     fn add_unsafe_block_when_calling_unsafe_function() {
         check_fix(
             r#"
+//- minicore: sized
 unsafe fn func() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let z = *x;
 }
 fn main() {
@@ -278,7 +282,7 @@ fn main() {
 "#,
             r#"
 unsafe fn func() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let z = *x;
 }
 fn main() {
@@ -292,6 +296,7 @@ fn main() {
     fn add_unsafe_block_when_calling_unsafe_method() {
         check_fix(
             r#"
+//- minicore: sized
 struct S(usize);
 impl S {
     unsafe fn func(&self) {

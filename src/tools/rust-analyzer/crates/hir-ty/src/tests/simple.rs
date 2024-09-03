@@ -3572,6 +3572,7 @@ fn f<T>(t: Ark<T>) {
 fn ref_to_array_to_ptr_cast() {
     check_types(
         r#"
+//- minicore: sized
 fn default<T>() -> T { loop {} }
 fn foo() {
     let arr = [default()];

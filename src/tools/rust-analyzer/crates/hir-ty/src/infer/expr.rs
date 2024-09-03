@@ -610,7 +610,12 @@ impl InferenceContext<'_> {
             Expr::Cast { expr, type_ref } => {
                 let cast_ty = self.make_ty(type_ref);
                 let expr_ty = self.infer_expr(*expr, &Expectation::Castable(cast_ty.clone()));
-                self.deferred_cast_checks.push(CastCheck::new(expr_ty, cast_ty.clone()));
+                self.deferred_cast_checks.push(CastCheck::new(
+                    tgt_expr,
+                    *expr,
+                    expr_ty,
+                    cast_ty.clone(),
+                ));
                 cast_ty
             }
             Expr::Ref { expr, rawness, mutability } => {

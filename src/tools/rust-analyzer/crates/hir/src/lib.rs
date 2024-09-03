@@ -147,7 +147,7 @@ pub use {
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},
         object_safety::{MethodViolationCode, ObjectSafetyViolation},
-        FnAbi, PointerCast, Safety,
+        CastError, FnAbi, PointerCast, Safety,
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},

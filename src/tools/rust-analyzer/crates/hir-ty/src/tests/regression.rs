@@ -1907,6 +1907,7 @@ fn dont_unify_on_casts() {
     // #15246
     check_types(
         r#"
+//- minicore: sized
 fn unify(_: [bool; 1]) {}
 fn casted(_: *const bool) {}
 fn default<T>() -> T { loop {} }
@@ -1926,6 +1927,7 @@ fn test() {
 fn rustc_test_issue_52437() {
     check_types(
         r#"
+    //- minicore: sized
     fn main() {
         let x = [(); &(&'static: loop { |x| {}; }) as *const _ as usize]
           //^ [(); _]
