@@ -705,16 +705,22 @@ macro_rules! format_smolstr {
 /// A builder that can be used to efficiently build a [`SmolStr`].
 ///
 /// This won't allocate if the final string fits into the inline buffer.
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
+pub struct SmolStrBuilder(SmolStrBuilderRepr);
+
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SmolStrBuilder {
+enum SmolStrBuilderRepr {
     Inline { len: usize, buf: [u8; INLINE_CAP] },
     Heap(String),
 }
 
-impl Default for SmolStrBuilder {
+impl Default for SmolStrBuilderRepr {
     #[inline]
     fn default() -> Self {
-        Self::new()
+        SmolStrBuilderRepr::Inline {
+            buf: [0; INLINE_CAP],
+            len: 0,
+        }
     }
 }
 
@@ -722,17 +728,17 @@ impl SmolStrBuilder {
     /// Creates a new empty [`SmolStrBuilder`].
     #[must_use]
     pub const fn new() -> Self {
-        SmolStrBuilder::Inline {
+        Self(SmolStrBuilderRepr::Inline {
             buf: [0; INLINE_CAP],
             len: 0,
-        }
+        })
     }
 
     /// Builds a [`SmolStr`] from `self`.
     #[must_use]
     pub fn finish(&self) -> SmolStr {
-        SmolStr(match self {
-            &SmolStrBuilder::Inline { len, buf } => {
+        SmolStr(match &self.0 {
+            &SmolStrBuilderRepr::Inline { len, buf } => {
                 debug_assert!(len <= INLINE_CAP);
                 Repr::Inline {
                     // SAFETY: We know that `value.len` is less than or equal to the maximum value of `InlineSize`
@@ -740,14 +746,14 @@ impl SmolStrBuilder {
                     buf,
                 }
             }
-            SmolStrBuilder::Heap(heap) => Repr::new(heap),
+            SmolStrBuilderRepr::Heap(heap) => Repr::new(heap),
         })
     }
 
     /// Appends the given [`char`] to the end of `self`'s buffer.
     pub fn push(&mut self, c: char) {
-        match self {
-            SmolStrBuilder::Inline { len, buf } => {
+        match &mut self.0 {
+            SmolStrBuilderRepr::Inline { len, buf } => {
                 let char_len = c.len_utf8();
                 let new_len = *len + char_len;
                 if new_len <= INLINE_CAP {
@@ -759,17 +765,17 @@ impl SmolStrBuilder {
                     // SAFETY: inline data is guaranteed to be valid utf8 for `old_len` bytes
                     unsafe { heap.as_mut_vec().extend_from_slice(buf) };
                     heap.push(c);
-                    *self = SmolStrBuilder::Heap(heap);
+                    self.0 = SmolStrBuilderRepr::Heap(heap);
                 }
             }
-            SmolStrBuilder::Heap(h) => h.push(c),
+            SmolStrBuilderRepr::Heap(h) => h.push(c),
         }
     }
 
     /// Appends a given string slice onto the end of `self`'s buffer.
     pub fn push_str(&mut self, s: &str) {
-        match self {
-            Self::Inline { len, buf } => {
+        match &mut self.0 {
+            SmolStrBuilderRepr::Inline { len, buf } => {
                 let old_len = *len;
                 *len += s.len();
 
@@ -785,9 +791,9 @@ impl SmolStrBuilder {
                 // SAFETY: inline data is guaranteed to be valid utf8 for `old_len` bytes
                 unsafe { heap.as_mut_vec().extend_from_slice(&buf[..old_len]) };
                 heap.push_str(s);
-                *self = SmolStrBuilder::Heap(heap);
+                self.0 = SmolStrBuilderRepr::Heap(heap);
             }
-            SmolStrBuilder::Heap(heap) => heap.push_str(s),
+            SmolStrBuilderRepr::Heap(heap) => heap.push_str(s),
         }
     }
 }
