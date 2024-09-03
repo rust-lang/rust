@@ -71,10 +71,12 @@ unsafe fn nt_open_file(
 }
 
 /// Open the file `path` in the directory `parent`, requesting the given `access` rights.
+/// `options` will be OR'd with `FILE_OPEN_REPARSE_POINT`.
 fn open_link_no_reparse(
     parent: &File,
     path: &[u16],
     access: u32,
+    options: u32,
 ) -> Result<Option<File>, WinError> {
     // This is implemented using the lower level `NtOpenFile` function as
     // unfortunately opening a file relative to a parent is not supported by
@@ -96,7 +98,7 @@ fn open_link_no_reparse(
             ..c::OBJECT_ATTRIBUTES::default()
         };
         let share = c::FILE_SHARE_DELETE | c::FILE_SHARE_READ | c::FILE_SHARE_WRITE;
-        let options = c::FILE_OPEN_REPARSE_POINT;
+        let options = c::FILE_OPEN_REPARSE_POINT | options;
         let result = nt_open_file(access, &object, share, options);
 
         // Retry without OBJ_DONT_REPARSE if it's not supported.
@@ -128,13 +130,20 @@ fn open_link_no_reparse(
 }
 
 fn open_dir(parent: &File, name: &[u16]) -> Result<Option<File>, WinError> {
-    open_link_no_reparse(parent, name, c::SYNCHRONIZE | c::FILE_LIST_DIRECTORY)
+    // Open the directory for synchronous directory listing.
+    open_link_no_reparse(
+        parent,
+        name,
+        c::SYNCHRONIZE | c::FILE_LIST_DIRECTORY,
+        // "_IO_NONALERT" means that a synchronous call won't be interrupted.
+        c::FILE_SYNCHRONOUS_IO_NONALERT,
+    )
 }
 
 fn delete(parent: &File, name: &[u16]) -> Result<(), WinError> {
     // Note that the `delete` function consumes the opened file to ensure it's
     // dropped immediately. See module comments for why this is important.
-    match open_link_no_reparse(parent, name, c::SYNCHRONIZE | c::DELETE) {
+    match open_link_no_reparse(parent, name, c::DELETE, 0) {
         Ok(Some(f)) => f.delete(),
         Ok(None) => Ok(()),
         Err(e) => Err(e),
