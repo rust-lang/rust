@@ -748,6 +748,12 @@ ul.block, .block li {
 .rustdoc .example-wrap > pre {
 	border-radius: 6px;
 }
+.rustdoc .example-wrap > pre.example-line-numbers {
+	border-radius: 6px 0 0 6px;
+}
+.rustdoc .example-wrap > pre.example-line-numbers + pre {
+	border-radius: 0 6px 6px 0;
+}
 
 /* For the last child of a div, the margin will be taken care of
 	by the margin-top of the next item. */
