@@ -51,18 +51,28 @@ impl SyntaxEditor {
     }
 
     pub fn insert(&mut self, position: Position, element: impl Element) {
+        debug_assert!(is_ancestor_or_self(&position.parent(), &self.root));
         self.changes.push(Change::Insert(position, element.syntax_element()))
     }
 
     pub fn insert_all(&mut self, position: Position, elements: Vec<SyntaxElement>) {
+        debug_assert!(is_ancestor_or_self(&position.parent(), &self.root));
         self.changes.push(Change::InsertAll(position, elements))
     }
 
     pub fn delete(&mut self, element: impl Element) {
+        let element = element.syntax_element();
+        debug_assert!(is_ancestor_or_self_of_element(&element, &self.root));
+        debug_assert!(
+            !matches!(&element, SyntaxElement::Node(node) if node == &self.root),
+            "should not delete root node"
+        );
         self.changes.push(Change::Replace(element.syntax_element(), None));
     }
 
     pub fn replace(&mut self, old: impl Element, new: impl Element) {
+        let old = old.syntax_element();
+        debug_assert!(is_ancestor_or_self_of_element(&old, &self.root));
         self.changes.push(Change::Replace(old.syntax_element(), Some(new.syntax_element())));
     }
 
@@ -199,7 +209,10 @@ impl Change {
     fn target_parent(&self) -> SyntaxNode {
         match self {
             Change::Insert(target, _) | Change::InsertAll(target, _) => target.parent(),
-            Change::Replace(target, _) => target.parent().unwrap(),
+            Change::Replace(SyntaxElement::Node(target), _) => {
+                target.parent().unwrap_or_else(|| target.clone())
+            }
+            Change::Replace(SyntaxElement::Token(target), _) => target.parent().unwrap(),
         }
     }
 
@@ -246,6 +259,15 @@ impl Element for SyntaxToken {
     fn syntax_element(self) -> SyntaxElement {
         self.into()
     }
+}
+
+fn is_ancestor_or_self(node: &SyntaxNode, ancestor: &SyntaxNode) -> bool {
+    node == ancestor || node.ancestors().any(|it| &it == ancestor)
+}
+
+fn is_ancestor_or_self_of_element(node: &SyntaxElement, ancestor: &SyntaxNode) -> bool {
+    matches!(node, SyntaxElement::Node(node) if node == ancestor)
+        || node.ancestors().any(|it| &it == ancestor)
 }
 
 #[cfg(test)]
@@ -370,14 +392,10 @@ mod tests {
             Some(to_wrap.clone().into()),
         );
 
-        // should die:
         editor.replace(to_replace.syntax(), name_ref.syntax());
         editor.replace(to_wrap.syntax(), new_block.syntax());
-        // editor.replace(to_replace.syntax(), name_ref.syntax());
 
         let edit = editor.finish();
-
-        dbg!(&edit.annotations);
 
         let expect = expect![[r#"
             _ => {
@@ -392,5 +410,174 @@ mod tests {
             .iter()
             .flat_map(|(_, elements)| elements)
             .all(|element| element.ancestors().any(|it| &it == edit.root())))
+    }
+
+    #[test]
+    #[should_panic = "some replace change ranges intersect: [Replace(Node(TUPLE_EXPR@5..7), Some(Node(NAME_REF@0..8))), Replace(Node(TUPLE_EXPR@5..7), Some(Node(NAME_REF@0..8)))]"]
+    fn fail_on_non_disjoint_single_replace() {
+        let root = make::match_arm([make::wildcard_pat().into()], None, make::expr_tuple([]));
+
+        let to_wrap = root.syntax().descendants().find_map(ast::TupleExpr::cast).unwrap();
+
+        let mut editor = SyntaxEditor::new(root.syntax().clone());
+
+        let name_ref = make::name_ref("var_name").clone_for_update();
+
+        // should die, ranges are not disjoint
+        editor.replace(to_wrap.syntax(), name_ref.syntax());
+        editor.replace(to_wrap.syntax(), name_ref.syntax());
+
+        let _ = editor.finish();
+    }
+
+    #[test]
+    fn test_insert_independent() {
+        let root = make::block_expr(
+            [make::let_stmt(
+                make::ext::simple_ident_pat(make::name("second")).into(),
+                None,
+                Some(make::expr_literal("2").into()),
+            )
+            .into()],
+            None,
+        );
+
+        let second_let = root.syntax().descendants().find_map(ast::LetStmt::cast).unwrap();
+
+        let mut editor = SyntaxEditor::new(root.syntax().clone());
+
+        editor.insert(
+            Position::first_child_of(root.stmt_list().unwrap().syntax()),
+            make_let_stmt(
+                None,
+                make::ext::simple_ident_pat(make::name("first")).into(),
+                None,
+                Some(make::expr_literal("1").into()),
+            )
+            .syntax(),
+        );
+
+        editor.insert(
+            Position::after(second_let.syntax()),
+            make_let_stmt(
+                None,
+                make::ext::simple_ident_pat(make::name("third")).into(),
+                None,
+                Some(make::expr_literal("3").into()),
+            )
+            .syntax(),
+        );
+
+        let edit = editor.finish();
+
+        let expect = expect![[r#"
+            let first = 1;{
+                let second = 2;let third = 3;
+            }"#]];
+        expect.assert_eq(&edit.root.to_string());
+    }
+
+    #[test]
+    fn test_insert_dependent() {
+        let root = make::block_expr(
+            [],
+            Some(
+                make::block_expr(
+                    [make::let_stmt(
+                        make::ext::simple_ident_pat(make::name("second")).into(),
+                        None,
+                        Some(make::expr_literal("2").into()),
+                    )
+                    .into()],
+                    None,
+                )
+                .into(),
+            ),
+        );
+
+        let inner_block =
+            root.syntax().descendants().flat_map(ast::BlockExpr::cast).nth(1).unwrap();
+        let second_let = root.syntax().descendants().find_map(ast::LetStmt::cast).unwrap();
+
+        let mut editor = SyntaxEditor::new(root.syntax().clone());
+
+        let new_block_expr =
+            make_block_expr(Some(&mut editor), [], Some(ast::Expr::BlockExpr(inner_block.clone())));
+
+        let first_let = make_let_stmt(
+            Some(&mut editor),
+            make::ext::simple_ident_pat(make::name("first")).into(),
+            None,
+            Some(make::expr_literal("1").into()),
+        );
+
+        let third_let = make_let_stmt(
+            Some(&mut editor),
+            make::ext::simple_ident_pat(make::name("third")).into(),
+            None,
+            Some(make::expr_literal("3").into()),
+        );
+
+        editor.insert(
+            Position::first_child_of(inner_block.stmt_list().unwrap().syntax()),
+            first_let.syntax(),
+        );
+        editor.insert(Position::after(second_let.syntax()), third_let.syntax());
+        editor.replace(inner_block.syntax(), new_block_expr.syntax());
+
+        let edit = editor.finish();
+
+        let expect = expect![[r#"
+            {
+                {
+                let first = 1;{
+                let second = 2;let third = 3;
+            }
+            }
+            }"#]];
+        expect.assert_eq(&edit.root.to_string());
+    }
+
+    #[test]
+    fn test_replace_root_with_dependent() {
+        let root = make::block_expr(
+            [make::let_stmt(
+                make::ext::simple_ident_pat(make::name("second")).into(),
+                None,
+                Some(make::expr_literal("2").into()),
+            )
+            .into()],
+            None,
+        );
+
+        let inner_block = root.clone();
+
+        let mut editor = SyntaxEditor::new(root.syntax().clone());
+
+        let new_block_expr =
+            make_block_expr(Some(&mut editor), [], Some(ast::Expr::BlockExpr(inner_block.clone())));
+
+        let first_let = make_let_stmt(
+            Some(&mut editor),
+            make::ext::simple_ident_pat(make::name("first")).into(),
+            None,
+            Some(make::expr_literal("1").into()),
+        );
+
+        editor.insert(
+            Position::first_child_of(inner_block.stmt_list().unwrap().syntax()),
+            first_let.syntax(),
+        );
+        editor.replace(inner_block.syntax(), new_block_expr.syntax());
+
+        let edit = editor.finish();
+
+        let expect = expect![[r#"
+            {
+                let first = 1;{
+                let second = 2;
+            }
+            }"#]];
+        expect.assert_eq(&edit.root.to_string());
     }
 }

@@ -108,7 +108,6 @@ impl SyntaxMapping {
         input_ancestor: &SyntaxNode,
         output_ancestor: &SyntaxNode,
     ) -> Result<Vec<usize>, MissingMapping> {
-        eprintln!("mapping ancestor {input_ancestor:#?} to {output_ancestor:#?}");
         let mut current =
             self.upmap_node_single(input_ancestor).unwrap_or_else(|| input_ancestor.clone());
         let mut upmap_chain = vec![current.index()];

@@ -192,6 +192,8 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
     }
 
     // Apply changes
+    let mut root = tree_mutator.mutable_clone;
+
     for change in changes {
         match change {
             Change::Insert(position, element) => {
@@ -205,6 +207,9 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             Change::Replace(target, None) => {
                 target.detach();
             }
+            Change::Replace(SyntaxElement::Node(target), Some(new_target)) if &target == &root => {
+                root = new_target.into_node().expect("root node replacement should be a node");
+            }
             Change::Replace(target, Some(new_target)) => {
                 let parent = target.parent().unwrap();
                 parent.splice_children(target.index()..target.index() + 1, vec![new_target]);
@@ -214,7 +219,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
 
     // Propagate annotations
     let annotations = annotations.into_iter().filter_map(|(element, annotation)| {
-        match mappings.upmap_element(&element, &tree_mutator.mutable_clone) {
+        match mappings.upmap_element(&element, &root) {
             // Needed to follow the new tree to find the resulting element
             Some(Ok(mapped)) => Some((mapped, annotation)),
             // Element did not need to be mapped
@@ -230,11 +235,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         annotation_groups.entry(annotation).or_insert(vec![]).push(element);
     }
 
-    SyntaxEdit {
-        root: tree_mutator.mutable_clone,
-        changed_elements,
-        annotations: annotation_groups,
-    }
+    SyntaxEdit { root, changed_elements, annotations: annotation_groups }
 }
 
 fn to_owning_node(element: &SyntaxElement) -> SyntaxNode {
@@ -278,7 +279,6 @@ impl ChangedAncestor {
 }
 
 struct TreeMutator {
-    immutable: SyntaxNode,
     mutable_clone: SyntaxNode,
 }
 
@@ -286,7 +286,7 @@ impl TreeMutator {
     fn new(immutable: &SyntaxNode) -> TreeMutator {
         let immutable = immutable.clone();
         let mutable_clone = immutable.clone_for_update();
-        TreeMutator { immutable, mutable_clone }
+        TreeMutator { mutable_clone }
     }
 
     fn make_element_mut(&self, element: &SyntaxElement) -> SyntaxElement {
