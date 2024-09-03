@@ -141,7 +141,6 @@ rm tests/ui/deprecation/deprecated_inline_threshold.rs # missing deprecation war
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 rm tests/ui/backtrace/synchronized-panic-handler.rs # missing needs-unwind annotation
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
-rm -r tests/run-make/libtest-thread-limit # doesn't work with -Zpanic-abort-tests, missing needs-unwind annotation
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
