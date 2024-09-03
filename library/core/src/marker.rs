@@ -299,7 +299,7 @@ marker_impls! {
 ///
 /// This isn't always desired. For example, shared references (`&T`) can be copied regardless of
 /// whether `T` is `Copy`. Likewise, a generic struct containing markers such as [`PhantomData`]
-/// could potentially be duplicated with a bit-wise copy. 
+/// could potentially be duplicated with a bit-wise copy.
 ///
 /// ## What's the difference between `Copy` and `Clone`?
 ///
