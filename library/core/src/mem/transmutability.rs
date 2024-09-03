@@ -149,7 +149,7 @@ where
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Assume {
     /// When `false`, [`TransmuteFrom`] is not implemented for transmutations
-    /// that might violate the the alignment requirements of references; e.g.:
+    /// that might violate the alignment requirements of references; e.g.:
     ///
     #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
     #[cfg_attr(not(bootstrap), doc = "```compile_fail,E0277")]
