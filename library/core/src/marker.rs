@@ -292,9 +292,10 @@ marker_impls! {
 /// bound on type parameters:
 ///
 /// ```
+/// #[derive(Clone)]
 /// struct MyStruct<T>;
 ///
-/// impl<T: Copy> Copy for MyStruct<T> { }
+/// impl<T: Copy> Copy for MyStruct<T> { } 
 /// ```
 ///
 /// This isn't always desired. For example, shared references (`&T`) can be copied regardless of
