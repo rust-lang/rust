@@ -744,9 +744,30 @@ impl SmolStrBuilder {
         })
     }
 
+    /// Appends the given [`char`] to the end of `self`'s buffer.
+    pub fn push(&mut self, c: char) {
+        match self {
+            SmolStrBuilder::Inline { len, buf } => {
+                let char_len = c.len_utf8();
+                let new_len = *len + char_len;
+                if new_len <= INLINE_CAP {
+                    c.encode_utf8(&mut buf[*len..]);
+                    *len += char_len;
+                } else {
+                    let mut heap = String::with_capacity(new_len);
+                    // copy existing inline bytes over to the heap
+                    // SAFETY: inline data is guaranteed to be valid utf8 for `old_len` bytes
+                    unsafe { heap.as_mut_vec().extend_from_slice(buf) };
+                    heap.push(c);
+                    *self = SmolStrBuilder::Heap(heap);
+                }
+            }
+            SmolStrBuilder::Heap(h) => h.push(c),
+        }
+    }
+
     /// Appends a given string slice onto the end of `self`'s buffer.
     pub fn push_str(&mut self, s: &str) {
-        // if currently on the stack
         match self {
             Self::Inline { len, buf } => {
                 let old_len = *len;
@@ -762,9 +783,7 @@ impl SmolStrBuilder {
 
                 // copy existing inline bytes over to the heap
                 // SAFETY: inline data is guaranteed to be valid utf8 for `old_len` bytes
-                unsafe {
-                    heap.as_mut_vec().extend_from_slice(&buf[..old_len]);
-                }
+                unsafe { heap.as_mut_vec().extend_from_slice(&buf[..old_len]) };
                 heap.push_str(s);
                 *self = SmolStrBuilder::Heap(heap);
             }

@@ -256,7 +256,7 @@ fn test_to_smolstr() {
     }
 }
 #[test]
-fn test_builder() {
+fn test_builder_push_str() {
     //empty
     let builder = SmolStrBuilder::new();
     assert_eq!("", builder.finish());
@@ -290,6 +290,39 @@ fn test_builder() {
     let s = builder.finish();
     assert!(s.is_heap_allocated());
     assert_eq!("a".repeat(46), s);
+}
+
+#[test]
+fn test_builder_push() {
+    //empty
+    let builder = SmolStrBuilder::new();
+    assert_eq!("", builder.finish());
+
+    // inline push
+    let mut builder = SmolStrBuilder::new();
+    builder.push('a');
+    builder.push('b');
+    let s = builder.finish();
+    assert!(!s.is_heap_allocated());
+    assert_eq!("ab", s);
+
+    // inline max push
+    let mut builder = SmolStrBuilder::new();
+    for _ in 0..23 {
+        builder.push('a');
+    }
+    let s = builder.finish();
+    assert!(!s.is_heap_allocated());
+    assert_eq!("a".repeat(23), s);
+
+    // heap push
+    let mut builder = SmolStrBuilder::new();
+    for _ in 0..24 {
+        builder.push('a');
+    }
+    let s = builder.finish();
+    assert!(s.is_heap_allocated());
+    assert_eq!("a".repeat(24), s);
 }
 
 #[cfg(test)]
