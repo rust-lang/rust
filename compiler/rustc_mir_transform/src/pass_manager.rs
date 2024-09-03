@@ -85,7 +85,8 @@ pub(super) trait MirPass<'tcx> {
     }
 }
 
-/// Just like `MirPass`, except it cannot mutate `Body`.
+/// Just like `MirPass`, except it cannot mutate `Body`, and MIR dumping is
+/// disabled (via the `Lint` adapter).
 pub(super) trait MirLint<'tcx> {
     fn name(&self) -> &'static str {
         // FIXME Simplify the implementation once more `str` methods get const-stable.
