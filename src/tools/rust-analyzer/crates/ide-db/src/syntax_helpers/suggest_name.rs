@@ -1,13 +1,15 @@
 //! This module contains functions to suggest names for expressions, functions and other items
 
 use hir::Semantics;
-use ide_db::{FxHashSet, RootDatabase};
 use itertools::Itertools;
+use rustc_hash::FxHashSet;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, HasName},
     match_ast, AstNode, Edition, SmolStr,
 };
+
+use crate::RootDatabase;
 
 /// Trait names, that will be ignored when in `impl Trait` and `dyn Trait`
 const USELESS_TRAITS: &[&str] = &["Send", "Sync", "Copy", "Clone", "Eq", "PartialEq"];
@@ -58,6 +60,21 @@ const USELESS_METHODS: &[&str] = &[
     "into_future",
 ];
 
+/// Suggest a name for given type.
+///
+/// The function will strip references first, and suggest name from the inner type.
+///
+/// - If `ty` is an ADT, it will suggest the name of the ADT.
+///   + If `ty` is wrapped in `Box`, `Option` or `Result`, it will suggest the name from the inner type.
+/// - If `ty` is a trait, it will suggest the name of the trait.
+/// - If `ty` is an `impl Trait`, it will suggest the name of the first trait.
+///
+/// If the suggested name conflicts with reserved keywords, it will return `None`.
+pub fn for_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<String> {
+    let ty = ty.strip_references();
+    name_of_type(&ty, db, edition)
+}
+
 /// Suggest a unique name for generic parameter.
 ///
 /// `existing_params` is used to check if the name conflicts with existing
@@ -66,10 +83,7 @@ const USELESS_METHODS: &[&str] = &[
 /// The function checks if the name conflicts with existing generic parameters.
 /// If so, it will try to resolve the conflict by adding a number suffix, e.g.
 /// `T`, `T0`, `T1`, ...
-pub(crate) fn for_unique_generic_name(
-    name: &str,
-    existing_params: &ast::GenericParamList,
-) -> SmolStr {
+pub fn for_unique_generic_name(name: &str, existing_params: &ast::GenericParamList) -> SmolStr {
     let param_names = existing_params
         .generic_params()
         .map(|param| match param {
@@ -101,7 +115,7 @@ pub(crate) fn for_unique_generic_name(
 ///
 /// If the name conflicts with existing generic parameters, it will try to
 /// resolve the conflict with `for_unique_generic_name`.
-pub(crate) fn for_impl_trait_as_generic(
+pub fn for_impl_trait_as_generic(
     ty: &ast::ImplTraitType,
     existing_params: &ast::GenericParamList,
 ) -> SmolStr {
@@ -132,7 +146,7 @@ pub(crate) fn for_impl_trait_as_generic(
 ///
 /// Currently it sticks to the first name found.
 // FIXME: Microoptimize and return a `SmolStr` here.
-pub(crate) fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> String {
+pub fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> String {
     // `from_param` does not benefit from stripping
     // it need the largest context possible
     // so we check firstmost
@@ -184,7 +198,7 @@ fn normalize(name: &str) -> Option<String> {
 
 fn is_valid_name(name: &str) -> bool {
     matches!(
-        ide_db::syntax_helpers::LexedStr::single_token(syntax::Edition::CURRENT_FIXME, name),
+        super::LexedStr::single_token(syntax::Edition::CURRENT_FIXME, name),
         Some((syntax::SyntaxKind::IDENT, _error))
     )
 }
@@ -270,10 +284,9 @@ fn var_name_from_pat(pat: &ast::Pat) -> Option<ast::Name> {
 
 fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<String> {
     let ty = sema.type_of_expr(expr)?.adjusted();
-    let ty = ty.remove_ref().unwrap_or(ty);
     let edition = sema.scope(expr.syntax())?.krate().edition(sema.db);
 
-    name_of_type(&ty, sema.db, edition)
+    for_type(&ty, sema.db, edition)
 }
 
 fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<String> {

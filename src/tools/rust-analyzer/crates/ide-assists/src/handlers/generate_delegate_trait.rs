@@ -2,13 +2,14 @@ use std::ops::Not;
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::{convert_param_list_to_arg_list, suggest_name},
+    utils::convert_param_list_to_arg_list,
 };
 use either::Either;
 use hir::{db::HirDatabase, HasVisibility};
 use ide_db::{
     assists::{AssistId, GroupLabel},
     path_transform::PathTransform,
+    syntax_helpers::suggest_name,
     FxHashMap, FxHashSet,
 };
 use itertools::Itertools;

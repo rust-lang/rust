@@ -23,7 +23,6 @@ use crate::assist_context::{AssistContext, SourceChangeBuilder};
 
 mod gen_trait_fn_body;
 pub(crate) mod ref_field_expr;
-pub(crate) mod suggest_name;
 
 pub(crate) fn unwrap_trivial_block(block_expr: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block_expr)

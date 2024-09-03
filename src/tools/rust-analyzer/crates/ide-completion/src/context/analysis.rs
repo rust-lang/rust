@@ -1430,10 +1430,23 @@ fn pattern_context_for(
         _ => (None, None),
     };
 
+    // Only suggest name in let-stmt or fn param
+    let should_suggest_name = matches!(
+            &pat,
+            ast::Pat::IdentPat(it)
+                if it.syntax()
+                .parent()
+                .map_or(false, |node| {
+                    let kind = node.kind();
+                    ast::LetStmt::can_cast(kind) || ast::Param::can_cast(kind)
+                })
+    );
+
     PatternContext {
         refutability,
         param_ctx,
         has_type_ascription,
+        should_suggest_name,
         parent_pat: pat.syntax().parent().and_then(ast::Pat::cast),
         mut_token,
         ref_token,

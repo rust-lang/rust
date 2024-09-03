@@ -1,9 +1,10 @@
+use ide_db::syntax_helpers::suggest_name;
 use syntax::{
     ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode, HasGenericParams},
     ted,
 };
 
-use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: introduce_named_generic
 //
