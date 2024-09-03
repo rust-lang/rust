@@ -61,7 +61,13 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         .zip(changes.iter().skip(1))
         .filter(|(l, r)| {
             // We only care about checking for disjoint replace ranges
-            l.change_kind() == ChangeKind::Replace && r.change_kind() == ChangeKind::Replace
+            matches!(
+                (l.change_kind(), r.change_kind()),
+                (
+                    ChangeKind::Replace | ChangeKind::ReplaceRange,
+                    ChangeKind::Replace | ChangeKind::ReplaceRange
+                )
+            )
         })
         .all(|(l, r)| {
             get_node_depth(l.target_parent()) != get_node_depth(r.target_parent())
@@ -97,6 +103,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             // Pop off any ancestors that aren't applicable
             changed_ancestors.drain((index + 1)..);
 
+            // FIXME: Resolve changes that depend on a range of elements
             let ancestor = &changed_ancestors[index];
 
             dependent_changes.push(DependentChange {
@@ -115,8 +122,11 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         // Add to changed ancestors, if applicable
         match change {
             Change::Insert(_, _) | Change::InsertAll(_, _) => {}
-            Change::Replace(target, _) => {
+            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
                 changed_ancestors.push_back(ChangedAncestor::single(target, change_index))
+            }
+            Change::ReplaceAll(range, _) => {
+                changed_ancestors.push_back(ChangedAncestor::multiple(range, change_index))
             }
         }
     }
@@ -137,8 +147,14 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
                     }
                 };
             }
-            Change::Replace(target, _) => {
+            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
                 *target = tree_mutator.make_element_mut(target);
+            }
+            Change::ReplaceAll(range, _) => {
+                let start = tree_mutator.make_element_mut(range.start());
+                let end = tree_mutator.make_element_mut(range.end());
+
+                *range = start..=end;
             }
         }
 
@@ -148,6 +164,10 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             Change::InsertAll(_, elements) => changed_elements.extend(elements.iter().cloned()),
             Change::Replace(_, Some(element)) => changed_elements.push(element.clone()),
             Change::Replace(_, None) => {}
+            Change::ReplaceWithMany(_, elements) => {
+                changed_elements.extend(elements.iter().cloned())
+            }
+            Change::ReplaceAll(_, elements) => changed_elements.extend(elements.iter().cloned()),
         }
     }
 
@@ -160,6 +180,9 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             }
             // Silently drop outdated change
             Change::Replace(_, None) => continue,
+            Change::ReplaceAll(_, _) | Change::ReplaceWithMany(_, _) => {
+                unimplemented!("cannot resolve changes that depend on replacing many elements")
+            }
         };
 
         let upmap_target_node = |target: &SyntaxNode| {
@@ -185,8 +208,11 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
                     *child = upmap_target(child);
                 }
             },
-            Change::Replace(target, _) => {
+            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
                 *target = upmap_target(&target);
+            }
+            Change::ReplaceAll(range, _) => {
+                *range = upmap_target(range.start())..=upmap_target(range.end());
             }
         }
     }
@@ -213,6 +239,16 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             Change::Replace(target, Some(new_target)) => {
                 let parent = target.parent().unwrap();
                 parent.splice_children(target.index()..target.index() + 1, vec![new_target]);
+            }
+            Change::ReplaceWithMany(target, elements) => {
+                let parent = target.parent().unwrap();
+                parent.splice_children(target.index()..target.index() + 1, elements);
+            }
+            Change::ReplaceAll(range, elements) => {
+                let start = range.start().index();
+                let end = range.end().index();
+                let parent = range.start().parent().unwrap();
+                parent.splice_children(start..end + 1, elements);
             }
         }
     }
@@ -252,7 +288,7 @@ struct ChangedAncestor {
 
 enum ChangedAncestorKind {
     Single { node: SyntaxNode },
-    Range { changed_nodes: RangeInclusive<SyntaxNode>, in_parent: SyntaxNode },
+    Range { _changed_elements: RangeInclusive<SyntaxElement>, in_parent: SyntaxNode },
 }
 
 impl ChangedAncestor {
@@ -267,13 +303,25 @@ impl ChangedAncestor {
         Self { kind, change_index }
     }
 
+    fn multiple(range: &RangeInclusive<SyntaxElement>, change_index: usize) -> Self {
+        Self {
+            kind: ChangedAncestorKind::Range {
+                _changed_elements: range.clone(),
+                in_parent: range.start().parent().unwrap(),
+            },
+            change_index,
+        }
+    }
+
     fn affected_range(&self) -> TextRange {
         match &self.kind {
             ChangedAncestorKind::Single { node } => node.text_range(),
-            ChangedAncestorKind::Range { changed_nodes, in_parent: _ } => TextRange::new(
-                changed_nodes.start().text_range().start(),
-                changed_nodes.end().text_range().end(),
-            ),
+            ChangedAncestorKind::Range { _changed_elements: changed_nodes, in_parent: _ } => {
+                TextRange::new(
+                    changed_nodes.start().text_range().start(),
+                    changed_nodes.end().text_range().end(),
+                )
+            }
         }
     }
 }

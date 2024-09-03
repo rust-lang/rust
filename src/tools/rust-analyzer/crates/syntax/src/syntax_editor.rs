@@ -6,6 +6,7 @@
 
 use std::{
     num::NonZeroU32,
+    ops::RangeInclusive,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -74,6 +75,26 @@ impl SyntaxEditor {
         let old = old.syntax_element();
         debug_assert!(is_ancestor_or_self_of_element(&old, &self.root));
         self.changes.push(Change::Replace(old.syntax_element(), Some(new.syntax_element())));
+    }
+
+    pub fn replace_with_many(&mut self, old: impl Element, new: Vec<SyntaxElement>) {
+        let old = old.syntax_element();
+        debug_assert!(is_ancestor_or_self_of_element(&old, &self.root));
+        debug_assert!(
+            !(matches!(&old, SyntaxElement::Node(node) if node == &self.root) && new.len() > 1),
+            "cannot replace root node with many elements"
+        );
+        self.changes.push(Change::ReplaceWithMany(old.syntax_element(), new));
+    }
+
+    pub fn replace_all(&mut self, range: RangeInclusive<SyntaxElement>, new: Vec<SyntaxElement>) {
+        if range.start() == range.end() {
+            self.replace_with_many(range.start(), new);
+            return;
+        }
+
+        debug_assert!(is_ancestor_or_self_of_element(range.start(), &self.root));
+        self.changes.push(Change::ReplaceAll(range, new))
     }
 
     pub fn finish(self) -> SyntaxEdit {
@@ -186,10 +207,17 @@ impl Position {
 
 #[derive(Debug)]
 enum Change {
+    /// Inserts a single element at the specified position.
     Insert(Position, SyntaxElement),
+    /// Inserts many elements in-order at the specified position.
     InsertAll(Position, Vec<SyntaxElement>),
     /// Represents both a replace single element and a delete element operation.
     Replace(SyntaxElement, Option<SyntaxElement>),
+    /// Replaces a single element with many elements.
+    ReplaceWithMany(SyntaxElement, Vec<SyntaxElement>),
+    /// Replaces a range of elements with another list of elements.
+    /// Range will always have start != end.
+    ReplaceAll(RangeInclusive<SyntaxElement>, Vec<SyntaxElement>),
 }
 
 impl Change {
@@ -202,24 +230,29 @@ impl Change {
                 ),
                 PositionRepr::After(child) => TextRange::at(child.text_range().end(), 0.into()),
             },
-            Change::Replace(target, _) => target.text_range(),
+            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => target.text_range(),
+            Change::ReplaceAll(range, _) => {
+                range.start().text_range().cover(range.end().text_range())
+            }
         }
     }
 
     fn target_parent(&self) -> SyntaxNode {
         match self {
             Change::Insert(target, _) | Change::InsertAll(target, _) => target.parent(),
-            Change::Replace(SyntaxElement::Node(target), _) => {
-                target.parent().unwrap_or_else(|| target.clone())
-            }
-            Change::Replace(SyntaxElement::Token(target), _) => target.parent().unwrap(),
+            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => match target {
+                SyntaxElement::Node(target) => target.parent().unwrap_or_else(|| target.clone()),
+                SyntaxElement::Token(target) => target.parent().unwrap(),
+            },
+            Change::ReplaceAll(target, _) => target.start().parent().unwrap(),
         }
     }
 
     fn change_kind(&self) -> ChangeKind {
         match self {
             Change::Insert(_, _) | Change::InsertAll(_, _) => ChangeKind::Insert,
-            Change::Replace(_, _) => ChangeKind::Replace,
+            Change::Replace(_, _) | Change::ReplaceWithMany(_, _) => ChangeKind::Replace,
+            Change::ReplaceAll(_, _) => ChangeKind::ReplaceRange,
         }
     }
 }
@@ -227,7 +260,7 @@ impl Change {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum ChangeKind {
     Insert,
-    // TODO: deal with replace spans
+    ReplaceRange,
     Replace,
 }
 
