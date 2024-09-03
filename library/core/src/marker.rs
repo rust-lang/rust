@@ -295,7 +295,7 @@ marker_impls! {
 /// #[derive(Clone)]
 /// struct MyStruct<T>(T);
 ///
-/// impl<T: Copy> Copy for MyStruct<T> { } 
+/// impl<T: Copy> Copy for MyStruct<T> { }
 /// ```
 ///
 /// This isn't always desired. For example, shared references (`&T`) can be copied regardless of
