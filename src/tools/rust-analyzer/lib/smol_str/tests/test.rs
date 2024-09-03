@@ -3,7 +3,7 @@ use std::sync::Arc;
 #[cfg(not(miri))]
 use proptest::{prop_assert, prop_assert_eq, proptest};
 
-use smol_str::SmolStr;
+use smol_str::{SmolStr, SmolStrBuilder};
 
 #[test]
 #[cfg(target_pointer_width = "64")]
@@ -254,6 +254,42 @@ fn test_to_smolstr() {
         assert_eq!(a, a.to_smolstr());
         assert_eq!(a, smol_str::format_smolstr!("{}", a));
     }
+}
+#[test]
+fn test_builder() {
+    //empty
+    let builder = SmolStrBuilder::new();
+    assert_eq!("", builder.finish());
+
+    // inline push
+    let mut builder = SmolStrBuilder::new();
+    builder.push_str("a");
+    builder.push_str("b");
+    let s = builder.finish();
+    assert!(!s.is_heap_allocated());
+    assert_eq!("ab", s);
+
+    // inline max push
+    let mut builder = SmolStrBuilder::new();
+    builder.push_str(&"a".repeat(23));
+    let s = builder.finish();
+    assert!(!s.is_heap_allocated());
+    assert_eq!("a".repeat(23), s);
+
+    // heap push immediate
+    let mut builder = SmolStrBuilder::new();
+    builder.push_str(&"a".repeat(24));
+    let s = builder.finish();
+    assert!(s.is_heap_allocated());
+    assert_eq!("a".repeat(24), s);
+
+    // heap push succession
+    let mut builder = SmolStrBuilder::new();
+    builder.push_str(&"a".repeat(23));
+    builder.push_str(&"a".repeat(23));
+    let s = builder.finish();
+    assert!(s.is_heap_allocated());
+    assert_eq!("a".repeat(46), s);
 }
 
 #[cfg(test)]

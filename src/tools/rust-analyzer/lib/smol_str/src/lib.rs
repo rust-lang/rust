@@ -620,7 +620,6 @@ pub trait StrExt: private::Sealed {
     /// potentially without allocating.
     ///
     /// See [`str::replace`].
-    // TODO: Use `Pattern` when stable.
     #[must_use = "this returns a new SmolStr without modifying the original"]
     fn replace_smolstr(&self, from: &str, to: &str) -> SmolStr;
 
@@ -628,7 +627,6 @@ pub trait StrExt: private::Sealed {
     /// potentially without allocating.
     ///
     /// See [`str::replacen`].
-    // TODO: Use `Pattern` when stable.
     #[must_use = "this returns a new SmolStr without modifying the original"]
     fn replacen_smolstr(&self, from: &str, to: &str, count: usize) -> SmolStr;
 }
@@ -661,7 +659,7 @@ impl StrExt for str {
 
     #[inline]
     fn replacen_smolstr(&self, from: &str, to: &str, count: usize) -> SmolStr {
-        let mut result = Writer::new();
+        let mut result = SmolStrBuilder::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from).take(count) {
             // SAFETY: `start` is guaranteed to be within the bounds of `self` as per
@@ -677,6 +675,15 @@ impl StrExt for str {
     }
 }
 
+impl<T> ToSmolStr for T
+where
+    T: fmt::Display + ?Sized,
+{
+    fn to_smolstr(&self) -> SmolStr {
+        format_smolstr!("{}", self)
+    }
+}
+
 mod private {
     /// No downstream impls allowed.
     pub trait Sealed {}
@@ -689,58 +696,84 @@ mod private {
 #[macro_export]
 macro_rules! format_smolstr {
     ($($tt:tt)*) => {{
-        use ::core::fmt::Write;
-        let mut w = $crate::Writer::new();
-        w.write_fmt(format_args!($($tt)*)).expect("a formatting trait implementation returned an error");
-        $crate::SmolStr::from(w)
+        let mut w = $crate::SmolStrBuilder::new();
+        ::core::fmt::Write::write_fmt(&mut w, format_args!($($tt)*)).expect("a formatting trait implementation returned an error");
+        w.finish()
     }};
 }
 
-#[doc(hidden)]
-pub struct Writer {
-    inline: [u8; INLINE_CAP],
-    heap: String,
-    len: usize,
+/// A builder that can be used to efficiently build a [`SmolStr`].
+///
+/// This won't allocate if the final string fits into the inline buffer.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SmolStrBuilder {
+    Inline { len: usize, buf: [u8; INLINE_CAP] },
+    Heap(String),
 }
 
-impl Writer {
+impl Default for SmolStrBuilder {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SmolStrBuilder {
+    /// Creates a new empty [`SmolStrBuilder`].
     #[must_use]
     pub const fn new() -> Self {
-        Writer {
-            inline: [0; INLINE_CAP],
-            heap: String::new(),
+        SmolStrBuilder::Inline {
+            buf: [0; INLINE_CAP],
             len: 0,
         }
     }
 
-    fn push_str(&mut self, s: &str) {
+    /// Builds a [`SmolStr`] from `self`.
+    #[must_use]
+    pub fn finish(&self) -> SmolStr {
+        SmolStr(match self {
+            &SmolStrBuilder::Inline { len, buf } => {
+                debug_assert!(len <= INLINE_CAP);
+                Repr::Inline {
+                    // SAFETY: We know that `value.len` is less than or equal to the maximum value of `InlineSize`
+                    len: unsafe { InlineSize::transmute_from_u8(len as u8) },
+                    buf,
+                }
+            }
+            SmolStrBuilder::Heap(heap) => Repr::new(heap),
+        })
+    }
+
+    /// Appends a given string slice onto the end of `self`'s buffer.
+    pub fn push_str(&mut self, s: &str) {
         // if currently on the stack
-        if self.len <= INLINE_CAP {
-            let old_len = self.len;
-            self.len += s.len();
+        match self {
+            Self::Inline { len, buf } => {
+                let old_len = *len;
+                *len += s.len();
 
-            // if the new length will fit on the stack (even if it fills it entirely)
-            if self.len <= INLINE_CAP {
-                self.inline[old_len..self.len].copy_from_slice(s.as_bytes());
-                return; // skip the heap push below
+                // if the new length will fit on the stack (even if it fills it entirely)
+                if *len <= INLINE_CAP {
+                    buf[old_len..*len].copy_from_slice(s.as_bytes());
+                    return; // skip the heap push below
+                }
+
+                let mut heap = String::with_capacity(*len);
+
+                // copy existing inline bytes over to the heap
+                // SAFETY: inline data is guaranteed to be valid utf8 for `old_len` bytes
+                unsafe {
+                    heap.as_mut_vec().extend_from_slice(&buf[..old_len]);
+                }
+                heap.push_str(s);
+                *self = SmolStrBuilder::Heap(heap);
             }
-
-            self.heap.reserve(self.len);
-
-            // copy existing inline bytes over to the heap
-            // SAFETY: inline data is guaranteed to be valid utf8 for `old_len` bytes
-            unsafe {
-                self.heap
-                    .as_mut_vec()
-                    .extend_from_slice(&self.inline[..old_len]);
-            }
+            SmolStrBuilder::Heap(heap) => heap.push_str(s),
         }
-
-        self.heap.push_str(s);
     }
 }
 
-impl fmt::Write for Writer {
+impl fmt::Write for SmolStrBuilder {
     #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.push_str(s);
@@ -748,26 +781,9 @@ impl fmt::Write for Writer {
     }
 }
 
-impl From<Writer> for SmolStr {
-    fn from(value: Writer) -> Self {
-        SmolStr(if value.len <= INLINE_CAP {
-            Repr::Inline {
-                // SAFETY: We know that `value.len` is less than or equal to the maximum value of `InlineSize`
-                len: unsafe { InlineSize::transmute_from_u8(value.len as u8) },
-                buf: value.inline,
-            }
-        } else {
-            Repr::new(&value.heap)
-        })
-    }
-}
-
-impl<T> ToSmolStr for T
-where
-    T: fmt::Display + ?Sized,
-{
-    fn to_smolstr(&self) -> SmolStr {
-        format_smolstr!("{}", self)
+impl From<SmolStrBuilder> for SmolStr {
+    fn from(value: SmolStrBuilder) -> Self {
+        value.finish()
     }
 }
 
