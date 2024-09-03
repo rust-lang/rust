@@ -1535,7 +1535,7 @@ fn check_field_tys_sized<'tcx>(
     }
 }
 
-impl<'tcx> MirPass<'tcx> for StateTransform {
+impl<'tcx> crate::MirPass<'tcx> for StateTransform {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let Some(old_yield_ty) = body.yield_ty() else {
             // This only applies to coroutines

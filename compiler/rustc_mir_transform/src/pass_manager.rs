@@ -1,10 +1,89 @@
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
+
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use tracing::trace;
 
 use crate::lint::lint_body;
-use crate::{validate, MirPass};
+use crate::validate;
+
+thread_local! {
+    static PASS_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
+        RefCell::new(FxHashMap::default())
+    };
+}
+
+/// Converts a MIR pass name into a snake case form to match the profiling naming style.
+fn to_profiler_name(type_name: &'static str) -> &'static str {
+    PASS_NAMES.with(|names| match names.borrow_mut().entry(type_name) {
+        Entry::Occupied(e) => *e.get(),
+        Entry::Vacant(e) => {
+            let snake_case: String = type_name
+                .chars()
+                .flat_map(|c| {
+                    if c.is_ascii_uppercase() {
+                        vec!['_', c.to_ascii_lowercase()]
+                    } else if c == '-' {
+                        vec!['_']
+                    } else {
+                        vec![c]
+                    }
+                })
+                .collect();
+            let result = &*String::leak(format!("mir_pass{}", snake_case));
+            e.insert(result);
+            result
+        }
+    })
+}
+
+// const wrapper for `if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }`
+const fn c_name(name: &'static str) -> &'static str {
+    // FIXME Simplify the implementation once more `str` methods get const-stable.
+    // and inline into call site
+    let bytes = name.as_bytes();
+    let mut i = bytes.len();
+    while i > 0 && bytes[i - 1] != b':' {
+        i = i - 1;
+    }
+    let (_, bytes) = bytes.split_at(i);
+    match std::str::from_utf8(bytes) {
+        Ok(name) => name,
+        Err(_) => name,
+    }
+}
+
+/// A streamlined trait that you can implement to create a pass; the
+/// pass will be named after the type, and it will consist of a main
+/// loop that goes over each available MIR and applies `run_pass`.
+pub trait MirPass<'tcx> {
+    fn name(&self) -> &'static str {
+        // FIXME Simplify the implementation once more `str` methods get const-stable.
+        // See copypaste in `MirLint`
+        const {
+            let name = std::any::type_name::<Self>();
+            c_name(name)
+        }
+    }
+
+    fn profiler_name(&self) -> &'static str {
+        to_profiler_name(self.name())
+    }
+
+    /// Returns `true` if this pass is enabled with the current combination of compiler flags.
+    fn is_enabled(&self, _sess: &Session) -> bool {
+        true
+    }
+
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
+
+    fn is_mir_dump_enabled(&self) -> bool {
+        true
+    }
+}
 
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {
@@ -13,7 +92,7 @@ pub trait MirLint<'tcx> {
         // See copypaste in `MirPass`
         const {
             let name = std::any::type_name::<Self>();
-            rustc_middle::util::common::c_name(name)
+            c_name(name)
         }
     }
 

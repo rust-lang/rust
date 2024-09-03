@@ -25,11 +25,10 @@ use rustc_target::abi::{Abi, FieldIdx, HasDataLayout, Size, TargetDataLayout, Va
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{AssertLint, AssertLintKind};
-use crate::MirLint;
 
 pub struct KnownPanicsLint;
 
-impl<'tcx> MirLint<'tcx> for KnownPanicsLint {
+impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         if body.tainted_by_errors.is_some() {
             return;

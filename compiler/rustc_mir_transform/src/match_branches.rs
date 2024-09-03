@@ -12,7 +12,7 @@ use super::simplify::simplify_cfg;
 
 pub struct MatchBranchSimplification;
 
-impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
+impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 1
     }

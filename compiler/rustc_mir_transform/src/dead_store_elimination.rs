@@ -132,7 +132,7 @@ pub enum DeadStoreElimination {
     Final,
 }
 
-impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
+impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
     fn name(&self) -> &'static str {
         match self {
             DeadStoreElimination::Initial => "DeadStoreElimination-initial",

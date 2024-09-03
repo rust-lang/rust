@@ -74,7 +74,7 @@ pub(crate) fn simplify_cfg(body: &mut Body<'_>) {
     body.basic_blocks_mut().raw.shrink_to_fit();
 }
 
-impl<'tcx> MirPass<'tcx> for SimplifyCfg {
+impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
     fn name(&self) -> &'static str {
         self.name()
     }
@@ -366,7 +366,7 @@ pub enum SimplifyLocals {
     Final,
 }
 
-impl<'tcx> MirPass<'tcx> for SimplifyLocals {
+impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
     fn name(&self) -> &'static str {
         match &self {
             SimplifyLocals::BeforeConstProp => "SimplifyLocals-before-const-prop",

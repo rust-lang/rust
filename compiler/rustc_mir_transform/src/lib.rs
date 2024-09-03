@@ -26,7 +26,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
     AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
-    MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
+    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
     Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
@@ -40,7 +40,7 @@ use tracing::{debug, trace};
 #[macro_use]
 mod pass_manager;
 
-use pass_manager::{self as pm, Lint, MirLint, WithMinOptLevel};
+use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 
 mod abort_unwinding_calls;
 mod add_call_guards;

@@ -72,7 +72,7 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 /// so we perform all the possible instantiations without removing the `_1 = &_2` statement.
 pub struct ReferencePropagation;
 
-impl<'tcx> MirPass<'tcx> for ReferencePropagation {
+impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }
