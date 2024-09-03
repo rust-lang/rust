@@ -51,7 +51,7 @@ mod test_db;
 #[cfg(test)]
 mod tests;
 
-use std::{collections::hash_map::Entry, hash::Hash};
+use std::hash::Hash;
 
 use base_db::ra_salsa::InternValueTrivial;
 use chalk_ir::{
@@ -62,10 +62,11 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{hir::ExprId, type_ref::Rawness, CallableDefId, GeneralConstId, TypeOrConstParamId};
 use hir_expand::name::Name;
+use indexmap::{map::Entry, IndexMap};
 use intern::{sym, Symbol};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use span::Edition;
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
@@ -196,7 +197,7 @@ pub enum MemoryMap {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ComplexMemoryMap {
-    memory: FxHashMap<usize, Box<[u8]>>,
+    memory: IndexMap<usize, Box<[u8]>, FxBuildHasher>,
     vtable: VTableMap,
 }
 
