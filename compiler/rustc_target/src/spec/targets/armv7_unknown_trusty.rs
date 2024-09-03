@@ -25,7 +25,7 @@ pub(crate) fn target() -> Target {
             dynamic_linking: false,
             executables: true,
             crt_static_default: true,
-            crt_static_respected: true,
+            crt_static_respected: false,
             relro_level: RelroLevel::Full,
             panic_strategy: PanicStrategy::Abort,
             position_independent_executables: true,
