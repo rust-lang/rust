@@ -219,13 +219,14 @@ impl FlycheckHandle {
         package: PackageSpecifier,
         target: Option<Target>,
         workspace_deps: Option<FxHashSet<PackageSpecifier>>,
+        saved_file: Option<AbsPathBuf>,
     ) {
         let generation = self.generation.fetch_add(1, Ordering::Relaxed) + 1;
         self.sender
             .send(StateChange::Restart {
                 generation,
                 scope: FlycheckScope::Package { package, workspace_deps },
-                saved_file: None,
+                saved_file,
                 target,
             })
             .unwrap();

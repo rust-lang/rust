@@ -328,6 +328,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 }
                 InvocationStrategy::PerWorkspace => {
                     Box::new(move || {
+                        let saved_file = vfs_path.as_path().map(ToOwned::to_owned);
                         let target = TargetSpec::for_file(&world, file_id)?.map(|it| {
                             let tgt_kind = it.target_kind();
                             let (tgt_name, root, package) = match it {
@@ -362,8 +363,10 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         if let Some((target, root, package)) = target {
                             // trigger a package check if we have a non-library target as that can't affect
                             // anything else in the workspace OR if we're not allowed to check the workspace as
-                            // the user opted into package checks then
-                            let package_check_allowed = target.is_some() || !may_flycheck_workspace;
+                            // the user opted into package checks then OR if this is not cargo.
+                            let package_check_allowed = target.is_some()
+                                || !may_flycheck_workspace
+                                || matches!(package, PackageSpecifier::BuildInfo { .. });
                             if package_check_allowed {
                                 package_workspace_idx =
                                     world.workspaces.iter().position(|ws| match &ws.kind {
@@ -390,6 +393,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                                         package,
                                         target,
                                         workspace_deps,
+                                        saved_file.clone(),
                                     );
                                 }
                             }
@@ -460,7 +464,6 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                                 ws_contains_file && !is_pkg_ws
                             });
 
-                        let saved_file = vfs_path.as_path().map(ToOwned::to_owned);
                         let mut workspace_check_triggered = false;
                         // Find and trigger corresponding flychecks
                         'flychecks: for flycheck in world.flycheck.iter() {
