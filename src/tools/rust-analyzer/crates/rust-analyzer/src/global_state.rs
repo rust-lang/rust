@@ -825,7 +825,7 @@ impl GlobalStateSnapshot {
                     let Some(krate) = project.crate_by_root(path) else {
                         continue;
                     };
-                    let Some(build) = krate.build else {
+                    let Some(build) = krate.build.clone() else {
                         continue;
                     };
 

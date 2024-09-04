@@ -202,12 +202,11 @@ impl ProjectJson {
         &self.project_root
     }
 
-    pub fn crate_by_root(&self, root: &AbsPath) -> Option<Crate> {
+    pub fn crate_by_root(&self, root: &AbsPath) -> Option<&Crate> {
         self.crates
             .iter()
             .filter(|krate| krate.is_workspace_member)
             .find(|krate| krate.root_module == root)
-            .cloned()
     }
 
     /// Returns the path to the project's manifest, if it exists.
