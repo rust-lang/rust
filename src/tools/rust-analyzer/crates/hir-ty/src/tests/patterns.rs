@@ -57,6 +57,7 @@ fn infer_pattern() {
             101..151 'for (e...     }': ()
             101..151 'for (e...     }': ()
             101..151 'for (e...     }': ()
+            101..151 'for (e...     }': ()
             105..111 '(e, f)': ({unknown}, {unknown})
             106..107 'e': {unknown}
             109..110 'f': {unknown}

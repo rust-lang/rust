@@ -737,7 +737,7 @@ impl ExprCollector<'_> {
     /// `try { <stmts>; }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(()) }`
     /// and save the `<new_label>` to use it as a break target for desugaring of the `?` operator.
     fn desugar_try_block(&mut self, e: BlockExpr) -> ExprId {
-        let Some(try_from_output) = LangItem::TryTraitFromOutput.path(self.db, self.krate) else {
+        let Some(try_from_output) = self.lang_path(LangItem::TryTraitFromOutput) else {
             return self.collect_block(e);
         };
         let label = self
@@ -840,10 +840,10 @@ impl ExprCollector<'_> {
     fn collect_for_loop(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::ForExpr) -> ExprId {
         let Some((into_iter_fn, iter_next_fn, option_some, option_none)) = (|| {
             Some((
-                LangItem::IntoIterIntoIter.path(self.db, self.krate)?,
-                LangItem::IteratorNext.path(self.db, self.krate)?,
-                LangItem::OptionSome.path(self.db, self.krate)?,
-                LangItem::OptionNone.path(self.db, self.krate)?,
+                self.lang_path(LangItem::IntoIterIntoIter)?,
+                self.lang_path(LangItem::IteratorNext)?,
+                self.lang_path(LangItem::OptionSome)?,
+                self.lang_path(LangItem::OptionNone)?,
             ))
         })() else {
             // Some of the needed lang items are missing, so we can't desugar
@@ -896,6 +896,15 @@ impl ExprCollector<'_> {
             Expr::Match { expr: iter_next_expr, arms: Box::new([none_arm, some_arm]) },
             syntax_ptr,
         );
+        let loop_inner = self.alloc_expr(
+            Expr::Block {
+                id: None,
+                statements: Box::default(),
+                tail: Some(loop_inner),
+                label: None,
+            },
+            syntax_ptr,
+        );
         let loop_outer = self.alloc_expr(Expr::Loop { body: loop_inner, label }, syntax_ptr);
         let iter_binding = self.alloc_binding(iter_name, BindingAnnotation::Mutable);
         let iter_pat = self.alloc_pat_desugared(Pat::Bind { id: iter_binding, subpat: None });
@@ -923,10 +932,10 @@ impl ExprCollector<'_> {
     fn collect_try_operator(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::TryExpr) -> ExprId {
         let Some((try_branch, cf_continue, cf_break, try_from_residual)) = (|| {
             Some((
-                LangItem::TryTraitBranch.path(self.db, self.krate)?,
-                LangItem::ControlFlowContinue.path(self.db, self.krate)?,
-                LangItem::ControlFlowBreak.path(self.db, self.krate)?,
-                LangItem::TryTraitFromResidual.path(self.db, self.krate)?,
+                self.lang_path(LangItem::TryTraitBranch)?,
+                self.lang_path(LangItem::ControlFlowContinue)?,
+                self.lang_path(LangItem::ControlFlowBreak)?,
+                self.lang_path(LangItem::TryTraitFromResidual)?,
             ))
         })() else {
             // Some of the needed lang items are missing, so we can't desugar
@@ -2053,6 +2062,10 @@ impl ExprCollector<'_> {
         })
     }
     // endregion: format
+
+    fn lang_path(&self, lang: LangItem) -> Option<Path> {
+        lang.path(self.db, self.krate)
+    }
 }
 
 fn pat_literal_to_hir(lit: &ast::LiteralPat) -> Option<(Literal, ast::Literal)> {

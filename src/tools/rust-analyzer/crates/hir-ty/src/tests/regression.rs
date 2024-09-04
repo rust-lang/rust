@@ -275,6 +275,7 @@ fn infer_std_crash_5() {
             32..320 'for co...     }': ()
             32..320 'for co...     }': ()
             32..320 'for co...     }': ()
+            32..320 'for co...     }': ()
             36..43 'content': {unknown}
             47..60 'doesnt_matter': {unknown}
             61..320 '{     ...     }': ()
@@ -1241,6 +1242,7 @@ fn test() {
             16..66 'for _ ...     }': &'? mut IntoIterator::IntoIter<()>
             16..66 'for _ ...     }': fn next<IntoIterator::IntoIter<()>>(&'? mut IntoIterator::IntoIter<()>) -> Option<<IntoIterator::IntoIter<()> as Iterator>::Item>
             16..66 'for _ ...     }': Option<IntoIterator::Item<()>>
+            16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()

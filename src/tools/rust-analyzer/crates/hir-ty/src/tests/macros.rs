@@ -206,6 +206,7 @@ fn expr_macro_def_expanded_in_various_places() {
             100..119 'for _ ...!() {}': ()
             100..119 'for _ ...!() {}': ()
             100..119 'for _ ...!() {}': ()
+            100..119 'for _ ...!() {}': ()
             104..105 '_': IntoIterator::Item<isize>
             117..119 '{}': ()
             124..134 '|| spam!()': impl Fn() -> isize
@@ -296,6 +297,7 @@ fn expr_macro_rules_expanded_in_various_places() {
             114..133 'for _ ...!() {}': &'? mut IntoIterator::IntoIter<isize>
             114..133 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&'? mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
             114..133 'for _ ...!() {}': Option<IntoIterator::Item<isize>>
+            114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
