@@ -223,14 +223,14 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// MIR associated with them.
 fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     // All body-owners have MIR associated with them.
-    let mut set: FxIndexSet<_> = tcx.hir().body_owners().collect();
+    let set: FxIndexSet<_> = tcx.hir().body_owners().collect();
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
-    struct GatherCtors<'a> {
-        set: &'a mut FxIndexSet<LocalDefId>,
+    struct GatherCtors {
+        set: FxIndexSet<LocalDefId>,
     }
-    impl<'tcx> Visitor<'tcx> for GatherCtors<'_> {
+    impl<'tcx> Visitor<'tcx> for GatherCtors {
         fn visit_variant_data(&mut self, v: &'tcx hir::VariantData<'tcx>) {
             if let hir::VariantData::Tuple(_, _, def_id) = *v {
                 self.set.insert(def_id);
@@ -238,9 +238,11 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
             intravisit::walk_struct_def(self, v)
         }
     }
-    tcx.hir().visit_all_item_likes_in_crate(&mut GatherCtors { set: &mut set });
 
-    set
+    let mut gather_ctors = GatherCtors { set };
+    tcx.hir().visit_all_item_likes_in_crate(&mut gather_ctors);
+
+    gather_ctors.set
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {

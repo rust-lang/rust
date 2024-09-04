@@ -125,7 +125,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         // Clone dominators because we need them while mutating the body.
         let dominators = body.basic_blocks.dominators().clone();
 
-        let mut state = VnState::new(tcx, body, param_env, &ssa, &dominators, &body.local_decls);
+        let mut state = VnState::new(tcx, body, param_env, &ssa, dominators, &body.local_decls);
         ssa.for_each_assignment_mut(
             body.basic_blocks.as_mut_preserves_cfg(),
             |local, value, location| {
@@ -258,7 +258,7 @@ struct VnState<'body, 'tcx> {
     /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
     feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
-    dominators: &'body Dominators<BasicBlock>,
+    dominators: Dominators<BasicBlock>,
     reused_locals: BitSet<Local>,
 }
 
@@ -268,7 +268,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         body: &Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         ssa: &'body SsaLocals,
-        dominators: &'body Dominators<BasicBlock>,
+        dominators: Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
     ) -> Self {
         // Compute a rough estimate of the number of values in the body from the number of
@@ -1490,7 +1490,7 @@ impl<'tcx> VnState<'_, 'tcx> {
         let other = self.rev_locals.get(index)?;
         other
             .iter()
-            .find(|&&other| self.ssa.assignment_dominates(self.dominators, other, loc))
+            .find(|&&other| self.ssa.assignment_dominates(&self.dominators, other, loc))
             .copied()
     }
 }
