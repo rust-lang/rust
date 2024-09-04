@@ -1489,6 +1489,47 @@ impl<T, A: Allocator> Vec<T, A> {
         self.len = new_len;
     }
 
+    /// Forces the length of the vector to `0usize`.
+    ///
+    /// This is a low-level operation that maintains some of the normal
+    /// invariants of the type. Normally changing the length of a vector
+    /// is done using one of the safe operations instead, such as
+    /// [`truncate`], [`resize`], [`extend`], or [`clear`].
+    ///
+    /// [`truncate`]: Vec::truncate
+    /// [`resize`]: Vec::resize
+    /// [`extend`]: Extend::extend
+    /// [`clear`]: Vec::clear
+    ///
+    /// # Examples
+    ///
+    /// While the following example is sound, there is a memory leak since
+    /// the inner vectors were not freed prior to the [`set_len`] call:
+    ///
+    /// [`set_len`]: Vec::set_len
+    ///
+    /// ```
+    /// let mut vec = vec![vec![1, 0, 0],
+    ///                    vec![0, 1, 0],
+    ///                    vec![0, 0, 1]];
+    /// // SAFETY:
+    /// // 1. `old_len..0` is empty so no elements need to be initialized.
+    /// // 2. `0 <= capacity` always holds whatever `capacity` is.
+    /// unsafe {
+    ///     vec.set_len_zero();
+    /// #   // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// #   // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// #   vec.set_len(3);
+    /// }
+    /// ```
+    ///
+    /// Normally, here, one would use [`clear`] instead to correctly drop
+    /// the contents and thus not leak memory.
+    #[inline]
+    fn set_len_zero(&mut self) {
+        self.len = 0;
+    }
+
     /// Removes an element from the vector and returns it.
     ///
     /// The removed element is replaced by the last element of the vector.
