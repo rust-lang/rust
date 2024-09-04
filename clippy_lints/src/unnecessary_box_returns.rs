@@ -75,11 +75,9 @@ impl UnnecessaryBoxReturns {
             .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(def_id).skip_binder())
             .output();
 
-        if !return_ty.is_box() {
+        let Some(boxed_ty) = return_ty.boxed_ty() else {
             return;
-        }
-
-        let boxed_ty = return_ty.boxed_ty();
+        };
 
         // It's sometimes useful to return Box<T> if T is unsized, so don't lint those.
         // Also, don't lint if we know that T is very large, in which case returning

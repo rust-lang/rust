@@ -50,7 +50,7 @@ declare_clippy_lint! {
 }
 
 fn is_non_trait_box(ty: Ty<'_>) -> bool {
-    ty.is_box() && !ty.boxed_ty().is_trait()
+    ty.boxed_ty().is_some_and(|boxed| !boxed.is_trait())
 }
 
 struct EscapeDelegate<'a, 'tcx> {
@@ -191,8 +191,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
     fn is_large_box(&self, ty: Ty<'tcx>) -> bool {
         // Large types need to be boxed to avoid stack overflows.
-        if ty.is_box() {
-            self.cx.layout_of(ty.boxed_ty()).map_or(0, |l| l.size.bytes()) > self.too_large_for_stack
+        if let Some(boxed_ty) = ty.boxed_ty() {
+            self.cx.layout_of(boxed_ty).map_or(0, |l| l.size.bytes()) > self.too_large_for_stack
         } else {
             false
         }
