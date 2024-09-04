@@ -36,7 +36,7 @@ pub enum GccBuildStatus {
 /// GCC, it's fine for us to not try to avoid doing so.
 pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
     // Initialize the gcc submodule if not initialized already.
-    builder.update_submodule("src/gcc");
+    builder.config.update_submodule("src/gcc");
 
     // FIXME (GuillaumeGomez): To be done once gccjit has been built in the CI.
     // builder.config.maybe_download_ci_gcc();
