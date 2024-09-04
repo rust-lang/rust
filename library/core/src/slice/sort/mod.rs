@@ -5,5 +5,4 @@ pub mod stable;
 pub mod unstable;
 
 pub(crate) mod select;
-#[cfg(not(feature = "optimize_for_size"))]
 pub(crate) mod shared;

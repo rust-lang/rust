@@ -9,7 +9,6 @@
 use crate::mem::{self, SizedTypeProperties};
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
-#[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
 use crate::slice::sort::unstable::quicksort::partition;
 
@@ -176,13 +175,7 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
     loop {
         if v.len() <= INSERTION_SORT_THRESHOLD {
             if v.len() >= 2 {
-                cfg_if! {
-                    if #[cfg(feature = "optimize_for_size")] {
-                        bubble_sort(v, is_less);
-                    } else {
-                        insertion_sort_shift_left(v, 1, is_less);
-                    }
-                }
+                insertion_sort_shift_left(v, 1, is_less);
             }
 
             return;
@@ -313,36 +306,4 @@ fn median_idx<T, F: FnMut(&T, &T) -> bool>(
         return a;
     }
     b
-}
-
-// It's possible to re-use the insertion sort in the smallsort module, but with optimize_for_size it
-// would clutter that module with cfg statements and make it generally harder to read and develop.
-// So to decouple things and simplify it, we use an even smaller bubble sort.
-#[cfg(feature = "optimize_for_size")]
-fn bubble_sort<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) {
-    use crate::ptr;
-
-    let mut n = v.len();
-
-    let v_base = v.as_mut_ptr();
-
-    while n > 1 {
-        let loop_n = n;
-        n = 0;
-        for i in 1..loop_n {
-            // SAFETY: The loop construction implies that `i` and `i - 1` will always be in-bounds.
-            unsafe {
-                // Even if `is_less` erroneously always returns true, we are guaranteed that `n`
-                // reduces by one each out loop iteration, because `1..n` is exclusive. This
-                // guarantees a bounded run-time should `Ord` be implemented incorrectly.
-                let v_i = v_base.add(i);
-                let v_i_minus_one = v_base.add(i - 1);
-
-                if is_less(&*v_i, &*v_i_minus_one) {
-                    ptr::swap_nonoverlapping(v_i, v_i_minus_one, 1);
-                    n = i;
-                }
-            }
-        }
-    }
 }

@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "optimize_for_size", allow(dead_code))]
+
 use crate::marker::Freeze;
 
 pub(crate) mod pivot;
