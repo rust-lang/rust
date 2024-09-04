@@ -170,6 +170,22 @@ SPDX-FileCopyrightText = [
 SPDX-License-Identifier = "NCSA AND Apache-2.0 WITH LLVM-exception"
 
 [[annotations]]
+path = "src/gcc/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (C) 1997-2024 Free Software Foundation, Inc.",
+]
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "src/gcc/gcc/testsuite/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (C) 2000-2024 Free Software Foundation, Inc.",
+]
+SPDX-License-Identifier = "GPL-2.0-only"
+
+[[annotations]]
 path = "src/gcc/gcc/testsuite/c-c++-common/analyzer/*.c"
 precedence = "override"
 SPDX-FileCopyrightText = [
@@ -186,19 +202,3 @@ SPDX-FileCopyrightText = [
     "Copyright (C) 2000-2024 Free Software Foundation, Inc.",
 ]
 SPDX-License-Identifier = "GCC-exception-3.1"
-
-[[annotations]]
-path = "src/gcc/testsuite/**"
-precedence = "override"
-SPDX-FileCopyrightText = [
-    "Copyright (C) 2000-2024 Free Software Foundation, Inc.",
-]
-SPDX-License-Identifier = "GPL-2.0-only"
-
-[[annotations]]
-path = "src/gcc/**"
-precedence = "override"
-SPDX-FileCopyrightText = [
-    "Copyright (C) 1997-2024 Free Software Foundation, Inc.",
-]
-SPDX-License-Identifier = "GPL-3.0-or-later"
