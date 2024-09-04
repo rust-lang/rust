@@ -18,7 +18,7 @@ use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
     config::{Config, ConfigChange},
-    flycheck::{InvocationStrategy, Target},
+    flycheck::{InvocationStrategy, PackageSpecifier, Target},
     global_state::{FetchWorkspaceRequest, GlobalState},
     lsp::{from_proto, utils::apply_document_changes},
     lsp_ext::{self, RunFlycheckParams},
@@ -328,22 +328,32 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 }
                 InvocationStrategy::PerWorkspace => {
                     Box::new(move || {
-                        let target = TargetSpec::for_file(&world, file_id)?.and_then(|it| {
+                        let target = TargetSpec::for_file(&world, file_id)?.map(|it| {
                             let tgt_kind = it.target_kind();
                             let (tgt_name, root, package) = match it {
-                                TargetSpec::Cargo(c) => (c.target, c.workspace_root, c.package_id),
-                                _ => return None,
+                                TargetSpec::Cargo(c) => (
+                                    Some(c.target),
+                                    c.workspace_root,
+                                    PackageSpecifier::Cargo { package_id: c.package_id },
+                                ),
+                                TargetSpec::ProjectJson(p) => (
+                                    None,
+                                    p.project_root,
+                                    PackageSpecifier::BuildInfo { label: p.label.clone() },
+                                ),
                             };
 
-                            let tgt = match tgt_kind {
-                                project_model::TargetKind::Bin => Target::Bin(tgt_name),
-                                project_model::TargetKind::Example => Target::Example(tgt_name),
-                                project_model::TargetKind::Test => Target::Test(tgt_name),
-                                project_model::TargetKind::Bench => Target::Benchmark(tgt_name),
-                                _ => return Some((None, root, package)),
-                            };
+                            let tgt = tgt_name.and_then(|tgt_name| {
+                                Some(match tgt_kind {
+                                    project_model::TargetKind::Bin => Target::Bin(tgt_name),
+                                    project_model::TargetKind::Example => Target::Example(tgt_name),
+                                    project_model::TargetKind::Test => Target::Test(tgt_name),
+                                    project_model::TargetKind::Bench => Target::Benchmark(tgt_name),
+                                    _ => return None,
+                                })
+                            });
 
-                            Some((Some(tgt), root, package))
+                            (tgt, root, package)
                         });
                         tracing::debug!(?target, "flycheck target");
                         // we have a specific non-library target, attempt to only check that target, nothing
@@ -365,7 +375,13 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                                             cargo: Some((cargo, _, _)),
                                             ..
                                         } => *cargo.workspace_root() == root,
-                                        _ => false,
+                                        project_model::ProjectWorkspaceKind::Json(p) => {
+                                            *p.project_root() == root
+                                        }
+                                        project_model::ProjectWorkspaceKind::DetachedFile {
+                                            cargo: None,
+                                            ..
+                                        } => false,
                                     });
                                 if let Some(idx) = package_workspace_idx {
                                     let workspace_deps =

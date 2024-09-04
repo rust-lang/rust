@@ -195,9 +195,9 @@ impl FlycheckHandle {
     /// Schedule a re-start of the cargo check worker to do a package wide check.
     pub(crate) fn restart_for_package(
         &self,
-        package: Arc<PackageId>,
+        package: PackageSpecifier,
         target: Option<Target>,
-        workspace_deps: Option<FxHashSet<Arc<PackageId>>>,
+        workspace_deps: Option<FxHashSet<PackageSpecifier>>,
     ) {
         let generation = self.generation.fetch_add(1, Ordering::Relaxed) + 1;
         self.sender
@@ -233,7 +233,7 @@ pub(crate) enum ClearDiagnosticsKind {
 #[derive(Debug)]
 pub(crate) enum ClearScope {
     Workspace,
-    Package(Arc<PackageId>),
+    Package(PackageSpecifier),
 }
 
 pub(crate) enum FlycheckMessage {
@@ -243,7 +243,7 @@ pub(crate) enum FlycheckMessage {
         generation: DiagnosticsGeneration,
         workspace_root: Arc<AbsPathBuf>,
         diagnostic: Diagnostic,
-        package_id: Option<Arc<PackageId>>,
+        package_id: Option<PackageSpecifier>,
     },
 
     /// Request clearing all outdated diagnostics.
@@ -295,7 +295,32 @@ pub(crate) enum Progress {
 
 enum FlycheckScope {
     Workspace,
-    Package { package: Arc<PackageId>, workspace_deps: Option<FxHashSet<Arc<PackageId>>> },
+    Package {
+        // Either a cargo package or a $label in rust-project.check.overrideCommand
+        package: PackageSpecifier,
+        workspace_deps: Option<FxHashSet<PackageSpecifier>>,
+    },
+}
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+pub(crate) enum PackageSpecifier {
+    Cargo {
+        /// The one in Cargo.toml, assumed to work with `cargo check -p {}` etc
+        package_id: Arc<PackageId>,
+    },
+    BuildInfo {
+        /// If a `build` field is present in rust-project.json, its label field
+        label: String,
+    },
+}
+
+impl PackageSpecifier {
+    pub(crate) fn as_str(&self) -> &str {
+        match self {
+            Self::Cargo { package_id } => &package_id.repr,
+            Self::BuildInfo { label } => label,
+        }
+    }
 }
 
 enum StateChange {
@@ -331,7 +356,7 @@ struct FlycheckActor {
     command_handle: Option<CommandHandle<CargoCheckMessage>>,
     /// The receiver side of the channel mentioned above.
     command_receiver: Option<Receiver<CargoCheckMessage>>,
-    diagnostics_cleared_for: FxHashSet<Arc<PackageId>>,
+    diagnostics_cleared_for: FxHashSet<PackageSpecifier>,
     diagnostics_received: DiagnosticsReceived,
 }
 
@@ -564,7 +589,10 @@ impl FlycheckActor {
                             msg.target.kind.iter().format_with(", ", |kind, f| f(&kind)),
                         )));
                         let package_id = Arc::new(msg.package_id);
-                        if self.diagnostics_cleared_for.insert(package_id.clone()) {
+                        if self
+                            .diagnostics_cleared_for
+                            .insert(PackageSpecifier::Cargo { package_id: package_id.clone() })
+                        {
                             tracing::trace!(
                                 flycheck_id = self.id,
                                 package_id = package_id.repr,
@@ -572,7 +600,9 @@ impl FlycheckActor {
                             );
                             self.send(FlycheckMessage::ClearDiagnostics {
                                 id: self.id,
-                                kind: ClearDiagnosticsKind::All(ClearScope::Package(package_id)),
+                                kind: ClearDiagnosticsKind::All(ClearScope::Package(
+                                    PackageSpecifier::Cargo { package_id },
+                                )),
                             });
                         }
                     }
@@ -580,7 +610,7 @@ impl FlycheckActor {
                         tracing::trace!(
                             flycheck_id = self.id,
                             message = diagnostic.message,
-                            package_id = package_id.as_ref().map(|it| &it.repr),
+                            package_id = package_id.as_ref().map(|it| it.as_str()),
                             "diagnostic received"
                         );
                         if self.diagnostics_received == DiagnosticsReceived::No {
@@ -590,7 +620,7 @@ impl FlycheckActor {
                             if self.diagnostics_cleared_for.insert(package_id.clone()) {
                                 tracing::trace!(
                                     flycheck_id = self.id,
-                                    package_id = package_id.repr,
+                                    package_id = package_id.as_str(),
                                     "clearing diagnostics"
                                 );
                                 self.send(FlycheckMessage::ClearDiagnostics {
@@ -666,7 +696,18 @@ impl FlycheckActor {
 
                 match scope {
                     FlycheckScope::Workspace => cmd.arg("--workspace"),
-                    FlycheckScope::Package { package, .. } => cmd.arg("-p").arg(&package.repr),
+                    FlycheckScope::Package {
+                        package: PackageSpecifier::Cargo { package_id },
+                        ..
+                    } => cmd.arg("-p").arg(&package_id.repr),
+                    FlycheckScope::Package {
+                        package: PackageSpecifier::BuildInfo { .. }, ..
+                    } => {
+                        // No way to flycheck this single package. All we have is a build label.
+                        // There's no way to really say whether this build label happens to be
+                        // a cargo canonical name, so we won't try.
+                        return None;
+                    }
                 };
 
                 if let Some(tgt) = target {
@@ -748,7 +789,7 @@ impl FlycheckActor {
 #[allow(clippy::large_enum_variant)]
 enum CargoCheckMessage {
     CompilerArtifact(cargo_metadata::Artifact),
-    Diagnostic { diagnostic: Diagnostic, package_id: Option<Arc<PackageId>> },
+    Diagnostic { diagnostic: Diagnostic, package_id: Option<PackageSpecifier> },
 }
 
 struct CargoCheckParser;
@@ -767,7 +808,9 @@ impl JsonLinesParser<CargoCheckMessage> for CargoCheckParser {
                     cargo_metadata::Message::CompilerMessage(msg) => {
                         Some(CargoCheckMessage::Diagnostic {
                             diagnostic: msg.message,
-                            package_id: Some(Arc::new(msg.package_id)),
+                            package_id: Some(PackageSpecifier::Cargo {
+                                package_id: Arc::new(msg.package_id),
+                            }),
                         })
                     }
                     _ => None,

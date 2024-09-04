@@ -9,7 +9,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
@@ -36,7 +35,7 @@ use crate::{
     config::{Config, ConfigChange, ConfigErrors, RatomlFileKind},
     diagnostics::{CheckFixes, DiagnosticCollection},
     discover,
-    flycheck::{FlycheckHandle, FlycheckMessage},
+    flycheck::{FlycheckHandle, FlycheckMessage, PackageSpecifier},
     line_index::{LineEndings, LineIndex},
     lsp::{from_proto, to_proto::url_from_abs_path},
     lsp_ext,
@@ -845,20 +844,43 @@ impl GlobalStateSnapshot {
 
     pub(crate) fn all_workspace_dependencies_for_package(
         &self,
-        package: &Arc<PackageId>,
-    ) -> Option<FxHashSet<Arc<PackageId>>> {
-        self.workspaces.iter().find_map(|workspace| match &workspace.kind {
-            ProjectWorkspaceKind::Cargo { cargo, .. }
-            | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
-                let package = cargo.packages().find(|p| cargo[*p].id == *package)?;
+        package: &PackageSpecifier,
+    ) -> Option<FxHashSet<PackageSpecifier>> {
+        match package {
+            PackageSpecifier::Cargo { package_id } => {
+                self.workspaces.iter().find_map(|workspace| match &workspace.kind {
+                    ProjectWorkspaceKind::Cargo { cargo, .. }
+                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
+                        let package = cargo.packages().find(|p| cargo[*p].id == *package_id)?;
 
-                return cargo[package]
-                    .all_member_deps
-                    .as_ref()
-                    .map(|deps| deps.iter().map(|dep| cargo[*dep].id.clone()).collect());
+                        cargo[package].all_member_deps.as_ref().map(|deps| {
+                            deps.iter()
+                                .map(|dep| cargo[*dep].id.clone())
+                                .map(|p| PackageSpecifier::Cargo { package_id: p })
+                                .collect()
+                        })
+                    }
+                    _ => None,
+                })
             }
-            _ => None,
-        })
+            PackageSpecifier::BuildInfo { label } => {
+                self.workspaces.iter().find_map(|workspace| match &workspace.kind {
+                    ProjectWorkspaceKind::Json(p) => {
+                        let krate = p.crate_by_label(label)?;
+                        Some(
+                            krate
+                                .iter_deps()
+                                .filter_map(|dep| p[dep].build.as_ref())
+                                .map(|build| PackageSpecifier::BuildInfo {
+                                    label: build.label.clone(),
+                                })
+                                .collect(),
+                        )
+                    }
+                    _ => None,
+                })
+            }
+        }
     }
 
     pub(crate) fn file_exists(&self, file_id: FileId) -> bool {
