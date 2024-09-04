@@ -1923,8 +1923,16 @@ impl Step for Assemble {
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
-            if (is_dylib(&filename) || is_debug_info(&filename)) && !proc_macros.contains(&filename)
-            {
+
+            let is_proc_macro = proc_macros.contains(&filename);
+            let is_dylib_or_debug = is_dylib(&filename) || is_debug_info(&filename);
+
+            // If we link statically to stdlib, do not copy the libstd dynamic library file
+            let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
+            let can_be_rustc_dynamic_dep =
+                !(is_std && builder.link_std_into_rustc_driver(target_compiler.host));
+
+            if is_dylib_or_debug && can_be_rustc_dynamic_dep && !is_proc_macro {
                 builder.copy_link(&f.path(), &rustc_libdir.join(&filename));
             }
         }
