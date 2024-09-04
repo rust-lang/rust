@@ -1418,6 +1418,8 @@ symbols! {
         pic,
         pie,
         pin,
+        pin_as_mut,
+        pin_ergonomics,
         platform_intrinsics,
         plugin,
         plugin_registrar,

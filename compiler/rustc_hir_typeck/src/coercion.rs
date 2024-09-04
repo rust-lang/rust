@@ -214,6 +214,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::Dynamic(predicates, region, ty::DynStar) if self.tcx.features().dyn_star => {
                 return self.coerce_dyn_star(a, b, predicates, region);
             }
+            ty::Adt(pin, _)
+                if self.tcx.features().pin_ergonomics
+                    && pin.did() == self.tcx.lang_items().pin_type().unwrap() =>
+            {
+                return self.coerce_pin(a, b);
+            }
             _ => {}
         }
 
@@ -771,6 +777,59 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(InferOk {
             value: (vec![Adjustment { kind: Adjust::DynStar, target: b }], b),
             obligations,
+        })
+    }
+
+    /// Applies reborrowing for `Pin`
+    ///
+    /// We currently only support reborrowing `Pin<&mut T>` as `Pin<&mut T>`. This is accomplished
+    /// by inserting a call to `Pin::as_mut` during MIR building.
+    ///
+    /// In the future we might want to support other reborrowing coercions, such as:
+    /// - `Pin<&mut T>` as `Pin<&T>`
+    /// - `Pin<&T>` as `Pin<&T>`
+    /// - `Pin<Box<T>>` as `Pin<&T>`
+    /// - `Pin<Box<T>>` as `Pin<&mut T>`
+    #[instrument(skip(self), level = "trace")]
+    fn coerce_pin(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        // We need to make sure the two types are compatible for coercion.
+        // Then we will build a ReborrowPin adjustment and return that as an InferOk.
+
+        // Right now we can only reborrow if this is a `Pin<&mut T>`.
+        let can_reborrow = |ty: Ty<'tcx>| {
+            // Get the T out of Pin<T>
+            let ty = match ty.kind() {
+                ty::Adt(pin, args) if pin.did() == self.tcx.lang_items().pin_type().unwrap() => {
+                    args[0].expect_ty()
+                }
+                _ => {
+                    debug!("can't reborrow {:?} as pinned", ty);
+                    return None;
+                }
+            };
+            // Make sure the T is something we understand (just `&mut U` for now)
+            match ty.kind() {
+                ty::Ref(region, ty, ty::Mutability::Mut) => Some((*region, *ty)),
+                _ => {
+                    debug!("can't reborrow pin of inner type {:?}", ty);
+                    None
+                }
+            }
+        };
+
+        let (_, _a_ty) = can_reborrow(a).ok_or(TypeError::Mismatch)?;
+        let (b_region, _b_ty) = can_reborrow(b).ok_or(TypeError::Mismatch)?;
+
+        // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
+        // add the adjustments.
+        self.unify_and(a, b, |_inner_ty| {
+            vec![Adjustment {
+                kind: Adjust::ReborrowPin(AutoBorrow::Ref(
+                    b_region,
+                    AutoBorrowMutability::Mut { allow_two_phase_borrow: AllowTwoPhase::No },
+                )),
+                target: b,
+            }]
         })
     }
 

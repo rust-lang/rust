@@ -74,6 +74,7 @@ impl<'tcx> Cx<'tcx> {
         self.thir.exprs.push(expr)
     }
 
+    #[instrument(level = "trace", skip(self, expr, span))]
     fn apply_adjustment(
         &mut self,
         hir_expr: &'tcx hir::Expr<'tcx>,
@@ -146,6 +147,50 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
             Adjust::DynStar => ExprKind::Cast { source: self.thir.exprs.push(expr) },
+            Adjust::ReborrowPin(AutoBorrow::Ref(region, m)) => {
+                debug!("apply ReborrowPin adjustment");
+                match m {
+                    AutoBorrowMutability::Mut { .. } => {
+                        // Rewrite `$expr` as `Pin::as_mut(&mut $expr)`
+                        let as_mut_method =
+                            self.tcx().require_lang_item(rustc_hir::LangItem::PinAsMut, Some(span));
+                        let pin_ty_args = match expr.ty.kind() {
+                            ty::Adt(_, args) => args,
+                            _ => bug!("ReborrowPin with non-Pin type"),
+                        };
+                        let as_mut_ty =
+                            Ty::new_fn_def(self.tcx, as_mut_method, pin_ty_args.into_iter());
+
+                        let ty = Ty::new_ref(self.tcx, region, expr.ty, ty::Mutability::Mut);
+                        let arg = ExprKind::Borrow {
+                            borrow_kind: BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
+                            arg: self.thir.exprs.push(expr),
+                        };
+                        debug!(?arg, "borrow arg");
+                        let arg = self.thir.exprs.push(Expr { temp_lifetime, ty, span, kind: arg });
+
+                        let kind = ExprKind::Call {
+                            ty: as_mut_ty,
+                            fun: self.thir.exprs.push(Expr {
+                                temp_lifetime,
+                                ty: as_mut_ty,
+                                span,
+                                kind: ExprKind::ZstLiteral { user_ty: None },
+                            }),
+                            args: Box::new([arg]),
+                            from_hir_call: true,
+                            fn_span: span,
+                        };
+                        debug!(?kind);
+                        kind
+                    }
+                    AutoBorrowMutability::Not => {
+                        // FIXME: We need to call Pin::as_ref on the expression
+                        bug!("ReborrowPin with shared reference is not implemented yet")
+                    }
+                }
+            }
+            Adjust::ReborrowPin(AutoBorrow::RawPtr(_)) => bug!("ReborrowPin with raw pointer"),
         };
 
         Expr { temp_lifetime, ty: adjustment.target, span, kind }
