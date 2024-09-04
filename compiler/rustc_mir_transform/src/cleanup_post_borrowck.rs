@@ -21,11 +21,9 @@ use rustc_middle::mir::{Body, BorrowKind, CastKind, Rvalue, StatementKind, Termi
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::TyCtxt;
 
-use crate::MirPass;
-
 pub struct CleanupPostBorrowck;
 
-impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
+impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         for basic_block in body.basic_blocks.as_mut() {
             for statement in basic_block.statements.iter_mut() {

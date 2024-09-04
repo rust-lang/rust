@@ -13,7 +13,7 @@ use tracing::{debug, instrument};
 
 pub struct ScalarReplacementOfAggregates;
 
-impl<'tcx> MirPass<'tcx> for ScalarReplacementOfAggregates {
+impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }

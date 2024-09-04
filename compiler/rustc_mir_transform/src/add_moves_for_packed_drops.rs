@@ -37,7 +37,7 @@ use crate::util;
 /// blowup.
 pub struct AddMovesForPackedDrops;
 
-impl<'tcx> MirPass<'tcx> for AddMovesForPackedDrops {
+impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", body.source, body.span);
         add_moves_for_packed_drops(tcx, body);

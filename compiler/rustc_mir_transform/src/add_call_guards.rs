@@ -30,7 +30,7 @@ pub use self::AddCallGuards::*;
  *
  */
 
-impl<'tcx> MirPass<'tcx> for AddCallGuards {
+impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         self.add_call_guards(body);
     }

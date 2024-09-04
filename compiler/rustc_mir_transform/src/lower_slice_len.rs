@@ -7,7 +7,7 @@ use rustc_middle::ty::TyCtxt;
 
 pub struct LowerSliceLenCalls;
 
-impl<'tcx> MirPass<'tcx> for LowerSliceLenCalls {
+impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

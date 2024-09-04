@@ -19,17 +19,25 @@ use crate::errors::{
     OutsideLoopSuggestion, UnlabeledCfInWhileCondition, UnlabeledInLabeledBlock,
 };
 
+/// The context in which a block is encountered.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {
     Normal,
     Fn,
     Loop(hir::LoopSource),
     Closure(Span),
-    Coroutine { coroutine_span: Span, kind: hir::CoroutineDesugaring, source: hir::CoroutineSource },
+    Coroutine {
+        coroutine_span: Span,
+        kind: hir::CoroutineDesugaring,
+        source: hir::CoroutineSource,
+    },
     UnlabeledBlock(Span),
     UnlabeledIfBlock(Span),
     LabeledBlock,
-    Constant,
+    /// E.g. The labeled block inside `['_'; 'block: { break 'block 1 + 2; }]`.
+    AnonConst,
+    /// E.g. `const { ... }`.
+    ConstBlock,
 }
 
 #[derive(Clone)]
@@ -90,11 +98,11 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     }
 
     fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {
-        self.with_context(Constant, |v| intravisit::walk_anon_const(v, c));
+        self.with_context(AnonConst, |v| intravisit::walk_anon_const(v, c));
     }
 
     fn visit_inline_const(&mut self, c: &'hir hir::ConstBlock) {
-        self.with_context(Constant, |v| intravisit::walk_inline_const(v, c));
+        self.with_context(ConstBlock, |v| intravisit::walk_inline_const(v, c));
     }
 
     fn visit_fn(
@@ -128,7 +136,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                         && matches!(
                             ck_loop.cx_stack.last(),
                             Some(&Normal)
-                                | Some(&Constant)
+                                | Some(&AnonConst)
                                 | Some(&UnlabeledBlock(_))
                                 | Some(&UnlabeledIfBlock(_))
                         )
@@ -175,14 +183,18 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Block(ref b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(b));
             }
-            hir::ExprKind::Block(ref b, None) if matches!(self.cx_stack.last(), Some(&Fn)) => {
+            hir::ExprKind::Block(ref b, None)
+                if matches!(self.cx_stack.last(), Some(&Fn) | Some(&ConstBlock)) =>
+            {
                 self.with_context(Normal, |v| v.visit_block(b));
             }
-            hir::ExprKind::Block(ref b, None)
-                if matches!(
-                    self.cx_stack.last(),
-                    Some(&Normal) | Some(&Constant) | Some(&UnlabeledBlock(_))
-                ) =>
+            hir::ExprKind::Block(
+                ref b @ hir::Block { rules: hir::BlockCheckMode::DefaultBlock, .. },
+                None,
+            ) if matches!(
+                self.cx_stack.last(),
+                Some(&Normal) | Some(&AnonConst) | Some(&UnlabeledBlock(_))
+            ) =>
             {
                 self.with_context(UnlabeledBlock(b.span.shrink_to_lo()), |v| v.visit_block(b));
             }
@@ -353,7 +365,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             UnlabeledIfBlock(_) if br_cx_kind == BreakContextKind::Break => {
                 self.require_break_cx(br_cx_kind, span, break_span, cx_pos - 1);
             }
-            Normal | Constant | Fn | UnlabeledBlock(_) | UnlabeledIfBlock(_) => {
+            Normal | AnonConst | Fn | UnlabeledBlock(_) | UnlabeledIfBlock(_) | ConstBlock => {
                 self.sess.dcx().emit_err(OutsideLoop {
                     spans: vec![span],
                     name: &br_cx_kind.to_string(),
@@ -365,7 +377,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
     }
 
     fn require_label_in_labeled_block(
-        &mut self,
+        &self,
         span: Span,
         label: &Destination,
         cf_type: &str,
@@ -380,7 +392,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         false
     }
 
-    fn report_outside_loop_error(&mut self) {
+    fn report_outside_loop_error(&self) {
         for (s, block) in &self.block_breaks {
             self.sess.dcx().emit_err(OutsideLoop {
                 spans: block.spans.clone(),
