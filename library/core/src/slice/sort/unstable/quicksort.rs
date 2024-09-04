@@ -5,6 +5,8 @@ use crate::mem::{self, ManuallyDrop};
 use crate::slice::sort::shared::pivot::choose_pivot;
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::smallsort::UnstableSmallSortTypeImpl;
+#[cfg(not(feature = "optimize_for_size"))]
+use crate::slice::sort::unstable::heapsort;
 use crate::{intrinsics, ptr};
 
 /// Sorts `v` recursively.
@@ -31,10 +33,7 @@ pub(crate) fn quicksort<'a, T, F>(
         // If too many bad pivot choices were made, simply fall back to heapsort in order to
         // guarantee `O(N x log(N))` worst-case.
         if limit == 0 {
-            // SAFETY: We assume the `small_sort` threshold is at least 1.
-            unsafe {
-                crate::slice::sort::unstable::heapsort::heapsort(v, is_less);
-            }
+            heapsort::heapsort(v, is_less);
             return;
         }
 

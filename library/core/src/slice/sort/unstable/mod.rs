@@ -32,10 +32,7 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) {
 
     cfg_if! {
         if #[cfg(feature = "optimize_for_size")] {
-            // SAFETY: We checked that `len >= 2`.
-            unsafe {
-                heapsort::heapsort(v, is_less);
-            }
+            heapsort::heapsort(v, is_less);
         } else {
             // More advanced sorting methods than insertion sort are faster if called in
             // a hot loop for small inputs, but for general-purpose code the small
