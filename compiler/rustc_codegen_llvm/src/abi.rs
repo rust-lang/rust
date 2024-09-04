@@ -663,7 +663,12 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
 
         // If the call site has an associated instance, compute extra attributes based on that.
-        if let Some(instance) = instance {
+        // However, only do that for calls to imported functions: all the others have these
+        // attributes applied already to the declaration, so we can save some work by not also
+        // applying them here (and this really shows in perf).
+        if let Some(instance) = instance
+            && bx.tcx.is_foreign_item(instance.def_id())
+        {
             llfn_attrs_from_instance(bx.cx, instance, None, |place, attrs| {
                 attributes::apply_to_callsite(callsite, place, attrs)
             });
