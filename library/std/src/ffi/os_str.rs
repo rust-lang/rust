@@ -852,7 +852,7 @@ impl OsStr {
 
     /// Converts an `OsStr` to a <code>[Cow]<[str]></code>.
     ///
-    /// Any non-Unicode sequences are replaced with
+    /// Any non-UTF-8 sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
     /// [U+FFFD]: crate::char::REPLACEMENT_CHARACTER

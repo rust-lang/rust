@@ -2200,7 +2200,7 @@ impl Path {
 
     /// Converts a `Path` to a [`Cow<str>`].
     ///
-    /// Any non-Unicode sequences are replaced with
+    /// Any non-UTF-8 sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
     /// [U+FFFD]: super::char::REPLACEMENT_CHARACTER
