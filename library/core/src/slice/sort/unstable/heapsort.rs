@@ -69,9 +69,7 @@ where
                 break;
             }
 
-            // Swap `node` with the greater child, move one step down, and continue sifting. This
-            // could be ptr::swap_nonoverlapping but that adds a significant amount of binary-size.
-            ptr::swap(v_base.add(node), v_base.add(child));
+            ptr::swap_nonoverlapping(v_base.add(node), v_base.add(child), 1);
         }
 
         node = child;
