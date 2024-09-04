@@ -1,6 +1,7 @@
 // Check that draining at the front or back doesn't copy memory.
 
 //@ compile-flags: -O
+//@ needs-deterministic-layouts
 //@ ignore-debug: FIXME: checks for call detect scoped noalias metadata
 
 #![crate_type = "lib"]

@@ -280,6 +280,7 @@ pub struct Config {
     pub rust_codegen_backends: Vec<String>,
     pub rust_verify_llvm_ir: bool,
     pub rust_thin_lto_import_instr_limit: Option<u32>,
+    pub rust_randomize_layout: bool,
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: Option<bool>,
     pub rust_profile_use: Option<String>,
@@ -1090,6 +1091,7 @@ define_config! {
         codegen_units: Option<u32> = "codegen-units",
         codegen_units_std: Option<u32> = "codegen-units-std",
         debug_assertions: Option<bool> = "debug-assertions",
+        randomize_layout: Option<bool> = "randomize-layout",
         debug_assertions_std: Option<bool> = "debug-assertions-std",
         overflow_checks: Option<bool> = "overflow-checks",
         overflow_checks_std: Option<bool> = "overflow-checks-std",
@@ -1181,6 +1183,7 @@ impl Config {
             backtrace: true,
             rust_optimize: RustOptimize::Bool(true),
             rust_optimize_tests: true,
+            rust_randomize_layout: false,
             submodules: None,
             docs: true,
             docs_minification: true,
@@ -1640,6 +1643,7 @@ impl Config {
                 backtrace,
                 incremental,
                 parallel_compiler,
+                randomize_layout,
                 default_linker,
                 channel,
                 description,
@@ -1729,6 +1733,7 @@ impl Config {
             set(&mut config.lld_mode, lld_mode);
             set(&mut config.llvm_bitcode_linker_enabled, llvm_bitcode_linker);
 
+            config.rust_randomize_layout = randomize_layout.unwrap_or_default();
             config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
             config.rustc_parallel =
                 parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
@@ -2900,6 +2905,7 @@ fn check_incompatible_options_for_ci_rustc(
     let Rust {
         // Following options are the CI rustc incompatible ones.
         optimize,
+        randomize_layout,
         debug_logging,
         debuginfo_level_rustc,
         llvm_tools,
@@ -2964,6 +2970,7 @@ fn check_incompatible_options_for_ci_rustc(
     // otherwise, we just print a warning with `warn` macro.
 
     err!(current_rust_config.optimize, optimize);
+    err!(current_rust_config.randomize_layout, randomize_layout);
     err!(current_rust_config.debug_logging, debug_logging);
     err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc);
     err!(current_rust_config.rpath, rpath);
