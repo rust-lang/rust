@@ -361,7 +361,14 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
                 args = vec![new_args[1], new_args[0], new_args[2], minus_one].into();
             }
-            "__builtin_ia32_xrstor" | "__builtin_ia32_xsavec" => {
+            "__builtin_ia32_xrstor"
+            | "__builtin_ia32_xrstor64"
+            | "__builtin_ia32_xsavec"
+            | "__builtin_ia32_xsavec64"
+            | "__builtin_ia32_xsave"
+            | "__builtin_ia32_xsave64"
+            | "__builtin_ia32_xsaveopt"
+            | "__builtin_ia32_xsaveopt64" => {
                 let new_args = args.to_vec();
                 let thirty_two = builder.context.new_rvalue_from_int(new_args[1].get_type(), 32);
                 let arg2 = new_args[1] << thirty_two | new_args[2];
@@ -824,7 +831,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.xrstor" => "__builtin_ia32_xrstor",
         "llvm.x86.xrstor64" => "__builtin_ia32_xrstor64",
         "llvm.x86.xsavec" => "__builtin_ia32_xsavec",
-        "llvm.x86.xsave64" => "__builtin_ia32_xsave64",
+        "llvm.x86.xsavec64" => "__builtin_ia32_xsavec64",
         "llvm.x86.addcarry.32" => "__builtin_ia32_addcarryx_u32",
         "llvm.x86.subborrow.32" => "__builtin_ia32_sbb_u32",
         "llvm.x86.avx512.mask.compress.store.w.512" => "__builtin_ia32_compressstoreuhi512_mask",
@@ -1029,6 +1036,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.vpdpbusds.256" => "__builtin_ia32_vpdpbusds_v8si",
         "llvm.x86.avx512.vpdpbusds.128" => "__builtin_ia32_vpdpbusds_v4si",
         "llvm.x86.xsave" => "__builtin_ia32_xsave",
+        "llvm.x86.xsave64" => "__builtin_ia32_xsave64",
         "llvm.x86.xsaveopt" => "__builtin_ia32_xsaveopt",
         "llvm.x86.xsaveopt64" => "__builtin_ia32_xsaveopt64",
         "llvm.x86.avx512.mask.loadu.w.512" => "__builtin_ia32_loaddquhi512_mask",
