@@ -36,6 +36,7 @@ use tracing::{debug, instrument};
 /// newly created `Constant`.
 #[derive(Default)]
 pub(super) struct PromoteTemps<'tcx> {
+    // Must use `Cell` because `run_pass` takes `&self`, not `&mut self`.
     pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
 }
 
