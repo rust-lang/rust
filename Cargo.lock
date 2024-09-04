@@ -1764,12 +1764,10 @@ checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93ead53efc7ea8ed3cfb0c79fc8023fbb782a5432b52830b6518941cebe6505c"
+version = "2.5.0"
+source = "git+https://github.com/cuviper/indexmap?branch=raw#4db206673c970d65e35cecebf9d26acd85b15a30"
 dependencies = [
  "equivalent",
- "hashbrown",
  "rustc-rayon",
  "serde",
 ]
