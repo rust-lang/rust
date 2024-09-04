@@ -798,6 +798,7 @@ impl<'a> Builder<'a> {
                 tool::Miri,
                 tool::CargoMiri,
                 llvm::Lld,
+                llvm::Enzyme,
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
@@ -1586,6 +1587,12 @@ impl<'a> Builder<'a> {
             // so it has no way of knowing the sysroot.
             rustflags.arg("--sysroot");
             rustflags.arg(sysroot_str);
+        }
+
+        // https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp/topic/.E2.9C.94.20link.20new.20library.20into.20stage1.2Frustc
+        if self.config.llvm_enzyme {
+            rustflags.arg("-l");
+            rustflags.arg("Enzyme-19");
         }
 
         let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {

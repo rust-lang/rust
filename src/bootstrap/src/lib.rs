@@ -77,6 +77,9 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 #[allow(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (None, "bootstrap", None),
+    (Some(Mode::Rustc), "llvm_enzyme", None),
+    (Some(Mode::Codegen), "llvm_enzyme", None),
+    (Some(Mode::ToolRustc), "llvm_enzyme", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "rust_analyzer", None),
@@ -140,6 +143,7 @@ pub struct Build {
     clippy_info: GitInfo,
     miri_info: GitInfo,
     rustfmt_info: GitInfo,
+    enzyme_info: GitInfo,
     in_tree_llvm_info: GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
@@ -306,6 +310,7 @@ impl Build {
         let clippy_info = GitInfo::new(omit_git_hash, &src.join("src/tools/clippy"));
         let miri_info = GitInfo::new(omit_git_hash, &src.join("src/tools/miri"));
         let rustfmt_info = GitInfo::new(omit_git_hash, &src.join("src/tools/rustfmt"));
+        let enzyme_info = GitInfo::new(omit_git_hash, &src.join("src/tools/enzyme"));
 
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = GitInfo::new(false, &src.join("src/llvm-project"));
@@ -393,6 +398,7 @@ impl Build {
             clippy_info,
             miri_info,
             rustfmt_info,
+            enzyme_info,
             in_tree_llvm_info,
             cc: RefCell::new(HashMap::new()),
             cxx: RefCell::new(HashMap::new()),
@@ -738,6 +744,10 @@ impl Build {
         } else {
             self.out.join(target).join("llvm")
         }
+    }
+
+    fn enzyme_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("enzyme")
     }
 
     fn lld_out(&self, target: TargetSelection) -> PathBuf {

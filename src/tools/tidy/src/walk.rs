@@ -24,6 +24,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/tools/rust-analyzer",
         "src/tools/rustc-perf",
         "src/tools/rustfmt",
+        "src/tools/enzyme",
         "src/doc/book",
         "src/doc/edition-guide",
         "src/doc/embedded-book",
