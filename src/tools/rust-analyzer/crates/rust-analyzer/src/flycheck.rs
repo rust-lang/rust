@@ -22,6 +22,7 @@ use serde_derive::Deserialize;
 pub(crate) use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
 };
+use toolchain::DISPLAY_COMMAND_IGNORE_ENVS;
 use toolchain::Tool;
 use triomphe::Arc;
 
@@ -954,6 +955,54 @@ enum JsonMessage {
     Rustc(Diagnostic),
 }
 
+/// Not good enough to execute in a shell, but good enough to show the user without all the noisy
+/// quotes
+///
+/// Pass implicit_cwd if there is one regarded as the obvious by the user, so we can skip showing it.
+/// Compactness is the aim of the game, the output typically gets truncated quite a lot.
+fn display_command(c: &Command, implicit_cwd: Option<&std::path::Path>) -> String {
+    let mut o = String::new();
+    use std::fmt::Write;
+    let lossy = std::ffi::OsStr::to_string_lossy;
+    if let Some(dir) = c.get_current_dir() {
+        if Some(dir) == implicit_cwd.map(std::path::Path::new) {
+            // pass
+        } else if dir.to_string_lossy().contains(" ") {
+            write!(o, "cd {:?} && ", dir).unwrap();
+        } else {
+            write!(o, "cd {} && ", dir.display()).unwrap();
+        }
+    }
+    for (env, val) in c.get_envs() {
+        let (env, val) = (lossy(env), val.map(lossy).unwrap_or(std::borrow::Cow::Borrowed("")));
+        if DISPLAY_COMMAND_IGNORE_ENVS.contains(&env.as_ref()) {
+            continue;
+        }
+        if env.contains(" ") {
+            write!(o, "\"{}={}\" ", env, val).unwrap();
+        } else if val.contains(" ") {
+            write!(o, "{}=\"{}\" ", env, val).unwrap();
+        } else {
+            write!(o, "{}={} ", env, val).unwrap();
+        }
+    }
+    let prog = lossy(c.get_program());
+    if prog.contains(" ") {
+        write!(o, "{:?}", prog).unwrap();
+    } else {
+        write!(o, "{}", prog).unwrap();
+    }
+    for arg in c.get_args() {
+        let arg = lossy(arg);
+        if arg.contains(" ") {
+            write!(o, " \"{}\"", arg).unwrap();
+        } else {
+            write!(o, " {}", arg).unwrap();
+        }
+    }
+    o
+}
+
 #[cfg(test)]
 mod tests {
     use ide_db::FxHashMap;
@@ -962,6 +1011,7 @@ mod tests {
     use project_model::project_json;
 
     use crate::flycheck::Substitutions;
+    use crate::flycheck::display_command;
 
     #[test]
     fn test_substitutions() {
@@ -1048,5 +1098,37 @@ mod tests {
                 })
                 .map(|args| format!("build {}", args))
         }
+    }
+
+    #[test]
+    fn test_display_command() {
+        use std::path::Path;
+        let workdir = Path::new("workdir");
+        let mut cmd = toolchain::command("command", workdir, &FxHashMap::default());
+        assert_eq!(display_command(cmd.arg("--arg"), Some(workdir)), "command --arg");
+        assert_eq!(
+            display_command(cmd.arg("spaced arg"), Some(workdir)),
+            "command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.env("ENVIRON", "yeah"), Some(workdir)),
+            "ENVIRON=yeah command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.env("OTHER", "spaced env"), Some(workdir)),
+            "ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.current_dir("/tmp"), Some(workdir)),
+            "cd /tmp && ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.current_dir("/tmp and/thing"), Some(workdir)),
+            "cd \"/tmp and/thing\" && ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.current_dir("/tmp and/thing"), Some(Path::new("/tmp and/thing"))),
+            "ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
+        );
     }
 }
