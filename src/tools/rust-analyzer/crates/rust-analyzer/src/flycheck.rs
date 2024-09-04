@@ -872,29 +872,23 @@ impl FlycheckActor {
                         &*self.root
                     }
                 };
-                let mut cmd = toolchain::command(command, root, extra_env);
+                let runnable = project_json::Runnable {
+                    program: command.clone(),
+                    cwd: Utf8Path::to_owned(root.as_ref()),
+                    args: args.clone(),
+                    kind: project_json::RunnableKind::Flycheck,
+                };
 
-                // If the custom command has a $saved_file placeholder, and
-                // we're saving a file, replace the placeholder in the arguments.
-                if let Some(saved_file) = saved_file {
-                    for arg in args {
-                        if arg == SAVED_FILE_PLACEHOLDER_DOLLAR {
-                            cmd.arg(saved_file);
-                        } else {
-                            cmd.arg(arg);
-                        }
-                    }
-                } else {
-                    for arg in args {
-                        if arg == SAVED_FILE_PLACEHOLDER_DOLLAR {
-                            // The custom command has a $saved_file placeholder,
-                            // but we had an IDE event that wasn't a file save. Do nothing.
-                            return None;
-                        }
+                let label = match scope {
+                    FlycheckScope::Workspace => None,
+                    // We support substituting both build labels (e.g. buck, bazel) and cargo package ids.
+                    // With cargo package ids, you get `cargo check -p path+file:///path/to/rust-analyzer/crates/hir#0.0.0`.
+                    // That does work!
+                    FlycheckScope::Package { package, .. } => Some(package.as_str()),
+                };
 
-                        cmd.arg(arg);
-                    }
-                }
+                let subs = Substitutions { label, saved_file: saved_file.map(|x| x.as_str()) };
+                let cmd = subs.substitute(&runnable, extra_env)?;
 
                 Some(cmd)
             }
