@@ -14,7 +14,7 @@ pub use self::rand::hashmap_random_keys;
 #[macro_use]
 pub mod compat;
 
-mod api;
+pub mod api;
 
 pub mod alloc;
 pub mod args;
