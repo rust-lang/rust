@@ -2522,7 +2522,7 @@ mod diags {
         }
 
         pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
-            let mut res = None;
+            let mut res = self.infcx.tainted_by_errors();
 
             // Buffer any move errors that we collected and de-duplicated.
             for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
