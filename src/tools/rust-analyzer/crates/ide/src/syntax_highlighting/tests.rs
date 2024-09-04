@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use expect_test::{expect_file, ExpectFile};
 use ide_db::SymbolKind;
+use span::Edition;
 use test_utils::{bench, bench_fixture, skip_slow_tests, AssertLinear};
 
 use crate::{fixture, FileRange, HighlightConfig, HlTag, TextRange};
@@ -383,8 +384,10 @@ where
 
 #[test]
 fn test_keyword_highlighting() {
-    check_highlighting(
-        r#"
+    for edition in Edition::iter() {
+        check_highlighting(
+            &(format!("//- /main.rs crate:main edition:{edition}")
+                + r#"
 extern crate self;
 
 use crate;
@@ -396,13 +399,27 @@ mod __ {
 macro_rules! void {
     ($($tt:tt)*) => {}
 }
-void!(Self);
+
 struct __ where Self:;
 fn __(_: Self) {}
-"#,
-        expect_file!["./test_data/highlight_keywords.html"],
-        false,
-    );
+void!(Self);
+
+// edition dependent
+void!(try async await gen);
+// edition and context dependent
+void!(dyn);
+// builtin custom syntax
+void!(builtin offset_of format_args asm);
+// contextual
+void!(macro_rules, union, default, raw, auto, yeet);
+// reserved
+void!(abstract become box do final macro override priv typeof unsized virtual yield);
+void!('static 'self 'unsafe)
+"#),
+            expect_file![format!("./test_data/highlight_keywords_{edition}.html")],
+            false,
+        );
+    }
 }
 
 #[test]
