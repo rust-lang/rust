@@ -3,29 +3,53 @@
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
 
 // The next/prev buttons vertically scroll the code viewport between examples
-store-property: (".scraped-example-list > .scraped-example pre", {"scrollTop": initialScrollTop})
+move-cursor-to: ".scraped-example-list > .scraped-example"
+store-property: (".scraped-example-list > .scraped-example .src-line-numbers", {
+    "scrollTop": initialScrollTop,
+})
+assert-property: (".scraped-example-list > .scraped-example .rust", {
+    "scrollTop": |initialScrollTop|,
+})
 focus: ".scraped-example-list > .scraped-example .next"
 press-key: "Enter"
-assert-property-false: (".scraped-example-list > .scraped-example pre", {
+assert-property-false: (".scraped-example-list > .scraped-example .src-line-numbers", {
+    "scrollTop": |initialScrollTop|
+}, NEAR)
+assert-property-false: (".scraped-example-list > .scraped-example .rust", {
     "scrollTop": |initialScrollTop|
 }, NEAR)
 focus: ".scraped-example-list > .scraped-example .prev"
 press-key: "Enter"
-assert-property: (".scraped-example-list > .scraped-example pre", {
+assert-property: (".scraped-example-list > .scraped-example .src-line-numbers", {
+    "scrollTop": |initialScrollTop|
+}, NEAR)
+assert-property: (".scraped-example-list > .scraped-example .rust", {
     "scrollTop": |initialScrollTop|
 }, NEAR)
 
 // The expand button increases the scrollHeight of the minimized code viewport
 store-property: (".scraped-example-list > .scraped-example pre", {"offsetHeight": smallOffsetHeight})
-assert-property-false: (".scraped-example-list > .scraped-example pre", {
+assert-property: (".scraped-example-list > .scraped-example .src-line-numbers", {
+    "scrollHeight": |smallOffsetHeight|
+}, NEAR)
+assert-property: (".scraped-example-list > .scraped-example .rust", {
     "scrollHeight": |smallOffsetHeight|
 }, NEAR)
 focus: ".scraped-example-list > .scraped-example .expand"
 press-key: "Enter"
-assert-property-false: (".scraped-example-list > .scraped-example pre", {
+assert-property-false: (".scraped-example-list > .scraped-example .src-line-numbers", {
     "offsetHeight": |smallOffsetHeight|
 }, NEAR)
-store-property: (".scraped-example-list > .scraped-example pre", {"offsetHeight": fullOffsetHeight})
-assert-property: (".scraped-example-list > .scraped-example pre", {
+assert-property-false: (".scraped-example-list > .scraped-example .rust", {
+    "offsetHeight": |smallOffsetHeight|
+}, NEAR)
+store-property: (".scraped-example-list > .scraped-example .src-line-numbers", {
+    "offsetHeight": fullOffsetHeight,
+})
+assert-property: (".scraped-example-list > .scraped-example .rust", {
+    "offsetHeight": |fullOffsetHeight|,
+    "scrollHeight": |fullOffsetHeight|,
+})
+assert-property: (".scraped-example-list > .scraped-example .src-line-numbers", {
     "scrollHeight": |fullOffsetHeight|
 }, NEAR)
