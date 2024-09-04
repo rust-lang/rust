@@ -153,13 +153,3 @@ mod float_mul_f128_ppc {
         f128, __mulkf3, Quad, not(feature = "no-sys-f128");
     }
 }
-
-#[cfg(target_arch = "arm")]
-mod float_mul_arm {
-    use super::*;
-
-    float_mul! {
-        f32, __mulsf3vfp, Single, all();
-        f64, __muldf3vfp, Double, all();
-    }
-}

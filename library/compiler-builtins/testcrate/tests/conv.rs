@@ -258,12 +258,6 @@ mod extend {
         f32 => f64, Single => Double, __extendsfdf2, all();
     }
 
-    #[cfg(target_arch = "arm")]
-    f_to_f! {
-        extend,
-        f32 => f64, Single => Double, __extendsfdf2vfp, all();
-    }
-
     #[cfg(all(f16_enabled, f128_enabled))]
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     f_to_f! {
@@ -291,12 +285,6 @@ mod trunc {
     f_to_f! {
         trunc,
         f64 => f32, Double => Single, __truncdfsf2, all();
-    }
-
-    #[cfg(target_arch = "arm")]
-    f_to_f! {
-        trunc,
-        f64 => f32, Double => Single, __truncdfsf2vfp, all();
     }
 
     #[cfg(all(f16_enabled, f128_enabled))]

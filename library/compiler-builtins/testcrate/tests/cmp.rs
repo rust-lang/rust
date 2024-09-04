@@ -156,7 +156,6 @@ mod float_comparisons_arm {
     fn cmp_f32() {
         use compiler_builtins::float::cmp::{
             __aeabi_fcmpeq, __aeabi_fcmpge, __aeabi_fcmpgt, __aeabi_fcmple, __aeabi_fcmplt,
-            __eqsf2vfp, __gesf2vfp, __gtsf2vfp, __lesf2vfp, __ltsf2vfp, __nesf2vfp,
         };
 
         fuzz_float_2(N, |x: f32, y: f32| {
@@ -166,12 +165,6 @@ mod float_comparisons_arm {
                 0, x == y, __aeabi_fcmpeq;
                 0, x >= y, __aeabi_fcmpge;
                 0, x > y, __aeabi_fcmpgt;
-                0, x < y, __ltsf2vfp;
-                0, x <= y, __lesf2vfp;
-                0, x == y, __eqsf2vfp;
-                0, x >= y, __gesf2vfp;
-                0, x > y, __gtsf2vfp;
-                1, x != y, __nesf2vfp;
             );
         });
     }
@@ -180,7 +173,6 @@ mod float_comparisons_arm {
     fn cmp_f64() {
         use compiler_builtins::float::cmp::{
             __aeabi_dcmpeq, __aeabi_dcmpge, __aeabi_dcmpgt, __aeabi_dcmple, __aeabi_dcmplt,
-            __eqdf2vfp, __gedf2vfp, __gtdf2vfp, __ledf2vfp, __ltdf2vfp, __nedf2vfp,
         };
 
         fuzz_float_2(N, |x: f64, y: f64| {
@@ -190,12 +182,6 @@ mod float_comparisons_arm {
                 0, x == y, __aeabi_dcmpeq;
                 0, x >= y, __aeabi_dcmpge;
                 0, x > y, __aeabi_dcmpgt;
-                0, x < y, __ltdf2vfp;
-                0, x <= y, __ledf2vfp;
-                0, x == y, __eqdf2vfp;
-                0, x >= y, __gedf2vfp;
-                0, x > y, __gtdf2vfp;
-                1, x != y, __nedf2vfp;
             );
         });
     }

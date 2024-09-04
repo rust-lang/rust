@@ -23,14 +23,4 @@ intrinsics! {
 
         __addtf3(a, f128::from_repr(b.repr() ^ f128::SIGN_MASK))
     }
-
-    #[cfg(target_arch = "arm")]
-    pub extern "C" fn __subsf3vfp(a: f32, b: f32) -> f32 {
-        a - b
-    }
-
-    #[cfg(target_arch = "arm")]
-    pub extern "C" fn __subdf3vfp(a: f64, b: f64) -> f64 {
-        a - b
-    }
 }

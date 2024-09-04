@@ -926,14 +926,4 @@ intrinsics! {
     pub extern "C" fn __divdf3(a: f64, b: f64) -> f64 {
         div64(a, b)
     }
-
-    #[cfg(target_arch = "arm")]
-    pub extern "C" fn __divsf3vfp(a: f32, b: f32) -> f32 {
-        a / b
-    }
-
-    #[cfg(target_arch = "arm")]
-    pub extern "C" fn __divdf3vfp(a: f64, b: f64) -> f64 {
-        a / b
-    }
 }

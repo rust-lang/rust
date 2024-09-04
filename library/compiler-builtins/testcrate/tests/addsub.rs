@@ -139,13 +139,3 @@ mod float_addsub_f128_ppc {
         f128, __addkf3, __subkf3, Quad, not(feature = "no-sys-f128");
     }
 }
-
-#[cfg(target_arch = "arm")]
-mod float_addsub_arm {
-    use super::*;
-
-    float_sum! {
-        f32, __addsf3vfp, __subsf3vfp, Single, all();
-        f64, __adddf3vfp, __subdf3vfp, Double, all();
-    }
-}

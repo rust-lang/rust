@@ -124,11 +124,6 @@ intrinsics! {
     pub extern "C" fn __truncdfsf2(a: f64) -> f32 {
         trunc(a)
     }
-
-    #[cfg(target_arch = "arm")]
-    pub extern "C" fn __truncdfsf2vfp(a: f64) -> f32 {
-        a as f32
-    }
 }
 
 intrinsics! {

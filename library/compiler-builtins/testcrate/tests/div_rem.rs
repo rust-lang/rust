@@ -156,13 +156,3 @@ mod float_div {
         f64, __divdf3, Double, all();
     }
 }
-
-#[cfg(target_arch = "arm")]
-mod float_div_arm {
-    use super::*;
-
-    float! {
-        f32, __divsf3vfp, Single, all();
-        f64, __divdf3vfp, Double, all();
-    }
-}
