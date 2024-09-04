@@ -1695,6 +1695,8 @@ supported_targets! {
     ("armv7r-none-eabihf", armv7r_none_eabihf),
     ("armv8r-none-eabihf", armv8r_none_eabihf),
 
+    ("armv7-rtems-eabihf", armv7_rtems_eabihf),
+
     ("x86_64-pc-solaris", x86_64_pc_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
