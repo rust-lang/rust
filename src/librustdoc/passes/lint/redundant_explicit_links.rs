@@ -24,12 +24,7 @@ struct LinkData {
     display_link: String,
 }
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
-    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id) else {
-        // If non-local, no need to check anything.
-        return;
-    };
-
+pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId) {
     let hunks = prepare_to_doc_link_resolution(&item.attrs.doc_strings);
     for (item_id, doc) in hunks {
         if let Some(item_id) = item_id.or(item.def_id())

@@ -27,12 +27,33 @@ pub(crate) fn run_lints(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
 impl<'a, 'tcx> DocVisitor for Linter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        bare_urls::visit_item(self.cx, item);
-        check_code_block_syntax::visit_item(self.cx, item);
-        html_tags::visit_item(self.cx, item);
-        unescaped_backticks::visit_item(self.cx, item);
-        redundant_explicit_links::visit_item(self.cx, item);
-        unportable_markdown::visit_item(self.cx, item);
+        let Some(hir_id) = DocContext::as_local_hir_id(self.cx.tcx, item.item_id) else {
+            // If non-local, no need to check anything.
+            return;
+        };
+        let dox = item.doc_value();
+        if !dox.is_empty() {
+            let may_have_link = dox.contains(&[':', '['][..]);
+            let may_have_block_comment_or_html = dox.contains(&['<', '>']);
+            // ~~~rust
+            // // This is a real, supported commonmark syntax for block code
+            // ~~~
+            let may_have_code = dox.contains(&['~', '`', '\t'][..]) || dox.contains("    ");
+            if may_have_link {
+                bare_urls::visit_item(self.cx, item, hir_id, &dox);
+                redundant_explicit_links::visit_item(self.cx, item, hir_id);
+            }
+            if may_have_code {
+                check_code_block_syntax::visit_item(self.cx, item, &dox);
+                unescaped_backticks::visit_item(self.cx, item, hir_id, &dox);
+            }
+            if may_have_block_comment_or_html {
+                html_tags::visit_item(self.cx, item, hir_id, &dox);
+                unportable_markdown::visit_item(self.cx, item, hir_id, &dox);
+            } else if may_have_link {
+                unportable_markdown::visit_item(self.cx, item, hir_id, &dox);
+            }
+        }
 
         self.visit_item_recur(item)
     }
