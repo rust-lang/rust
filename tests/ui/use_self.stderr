@@ -259,25 +259,5 @@ error: unnecessary structure name repetition
 LL |                 E::A => {},
    |                 ^ help: use the applicable keyword: `Self`
 
-error: unnecessary structure name repetition
-  --> tests/ui/use_self.rs:685:27
-   |
-LL |         macro_inner_item!(MyStruct);
-   |                           ^^^^^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> tests/ui/use_self.rs:690:37
-   |
-LL |             static SPECIAL: RefCell<MyStruct> = RefCell::default();
-   |                                     ^^^^^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> tests/ui/use_self.rs:690:37
-   |
-LL |             static SPECIAL: RefCell<MyStruct> = RefCell::default();
-   |                                     ^^^^^^^^ help: use the applicable keyword: `Self`
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 46 previous errors
+error: aborting due to 43 previous errors
 

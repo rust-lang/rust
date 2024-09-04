@@ -682,12 +682,12 @@ mod issue_13092 {
     struct MyStruct;
 
     impl MyStruct {
-        macro_inner_item!(Self);
+        macro_inner_item!(MyStruct);
     }
 
     impl MyStruct {
         thread_local! {
-            static SPECIAL: RefCell<Self> = RefCell::default();
+            static SPECIAL: RefCell<MyStruct> = RefCell::default();
         }
     }
 }
