@@ -1,5 +1,5 @@
 // Tests for this module
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", all(target_os = "wasi", target_env = "p1")))))]
 mod tests;
 
 #[stable(feature = "rust1", since = "1.0.0")]
