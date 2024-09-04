@@ -40,20 +40,27 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
     }
 
     cfg_if! {
-        if #[cfg(feature = "optimize_for_size")] {
+        if #[cfg(any(feature = "optimize_for_size", target_pointer_width = "16"))] {
             let alloc_len = len / 2;
 
-            // For small inputs 4KiB of stack storage suffices, which allows us to avoid
-            // calling the (de-)allocator. Benchmarks showed this was quite beneficial.
-            let mut stack_buf = AlignedStorage::<T, 4096>::new();
-            let stack_scratch = stack_buf.as_uninit_slice_mut();
-            let mut heap_buf;
-            let scratch = if stack_scratch.len() >= alloc_len {
-                stack_scratch
-            } else {
-                heap_buf = BufT::with_capacity(alloc_len);
-                heap_buf.as_uninit_slice_mut()
-            };
+            cfg_if! {
+                if #[cfg(target_pointer_width = "16")] {
+                    let heap_buf = BufT::with_capacity(alloc_len);
+                    let scratch = heap_buf.as_uninit_slice_mut();
+                } else {
+                    // For small inputs 4KiB of stack storage suffices, which allows us to avoid
+                    // calling the (de-)allocator. Benchmarks showed this was quite beneficial.
+                    let mut stack_buf = AlignedStorage::<T, 4096>::new();
+                    let stack_scratch = stack_buf.as_uninit_slice_mut();
+                    let mut heap_buf;
+                    let scratch = if stack_scratch.len() >= alloc_len {
+                        stack_scratch
+                    } else {
+                        heap_buf = BufT::with_capacity(alloc_len);
+                        heap_buf.as_uninit_slice_mut()
+                    };
+                }
+            }
 
             tiny::mergesort(v, scratch, is_less);
         } else {
