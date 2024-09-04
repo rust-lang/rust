@@ -404,8 +404,7 @@ fn build_thread_local_shim<'tcx>(
     let span = tcx.def_span(def_id);
     let source_info = SourceInfo::outermost(span);
 
-    let mut blocks = IndexVec::with_capacity(1);
-    blocks.push(BasicBlockData {
+    let blocks = IndexVec::from_raw(vec![BasicBlockData {
         statements: vec![Statement {
             source_info,
             kind: StatementKind::Assign(Box::new((
@@ -415,7 +414,7 @@ fn build_thread_local_shim<'tcx>(
         }],
         terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
         is_cleanup: false,
-    });
+    }]);
 
     new_body(
         MirSource::from_instance(instance),
