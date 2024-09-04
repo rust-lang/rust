@@ -309,13 +309,18 @@ impl fmt::Debug for FlycheckMessage {
 
 #[derive(Debug)]
 pub(crate) enum Progress {
-    DidStart,
+    DidStart {
+        /// The user sees this in VSCode, etc. May be a shortened version of the command we actually
+        /// executed, otherwise it is way too long.
+        user_facing_command: String,
+    },
     DidCheckCrate(String),
     DidFinish(io::Result<()>),
     DidCancel,
     DidFailToRestart(String),
 }
 
+#[derive(Debug, Clone)]
 enum FlycheckScope {
     Workspace,
     Package {
@@ -344,6 +349,16 @@ impl PackageSpecifier {
             Self::BuildInfo { label } => label,
         }
     }
+}
+
+#[derive(Debug)]
+enum FlycheckCommandOrigin {
+    /// Regular cargo invocation
+    Cargo,
+    /// Configured via check_overrideCommand
+    CheckOverrideCommand,
+    /// From a runnable with [project_json::RunnableKind::Flycheck]
+    ProjectJsonRunnable,
 }
 
 enum StateChange {
@@ -529,16 +544,28 @@ impl FlycheckActor {
                     }
 
                     let command = self.check_command(&scope, saved_file.as_deref(), target);
-                    self.scope = scope;
+                    self.scope = scope.clone();
                     self.generation = generation;
 
-                    let Some(command) = command else {
+                    let Some((command, origin)) = command else {
+                        tracing::debug!(?scope, "failed to build flycheck command");
                         continue;
                     };
 
-                    let formatted_command = format!("{command:?}");
+                    let debug_command = format!("{command:?}");
+                    let user_facing_command = match origin {
+                        // Don't show all the --format=json-with-blah-blah args, just the simple
+                        // version
+                        FlycheckCommandOrigin::Cargo => self.config.to_string(),
+                        // show them the full command but pretty printed. advanced user
+                        FlycheckCommandOrigin::ProjectJsonRunnable
+                        | FlycheckCommandOrigin::CheckOverrideCommand => display_command(
+                            &command,
+                            Some(std::path::Path::new(self.root.as_path())),
+                        ),
+                    };
 
-                    tracing::debug!(?command, "will restart flycheck");
+                    tracing::debug!(?origin, ?command, "will restart flycheck");
                     let (sender, receiver) = unbounded();
                     match CommandHandle::spawn(
                         command,
@@ -575,14 +602,14 @@ impl FlycheckActor {
                         },
                     ) {
                         Ok(command_handle) => {
-                            tracing::debug!(command = formatted_command, "did restart flycheck");
+                            tracing::debug!(?origin, command = %debug_command, "did restart flycheck");
                             self.command_handle = Some(command_handle);
                             self.command_receiver = Some(receiver);
-                            self.report_progress(Progress::DidStart);
+                            self.report_progress(Progress::DidStart { user_facing_command });
                         }
                         Err(error) => {
                             self.report_progress(Progress::DidFailToRestart(format!(
-                                "Failed to run the following command: {formatted_command} error={error}"
+                                "Failed to run the following command: {debug_command} origin={origin:?} error={error}"
                             )));
                         }
                     }
@@ -789,7 +816,7 @@ impl FlycheckActor {
         scope: &FlycheckScope,
         saved_file: Option<&AbsPath>,
         target: Option<Target>,
-    ) -> Option<Command> {
+    ) -> Option<(Command, FlycheckCommandOrigin)> {
         match &self.config {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
                 // Only use the rust-project.json's flycheck config when no check_overrideCommand
@@ -803,7 +830,8 @@ impl FlycheckActor {
                     // Completely handle according to rust-project.json.
                     // We don't consider this to be "using cargo" so we will not apply any of the
                     // CargoOptions to the command.
-                    return self.explicit_check_command(scope, saved_file);
+                    let cmd = self.explicit_check_command(scope, saved_file)?;
+                    return Some((cmd, FlycheckCommandOrigin::ProjectJsonRunnable));
                 }
 
                 let mut cmd =
@@ -864,7 +892,7 @@ impl FlycheckActor {
                     self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path),
                 );
                 cmd.args(&options.extra_args);
-                Some(cmd)
+                Some((cmd, FlycheckCommandOrigin::Cargo))
             }
             FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy } => {
                 let root = match invocation_strategy {
@@ -892,7 +920,7 @@ impl FlycheckActor {
                 let subs = Substitutions { label, saved_file: saved_file.map(|x| x.as_str()) };
                 let cmd = subs.substitute(&runnable, extra_env)?;
 
-                Some(cmd)
+                Some((cmd, FlycheckCommandOrigin::CheckOverrideCommand))
             }
         }
     }

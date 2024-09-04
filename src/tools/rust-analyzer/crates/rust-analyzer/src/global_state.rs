@@ -112,6 +112,7 @@ pub(crate) struct GlobalState {
     pub(crate) flycheck_sender: Sender<FlycheckMessage>,
     pub(crate) flycheck_receiver: Receiver<FlycheckMessage>,
     pub(crate) last_flycheck_error: Option<String>,
+    pub(crate) flycheck_formatted_commands: Vec<String>,
 
     // Test explorer
     pub(crate) test_run_session: Option<Vec<CargoTestHandle>>,
@@ -288,6 +289,7 @@ impl GlobalState {
             flycheck_sender,
             flycheck_receiver,
             last_flycheck_error: None,
+            flycheck_formatted_commands: vec![],
 
             test_run_session: None,
             test_run_sender,
