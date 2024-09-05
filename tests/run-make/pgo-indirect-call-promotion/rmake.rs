@@ -29,5 +29,8 @@ fn main() {
         .codegen_units(1)
         .emit("llvm-ir")
         .run();
-    llvm_filecheck().patterns("filecheck-patterns.txt").stdin(rfs::read("interesting.ll")).run();
+    llvm_filecheck()
+        .patterns("filecheck-patterns.txt")
+        .stdin_buf(rfs::read("interesting.ll"))
+        .run();
 }
