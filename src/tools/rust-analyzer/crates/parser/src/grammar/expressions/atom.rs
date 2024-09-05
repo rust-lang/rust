@@ -329,11 +329,11 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
             break;
         }
 
-        let op = p.start();
+        let op_n = p.start();
         // Parse clobber_abi
         if p.eat_contextual_kw(T![clobber_abi]) {
             parse_clobber_abi(p);
-            op.complete(p, ASM_CLOBBER_ABI);
+            op_n.complete(p, ASM_CLOBBER_ABI);
             allow_templates = false;
             continue;
         }
@@ -341,7 +341,7 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
         // Parse options
         if p.eat_contextual_kw(T![options]) {
             parse_options(p);
-            op.complete(p, ASM_OPTIONS);
+            op_n.complete(p, ASM_OPTIONS);
             allow_templates = false;
             continue;
         }
@@ -356,12 +356,14 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
             false
         };
 
+        let op = p.start();
         let dir_spec = p.start();
         if p.eat(T![in]) || p.eat_contextual_kw(T![out]) || p.eat_contextual_kw(T![lateout]) {
             dir_spec.complete(p, ASM_DIR_SPEC);
             parse_reg(p);
             expr(p);
             op.complete(p, ASM_REG_OPERAND);
+            op_n.complete(p, ASM_OPERAND_NAMED);
         } else if p.eat_contextual_kw(T![inout]) || p.eat_contextual_kw(T![inlateout]) {
             dir_spec.complete(p, ASM_DIR_SPEC);
             parse_reg(p);
@@ -370,21 +372,26 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
                 expr(p);
             }
             op.complete(p, ASM_REG_OPERAND);
+            op_n.complete(p, ASM_OPERAND_NAMED);
         } else if p.eat_contextual_kw(T![label]) {
             dir_spec.abandon(p);
             block_expr(p);
-            op.complete(p, ASM_LABEL);
+            op.complete(p, ASM_OPERAND_NAMED);
+            op_n.complete(p, ASM_LABEL);
         } else if p.eat(T![const]) {
             dir_spec.abandon(p);
             expr(p);
             op.complete(p, ASM_CONST);
+            op_n.complete(p, ASM_OPERAND_NAMED);
         } else if p.eat_contextual_kw(T![sym]) {
             dir_spec.abandon(p);
             paths::type_path(p);
             op.complete(p, ASM_SYM);
+            op_n.complete(p, ASM_OPERAND_NAMED);
         } else if allow_templates {
             dir_spec.abandon(p);
             op.abandon(p);
+            op_n.abandon(p);
             if expr(p).is_none() {
                 p.err_and_bump("expected asm template");
             }
@@ -392,6 +399,7 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
         } else {
             dir_spec.abandon(p);
             op.abandon(p);
+            op_n.abandon(p);
             p.err_and_bump("expected asm operand");
             if p.at(T!['}']) {
                 break;

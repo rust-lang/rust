@@ -8,10 +8,11 @@ use std::mem;
 use std::{cell::LazyCell, cmp::Reverse};
 
 use base_db::{salsa::Database, SourceDatabase, SourceRootDatabase};
+use either::Either;
 use hir::{
     sym, Adt, AsAssocItem, DefWithBody, FileRange, FileRangeWrapper, HasAttrs, HasContainer,
-    HasSource, HirFileIdExt, InFile, InFileWrapper, InRealFile, ItemContainer, ModuleSource,
-    PathResolution, Semantics, Visibility,
+    HasSource, HirFileIdExt, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
+    ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -917,7 +918,7 @@ impl<'a> FindUsages<'a> {
             for offset in Self::match_indices(&text, finder, search_range) {
                 tree.token_at_offset(offset).for_each(|token| {
                     let Some(str_token) = ast::String::cast(token.clone()) else { return };
-                    if let Some((range, nameres)) =
+                    if let Some((range, Some(nameres))) =
                         sema.check_for_format_args_template(token, offset)
                     {
                         if self.found_format_args_ref(file_id, range, str_token, nameres, sink) {}
@@ -1087,19 +1088,19 @@ impl<'a> FindUsages<'a> {
         file_id: EditionedFileId,
         range: TextRange,
         token: ast::String,
-        res: Option<PathResolution>,
+        res: Either<PathResolution, InlineAsmOperand>,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
-        match res.map(Definition::from) {
-            Some(def) if def == self.def => {
-                let reference = FileReference {
-                    range,
-                    name: FileReferenceNode::FormatStringEntry(token, range),
-                    category: ReferenceCategory::READ,
-                };
-                sink(file_id, reference)
-            }
-            _ => false,
+        let def = res.either(Definition::from, Definition::from);
+        if def == self.def {
+            let reference = FileReference {
+                range,
+                name: FileReferenceNode::FormatStringEntry(token, range),
+                category: ReferenceCategory::READ,
+            };
+            sink(file_id, reference)
+        } else {
+            false
         }
     }
 

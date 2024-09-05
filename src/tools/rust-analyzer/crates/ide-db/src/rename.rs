@@ -208,7 +208,7 @@ impl Definition {
             | Definition::TupleField(_)
             | Definition::InlineAsmRegOrRegClass(_) => return None,
             // FIXME:
-            Definition::InlineAsmRegOperand(_) => return None,
+            Definition::InlineAsmOperand(_) => return None,
             // FIXME: This should be doable in theory
             Definition::DeriveHelper(_) => return None,
         };

@@ -118,7 +118,7 @@ pub struct AsmExpr {
 impl ast::HasAttrs for AsmExpr {}
 impl AsmExpr {
     #[inline]
-    pub fn asm_operands(&self) -> AstChildren<AsmOperand> { support::children(&self.syntax) }
+    pub fn asm_pieces(&self) -> AstChildren<AsmPiece> { support::children(&self.syntax) }
     #[inline]
     pub fn template(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     #[inline]
@@ -157,6 +157,18 @@ impl AsmOperandExpr {
     pub fn out_expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     #[inline]
     pub fn fat_arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=>]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AsmOperandNamed {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::HasName for AsmOperandNamed {}
+impl AsmOperandNamed {
+    #[inline]
+    pub fn asm_operand(&self) -> Option<AsmOperand> { support::child(&self.syntax) }
+    #[inline]
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -217,7 +229,6 @@ impl AsmOptions {
 pub struct AsmRegOperand {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::HasName for AsmRegOperand {}
 impl AsmRegOperand {
     #[inline]
     pub fn asm_dir_spec(&self) -> Option<AsmDirSpec> { support::child(&self.syntax) }
@@ -229,8 +240,6 @@ impl AsmRegOperand {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-    #[inline]
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2224,12 +2233,17 @@ impl ast::HasVisibility for Adt {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AsmOperand {
-    AsmClobberAbi(AsmClobberAbi),
     AsmConst(AsmConst),
     AsmLabel(AsmLabel),
-    AsmOptions(AsmOptions),
     AsmRegOperand(AsmRegOperand),
     AsmSym(AsmSym),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AsmPiece {
+    AsmClobberAbi(AsmClobberAbi),
+    AsmOperandNamed(AsmOperandNamed),
+    AsmOptions(AsmOptions),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2570,6 +2584,20 @@ impl AstNode for AsmLabel {
 impl AstNode for AsmOperandExpr {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_OPERAND_EXPR }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AsmOperandNamed {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_OPERAND_NAMED }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -4589,10 +4617,6 @@ impl AstNode for Adt {
         }
     }
 }
-impl From<AsmClobberAbi> for AsmOperand {
-    #[inline]
-    fn from(node: AsmClobberAbi) -> AsmOperand { AsmOperand::AsmClobberAbi(node) }
-}
 impl From<AsmConst> for AsmOperand {
     #[inline]
     fn from(node: AsmConst) -> AsmOperand { AsmOperand::AsmConst(node) }
@@ -4600,10 +4624,6 @@ impl From<AsmConst> for AsmOperand {
 impl From<AsmLabel> for AsmOperand {
     #[inline]
     fn from(node: AsmLabel) -> AsmOperand { AsmOperand::AsmLabel(node) }
-}
-impl From<AsmOptions> for AsmOperand {
-    #[inline]
-    fn from(node: AsmOptions) -> AsmOperand { AsmOperand::AsmOptions(node) }
 }
 impl From<AsmRegOperand> for AsmOperand {
     #[inline]
@@ -4616,18 +4636,13 @@ impl From<AsmSym> for AsmOperand {
 impl AstNode for AsmOperand {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(
-            kind,
-            ASM_CLOBBER_ABI | ASM_CONST | ASM_LABEL | ASM_OPTIONS | ASM_REG_OPERAND | ASM_SYM
-        )
+        matches!(kind, ASM_CONST | ASM_LABEL | ASM_REG_OPERAND | ASM_SYM)
     }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            ASM_CLOBBER_ABI => AsmOperand::AsmClobberAbi(AsmClobberAbi { syntax }),
             ASM_CONST => AsmOperand::AsmConst(AsmConst { syntax }),
             ASM_LABEL => AsmOperand::AsmLabel(AsmLabel { syntax }),
-            ASM_OPTIONS => AsmOperand::AsmOptions(AsmOptions { syntax }),
             ASM_REG_OPERAND => AsmOperand::AsmRegOperand(AsmRegOperand { syntax }),
             ASM_SYM => AsmOperand::AsmSym(AsmSym { syntax }),
             _ => return None,
@@ -4637,12 +4652,46 @@ impl AstNode for AsmOperand {
     #[inline]
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            AsmOperand::AsmClobberAbi(it) => &it.syntax,
             AsmOperand::AsmConst(it) => &it.syntax,
             AsmOperand::AsmLabel(it) => &it.syntax,
-            AsmOperand::AsmOptions(it) => &it.syntax,
             AsmOperand::AsmRegOperand(it) => &it.syntax,
             AsmOperand::AsmSym(it) => &it.syntax,
+        }
+    }
+}
+impl From<AsmClobberAbi> for AsmPiece {
+    #[inline]
+    fn from(node: AsmClobberAbi) -> AsmPiece { AsmPiece::AsmClobberAbi(node) }
+}
+impl From<AsmOperandNamed> for AsmPiece {
+    #[inline]
+    fn from(node: AsmOperandNamed) -> AsmPiece { AsmPiece::AsmOperandNamed(node) }
+}
+impl From<AsmOptions> for AsmPiece {
+    #[inline]
+    fn from(node: AsmOptions) -> AsmPiece { AsmPiece::AsmOptions(node) }
+}
+impl AstNode for AsmPiece {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(kind, ASM_CLOBBER_ABI | ASM_OPERAND_NAMED | ASM_OPTIONS)
+    }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            ASM_CLOBBER_ABI => AsmPiece::AsmClobberAbi(AsmClobberAbi { syntax }),
+            ASM_OPERAND_NAMED => AsmPiece::AsmOperandNamed(AsmOperandNamed { syntax }),
+            ASM_OPTIONS => AsmPiece::AsmOptions(AsmOptions { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            AsmPiece::AsmClobberAbi(it) => &it.syntax,
+            AsmPiece::AsmOperandNamed(it) => &it.syntax,
+            AsmPiece::AsmOptions(it) => &it.syntax,
         }
     }
 }
@@ -6181,7 +6230,7 @@ impl AstNode for AnyHasName {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
-            ASM_REG_OPERAND
+            ASM_OPERAND_NAMED
                 | CONST
                 | CONST_PARAM
                 | ENUM
@@ -6211,9 +6260,9 @@ impl AstNode for AnyHasName {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl From<AsmRegOperand> for AnyHasName {
+impl From<AsmOperandNamed> for AnyHasName {
     #[inline]
-    fn from(node: AsmRegOperand) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+    fn from(node: AsmOperandNamed) -> AnyHasName { AnyHasName { syntax: node.syntax } }
 }
 impl From<Const> for AnyHasName {
     #[inline]
@@ -6460,6 +6509,11 @@ impl std::fmt::Display for AsmOperand {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for AsmPiece {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for AssocItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -6556,6 +6610,11 @@ impl std::fmt::Display for AsmLabel {
     }
 }
 impl std::fmt::Display for AsmOperandExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AsmOperandNamed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

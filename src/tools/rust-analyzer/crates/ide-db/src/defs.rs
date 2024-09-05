@@ -10,8 +10,8 @@ use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
     Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
-    Function, GenericParam, HasVisibility, HirDisplay, Impl, Label, Local, Macro, Module,
-    ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, ToolModule, Trait,
+    Function, GenericParam, HasVisibility, HirDisplay, Impl, InlineAsmOperand, Label, Local, Macro,
+    Module, ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, ToolModule, Trait,
     TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
 use span::Edition;
@@ -51,7 +51,7 @@ pub enum Definition {
     ToolModule(ToolModule),
     ExternCrateDecl(ExternCrateDecl),
     InlineAsmRegOrRegClass(()),
-    InlineAsmRegOperand(()),
+    InlineAsmOperand(InlineAsmOperand),
 }
 
 impl Definition {
@@ -91,7 +91,7 @@ impl Definition {
             | Definition::TupleField(_)
             | Definition::ToolModule(_)
             | Definition::InlineAsmRegOrRegClass(_)
-            | Definition::InlineAsmRegOperand(_) => return None,
+            | Definition::InlineAsmOperand(_) => return None,
         };
         Some(module)
     }
@@ -127,7 +127,7 @@ impl Definition {
             | Definition::Label(_)
             | Definition::DeriveHelper(_)
             | Definition::InlineAsmRegOrRegClass(_)
-            | Definition::InlineAsmRegOperand(_) => return None,
+            | Definition::InlineAsmOperand(_) => return None,
         };
         Some(vis)
     }
@@ -156,9 +156,7 @@ impl Definition {
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),
             Definition::ExternCrateDecl(it) => return it.alias_or_name(db),
-            Definition::InlineAsmRegOrRegClass(_) | Definition::InlineAsmRegOperand(_) => {
-                return None
-            } //  FIXME
+            Definition::InlineAsmRegOrRegClass(_) | Definition::InlineAsmOperand(_) => return None, //  FIXME
         };
         Some(name)
     }
@@ -221,7 +219,7 @@ impl Definition {
             Definition::ToolModule(_) => None,
             Definition::DeriveHelper(_) => None,
             Definition::TupleField(_) => None,
-            Definition::InlineAsmRegOrRegClass(_) | Definition::InlineAsmRegOperand(_) => None,
+            Definition::InlineAsmRegOrRegClass(_) | Definition::InlineAsmOperand(_) => None,
         };
 
         docs.or_else(|| {
@@ -280,7 +278,7 @@ impl Definition {
             }
             // FIXME
             Definition::InlineAsmRegOrRegClass(_) => "inline_asm_reg_or_reg_class".to_owned(),
-            Definition::InlineAsmRegOperand(_) => "inline_asm_reg_operand".to_owned(),
+            Definition::InlineAsmOperand(_) => "inline_asm_reg_operand".to_owned(),
         }
     }
 }
@@ -442,7 +440,6 @@ impl NameClass {
         let _p = tracing::info_span!("NameClass::classify").entered();
 
         let parent = name.syntax().parent()?;
-
         let definition = match_ast! {
             match parent {
                 ast::Item(it) => classify_item(sema, it)?,
@@ -453,6 +450,7 @@ impl NameClass {
                 ast::Variant(it) => Definition::Variant(sema.to_def(&it)?),
                 ast::TypeParam(it) => Definition::GenericParam(sema.to_def(&it)?.into()),
                 ast::ConstParam(it) => Definition::GenericParam(sema.to_def(&it)?.into()),
+                ast::AsmOperandNamed(it) => Definition::InlineAsmOperand(sema.to_def(&it)?),
                 _ => return None,
             }
         };
@@ -766,6 +764,18 @@ impl_from!(
 impl From<Impl> for Definition {
     fn from(impl_: Impl) -> Self {
         Definition::SelfType(impl_)
+    }
+}
+
+impl From<InlineAsmOperand> for Definition {
+    fn from(value: InlineAsmOperand) -> Self {
+        Definition::InlineAsmOperand(value)
+    }
+}
+
+impl From<Either<PathResolution, InlineAsmOperand>> for Definition {
+    fn from(value: Either<PathResolution, InlineAsmOperand>) -> Self {
+        value.either(Definition::from, Definition::from)
     }
 }
 

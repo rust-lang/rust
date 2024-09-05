@@ -35,43 +35,45 @@ SOURCE_FILE
               STRING "\"add {x}, {tmp}\""
             COMMA ","
             WHITESPACE "\n        "
-            ASM_REG_OPERAND
+            ASM_OPERAND_NAMED
               NAME
                 IDENT "x"
               WHITESPACE " "
               EQ "="
               WHITESPACE " "
-              ASM_DIR_SPEC
-                INOUT_KW "inout"
-              L_PAREN "("
-              ASM_REG_SPEC
-                NAME_REF
-                  IDENT "reg"
-              R_PAREN ")"
-              WHITESPACE " "
-              PATH_EXPR
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "x"
+              ASM_REG_OPERAND
+                ASM_DIR_SPEC
+                  INOUT_KW "inout"
+                L_PAREN "("
+                ASM_REG_SPEC
+                  NAME_REF
+                    IDENT "reg"
+                R_PAREN ")"
+                WHITESPACE " "
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "x"
             COMMA ","
             WHITESPACE "\n        "
-            ASM_REG_OPERAND
+            ASM_OPERAND_NAMED
               NAME
                 IDENT "tmp"
               WHITESPACE " "
               EQ "="
               WHITESPACE " "
-              ASM_DIR_SPEC
-                OUT_KW "out"
-              L_PAREN "("
-              ASM_REG_SPEC
-                NAME_REF
-                  IDENT "reg"
-              R_PAREN ")"
-              WHITESPACE " "
-              UNDERSCORE_EXPR
-                UNDERSCORE "_"
+              ASM_REG_OPERAND
+                ASM_DIR_SPEC
+                  OUT_KW "out"
+                L_PAREN "("
+                ASM_REG_SPEC
+                  NAME_REF
+                    IDENT "reg"
+                R_PAREN ")"
+                WHITESPACE " "
+                UNDERSCORE_EXPR
+                  UNDERSCORE "_"
             COMMA ","
             WHITESPACE "\n    "
             R_PAREN ")"

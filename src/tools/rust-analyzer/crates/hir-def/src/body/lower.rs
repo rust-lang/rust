@@ -1847,7 +1847,7 @@ impl ExprCollector<'_> {
             },
             syntax_ptr,
         );
-        self.source_map.format_args_template_map.insert(idx, mappings);
+        self.source_map.template_map.get_or_insert_with(Default::default).0.insert(idx, mappings);
         idx
     }
 
