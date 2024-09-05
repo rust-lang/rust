@@ -5,7 +5,7 @@ LL |     ( $( any_token $field_rust_type )* ) => {};
    |                    ^^^^^^^^^^^^^^^^
    |
    = note: fragment specifiers must be specified in the 2024 edition
-   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
 help: try adding a specifier here
    |
 LL |     ( $( any_token $field_rust_type:spec )* ) => {};
@@ -18,7 +18,7 @@ LL |     ( $name ) => {};
    |       ^^^^^
    |
    = note: fragment specifiers must be specified in the 2024 edition
-   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
 help: try adding a specifier here
    |
 LL |     ( $name:spec ) => {};
@@ -31,7 +31,7 @@ LL |     ( $name ) => {};
    |       ^^^^^
    |
    = note: fragment specifiers must be specified in the 2024 edition
-   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
 help: try adding a specifier here
    |
 LL |     ( $name:spec ) => {};
