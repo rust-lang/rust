@@ -60,35 +60,6 @@ fn eat_operand_keyword<'a>(
     }
 }
 
-// Public for rustfmt consumption.
-#[derive(Copy, Clone)]
-pub enum AsmMacro {
-    /// The `asm!` macro
-    Asm,
-    /// The `global_asm!` macro
-    GlobalAsm,
-    /// The `naked_asm!` macro
-    NakedAsm,
-}
-
-impl AsmMacro {
-    const fn macro_name(&self) -> &'static str {
-        match self {
-            AsmMacro::Asm => "asm",
-            AsmMacro::GlobalAsm => "global_asm",
-            AsmMacro::NakedAsm => "naked_asm",
-        }
-    }
-
-    const fn is_supported_option(&self, option: ast::InlineAsmOptions) -> bool {
-        match self {
-            AsmMacro::Asm => true,
-            AsmMacro::GlobalAsm => ast::InlineAsmOptions::GLOBAL_OPTIONS.contains(option),
-            AsmMacro::NakedAsm => ast::InlineAsmOptions::NAKED_OPTIONS.contains(option),
-        }
-    }
-}
-
 fn parse_args<'a>(
     ecx: &ExtCtxt<'a>,
     sp: Span,
@@ -529,7 +500,7 @@ fn parse_reg<'a>(
 
 fn expand_preparsed_asm(
     ecx: &mut ExtCtxt<'_>,
-    asm_macro: ast::AsmMacro,
+    asm_macro: AsmMacro,
     args: AsmArgs,
 ) -> ExpandResult<Result<ast::InlineAsm, ErrorGuaranteed>, ()> {
     let mut template = vec![];
@@ -872,7 +843,7 @@ pub(super) fn expand_naked_asm<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
-    ExpandResult::Ready(match parse_args(ecx, sp, tts, false) {
+    ExpandResult::Ready(match parse_args(ecx, sp, tts, AsmMacro::NakedAsm) {
         Ok(args) => {
             let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, AsmMacro::NakedAsm, args)
             else {
@@ -933,35 +904,6 @@ pub(super) fn expand_global_asm<'cx>(
                 })]),
                 Err(guar) => DummyResult::any(sp, guar),
             }
-        }
-        Err(err) => {
-            let guar = err.emit();
-            DummyResult::any(sp, guar)
-        }
-    })
-}
-
-pub(super) fn expand_naked_asm<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
-    sp: Span,
-    tts: TokenStream,
-) -> MacroExpanderResult<'cx> {
-    ExpandResult::Ready(match parse_args(ecx, sp, tts, AsmMacro::NakedAsm) {
-        Ok(args) => {
-            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
-                return ExpandResult::Retry(());
-            };
-            let expr = match mac {
-                Ok(inline_asm) => P(ast::Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::InlineAsm(P(inline_asm)),
-                    span: sp,
-                    attrs: ast::AttrVec::new(),
-                    tokens: None,
-                }),
-                Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
-            };
-            MacEager::expr(expr)
         }
         Err(err) => {
             let guar = err.emit();

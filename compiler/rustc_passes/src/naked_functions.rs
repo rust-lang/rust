@@ -10,13 +10,13 @@ use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNDEFINED_NAKED_FUNCTION_ABI;
-use rustc_span::Span;
 use rustc_span::symbol::sym;
+use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi::Abi;
 
 use crate::errors::{
     NakedAsmOutsideNakedFn, NakedFunctionsAsmBlock, NakedFunctionsAsmOptions,
-    NakedFunctionsMustUseNoreturn, NakedFunctionsOperands, NoPatterns, ParamsNotAllowed,
+    NakedFunctionsMustNakedAsm, NakedFunctionsOperands, NoPatterns, ParamsNotAllowed,
     UndefinedNakedFunctionAbi,
 };
 
@@ -121,21 +121,29 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
 fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<'tcx>) {
     let mut this = CheckInlineAssembly { tcx, items: Vec::new() };
     this.visit_body(body);
-    if let [(ItemKind::Asm | ItemKind::Err, _)] = this.items[..] {
+    if let [(ItemKind::NakedAsm | ItemKind::Err, _)] = this.items[..] {
         // Ok.
     } else {
         let mut must_show_error = false;
-        let mut has_asm = false;
+        let mut has_naked_asm = false;
         let mut has_err = false;
         let mut multiple_asms = vec![];
         let mut non_asms = vec![];
         for &(kind, span) in &this.items {
             match kind {
-                ItemKind::Asm if has_asm => {
+                ItemKind::NakedAsm if has_naked_asm => {
                     must_show_error = true;
                     multiple_asms.push(span);
                 }
-                ItemKind::Asm => has_asm = true,
+                ItemKind::NakedAsm => has_naked_asm = true,
+                ItemKind::InlineAsm => {
+                    has_err = true;
+
+                    // the span that contains the `asm!` call,
+                    // so tooling can replace it with `naked_asm!`
+                    let macro_span = span.with_hi(span.lo() + BytePos("asm!".len() as u32));
+                    tcx.dcx().emit_err(NakedFunctionsMustNakedAsm { span, macro_span });
+                }
                 ItemKind::NonAsm => {
                     must_show_error = true;
                     non_asms.push(span);
@@ -164,7 +172,8 @@ struct CheckInlineAssembly<'tcx> {
 
 #[derive(Copy, Clone)]
 enum ItemKind {
-    Asm,
+    NakedAsm,
+    InlineAsm,
     NonAsm,
     Err,
 }
@@ -205,8 +214,18 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             }
 
             ExprKind::InlineAsm(asm) => {
-                self.items.push((ItemKind::Asm, span));
-                self.check_inline_asm(asm, span);
+                match asm.asm_macro {
+                    rustc_ast::AsmMacro::Asm => {
+                        self.items.push((ItemKind::InlineAsm, span));
+                    }
+                    rustc_ast::AsmMacro::NakedAsm => {
+                        self.items.push((ItemKind::NakedAsm, span));
+                        self.check_inline_asm(asm, span);
+                    }
+                    rustc_ast::AsmMacro::GlobalAsm => {
+                        // not allowed in this position
+                    }
+                }
             }
 
             ExprKind::DropTemps(..) | ExprKind::Block(..) => {
@@ -249,16 +268,6 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
                     .collect::<Vec<_>>()
                     .join(", "),
             });
-        }
-
-        if !asm.options.contains(InlineAsmOptions::NORETURN) {
-            let last_span = asm
-                .operands
-                .last()
-                .map_or_else(|| asm.template_strs.last().unwrap().2, |op| op.1)
-                .shrink_to_hi();
-
-            self.tcx.dcx().emit_err(NakedFunctionsMustUseNoreturn { span, last_span });
         }
     }
 }

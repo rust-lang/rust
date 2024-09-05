@@ -19,12 +19,12 @@ trait Sized {}
 #[naked]
 #[instruction_set(arm::t32)]
 unsafe extern "C" fn test_thumb() {
-    naked_asm!("bx lr", options(noreturn));
+    naked_asm!("bx lr");
 }
 
 #[no_mangle]
 #[naked]
 #[instruction_set(arm::t32)]
 unsafe extern "C" fn test_arm() {
-    naked_asm!("bx lr", options(noreturn));
+    naked_asm!("bx lr");
 }

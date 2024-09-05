@@ -12,7 +12,7 @@ use std::arch::naked_asm;
 #[naked]
 //~^ ERROR [E0736]
 fn test_naked() {
-    unsafe { naked_asm!("", options(noreturn)) };
+    unsafe { naked_asm!("") };
 }
 
 #[should_panic]
@@ -20,7 +20,7 @@ fn test_naked() {
 #[naked]
 //~^ ERROR [E0736]
 fn test_naked_should_panic() {
-    unsafe { naked_asm!("", options(noreturn)) };
+    unsafe { naked_asm!("") };
 }
 
 #[ignore]
@@ -28,12 +28,12 @@ fn test_naked_should_panic() {
 #[naked]
 //~^ ERROR [E0736]
 fn test_naked_ignore() {
-    unsafe { naked_asm!("", options(noreturn)) };
+    unsafe { naked_asm!("") };
 }
 
 #[bench]
 #[naked]
 //~^ ERROR [E0736]
 fn bench_naked() {
-    unsafe { naked_asm!("", options(noreturn)) };
+    unsafe { naked_asm!("") };
 }

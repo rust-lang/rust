@@ -3507,7 +3507,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>) -> Ty<'tcx> {
-        let mut diverge = asm.options.contains(ast::InlineAsmOptions::NORETURN);
+        let mut diverge = match asm.asm_macro {
+            rustc_ast::AsmMacro::Asm => asm.options.contains(ast::InlineAsmOptions::NORETURN),
+            rustc_ast::AsmMacro::GlobalAsm => true,
+            rustc_ast::AsmMacro::NakedAsm => true,
+        };
 
         for (op, _op_sp) in asm.operands {
             match op {

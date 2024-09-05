@@ -1202,12 +1202,12 @@ pub(crate) struct NakedFunctionsAsmOptions {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_naked_functions_must_use_noreturn, code = E0787)]
-pub(crate) struct NakedFunctionsMustUseNoreturn {
+#[diag(passes_naked_functions_must_naked_asm, code = E0787)]
+pub(crate) struct NakedFunctionsMustNakedAsm {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = ", options(noreturn)", applicability = "machine-applicable")]
-    pub last_span: Span,
+    #[suggestion(code = "naked_asm!", applicability = "machine-applicable")]
+    pub macro_span: Span,
 }
 
 #[derive(Diagnostic)]

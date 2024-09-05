@@ -6,7 +6,13 @@
 #![feature(asm_unwind, linkage)]
 #![crate_type = "lib"]
 
-use std::arch::naked_asm;
+use std::arch::{asm, naked_asm};
+
+#[naked]
+pub unsafe extern "C" fn inline_asm_macro() {
+    asm!("", options(raw));
+    //~^ERROR the `asm!` macro is not allowed in naked functions
+}
 
 #[repr(C)]
 pub struct P {
@@ -25,12 +31,12 @@ pub unsafe extern "C" fn patterns(
     P { x, y }: P,
     //~^ ERROR patterns not allowed in naked function parameters
 ) {
-    naked_asm!("", options(noreturn))
+    naked_asm!("")
 }
 
 #[naked]
 pub unsafe extern "C" fn inc(a: u32) -> u32 {
-    //~^ ERROR naked functions must contain a single asm block
+    //~^ ERROR naked functions must contain a single `naked_asm!` invocation
     a + 1
     //~^ ERROR referencing function parameters is not allowed in naked functions
 }
@@ -38,19 +44,19 @@ pub unsafe extern "C" fn inc(a: u32) -> u32 {
 #[naked]
 #[allow(asm_sub_register)]
 pub unsafe extern "C" fn inc_asm(a: u32) -> u32 {
-    naked_asm!("/* {0} */", in(reg) a, options(noreturn))
+    naked_asm!("/* {0} */", in(reg) a)
     //~^ ERROR the `in` operand cannot be used with `naked_asm!`
 }
 
 #[naked]
 pub unsafe extern "C" fn inc_closure(a: u32) -> u32 {
-    //~^ ERROR naked functions must contain a single asm block
+    //~^ ERROR naked functions must contain a single `naked_asm!` invocation
     (|| a + 1)()
 }
 
 #[naked]
 pub unsafe extern "C" fn unsupported_operands() {
-    //~^ ERROR naked functions must contain a single asm block
+    //~^ ERROR naked functions must contain a single `naked_asm!` invocation
     let mut a = 0usize;
     let mut b = 0usize;
     let mut c = 0usize;
@@ -72,27 +78,23 @@ pub unsafe extern "C" fn unsupported_operands() {
 
 #[naked]
 pub extern "C" fn missing_assembly() {
-    //~^ ERROR naked functions must contain a single asm block
+    //~^ ERROR naked functions must contain a single `naked_asm!` invocation
 }
 
 #[naked]
 pub extern "C" fn too_many_asm_blocks() {
-    //~^ ERROR naked functions must contain a single asm block
+    //~^ ERROR naked functions must contain a single `naked_asm!` invocation
     unsafe {
-        naked_asm!("");
-        //~^ ERROR asm in naked functions must use `noreturn` option
-        naked_asm!("");
-        //~^ ERROR asm in naked functions must use `noreturn` option
-        naked_asm!("");
-        //~^ ERROR asm in naked functions must use `noreturn` option
         naked_asm!("", options(noreturn));
+        //~^ ERROR the `noreturn` option cannot be used with `naked_asm!`
+        naked_asm!("");
     }
 }
 
 pub fn outer(x: u32) -> extern "C" fn(usize) -> usize {
     #[naked]
     pub extern "C" fn inner(y: usize) -> usize {
-        //~^ ERROR naked functions must contain a single asm block
+        //~^ ERROR naked functions must contain a single `naked_asm!` invocation
         *&y
         //~^ ERROR referencing function parameters is not allowed in naked functions
     }
@@ -101,7 +103,7 @@ pub fn outer(x: u32) -> extern "C" fn(usize) -> usize {
 
 #[naked]
 unsafe extern "C" fn invalid_options() {
-    naked_asm!("", options(nomem, preserves_flags, noreturn));
+    naked_asm!("", options(nomem, preserves_flags));
     //~^ ERROR the `nomem` option cannot be used with `naked_asm!`
     //~| ERROR the `preserves_flags` option cannot be used with `naked_asm!`
 }
@@ -112,31 +114,30 @@ unsafe extern "C" fn invalid_options_continued() {
     //~^ ERROR the `readonly` option cannot be used with `naked_asm!`
     //~| ERROR the `nostack` option cannot be used with `naked_asm!`
     //~| ERROR the `pure` option cannot be used with `naked_asm!`
-    //~| ERROR asm in naked functions must use `noreturn` option
 }
 
 #[naked]
 unsafe extern "C" fn invalid_may_unwind() {
-    naked_asm!("", options(noreturn, may_unwind));
+    naked_asm!("", options(may_unwind));
     //~^ ERROR the `may_unwind` option cannot be used with `naked_asm!`
 }
 
 #[naked]
 pub unsafe fn default_abi() {
     //~^ WARN Rust ABI is unsupported in naked functions
-    naked_asm!("", options(noreturn));
+    naked_asm!("");
 }
 
 #[naked]
 pub unsafe fn rust_abi() {
     //~^ WARN Rust ABI is unsupported in naked functions
-    naked_asm!("", options(noreturn));
+    naked_asm!("");
 }
 
 #[naked]
 pub extern "C" fn valid_a<T>() -> T {
     unsafe {
-        naked_asm!("", options(noreturn));
+        naked_asm!("");
     }
 }
 
@@ -145,7 +146,7 @@ pub extern "C" fn valid_b() {
     unsafe {
         {
             {
-                naked_asm!("", options(noreturn));
+                naked_asm!("");
             };
         };
     }
@@ -153,13 +154,13 @@ pub extern "C" fn valid_b() {
 
 #[naked]
 pub unsafe extern "C" fn valid_c() {
-    naked_asm!("", options(noreturn));
+    naked_asm!("");
 }
 
 #[cfg(target_arch = "x86_64")]
 #[naked]
 pub unsafe extern "C" fn valid_att_syntax() {
-    naked_asm!("", options(noreturn, att_syntax));
+    naked_asm!("", options(att_syntax));
 }
 
 #[naked]
@@ -173,7 +174,7 @@ pub unsafe extern "C" fn allow_compile_error(a: u32) -> u32 {
 pub unsafe extern "C" fn allow_compile_error_and_asm(a: u32) -> u32 {
     compile_error!("this is a user specified error");
     //~^ ERROR this is a user specified error
-    naked_asm!("", options(noreturn))
+    naked_asm!("")
 }
 
 #[naked]
@@ -186,7 +187,7 @@ pub unsafe extern "C" fn invalid_asm_syntax(a: u32) -> u32 {
 #[cfg_attr(target_pointer_width = "64", no_mangle)]
 #[naked]
 pub unsafe extern "C" fn compatible_cfg_attributes() {
-    naked_asm!("", options(noreturn, att_syntax));
+    naked_asm!("", options(att_syntax));
 }
 
 #[allow(dead_code)]
@@ -195,13 +196,13 @@ pub unsafe extern "C" fn compatible_cfg_attributes() {
 #[forbid(dead_code)]
 #[naked]
 pub unsafe extern "C" fn compatible_diagnostic_attributes() {
-    naked_asm!("", options(noreturn, raw));
+    naked_asm!("", options(raw));
 }
 
 #[deprecated = "test"]
 #[naked]
 pub unsafe extern "C" fn compatible_deprecated_attributes() {
-    naked_asm!("", options(noreturn, raw));
+    naked_asm!("", options(raw));
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -213,7 +214,6 @@ pub unsafe extern "C" fn compatible_must_use_attributes() -> u64 {
         mov rax, 42
         ret
         ",
-        options(noreturn)
     )
 }
 
@@ -222,20 +222,20 @@ pub unsafe extern "C" fn compatible_must_use_attributes() -> u64 {
 #[no_mangle]
 #[naked]
 pub unsafe extern "C" fn compatible_ffi_attributes_1() {
-    naked_asm!("", options(noreturn, raw));
+    naked_asm!("", options(raw));
 }
 
 #[cold]
 #[naked]
 pub unsafe extern "C" fn compatible_codegen_attributes() {
-    naked_asm!("", options(noreturn, raw));
+    naked_asm!("", options(raw));
 }
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "sse2")]
 #[naked]
 pub unsafe extern "C" fn compatible_target_feature() {
-    naked_asm!("", options(noreturn));
+    naked_asm!("");
 }
 
 #[doc = "foo bar baz"]
@@ -244,11 +244,11 @@ pub unsafe extern "C" fn compatible_target_feature() {
 #[doc(alias = "ADocAlias")]
 #[naked]
 pub unsafe extern "C" fn compatible_doc_attributes() {
-    naked_asm!("", options(noreturn, raw));
+    naked_asm!("", options(raw));
 }
 
 #[linkage = "external"]
 #[naked]
 pub unsafe extern "C" fn compatible_linkage() {
-    naked_asm!("", options(noreturn, raw));
+    naked_asm!("", options(raw));
 }

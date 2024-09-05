@@ -13,8 +13,10 @@ LL | | }
 error: attribute should be applied to a function definition
   --> $DIR/naked-invalid-attr.rs:51:5
    |
-LL |     #[naked] || {};
-   |     ^^^^^^^^ ----- not a function definition
+LL |     #[naked]
+   |     ^^^^^^^^
+LL |     || {};
+   |     ----- not a function definition
 
 error: attribute should be applied to a function definition
   --> $DIR/naked-invalid-attr.rs:22:5

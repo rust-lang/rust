@@ -488,9 +488,9 @@ passes_naked_asm_outside_naked_fn =
     the `naked_asm!` macro can only be used in functions marked with `#[naked]`
 
 passes_naked_functions_asm_block =
-    naked functions must contain a single asm block
-    .label_multiple_asm = multiple asm blocks are unsupported in naked functions
-    .label_non_asm = non-asm is unsupported in naked functions
+    naked functions must contain a single `naked_asm!` invocation
+    .label_multiple_asm = multiple `naked_asm!` invocations are not allowed in naked functions
+    .label_non_asm = not allowed in naked functions
 
 passes_naked_functions_asm_options =
     asm options unsupported in naked functions: {$unsupported_options}
@@ -500,9 +500,9 @@ passes_naked_functions_incompatible_attribute =
     .label = the `{$attr}` attribute is incompatible with `#[naked]`
     .naked_attribute = function marked with `#[naked]` here
 
-passes_naked_functions_must_use_noreturn =
-    asm in naked functions must use `noreturn` option
-    .suggestion = consider specifying that the asm block is responsible for returning from the function
+passes_naked_functions_must_naked_asm =
+    the `asm!` macro is not allowed in naked functions
+    .suggestion = consider using the `naked_asm!` macro instead
 
 passes_naked_functions_operands =
     only `const` and `sym` operands are supported in naked functions

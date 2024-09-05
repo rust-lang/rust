@@ -67,7 +67,7 @@ pub mod naked {
     #[naked]
     pub extern "C" fn function(a: usize, b: usize) -> usize {
         unsafe {
-            naked_asm!("", options(noreturn));
+            naked_asm!("");
         }
     }
 
@@ -77,14 +77,14 @@ pub mod naked {
         #[naked]
         pub extern "C" fn associated(a: usize, b: usize) -> usize {
             unsafe {
-                naked_asm!("", options(noreturn));
+                naked_asm!("");
             }
         }
 
         #[naked]
         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
             unsafe {
-                naked_asm!("", options(noreturn));
+                naked_asm!("");
             }
         }
     }
@@ -93,14 +93,14 @@ pub mod naked {
         #[naked]
         extern "C" fn trait_associated(a: usize, b: usize) -> usize {
             unsafe {
-                naked_asm!("", options(noreturn));
+                naked_asm!("");
             }
         }
 
         #[naked]
         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
             unsafe {
-                naked_asm!("", options(noreturn));
+                naked_asm!("");
             }
         }
     }

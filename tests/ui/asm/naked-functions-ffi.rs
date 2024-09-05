@@ -10,6 +10,6 @@ pub extern "C" fn naked(p: char) -> u128 {
     //~^ WARN uses type `char`
     //~| WARN uses type `u128`
     unsafe {
-        naked_asm!("", options(noreturn));
+        naked_asm!("");
     }
 }

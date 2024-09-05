@@ -6,7 +6,7 @@ use std::arch::naked_asm;
 #[naked]
 //~^ the `#[naked]` attribute is an experimental feature
 extern "C" fn naked() {
-    naked_asm!("", options(noreturn))
+    naked_asm!("")
     //~^ ERROR use of unstable library feature 'naked_functions'
     //~| ERROR: requires unsafe
 }
@@ -14,7 +14,7 @@ extern "C" fn naked() {
 #[naked]
 //~^ the `#[naked]` attribute is an experimental feature
 extern "C" fn naked_2() -> isize {
-    naked_asm!("", options(noreturn))
+    naked_asm!("")
     //~^ ERROR use of unstable library feature 'naked_functions'
     //~| ERROR: requires unsafe
 }
