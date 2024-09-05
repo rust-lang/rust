@@ -361,16 +361,20 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
         if p.eat(T![in]) || p.eat_contextual_kw(T![out]) || p.eat_contextual_kw(T![lateout]) {
             dir_spec.complete(p, ASM_DIR_SPEC);
             parse_reg(p);
+            let op_expr = p.start();
             expr(p);
+            op_expr.complete(p, ASM_OPERAND_EXPR);
             op.complete(p, ASM_REG_OPERAND);
             op_n.complete(p, ASM_OPERAND_NAMED);
         } else if p.eat_contextual_kw(T![inout]) || p.eat_contextual_kw(T![inlateout]) {
             dir_spec.complete(p, ASM_DIR_SPEC);
             parse_reg(p);
+            let op_expr = p.start();
             expr(p);
             if p.eat(T![=>]) {
                 expr(p);
             }
+            op_expr.complete(p, ASM_OPERAND_EXPR);
             op.complete(p, ASM_REG_OPERAND);
             op_n.complete(p, ASM_OPERAND_NAMED);
         } else if p.eat_contextual_kw(T![label]) {

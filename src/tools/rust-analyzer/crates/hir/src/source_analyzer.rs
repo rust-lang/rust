@@ -907,12 +907,14 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_offset_in_asm_template(
         &self,
         asm: InFile<&ast::AsmExpr>,
+        line: usize,
         offset: TextSize,
     ) -> Option<(DefWithBodyId, (ExprId, TextRange, usize))> {
         let (def, _, body_source_map) = self.def.as_ref()?;
         let (expr, args) = body_source_map.asm_template_args(asm)?;
         Some(*def).zip(
-            args.iter()
+            args.get(line)?
+                .iter()
                 .find(|(range, _)| range.contains_inclusive(offset))
                 .map(|(range, idx)| (expr, *range, *idx)),
         )
@@ -944,7 +946,7 @@ impl SourceAnalyzer {
     pub(crate) fn as_asm_parts(
         &self,
         asm: InFile<&ast::AsmExpr>,
-    ) -> Option<(DefWithBodyId, (ExprId, &[(TextRange, usize)]))> {
+    ) -> Option<(DefWithBodyId, (ExprId, &[Vec<(TextRange, usize)>]))> {
         let (def, _, body_source_map) = self.def.as_ref()?;
         Some(*def).zip(body_source_map.asm_template_args(asm))
     }

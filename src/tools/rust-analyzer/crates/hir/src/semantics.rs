@@ -572,9 +572,11 @@ impl<'db> SemanticsImpl<'db> {
                 } else {
                     let asm = ast::AsmExpr::cast(parent)?;
                     let source_analyzer = self.analyze_no_infer(asm.syntax())?;
+                    let line = asm.template().position(|it| *it.syntax() == literal)?;
                     let asm = self.wrap_node_infile(asm);
                     let (owner, (expr, asm_parts)) = source_analyzer.as_asm_parts(asm.as_ref())?;
                     let res = asm_parts
+                        .get(line)?
                         .iter()
                         .map(|&(range, index)| {
                             (
@@ -629,8 +631,9 @@ impl<'db> SemanticsImpl<'db> {
         } else {
             let asm = ast::AsmExpr::cast(parent)?;
             let source_analyzer = &self.analyze_no_infer(asm.syntax())?;
+            let line = asm.template().position(|it| *it.syntax() == literal)?;
             let asm = self.wrap_node_infile(asm);
-            source_analyzer.resolve_offset_in_asm_template(asm.as_ref(), offset).map(
+            source_analyzer.resolve_offset_in_asm_template(asm.as_ref(), line, offset).map(
                 |(owner, (expr, range, index))| {
                     (range, Some(Either::Right(InlineAsmOperand { owner, expr, index })))
                 },
