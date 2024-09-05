@@ -158,11 +158,14 @@ impl ExprCollector<'_> {
         if !options.contains(AsmOptions::RAW) {
             // Don't treat raw asm as a format string.
             asm.template()
-                .filter_map(|it| Some((it.clone(), self.expand_macros_to_string(it)?)))
-                .for_each(|(expr, (s, is_direct_literal))| {
+                .enumerate()
+                .filter_map(|(idx, it)| Some((idx, it.clone(), self.expand_macros_to_string(it)?)))
+                .for_each(|(idx, expr, (s, is_direct_literal))| {
+                    mappings.resize_with(idx + 1, Vec::default);
                     let Ok(text) = s.value() else {
                         return;
                     };
+                    let mappings = &mut mappings[idx];
                     let template_snippet = match expr {
                         ast::Expr::Literal(literal) => match literal.kind() {
                             ast::LiteralKind::String(s) => Some(s.text().to_owned()),

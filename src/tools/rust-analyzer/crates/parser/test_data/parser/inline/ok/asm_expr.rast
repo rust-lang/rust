@@ -50,11 +50,12 @@ SOURCE_FILE
                     IDENT "reg"
                 R_PAREN ")"
                 WHITESPACE " "
-                PATH_EXPR
-                  PATH
-                    PATH_SEGMENT
-                      NAME_REF
-                        IDENT "x"
+                ASM_OPERAND_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "x"
             COMMA ","
             WHITESPACE "\n        "
             ASM_OPERAND_NAMED
@@ -72,8 +73,9 @@ SOURCE_FILE
                     IDENT "reg"
                 R_PAREN ")"
                 WHITESPACE " "
-                UNDERSCORE_EXPR
-                  UNDERSCORE "_"
+                ASM_OPERAND_EXPR
+                  UNDERSCORE_EXPR
+                    UNDERSCORE "_"
             COMMA ","
             WHITESPACE "\n    "
             R_PAREN ")"

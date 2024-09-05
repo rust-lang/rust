@@ -1331,6 +1331,28 @@ fn main() {
         );
     }
 }
+// taken from https://github.com/rust-embedded/cortex-m/blob/47921b51f8b960344fcfa1255a50a0d19efcde6d/cortex-m/src/asm.rs#L254-L274
+#[inline]
+pub unsafe fn bootstrap(msp: *const u32, rv: *const u32) -> ! {
+    // Ensure thumb mode is set.
+    let rv = (rv as u32) | 1;
+    let msp = msp as u32;
+    core::arch::asm!(
+        "mrs {tmp}, CONTROL",
+        "bics {tmp}, {spsel}",
+        "msr CONTROL, {tmp}",
+        "isb",
+        "msr MSP, {msp}",
+        "bx {rv}",
+        // `out(reg) _` is not permitted in a `noreturn` asm! call,
+        // so instead use `in(reg) 0` and don't restore it afterwards.
+        tmp = in(reg) 0,
+        spsel = in(reg) 2,
+        msp = in(reg) msp,
+        rv = in(reg) rv,
+        options(noreturn, nomem, nostack),
+    );
+}
 "#,
         expect_file!["./test_data/highlight_asm.html"],
         false,
