@@ -1,5 +1,5 @@
 error: `panic` should not be present in production code
-  --> tests/ui-toml/panic/panic.rs:11:14
+  --> tests/ui-toml/panic/panic.rs:12:14
    |
 LL |         _ => panic!(""),
    |              ^^^^^^^^^^
@@ -7,5 +7,11 @@ LL |         _ => panic!(""),
    = note: `-D clippy::panic` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::panic)]`
 
-error: aborting due to 1 previous error
+error: `panic_any` should not be present in production code
+  --> tests/ui-toml/panic/panic.rs:17:5
+   |
+LL |     panic_any("should lint")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

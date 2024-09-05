@@ -1,4 +1,4 @@
-#[warn(clippy::exit)]
+#![warn(clippy::exit)]
 
 fn main() {
     if true {

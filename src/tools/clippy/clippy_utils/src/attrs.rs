@@ -183,15 +183,15 @@ pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
         let mut iter = tokenize_with_text(src);
 
         // Search for the token sequence [`#`, `[`, `cfg`]
-        while iter.any(|(t, _)| matches!(t, TokenKind::Pound)) {
-            let mut iter = iter.by_ref().skip_while(|(t, _)| {
+        while iter.any(|(t, ..)| matches!(t, TokenKind::Pound)) {
+            let mut iter = iter.by_ref().skip_while(|(t, ..)| {
                 matches!(
                     t,
                     TokenKind::Whitespace | TokenKind::LineComment { .. } | TokenKind::BlockComment { .. }
                 )
             });
-            if matches!(iter.next(), Some((TokenKind::OpenBracket, _)))
-                && matches!(iter.next(), Some((TokenKind::Ident, "cfg")))
+            if matches!(iter.next(), Some((TokenKind::OpenBracket, ..)))
+                && matches!(iter.next(), Some((TokenKind::Ident, "cfg", _)))
             {
                 return true;
             }

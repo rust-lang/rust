@@ -1,7 +1,7 @@
-use std::borrow::Cow;
+#![warn(clippy::string_slice)]
+#![allow(clippy::no_effect)]
 
-#[warn(clippy::string_slice)]
-#[allow(clippy::no_effect)]
+use std::borrow::Cow;
 
 fn main() {
     &"Ölkanne"[1..];

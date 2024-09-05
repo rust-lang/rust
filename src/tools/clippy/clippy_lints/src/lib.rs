@@ -287,6 +287,7 @@ mod pass_by_ref_or_value;
 mod pathbuf_init_then_push;
 mod pattern_type_mismatch;
 mod permissions_set_readonly_false;
+mod pointers_in_nomem_asm_block;
 mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;
@@ -386,6 +387,7 @@ mod write;
 mod zero_div_zero;
 mod zero_repeat_side_effects;
 mod zero_sized_map_values;
+mod zombie_processes;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 use clippy_config::{get_configuration_metadata, Conf};
@@ -623,7 +625,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(unit_return_expecting_ord::UnitReturnExpectingOrd));
     store.register_late_pass(|_| Box::new(strings::StringAdd));
     store.register_late_pass(|_| Box::new(implicit_return::ImplicitReturn));
-    store.register_late_pass(|_| Box::new(implicit_saturating_sub::ImplicitSaturatingSub));
+    store.register_late_pass(move |_| Box::new(implicit_saturating_sub::ImplicitSaturatingSub::new(conf)));
     store.register_late_pass(|_| Box::new(default_numeric_fallback::DefaultNumericFallback));
     store.register_late_pass(|_| Box::new(inconsistent_struct_constructor::InconsistentStructConstructor));
     store.register_late_pass(|_| Box::new(non_octal_unix_permissions::NonOctalUnixPermissions));
@@ -933,5 +935,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(set_contains_or_insert::SetContainsOrInsert));
     store.register_early_pass(|| Box::new(byte_char_slices::ByteCharSlice));
     store.register_early_pass(|| Box::new(cfg_not_test::CfgNotTest));
+    store.register_late_pass(|_| Box::new(zombie_processes::ZombieProcesses));
+    store.register_late_pass(|_| Box::new(pointers_in_nomem_asm_block::PointersInNomemAsmBlock));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

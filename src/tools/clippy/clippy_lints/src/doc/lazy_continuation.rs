@@ -22,7 +22,6 @@ pub(super) fn check(
     range: Range<usize>,
     mut span: Span,
     containers: &[super::Container],
-    line_break_span: Span,
 ) {
     if doc[range.clone()].contains('\t') {
         // We don't do tab stops correctly.
@@ -52,29 +51,6 @@ pub(super) fn check(
             "doc list item without indentation"
         };
         span_lint_and_then(cx, DOC_LAZY_CONTINUATION, span, msg, |diag| {
-            let snippet = clippy_utils::source::snippet(cx, line_break_span, "");
-            if snippet.chars().filter(|&c| c == '\n').count() > 1
-                && let Some(doc_comment_start) = snippet.rfind('\n')
-                && let doc_comment = snippet[doc_comment_start..].trim()
-                && (doc_comment == "///" || doc_comment == "//!")
-            {
-                // suggest filling in a blank line
-                diag.span_suggestion_verbose(
-                    line_break_span.shrink_to_lo(),
-                    "if this should be its own paragraph, add a blank doc comment line",
-                    format!("\n{doc_comment}"),
-                    Applicability::MaybeIncorrect,
-                );
-                if ccount > 0 || blockquote_level > 0 {
-                    diag.help("if this not intended to be a quote at all, escape it with `\\>`");
-                } else {
-                    let indent = list_indentation - lcount;
-                    diag.help(format!(
-                        "if this is intended to be part of the list, indent {indent} spaces"
-                    ));
-                }
-                return;
-            }
             if ccount == 0 && blockquote_level == 0 {
                 // simpler suggestion style for indentation
                 let indent = list_indentation - lcount;
