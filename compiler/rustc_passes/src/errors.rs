@@ -1187,21 +1187,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_naked_functions_operands, code = E0787)]
-pub(crate) struct NakedFunctionsOperands {
-    #[primary_span]
-    pub unsupported_operands: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_naked_functions_asm_options, code = E0787)]
-pub(crate) struct NakedFunctionsAsmOptions {
-    #[primary_span]
-    pub span: Span,
-    pub unsupported_options: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_naked_functions_must_naked_asm, code = E0787)]
 pub(crate) struct NakedFunctionsMustNakedAsm {
     #[primary_span]

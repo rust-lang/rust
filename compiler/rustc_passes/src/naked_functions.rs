@@ -1,11 +1,10 @@
 //! Checks validity of naked functions.
 
-use rustc_ast::InlineAsmOptions;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, HirIdSet, InlineAsmOperand, StmtKind};
+use rustc_hir::{ExprKind, HirIdSet, StmtKind};
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -15,9 +14,8 @@ use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi::Abi;
 
 use crate::errors::{
-    NakedAsmOutsideNakedFn, NakedFunctionsAsmBlock, NakedFunctionsAsmOptions,
-    NakedFunctionsMustNakedAsm, NakedFunctionsOperands, NoPatterns, ParamsNotAllowed,
-    UndefinedNakedFunctionAbi,
+    NakedAsmOutsideNakedFn, NakedFunctionsAsmBlock, NakedFunctionsMustNakedAsm, NoPatterns,
+    ParamsNotAllowed, UndefinedNakedFunctionAbi,
 };
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -119,7 +117,7 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
 
 /// Checks that function body contains a single inline assembly block.
 fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<'tcx>) {
-    let mut this = CheckInlineAssembly { tcx, items: Vec::new() };
+    let mut this = CheckInlineAssembly { items: Vec::new() };
     this.visit_body(body);
     if let [(ItemKind::NakedAsm | ItemKind::Err, _)] = this.items[..] {
         // Ok.
@@ -165,8 +163,7 @@ fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<
     }
 }
 
-struct CheckInlineAssembly<'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct CheckInlineAssembly {
     items: Vec<(ItemKind, Span)>,
 }
 
@@ -178,8 +175,8 @@ enum ItemKind {
     Err,
 }
 
-impl<'tcx> CheckInlineAssembly<'tcx> {
-    fn check_expr(&mut self, expr: &'tcx hir::Expr<'tcx>, span: Span) {
+impl CheckInlineAssembly {
+    fn check_expr<'tcx>(&mut self, expr: &'tcx hir::Expr<'tcx>, span: Span) {
         match expr.kind {
             ExprKind::ConstBlock(..)
             | ExprKind::Array(..)
@@ -220,7 +217,6 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
                     }
                     rustc_ast::AsmMacro::NakedAsm => {
                         self.items.push((ItemKind::NakedAsm, span));
-                        self.check_inline_asm(asm, span);
                     }
                     rustc_ast::AsmMacro::GlobalAsm => {
                         // not allowed in this position
@@ -237,42 +233,9 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             }
         }
     }
-
-    fn check_inline_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>, span: Span) {
-        let unsupported_operands: Vec<Span> = asm
-            .operands
-            .iter()
-            .filter_map(|&(ref op, op_sp)| match op {
-                InlineAsmOperand::Const { .. }
-                | InlineAsmOperand::SymFn { .. }
-                | InlineAsmOperand::SymStatic { .. } => None,
-                InlineAsmOperand::In { .. }
-                | InlineAsmOperand::Out { .. }
-                | InlineAsmOperand::InOut { .. }
-                | InlineAsmOperand::SplitInOut { .. }
-                | InlineAsmOperand::Label { .. } => Some(op_sp),
-            })
-            .collect();
-        if !unsupported_operands.is_empty() {
-            self.tcx.dcx().emit_err(NakedFunctionsOperands { unsupported_operands });
-        }
-
-        let unsupported_options = asm.options.difference(InlineAsmOptions::NAKED_OPTIONS);
-        if !unsupported_options.is_empty() {
-            self.tcx.dcx().emit_err(NakedFunctionsAsmOptions {
-                span,
-                unsupported_options: unsupported_options
-                    .human_readable_names()
-                    .into_iter()
-                    .map(|name| format!("`{name}`"))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            });
-        }
-    }
 }
 
-impl<'tcx> Visitor<'tcx> for CheckInlineAssembly<'tcx> {
+impl<'tcx> Visitor<'tcx> for CheckInlineAssembly {
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
         match stmt.kind {
             StmtKind::Item(..) => {}

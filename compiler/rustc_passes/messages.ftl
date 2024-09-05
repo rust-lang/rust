@@ -492,9 +492,6 @@ passes_naked_functions_asm_block =
     .label_multiple_asm = multiple `naked_asm!` invocations are not allowed in naked functions
     .label_non_asm = not allowed in naked functions
 
-passes_naked_functions_asm_options =
-    asm options unsupported in naked functions: {$unsupported_options}
-
 passes_naked_functions_incompatible_attribute =
     attribute incompatible with `#[naked]`
     .label = the `{$attr}` attribute is incompatible with `#[naked]`
@@ -503,9 +500,6 @@ passes_naked_functions_incompatible_attribute =
 passes_naked_functions_must_naked_asm =
     the `asm!` macro is not allowed in naked functions
     .suggestion = consider using the `naked_asm!` macro instead
-
-passes_naked_functions_operands =
-    only `const` and `sym` operands are supported in naked functions
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
