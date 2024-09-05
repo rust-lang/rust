@@ -1,3 +1,4 @@
+//! Lowering of inline assembly.
 use hir_expand::name::Name;
 use intern::Symbol;
 use rustc_hash::{FxHashMap, FxHashSet};
