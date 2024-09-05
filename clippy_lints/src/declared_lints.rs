@@ -301,6 +301,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::manual_async_fn::MANUAL_ASYNC_FN_INFO,
     crate::manual_bits::MANUAL_BITS_INFO,
     crate::manual_clamp::MANUAL_CLAMP_INFO,
+    crate::manual_div_ceil::MANUAL_DIV_CEIL_INFO,
     crate::manual_float_methods::MANUAL_IS_FINITE_INFO,
     crate::manual_float_methods::MANUAL_IS_INFINITE_INFO,
     crate::manual_hash_one::MANUAL_HASH_ONE_INFO,
