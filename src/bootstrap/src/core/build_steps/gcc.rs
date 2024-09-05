@@ -124,10 +124,10 @@ impl Step for Gcc {
         command("make").current_dir(&out_dir).arg(format!("-j{}", builder.jobs())).run(builder);
         command("make").current_dir(&out_dir).arg("install").run(builder);
 
-        t!(builder.symlink_file(
-            install_dir.join("lib/libgccjit.so"),
-            install_dir.join("lib/libgccjit.so.0")
-        ));
+        let lib_alias = install_dir.join("lib/libgccjit.so.0");
+        if !lib_alias.exists() {
+            t!(builder.symlink_file(install_dir.join("lib/libgccjit.so"), lib_alias,));
+        }
 
         t!(stamp.write());
 
