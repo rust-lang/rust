@@ -15,7 +15,7 @@ use crate::{
 /// This is a custom command wrapper that simplifies working with commands and makes it easier to
 /// ensure that we check the exit status of executed processes.
 ///
-/// # A [`Command`] must be executed
+/// # A [`Command`] must be executed exactly once
 ///
 /// A [`Command`] is armed by a [`DropBomb`] on construction to enforce that it will be executed. If
 /// a [`Command`] is constructed but never executed, the drop bomb will explode and cause the test
@@ -23,26 +23,73 @@ use crate::{
 /// containing constructed but never executed commands is dangerous because it can give a false
 /// sense of confidence.
 ///
+/// Each [`Command`] invocation can also only be executed once, because we want to enforce
+/// `std{in,out,err}` config via [`std::process::Stdio`] but [`std::process::Stdio`] is not
+/// cloneable.
+///
+/// In this sense, [`Command`] exhibits linear type semantics but enforced at run-time.
+///
 /// [`run`]: Self::run
 /// [`run_fail`]: Self::run_fail
 /// [`run_unchecked`]: Self::run_unchecked
 #[derive(Debug)]
 pub struct Command {
     cmd: StdCommand,
-    stdin: Option<Box<[u8]>>,
+    // Convience for providing a quick stdin buffer.
+    stdin_buf: Option<Box<[u8]>>,
+
+    // Configurations for child process's std{in,out,err} handles.
+    stdin: Option<Stdio>,
+    stdout: Option<Stdio>,
+    stderr: Option<Stdio>,
+
+    // Emulate linear type semantics.
     drop_bomb: DropBomb,
+    already_executed: bool,
 }
 
 impl Command {
     #[track_caller]
     pub fn new<P: AsRef<OsStr>>(program: P) -> Self {
         let program = program.as_ref();
-        Self { cmd: StdCommand::new(program), stdin: None, drop_bomb: DropBomb::arm(program) }
+        Self {
+            cmd: StdCommand::new(program),
+            stdin_buf: None,
+            drop_bomb: DropBomb::arm(program),
+            stdin: None,
+            stdout: None,
+            stderr: None,
+            already_executed: false,
+        }
     }
 
-    /// Specify a stdin input
-    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.stdin = Some(input.as_ref().to_vec().into_boxed_slice());
+    /// Specify a stdin input buffer. This is a convenience helper,
+    pub fn stdin_buf<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.stdin_buf = Some(input.as_ref().to_vec().into_boxed_slice());
+        self
+    }
+
+    /// Configuration for the child process’s standard input (stdin) handle.
+    ///
+    /// See [`std::process::Command::stdin`].
+    pub fn stdin<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self {
+        self.stdin = Some(cfg.into());
+        self
+    }
+
+    /// Configuration for the child process’s standard output (stdout) handle.
+    ///
+    /// See [`std::process::Command::stdout`].
+    pub fn stdout<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self {
+        self.stdout = Some(cfg.into());
+        self
+    }
+
+    /// Configuration for the child process’s standard error (stderr) handle.
+    ///
+    /// See [`std::process::Command::stderr`].
+    pub fn stderr<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self {
+        self.stderr = Some(cfg.into());
         self
     }
 
@@ -105,6 +152,8 @@ impl Command {
     }
 
     /// Run the constructed command and assert that it is successfully run.
+    ///
+    /// By default, std{in,out,err} are [`Stdio::piped()`].
     #[track_caller]
     pub fn run(&mut self) -> CompletedProcess {
         let output = self.command_output();
@@ -115,6 +164,8 @@ impl Command {
     }
 
     /// Run the constructed command and assert that it does not successfully run.
+    ///
+    /// By default, std{in,out,err} are [`Stdio::piped()`].
     #[track_caller]
     pub fn run_fail(&mut self) -> CompletedProcess {
         let output = self.command_output();
@@ -124,10 +175,10 @@ impl Command {
         output
     }
 
-    /// Run the command but do not check its exit status.
-    /// Only use if you explicitly don't care about the exit status.
-    /// Prefer to use [`Self::run`] and [`Self::run_fail`]
-    /// whenever possible.
+    /// Run the command but do not check its exit status. Only use if you explicitly don't care
+    /// about the exit status.
+    ///
+    /// Prefer to use [`Self::run`] and [`Self::run_fail`] whenever possible.
     #[track_caller]
     pub fn run_unchecked(&mut self) -> CompletedProcess {
         self.command_output()
@@ -135,13 +186,19 @@ impl Command {
 
     #[track_caller]
     fn command_output(&mut self) -> CompletedProcess {
+        if self.already_executed {
+            panic!("command was already executed");
+        } else {
+            self.already_executed = true;
+        }
+
         self.drop_bomb.defuse();
         // let's make sure we piped all the input and outputs
-        self.cmd.stdin(Stdio::piped());
-        self.cmd.stdout(Stdio::piped());
-        self.cmd.stderr(Stdio::piped());
+        self.cmd.stdin(self.stdin.take().unwrap_or(Stdio::piped()));
+        self.cmd.stdout(self.stdout.take().unwrap_or(Stdio::piped()));
+        self.cmd.stderr(self.stderr.take().unwrap_or(Stdio::piped()));
 
-        let output = if let Some(input) = &self.stdin {
+        let output = if let Some(input) = &self.stdin_buf {
             let mut child = self.cmd.spawn().unwrap();
 
             {

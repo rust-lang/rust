@@ -974,6 +974,7 @@ unsafe extern "C" {
     pub fn LLVMGetAlignment(Global: &Value) -> c_uint;
     pub fn LLVMSetAlignment(Global: &Value, Bytes: c_uint);
     pub fn LLVMSetDLLStorageClass(V: &Value, C: DLLStorageClass);
+    pub fn LLVMGlobalGetValueType(Global: &Value) -> &Type;
 
     // Operations on global variables
     pub fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;

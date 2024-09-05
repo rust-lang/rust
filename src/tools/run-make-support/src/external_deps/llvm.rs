@@ -227,9 +227,10 @@ impl LlvmFilecheck {
         Self { cmd }
     }
 
-    /// Pipe a read file into standard input containing patterns that will be matched against the .patterns(path) call.
-    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.stdin(input);
+    /// Provide a buffer representing standard input containing patterns that will be matched
+    /// against the `.patterns(path)` call.
+    pub fn stdin_buf<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.cmd.stdin_buf(input);
         self
     }
 

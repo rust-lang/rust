@@ -1794,13 +1794,64 @@ fn render_impl(
     let mut default_impl_items = Buffer::empty_from(w);
     let impl_ = i.inner_impl();
 
+    // Impl items are grouped by kinds:
+    //
+    // 1. Constants
+    // 2. Types
+    // 3. Functions
+    //
+    // This order is because you can have associated constants used in associated types (like array
+    // length), and both in associcated functions. So with this order, when reading from top to
+    // bottom, you should see items definitions before they're actually used most of the time.
+    let mut assoc_types = Vec::new();
+    let mut methods = Vec::new();
+
     if !impl_.is_negative_trait_impl() {
         for trait_item in &impl_.items {
+            match *trait_item.kind {
+                clean::MethodItem(..) | clean::TyMethodItem(_) => methods.push(trait_item),
+                clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => {
+                    assoc_types.push(trait_item)
+                }
+                clean::TyAssocConstItem(..) | clean::AssocConstItem(_) => {
+                    // We render it directly since they're supposed to come first.
+                    doc_impl_item(
+                        &mut default_impl_items,
+                        &mut impl_items,
+                        cx,
+                        trait_item,
+                        if trait_.is_some() { &i.impl_item } else { parent },
+                        link,
+                        render_mode,
+                        false,
+                        trait_,
+                        rendering_params,
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        for assoc_type in assoc_types {
             doc_impl_item(
                 &mut default_impl_items,
                 &mut impl_items,
                 cx,
-                trait_item,
+                assoc_type,
+                if trait_.is_some() { &i.impl_item } else { parent },
+                link,
+                render_mode,
+                false,
+                trait_,
+                rendering_params,
+            );
+        }
+        for method in methods {
+            doc_impl_item(
+                &mut default_impl_items,
+                &mut impl_items,
+                cx,
+                method,
                 if trait_.is_some() { &i.impl_item } else { parent },
                 link,
                 render_mode,
@@ -2455,28 +2506,6 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
         let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
 
-        write!(
-            &mut w,
-            "<div class=\"scraped-example {expanded_cls}\" data-locs=\"{locations}\">\
-                <div class=\"scraped-example-title\">\
-                   {name} (<a href=\"{url}\">{title}</a>)\
-                </div>\
-                <div class=\"code-wrapper\">",
-            expanded_cls = if needs_expansion { "" } else { "expanded" },
-            name = call_data.display_name,
-            url = init_url,
-            title = init_title,
-            // The locations are encoded as a data attribute, so they can be read
-            // later by the JS for interactions.
-            locations = Escape(&locations_encoded)
-        )
-        .unwrap();
-
-        if line_ranges.len() > 1 {
-            w.write_str(r#"<button class="prev">&pr;</button> <button class="next">&sc;</button>"#)
-                .unwrap();
-        }
-
         // Look for the example file in the source map if it exists, otherwise return a dummy span
         let file_span = (|| {
             let source_map = tcx.sess.source_map();
@@ -2507,9 +2536,16 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
             cx,
             &cx.root_path(),
             highlight::DecorationInfo(decoration_info),
-            sources::SourceContext::Embedded { offset: line_min, needs_expansion },
+            sources::SourceContext::Embedded(sources::ScrapedInfo {
+                needs_prev_next_buttons: line_ranges.len() > 1,
+                needs_expansion,
+                offset: line_min,
+                name: &call_data.display_name,
+                url: init_url,
+                title: init_title,
+                locations: locations_encoded,
+            }),
         );
-        w.write_str("</div></div>").unwrap();
 
         true
     };
