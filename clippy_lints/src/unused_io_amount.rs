@@ -242,7 +242,7 @@ fn unpack_match<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 
 /// If `expr` is an (e).await, return the inner expression "e" that's being
 /// waited on.  Otherwise return None.
-fn unpack_await<'a>(expr: &'a hir::Expr<'a>) -> &hir::Expr<'a> {
+fn unpack_await<'a>(expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     if let ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind {
         if let ExprKind::Call(func, [ref arg_0, ..]) = expr.kind {
             if matches!(
