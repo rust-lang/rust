@@ -135,6 +135,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without PIC relocation model",
         },
         Need {
+            name: "needs-deterministic-layouts",
+            condition: !config.rust_randomized_layout,
+            ignore_reason: "ignored when randomizing layouts",
+        },
+        Need {
             name: "needs-wasmtime",
             condition: config.runner.as_ref().is_some_and(|r| r.contains("wasmtime")),
             ignore_reason: "ignored when wasmtime runner is not available",

@@ -3706,7 +3706,7 @@ declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
 
 declare_lint! {
     /// The `missing_abi` lint detects cases where the ABI is omitted from
-    /// extern declarations.
+    /// `extern` declarations.
     ///
     /// ### Example
     ///
@@ -3720,10 +3720,12 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Historically, Rust implicitly selected C as the ABI for extern
-    /// declarations. We expect to add new ABIs, like `C-unwind`, in the future,
-    /// though this has not yet happened, and especially with their addition
-    /// seeing the ABI easily will make code review easier.
+    /// For historic reasons, Rust implicitly selects `C` as the default ABI for
+    /// `extern` declarations. [Other ABIs] like `C-unwind` and `system` have
+    /// been added since then, and especially with their addition seeing the ABI
+    /// easily makes code review easier.
+    ///
+    /// [Other ABIs]: https://doc.rust-lang.org/reference/items/external-blocks.html#abi
     pub MISSING_ABI,
     Allow,
     "No declared ABI for extern declaration"

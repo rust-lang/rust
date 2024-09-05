@@ -1,4 +1,5 @@
 //! Table-of-contents creation.
+use crate::html::escape::Escape;
 
 /// A (recursive) table of contents
 #[derive(Debug, PartialEq)]
@@ -16,7 +17,7 @@ pub(crate) struct Toc {
     /// ### A
     /// ## B
     /// ```
-    entries: Vec<TocEntry>,
+    pub(crate) entries: Vec<TocEntry>,
 }
 
 impl Toc {
@@ -27,11 +28,16 @@ impl Toc {
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct TocEntry {
-    level: u32,
-    sec_number: String,
-    name: String,
-    id: String,
-    children: Toc,
+    pub(crate) level: u32,
+    pub(crate) sec_number: String,
+    // name is a plain text header that works in a `title` tag
+    // html includes `<code>` tags
+    // the tooltip is used so that, when a toc is truncated,
+    // you can mouse over it to see the whole thing
+    pub(crate) name: String,
+    pub(crate) html: String,
+    pub(crate) id: String,
+    pub(crate) children: Toc,
 }
 
 /// Progressive construction of a table of contents.
@@ -115,7 +121,7 @@ impl TocBuilder {
     /// Push a level `level` heading into the appropriate place in the
     /// hierarchy, returning a string containing the section number in
     /// `<num>.<num>.<num>` format.
-    pub(crate) fn push(&mut self, level: u32, name: String, id: String) -> &str {
+    pub(crate) fn push(&mut self, level: u32, name: String, html: String, id: String) -> &str {
         assert!(level >= 1);
 
         // collapse all previous sections into their parents until we
@@ -149,6 +155,7 @@ impl TocBuilder {
         self.chain.push(TocEntry {
             level,
             name,
+            html,
             sec_number,
             id,
             children: Toc { entries: Vec::new() },
@@ -170,10 +177,11 @@ impl Toc {
             // recursively format this table of contents
             let _ = write!(
                 v,
-                "\n<li><a href=\"#{id}\">{num} {name}</a>",
+                "\n<li><a href=\"#{id}\" title=\"{name}\">{num} {html}</a>",
                 id = entry.id,
                 num = entry.sec_number,
-                name = entry.name
+                name = Escape(&entry.name),
+                html = &entry.html,
             );
             entry.children.print_inner(&mut *v);
             v.push_str("</li>");

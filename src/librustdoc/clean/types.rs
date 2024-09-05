@@ -512,9 +512,6 @@ impl Item {
     pub(crate) fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
     }
-    pub(crate) fn is_trait(&self) -> bool {
-        self.type_() == ItemType::Trait
-    }
     pub(crate) fn is_struct(&self) -> bool {
         self.type_() == ItemType::Struct
     }
@@ -541,9 +538,6 @@ impl Item {
     }
     pub(crate) fn is_ty_method(&self) -> bool {
         self.type_() == ItemType::TyMethod
-    }
-    pub(crate) fn is_type_alias(&self) -> bool {
-        self.type_() == ItemType::TypeAlias
     }
     pub(crate) fn is_primitive(&self) -> bool {
         self.type_() == ItemType::Primitive

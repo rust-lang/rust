@@ -519,6 +519,9 @@
 # are disabled statically" because `max_level_info` is enabled, set this value to `true`.
 #debug-logging = rust.debug-assertions (boolean)
 
+# Whether or not to build rustc, tools and the libraries with randomized type layout
+#randomize-layout = false
+
 # Whether or not overflow checks are enabled for the compiler and standard
 # library.
 #

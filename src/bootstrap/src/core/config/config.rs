@@ -268,7 +268,6 @@ pub struct Config {
     pub rust_debuginfo_level_std: DebuginfoLevel,
     pub rust_debuginfo_level_tools: DebuginfoLevel,
     pub rust_debuginfo_level_tests: DebuginfoLevel,
-    pub rust_split_debuginfo_for_build_triple: Option<SplitDebuginfo>, // FIXME: Deprecated field. Remove in Q3'24.
     pub rust_rpath: bool,
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
@@ -280,6 +279,7 @@ pub struct Config {
     pub rust_codegen_backends: Vec<String>,
     pub rust_verify_llvm_ir: bool,
     pub rust_thin_lto_import_instr_limit: Option<u32>,
+    pub rust_randomize_layout: bool,
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: Option<bool>,
     pub rust_profile_use: Option<String>,
@@ -1090,6 +1090,7 @@ define_config! {
         codegen_units: Option<u32> = "codegen-units",
         codegen_units_std: Option<u32> = "codegen-units-std",
         debug_assertions: Option<bool> = "debug-assertions",
+        randomize_layout: Option<bool> = "randomize-layout",
         debug_assertions_std: Option<bool> = "debug-assertions-std",
         overflow_checks: Option<bool> = "overflow-checks",
         overflow_checks_std: Option<bool> = "overflow-checks-std",
@@ -1099,7 +1100,6 @@ define_config! {
         debuginfo_level_std: Option<DebuginfoLevel> = "debuginfo-level-std",
         debuginfo_level_tools: Option<DebuginfoLevel> = "debuginfo-level-tools",
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
-        split_debuginfo: Option<String> = "split-debuginfo",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
         parallel_compiler: Option<bool> = "parallel-compiler",
@@ -1181,6 +1181,7 @@ impl Config {
             backtrace: true,
             rust_optimize: RustOptimize::Bool(true),
             rust_optimize_tests: true,
+            rust_randomize_layout: false,
             submodules: None,
             docs: true,
             docs_minification: true,
@@ -1636,10 +1637,10 @@ impl Config {
                 debuginfo_level_std: debuginfo_level_std_toml,
                 debuginfo_level_tools: debuginfo_level_tools_toml,
                 debuginfo_level_tests: debuginfo_level_tests_toml,
-                split_debuginfo,
                 backtrace,
                 incremental,
                 parallel_compiler,
+                randomize_layout,
                 default_linker,
                 channel,
                 description,
@@ -1695,18 +1696,6 @@ impl Config {
             debuginfo_level_tests = debuginfo_level_tests_toml;
             lld_enabled = lld_enabled_toml;
 
-            config.rust_split_debuginfo_for_build_triple = split_debuginfo
-                .as_deref()
-                .map(SplitDebuginfo::from_str)
-                .map(|v| v.expect("invalid value for rust.split-debuginfo"));
-
-            if config.rust_split_debuginfo_for_build_triple.is_some() {
-                println!(
-                    "WARNING: specifying `rust.split-debuginfo` is deprecated, use `target.{}.split-debuginfo` instead",
-                    config.build
-                );
-            }
-
             optimize = optimize_toml;
             omit_git_hash = omit_git_hash_toml;
             config.rust_new_symbol_mangling = new_symbol_mangling;
@@ -1729,6 +1718,7 @@ impl Config {
             set(&mut config.lld_mode, lld_mode);
             set(&mut config.llvm_bitcode_linker_enabled, llvm_bitcode_linker);
 
+            config.rust_randomize_layout = randomize_layout.unwrap_or_default();
             config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
             config.rustc_parallel =
                 parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
@@ -2504,9 +2494,6 @@ impl Config {
         self.target_config
             .get(&target)
             .and_then(|t| t.split_debuginfo)
-            .or_else(|| {
-                if self.build == target { self.rust_split_debuginfo_for_build_triple } else { None }
-            })
             .unwrap_or_else(|| SplitDebuginfo::default_for_platform(target))
     }
 
@@ -2900,6 +2887,7 @@ fn check_incompatible_options_for_ci_rustc(
     let Rust {
         // Following options are the CI rustc incompatible ones.
         optimize,
+        randomize_layout,
         debug_logging,
         debuginfo_level_rustc,
         llvm_tools,
@@ -2927,7 +2915,6 @@ fn check_incompatible_options_for_ci_rustc(
         debuginfo_level_std: _,
         debuginfo_level_tools: _,
         debuginfo_level_tests: _,
-        split_debuginfo: _,
         backtrace: _,
         parallel_compiler: _,
         musl_root: _,
@@ -2964,6 +2951,7 @@ fn check_incompatible_options_for_ci_rustc(
     // otherwise, we just print a warning with `warn` macro.
 
     err!(current_rust_config.optimize, optimize);
+    err!(current_rust_config.randomize_layout, randomize_layout);
     err!(current_rust_config.debug_logging, debug_logging);
     err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc);
     err!(current_rust_config.rpath, rpath);
