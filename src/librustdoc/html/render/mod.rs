@@ -2455,28 +2455,6 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
         let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
 
-        write!(
-            &mut w,
-            "<div class=\"scraped-example {expanded_cls}\" data-locs=\"{locations}\">\
-                <div class=\"scraped-example-title\">\
-                   {name} (<a href=\"{url}\">{title}</a>)\
-                </div>\
-                <div class=\"code-wrapper\">",
-            expanded_cls = if needs_expansion { "" } else { "expanded" },
-            name = call_data.display_name,
-            url = init_url,
-            title = init_title,
-            // The locations are encoded as a data attribute, so they can be read
-            // later by the JS for interactions.
-            locations = Escape(&locations_encoded)
-        )
-        .unwrap();
-
-        if line_ranges.len() > 1 {
-            w.write_str(r#"<button class="prev">&pr;</button> <button class="next">&sc;</button>"#)
-                .unwrap();
-        }
-
         // Look for the example file in the source map if it exists, otherwise return a dummy span
         let file_span = (|| {
             let source_map = tcx.sess.source_map();
@@ -2507,9 +2485,16 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
             cx,
             &cx.root_path(),
             highlight::DecorationInfo(decoration_info),
-            sources::SourceContext::Embedded { offset: line_min, needs_expansion },
+            sources::SourceContext::Embedded(sources::ScrapedInfo {
+                needs_prev_next_buttons: line_ranges.len() > 1,
+                needs_expansion,
+                offset: line_min,
+                name: &call_data.display_name,
+                url: init_url,
+                title: init_title,
+                locations: locations_encoded,
+            }),
         );
-        w.write_str("</div></div>").unwrap();
 
         true
     };

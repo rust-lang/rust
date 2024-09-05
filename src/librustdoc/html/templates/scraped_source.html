@@ -1,0 +1,33 @@
+<div class="scraped-example{% if !info.needs_expansion +%} expanded{% endif %}" data-locs="{{info.locations}}"> {# #}
+    <div class="scraped-example-title">
+       {{info.name +}} (<a href="{{info.url}}">{{info.title}}</a>) {# #}
+    </div>
+    <div class="example-wrap"> {# #}
+        {# https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag#data-nosnippet-attr
+           Do not show "1 2 3 4 5 ..." in web search results. #}
+        <div class="src-line-numbers" data-nosnippet> {# #}
+            <pre>
+                {% for line in lines.clone() %}
+                    {# ~#}
+                    <span>{{line|safe}}</span>
+                {% endfor %}
+            </pre> {# #}
+        </div> {# #}
+        <pre class="rust"> {# #}
+            <code>
+                {{code_html|safe}}
+            </code> {# #}
+        </pre> {# #}
+        {% if info.needs_prev_next_buttons || info.needs_expansion %}
+            <div class="button-holder">
+                {% if info.needs_prev_next_buttons %}
+                    <button class="prev">&pr;</button> {# #}
+                    <button class="next">&sc;</button>
+                {% endif %}
+                {% if info.needs_expansion %}
+                    <button class="expand">&varr;</button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div> {# #}
+</div> {# #}

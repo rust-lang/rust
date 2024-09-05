@@ -1855,8 +1855,13 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         // Since the button will be added, no need to keep this listener around.
         elem.removeEventListener("mouseover", addCopyButton);
 
-        const parent = document.createElement("div");
-        parent.className = "button-holder";
+        // If this is a scrapped example, there will already be a "button-holder" element.
+        let parent = elem.querySelector(".button-holder");
+        if (!parent) {
+            parent = document.createElement("div");
+            parent.className = "button-holder";
+        }
+
         const runButton = elem.querySelector(".test-arrow");
         if (runButton !== null) {
             // If there is a run button, we move it into the same div.

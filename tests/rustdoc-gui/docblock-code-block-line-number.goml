@@ -5,6 +5,18 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 // We check that without this setting, there is no line number displayed.
 assert-false: "pre.example-line-numbers"
 
+// All corners should be rounded.
+assert-css: (
+    ".example-wrap .rust",
+    {
+        "border-top-left-radius": "6px",
+        "border-bottom-left-radius": "6px",
+        "border-top-right-radius": "6px",
+        "border-bottom-right-radius": "6px",
+    },
+    ALL,
+)
+
 // We set the setting to show the line numbers on code examples.
 set-local-storage: {"rustdoc-line-numbers": "true"}
 reload:
@@ -29,9 +41,21 @@ define-function: (
                 "margin": "0px",
                 "padding": "14px 8px",
                 "text-align": "right",
+                // There should not be a radius on the right of the line numbers.
+                "border-top-left-radius": "6px",
+                "border-bottom-left-radius": "6px",
+                "border-top-right-radius": "0px",
+                "border-bottom-right-radius": "0px",
             },
             ALL,
         )
+        // There should not be a radius on the left of the line numbers.
+        assert-css: ("pre.example-line-numbers + .rust", {
+            "border-top-left-radius": "0px",
+            "border-bottom-left-radius": "0px",
+            "border-top-right-radius": "6px",
+            "border-bottom-right-radius": "6px",
+        })
     },
 )
 call-function: ("check-colors", {
@@ -64,7 +88,56 @@ wait-for: 100 // wait-for-false does not exist
 assert-false: "pre.example-line-numbers"
 assert-local-storage: {"rustdoc-line-numbers": "false" }
 
+// Check that the rounded corners are back.
+assert-css: (
+    ".example-wrap .rust",
+    {
+        "border-top-left-radius": "6px",
+        "border-bottom-left-radius": "6px",
+        "border-top-right-radius": "6px",
+        "border-bottom-right-radius": "6px",
+    },
+    ALL,
+)
+
 // Finally, turn it on again.
 click: "input#line-numbers"
 wait-for: "pre.example-line-numbers"
 assert-local-storage: {"rustdoc-line-numbers": "true" }
+
+// Same check with scraped examples line numbers.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+
+assert-css: (
+    ".scraped-example .src-line-numbers > pre",
+    {
+        // There should not be a radius on the right of the line numbers.
+        "border-top-left-radius": "6px",
+        "border-bottom-left-radius": "6px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+    },
+    ALL,
+)
+assert-css: (
+    ".scraped-example .src-line-numbers",
+    {
+        // There should not be a radius on the right of the line numbers.
+        "border-top-left-radius": "6px",
+        "border-bottom-left-radius": "6px",
+        "border-top-right-radius": "0px",
+        "border-bottom-right-radius": "0px",
+    },
+    ALL,
+)
+assert-css: (
+    ".scraped-example .rust",
+    {
+        // There should not be a radius on the left of the code.
+        "border-top-left-radius": "0px",
+        "border-bottom-left-radius": "0px",
+        "border-top-right-radius": "6px",
+        "border-bottom-right-radius": "6px",
+    },
+    ALL,
+)
