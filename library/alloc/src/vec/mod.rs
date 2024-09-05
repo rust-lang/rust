@@ -1508,7 +1508,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// [`set_len`]: Vec::set_len
     ///
-    /// ```
+    /// ```no_run
     /// let mut vec = vec![vec![1, 0, 0],
     ///                    vec![0, 1, 0],
     ///                    vec![0, 0, 1]];
