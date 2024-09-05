@@ -62,25 +62,25 @@ fn main() -> ExitCode {
     let mut exit_code = ExitCode::SUCCESS;
 
     for (target_name, spec) in all_target_specs {
-        // Clang OOMs for some reason?
-        if target_name == "aarch64-unknown-illumos" {
-            continue;
-        }
+        // // Clang OOMs for some reason?
+        // if target_name == "aarch64-unknown-illumos" {
+        //     continue;
+        // }
 
-        // Passing wrong LLVM target
-        if target_name.starts_with("aarch64-apple-visionos") {
-            continue;
-        }
+        // // Passing wrong LLVM target
+        // if target_name.starts_with("aarch64-apple-visionos") {
+        //     continue;
+        // }
 
-        // Incorrect data layout detected by Clang
-        if target_name.ends_with("gnu_ilp32") {
-            continue;
-        }
+        // // Incorrect data layout detected by Clang
+        // if target_name.ends_with("gnu_ilp32") {
+        //     continue;
+        // }
 
-        // Bare metal, not supported by all versions of Clang
-        if target_name.starts_with("xtensa") {
-            continue;
-        }
+        // // Bare metal, not supported by all versions of Clang
+        // if target_name.starts_with("xtensa") {
+        //     continue;
+        // }
 
         let llvm_target = spec["llvm-target"].as_str().expect("llvm target to be string");
         let rustc_data_layout = spec["data-layout"].as_str().expect("data layout to be string");
