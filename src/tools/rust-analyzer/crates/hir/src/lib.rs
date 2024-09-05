@@ -5253,6 +5253,22 @@ pub struct InlineAsmOperand {
     index: usize,
 }
 
+impl InlineAsmOperand {
+    pub fn parent(self, _db: &dyn HirDatabase) -> DefWithBody {
+        self.owner.into()
+    }
+
+    pub fn name(&self, db: &dyn HirDatabase) -> Option<Name> {
+        db.body_with_source_map(self.owner)
+            .1
+            .template_map()?
+            .1
+            .get(&self.expr)?
+            .get(self.index)
+            .and_then(|(_, _, name)| name.clone())
+    }
+}
+
 // FIXME: Document this
 #[derive(Debug)]
 pub struct Callable {

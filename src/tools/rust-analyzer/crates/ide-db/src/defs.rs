@@ -85,13 +85,13 @@ impl Definition {
             Definition::Label(it) => it.module(db),
             Definition::ExternCrateDecl(it) => it.module(db),
             Definition::DeriveHelper(it) => it.derive().module(db),
+            Definition::InlineAsmOperand(it) => it.parent(db).module(db),
             Definition::BuiltinAttr(_)
             | Definition::BuiltinType(_)
             | Definition::BuiltinLifetime(_)
             | Definition::TupleField(_)
             | Definition::ToolModule(_)
-            | Definition::InlineAsmRegOrRegClass(_)
-            | Definition::InlineAsmOperand(_) => return None,
+            | Definition::InlineAsmRegOrRegClass(_) => return None,
         };
         Some(module)
     }
@@ -156,7 +156,8 @@ impl Definition {
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),
             Definition::ExternCrateDecl(it) => return it.alias_or_name(db),
-            Definition::InlineAsmRegOrRegClass(_) | Definition::InlineAsmOperand(_) => return None, //  FIXME
+            Definition::InlineAsmRegOrRegClass(_) => return None,
+            Definition::InlineAsmOperand(op) => return op.name(db),
         };
         Some(name)
     }

@@ -50,17 +50,17 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="keyword">let</span> <span class="variable declaration">foo</span> <span class="operator">=</span> <span class="numeric_literal">1</span><span class="semicolon">;</span>
         <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">o</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
         <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span>
-            <span class="string_literal macro">"%input = </span><span class="variable library">O</span><span class="string_literal macro">pLoad _ {</span><span class="variable library">0</span><span class="string_literal macro">}"</span><span class="comma macro">,</span>
+            <span class="string_literal macro">"%input = </span><span class="variable">O</span><span class="string_literal macro">pLoad _ {</span><span class="variable">0</span><span class="string_literal macro">}"</span><span class="comma macro">,</span>
             <span class="macro default_library library macro">concat</span><span class="macro_bang macro">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"%result = "</span><span class="comma macro">,</span> <span class="string_literal macro">"bar"</span><span class="comma macro">,</span> <span class="string_literal macro">" _ %input"</span><span class="parenthesis macro">)</span><span class="comma macro">,</span>
-            <span class="string_literal macro">"OpStore {</span><span class="variable library">1</span><span class="string_literal macro">} %result</span><span class="variable library">"</span><span class="comma macro">,</span>
+            <span class="string_literal macro">"OpStore {</span><span class="variable">1</span><span class="string_literal macro">} %result</span><span class="variable">"</span><span class="comma macro">,</span>
             <span class="keyword control macro">in</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="operator macro">&</span><span class="variable macro">foo</span><span class="comma macro">,</span>
             <span class="keyword control macro">in</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="operator macro">&</span><span class="keyword macro">mut</span> <span class="variable macro mutable">o</span><span class="comma macro">,</span>
         <span class="parenthesis macro">)</span><span class="semicolon">;</span>
 
         <span class="keyword">let</span> <span class="variable declaration">thread_id</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
         <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"
-            mov {</span><span class="variable library">0</span><span class="string_literal macro">}, gs:[0x30]
-            mov {</span><span class="variable library">0</span><span class="string_literal macro">}, [{</span><span class="variable library">0</span><span class="string_literal macro">}+0x48]
+            mov {</span><span class="variable">0</span><span class="string_literal macro">}, gs:[0x30]
+            mov {</span><span class="variable">0</span><span class="string_literal macro">}, [{</span><span class="variable">0</span><span class="string_literal macro">}+0x48]
         "</span><span class="comma macro">,</span> <span class="keyword macro">out</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="variable macro">thread_id</span><span class="comma macro">,</span> <span class="keyword macro">options</span><span class="parenthesis macro">(</span><span class="keyword macro">pure</span><span class="comma macro">,</span> <span class="keyword macro">readonly</span><span class="comma macro">,</span> <span class="keyword macro">nostack</span><span class="parenthesis macro">)</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
 
         <span class="keyword">static</span> <span class="static declaration">UNMAP_BASE</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
@@ -69,28 +69,28 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="keyword const">const</span> <span class="constant const declaration">OffPtr</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
         <span class="keyword const">const</span> <span class="constant const declaration">OffFn</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
         <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"
-            push {</span><span class="variable library">free_type</span><span class="string_literal macro">}
-            push {</span><span class="variable library">free_size</span><span class="string_literal macro">}
-            push {</span><span class="variable library">base</span><span class="string_literal macro">}
+            push {</span><span class="variable">free_type</span><span class="string_literal macro">}
+            push {</span><span class="variable">free_size</span><span class="string_literal macro">}
+            push {</span><span class="variable">base</span><span class="string_literal macro">}
 
             mov eax, fs:[30h]
             mov eax, [eax+8h]
-            add eax, {</span><span class="variable library">off_fn</span><span class="string_literal macro">}
-            mov [eax-{</span><span class="variable library">off_fn</span><span class="string_literal macro">}+{</span><span class="variable library">off_ptr</span><span class="string_literal macro">}], eax
+            add eax, {</span><span class="variable">off_fn</span><span class="string_literal macro">}
+            mov [eax-{</span><span class="variable">off_fn</span><span class="string_literal macro">}+{</span><span class="variable">off_ptr</span><span class="string_literal macro">}], eax
 
             push eax
 
-            jmp {</span><span class="variable library">virtual_free</span><span class="string_literal macro">}
+            jmp {</span><span class="variable">virtual_free</span><span class="string_literal macro">}
             "</span><span class="comma macro">,</span>
-            <span class="variable declaration library macro">off_ptr</span> <span class="operator macro">=</span> <span class="keyword macro">const</span> <span class="constant const macro">OffPtr</span><span class="comma macro">,</span>
-            <span class="variable declaration library macro">off_fn</span>  <span class="operator macro">=</span> <span class="keyword macro">const</span> <span class="constant const macro">OffFn</span><span class="comma macro">,</span>
+            <span class="variable declaration macro">off_ptr</span> <span class="operator macro">=</span> <span class="keyword macro">const</span> <span class="constant const macro">OffPtr</span><span class="comma macro">,</span>
+            <span class="variable declaration macro">off_fn</span>  <span class="operator macro">=</span> <span class="keyword macro">const</span> <span class="constant const macro">OffFn</span><span class="comma macro">,</span>
 
-            <span class="variable declaration library macro">free_size</span> <span class="operator macro">=</span> <span class="keyword macro">const</span> <span class="numeric_literal macro">0</span><span class="comma macro">,</span>
-            <span class="variable declaration library macro">free_type</span> <span class="operator macro">=</span> <span class="keyword macro">const</span> <span class="constant const macro">MEM_RELEASE</span><span class="comma macro">,</span>
+            <span class="variable declaration macro">free_size</span> <span class="operator macro">=</span> <span class="keyword macro">const</span> <span class="numeric_literal macro">0</span><span class="comma macro">,</span>
+            <span class="variable declaration macro">free_type</span> <span class="operator macro">=</span> <span class="keyword macro">const</span> <span class="constant const macro">MEM_RELEASE</span><span class="comma macro">,</span>
 
-            <span class="variable declaration library macro">virtual_free</span> <span class="operator macro">=</span> <span class="keyword macro">sym</span> <span class="static macro">VirtualFree</span><span class="comma macro">,</span>
+            <span class="variable declaration macro">virtual_free</span> <span class="operator macro">=</span> <span class="keyword macro">sym</span> <span class="static macro">VirtualFree</span><span class="comma macro">,</span>
 
-            <span class="variable declaration library macro">base</span> <span class="operator macro">=</span> <span class="keyword macro">sym</span> <span class="static macro">UNMAP_BASE</span><span class="comma macro">,</span>
+            <span class="variable declaration macro">base</span> <span class="operator macro">=</span> <span class="keyword macro">sym</span> <span class="static macro">UNMAP_BASE</span><span class="comma macro">,</span>
             <span class="keyword macro">options</span><span class="parenthesis macro">(</span><span class="keyword macro">noreturn</span><span class="parenthesis macro">)</span><span class="comma macro">,</span>
         <span class="parenthesis macro">)</span><span class="semicolon">;</span>
     <span class="brace">}</span>

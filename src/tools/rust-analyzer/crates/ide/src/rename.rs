@@ -2976,6 +2976,54 @@ fn test() {
     }
 
     #[test]
+    fn asm_operand() {
+        check(
+            "bose",
+            r#"
+//- minicore: asm
+fn test() {
+    core::arch::asm!(
+        "push {base}",
+        base$0 = const 0
+    );
+}
+"#,
+            r#"
+fn test() {
+    core::arch::asm!(
+        "push {bose}",
+        bose = const 0
+    );
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn asm_operand2() {
+        check(
+            "bose",
+            r#"
+//- minicore: asm
+fn test() {
+    core::arch::asm!(
+        "push {base$0}",
+        base = const 0
+    );
+}
+"#,
+            r#"
+fn test() {
+    core::arch::asm!(
+        "push {bose}",
+        bose = const 0
+    );
+}
+"#,
+        );
+    }
+
+    #[test]
     fn rename_path_inside_use_tree() {
         check(
             "Baz",

@@ -1,3 +1,4 @@
+use hir_expand::name::Name;
 use intern::Symbol;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
@@ -202,27 +203,30 @@ impl ExprCollector<'_> {
                             rustc_parse_format::Piece::NextArgument(arg) => {
                                 // let span = arg_spans.next();
 
-                                let operand_idx = match arg.position {
+                                let (operand_idx, name) = match arg.position {
                                     rustc_parse_format::ArgumentIs(idx)
                                     | rustc_parse_format::ArgumentImplicitlyIs(idx) => {
                                         if idx >= operands.len()
                                             || named_pos.contains_key(&idx)
                                             || reg_args.contains(&idx)
                                         {
-                                            None
+                                            (None, None)
                                         } else {
-                                            Some(idx)
+                                            (Some(idx), None)
                                         }
                                     }
                                     rustc_parse_format::ArgumentNamed(name) => {
                                         let name = Symbol::intern(name);
-                                        named_args.get(&name).copied()
+                                        (
+                                            named_args.get(&name).copied(),
+                                            Some(Name::new_symbol_root(name)),
+                                        )
                                     }
                                 };
 
                                 if let Some(operand_idx) = operand_idx {
                                     if let Some(position_span) = to_span(arg.position_span) {
-                                        mappings.push((position_span, operand_idx));
+                                        mappings.push((position_span, operand_idx, name));
                                     }
                                 }
                             }
