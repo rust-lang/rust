@@ -450,7 +450,7 @@ declare_clippy_lint! {
     /// /// and probably spanning a many rows.
     /// struct Foo {}
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.82.0"]
     pub TOO_LONG_FIRST_DOC_PARAGRAPH,
     style,
     "ensure that the first line of a documentation paragraph isn't too long"
