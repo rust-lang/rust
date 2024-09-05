@@ -1,6 +1,7 @@
 #![feature(array_windows)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(control_flow_enum)]
 #![feature(f128)]
 #![feature(f16)]
@@ -59,9 +60,10 @@ extern crate rustc_trait_selection;
 extern crate thin_vec;
 
 #[macro_use]
-extern crate clippy_utils;
+mod declare_clippy_lint;
+
 #[macro_use]
-extern crate declare_clippy_lint;
+extern crate clippy_utils;
 
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
