@@ -82,6 +82,10 @@ struct Coerce<'a, 'tcx> {
     /// See #47489 and #48598
     /// See docs on the "AllowTwoPhase" type for a more detailed discussion
     allow_two_phase: AllowTwoPhase,
+    /// Whether we allow `NeverToAny` coercions. This is unsound if we're
+    /// coercing a place expression without it counting as a read in the MIR.
+    /// This is a side-effect of HIR not really having a great distinction
+    /// between places and values.
     coerce_never: bool,
 }
 
@@ -1083,7 +1087,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("coercion::can_with_predicates({:?} -> {:?})", source, target);
 
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
-        // We don't ever need two-phase here since we throw out the result of the coercion
+        // We don't ever need two-phase here since we throw out the result of the coercion.
+        // We also just always set `coerce_never` to true, since this is a heuristic.
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
         self.probe(|_| {
             let Ok(ok) = coerce.coerce(source, target) else {
@@ -1096,11 +1101,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given a type and a target type, this function will calculate and return
-    /// how many dereference steps needed to achieve `expr_ty <: target`. If
+    /// how many dereference steps needed to coerce `expr_ty` to `target`. If
     /// it's not possible, return `None`.
-    pub(crate) fn deref_steps(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> Option<usize> {
+    pub(crate) fn deref_steps_for_suggestion(
+        &self,
+        expr_ty: Ty<'tcx>,
+        target: Ty<'tcx>,
+    ) -> Option<usize> {
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
-        // We don't ever need two-phase here since we throw out the result of the coercion
+        // We don't ever need two-phase here since we throw out the result of the coercion.
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
         coerce
             .autoderef(DUMMY_SP, expr_ty)
