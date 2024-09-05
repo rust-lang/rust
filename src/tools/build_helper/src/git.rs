@@ -159,3 +159,37 @@ pub fn get_git_untracked_files(
         .collect();
     Ok(Some(files))
 }
+
+/// Print a warning if the branch returned from `updated_master_branch` is old
+///
+/// For certain configurations of git repository, this remote will not be
+/// updated when running `git pull`.
+///
+/// This can result in formatting thousands of files instead of a dozen,
+/// so we should warn the user something is wrong.
+pub fn warn_old_master_branch(
+    config: &GitConfig<'_>,
+    git_dir: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use std::time::Duration;
+    const WARN_AFTER: Duration = Duration::from_secs(60 * 60 * 24 * 10);
+    let updated_master = updated_master_branch(config, Some(git_dir))?;
+    let branch_path = git_dir.join(".git/refs/remotes").join(&updated_master);
+    match std::fs::metadata(branch_path) {
+        Ok(meta) => {
+            if meta.modified()?.elapsed()? > WARN_AFTER {
+                eprintln!("warning: {updated_master} has not been updated in 10 days");
+            } else {
+                return Ok(());
+            }
+        }
+        Err(err) => {
+            eprintln!("warning: unable to check if {updated_master} is old due to error: {err}")
+        }
+    }
+    eprintln!(
+        "warning: {updated_master} is used to determine if files have been modified\n\
+               warning: if it is not updated, this may cause files to be needlessly reformatted"
+    );
+    Ok(())
+}
