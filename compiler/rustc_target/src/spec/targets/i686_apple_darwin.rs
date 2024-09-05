@@ -2,8 +2,7 @@ use crate::spec::base::apple::{macos_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    // ld64 only understands i386 and not i686
-    let arch = Arch::I386;
+    let arch = Arch::I686;
     let mut base = opts("macos", arch, TargetAbi::Normal);
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
@@ -13,9 +12,7 @@ pub(crate) fn target() -> Target {
         // Clang automatically chooses a more specific target based on
         // MACOSX_DEPLOYMENT_TARGET. To enable cross-language LTO to work
         // correctly, we do too.
-        //
-        // While ld64 doesn't understand i686, LLVM does.
-        llvm_target: macos_llvm_target(Arch::I686).into(),
+        llvm_target: macos_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("32-bit macOS (10.12+, Sierra+)".into()),
             tier: Some(3),

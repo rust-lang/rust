@@ -39,6 +39,25 @@ impl Arch {
         }
     }
 
+    /// The architecture name to forward to the linker.
+    fn ld_arch(self) -> &'static str {
+        // Supported architecture names can be found in the source:
+        // https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/src/abstraction/MachOFileAbstraction.hpp#L578-L648
+        match self {
+            Armv7k => "armv7k",
+            Armv7s => "armv7s",
+            Arm64 => "arm64",
+            Arm64e => "arm64e",
+            Arm64_32 => "arm64_32",
+            // ld64 doesn't understand i686, so fall back to i386 instead
+            //
+            // Same story when linking with cc, since that ends up invoking ld64.
+            I386 | I686 => "i386",
+            X86_64 => "x86_64",
+            X86_64h => "x86_64h",
+        }
+    }
+
     pub(crate) fn target_arch(self) -> Cow<'static, str> {
         Cow::Borrowed(match self {
             Armv7k | Armv7s => "arm",
@@ -116,20 +135,29 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     };
     let sdk_version = min_version.clone();
 
-    let mut args = TargetOptions::link_args(
-        LinkerFlavor::Darwin(Cc::No, Lld::No),
-        &["-arch", arch.target_name(), "-platform_version"],
-    );
+    // From the man page for ld64 (`man ld`):
+    // > The linker accepts universal (multiple-architecture) input files,
+    // > but always creates a "thin" (single-architecture), standard Mach-O
+    // > output file. The architecture for the output file is specified using
+    // > the -arch option.
+    //
+    // The linker has heuristics to determine the desired architecture, but to
+    // be safe, and to avoid a warning, we set the architecture explicitly.
+    let mut args =
+        TargetOptions::link_args(LinkerFlavor::Darwin(Cc::No, Lld::No), &["-arch", arch.ld_arch()]);
+
     add_link_args_iter(
         &mut args,
         LinkerFlavor::Darwin(Cc::No, Lld::No),
-        [platform_name, min_version, sdk_version].into_iter(),
+        ["-platform_version".into(), platform_name, min_version, sdk_version].into_iter(),
     );
     if abi != TargetAbi::MacCatalyst {
+        // CC forwards the `-arch` to the linker, so we use the same value
+        // here intentionally.
         add_link_args(
             &mut args,
             LinkerFlavor::Darwin(Cc::Yes, Lld::No),
-            &["-arch", arch.target_name()],
+            &["-arch", arch.ld_arch()],
         );
     } else {
         add_link_args_iter(
