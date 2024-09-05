@@ -34,3 +34,10 @@ llvm-libunwind = []
 # If crt-static is enabled, static link to `libunwind.a` provided by system
 # If crt-static is disabled, dynamic link to `libunwind.so` provided by system
 system-llvm-libunwind = []
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    # #[cfg(bootstrap)] rtems
+    'cfg(target_os, values("rtems"))',
+]
