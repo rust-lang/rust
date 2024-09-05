@@ -8,6 +8,7 @@ use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::InlineAsmMacro;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
@@ -57,6 +58,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
         match &mir.basic_blocks[START_BLOCK].terminator().kind {
             TerminatorKind::InlineAsm {
+                asm_macro: InlineAsmMacro::NakedAsm,
                 template,
                 operands,
                 options,
@@ -498,6 +500,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 "tail calls are not yet supported in `rustc_codegen_cranelift` backend"
             ),
             TerminatorKind::InlineAsm {
+                asm_macro: _,
                 template,
                 operands,
                 options,
