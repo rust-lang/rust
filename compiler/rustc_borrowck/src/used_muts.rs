@@ -7,7 +7,7 @@ use tracing::debug;
 
 use crate::MirBorrowckCtxt;
 
-impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// Walks the MIR adding to the set of `used_mut` locals that will be ignored for the purposes
     /// of the `unused_mut` lint.
     ///
@@ -46,13 +46,13 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
 
 /// MIR visitor for collecting used mutable variables.
 /// The 'visit lifetime represents the duration of the MIR walk.
-struct GatherUsedMutsVisitor<'visit, 'a, 'mir, 'infcx, 'tcx> {
+struct GatherUsedMutsVisitor<'a, 'b, 'infcx, 'tcx> {
     temporary_used_locals: FxIndexSet<Local>,
-    never_initialized_mut_locals: &'visit mut FxIndexSet<Local>,
-    mbcx: &'visit mut MirBorrowckCtxt<'a, 'mir, 'infcx, 'tcx>,
+    never_initialized_mut_locals: &'a mut FxIndexSet<Local>,
+    mbcx: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
 }
 
-impl GatherUsedMutsVisitor<'_, '_, '_, '_, '_> {
+impl GatherUsedMutsVisitor<'_, '_, '_, '_> {
     fn remove_never_initialized_mut_locals(&mut self, into: Place<'_>) {
         // Remove any locals that we found were initialized from the
         // `never_initialized_mut_locals` set. At the end, the only remaining locals will
@@ -64,7 +64,7 @@ impl GatherUsedMutsVisitor<'_, '_, '_, '_, '_> {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'_, '_, '_, '_, 'tcx> {
+impl<'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'_, '_, '_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         debug!("visit_terminator: terminator={:?}", terminator);
         match &terminator.kind {

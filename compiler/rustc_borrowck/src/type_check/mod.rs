@@ -116,7 +116,7 @@ mod relate_tys;
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `elements` -- MIR region map
-pub(crate) fn type_check<'mir, 'tcx>(
+pub(crate) fn type_check<'a, 'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
@@ -125,7 +125,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<DenseLocationMap>,
     upvars: &[&ty::CapturedPlace<'tcx>],

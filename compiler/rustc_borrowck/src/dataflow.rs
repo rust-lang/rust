@@ -15,24 +15,24 @@ use tracing::debug;
 use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
 
 /// The results of the dataflow analyses used by the borrow checker.
-pub(crate) struct BorrowckResults<'a, 'mir, 'tcx> {
-    pub(crate) borrows: Results<'tcx, Borrows<'a, 'mir, 'tcx>>,
-    pub(crate) uninits: Results<'tcx, MaybeUninitializedPlaces<'a, 'mir, 'tcx>>,
-    pub(crate) ever_inits: Results<'tcx, EverInitializedPlaces<'a, 'mir, 'tcx>>,
+pub(crate) struct BorrowckResults<'a, 'tcx> {
+    pub(crate) borrows: Results<'tcx, Borrows<'a, 'tcx>>,
+    pub(crate) uninits: Results<'tcx, MaybeUninitializedPlaces<'a, 'tcx>>,
+    pub(crate) ever_inits: Results<'tcx, EverInitializedPlaces<'a, 'tcx>>,
 }
 
 /// The transient state of the dataflow analyses used by the borrow checker.
 #[derive(Debug)]
-pub(crate) struct BorrowckFlowState<'a, 'mir, 'tcx> {
-    pub(crate) borrows: <Borrows<'a, 'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
-    pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
-    pub(crate) ever_inits: <EverInitializedPlaces<'a, 'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
+pub(crate) struct BorrowckFlowState<'a, 'tcx> {
+    pub(crate) borrows: <Borrows<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
+    pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
+    pub(crate) ever_inits: <EverInitializedPlaces<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
 }
 
-impl<'a, 'mir, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'mir, 'tcx> {
+impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
     // All three analyses are forward, but we have to use just one here.
-    type Direction = <Borrows<'a, 'mir, 'tcx> as AnalysisDomain<'tcx>>::Direction;
-    type FlowState = BorrowckFlowState<'a, 'mir, 'tcx>;
+    type Direction = <Borrows<'a, 'tcx> as AnalysisDomain<'tcx>>::Direction;
+    type FlowState = BorrowckFlowState<'a, 'tcx>;
 
     fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
         BorrowckFlowState {
@@ -106,10 +106,9 @@ rustc_index::newtype_index! {
 /// `BorrowIndex`, and maps each such index to a `BorrowData`
 /// describing the borrow. These indexes are used for representing the
 /// borrows in compact bitvectors.
-pub struct Borrows<'a, 'mir, 'tcx> {
+pub struct Borrows<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body: &'mir Body<'tcx>,
-
+    body: &'a Body<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
@@ -389,10 +388,10 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
     }
 }
 
-impl<'a, 'mir, 'tcx> Borrows<'a, 'mir, 'tcx> {
+impl<'a, 'tcx> Borrows<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        body: &'mir Body<'tcx>,
+        body: &'a Body<'tcx>,
         regioncx: &RegionInferenceContext<'tcx>,
         borrow_set: &'a BorrowSet<'tcx>,
     ) -> Self {
@@ -494,7 +493,7 @@ impl<'a, 'mir, 'tcx> Borrows<'a, 'mir, 'tcx> {
     }
 }
 
-impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, '_, 'tcx> {
+impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
     type Domain = BitSet<BorrowIndex>;
 
     const NAME: &'static str = "borrows";
@@ -517,7 +516,7 @@ impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, '_, 'tcx> {
 ///   region stops containing the CFG points reachable from the issuing location.
 /// - we also kill loans of conflicting places when overwriting a shared path: e.g. borrows of
 ///   `a.b.c` when `a` is overwritten.
-impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, '_, 'tcx> {
+impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     type Idx = BorrowIndex;
 
     fn domain_size(&self, _: &mir::Body<'tcx>) -> usize {
@@ -617,8 +616,8 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, '_, 'tcx> {
     }
 }
 
-impl DebugWithContext<Borrows<'_, '_, '_>> for BorrowIndex {
-    fn fmt_with(&self, ctxt: &Borrows<'_, '_, '_>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl DebugWithContext<Borrows<'_, '_>> for BorrowIndex {
+    fn fmt_with(&self, ctxt: &Borrows<'_, '_>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", ctxt.location(*self))
     }
 }

@@ -200,7 +200,7 @@ impl rustc_errors::IntoDiagArg for RegionName {
     }
 }
 
-impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     pub(crate) fn mir_def_id(&self) -> hir::def_id::LocalDefId {
         self.body.source.def_id().expect_local()
     }
