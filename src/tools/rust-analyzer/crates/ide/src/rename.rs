@@ -3008,7 +3008,11 @@ fn test() {
 fn test() {
     core::arch::asm!(
         "push {base$0}",
-        base = const 0
+        "push {base}",
+        boo = const 0,
+        virtual_free = sym VIRTUAL_FREE,
+        base = const 0,
+        boo = const 0,
     );
 }
 "#,
@@ -3016,7 +3020,11 @@ fn test() {
 fn test() {
     core::arch::asm!(
         "push {bose}",
-        bose = const 0
+        "push {bose}",
+        boo = const 0,
+        virtual_free = sym VIRTUAL_FREE,
+        bose = const 0,
+        boo = const 0,
     );
 }
 "#,

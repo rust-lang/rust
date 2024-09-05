@@ -307,7 +307,7 @@ pub struct OffsetOf {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InlineAsm {
-    pub operands: Box<[AsmOperand]>,
+    pub operands: Box<[(Option<Name>, AsmOperand)]>,
     pub options: AsmOptions,
 }
 
@@ -485,7 +485,7 @@ impl Expr {
         match self {
             Expr::Missing => {}
             Expr::Path(_) | Expr::OffsetOf(_) => {}
-            Expr::InlineAsm(it) => it.operands.iter().for_each(|op| match op {
+            Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
                 AsmOperand::In { expr, .. }
                 | AsmOperand::Out { expr: Some(expr), .. }
                 | AsmOperand::InOut { expr, .. } => f(*expr),

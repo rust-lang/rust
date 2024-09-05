@@ -65,80 +65,89 @@ impl ExprCollector<'_> {
                     continue;
                 }
                 ast::AsmPiece::AsmOperandNamed(op) => {
-                    if let Some(name) = op.name() {
-                        let sym = Symbol::intern(&name.text());
-                        named_args.insert(sym.clone(), slot);
-                        named_pos.insert(slot, sym);
+                    let name = op.name().map(|name| Symbol::intern(&name.text()));
+                    if let Some(name) = &name {
+                        named_args.insert(name.clone(), slot);
+                        named_pos.insert(slot, name.clone());
                     }
                     let Some(op) = op.asm_operand() else { continue };
-                    match op {
-                        ast::AsmOperand::AsmRegOperand(op) => {
-                            let Some(dir_spec) = op.asm_dir_spec() else {
-                                continue;
-                            };
-                            let Some(reg) = lower_reg(op.asm_reg_spec()) else {
-                                continue;
-                            };
-                            if dir_spec.in_token().is_some() {
-                                let expr = self.collect_expr_opt(
-                                    op.asm_operand_expr().and_then(|it| it.in_expr()),
-                                );
-                                AsmOperand::In { reg, expr }
-                            } else if dir_spec.out_token().is_some() {
-                                let expr = self.collect_expr_opt(
-                                    op.asm_operand_expr().and_then(|it| it.in_expr()),
-                                );
-                                AsmOperand::Out { reg, expr: Some(expr), late: false }
-                            } else if dir_spec.lateout_token().is_some() {
-                                let expr = self.collect_expr_opt(
-                                    op.asm_operand_expr().and_then(|it| it.in_expr()),
-                                );
-                                AsmOperand::Out { reg, expr: Some(expr), late: true }
-                            } else if dir_spec.inout_token().is_some() {
-                                let Some(op_expr) = op.asm_operand_expr() else { continue };
-                                let in_expr = self.collect_expr_opt(op_expr.in_expr());
-                                let out_expr = op_expr.out_expr().map(|it| self.collect_expr(it));
-                                match out_expr {
-                                    Some(out_expr) => AsmOperand::SplitInOut {
-                                        reg,
-                                        in_expr,
-                                        out_expr: Some(out_expr),
-                                        late: false,
-                                    },
-                                    None => AsmOperand::InOut { reg, expr: in_expr, late: false },
+                    (
+                        name.map(Name::new_symbol_root),
+                        match op {
+                            ast::AsmOperand::AsmRegOperand(op) => {
+                                let Some(dir_spec) = op.asm_dir_spec() else {
+                                    continue;
+                                };
+                                let Some(reg) = lower_reg(op.asm_reg_spec()) else {
+                                    continue;
+                                };
+                                if dir_spec.in_token().is_some() {
+                                    let expr = self.collect_expr_opt(
+                                        op.asm_operand_expr().and_then(|it| it.in_expr()),
+                                    );
+                                    AsmOperand::In { reg, expr }
+                                } else if dir_spec.out_token().is_some() {
+                                    let expr = self.collect_expr_opt(
+                                        op.asm_operand_expr().and_then(|it| it.in_expr()),
+                                    );
+                                    AsmOperand::Out { reg, expr: Some(expr), late: false }
+                                } else if dir_spec.lateout_token().is_some() {
+                                    let expr = self.collect_expr_opt(
+                                        op.asm_operand_expr().and_then(|it| it.in_expr()),
+                                    );
+                                    AsmOperand::Out { reg, expr: Some(expr), late: true }
+                                } else if dir_spec.inout_token().is_some() {
+                                    let Some(op_expr) = op.asm_operand_expr() else { continue };
+                                    let in_expr = self.collect_expr_opt(op_expr.in_expr());
+                                    let out_expr =
+                                        op_expr.out_expr().map(|it| self.collect_expr(it));
+                                    match out_expr {
+                                        Some(out_expr) => AsmOperand::SplitInOut {
+                                            reg,
+                                            in_expr,
+                                            out_expr: Some(out_expr),
+                                            late: false,
+                                        },
+                                        None => {
+                                            AsmOperand::InOut { reg, expr: in_expr, late: false }
+                                        }
+                                    }
+                                } else if dir_spec.inlateout_token().is_some() {
+                                    let Some(op_expr) = op.asm_operand_expr() else { continue };
+                                    let in_expr = self.collect_expr_opt(op_expr.in_expr());
+                                    let out_expr =
+                                        op_expr.out_expr().map(|it| self.collect_expr(it));
+                                    match out_expr {
+                                        Some(out_expr) => AsmOperand::SplitInOut {
+                                            reg,
+                                            in_expr,
+                                            out_expr: Some(out_expr),
+                                            late: false,
+                                        },
+                                        None => {
+                                            AsmOperand::InOut { reg, expr: in_expr, late: false }
+                                        }
+                                    }
+                                } else {
+                                    continue;
                                 }
-                            } else if dir_spec.inlateout_token().is_some() {
-                                let Some(op_expr) = op.asm_operand_expr() else { continue };
-                                let in_expr = self.collect_expr_opt(op_expr.in_expr());
-                                let out_expr = op_expr.out_expr().map(|it| self.collect_expr(it));
-                                match out_expr {
-                                    Some(out_expr) => AsmOperand::SplitInOut {
-                                        reg,
-                                        in_expr,
-                                        out_expr: Some(out_expr),
-                                        late: false,
-                                    },
-                                    None => AsmOperand::InOut { reg, expr: in_expr, late: false },
-                                }
-                            } else {
-                                continue;
                             }
-                        }
-                        ast::AsmOperand::AsmLabel(l) => {
-                            AsmOperand::Label(self.collect_block_opt(l.block_expr()))
-                        }
-                        ast::AsmOperand::AsmConst(c) => {
-                            AsmOperand::Const(self.collect_expr_opt(c.expr()))
-                        }
-                        ast::AsmOperand::AsmSym(s) => {
-                            let Some(path) =
-                                s.path().and_then(|p| self.expander.parse_path(self.db, p))
-                            else {
-                                continue;
-                            };
-                            AsmOperand::Sym(path)
-                        }
-                    }
+                            ast::AsmOperand::AsmLabel(l) => {
+                                AsmOperand::Label(self.collect_block_opt(l.block_expr()))
+                            }
+                            ast::AsmOperand::AsmConst(c) => {
+                                AsmOperand::Const(self.collect_expr_opt(c.expr()))
+                            }
+                            ast::AsmOperand::AsmSym(s) => {
+                                let Some(path) =
+                                    s.path().and_then(|p| self.expander.parse_path(self.db, p))
+                                else {
+                                    continue;
+                                };
+                                AsmOperand::Sym(path)
+                            }
+                        },
+                    )
                 }
             };
             operands.push(op);
@@ -204,7 +213,7 @@ impl ExprCollector<'_> {
                             rustc_parse_format::Piece::NextArgument(arg) => {
                                 // let span = arg_spans.next();
 
-                                let (operand_idx, name) = match arg.position {
+                                let (operand_idx, _name) = match arg.position {
                                     rustc_parse_format::ArgumentIs(idx)
                                     | rustc_parse_format::ArgumentImplicitlyIs(idx) => {
                                         if idx >= operands.len()
@@ -227,7 +236,7 @@ impl ExprCollector<'_> {
 
                                 if let Some(operand_idx) = operand_idx {
                                     if let Some(position_span) = to_span(arg.position_span) {
-                                        mappings.push((position_span, operand_idx, name));
+                                        mappings.push((position_span, operand_idx));
                                     }
                                 }
                             }

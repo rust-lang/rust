@@ -913,8 +913,8 @@ impl SourceAnalyzer {
         let (expr, args) = body_source_map.asm_template_args(asm)?;
         Some(*def).zip(
             args.iter()
-                .find(|(range, _, _)| range.contains_inclusive(offset))
-                .map(|(range, idx, _)| (expr, *range, *idx)),
+                .find(|(range, _)| range.contains_inclusive(offset))
+                .map(|(range, idx)| (expr, *range, *idx)),
         )
     }
 
@@ -944,7 +944,7 @@ impl SourceAnalyzer {
     pub(crate) fn as_asm_parts(
         &self,
         asm: InFile<&ast::AsmExpr>,
-    ) -> Option<(DefWithBodyId, (ExprId, &[(TextRange, usize, Option<Name>)]))> {
+    ) -> Option<(DefWithBodyId, (ExprId, &[(TextRange, usize)]))> {
         let (def, _, body_source_map) = self.def.as_ref()?;
         Some(*def).zip(body_source_map.asm_template_args(asm))
     }

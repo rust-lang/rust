@@ -42,7 +42,7 @@ impl InferenceContext<'_> {
         match &self.body[tgt_expr] {
             Expr::Missing => (),
             Expr::InlineAsm(e) => {
-                e.operands.iter().for_each(|op| match op {
+                e.operands.iter().for_each(|(_, op)| match op {
                     AsmOperand::In { expr, .. }
                     | AsmOperand::Out { expr: Some(expr), .. }
                     | AsmOperand::InOut { expr, .. } => {

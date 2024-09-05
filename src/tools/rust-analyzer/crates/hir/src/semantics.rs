@@ -576,7 +576,7 @@ impl<'db> SemanticsImpl<'db> {
                     let (owner, (expr, asm_parts)) = source_analyzer.as_asm_parts(asm.as_ref())?;
                     let res = asm_parts
                         .iter()
-                        .map(|&(range, index, _)| {
+                        .map(|&(range, index)| {
                             (
                                 range + quote.end(),
                                 Some(Either::Right(InlineAsmOperand { owner, expr, index })),

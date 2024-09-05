@@ -105,7 +105,7 @@ pub struct BodySourceMap {
             // format_args!
             FxHashMap<ExprId, Vec<(syntax::TextRange, Name)>>,
             // asm!
-            FxHashMap<ExprId, Vec<(syntax::TextRange, usize, Option<Name>)>>,
+            FxHashMap<ExprId, Vec<(syntax::TextRange, usize)>>,
         )>,
     >,
 
@@ -439,7 +439,7 @@ impl BodySourceMap {
     pub fn asm_template_args(
         &self,
         node: InFile<&ast::AsmExpr>,
-    ) -> Option<(ExprId, &[(syntax::TextRange, usize, Option<Name>)])> {
+    ) -> Option<(ExprId, &[(syntax::TextRange, usize)])> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
         let expr = self.expr_map.get(&src)?;
         Some(*expr).zip(self.template_map.as_ref()?.1.get(expr).map(std::ops::Deref::deref))
@@ -487,7 +487,7 @@ impl BodySourceMap {
         &self,
     ) -> Option<&(
         FxHashMap<Idx<Expr>, Vec<(tt::TextRange, Name)>>,
-        FxHashMap<Idx<Expr>, Vec<(tt::TextRange, usize, Option<Name>)>>,
+        FxHashMap<Idx<Expr>, Vec<(tt::TextRange, usize)>>,
     )> {
         self.template_map.as_deref()
     }

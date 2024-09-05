@@ -669,7 +669,7 @@ impl InferenceContext<'_> {
     fn walk_expr_without_adjust(&mut self, tgt_expr: ExprId) {
         match &self.body[tgt_expr] {
             Expr::OffsetOf(_) => (),
-            Expr::InlineAsm(e) => e.operands.iter().for_each(|op| match op {
+            Expr::InlineAsm(e) => e.operands.iter().for_each(|(_, op)| match op {
                 AsmOperand::In { expr, .. }
                 | AsmOperand::Out { expr: Some(expr), .. }
                 | AsmOperand::InOut { expr, .. } => self.walk_expr_without_adjust(*expr),

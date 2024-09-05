@@ -5259,13 +5259,10 @@ impl InlineAsmOperand {
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> Option<Name> {
-        db.body_with_source_map(self.owner)
-            .1
-            .template_map()?
-            .1
-            .get(&self.expr)?
-            .get(self.index)
-            .and_then(|(_, _, name)| name.clone())
+        match &db.body(self.owner)[self.expr] {
+            hir_def::hir::Expr::InlineAsm(e) => e.operands.get(self.index)?.0.clone(),
+            _ => None,
+        }
     }
 }
 

@@ -956,7 +956,7 @@ impl InferenceContext<'_> {
                 };
 
                 let diverge = asm.options.contains(AsmOptions::NORETURN);
-                asm.operands.iter().for_each(|operand| match *operand {
+                asm.operands.iter().for_each(|(_, operand)| match *operand {
                     AsmOperand::In { expr, .. } => check_expr_asm_operand(expr, true),
                     AsmOperand::Out { expr: Some(expr), .. } | AsmOperand::InOut { expr, .. } => {
                         check_expr_asm_operand(expr, false)
