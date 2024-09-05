@@ -15,13 +15,19 @@ use crate::{
 /// This is a custom command wrapper that simplifies working with commands and makes it easier to
 /// ensure that we check the exit status of executed processes.
 ///
-/// # A [`Command`] must be executed
+/// # A [`Command`] must be executed exactly once
 ///
 /// A [`Command`] is armed by a [`DropBomb`] on construction to enforce that it will be executed. If
 /// a [`Command`] is constructed but never executed, the drop bomb will explode and cause the test
 /// to panic. Execution methods [`run`] and [`run_fail`] will defuse the drop bomb. A test
 /// containing constructed but never executed commands is dangerous because it can give a false
 /// sense of confidence.
+///
+/// Each [`Command`] invocation can also only be executed once, because we want to enforce
+/// `std{in,out,err}` config via [`std::process::Stdio`] but [`std::process::Stdio`] is not
+/// cloneable.
+///
+/// In this sense, [`Command`] exhibits linear type semantics but enforced at run-time.
 ///
 /// [`run`]: Self::run
 /// [`run_fail`]: Self::run_fail
@@ -37,7 +43,9 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
 
+    // Emulate linear type semantics.
     drop_bomb: DropBomb,
+    already_executed: bool,
 }
 
 impl Command {
@@ -51,6 +59,7 @@ impl Command {
             stdin: None,
             stdout: None,
             stderr: None,
+            already_executed: false,
         }
     }
 
@@ -177,6 +186,12 @@ impl Command {
 
     #[track_caller]
     fn command_output(&mut self) -> CompletedProcess {
+        if self.already_executed {
+            panic!("command was already executed");
+        } else {
+            self.already_executed = true;
+        }
+
         self.drop_bomb.defuse();
         // let's make sure we piped all the input and outputs
         self.cmd.stdin(self.stdin.take().unwrap_or(Stdio::piped()));
