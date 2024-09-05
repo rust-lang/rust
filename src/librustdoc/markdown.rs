@@ -72,6 +72,7 @@ pub(crate) fn render<P: AsRef<Path>>(
     let text = if !options.markdown_no_toc {
         MarkdownWithToc {
             content: text,
+            links: &[],
             ids: &mut ids,
             error_codes,
             edition,
