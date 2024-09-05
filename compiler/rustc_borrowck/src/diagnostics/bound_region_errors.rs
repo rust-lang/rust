@@ -15,6 +15,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::NiceRegionError;
+use rustc_trait_selection::error_reporting::infer::TypeErrorRole;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::query::type_op;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -482,12 +483,11 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
         .try_report_from_nll()
         .or_else(|| {
             if let SubregionOrigin::Subtype(trace) = cause {
-                Some(
-                    infcx.err_ctxt().report_and_explain_type_error(
-                        *trace,
-                        TypeError::RegionsPlaceholderMismatch,
-                    ),
-                )
+                Some(infcx.err_ctxt().report_and_explain_type_error(
+                    *trace,
+                    TypeError::RegionsPlaceholderMismatch,
+                    TypeErrorRole::Elsewhere,
+                ))
             } else {
                 None
             }

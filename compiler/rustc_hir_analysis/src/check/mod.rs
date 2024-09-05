@@ -93,7 +93,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
+use rustc_trait_selection::error_reporting::infer::{ObligationCauseExt as _, TypeErrorRole};
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -656,6 +656,7 @@ pub fn check_function_signature<'tcx>(
                 err,
                 false,
                 false,
+                TypeErrorRole::Elsewhere,
             );
             return Err(diag.emit());
         }

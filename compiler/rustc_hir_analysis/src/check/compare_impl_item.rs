@@ -21,6 +21,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
+use rustc_trait_selection::error_reporting::infer::TypeErrorRole;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -612,6 +613,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 terr,
                 false,
                 false,
+                TypeErrorRole::Elsewhere,
             );
             return Err(diag.emit());
         }
@@ -1036,6 +1038,7 @@ fn report_trait_method_mismatch<'tcx>(
         terr,
         false,
         false,
+        TypeErrorRole::Elsewhere,
     );
 
     return diag.emit();
@@ -1843,6 +1846,7 @@ fn compare_const_predicate_entailment<'tcx>(
             terr,
             false,
             false,
+            TypeErrorRole::Elsewhere,
         );
         return Err(diag.emit());
     };

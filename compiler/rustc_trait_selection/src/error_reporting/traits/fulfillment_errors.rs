@@ -35,7 +35,7 @@ use super::suggestions::get_explanation_based_on_obligation;
 use super::{
     ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate, UnsatisfiedConst,
 };
-use crate::error_reporting::infer::TyCategory;
+use crate::error_reporting::infer::{TyCategory, TypeErrorRole};
 use crate::error_reporting::traits::report_object_safety_error;
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
@@ -667,6 +667,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     TypeError::Sorts(ty::error::ExpectedFound::new(true, expected_ty, ct_ty)),
                     false,
                     false,
+                    TypeErrorRole::Elsewhere
                 );
                 diag
             }
@@ -1410,6 +1411,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err,
                 true,
                 false,
+                TypeErrorRole::Elsewhere,
             );
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit()
@@ -2556,6 +2558,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         self.report_and_explain_type_error(
             TypeTrace::trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
             terr,
+            TypeErrorRole::Elsewhere,
         )
     }
 
@@ -2653,6 +2656,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         found_trait_ref,
                     ),
                     ty::error::TypeError::Mismatch,
+                    TypeErrorRole::Elsewhere,
                 )
             } else if found.len() == expected.len() {
                 self.report_closure_arg_mismatch(
