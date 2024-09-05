@@ -441,6 +441,17 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # struct X;
+    /// impl X {
+    ///     fn as_str(&self) -> &'static str {
+    ///         // ..
+    /// # ""
+    ///     }
+    /// }
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub WRONG_SELF_CONVENTION,
     style,
@@ -3964,7 +3975,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let _ = 0;
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.81.0"]
     pub UNNECESSARY_MIN_OR_MAX,
     complexity,
     "using 'min()/max()' when there is no need for it"
@@ -4025,7 +4036,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.78.0"]
     pub MANUAL_C_STR_LITERALS,
-    pedantic,
+    complexity,
     r#"creating a `CStr` through functions when `c""` literals can be used"#
 }
 
@@ -4099,7 +4110,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// "foo".is_ascii();
     /// ```
-    #[clippy::version = "1.80.0"]
+    #[clippy::version = "1.81.0"]
     pub NEEDLESS_CHARACTER_ITERATION,
     suspicious,
     "is_ascii() called on a char iterator"

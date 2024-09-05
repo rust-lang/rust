@@ -5,10 +5,10 @@
     dead_code
 )]
 
-/// This should not compile-fail with:
-///
-///      error[E0277]: the trait bound `T: Foo` is not satisfied
-// See rust-lang/rust-clippy#2760.
+// This should not compile-fail with:
+//
+//      error[E0277]: the trait bound `T: Foo` is not satisfied
+// See https://github.com/rust-lang/rust-clippy/issues/2760
 
 trait Foo {
     type Bar;

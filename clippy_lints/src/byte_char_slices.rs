@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// b"Hello"
     /// ```
-    #[clippy::version = "1.68.0"]
+    #[clippy::version = "1.81.0"]
     pub BYTE_CHAR_SLICES,
     style,
     "hard to read byte char slice"

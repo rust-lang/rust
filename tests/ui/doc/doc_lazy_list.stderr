@@ -30,12 +30,11 @@ error: doc list item without indentation
 LL | /// because they don't have the
    |     ^
    |
-   = help: if this is intended to be part of the list, indent 3 spaces
-help: if this should be its own paragraph, add a blank doc comment line
+   = help: if this is supposed to be its own paragraph, add a blank line
+help: indent this line
    |
-LL ~ /// lazy list continuations don't make warnings with this lint
-LL + ///
-   |
+LL | ///    because they don't have the
+   |     +++
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:16:5
@@ -67,12 +66,11 @@ error: doc list item without indentation
 LL | /// because they don't have the
    |     ^
    |
-   = help: if this is intended to be part of the list, indent 4 spaces
-help: if this should be its own paragraph, add a blank doc comment line
+   = help: if this is supposed to be its own paragraph, add a blank line
+help: indent this line
    |
-LL ~ /// lazy list continuations don't make warnings with this lint
-LL + ///
-   |
+LL | ///     because they don't have the
+   |     ++++
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:28:5
@@ -104,12 +102,11 @@ error: doc list item without indentation
 LL | ///     and so should this
    |     ^^^^
    |
-   = help: if this is intended to be part of the list, indent 2 spaces
-help: if this should be its own paragraph, add a blank doc comment line
+   = help: if this is supposed to be its own paragraph, add a blank line
+help: indent this line
    |
-LL ~ /// this will warn on the lazy continuation
-LL + ///
-   |
+LL | ///       and so should this
+   |         ++
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:56:5

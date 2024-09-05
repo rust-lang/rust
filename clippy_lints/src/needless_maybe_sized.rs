@@ -26,7 +26,7 @@ declare_clippy_lint! {
     ///
     /// // or choose alternative bounds for `T` so that it can be unsized
     /// ```
-    #[clippy::version = "1.79.0"]
+    #[clippy::version = "1.81.0"]
     pub NEEDLESS_MAYBE_SIZED,
     suspicious,
     "a `?Sized` bound that is unusable due to a `Sized` requirement"
