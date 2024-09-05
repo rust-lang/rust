@@ -407,6 +407,7 @@ symbols! {
         append_const_msg,
         arbitrary_enum_discriminant,
         arbitrary_self_types,
+        arbitrary_self_types_pointers,
         args,
         arith_offset,
         arm,

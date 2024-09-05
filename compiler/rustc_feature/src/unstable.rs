@@ -349,8 +349,10 @@ declare_features! (
     (unstable, adt_const_params, "1.56.0", Some(95174)),
     /// Allows defining an `#[alloc_error_handler]`.
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
-    /// Allows trait methods with arbitrary self types.
+    /// Allows inherent and trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
+    /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
+    (unstable, arbitrary_self_types_pointers, "CURRENT_RUSTC_VERSION", Some(44874)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Allows using `label` operands in inline assembly.
