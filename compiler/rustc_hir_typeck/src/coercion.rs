@@ -82,6 +82,7 @@ struct Coerce<'a, 'tcx> {
     /// See #47489 and #48598
     /// See docs on the "AllowTwoPhase" type for a more detailed discussion
     allow_two_phase: AllowTwoPhase,
+    coerce_never: bool,
 }
 
 impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
@@ -125,8 +126,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         fcx: &'f FnCtxt<'f, 'tcx>,
         cause: ObligationCause<'tcx>,
         allow_two_phase: AllowTwoPhase,
+        coerce_never: bool,
     ) -> Self {
-        Coerce { fcx, cause, allow_two_phase, use_lub: false }
+        Coerce { fcx, cause, allow_two_phase, use_lub: false, coerce_never }
     }
 
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
@@ -177,7 +179,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Coercing from `!` to any type is allowed:
         if a.is_never() {
-            return success(simple(Adjust::NeverToAny)(b), b, vec![]);
+            if self.coerce_never {
+                return success(simple(Adjust::NeverToAny)(b), b, vec![]);
+            } else {
+                return self.unify_and(a, b, identity);
+            }
         }
 
         // Coercing *from* an unresolved inference variable means that
@@ -1038,7 +1044,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The expressions *must not* have any preexisting adjustments.
     pub(crate) fn coerce(
         &self,
-        expr: &hir::Expr<'_>,
+        expr: &'tcx hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
         mut target: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
@@ -1055,7 +1061,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let cause =
             cause.unwrap_or_else(|| self.cause(expr.span, ObligationCauseCode::ExprAssignable));
-        let coerce = Coerce::new(self, cause, allow_two_phase);
+        let coerce = Coerce::new(self, cause, allow_two_phase, self.expr_constitutes_read(expr));
         let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
@@ -1078,7 +1084,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
         // We don't ever need two-phase here since we throw out the result of the coercion
-        let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
+        let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
         self.probe(|_| {
             let Ok(ok) = coerce.coerce(source, target) else {
                 return false;
@@ -1095,7 +1101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn deref_steps(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> Option<usize> {
         let cause = self.cause(DUMMY_SP, ObligationCauseCode::ExprAssignable);
         // We don't ever need two-phase here since we throw out the result of the coercion
-        let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
+        let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
         coerce
             .autoderef(DUMMY_SP, expr_ty)
             .find_map(|(ty, steps)| self.probe(|_| coerce.unify(ty, target)).ok().map(|_| steps))
@@ -1252,7 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // probably aren't processing function arguments here and even if we were,
         // they're going to get autorefed again anyway and we can apply 2-phase borrows
         // at that time.
-        let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No);
+        let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
         coerce.use_lub = true;
 
         // First try to coerce the new expression to the type of the previous ones,
