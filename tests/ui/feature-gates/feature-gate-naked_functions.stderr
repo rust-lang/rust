@@ -1,7 +1,7 @@
 error[E0658]: use of unstable library feature 'naked_functions'
   --> $DIR/feature-gate-naked_functions.rs:9:5
    |
-LL |     naked_asm!("", options(noreturn))
+LL |     naked_asm!("")
    |     ^^^^^^^^^
    |
    = note: see issue #90957 <https://github.com/rust-lang/rust/issues/90957> for more information
@@ -11,7 +11,7 @@ LL |     naked_asm!("", options(noreturn))
 error[E0658]: use of unstable library feature 'naked_functions'
   --> $DIR/feature-gate-naked_functions.rs:17:5
    |
-LL |     naked_asm!("", options(noreturn))
+LL |     naked_asm!("")
    |     ^^^^^^^^^
    |
    = note: see issue #90957 <https://github.com/rust-lang/rust/issues/90957> for more information
@@ -51,16 +51,16 @@ LL | use std::arch::naked_asm;
 error[E0133]: use of inline assembly is unsafe and requires unsafe function or block
   --> $DIR/feature-gate-naked_functions.rs:9:5
    |
-LL |     naked_asm!("", options(noreturn))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of inline assembly
+LL |     naked_asm!("")
+   |     ^^^^^^^^^^^^^^ use of inline assembly
    |
    = note: inline assembly is entirely unchecked and can cause undefined behavior
 
 error[E0133]: use of inline assembly is unsafe and requires unsafe function or block
   --> $DIR/feature-gate-naked_functions.rs:17:5
    |
-LL |     naked_asm!("", options(noreturn))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of inline assembly
+LL |     naked_asm!("")
+   |     ^^^^^^^^^^^^^^ use of inline assembly
    |
    = note: inline assembly is entirely unchecked and can cause undefined behavior
 
