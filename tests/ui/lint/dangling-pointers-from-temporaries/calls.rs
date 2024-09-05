@@ -23,20 +23,27 @@ fn ok() {
 
 // All of these should trigger the lint.
 fn not_ok() {
-    let ptr = cstring().as_ptr();
-    //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
-    consume(ptr);
+    {
+        let ptr = cstring().as_ptr();
+        //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
+        consume(ptr);
+    }
     consume({
         let ptr = cstring().as_ptr();
         //^ FIXME: should error
         ptr
+    });
+    consume({
+        let s = cstring();
+        s.as_ptr()
+        //^ FIXME: should error
     });
     let _ptr: *const u8 = cstring().as_ptr().cast();
     //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
     let _ptr: *const u8 = { cstring() }.as_ptr().cast();
     //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
     let _ptr: *const u8 = { cstring().as_ptr() }.cast();
-    //^ FIXME: should error
+    //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
 }
 
 fn main() {

@@ -38,7 +38,13 @@ declare_lint! {
     "detects getting a pointer from a temporary"
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum CallPart {
+    LHS { lhs: HirId, call: HirId },
+    Arguments { call: HirId },
+}
+
+#[derive(Clone, Default)]
 pub(crate) struct DanglingPointers {
     /// HACK: trying to deal with argument lifetime extension.
     ///
@@ -67,14 +73,9 @@ pub(crate) struct DanglingPointers {
     /// But we are not a visitor. We are a LateLintPass,
     /// and we get called on every expression there is.
     ///
-    /// The best we can do is to keep track of when we enter
-    /// a function/method call and stop linting until we exit it.
-    ///
-    /// Sadly, we cannot update this *after* we have visited the LHS of a call,
-    /// but *before* we visit the arguments.
-    /// So we update this even before visiting the LHS,
-    /// which means we don't get to walk it properly. Sad.
-    token: Option<HirId>,
+    /// So let's try to maintain this context stack explicitly
+    /// instead of as a part of the call stack.
+    nested_calls: Vec<CallPart>,
 }
 
 impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
@@ -98,68 +99,53 @@ impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
 ///      foo({ let x = get_cstring(); x.as_ptr() }, 1)
 ///      ```
 ///      but who in their right mind would write something like that?
-///    - **A function call's callee / a method call's receiver is not visited fully.** \
-///      We descent into it recursively, but we stop at the first expression that is
-///      neither [`ExprKind::Call`] nor [`ExprKind::MethodCall`].
-///      This means
-///      ```ignore (example)
-///      CString::new("Hello").unwrap().as_ptr().cast()
-///      ```
-///      will get linted, but
-///      ```ignore (example)
-///      { CString::new("Hello").unwrap().as_ptr() }.cast()
-///      ```
-///      will not, because we stop at the block and do not descend any further.
 impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if self.token.is_some() {
+        if let Some(CallPart::Arguments { .. }) = self.nested_calls.last() {
             tracing::debug!(skip = ?cx.sess().source_map().span_to_snippet(expr.span));
             return;
         }
 
-        if let ExprKind::Call(lhs, _args) | ExprKind::MethodCall(_, lhs, _args, _) = expr.kind {
-            tracing::trace!(enter = ?cx.sess().source_map().span_to_snippet(expr.span));
+        lint_expr(cx, expr);
 
-            // Peel any nested calls from the LHS.
-            self.check_expr(cx, lhs);
-            self.check_expr_post(cx, lhs);
-
-            debug_assert_eq!(self.token, None);
-            self.token = Some(expr.hir_id);
-
-            tracing::debug!(set = ?cx.sess().source_map().span_to_snippet(expr.span));
+        match expr.kind {
+            ExprKind::Call(lhs, _args) | ExprKind::MethodCall(_, lhs, _args, _) => {
+                self.nested_calls.push(CallPart::LHS { lhs: lhs.hir_id, call: expr.hir_id })
+            }
+            _ => {}
         }
-        self.lint_expr(cx, expr);
     }
 
-    fn check_expr_post(&mut self, _cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if self.token == Some(expr.hir_id) {
-            self.token = None;
-
-            tracing::debug!(unset = ?_cx.sess().source_map().span_to_snippet(expr.span));
-        }
+    fn check_expr_post(&mut self, _: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        self.nested_calls.pop_if(|pos| match pos {
+            &mut CallPart::LHS { lhs, call } => {
+                if expr.hir_id == lhs {
+                    *pos = CallPart::Arguments { call };
+                };
+                false
+            }
+            &mut CallPart::Arguments { call } => expr.hir_id == call,
+        });
     }
 }
 
-impl DanglingPointers {
-    fn lint_expr(&self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind
-            && matches!(method.ident.name, sym::as_ptr | sym::as_mut_ptr)
-            && is_temporary_rvalue(receiver)
-            && let ty = cx.typeck_results().expr_ty(receiver)
-            && is_interesting(cx.tcx, ty)
-        {
-            cx.emit_span_lint(
-                DANGLING_POINTERS_FROM_TEMPORARIES,
-                method.ident.span,
-                InstantlyDangling {
-                    callee: method.ident.name,
-                    ty,
-                    ptr_span: method.ident.span,
-                    temporary_span: receiver.span,
-                },
-            )
-        }
+fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind
+        && matches!(method.ident.name, sym::as_ptr | sym::as_mut_ptr)
+        && is_temporary_rvalue(receiver)
+        && let ty = cx.typeck_results().expr_ty(receiver)
+        && is_interesting(cx.tcx, ty)
+    {
+        cx.emit_span_lint(
+            DANGLING_POINTERS_FROM_TEMPORARIES,
+            method.ident.span,
+            InstantlyDangling {
+                callee: method.ident.name,
+                ty,
+                ptr_span: method.ident.span,
+                temporary_span: receiver.span,
+            },
+        )
     }
 }
 

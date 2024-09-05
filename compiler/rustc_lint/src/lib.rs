@@ -39,6 +39,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(trait_upcasting)]
+#![feature(vec_pop_if)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 

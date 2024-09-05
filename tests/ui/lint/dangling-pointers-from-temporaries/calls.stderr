@@ -1,10 +1,10 @@
 error: getting a pointer from a temporary `CString` will result in a dangling pointer
-  --> $DIR/calls.rs:26:25
+  --> $DIR/calls.rs:27:29
    |
-LL |     let ptr = cstring().as_ptr();
-   |               --------- ^^^^^^ this pointer will immediately be invalid
-   |               |
-   |               this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+LL |         let ptr = cstring().as_ptr();
+   |                   --------- ^^^^^^ this pointer will immediately be invalid
+   |                   |
+   |                   this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
    |
    = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
@@ -15,7 +15,7 @@ LL | #![deny(dangling_pointers_from_temporaries)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: getting a pointer from a temporary `CString` will result in a dangling pointer
-  --> $DIR/calls.rs:34:37
+  --> $DIR/calls.rs:41:37
    |
 LL |     let _ptr: *const u8 = cstring().as_ptr().cast();
    |                           --------- ^^^^^^ this pointer will immediately be invalid
@@ -26,7 +26,7 @@ LL |     let _ptr: *const u8 = cstring().as_ptr().cast();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `CString` will result in a dangling pointer
-  --> $DIR/calls.rs:36:41
+  --> $DIR/calls.rs:43:41
    |
 LL |     let _ptr: *const u8 = { cstring() }.as_ptr().cast();
    |                           ------------- ^^^^^^ this pointer will immediately be invalid
@@ -36,5 +36,16 @@ LL |     let _ptr: *const u8 = { cstring() }.as_ptr().cast();
    = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
-error: aborting due to 3 previous errors
+error: getting a pointer from a temporary `CString` will result in a dangling pointer
+  --> $DIR/calls.rs:45:39
+   |
+LL |     let _ptr: *const u8 = { cstring().as_ptr() }.cast();
+   |                             --------- ^^^^^^ this pointer will immediately be invalid
+   |                             |
+   |                             this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
+
+error: aborting due to 4 previous errors
 
