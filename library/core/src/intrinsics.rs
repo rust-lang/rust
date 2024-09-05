@@ -1020,17 +1020,10 @@ pub const fn unlikely(b: bool) -> bool {
 /// any safety invariants.
 ///
 /// This intrinsic does not have a stable counterpart.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
-#[inline]
-pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
-    if b { true_val } else { false_val }
-}
-
-#[cfg(bootstrap)]
 #[inline]
 pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
     if b { true_val } else { false_val }

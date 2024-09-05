@@ -118,11 +118,7 @@ pub trait CommandExt: Sealed {
     /// [`pre_exec`]: CommandExt::pre_exec
     #[stable(feature = "process_exec", since = "1.15.0")]
     #[deprecated(since = "1.37.0", note = "should be unsafe, use `pre_exec` instead")]
-    #[cfg_attr(bootstrap, rustc_deprecated_safe_2024)]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_deprecated_safe_2024(audit_that = "the closure is async-signal-safe")
-    )]
+    #[rustc_deprecated_safe_2024(audit_that = "the closure is async-signal-safe")]
     unsafe fn before_exec<F>(&mut self, f: F) -> &mut process::Command
     where
         F: FnMut() -> io::Result<()> + Send + Sync + 'static,

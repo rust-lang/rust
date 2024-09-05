@@ -1326,7 +1326,6 @@ impl<T> SizedTypeProperties for T {}
 /// # Examples
 ///
 /// ```
-/// # #![cfg_attr(bootstrap, feature(offset_of_nested))]
 /// #![feature(offset_of_enum)]
 ///
 /// use std::mem;
