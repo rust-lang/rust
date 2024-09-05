@@ -8,9 +8,9 @@
    LL|       |async fn ready() -> u8 { 1 }
    LL|       |
    LL|      1|async fn await_ready() -> u8 {
-   LL|      1|    // FIXME(#98712): await is only covered if the function yields
+   LL|      1|    // await should be covered even if the function never yields
    LL|      1|    ready()
-   LL|      0|        .await
+   LL|      1|        .await
    LL|      1|}
    LL|       |
    LL|      1|fn main() {

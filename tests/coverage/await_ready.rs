@@ -8,7 +8,7 @@
 async fn ready() -> u8 { 1 }
 
 async fn await_ready() -> u8 {
-    // FIXME(#98712): await is only covered if the function yields
+    // await should be covered even if the function never yields
     ready()
         .await
 }
