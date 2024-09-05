@@ -534,6 +534,9 @@ pub(super) fn highlight_def(
         Definition::BuiltinAttr(_) => Highlight::new(HlTag::Symbol(SymbolKind::BuiltinAttr)),
         Definition::ToolModule(_) => Highlight::new(HlTag::Symbol(SymbolKind::ToolModule)),
         Definition::DeriveHelper(_) => Highlight::new(HlTag::Symbol(SymbolKind::DeriveHelper)),
+        Definition::InlineAsmRegOrRegClass(_) => {
+            Highlight::new(HlTag::Symbol(SymbolKind::InlineAsmRegOrRegClass))
+        }
     };
 
     let def_crate = def.krate(db);

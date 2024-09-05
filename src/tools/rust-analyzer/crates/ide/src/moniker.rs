@@ -228,6 +228,7 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
         Definition::BuiltinAttr(..) => Attribute,
         Definition::ToolModule(..) => Module,
         Definition::ExternCrateDecl(..) => Module,
+        Definition::InlineAsmRegOrRegClass(..) => Module,
     }
 }
 
@@ -320,7 +321,8 @@ pub(crate) fn def_to_moniker(
         | Definition::DeriveHelper(_)
         | Definition::BuiltinLifetime(_)
         | Definition::BuiltinAttr(_)
-        | Definition::ToolModule(_) => return None,
+        | Definition::ToolModule(_)
+        | Definition::InlineAsmRegOrRegClass(_) => return None,
 
         Definition::Local(local) => {
             if !local.is_param(db) {

@@ -224,6 +224,7 @@ pub enum SymbolKind {
     Function,
     Method,
     Impl,
+    InlineAsmRegOrRegClass,
     Label,
     LifetimeParam,
     Local,

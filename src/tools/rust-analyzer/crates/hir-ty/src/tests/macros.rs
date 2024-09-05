@@ -1413,7 +1413,7 @@ fn asm_unit() {
         r#"
 //- minicore: asm
 fn unit() {
-    asm!("")
+    core::arch::asm!("")
 }
 "#,
     );
@@ -1425,7 +1425,7 @@ fn asm_no_return() {
         r#"
 //- minicore: asm
 fn unit() -> ! {
-    asm!("", options(noreturn))
+    core::arch::asm!("", options(noreturn))
 }
 "#,
     );
@@ -1440,7 +1440,7 @@ fn main() {
     unsafe {
         let foo = 1;
         let mut o = 0;
-        asm!(
+        core::arch::asm!(
             "%input = OpLoad _ {0}",
             concat!("%result = ", bar, " _ %input"),
             "OpStore {1} %result",
@@ -1450,7 +1450,7 @@ fn main() {
         o
 
         let thread_id: usize;
-        asm!("
+        core::arch::asm!("
             mov {0}, gs:[0x30]
             mov {0}, [{0}+0x48]
         ", out(reg) thread_id, options(pure, readonly, nostack));
@@ -1460,7 +1460,7 @@ fn main() {
         static VirtualFree: usize;
         const OffPtr: usize;
         const OffFn: usize;
-        asm!("
+        core::arch::asm!("
             push {free_type}
             push {free_size}
             push {base}
@@ -1490,16 +1490,16 @@ fn main() {
 "#,
         expect![[r#"
             !0..122 'builti...muto,)': ()
-            !0..190 'builti...tack))': ()
+            !0..136 'builti...tack))': ()
             !0..449 'builti...urn),)': !
-            10..1254 '{     ...   } }': ()
-            16..1252 'unsafe...     }': ()
+            10..1236 '{     ...   } }': ()
+            16..1234 'unsafe...     }': ()
             37..40 'foo': i32
             43..44 '1': i32
             58..63 'mut o': i32
             66..67 '0': i32
-            281..282 'o': i32
-            296..305 'thread_id': usize
+            293..294 'o': i32
+            308..317 'thread_id': usize
         "#]],
     )
 }

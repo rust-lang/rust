@@ -1475,6 +1475,19 @@ mod panicking {
 }
 // endregion:panic
 
+// region:asm
+mod arch {
+    #[rustc_builtin_macro]
+    pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
+    #[rustc_builtin_macro]
+    pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
+}
+// endregion:asm
+
 #[macro_use]
 mod macros {
     // region:panic
@@ -1486,16 +1499,6 @@ mod macros {
         };
     }
     // endregion:panic
-
-    // region:asm
-    #[macro_export]
-    #[rustc_builtin_macro]
-    macro_rules! asm {
-        ($($arg:tt)*) => {
-            /* compiler built-in */
-        };
-    }
-    // endregion:asm
 
     // region:assert
     #[macro_export]

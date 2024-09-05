@@ -205,7 +205,8 @@ impl Definition {
             | Definition::BuiltinAttr(_)
             | Definition::SelfType(_)
             | Definition::ToolModule(_)
-            | Definition::TupleField(_) => return None,
+            | Definition::TupleField(_)
+            | Definition::InlineAsmRegOrRegClass(_) => return None,
             // FIXME: This should be doable in theory
             Definition::DeriveHelper(_) => return None,
         };

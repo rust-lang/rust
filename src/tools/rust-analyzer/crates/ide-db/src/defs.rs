@@ -50,6 +50,7 @@ pub enum Definition {
     BuiltinAttr(BuiltinAttr),
     ToolModule(ToolModule),
     ExternCrateDecl(ExternCrateDecl),
+    InlineAsmRegOrRegClass(()),
 }
 
 impl Definition {
@@ -87,7 +88,8 @@ impl Definition {
             | Definition::BuiltinType(_)
             | Definition::BuiltinLifetime(_)
             | Definition::TupleField(_)
-            | Definition::ToolModule(_) => return None,
+            | Definition::ToolModule(_)
+            | Definition::InlineAsmRegOrRegClass(_) => return None,
         };
         Some(module)
     }
@@ -121,7 +123,8 @@ impl Definition {
             | Definition::Local(_)
             | Definition::GenericParam(_)
             | Definition::Label(_)
-            | Definition::DeriveHelper(_) => return None,
+            | Definition::DeriveHelper(_)
+            | Definition::InlineAsmRegOrRegClass(_) => return None,
         };
         Some(vis)
     }
@@ -150,6 +153,7 @@ impl Definition {
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),
             Definition::ExternCrateDecl(it) => return it.alias_or_name(db),
+            Definition::InlineAsmRegOrRegClass(_) => return None, //  FIXME
         };
         Some(name)
     }
@@ -212,6 +216,7 @@ impl Definition {
             Definition::ToolModule(_) => None,
             Definition::DeriveHelper(_) => None,
             Definition::TupleField(_) => None,
+            Definition::InlineAsmRegOrRegClass(_) => None,
         };
 
         docs.or_else(|| {
@@ -268,6 +273,8 @@ impl Definition {
             Definition::DeriveHelper(it) => {
                 format!("derive_helper {}", it.name(db).display(db, edition))
             }
+            // FIXME
+            Definition::InlineAsmRegOrRegClass(_) => "inline_asm_reg_or_reg_class".to_owned(),
         }
     }
 }
