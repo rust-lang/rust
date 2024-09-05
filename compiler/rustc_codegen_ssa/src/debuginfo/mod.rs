@@ -54,7 +54,7 @@ pub fn tag_base_type<'tcx>(tcx: TyCtxt<'tcx>, enum_type_and_layout: TyAndLayout<
     })
 }
 
-pub fn tag_base_type_opt<'tcx>(
+fn tag_base_type_opt<'tcx>(
     tcx: TyCtxt<'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> Option<Ty<'tcx>> {

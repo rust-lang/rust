@@ -44,7 +44,7 @@ use crate::{
     errors, meth, mir, CachedModuleCodegen, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
 };
 
-pub fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
+pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
     match op {
         BinOp::Eq => IntPredicate::IntEQ,
         BinOp::Ne => IntPredicate::IntNE,
@@ -84,7 +84,7 @@ pub fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
     }
 }
 
-pub fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
+pub(crate) fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
     match op {
         BinOp::Eq => RealPredicate::RealOEQ,
         BinOp::Ne => RealPredicate::RealUNE,
@@ -135,7 +135,7 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ///
 /// The `old_info` argument is a bit odd. It is intended for use in an upcast,
 /// where the new vtable for an object will be derived from the old one.
-pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
@@ -182,7 +182,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 /// Coerces `src` to `dst_ty`. `src_ty` must be a pointer.
-pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty: Ty<'tcx>,
@@ -227,7 +227,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 /// Coerces `src` to `dst_ty` which is guaranteed to be a `dyn*` type.
-pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty_and_layout: TyAndLayout<'tcx>,
@@ -250,7 +250,7 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 /// Coerces `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty`, and stores the result in `dst`.
-pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: PlaceRef<'tcx, Bx::Value>,
     dst: PlaceRef<'tcx, Bx::Value>,
@@ -305,7 +305,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ///
 /// If `is_unchecked` is true, this does no masking, and adds sufficient `assume`
 /// calls or operation flags to preserve as much freedom to optimize as possible.
-pub fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs: Bx::Value,
     mut rhs: Bx::Value,
@@ -369,11 +369,11 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 /// Returns `true` if this session's target requires the new exception
 /// handling LLVM IR instructions (catchpad / cleanuppad / ... instead
 /// of landingpad)
-pub fn wants_new_eh_instructions(sess: &Session) -> bool {
+pub(crate) fn wants_new_eh_instructions(sess: &Session) -> bool {
     wants_wasm_eh(sess) || wants_msvc_seh(sess)
 }
 
-pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
@@ -999,7 +999,7 @@ impl CrateInfo {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.backend_optimization_level = |tcx, cratenum| {
         let for_speed = match tcx.sess.opts.optimize {
             // If globally no optimisation is done, #[optimize] has no effect.

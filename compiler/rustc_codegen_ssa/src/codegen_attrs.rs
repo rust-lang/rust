@@ -755,6 +755,6 @@ fn check_link_name_xor_ordinal(
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
 }

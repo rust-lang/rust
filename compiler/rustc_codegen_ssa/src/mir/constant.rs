@@ -10,7 +10,7 @@ use crate::mir::operand::OperandRef;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn eval_mir_constant_to_operand(
+    pub(crate) fn eval_mir_constant_to_operand(
         &self,
         bx: &mut Bx,
         constant: &mir::ConstOperand<'tcx>,
@@ -33,7 +33,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// a `ValTree`. If you want a more general version of this, talk to `wg-const-eval` on zulip.
     ///
     /// Note that this function is cursed, since usually MIR consts should not be evaluated to valtrees!
-    pub fn eval_unevaluated_mir_constant_to_valtree(
+    fn eval_unevaluated_mir_constant_to_valtree(
         &self,
         constant: &mir::ConstOperand<'tcx>,
     ) -> Result<Result<ty::ValTree<'tcx>, Ty<'tcx>>, ErrorHandled> {

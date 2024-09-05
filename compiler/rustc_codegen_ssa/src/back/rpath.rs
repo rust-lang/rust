@@ -6,14 +6,14 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::try_canonicalize;
 use tracing::debug;
 
-pub struct RPathConfig<'a> {
+pub(super) struct RPathConfig<'a> {
     pub libs: &'a [&'a Path],
     pub out_filename: PathBuf,
     pub is_like_osx: bool,
     pub linker_is_gnu: bool,
 }
 
-pub fn get_rpath_flags(config: &RPathConfig<'_>) -> Vec<OsString> {
+pub(super) fn get_rpath_flags(config: &RPathConfig<'_>) -> Vec<OsString> {
     debug!("preparing the RPATH!");
 
     let rpaths = get_rpaths(config);
