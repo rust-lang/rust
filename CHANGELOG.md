@@ -6,7 +6,61 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[c9139bd5...master](https://github.com/rust-lang/rust-clippy/compare/c9139bd5...master)
+[b794b8e0...master](https://github.com/rust-lang/rust-clippy/compare/b794b8e0...master)
+
+## Rust 1.81
+
+Current stable, released 2024-09-05
+
+### New Lints
+
+* Added [`cfg_not_test`] to `restriction`
+  [#11293](https://github.com/rust-lang/rust-clippy/pull/11293)
+* Added [`byte_char_slices`] to `style`
+  [#10155](https://github.com/rust-lang/rust-clippy/pull/10155)
+* Added [`set_contains_or_insert`] to `nursery`
+  [#12873](https://github.com/rust-lang/rust-clippy/pull/12873)
+* Added [`manual_rotate`] to `style`
+  [#12983](https://github.com/rust-lang/rust-clippy/pull/12983)
+* Added [`unnecessary_min_or_max`] to `complexity`
+  [#12368](https://github.com/rust-lang/rust-clippy/pull/12368)
+* Added [`manual_inspect`] to `complexity`
+  [#12287](https://github.com/rust-lang/rust-clippy/pull/12287)
+* Added [`field_scoped_visibility_modifiers`] to `restriction`
+  [#12893](https://github.com/rust-lang/rust-clippy/pull/12893)
+* Added [`manual_pattern_char_comparison`] to `style`
+  [#12849](https://github.com/rust-lang/rust-clippy/pull/12849)
+* Added [`needless_maybe_sized`] to `suspicious`
+  [#10632](https://github.com/rust-lang/rust-clippy/pull/10632)
+* Added [`needless_character_iteration`] to `suspicious`
+  [#12815](https://github.com/rust-lang/rust-clippy/pull/12815)
+
+### Moves and Deprecations
+
+* [`allow_attributes`], [`allow_attributes_without_reason`]: Now work on stable
+  [rust#120924](https://github.com/rust-lang/rust/pull/120924)
+* Renamed `overflow_check_conditional` to [`panicking_overflow_checks`]
+  [#12944](https://github.com/rust-lang/rust-clippy/pull/12944)
+* Moved [`panicking_overflow_checks`] to `correctness` (From `complexity` now deny-by-default)
+  [#12944](https://github.com/rust-lang/rust-clippy/pull/12944)
+* Renamed `thread_local_initializer_can_be_made_const` to [`missing_const_for_thread_local`]
+  [#12974](https://github.com/rust-lang/rust-clippy/pull/12974)
+* Deprecated [`maybe_misused_cfg`] and [`mismatched_target_os`] as they are now caught by cargo
+  and rustc
+  [#12875](https://github.com/rust-lang/rust-clippy/pull/12875)
+
+### Enhancements
+
+* [`significant_drop_in_scrutinee`]: Now also checks scrutinies of `while let` and `for let`
+  expressions
+  [#12870](https://github.com/rust-lang/rust-clippy/pull/12870)
+* [`std_instead_of_core`]: Now respects the `msrv` configuration
+  [#13168](https://github.com/rust-lang/rust-clippy/pull/13168)
+
+### ICE Fixes
+
+* [`suboptimal_flops`]: No longer crashes on custom `.log()` functions
+  [#12884](https://github.com/rust-lang/rust-clippy/pull/12884)
 
 ## Rust 1.80
 
