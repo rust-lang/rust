@@ -9,6 +9,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
+use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_target::abi::{Align, Size};
@@ -91,14 +92,32 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     fn init_coverage(&mut self, instance: Instance<'tcx>) {
-        let Some(function_coverage_info) =
-            self.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
-        else {
+        let mir_body = self.tcx.instance_mir(instance.def);
+        let Some(function_coverage_info) = mir_body.function_coverage_info.as_deref() else {
             return;
         };
 
         // If there are no MC/DC bitmaps to set up, return immediately.
         if function_coverage_info.mcdc_bitmap_bytes == 0 {
+            return;
+        }
+
+        let is_counter_instrument = |statement: &Statement<'_>| {
+            let StatementKind::Coverage(cov_kind) = &statement.kind else {
+                return false;
+            };
+            matches!(cov_kind, CoverageKind::CounterIncrement { .. })
+        };
+        // Some instances like `DropGlue` clone mir body from others and modified the basic blocks after coverage pass.
+        // Such instances might have same `function_coverage_info` as the primary but have no associated coverage statement.
+        // Ignore these instances here.
+        if !mir_body
+            .basic_blocks
+            .iter()
+            .map(|bb| &bb.statements)
+            .flatten()
+            .any(is_counter_instrument)
+        {
             return;
         }
 
