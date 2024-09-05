@@ -34,6 +34,7 @@ pub mod rfs {
 }
 
 // Re-exports of third-party library crates.
+// tidy-alphabetical-start
 pub use bstr;
 pub use gimli;
 pub use libc;
@@ -41,6 +42,7 @@ pub use object;
 pub use regex;
 pub use serde_json;
 pub use wasmparser;
+// tidy-alphabetical-end
 
 // Re-exports of external dependencies.
 pub use external_deps::{c_build, cc, clang, htmldocck, llvm, python, rustc, rustdoc};
