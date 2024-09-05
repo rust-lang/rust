@@ -1190,9 +1190,8 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
 #[diag(passes_naked_functions_must_naked_asm, code = E0787)]
 pub(crate) struct NakedFunctionsMustNakedAsm {
     #[primary_span]
+    #[label]
     pub span: Span,
-    #[suggestion(code = "naked_asm!", applicability = "machine-applicable")]
-    pub macro_span: Span,
 }
 
 #[derive(Diagnostic)]

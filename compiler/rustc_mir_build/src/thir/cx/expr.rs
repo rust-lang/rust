@@ -672,6 +672,7 @@ impl<'tcx> Cx<'tcx> {
             }
 
             hir::ExprKind::InlineAsm(asm) => ExprKind::InlineAsm(Box::new(InlineAsmExpr {
+                asm_macro: asm.asm_macro,
                 template: asm.template,
                 operands: asm
                     .operands

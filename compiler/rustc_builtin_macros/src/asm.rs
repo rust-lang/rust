@@ -850,22 +850,13 @@ pub(super) fn expand_naked_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(mut inline_asm) => {
-                    // for future compatibility, we always set the NORETURN option.
-                    //
-                    // When we turn `asm!` into `naked_asm!` with this implementation, we can drop
-                    // the `options(noreturn)`, which makes the upgrade smooth when `naked_asm!`
-                    // starts disallowing the `noreturn` option in the future
-                    inline_asm.options |= ast::InlineAsmOptions::NORETURN;
-
-                    P(ast::Expr {
-                        id: ast::DUMMY_NODE_ID,
-                        kind: ast::ExprKind::InlineAsm(P(inline_asm)),
-                        span: sp,
-                        attrs: ast::AttrVec::new(),
-                        tokens: None,
-                    })
-                }
+                Ok(inline_asm) => P(ast::Expr {
+                    id: ast::DUMMY_NODE_ID,
+                    kind: ast::ExprKind::InlineAsm(P(inline_asm)),
+                    span: sp,
+                    attrs: ast::AttrVec::new(),
+                    tokens: None,
+                }),
                 Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)

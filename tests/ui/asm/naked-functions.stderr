@@ -74,9 +74,7 @@ error[E0787]: the `asm!` macro is not allowed in naked functions
   --> $DIR/naked-functions.rs:13:5
    |
 LL |     asm!("", options(raw));
-   |     ----^^^^^^^^^^^^^^^^^^
-   |     |
-   |     help: consider using the `naked_asm!` macro instead: `naked_asm!`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ consider using the `naked_asm!` macro instead
 
 error: patterns not allowed in naked function parameters
   --> $DIR/naked-functions.rs:25:5

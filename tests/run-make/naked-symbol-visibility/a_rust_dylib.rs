@@ -72,7 +72,7 @@ extern "C" fn vanilla_weak_linkage() -> u32 {
 #[cfg(not(windows))]
 #[linkage = "weak"]
 extern "C" fn naked_weak_linkage() -> u32 {
-    unsafe { naked_asm!("mov rax, 42", "ret", options(noreturn)) }
+    unsafe { naked_asm!("mov rax, 42", "ret") }
 }
 
 // functions that are declared in an `extern "C"` block are currently not exported

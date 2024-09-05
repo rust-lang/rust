@@ -7,10 +7,11 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirIdSet, StmtKind};
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::query::Providers;
+use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNDEFINED_NAKED_FUNCTION_ABI;
+use rustc_span::Span;
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi::Abi;
 
 use crate::errors::{
@@ -137,10 +138,7 @@ fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<
                 ItemKind::InlineAsm => {
                     has_err = true;
 
-                    // the span that contains the `asm!` call,
-                    // so tooling can replace it with `naked_asm!`
-                    let macro_span = span.with_hi(span.lo() + BytePos("asm!".len() as u32));
-                    tcx.dcx().emit_err(NakedFunctionsMustNakedAsm { span, macro_span });
+                    tcx.dcx().emit_err(NakedFunctionsMustNakedAsm { span });
                 }
                 ItemKind::NonAsm => {
                     must_show_error = true;
@@ -210,19 +208,17 @@ impl CheckInlineAssembly {
                 self.items.push((ItemKind::NonAsm, span));
             }
 
-            ExprKind::InlineAsm(asm) => {
-                match asm.asm_macro {
-                    rustc_ast::AsmMacro::Asm => {
-                        self.items.push((ItemKind::InlineAsm, span));
-                    }
-                    rustc_ast::AsmMacro::NakedAsm => {
-                        self.items.push((ItemKind::NakedAsm, span));
-                    }
-                    rustc_ast::AsmMacro::GlobalAsm => {
-                        // not allowed in this position
-                    }
+            ExprKind::InlineAsm(asm) => match asm.asm_macro {
+                rustc_ast::AsmMacro::Asm => {
+                    self.items.push((ItemKind::InlineAsm, span));
                 }
-            }
+                rustc_ast::AsmMacro::NakedAsm => {
+                    self.items.push((ItemKind::NakedAsm, span));
+                }
+                rustc_ast::AsmMacro::GlobalAsm => {
+                    span_bug!(span, "`global_asm!` is not allowed in this position")
+                }
+            },
 
             ExprKind::DropTemps(..) | ExprKind::Block(..) => {
                 hir::intravisit::walk_expr(self, expr);

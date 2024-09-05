@@ -499,7 +499,7 @@ passes_naked_functions_incompatible_attribute =
 
 passes_naked_functions_must_naked_asm =
     the `asm!` macro is not allowed in naked functions
-    .suggestion = consider using the `naked_asm!` macro instead
+    .label = consider using the `naked_asm!` macro instead
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
