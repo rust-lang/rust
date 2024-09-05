@@ -1186,6 +1186,9 @@ impl Step for RustcBook {
         cmd.arg("--rustc");
         cmd.arg(&rustc);
         cmd.arg("--rustc-target").arg(self.target.rustc_target_arg());
+        if let Some(target_linker) = builder.linker(self.target) {
+            cmd.arg("--rustc-linker").arg(target_linker);
+        }
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }
