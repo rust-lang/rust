@@ -186,6 +186,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             if self.coerce_never {
                 return success(simple(Adjust::NeverToAny)(b), b, vec![]);
             } else {
+                // Otherwise the only coercion we can do is unification.
                 return self.unify_and(a, b, identity);
             }
         }

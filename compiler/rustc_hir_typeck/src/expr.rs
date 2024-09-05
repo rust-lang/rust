@@ -62,7 +62,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
-        if ty.is_never() {
+        if ty.is_never() && self.expr_constitutes_read(expr) {
             if let Some(_) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
                 let reported = self.dcx().span_delayed_bug(
                     expr.span,
@@ -260,6 +260,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
+    /// Whether this expression constitutes a read of value of the type that
+    /// it evaluates to.
+    ///
+    /// This is used to determine if we should consider the block to diverge
+    /// if the expression evaluates to `!`, and if we should insert a `NeverToAny`
+    /// coercion for values of type `!`.
+    ///
+    /// This function generally returns `false` if the expression is a place
+    /// expression and the *parent* expression is the scrutinee of a match or
+    /// the pointee of an `&` addr-of expression, since both of those parent
+    /// expressions take a *place* and not a value.
+    ///
+    /// This function is unfortunately a bit heuristical, though it is certainly
+    /// far sounder than the prior status quo: <https://github.com/rust-lang/rust/issues/117288>.
     pub(super) fn expr_constitutes_read(&self, expr: &'tcx hir::Expr<'tcx>) -> bool {
         // We only care about place exprs. Anything else returns an immediate
         // which would constitute a read. We don't care about distinguishing
