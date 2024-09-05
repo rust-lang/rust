@@ -337,7 +337,9 @@ lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
 lint_if_let_rescope = `if let` assigns a shorter lifetime since Edition 2024
     .label = this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
     .help = the value is now dropped here in Edition 2024
-    .suggestion = rewrite this `if let` into a `match` with a single arm to preserve the drop order up to Edition 2021
+
+lint_if_let_rescope_suggestion = a `match` with a single arm can preserve the drop order up to Edition 2021
+    .suggestion = rewrite this `if let` into `match`
 
 lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
 

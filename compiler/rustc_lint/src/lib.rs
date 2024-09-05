@@ -245,7 +245,7 @@ late_lint_methods!(
             NonLocalDefinitions: NonLocalDefinitions::default(),
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             TailExprDropOrder: TailExprDropOrder,
-            IfLetRescope: IfLetRescope,
+            IfLetRescope: IfLetRescope::default(),
         ]
     ]
 );
