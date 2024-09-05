@@ -30,5 +30,6 @@ features = ['unprefixed_malloc_on_supported_platforms']
 jemalloc = ['dep:jemalloc-sys']
 llvm = ['rustc_driver_impl/llvm']
 max_level_info = ['rustc_driver_impl/max_level_info']
+rustc_randomized_layouts = ['rustc_driver_impl/rustc_randomized_layouts']
 rustc_use_parallel_compiler = ['rustc_driver_impl/rustc_use_parallel_compiler']
 # tidy-alphabetical-end

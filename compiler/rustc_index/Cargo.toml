@@ -20,4 +20,5 @@ nightly = [
     "dep:rustc_macros",
     "rustc_index_macros/nightly",
 ]
+rustc_randomized_layouts = []
 # tidy-alphabetical-end
