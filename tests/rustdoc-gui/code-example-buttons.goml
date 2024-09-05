@@ -94,3 +94,24 @@ call-function: ("check-buttons",{
     "filter": "invert(0.5)",
     "filter_hover": "invert(0.35)",
 })
+
+define-function: (
+    "check-buttons-position",
+    [pre_selector],
+    block {
+        move-cursor-to: |pre_selector| + " .rust:not(.item-decl)"
+        store-position: (|pre_selector| + " .rust:not(.item-decl)", {"x": x, "y": y})
+        assert-position: (|pre_selector| + " .rust:not(.item-decl) + .button-holder", {
+            "y": |y| + 4,
+        })
+    }
+)
+
+call-function: ("check-buttons-position", {"pre_selector": ".example-wrap"})
+
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+// We should work as well for scraped examples.
+call-function: ("check-buttons-position", {"pre_selector": ".scraped-example .example-wrap"})
+// And also when the scraped example "title" goes above.
+set-window-size: (600, 600)
+call-function: ("check-buttons-position", {"pre_selector": ".scraped-example .example-wrap"})
