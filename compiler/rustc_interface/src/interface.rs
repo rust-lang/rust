@@ -311,7 +311,9 @@ pub struct Config {
     pub output_file: Option<OutFileName>,
     pub ice_file: Option<PathBuf>,
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    pub locale_resources: &'static [&'static str],
+    /// The list of fluent resources, used for lints declared with
+    /// [`Diagnostic`](rustc_errors::Diagnostic) and [`LintDiagnostic`](rustc_errors::LintDiagnostic).
+    pub locale_resources: Vec<&'static str>,
 
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
