@@ -1,6 +1,6 @@
 [package]
 name = "clippy_config"
-version = "0.1.82"
+version = "0.1.83"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
