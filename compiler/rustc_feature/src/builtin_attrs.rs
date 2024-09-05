@@ -793,6 +793,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_lint_query_instability, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
+    // Used by the `rustc::untracked_query_information` lint to warn methods which
+    // might not be stable during incremental compilation.
+    rustc_attr!(
+        rustc_lint_untracked_query_information, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+    ),
     // Used by the `rustc::diagnostic_outside_of_impl` lints to assist in changes to diagnostic
     // APIs. Any function with this attribute will be checked by that lint.
     rustc_attr!(
