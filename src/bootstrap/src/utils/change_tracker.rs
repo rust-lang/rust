@@ -240,4 +240,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `build.cargo-clippy` added for supporting the use of custom/external clippy.",
     },
+    ChangeInfo {
+        change_id: 129925,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.split-debuginfo` as it was deprecated long time ago.",
+    },
 ];
