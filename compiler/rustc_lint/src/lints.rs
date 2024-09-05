@@ -895,6 +895,13 @@ pub(crate) struct QueryInstability {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_query_untracked)]
+#[note]
+pub(crate) struct QueryUntracked {
+    pub method: Symbol,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_span_use_eq_ctxt)]
 pub(crate) struct SpanUseEqCtxtDiag;
 
