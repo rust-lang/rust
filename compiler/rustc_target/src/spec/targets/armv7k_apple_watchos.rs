@@ -1,10 +1,10 @@
-use crate::spec::base::apple::{opts, Arch, TargetAbi};
+use crate::spec::base::apple::{base, Arch, TargetAbi};
 use crate::spec::{Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let arch = Arch::Armv7k;
+    let (opts, llvm_target, arch) = base("watchos", Arch::Armv7k, TargetAbi::Normal);
     Target {
-        llvm_target: "armv7k-apple-watchos".into(),
+        llvm_target,
         metadata: crate::spec::TargetMetadata {
             description: Some("Armv7-A Apple WatchOS".into()),
             tier: Some(3),
@@ -13,13 +13,13 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-Fi8-i64:64-a:0:32-n32-S128".into(),
-        arch: arch.target_arch(),
+        arch,
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".into(),
             max_atomic_width: Some(64),
             dynamic_linking: false,
             position_independent_executables: true,
-            ..opts("watchos", arch, TargetAbi::Normal)
+            ..opts
         },
     }
 }
