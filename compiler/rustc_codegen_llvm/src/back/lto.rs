@@ -314,7 +314,6 @@ fn fat_lto(
             }
         }
     };
-    let mut serialized_bitcode = Vec::new();
     {
         let (llcx, llmod) = {
             let llvm = &module.module_llvm;
@@ -342,9 +341,7 @@ fn fat_lto(
         serialized_modules.sort_by(|module1, module2| module1.1.cmp(&module2.1));
 
         // For all serialized bitcode files we parse them and link them in as we did
-        // above, this is all mostly handled in C++. Like above, though, we don't
-        // know much about the memory management here so we err on the side of being
-        // save and persist everything with the original module.
+        // above, this is all mostly handled in C++.
         let mut linker = Linker::new(llmod);
         for (bc_decoded, name) in serialized_modules {
             let _timer = cgcx
@@ -355,7 +352,6 @@ fn fat_lto(
             info!("linking {:?}", name);
             let data = bc_decoded.data();
             linker.add(data).map_err(|()| write::llvm_err(dcx, LlvmError::LoadBitcode { name }))?;
-            serialized_bitcode.push(bc_decoded);
         }
         drop(linker);
         save_temp_bitcode(cgcx, &module, "lto.input");
@@ -372,7 +368,7 @@ fn fat_lto(
         }
     }
 
-    Ok(LtoModuleCodegen::Fat { module, _serialized_bitcode: serialized_bitcode })
+    Ok(LtoModuleCodegen::Fat(module))
 }
 
 pub(crate) struct Linker<'a>(&'a mut llvm::Linker<'a>);
