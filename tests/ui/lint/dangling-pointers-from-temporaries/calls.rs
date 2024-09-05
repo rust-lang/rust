@@ -30,7 +30,7 @@ fn not_ok() {
     }
     consume({
         let ptr = cstring().as_ptr();
-        //^ FIXME: should error
+        //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
         ptr
     });
     consume({

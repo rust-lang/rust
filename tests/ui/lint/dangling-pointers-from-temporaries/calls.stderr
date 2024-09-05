@@ -15,6 +15,17 @@ LL | #![deny(dangling_pointers_from_temporaries)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: getting a pointer from a temporary `CString` will result in a dangling pointer
+  --> $DIR/calls.rs:32:29
+   |
+LL |         let ptr = cstring().as_ptr();
+   |                   --------- ^^^^^^ this pointer will immediately be invalid
+   |                   |
+   |                   this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
+
+error: getting a pointer from a temporary `CString` will result in a dangling pointer
   --> $DIR/calls.rs:41:37
    |
 LL |     let _ptr: *const u8 = cstring().as_ptr().cast();
@@ -47,5 +58,5 @@ LL |     let _ptr: *const u8 = { cstring().as_ptr() }.cast();
    = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

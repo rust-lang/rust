@@ -1,4 +1,4 @@
-use rustc_hir::{Expr, ExprKind, HirId, LangItem};
+use rustc_hir::{Block, Expr, ExprKind, HirId, LangItem};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
@@ -39,14 +39,21 @@ declare_lint! {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum CallPart {
-    LHS { lhs: HirId, call: HirId },
-    Arguments { call: HirId },
+enum LifetimeExtension {
+    /// Lifetime extension has not kicked in yet, but it will soon.
+    /// Example: walking LHS of a function/method call.
+    EnableLater { after_exit: HirId, until_exit: HirId },
+    /// Lifetime extension is currently active.
+    /// Example: walking a function/method call's arguments.
+    Enable { until_exit: HirId },
+    /// Temporary disable lifetime extension.
+    /// Example: statements of a block that is a function/method call's argument.
+    Disable { until_exit: HirId },
 }
 
 #[derive(Clone, Default)]
 pub(crate) struct DanglingPointers {
-    /// HACK: trying to deal with argument lifetime extension.
+    /// Trying to deal with argument lifetime extension.
     ///
     /// This produces a dangling pointer:
     /// ```ignore (example)
@@ -59,23 +66,26 @@ pub(crate) struct DanglingPointers {
     /// foo(CString::new("hello").unwrap().as_ptr())
     /// ```
     ///
-    /// So we have to deal with this situation somehow.
-    ///
-    /// If we were a visitor, we could just not visit the arguments.
-    ///
-    /// Or, maybe visit them while maintaining a flag that would indicate
-    /// when the lifetime extension can occur, because code like this
+    /// But this does:
     /// ```ignore (example)
     /// foo({ let ptr = CString::new("hello").unwrap().as_ptr(); ptr })
     /// ```
-    /// still produces a dangling pointer.
     ///
-    /// But we are not a visitor. We are a LateLintPass,
-    /// and we get called on every expression there is.
+    /// We have to deal with this situation somehow.
     ///
+    /// If we were a visitor, we could just keep track of
+    /// when we enter and exit places where lifetime extension kicks in
+    /// during visiting/walking and update a boolean flag accordingly.
+    ///
+    /// But we are not a visitor. We are a LateLintPass.
+    /// We are not the one who does the visiting & walking
+    /// and can maintain this state directly in the call stack.
+    /// But we do get called on every expression there is,
+    /// both when entering it and exiting from it
+    /// during our depth-first walk of the tree.
     /// So let's try to maintain this context stack explicitly
     /// instead of as a part of the call stack.
-    nested_calls: Vec<CallPart>,
+    nested_calls: Vec<LifetimeExtension>,
 }
 
 impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
@@ -91,40 +101,41 @@ impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
 ///    - `&raw [mut] temporary`
 ///    - `&temporary as *(const|mut) _`
 ///    - `ptr::from_ref(&temporary)` and friends
-/// 4. Aggressive mitigation for lifetime extension of function/method call arguments \
-///    (see the comment on [`DanglingPointers::token`]):
-///    - **Function/method call arguments are completely skipped.** \
-///      Technically this means we overlook things like
-///      ```ignore (example)
-///      foo({ let x = get_cstring(); x.as_ptr() }, 1)
-///      ```
-///      but who in their right mind would write something like that?
 impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some(CallPart::Arguments { .. }) = self.nested_calls.last() {
-            tracing::debug!(skip = ?cx.sess().source_map().span_to_snippet(expr.span));
-            return;
+        if let Some(LifetimeExtension::Enable { .. }) = self.nested_calls.last() {
+            match expr.kind {
+                ExprKind::Block(Block { stmts: [.., last_stmt], .. }, _) => self
+                    .nested_calls
+                    .push(LifetimeExtension::Disable { until_exit: last_stmt.hir_id }),
+                _ => {
+                    tracing::debug!(skip = ?cx.sess().source_map().span_to_snippet(expr.span));
+                    return;
+                }
+            }
         }
 
         lint_expr(cx, expr);
 
-        match expr.kind {
-            ExprKind::Call(lhs, _args) | ExprKind::MethodCall(_, lhs, _args, _) => {
-                self.nested_calls.push(CallPart::LHS { lhs: lhs.hir_id, call: expr.hir_id })
-            }
-            _ => {}
+        if let ExprKind::Call(lhs, _args) | ExprKind::MethodCall(_, lhs, _args, _) = expr.kind {
+            self.nested_calls.push(LifetimeExtension::EnableLater {
+                after_exit: lhs.hir_id,
+                until_exit: expr.hir_id,
+            })
         }
     }
 
     fn check_expr_post(&mut self, _: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         self.nested_calls.pop_if(|pos| match pos {
-            &mut CallPart::LHS { lhs, call } => {
-                if expr.hir_id == lhs {
-                    *pos = CallPart::Arguments { call };
+            LifetimeExtension::Enable { until_exit }
+            | LifetimeExtension::Disable { until_exit } => expr.hir_id == *until_exit,
+
+            &mut LifetimeExtension::EnableLater { after_exit, until_exit } => {
+                if expr.hir_id == after_exit {
+                    *pos = LifetimeExtension::Enable { until_exit };
                 };
                 false
             }
-            &mut CallPart::Arguments { call } => expr.hir_id == call,
         });
     }
 }
