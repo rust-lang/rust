@@ -250,11 +250,21 @@ macro_rules! make_ast_visitor {
             ($t: ty) => { & $($lt)? $($mut)? $t };
         }
 
+
         macro_rules! make_walk_flat_map {
-            ($ty: ty, $walk_flat_map: ident, $visit: ident) => {
+            (
+                $ty: ty
+                $$(, $arg: ident : $arg_ty: ty)*;
+                $walk_flat_map: ident,
+                $visit: ident
+            ) => {
                 if_mut_item!{
-                    pub fn $walk_flat_map(vis: &mut impl $trait$(<$lt>)?, mut arg: $ty) -> SmallVec<[$ty; 1]> {
-                        vis.$visit(&mut arg);
+                    pub fn $walk_flat_map(
+                        vis: &mut impl $trait$(<$lt>)?,
+                        mut arg: $ty
+                        $$(, $arg: $arg_ty)*
+                    ) -> SmallVec<[$ty; 1]> {
+                        vis.$visit(&mut arg $$(, $arg)*);
                         smallvec![arg]
                     }
                 }
@@ -1843,17 +1853,18 @@ macro_rules! make_ast_visitor {
             }
         }
 
-        make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
-        make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
-        make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
-        make_walk_flat_map!{FieldDef, walk_flat_map_field_def, visit_field_def}
-        make_walk_flat_map!{GenericParam, walk_flat_map_generic_param, visit_generic_param}
-        make_walk_flat_map!{Param, walk_flat_map_param, visit_param}
-        make_walk_flat_map!{PatField, walk_flat_map_pat_field, visit_pat_field}
-        make_walk_flat_map!{Variant, walk_flat_map_variant, visit_variant}
-        make_walk_flat_map!{WherePredicate, walk_flat_map_where_predicate, visit_where_predicate}
-        make_walk_flat_map!{P!(Item), walk_flat_map_item, visit_item}
-        make_walk_flat_map!{P!(ForeignItem), walk_flat_map_foreign_item, visit_foreign_item}
+        make_walk_flat_map!{Arm; walk_flat_map_arm, visit_arm}
+        make_walk_flat_map!{Attribute; walk_flat_map_attribute, visit_attribute}
+        make_walk_flat_map!{ExprField; walk_flat_map_expr_field, visit_expr_field}
+        make_walk_flat_map!{FieldDef; walk_flat_map_field_def, visit_field_def}
+        make_walk_flat_map!{GenericParam; walk_flat_map_generic_param, visit_generic_param}
+        make_walk_flat_map!{Param; walk_flat_map_param, visit_param}
+        make_walk_flat_map!{PatField; walk_flat_map_pat_field, visit_pat_field}
+        make_walk_flat_map!{Variant; walk_flat_map_variant, visit_variant}
+        make_walk_flat_map!{WherePredicate; walk_flat_map_where_predicate, visit_where_predicate}
+        make_walk_flat_map!{P!(Item); walk_flat_map_item, visit_item}
+        make_walk_flat_map!{P!(ForeignItem); walk_flat_map_foreign_item, visit_foreign_item}
+        make_walk_flat_map!{P!(AssocItem), ctxt: AssocCtxt; walk_flat_map_assoc_item, visit_assoc_item}
     }
 }
 
@@ -2214,15 +2225,6 @@ pub mod mut_visit {
             token::NtPath(path) => vis.visit_path(path, DUMMY_NODE_ID),
             token::NtVis(visib) => vis.visit_vis(visib),
         }
-    }
-
-    pub fn walk_flat_map_assoc_item(
-        vis: &mut impl MutVisitor,
-        mut item: P<Item<AssocItemKind>>,
-        ctxt: AssocCtxt,
-    ) -> SmallVec<[P<Item<AssocItemKind>>; 1]> {
-        vis.visit_assoc_item(&mut item, ctxt);
-        smallvec![item]
     }
 
     pub fn noop_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Option<P<Expr>> {
