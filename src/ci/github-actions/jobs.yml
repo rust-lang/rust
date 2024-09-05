@@ -25,7 +25,7 @@ runners:
     <<: *base-job
 
   - &job-windows-8c
-    os: windows-2022-8core-32gb
+    os: windows-2022
     <<: *base-job
 
   - &job-windows-16c
@@ -80,20 +80,27 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - image: x86_64-msvc-ext1
+  - image: x86_64-msvc-ext
     env:
       SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
       HOST_TARGET: x86_64-pc-windows-msvc
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows-8c
-  - image: x86_64-msvc-ext2
-    env:
-      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
-      HOST_TARGET: x86_64-pc-windows-msvc
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
-      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
-    <<: *job-windows-8c
+  # - image: x86_64-msvc-ext1
+  #   env:
+  #     SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+  #     HOST_TARGET: x86_64-pc-windows-msvc
+  #     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+  #     DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
+  #   <<: *job-windows-8c
+  # - image: x86_64-msvc-ext2
+  #   env:
+  #     SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+  #     HOST_TARGET: x86_64-pc-windows-msvc
+  #     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+  #     DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
+  #   <<: *job-windows-8c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
