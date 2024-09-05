@@ -1763,7 +1763,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
         // Avoid double drop if the drop guard is not executed,
         // since we may make some holes during the process.
-        unsafe { self.set_len(0) };
+        self.set_len_zero();
 
         // Vec: [Kept, Kept, Hole, Hole, Hole, Hole, Unchecked, Unchecked]
         //      |<-              processed len   ->| ^- next to check
@@ -2185,10 +2185,8 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
-        unsafe {
-            self.append_elements(other.as_slice() as _);
-            other.set_len(0);
-        }
+        unsafe { self.append_elements(other.as_slice() as _); }
+        other.set_len_zero();
     }
 
     /// Appends elements to `self` from other buffer.
@@ -3283,9 +3281,7 @@ impl<T, A: Allocator> Vec<T, A> {
         let old_len = self.len();
 
         // Guard against us getting leaked (leak amplification)
-        unsafe {
-            self.set_len(0);
-        }
+        self.set_len_zero();
 
         ExtractIf { vec: self, idx: 0, del: 0, old_len, pred: filter }
     }
@@ -3622,8 +3618,7 @@ impl<T, A: Allocator, const N: usize> TryFrom<Vec<T, A>> for [T; N] {
             return Err(vec);
         }
 
-        // SAFETY: `.set_len(0)` is always sound.
-        unsafe { vec.set_len(0) };
+        vec.set_len_zero();
 
         // SAFETY: A `Vec`'s pointer is always aligned properly, and
         // the alignment the array needs is the same as the items.
