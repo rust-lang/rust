@@ -78,19 +78,23 @@ fn check(func_re: &str, mut checks: &str) {
     // This is because frame pointers are optional, and them being enabled requires
     // an additional `popq` in the pattern checking file.
     if func_re == "std::io::stdio::_print::[[:alnum:]]+" {
-        let output = llvm_filecheck().stdin(&dump).patterns(checks).run_unchecked();
+        let output = llvm_filecheck().stdin_buf(&dump).patterns(checks).run_unchecked();
         if !output.status().success() {
             checks = "print.without_frame_pointers.checks";
-            llvm_filecheck().stdin(&dump).patterns(checks).run();
+            llvm_filecheck().stdin_buf(&dump).patterns(checks).run();
         }
     } else {
-        llvm_filecheck().stdin(&dump).patterns(checks).run();
+        llvm_filecheck().stdin_buf(&dump).patterns(checks).run();
     }
     if !["rust_plus_one_global_asm", "cmake_plus_one_c_global_asm", "cmake_plus_one_cxx_global_asm"]
         .contains(&func_re)
     {
         // The assembler cannot avoid explicit `ret` instructions. Sequences
         // of `shlq $0x0, (%rsp); lfence; retq` are used instead.
-        llvm_filecheck().args(&["--implicit-check-not", "ret"]).stdin(dump).patterns(checks).run();
+        llvm_filecheck()
+            .args(&["--implicit-check-not", "ret"])
+            .stdin_buf(dump)
+            .patterns(checks)
+            .run();
     }
 }
