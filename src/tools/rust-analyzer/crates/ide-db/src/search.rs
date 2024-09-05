@@ -8,10 +8,11 @@ use std::mem;
 use std::{cell::LazyCell, cmp::Reverse};
 
 use base_db::{salsa::Database, SourceDatabase, SourceRootDatabase};
+use either::Either;
 use hir::{
     sym, Adt, AsAssocItem, DefWithBody, FileRange, FileRangeWrapper, HasAttrs, HasContainer,
-    HasSource, HirFileIdExt, InFile, InFileWrapper, InRealFile, ItemContainer, ModuleSource,
-    PathResolution, Semantics, Visibility,
+    HasSource, HirFileIdExt, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
+    ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -303,6 +304,23 @@ impl Definition {
 
         if let Definition::Local(var) = self {
             let def = match var.parent(db) {
+                DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
+                DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
+                DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
+                DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                // FIXME: implement
+                DefWithBody::InTypeConst(_) => return SearchScope::empty(),
+            };
+            return match def {
+                Some(def) => SearchScope::file_range(
+                    def.as_ref().original_file_range_with_macro_call_body(db),
+                ),
+                None => SearchScope::single_file(file_id),
+            };
+        }
+
+        if let Definition::InlineAsmOperand(op) = self {
+            let def = match op.parent(db) {
                 DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
@@ -908,7 +926,6 @@ impl<'a> FindUsages<'a> {
         let finder = &Finder::new(name);
         let include_self_kw_refs =
             self.include_self_kw_refs.as_ref().map(|ty| (ty, Finder::new("Self")));
-
         for (text, file_id, search_range) in Self::scope_files(sema.db, &search_scope) {
             self.sema.db.unwind_if_cancelled();
             let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
@@ -917,7 +934,7 @@ impl<'a> FindUsages<'a> {
             for offset in Self::match_indices(&text, finder, search_range) {
                 tree.token_at_offset(offset).for_each(|token| {
                     let Some(str_token) = ast::String::cast(token.clone()) else { return };
-                    if let Some((range, nameres)) =
+                    if let Some((range, Some(nameres))) =
                         sema.check_for_format_args_template(token, offset)
                     {
                         if self.found_format_args_ref(file_id, range, str_token, nameres, sink) {}
@@ -1087,19 +1104,19 @@ impl<'a> FindUsages<'a> {
         file_id: EditionedFileId,
         range: TextRange,
         token: ast::String,
-        res: Option<PathResolution>,
+        res: Either<PathResolution, InlineAsmOperand>,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
-        match res.map(Definition::from) {
-            Some(def) if def == self.def => {
-                let reference = FileReference {
-                    range,
-                    name: FileReferenceNode::FormatStringEntry(token, range),
-                    category: ReferenceCategory::READ,
-                };
-                sink(file_id, reference)
-            }
-            _ => false,
+        let def = res.either(Definition::from, Definition::from);
+        if def == self.def {
+            let reference = FileReference {
+                range,
+                name: FileReferenceNode::FormatStringEntry(token, range),
+                category: ReferenceCategory::READ,
+            };
+            sink(file_id, reference)
+        } else {
+            false
         }
     }
 

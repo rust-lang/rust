@@ -110,7 +110,7 @@ use syntax::{
     AstNode, AstPtr, SyntaxNode,
 };
 
-use crate::{db::HirDatabase, InFile};
+use crate::{db::HirDatabase, InFile, InlineAsmOperand};
 
 #[derive(Default)]
 pub(super) struct SourceToDefCache {
@@ -273,6 +273,25 @@ impl SourceToDefCtx<'_, '_> {
             ast::Adt::Union(it) => self.union_to_def(InFile::new(file_id, it)).map(AdtId::UnionId),
         }
     }
+
+    pub(super) fn asm_operand_to_def(
+        &mut self,
+        src: InFile<&ast::AsmOperandNamed>,
+    ) -> Option<InlineAsmOperand> {
+        let asm = src.value.syntax().parent().and_then(ast::AsmExpr::cast)?;
+        let index = asm
+            .asm_pieces()
+            .filter_map(|it| match it {
+                ast::AsmPiece::AsmOperandNamed(it) => Some(it),
+                _ => None,
+            })
+            .position(|it| it == *src.value)?;
+        let container = self.find_pat_or_label_container(src.syntax_ref())?;
+        let (_, source_map) = self.db.body_with_source_map(container);
+        let expr = source_map.node_expr(src.with_value(&ast::Expr::AsmExpr(asm)))?;
+        Some(InlineAsmOperand { owner: container, expr, index })
+    }
+
     pub(super) fn bind_pat_to_def(
         &mut self,
         src: InFile<&ast::IdentPat>,

@@ -2624,6 +2624,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "directories",
+ "either",
  "flate2",
  "itertools",
  "proc-macro2",

@@ -307,7 +307,120 @@ pub struct OffsetOf {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InlineAsm {
-    pub e: ExprId,
+    pub operands: Box<[(Option<Name>, AsmOperand)]>,
+    pub options: AsmOptions,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AsmOptions(u16);
+bitflags::bitflags! {
+    impl AsmOptions: u16 {
+        const PURE            = 1 << 0;
+        const NOMEM           = 1 << 1;
+        const READONLY        = 1 << 2;
+        const PRESERVES_FLAGS = 1 << 3;
+        const NORETURN        = 1 << 4;
+        const NOSTACK         = 1 << 5;
+        const ATT_SYNTAX      = 1 << 6;
+        const RAW             = 1 << 7;
+        const MAY_UNWIND      = 1 << 8;
+    }
+}
+
+impl AsmOptions {
+    pub const COUNT: usize = Self::all().bits().count_ones() as usize;
+
+    pub const GLOBAL_OPTIONS: Self = Self::ATT_SYNTAX.union(Self::RAW);
+    pub const NAKED_OPTIONS: Self = Self::ATT_SYNTAX.union(Self::RAW).union(Self::NORETURN);
+
+    pub fn human_readable_names(&self) -> Vec<&'static str> {
+        let mut options = vec![];
+
+        if self.contains(AsmOptions::PURE) {
+            options.push("pure");
+        }
+        if self.contains(AsmOptions::NOMEM) {
+            options.push("nomem");
+        }
+        if self.contains(AsmOptions::READONLY) {
+            options.push("readonly");
+        }
+        if self.contains(AsmOptions::PRESERVES_FLAGS) {
+            options.push("preserves_flags");
+        }
+        if self.contains(AsmOptions::NORETURN) {
+            options.push("noreturn");
+        }
+        if self.contains(AsmOptions::NOSTACK) {
+            options.push("nostack");
+        }
+        if self.contains(AsmOptions::ATT_SYNTAX) {
+            options.push("att_syntax");
+        }
+        if self.contains(AsmOptions::RAW) {
+            options.push("raw");
+        }
+        if self.contains(AsmOptions::MAY_UNWIND) {
+            options.push("may_unwind");
+        }
+
+        options
+    }
+}
+
+impl std::fmt::Debug for AsmOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bitflags::parser::to_writer(self, f)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum AsmOperand {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        expr: ExprId,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        expr: Option<ExprId>,
+        late: bool,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        expr: ExprId,
+        late: bool,
+    },
+    SplitInOut {
+        reg: InlineAsmRegOrRegClass,
+        in_expr: ExprId,
+        out_expr: Option<ExprId>,
+        late: bool,
+    },
+    Label(ExprId),
+    Const(ExprId),
+    Sym(Path),
+}
+
+impl AsmOperand {
+    pub fn reg(&self) -> Option<&InlineAsmRegOrRegClass> {
+        match self {
+            Self::In { reg, .. }
+            | Self::Out { reg, .. }
+            | Self::InOut { reg, .. }
+            | Self::SplitInOut { reg, .. } => Some(reg),
+            Self::Const { .. } | Self::Sym { .. } | Self::Label { .. } => None,
+        }
+    }
+
+    pub fn is_clobber(&self) -> bool {
+        matches!(self, AsmOperand::Out { reg: InlineAsmRegOrRegClass::Reg(_), late: _, expr: None })
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum InlineAsmRegOrRegClass {
+    Reg(Symbol),
+    RegClass(Symbol),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -372,7 +485,21 @@ impl Expr {
         match self {
             Expr::Missing => {}
             Expr::Path(_) | Expr::OffsetOf(_) => {}
-            Expr::InlineAsm(it) => f(it.e),
+            Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
+                AsmOperand::In { expr, .. }
+                | AsmOperand::Out { expr: Some(expr), .. }
+                | AsmOperand::InOut { expr, .. } => f(*expr),
+                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    f(*in_expr);
+                    if let Some(out_expr) = out_expr {
+                        f(*out_expr);
+                    }
+                }
+                AsmOperand::Out { expr: None, .. }
+                | AsmOperand::Const(_)
+                | AsmOperand::Label(_)
+                | AsmOperand::Sym(_) => (),
+            }),
             Expr::If { condition, then_branch, else_branch } => {
                 f(*condition);
                 f(*then_branch);

@@ -315,6 +315,8 @@ fn module_def_to_hl_tag(def: Definition) -> HlTag {
         Definition::BuiltinAttr(_) => SymbolKind::BuiltinAttr,
         Definition::ToolModule(_) => SymbolKind::ToolModule,
         Definition::DeriveHelper(_) => SymbolKind::DeriveHelper,
+        Definition::InlineAsmRegOrRegClass(_) => SymbolKind::InlineAsmRegOrRegClass,
+        Definition::InlineAsmOperand(_) => SymbolKind::Local,
     };
     HlTag::Symbol(symbol)
 }

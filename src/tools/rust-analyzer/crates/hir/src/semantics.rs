@@ -47,9 +47,9 @@ use crate::{
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     Access, Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
     ConstParam, Crate, DeriveHelper, Enum, Field, Function, HasSource, HirFileId, Impl, InFile,
-    ItemInNs, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, OverloadedDeref, Path,
-    ScopeDef, Static, Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias,
-    TypeParam, Union, Variant, VariantDef,
+    InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name,
+    OverloadedDeref, Path, ScopeDef, Static, Struct, ToolModule, Trait, TraitAlias, TupleField,
+    Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
 };
 
 const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
@@ -368,7 +368,6 @@ impl<'db> SemanticsImpl<'db> {
                     | BuiltinFnLikeExpander::File
                     | BuiltinFnLikeExpander::ModulePath
                     | BuiltinFnLikeExpander::Asm
-                    | BuiltinFnLikeExpander::LlvmAsm
                     | BuiltinFnLikeExpander::GlobalAsm
                     | BuiltinFnLikeExpander::LogSyntax
                     | BuiltinFnLikeExpander::TraceMacros
@@ -547,11 +546,11 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
-    /// Retrieves all the formatting parts of the format_args! template string.
+    /// Retrieves all the formatting parts of the format_args! (or `asm!`) template string.
     pub fn as_format_args_parts(
         &self,
         string: &ast::String,
-    ) -> Option<Vec<(TextRange, Option<PathResolution>)>> {
+    ) -> Option<Vec<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)>> {
         let quote = string.open_quote_text_range()?;
 
         let token = self.wrap_token_infile(string.syntax().clone()).into_real_file().ok()?;
@@ -561,14 +560,31 @@ impl<'db> SemanticsImpl<'db> {
                 let string = ast::String::cast(token)?;
                 let literal =
                     string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
-                let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
-                let source_analyzer = self.analyze_no_infer(format_args.syntax())?;
-                let format_args = self.wrap_node_infile(format_args);
-                let res = source_analyzer
-                    .as_format_args_parts(self.db, format_args.as_ref())?
-                    .map(|(range, res)| (range + quote.end(), res))
-                    .collect();
-                Some(res)
+                let parent = literal.parent()?;
+                if let Some(format_args) = ast::FormatArgsExpr::cast(parent.clone()) {
+                    let source_analyzer = self.analyze_no_infer(format_args.syntax())?;
+                    let format_args = self.wrap_node_infile(format_args);
+                    let res = source_analyzer
+                        .as_format_args_parts(self.db, format_args.as_ref())?
+                        .map(|(range, res)| (range + quote.end(), res.map(Either::Left)))
+                        .collect();
+                    Some(res)
+                } else {
+                    let asm = ast::AsmExpr::cast(parent)?;
+                    let source_analyzer = self.analyze_no_infer(asm.syntax())?;
+                    let asm = self.wrap_node_infile(asm);
+                    let (owner, (expr, asm_parts)) = source_analyzer.as_asm_parts(asm.as_ref())?;
+                    let res = asm_parts
+                        .iter()
+                        .map(|&(range, index)| {
+                            (
+                                range + quote.end(),
+                                Some(Either::Right(InlineAsmOperand { owner, expr, index })),
+                            )
+                        })
+                        .collect();
+                    Some(res)
+                }
             })()
             .map_or(ControlFlow::Continue(()), ControlFlow::Break)
         })
@@ -579,7 +595,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         original_token: SyntaxToken,
         offset: TextSize,
-    ) -> Option<(TextRange, Option<PathResolution>)> {
+    ) -> Option<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)> {
         let original_string = ast::String::cast(original_token.clone())?;
         let original_token = self.wrap_token_infile(original_token).into_real_file().ok()?;
         let quote = original_string.open_quote_text_range()?;
@@ -600,13 +616,26 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         string: ast::String,
         offset: TextSize,
-    ) -> Option<(TextRange, Option<PathResolution>)> {
+    ) -> Option<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)> {
         debug_assert!(offset <= string.syntax().text_range().len());
         let literal = string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
-        let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
-        let source_analyzer = &self.analyze_no_infer(format_args.syntax())?;
-        let format_args = self.wrap_node_infile(format_args);
-        source_analyzer.resolve_offset_in_format_args(self.db, format_args.as_ref(), offset)
+        let parent = literal.parent()?;
+        if let Some(format_args) = ast::FormatArgsExpr::cast(parent.clone()) {
+            let source_analyzer = &self.analyze_no_infer(format_args.syntax())?;
+            let format_args = self.wrap_node_infile(format_args);
+            source_analyzer
+                .resolve_offset_in_format_args(self.db, format_args.as_ref(), offset)
+                .map(|(range, res)| (range, res.map(Either::Left)))
+        } else {
+            let asm = ast::AsmExpr::cast(parent)?;
+            let source_analyzer = &self.analyze_no_infer(asm.syntax())?;
+            let asm = self.wrap_node_infile(asm);
+            source_analyzer.resolve_offset_in_asm_template(asm.as_ref(), offset).map(
+                |(owner, (expr, range, index))| {
+                    (range, Some(Either::Right(InlineAsmOperand { owner, expr, index })))
+                },
+            )
+        }
     }
 
     /// Maps a node down by mapping its first and last token down.
@@ -1782,6 +1811,7 @@ to_def_impls![
     (crate::Label, ast::Label, label_to_def),
     (crate::Adt, ast::Adt, adt_to_def),
     (crate::ExternCrateDecl, ast::ExternCrate, extern_crate_to_def),
+    (crate::InlineAsmOperand, ast::AsmOperandNamed, asm_operand_to_def),
     (MacroCallId, ast::MacroCall, macro_call_to_macro_call),
 ];
 

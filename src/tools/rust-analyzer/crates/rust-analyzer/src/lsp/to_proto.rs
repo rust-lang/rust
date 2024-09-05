@@ -80,6 +80,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         | SymbolKind::ValueParam
         | SymbolKind::Label => lsp_types::SymbolKind::VARIABLE,
         SymbolKind::Union => lsp_types::SymbolKind::STRUCT,
+        SymbolKind::InlineAsmRegOrRegClass => lsp_types::SymbolKind::VARIABLE,
     }
 }
 
@@ -159,6 +160,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Variant => lsp_types::CompletionItemKind::ENUM_MEMBER,
             SymbolKind::BuiltinAttr => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::ToolModule => lsp_types::CompletionItemKind::MODULE,
+            SymbolKind::InlineAsmRegOrRegClass => lsp_types::CompletionItemKind::KEYWORD,
         },
     }
 }
@@ -702,6 +704,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::ProcMacro => types::PROC_MACRO,
             SymbolKind::BuiltinAttr => types::BUILTIN_ATTRIBUTE,
             SymbolKind::ToolModule => types::TOOL_MODULE,
+            SymbolKind::InlineAsmRegOrRegClass => types::KEYWORD,
         },
         HlTag::AttributeBracket => types::ATTRIBUTE_BRACKET,
         HlTag::BoolLiteral => types::BOOLEAN,

@@ -549,7 +549,7 @@ fn main() {
     toho!("{}fmt", 0);
     let i: u64 = 3;
     let o: u64;
-    asm!(
+    core::arch::asm!(
         "mov {0}, {1}",
         "add {0}, 5",
         out(reg) o,
@@ -1274,4 +1274,65 @@ fn f<'de, T: Deserialize<'de>>() {
         .trim(),
     );
     let _ = analysis.highlight(HL_CONFIG, file_id).unwrap();
+}
+
+#[test]
+fn test_asm_highlighting() {
+    check_highlighting(
+        r#"
+//- minicore: asm, concat
+fn main() {
+    unsafe {
+        let foo = 1;
+        let mut o = 0;
+        core::arch::asm!(
+            "%input = OpLoad _ {0}",
+            concat!("%result = ", "bar", " _ %input"),
+            "OpStore {1} %result",
+            in(reg) &foo,
+            in(reg) &mut o,
+        );
+
+        let thread_id: usize;
+        core::arch::asm!("
+            mov {0}, gs:[0x30]
+            mov {0}, [{0}+0x48]
+        ", out(reg) thread_id, options(pure, readonly, nostack));
+
+        static UNMAP_BASE: usize;
+        const MEM_RELEASE: usize;
+        static VirtualFree: usize;
+        const OffPtr: usize;
+        const OffFn: usize;
+        core::arch::asm!("
+            push {free_type}
+            push {free_size}
+            push {base}
+
+            mov eax, fs:[30h]
+            mov eax, [eax+8h]
+            add eax, {off_fn}
+            mov [eax-{off_fn}+{off_ptr}], eax
+
+            push eax
+
+            jmp {virtual_free}
+            ",
+            off_ptr = const OffPtr,
+            off_fn  = const OffFn,
+
+            free_size = const 0,
+            free_type = const MEM_RELEASE,
+
+            virtual_free = sym VirtualFree,
+
+            base = sym UNMAP_BASE,
+            options(noreturn),
+        );
+    }
+}
+"#,
+        expect_file!["./test_data/highlight_asm.html"],
+        false,
+    );
 }

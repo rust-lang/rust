@@ -360,6 +360,7 @@ impl CompletionItemKind {
                 SymbolKind::Field => "fd",
                 SymbolKind::Function => "fn",
                 SymbolKind::Impl => "im",
+                SymbolKind::InlineAsmRegOrRegClass => "ar",
                 SymbolKind::Label => "lb",
                 SymbolKind::LifetimeParam => "lt",
                 SymbolKind::Local => "lc",

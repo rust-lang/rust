@@ -185,6 +185,7 @@ style = { level = "warn", priority = -1 }
 suspicious = { level = "warn", priority = -1 }
 
 ## allow following lints
+too_long_first_doc_paragraph = "allow"
 # subjective
 single_match = "allow"
 # () makes a fine error in most cases

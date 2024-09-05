@@ -10,7 +10,10 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{
     data::adt::VariantData,
-    hir::{Array, BinaryOp, BindingId, CaptureBy, Expr, ExprId, Pat, PatId, Statement, UnaryOp},
+    hir::{
+        Array, AsmOperand, BinaryOp, BindingId, CaptureBy, Expr, ExprId, Pat, PatId, Statement,
+        UnaryOp,
+    },
     lang_item::LangItem,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
@@ -666,7 +669,21 @@ impl InferenceContext<'_> {
     fn walk_expr_without_adjust(&mut self, tgt_expr: ExprId) {
         match &self.body[tgt_expr] {
             Expr::OffsetOf(_) => (),
-            Expr::InlineAsm(e) => self.walk_expr_without_adjust(e.e),
+            Expr::InlineAsm(e) => e.operands.iter().for_each(|(_, op)| match op {
+                AsmOperand::In { expr, .. }
+                | AsmOperand::Out { expr: Some(expr), .. }
+                | AsmOperand::InOut { expr, .. } => self.walk_expr_without_adjust(*expr),
+                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    self.walk_expr_without_adjust(*in_expr);
+                    if let Some(out_expr) = out_expr {
+                        self.walk_expr_without_adjust(*out_expr);
+                    }
+                }
+                AsmOperand::Out { expr: None, .. }
+                | AsmOperand::Const(_)
+                | AsmOperand::Label(_)
+                | AsmOperand::Sym(_) => (),
+            }),
             Expr::If { condition, then_branch, else_branch } => {
                 self.consume_expr(*condition);
                 self.consume_expr(*then_branch);

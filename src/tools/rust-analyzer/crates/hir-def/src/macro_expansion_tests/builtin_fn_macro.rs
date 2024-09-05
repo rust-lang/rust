@@ -50,11 +50,7 @@ fn main() {
     let i: u64 = 3;
     let o: u64;
     unsafe {
-        builtin #asm ( {
-            $crate::format_args!("mov {0}, {1}");
-            $crate::format_args!("add {0}, 5");
-        }
-        );
+        builtin #asm ("mov {0}, {1}", "add {0}, 5", out (reg)o, in (reg)i, );
     }
 }
 "##]],
