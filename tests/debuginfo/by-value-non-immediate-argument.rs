@@ -1,6 +1,7 @@
 //@ min-lldb-version: 1800
 //@ min-gdb-version: 13.0
 //@ compile-flags:-g
+//@ ignore-windows-gnu: #128973
 
 // === GDB TESTS ===================================================================================
 
