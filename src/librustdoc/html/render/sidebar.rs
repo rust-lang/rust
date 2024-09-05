@@ -419,6 +419,11 @@ fn sidebar_assoc_items<'a>(
                 "associatedconstant",
                 assoc_consts,
             ),
+            LinkBlock::new(
+                Link::new("implementations", "Associated Types"),
+                "associatedtype",
+                assoc_types,
+            ),
             LinkBlock::new(Link::new("implementations", "Methods"), "method", methods),
         ];
 
@@ -436,24 +441,16 @@ fn sidebar_assoc_items<'a>(
             let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
                 concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
 
-            sidebar_render_assoc_items(cx, &mut id_map, concrete, synthetic, blanket_impl, &mut blocks);
+            sidebar_render_assoc_items(
+                cx,
+                &mut id_map,
+                concrete,
+                synthetic,
+                blanket_impl,
+                &mut blocks,
+            );
         }
 
-        blocks.extend([
-            LinkBlock::new(
-                Link::new("implementations", "Associated Constants"),
-                "associatedconstant",
-                assoc_consts,
-            ),
-            LinkBlock::new(
-                Link::new("implementations", "Associated Types"),
-                "associatedtype",
-                assoc_types,
-            ),
-            LinkBlock::new(Link::new("implementations", "Methods"), "method", methods),
-        ]);
-        blocks.append(&mut deref_methods);
-        blocks.extend([concrete, synthetic, blanket]);
         links.append(&mut blocks);
     }
 }
