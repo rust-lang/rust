@@ -1,3 +1,6 @@
+// ignore-tidy-filelength
+// FIXME: we should move the field error reporting code somewhere else.
+
 //! Type checking expressions.
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
@@ -284,54 +287,150 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return true;
         }
 
-        // If this expression has any adjustments applied after the place expression,
-        // they may constitute reads.
-        if !self.typeck_results.borrow().expr_adjustments(expr).is_empty() {
-            return true;
-        }
+        let parent_node = self.tcx.parent_hir_node(expr.hir_id);
+        match parent_node {
+            hir::Node::Expr(parent_expr) => {
+                match parent_expr.kind {
+                    // Addr-of, field projections, and LHS of assignment don't constitute reads.
+                    // Assignment does call `drop_in_place`, though, but its safety
+                    // requirements are not the same.
+                    ExprKind::AddrOf(..) | hir::ExprKind::Field(..) => false,
+                    ExprKind::Assign(lhs, _, _) => {
+                        // Only the LHS does not constitute a read
+                        expr.hir_id != lhs.hir_id
+                    }
 
-        fn pat_does_read(pat: &hir::Pat<'_>) -> bool {
-            let mut does_read = false;
-            pat.walk(|pat| {
-                if matches!(
-                    pat.kind,
-                    hir::PatKind::Wild | hir::PatKind::Never | hir::PatKind::Or(_)
-                ) {
+                    // If we have a subpattern that performs a read, we want to consider this
+                    // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
+                    ExprKind::Match(scrutinee, arms, _) => {
+                        assert_eq!(scrutinee.hir_id, expr.hir_id);
+                        arms.iter().any(|arm| self.pat_constitutes_read(arm.pat))
+                    }
+                    ExprKind::Let(hir::LetExpr { init, pat, .. }) => {
+                        assert_eq!(init.hir_id, expr.hir_id);
+                        self.pat_constitutes_read(*pat)
+                    }
+
+                    // Any expression child of these expressions constitute reads.
+                    ExprKind::Array(_)
+                    | ExprKind::Call(_, _)
+                    | ExprKind::MethodCall(_, _, _, _)
+                    | ExprKind::Tup(_)
+                    | ExprKind::Binary(_, _, _)
+                    | ExprKind::Unary(_, _)
+                    | ExprKind::Cast(_, _)
+                    | ExprKind::Type(_, _)
+                    | ExprKind::DropTemps(_)
+                    | ExprKind::If(_, _, _)
+                    | ExprKind::Closure(_)
+                    | ExprKind::Block(_, _)
+                    | ExprKind::AssignOp(_, _, _)
+                    | ExprKind::Index(_, _, _)
+                    | ExprKind::Break(_, _)
+                    | ExprKind::Ret(_)
+                    | ExprKind::Become(_)
+                    | ExprKind::InlineAsm(_)
+                    | ExprKind::Struct(_, _, _)
+                    | ExprKind::Repeat(_, _)
+                    | ExprKind::Yield(_, _) => true,
+
+                    // These expressions have no (direct) sub-exprs.
+                    ExprKind::ConstBlock(_)
+                    | ExprKind::Loop(_, _, _, _)
+                    | ExprKind::Lit(_)
+                    | ExprKind::Path(_)
+                    | ExprKind::Continue(_)
+                    | ExprKind::OffsetOf(_, _)
+                    | ExprKind::Err(_) => unreachable!("no sub-expr expected for {:?}", expr.kind),
+                }
+            }
+
+            // If we have a subpattern that performs a read, we want to consider this
+            // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
+            hir::Node::LetStmt(hir::LetStmt { init: Some(target), pat, .. }) => {
+                assert_eq!(target.hir_id, expr.hir_id);
+                self.pat_constitutes_read(*pat)
+            }
+
+            // These nodes (if they have a sub-expr) do constitute a read.
+            hir::Node::Block(_)
+            | hir::Node::Arm(_)
+            | hir::Node::ExprField(_)
+            | hir::Node::AnonConst(_)
+            | hir::Node::ConstBlock(_)
+            | hir::Node::ConstArg(_)
+            | hir::Node::Stmt(_)
+            | hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
+                ..
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Const(..), ..
+            })
+            | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => true,
+
+            // These nodes do not have direct sub-exprs.
+            hir::Node::Param(_)
+            | hir::Node::Item(_)
+            | hir::Node::ForeignItem(_)
+            | hir::Node::TraitItem(_)
+            | hir::Node::ImplItem(_)
+            | hir::Node::Variant(_)
+            | hir::Node::Field(_)
+            | hir::Node::PathSegment(_)
+            | hir::Node::Ty(_)
+            | hir::Node::AssocItemConstraint(_)
+            | hir::Node::TraitRef(_)
+            | hir::Node::Pat(_)
+            | hir::Node::PatField(_)
+            | hir::Node::LetStmt(_)
+            | hir::Node::Synthetic
+            | hir::Node::Err(_)
+            | hir::Node::Ctor(_)
+            | hir::Node::Lifetime(_)
+            | hir::Node::GenericParam(_)
+            | hir::Node::Crate(_)
+            | hir::Node::Infer(_)
+            | hir::Node::WhereBoundPredicate(_)
+            | hir::Node::ArrayLenInfer(_)
+            | hir::Node::PreciseCapturingNonLifetimeArg(_)
+            | hir::Node::OpaqueTy(_) => {
+                unreachable!("no sub-expr expected for {parent_node:?}")
+            }
+        }
+    }
+
+    /// Whether this pattern constitutes a read of value of the scrutinee that
+    /// it is matching against.
+    ///
+    /// See above for the nuances of what happens when this returns true.
+    pub(super) fn pat_constitutes_read(&self, pat: &hir::Pat<'_>) -> bool {
+        let mut does_read = false;
+        pat.walk(|pat| {
+            match pat.kind {
+                hir::PatKind::Wild | hir::PatKind::Never | hir::PatKind::Or(_) => {
+                    // Recurse
                     true
-                } else {
+                }
+                hir::PatKind::Binding(_, _, _, _)
+                | hir::PatKind::Struct(_, _, _)
+                | hir::PatKind::TupleStruct(_, _, _)
+                | hir::PatKind::Path(_)
+                | hir::PatKind::Tuple(_, _)
+                | hir::PatKind::Box(_)
+                | hir::PatKind::Ref(_, _)
+                | hir::PatKind::Deref(_)
+                | hir::PatKind::Lit(_)
+                | hir::PatKind::Range(_, _, _)
+                | hir::PatKind::Slice(_, _, _)
+                | hir::PatKind::Err(_) => {
                     does_read = true;
                     // No need to continue.
                     false
                 }
-            });
-            does_read
-        }
-
-        match self.tcx.parent_hir_node(expr.hir_id) {
-            // Addr-of, field projections, and LHS of assignment don't constitute reads.
-            // Assignment does call `drop_in_place`, though, but its safety
-            // requirements are not the same.
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }) => false,
-            hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Assign(target, _, _) | hir::ExprKind::Field(target, _),
-                ..
-            }) if expr.hir_id == target.hir_id => false,
-
-            // If we have a subpattern that performs a read, we want to consider this
-            // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
-            hir::Node::LetStmt(hir::LetStmt { init: Some(target), pat, .. })
-            | hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Let(hir::LetExpr { init: target, pat, .. }),
-                ..
-            }) if expr.hir_id == target.hir_id && !pat_does_read(*pat) => false,
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Match(target, arms, _), .. })
-                if expr.hir_id == target.hir_id
-                    && !arms.iter().any(|arm| pat_does_read(arm.pat)) =>
-            {
-                false
             }
-            _ => true,
-        }
+        });
+        does_read
     }
 
     #[instrument(skip(self, expr), level = "debug")]

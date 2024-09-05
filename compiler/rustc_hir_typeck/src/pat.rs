@@ -279,7 +279,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // All other patterns constitute a read, which causes us to diverge
         // if the type is never.
-        if ty.is_never() && !matches!(pat.kind, PatKind::Wild | PatKind::Never | PatKind::Or(_)) {
+        if ty.is_never() && self.pat_constitutes_read(pat) {
             self.diverges.set(self.diverges.get() | Diverges::always(pat.span));
         }
 
