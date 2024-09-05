@@ -39,7 +39,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
-use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
@@ -425,7 +424,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx,
                             upvar_ty,
                             capture,
-                            if needs_ref { Some(closure_env_region) } else { child_capture.region },
+                            if needs_ref {
+                                closure_env_region
+                            } else {
+                                self.tcx.lifetimes.re_erased
+                            },
                         );
                     },
                 ),
@@ -587,7 +590,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 debug!(?captured_place.place, ?upvar_ty, ?capture, ?captured_place.mutability);
 
-                apply_capture_kind_on_capture_ty(self.tcx, upvar_ty, capture, captured_place.region)
+                apply_capture_kind_on_capture_ty(
+                    self.tcx,
+                    upvar_ty,
+                    capture,
+                    self.tcx.lifetimes.re_erased,
+                )
             })
             .collect()
     }
@@ -775,13 +783,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let Some(min_cap_list) = root_var_min_capture_list.get_mut(&var_hir_id) else {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
-                let min_cap_list = vec![ty::CapturedPlace {
-                    var_ident,
-                    place,
-                    info: capture_info,
-                    mutability,
-                    region: None,
-                }];
+                let min_cap_list =
+                    vec![ty::CapturedPlace { var_ident, place, info: capture_info, mutability }];
                 root_var_min_capture_list.insert(var_hir_id, min_cap_list);
                 continue;
             };
@@ -874,31 +877,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Only need to insert when we don't have an ancestor in the existing min capture list
             if !ancestor_found {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
-                let captured_place = ty::CapturedPlace {
-                    var_ident,
-                    place,
-                    info: updated_capture_info,
-                    mutability,
-                    region: None,
-                };
+                let captured_place =
+                    ty::CapturedPlace { var_ident, place, info: updated_capture_info, mutability };
                 min_cap_list.push(captured_place);
-            }
-        }
-
-        // For each capture that is determined to be captured by ref, add region info.
-        for (_, captures) in &mut root_var_min_capture_list {
-            for capture in captures {
-                match capture.info.capture_kind {
-                    ty::UpvarCapture::ByRef(_) => {
-                        let PlaceBase::Upvar(upvar_id) = capture.place.base else {
-                            bug!("expected upvar")
-                        };
-                        let origin = UpvarRegion(upvar_id, closure_span);
-                        let upvar_region = self.next_region_var(origin);
-                        capture.region = Some(upvar_region);
-                    }
-                    _ => (),
-                }
             }
         }
 
@@ -1195,7 +1176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx,
                     ty,
                     max_capture_info.capture_kind,
-                    Some(self.tcx.lifetimes.re_erased),
+                    self.tcx.lifetimes.re_erased,
                 )
             }
         };
@@ -1217,7 +1198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 capture.place.ty(),
                 capture.info.capture_kind,
-                Some(self.tcx.lifetimes.re_erased),
+                self.tcx.lifetimes.re_erased,
             );
 
             // Checks if a capture implements any of the auto traits
@@ -1935,13 +1916,11 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     capture_kind: UpvarCapture,
-    region: Option<ty::Region<'tcx>>,
+    region: ty::Region<'tcx>,
 ) -> Ty<'tcx> {
     match capture_kind {
         ty::UpvarCapture::ByValue => ty,
-        ty::UpvarCapture::ByRef(kind) => {
-            Ty::new_ref(tcx, region.unwrap(), ty, kind.to_mutbl_lossy())
-        }
+        ty::UpvarCapture::ByRef(kind) => Ty::new_ref(tcx, region, ty, kind.to_mutbl_lossy()),
     }
 }
 
