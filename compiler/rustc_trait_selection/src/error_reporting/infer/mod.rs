@@ -92,6 +92,15 @@ pub mod nice_region_error;
 pub mod region;
 pub mod sub_relations;
 
+/// A hint about where a type error occurred, for better diagnostics.
+#[derive(Debug, PartialEq)]
+pub enum TypeErrorRole {
+    /// This type error occurred while resolving the "self" type of a method
+    SelfType,
+    /// This type error occurred in any other context.
+    Elsewhere,
+}
+
 /// Makes a valid string literal from a string by escaping special characters (" and \),
 /// unless they are already escaped.
 fn escape_literal(s: &str) -> String {
@@ -159,6 +168,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             TypeTrace::types(cause, expected, actual),
             param_env,
             err,
+            TypeErrorRole::Elsewhere,
+        )
+    }
+
+    pub fn report_mismatched_self_types(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+        err: TypeError<'tcx>,
+    ) -> Diag<'a> {
+        self.report_and_explain_type_error(
+            TypeTrace::types(cause, expected, actual),
+            param_env,
+            err,
+            TypeErrorRole::SelfType,
         )
     }
 
@@ -174,6 +200,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             TypeTrace::consts(cause, expected, actual),
             param_env,
             err,
+            TypeErrorRole::Elsewhere,
         )
     }
 
@@ -1376,6 +1403,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         mut values: Option<ty::ParamEnvAnd<'tcx, ValuePairs<'tcx>>>,
         terr: TypeError<'tcx>,
         prefer_label: bool,
+        role: TypeErrorRole,
     ) {
         let span = cause.span;
 
@@ -1839,6 +1867,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
+        if role == TypeErrorRole::SelfType {
+            diag.note("this error occurred while resolving the `self` type of this method call");
+        }
+
         self.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
         if let Some(exp_found) = exp_found
             && let exp_found = TypeError::Sorts(exp_found)
@@ -2026,8 +2058,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         terr: TypeError<'tcx>,
+        role: TypeErrorRole,
     ) -> Diag<'a> {
-        debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
+        debug!(
+            "report_and_explain_type_error(trace={:?}, terr={:?}, role={:?})",
+            trace, terr, role
+        );
 
         let span = trace.cause.span;
         let failure_code = trace.cause.as_failure_code_diag(
@@ -2043,6 +2079,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             Some(param_env.and(trace.values)),
             terr,
             false,
+            role,
         );
         diag
     }

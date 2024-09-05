@@ -17,8 +17,8 @@ use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol};
 use rustc_type_ir::Upcast as _;
 use tracing::{debug, instrument};
 
-use super::ObligationCauseAsDiagArg;
 use super::nice_region_error::find_anon_type;
+use super::{ObligationCauseAsDiagArg, TypeErrorRole};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::ObligationCauseExt;
 use crate::errors::{
@@ -299,6 +299,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     trace,
                     self.tcx.param_env(generic_param_scope),
                     terr,
+                    TypeErrorRole::Elsewhere,
                 );
                 match (*sub, *sup) {
                     (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
@@ -654,6 +655,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     trace,
                     self.tcx.param_env(generic_param_scope),
                     terr,
+                    TypeErrorRole::Elsewhere,
                 );
             }
             _ => {

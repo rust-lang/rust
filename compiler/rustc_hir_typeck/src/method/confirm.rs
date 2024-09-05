@@ -531,7 +531,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             Err(terr) => {
                 if self.tcx.features().arbitrary_self_types() {
                     self.err_ctxt()
-                        .report_mismatched_types(
+                        .report_mismatched_self_types(
                             &cause,
                             self.param_env,
                             method_self_ty,

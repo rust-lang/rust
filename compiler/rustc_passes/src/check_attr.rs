@@ -35,6 +35,7 @@ use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::infer::TypeErrorRole;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
@@ -2371,6 +2372,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }))),
                 terr,
                 false,
+                TypeErrorRole::Elsewhere,
             );
             diag.emit();
             self.abort.set(true);

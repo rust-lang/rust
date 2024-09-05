@@ -57,6 +57,8 @@ error[E0308]: mismatched types
    |
 LL |     foo.get::<&Foo>();
    |     ^^^ expected `&Foo`, found `Foo`
+   |
+   = note: this error occurred while resolving the `self` type of this method call
 
 error[E0308]: mismatched types
   --> $DIR/arbitrary-self-from-method-substs.rs:78:5
@@ -66,6 +68,7 @@ LL |     foo.get::<std::rc::Rc<Foo>>();
    |
    = note: expected struct `Rc<Foo>`
               found struct `Foo`
+   = note: this error occurred while resolving the `self` type of this method call
 
 error[E0308]: mismatched types
   --> $DIR/arbitrary-self-from-method-substs.rs:84:5
@@ -75,6 +78,7 @@ LL |     smart_ptr.get::<SmartPtr2<Foo>>();
    |
    = note: expected struct `SmartPtr2<'_, Foo>`
               found struct `SmartPtr<'_, Foo>`
+   = note: this error occurred while resolving the `self` type of this method call
 
 error[E0308]: mismatched types
   --> $DIR/arbitrary-self-from-method-substs.rs:86:5
@@ -84,6 +88,7 @@ LL |     smart_ptr.get::<&Foo>();
    |
    = note: expected reference `&Foo`
                  found struct `SmartPtr<'_, Foo, >`
+   = note: this error occurred while resolving the `self` type of this method call
 
 error[E0271]: type mismatch resolving `<Silly as FindReceiver>::Receiver == Foo`
   --> $DIR/arbitrary-self-from-method-substs.rs:92:9

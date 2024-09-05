@@ -38,7 +38,7 @@ use super::{
     UnsatisfiedConst,
 };
 use crate::error_reporting::TypeErrCtxt;
-use crate::error_reporting::infer::TyCategory;
+use crate::error_reporting::infer::{TyCategory, TypeErrorRole};
 use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::errors::{
     AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
@@ -727,6 +727,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     None,
                     TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
                     false,
+                    TypeErrorRole::Elsewhere
                 );
                 diag
             }
@@ -1455,6 +1456,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }),
                 err,
                 false,
+                TypeErrorRole::Elsewhere,
             );
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit()
@@ -2741,6 +2743,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             TypeTrace::trait_refs(&cause, expected_trait_ref, found_trait_ref),
             obligation.param_env,
             terr,
+            TypeErrorRole::Elsewhere,
         )
     }
 
@@ -2832,6 +2835,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 TypeTrace::trait_refs(&obligation.cause, expected_trait_ref, found_trait_ref),
                 obligation.param_env,
                 ty::error::TypeError::Mismatch,
+                TypeErrorRole::Elsewhere,
             ));
         }
         if found.len() != expected.len() {

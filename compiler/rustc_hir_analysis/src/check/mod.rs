@@ -92,7 +92,7 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
+use rustc_trait_selection::error_reporting::infer::{ObligationCauseExt as _, TypeErrorRole};
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
@@ -651,6 +651,7 @@ pub fn check_function_signature<'tcx>(
                 }))),
                 err,
                 false,
+                TypeErrorRole::Elsewhere,
             );
             return Err(diag.emit());
         }

@@ -18,6 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::infer::TypeErrorRole;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::NiceRegionError;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_traits::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_with_cause};
@@ -464,6 +465,7 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
                     *trace,
                     infcx.tcx.param_env(generic_param_scope),
                     TypeError::RegionsPlaceholderMismatch,
+                    TypeErrorRole::Elsewhere,
                 ))
             } else {
                 None
