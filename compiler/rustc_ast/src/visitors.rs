@@ -297,17 +297,17 @@ macro_rules! make_ast_visitor {
             };
         }
 
-        /// Each method of the `Visitor` trait is a hook to be potentially
+        /// Each method of the traits `Visitor` and `MutVisitor` is a hook to be potentially
         /// overridden. Each method's default implementation recursively visits
         /// the substructure of the input via the corresponding `walk` method;
-        /// e.g., the `visit_item` method by default calls `visit::walk_item`.
+        /// e.g., the `visit_item` method by default calls `walk_item`.
         ///
         /// If you want to ensure that your code handles every variant
         /// explicitly, you need to override each method. (And you also need
-        /// to monitor future changes to `Visitor` in case a new method with a
+        /// to monitor future changes to this trait in case a new method with a
         /// new default implementation gets introduced.)
         pub trait $trait$(<$lt>)?: Sized {
-            // Methods in the immutable version of trait have the form:
+            // Methods in the immutable version of this trait have the form:
             //
             //   fn visit_t(&mut self, t: ref_t!(T)) -> result!();
             //
