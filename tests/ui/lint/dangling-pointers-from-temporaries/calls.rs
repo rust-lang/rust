@@ -1,0 +1,45 @@
+#![deny(dangling_pointers_from_temporaries)]
+
+use std::ffi::{c_char, CString};
+
+fn cstring() -> CString {
+    CString::new("hello").unwrap()
+}
+
+fn consume(ptr: *const c_char) {
+    let c = unsafe { ptr.read() };
+    dbg!(c);
+}
+
+// None of these should trigger the lint.
+fn ok() {
+    consume(cstring().as_ptr());
+    consume({ cstring() }.as_ptr());
+    consume({ cstring().as_ptr() });
+    consume(cstring().as_ptr().cast());
+    consume({ cstring() }.as_ptr().cast());
+    consume({ cstring().as_ptr() }.cast());
+}
+
+// All of these should trigger the lint.
+fn not_ok() {
+    let ptr = cstring().as_ptr();
+    //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
+    consume(ptr);
+    consume({
+        let ptr = cstring().as_ptr();
+        //^ FIXME: should error
+        ptr
+    });
+    let _ptr: *const u8 = cstring().as_ptr().cast();
+    //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
+    let _ptr: *const u8 = { cstring() }.as_ptr().cast();
+    //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
+    let _ptr: *const u8 = { cstring().as_ptr() }.cast();
+    //^ FIXME: should error
+}
+
+fn main() {
+    ok();
+    not_ok();
+}

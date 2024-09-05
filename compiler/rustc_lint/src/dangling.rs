@@ -1,13 +1,11 @@
-use rustc_hir::{Expr, ExprKind, LangItem};
+use rustc_hir::{Expr, ExprKind, HirId, LangItem};
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
 use crate::lints::InstantlyDangling;
 use crate::{LateContext, LateLintPass, LintContext};
 
-// FIXME: does not catch UnsafeCell::get
-// FIXME: does not catch getting a ref to a temporary and then converting it to a ptr
 declare_lint! {
     /// The `dangling_pointers_from_temporaries` lint detects getting a pointer to data
     /// of a temporary that will immediately get dropped.
@@ -16,9 +14,7 @@ declare_lint! {
     ///
     /// ```rust
     /// # #![allow(unused)]
-    /// # unsafe fn use_data(ptr: *const u8) {
-    /// #     dbg!(unsafe { ptr.read() });
-    /// # }
+    /// # unsafe fn use_data(ptr: *const u8) { }
     /// fn gather_and_use(bytes: impl Iterator<Item = u8>) {
     ///     let x: *const u8 = bytes.collect::<Vec<u8>>().as_ptr();
     ///     unsafe { use_data(x) }
@@ -42,10 +38,111 @@ declare_lint! {
     "detects getting a pointer from a temporary"
 }
 
-declare_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
+#[derive(Copy, Clone, Default)]
+pub(crate) struct DanglingPointers {
+    /// HACK: trying to deal with argument lifetime extension.
+    ///
+    /// This produces a dangling pointer:
+    /// ```ignore (example)
+    /// let ptr = CString::new("hello").unwrap().as_ptr();
+    /// foo(ptr)
+    /// ```
+    ///
+    /// But this does not:
+    /// ```ignore (example)
+    /// foo(CString::new("hello").unwrap().as_ptr())
+    /// ```
+    ///
+    /// So we have to deal with this situation somehow.
+    ///
+    /// If we were a visitor, we could just not visit the arguments.
+    ///
+    /// Or, maybe visit them while maintaining a flag that would indicate
+    /// when the lifetime extension can occur, because code like this
+    /// ```ignore (example)
+    /// foo({ let ptr = CString::new("hello").unwrap().as_ptr(); ptr })
+    /// ```
+    /// still produces a dangling pointer.
+    ///
+    /// But we are not a visitor. We are a LateLintPass,
+    /// and we get called on every expression there is.
+    ///
+    /// The best we can do is to keep track of when we enter
+    /// a function/method call and stop linting until we exit it.
+    ///
+    /// Sadly, we cannot update this *after* we have visited the LHS of a call,
+    /// but *before* we visit the arguments.
+    /// So we update this even before visiting the LHS,
+    /// which means we don't get to walk it properly. Sad.
+    token: Option<HirId>,
+}
 
+impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
+
+/// FIXME: false negatives (i.e. the lint is not emitted when it should be)
+/// 1. Method calls that are not checked for:
+///    - [`temporary_unsafe_cell.get()`][`core::cell::UnsafeCell::get()`]
+///    - [`temporary_sync_unsafe_cell.get()`][`core::cell::SyncUnsafeCell::get()`]
+/// 2. Ways to get a temporary that are not recognized:
+///    - `owning_temporary.field`
+///    - `owning_temporary[index]`
+/// 3. No checks for ref-to-ptr conversions:
+///    - `&raw [mut] temporary`
+///    - `&temporary as *(const|mut) _`
+///    - `ptr::from_ref(&temporary)` and friends
+/// 4. Aggressive mitigation for lifetime extension of function/method call arguments \
+///    (see the comment on [`DanglingPointers::token`]):
+///    - **Function/method call arguments are completely skipped.** \
+///      Technically this means we overlook things like
+///      ```ignore (example)
+///      foo({ let x = get_cstring(); x.as_ptr() }, 1)
+///      ```
+///      but who in their right mind would write something like that?
+///    - **A function call's callee / a method call's receiver is not visited fully.** \
+///      We descent into it recursively, but we stop at the first expression that is
+///      neither [`ExprKind::Call`] nor [`ExprKind::MethodCall`].
+///      This means
+///      ```ignore (example)
+///      CString::new("Hello").unwrap().as_ptr().cast()
+///      ```
+///      will get linted, but
+///      ```ignore (example)
+///      { CString::new("Hello").unwrap().as_ptr() }.cast()
+///      ```
+///      will not, because we stop at the block and do not descend any further.
 impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if self.token.is_some() {
+            tracing::debug!(skip = ?cx.sess().source_map().span_to_snippet(expr.span));
+            return;
+        }
+
+        if let ExprKind::Call(lhs, _args) | ExprKind::MethodCall(_, lhs, _args, _) = expr.kind {
+            tracing::trace!(enter = ?cx.sess().source_map().span_to_snippet(expr.span));
+
+            // Peel any nested calls from the LHS.
+            self.check_expr(cx, lhs);
+            self.check_expr_post(cx, lhs);
+
+            debug_assert_eq!(self.token, None);
+            self.token = Some(expr.hir_id);
+
+            tracing::debug!(set = ?cx.sess().source_map().span_to_snippet(expr.span));
+        }
+        self.lint_expr(cx, expr);
+    }
+
+    fn check_expr_post(&mut self, _cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if self.token == Some(expr.hir_id) {
+            self.token = None;
+
+            tracing::debug!(unset = ?_cx.sess().source_map().span_to_snippet(expr.span));
+        }
+    }
+}
+
+impl DanglingPointers {
+    fn lint_expr(&self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind
             && matches!(method.ident.name, sym::as_ptr | sym::as_mut_ptr)
             && is_temporary_rvalue(receiver)
