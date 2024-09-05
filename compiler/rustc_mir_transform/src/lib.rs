@@ -87,6 +87,7 @@ mod match_branches;
 mod mentioned_items;
 mod multiple_return_terminators;
 mod nrvo;
+mod post_drop_elaboration;
 mod prettify;
 mod promote_consts;
 mod ref_prop;
@@ -480,11 +481,13 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
         pm::run_passes(
             tcx,
             body,
-            &[&remove_uninit_drops::RemoveUninitDrops, &simplify::SimplifyCfg::RemoveFalseEdges],
+            &[
+                &remove_uninit_drops::RemoveUninitDrops,
+                &simplify::SimplifyCfg::RemoveFalseEdges,
+                &Lint(post_drop_elaboration::CheckLiveDrops),
+            ],
             None,
         );
-        // FIXME: make this a MIR lint
-        check_consts::post_drop_elaboration::check_live_drops(tcx, body);
     }
 
     debug!("runtime_mir_lowering({:?})", did);
