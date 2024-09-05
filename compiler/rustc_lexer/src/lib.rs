@@ -97,6 +97,9 @@ pub enum TokenKind {
     /// and not the separator.
     UnknownPrefixLifetime,
 
+    /// `'r#lt`, which in edition < 2021 is split into several tokens: `'r # lt`.
+    RawLifetime,
+
     /// Similar to the above, but *always* an error on every edition. This is used
     /// for emoji identifier recovery, as those are not meant to be ever accepted.
     InvalidPrefix,
@@ -683,9 +686,17 @@ impl Cursor<'_> {
             return Literal { kind, suffix_start };
         }
 
+        if self.first() == 'r' && self.second() == '#' && is_id_start(self.third()) {
+            // Eat "r" and `#`, and identifier start characters.
+            self.bump();
+            self.bump();
+            self.bump();
+            self.eat_while(is_id_continue);
+            return RawLifetime;
+        }
+
         // Either a lifetime or a character literal with
         // length greater than 1.
-
         let starts_with_number = self.first().is_ascii_digit();
 
         // Skip the literal contents.

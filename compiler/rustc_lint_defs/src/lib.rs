@@ -609,6 +609,8 @@ pub enum BuiltinLintDiag {
     LegacyDeriveHelpers(Span),
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
+    /// `'r#` in edition < 2021.
+    RawPrefix(Span),
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),

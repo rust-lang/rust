@@ -13,7 +13,6 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
-use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use tracing::debug;
@@ -284,7 +283,41 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                             .stash(span, StashKey::LifetimeIsChar);
                     }
                     let ident = Symbol::intern(lifetime_name);
-                    token::Lifetime(ident)
+                    token::Lifetime(ident, IdentIsRaw::No)
+                }
+                rustc_lexer::TokenKind::RawLifetime => {
+                    self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
+
+                    let ident_start = start + BytePos(3);
+                    let prefix_span = self.mk_sp(start, ident_start);
+
+                    if prefix_span.at_least_rust_2021() {
+                        let lifetime_name_without_tick = self.str_from(ident_start);
+                        // Put the `'` back onto the lifetime name.
+                        let mut lifetime_name = String::with_capacity(lifetime_name_without_tick.len() + 1);
+                        lifetime_name.push('\'');
+                        lifetime_name += lifetime_name_without_tick;
+                        let sym = Symbol::intern(&lifetime_name);
+
+                        token::Lifetime(sym, IdentIsRaw::Yes)
+                    } else {
+                        // Otherwise, this is just `'r`. Warn about it though.
+                        self.psess.buffer_lint(
+                            RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
+                            prefix_span,
+                            ast::CRATE_NODE_ID,
+                            BuiltinLintDiag::RawPrefix(prefix_span),
+                        );
+
+                        // Reset the state so we just lex the `'r`.
+                        let lt_start = start + BytePos(2);
+                        self.pos = lt_start;
+                        self.cursor = Cursor::new(&str_before[2 as usize..]);
+
+                        let lifetime_name = self.str_from(start);
+                        let ident = Symbol::intern(lifetime_name);
+                        token::Lifetime(ident, IdentIsRaw::No)
+                    }
                 }
                 rustc_lexer::TokenKind::Semi => token::Semi,
                 rustc_lexer::TokenKind::Comma => token::Comma,
@@ -712,7 +745,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
         let expn_data = prefix_span.ctxt().outer_expn_data();
 
-        if expn_data.edition >= Edition::Edition2021 {
+        if expn_data.edition.at_least_rust_2021() {
             // In Rust 2021, this is a hard error.
             let sugg = if prefix == "rb" {
                 Some(errors::UnknownPrefixSugg::UseBr(prefix_span))

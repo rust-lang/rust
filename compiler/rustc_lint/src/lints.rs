@@ -2773,6 +2773,15 @@ pub(crate) struct ReservedPrefix {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_raw_prefix)]
+pub(crate) struct RawPrefix {
+    #[label]
+    pub label: Span,
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_unused_builtin_attribute)]
 pub(crate) struct UnusedBuiltinAttribute {
     #[note]
