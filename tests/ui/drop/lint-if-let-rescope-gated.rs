@@ -26,6 +26,9 @@ impl Droppy {
 fn main() {
     if let Some(_value) = Droppy.get() {
         //[with_feature_gate]~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+        //[with_feature_gate]~| ERROR: a `match` with a single arm can preserve the drop order up to Edition 2021
         //[with_feature_gate]~| WARN: this changes meaning in Rust 2024
-    };
+        //[with_feature_gate]~| WARN: this changes meaning in Rust 2024
+    } else {
+    }
 }
