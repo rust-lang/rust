@@ -233,17 +233,17 @@ impl Config {
         let mut curl = command("curl");
         curl.args([
             // follow redirect
-            "-L",
+            "--location",
             // timeout if speed is < 10 bytes/sec for > 30 seconds
-            "-y",
+            "--speed-time",
             "30",
-            "-Y",
+            "--speed-limit",
             "10",
             // timeout if cannot connect within 30 seconds
             "--connect-timeout",
             "30",
             // output file
-            "-o",
+            "--output",
             tempfile.to_str().unwrap(),
             // if there is an error, don't restart the download,
             // instead continue where it left off.
@@ -253,14 +253,16 @@ impl Config {
             // attempts will be made, since the first attempt isn't a *re*try.
             "--retry",
             "3",
-            // -S: show errors, even if -s is specified
-            // -R: set timestamp of downloaded file to that of the server
-            // -f: fail on non-ok http status
-            "-SRf",
+            // show errors, even if --silent is specified
+            "--show-error",
+            // set timestamp of downloaded file to that of the server
+            "--remote-time",
+            // fail on non-ok http status
+            "--fail",
         ]);
         // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
         if CiEnv::is_ci() {
-            curl.arg("-s");
+            curl.arg("--silent");
         } else {
             curl.arg("--progress-bar");
         }
