@@ -238,8 +238,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression"),
         }
 
-        // Any expression that produces a value of type `!` must have diverged
-        if ty.is_never() {
+        // Any expression that produces a value of type `!` must have diverged,
+        // unless it's a place expression that isn't being read from, in which case
+        // diverging would be unsound since we may never actually read the `!`.
+        // e.g. `let _ = *never_ptr;` with `never_ptr: *const !`.
+        if ty.is_never() && self.expr_constitutes_read(expr) {
             self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
         }
 
@@ -255,6 +258,66 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("... {:?}, expected is {:?}", ty, expected);
 
         ty
+    }
+
+    pub(super) fn expr_constitutes_read(&self, expr: &'tcx hir::Expr<'tcx>) -> bool {
+        // We only care about place exprs. Anything else returns an immediate
+        // which would constitute a read. We don't care about distinguishing
+        // "syntactic" place exprs since if the base of a field projection is
+        // not a place then it would've been UB to read from it anyways since
+        // that constitutes a read.
+        if !expr.is_syntactic_place_expr() {
+            return true;
+        }
+
+        // If this expression has any adjustments applied after the place expression,
+        // they may constitute reads.
+        if !self.typeck_results.borrow().expr_adjustments(expr).is_empty() {
+            return true;
+        }
+
+        fn pat_does_read(pat: &hir::Pat<'_>) -> bool {
+            let mut does_read = false;
+            pat.walk(|pat| {
+                if matches!(
+                    pat.kind,
+                    hir::PatKind::Wild | hir::PatKind::Never | hir::PatKind::Or(_)
+                ) {
+                    true
+                } else {
+                    does_read = true;
+                    // No need to continue.
+                    false
+                }
+            });
+            does_read
+        }
+
+        match self.tcx.parent_hir_node(expr.hir_id) {
+            // Addr-of, field projections, and LHS of assignment don't constitute reads.
+            // Assignment does call `drop_in_place`, though, but its safety
+            // requirements are not the same.
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }) => false,
+            hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Assign(target, _, _) | hir::ExprKind::Field(target, _),
+                ..
+            }) if expr.hir_id == target.hir_id => false,
+
+            // If we have a subpattern that performs a read, we want to consider this
+            // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
+            hir::Node::LetStmt(hir::LetStmt { init: Some(target), pat, .. })
+            | hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Let(hir::LetExpr { init: target, pat, .. }),
+                ..
+            }) if expr.hir_id == target.hir_id && !pat_does_read(*pat) => false,
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Match(target, arms, _), .. })
+                if expr.hir_id == target.hir_id
+                    && !arms.iter().any(|arm| pat_does_read(arm.pat)) =>
+            {
+                false
+            }
+            _ => true,
+        }
     }
 
     #[instrument(skip(self, expr), level = "debug")]

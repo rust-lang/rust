@@ -3,12 +3,11 @@
 fn process_never(_1: *const !) -> () {
     debug input => _1;
     let mut _0: ();
-    let _2: &!;
     scope 1 {
-        debug _input => _2;
+        debug _input => _1;
     }
 
     bb0: {
-        unreachable;
+        return;
     }
 }
