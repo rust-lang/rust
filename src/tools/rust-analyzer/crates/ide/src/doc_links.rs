@@ -220,7 +220,8 @@ pub(crate) fn resolve_doc_path_for_def(
         | Definition::GenericParam(_)
         | Definition::Label(_)
         | Definition::DeriveHelper(_)
-        | Definition::InlineAsmRegOrRegClass(_) => None,
+        | Definition::InlineAsmRegOrRegClass(_)
+        | Definition::InlineAsmRegOperand(_) => None,
     }
     .map(Definition::from)
 }
@@ -674,7 +675,8 @@ fn filename_and_frag_for_def(
         | Definition::BuiltinLifetime(_)
         | Definition::ToolModule(_)
         | Definition::DeriveHelper(_)
-        | Definition::InlineAsmRegOrRegClass(_) => return None,
+        | Definition::InlineAsmRegOrRegClass(_)
+        | Definition::InlineAsmRegOperand(_) => return None,
     };
 
     Some((def, res, None))

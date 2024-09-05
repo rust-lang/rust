@@ -1287,12 +1287,11 @@ fn main() {
         let mut o = 0;
         core::arch::asm!(
             "%input = OpLoad _ {0}",
-            concat!("%result = ", bar, " _ %input"),
+            concat!("%result = ", "bar", " _ %input"),
             "OpStore {1} %result",
             in(reg) &foo,
             in(reg) &mut o,
         );
-        o
 
         let thread_id: usize;
         core::arch::asm!("

@@ -51,6 +51,7 @@ pub enum Definition {
     ToolModule(ToolModule),
     ExternCrateDecl(ExternCrateDecl),
     InlineAsmRegOrRegClass(()),
+    InlineAsmRegOperand(()),
 }
 
 impl Definition {
@@ -89,7 +90,8 @@ impl Definition {
             | Definition::BuiltinLifetime(_)
             | Definition::TupleField(_)
             | Definition::ToolModule(_)
-            | Definition::InlineAsmRegOrRegClass(_) => return None,
+            | Definition::InlineAsmRegOrRegClass(_)
+            | Definition::InlineAsmRegOperand(_) => return None,
         };
         Some(module)
     }
@@ -124,7 +126,8 @@ impl Definition {
             | Definition::GenericParam(_)
             | Definition::Label(_)
             | Definition::DeriveHelper(_)
-            | Definition::InlineAsmRegOrRegClass(_) => return None,
+            | Definition::InlineAsmRegOrRegClass(_)
+            | Definition::InlineAsmRegOperand(_) => return None,
         };
         Some(vis)
     }
@@ -153,7 +156,9 @@ impl Definition {
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),
             Definition::ExternCrateDecl(it) => return it.alias_or_name(db),
-            Definition::InlineAsmRegOrRegClass(_) => return None, //  FIXME
+            Definition::InlineAsmRegOrRegClass(_) | Definition::InlineAsmRegOperand(_) => {
+                return None
+            } //  FIXME
         };
         Some(name)
     }
@@ -216,7 +221,7 @@ impl Definition {
             Definition::ToolModule(_) => None,
             Definition::DeriveHelper(_) => None,
             Definition::TupleField(_) => None,
-            Definition::InlineAsmRegOrRegClass(_) => None,
+            Definition::InlineAsmRegOrRegClass(_) | Definition::InlineAsmRegOperand(_) => None,
         };
 
         docs.or_else(|| {
@@ -275,6 +280,7 @@ impl Definition {
             }
             // FIXME
             Definition::InlineAsmRegOrRegClass(_) => "inline_asm_reg_or_reg_class".to_owned(),
+            Definition::InlineAsmRegOperand(_) => "inline_asm_reg_operand".to_owned(),
         }
     }
 }
@@ -705,6 +711,9 @@ impl NameRefClass {
                     } else {
                         NameRefClass::ExternCrateShorthand { krate, decl: extern_crate }
                     })
+                },
+                ast::AsmRegSpec(_) => {
+                    Some(NameRefClass::Definition(Definition::InlineAsmRegOrRegClass(())))
                 },
                 _ => None
             }

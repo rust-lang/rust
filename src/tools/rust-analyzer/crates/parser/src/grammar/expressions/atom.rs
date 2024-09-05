@@ -453,9 +453,13 @@ fn parse_clobber_abi(p: &mut Parser<'_>) {
 fn parse_reg(p: &mut Parser<'_>) {
     p.expect(T!['(']);
     if p.at(T![ident]) {
-        name_ref(p)
+        let m = p.start();
+        name_ref(p);
+        m.complete(p, ASM_REG_SPEC);
     } else if p.at(T![string]) {
-        p.bump_any()
+        let m = p.start();
+        p.bump_any();
+        m.complete(p, ASM_REG_SPEC);
     } else {
         p.err_and_bump("expected register name");
     }

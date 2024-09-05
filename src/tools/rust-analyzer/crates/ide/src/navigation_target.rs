@@ -244,6 +244,8 @@ impl TryToNav for Definition {
             | Definition::ToolModule(_)
             | Definition::InlineAsmRegOrRegClass(_)
             | Definition::BuiltinAttr(_) => None,
+            // FIXME
+            Definition::InlineAsmRegOperand(_) => None,
             // FIXME: The focus range should be set to the helper declaration
             Definition::DeriveHelper(it) => it.derive().try_to_nav(db),
         }

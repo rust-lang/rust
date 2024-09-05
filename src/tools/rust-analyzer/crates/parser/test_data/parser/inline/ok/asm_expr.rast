@@ -35,16 +35,18 @@ SOURCE_FILE
               STRING "\"add {x}, {tmp}\""
             COMMA ","
             WHITESPACE "\n        "
-            NAME
-              IDENT "x"
-            WHITESPACE " "
-            EQ "="
-            WHITESPACE " "
             ASM_REG_OPERAND
-              INOUT_KW "inout"
+              NAME
+                IDENT "x"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              ASM_DIR_SPEC
+                INOUT_KW "inout"
               L_PAREN "("
-              NAME_REF
-                IDENT "reg"
+              ASM_REG_SPEC
+                NAME_REF
+                  IDENT "reg"
               R_PAREN ")"
               WHITESPACE " "
               PATH_EXPR
@@ -54,16 +56,18 @@ SOURCE_FILE
                       IDENT "x"
             COMMA ","
             WHITESPACE "\n        "
-            NAME
-              IDENT "tmp"
-            WHITESPACE " "
-            EQ "="
-            WHITESPACE " "
             ASM_REG_OPERAND
-              OUT_KW "out"
+              NAME
+                IDENT "tmp"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              ASM_DIR_SPEC
+                OUT_KW "out"
               L_PAREN "("
-              NAME_REF
-                IDENT "reg"
+              ASM_REG_SPEC
+                NAME_REF
+                  IDENT "reg"
               R_PAREN ")"
               WHITESPACE " "
               UNDERSCORE_EXPR
