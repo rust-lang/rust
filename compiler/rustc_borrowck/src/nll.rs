@@ -75,14 +75,14 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub(crate) fn compute_regions<'cx, 'tcx>(
+pub(crate) fn compute_regions<'a, 'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'_, 'cx, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     upvars: &[&ty::CapturedPlace<'tcx>],

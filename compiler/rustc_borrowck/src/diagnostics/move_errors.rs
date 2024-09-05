@@ -93,7 +93,7 @@ enum GroupedMoveError<'tcx> {
     },
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn report_move_errors(&mut self) {
         let grouped_errors = self.group_move_errors();
         for error in grouped_errors {

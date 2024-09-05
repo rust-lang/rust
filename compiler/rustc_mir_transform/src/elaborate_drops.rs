@@ -98,9 +98,9 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
 /// Records unwind edges which are known to be unreachable, because they are in `drop` terminators
 /// that can't drop anything.
 #[instrument(level = "trace", skip(body, flow_inits), ret)]
-fn compute_dead_unwinds<'mir, 'tcx>(
-    body: &'mir Body<'tcx>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
+fn compute_dead_unwinds<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
 ) -> BitSet<BasicBlock> {
     // We only need to do this pass once, because unwind edges can only
     // reach cleanup blocks, which can't have unwind edges themselves.
@@ -121,12 +121,12 @@ fn compute_dead_unwinds<'mir, 'tcx>(
     dead_unwinds
 }
 
-struct InitializationData<'a, 'mir, 'tcx> {
-    inits: ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'a, 'mir, 'tcx>>,
-    uninits: ResultsCursor<'mir, 'tcx, MaybeUninitializedPlaces<'a, 'mir, 'tcx>>,
+struct InitializationData<'a, 'tcx> {
+    inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
+    uninits: ResultsCursor<'a, 'tcx, MaybeUninitializedPlaces<'a, 'tcx>>,
 }
 
-impl InitializationData<'_, '_, '_> {
+impl InitializationData<'_, '_> {
     fn seek_before(&mut self, loc: Location) {
         self.inits.seek_before_primary_effect(loc);
         self.uninits.seek_before_primary_effect(loc);
@@ -137,24 +137,24 @@ impl InitializationData<'_, '_, '_> {
     }
 }
 
-struct Elaborator<'a, 'b, 'mir, 'tcx> {
-    ctxt: &'a mut ElaborateDropsCtxt<'b, 'mir, 'tcx>,
+struct Elaborator<'a, 'b, 'tcx> {
+    ctxt: &'a mut ElaborateDropsCtxt<'b, 'tcx>,
 }
 
-impl fmt::Debug for Elaborator<'_, '_, '_, '_> {
+impl fmt::Debug for Elaborator<'_, '_, '_> {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Ok(())
     }
 }
 
-impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, '_, 'tcx> {
+impl<'b, 'tcx> DropElaborator<'b, 'tcx> for Elaborator<'_, 'b, 'tcx> {
     type Path = MovePathIndex;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> {
         &mut self.ctxt.patch
     }
 
-    fn body(&self) -> &'a Body<'tcx> {
+    fn body(&self) -> &'b Body<'tcx> {
         self.ctxt.body
     }
 
@@ -241,17 +241,17 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, '_, 'tcx> {
     }
 }
 
-struct ElaborateDropsCtxt<'a, 'mir, 'tcx> {
+struct ElaborateDropsCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body: &'mir Body<'tcx>,
+    body: &'a Body<'tcx>,
     env: &'a MoveDataParamEnv<'tcx>,
-    init_data: InitializationData<'a, 'mir, 'tcx>,
+    init_data: InitializationData<'a, 'tcx>,
     drop_flags: IndexVec<MovePathIndex, Option<Local>>,
     patch: MirPatch<'tcx>,
 }
 
-impl<'b, 'mir, 'tcx> ElaborateDropsCtxt<'b, 'mir, 'tcx> {
-    fn move_data(&self) -> &'b MoveData<'tcx> {
+impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
+    fn move_data(&self) -> &'a MoveData<'tcx> {
         &self.env.move_data
     }
 
