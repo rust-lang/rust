@@ -57,6 +57,7 @@ impl<T> Steal<T> {
     ///
     /// This should not be used within rustc as it leaks information not tracked
     /// by the query system, breaking incremental compilation.
+    #[cfg_attr(not(bootstrap), rustc_lint_untracked_query_information)]
     pub fn is_stolen(&self) -> bool {
         self.value.borrow().is_none()
     }
