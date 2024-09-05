@@ -2553,6 +2553,17 @@ impl Const {
         Type::from_value_def(db, self.id)
     }
 
+    /// Evaluate the constant and return the result as a string.
+    ///
+    /// This function is intended for IDE assistance, different from [`Const::render_eval`].
+    pub fn eval(self, db: &dyn HirDatabase, edition: Edition) -> Result<String, ConstEvalError> {
+        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
+        Ok(format!("{}", c.display(db, edition)))
+    }
+
+    /// Evaluate the constant and return the result as a string, with more detailed information.
+    ///
+    /// This function is intended for user-facing display.
     pub fn render_eval(
         self,
         db: &dyn HirDatabase,
