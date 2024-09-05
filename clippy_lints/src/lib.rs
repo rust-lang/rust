@@ -634,8 +634,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     let format_args = format_args_storage.clone();
     store.register_late_pass(move |_| Box::new(methods::Methods::new(conf, format_args.clone())));
     store.register_late_pass(move |_| Box::new(matches::Matches::new(conf)));
-    store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveStruct::new(conf)));
-    store.register_late_pass(move |_| Box::new(manual_non_exhaustive::ManualNonExhaustiveEnum::new(conf)));
+    store.register_late_pass(move |_| Box::new(manual_non_exhaustive::ManualNonExhaustive::new(conf)));
     store.register_late_pass(move |_| Box::new(manual_strip::ManualStrip::new(conf)));
     store.register_early_pass(move || Box::new(redundant_static_lifetimes::RedundantStaticLifetimes::new(conf)));
     store.register_early_pass(move || Box::new(redundant_field_names::RedundantFieldNames::new(conf)));
