@@ -434,6 +434,7 @@ fn parse_options(p: &mut Parser<'_>) {
         let m = p.start();
         if !OPTIONS.iter().any(|&syntax| p.eat_contextual_kw(syntax)) {
             p.err_and_bump("expected asm option");
+            m.abandon(p);
             continue;
         }
         m.complete(p, ASM_OPTION);
