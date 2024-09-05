@@ -112,6 +112,7 @@ impl Step for Gcc {
             return true;
         }
 
+        command(root.join("contrib/download_prerequisites")).current_dir(&root).run(builder);
         command(root.join("configure"))
             .current_dir(&out_dir)
             .arg("--enable-host-shared")
