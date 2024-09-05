@@ -4,8 +4,8 @@ set -euo pipefail
 
 LINUX_VERSION=4c7864e81d8bbd51036dacf92fb0a400e13aaeee
 
-# Build rustc, rustdoc and cargo
-../x.py build --stage 1 library rustdoc
+# Build rustc, rustdoc, cargo, clippy-driver and rustfmt
+../x.py build --stage 2 library rustdoc clippy rustfmt
 ../x.py build --stage 0 cargo
 
 # Install rustup so that we can use the built toolchain easily, and also
@@ -16,7 +16,7 @@ sh rustup.sh -y --default-toolchain none
 source /cargo/env
 
 BUILD_DIR=$(realpath ./build)
-rustup toolchain link local "${BUILD_DIR}"/x86_64-unknown-linux-gnu/stage1
+rustup toolchain link local "${BUILD_DIR}"/x86_64-unknown-linux-gnu/stage2
 rustup default local
 
 mkdir -p rfl
@@ -62,11 +62,47 @@ make -C linux LLVM=1 -j$(($(nproc) + 1)) \
     defconfig \
     rfl-for-rust-ci.config
 
-make -C linux LLVM=1 -j$(($(nproc) + 1)) \
-    samples/rust/rust_minimal.o \
-    samples/rust/rust_print.o \
-    drivers/net/phy/ax88796b_rust.o \
+BUILD_TARGETS="
+    samples/rust/rust_minimal.o
+    samples/rust/rust_print.o
+    drivers/net/phy/ax88796b_rust.o
     rust/doctests_kernel_generated.o
+"
 
+# Build a few Rust targets
+#
+# This does not include building the C side of the kernel nor linking,
+# which can find other issues, but it is much faster.
+#
+# This includes transforming `rustdoc` tests into KUnit ones thanks to
+# `CONFIG_RUST_KERNEL_DOCTESTS=y` above (which, for the moment, uses the
+# unstable `--test-builder` and `--no-run`).
+make -C linux LLVM=1 -j$(($(nproc) + 1)) \
+    $BUILD_TARGETS
+
+# Generate documentation
 make -C linux LLVM=1 -j$(($(nproc) + 1)) \
     rustdoc
+
+# Build macro expanded source (`-Zunpretty=expanded`)
+#
+# This target also formats the macro expanded code, thus it is also
+# intended to catch ICEs with formatting `-Zunpretty=expanded` output
+# like https://github.com/rust-lang/rustfmt/issues/6105.
+make -C linux LLVM=1 -j$(($(nproc) + 1)) \
+    samples/rust/rust_minimal.rsi
+
+# Re-build with Clippy enabled
+#
+# This should not introduce Clippy errors, since `CONFIG_WERROR` is not
+# set (thus no `-Dwarnings`) and the kernel uses `-W` for all Clippy
+# lints, including `clippy::all`. However, it could catch ICEs.
+make -C linux LLVM=1 -j$(($(nproc) + 1)) CLIPPY=1 \
+    $BUILD_TARGETS
+
+# Format the code
+#
+# This returns successfully even if there were changes, i.e. it is not
+# a check.
+make -C linux LLVM=1 -j$(($(nproc) + 1)) \
+    rustfmt
