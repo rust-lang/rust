@@ -110,6 +110,13 @@ pub struct LlvmDwarfdump {
     cmd: Command,
 }
 
+/// A `llvm-pdbutil` invocation builder.
+#[derive(Debug)]
+#[must_use]
+pub struct LlvmPdbutil {
+    cmd: Command,
+}
+
 crate::macros::impl_common_helpers!(LlvmReadobj);
 crate::macros::impl_common_helpers!(LlvmProfdata);
 crate::macros::impl_common_helpers!(LlvmFilecheck);
@@ -118,6 +125,7 @@ crate::macros::impl_common_helpers!(LlvmAr);
 crate::macros::impl_common_helpers!(LlvmNm);
 crate::macros::impl_common_helpers!(LlvmBcanalyzer);
 crate::macros::impl_common_helpers!(LlvmDwarfdump);
+crate::macros::impl_common_helpers!(LlvmPdbutil);
 
 /// Generate the path to the bin directory of LLVM.
 #[must_use]
@@ -351,6 +359,22 @@ impl LlvmDwarfdump {
     pub fn new() -> Self {
         let llvm_dwarfdump = llvm_bin_dir().join("llvm-dwarfdump");
         let cmd = Command::new(llvm_dwarfdump);
+        Self { cmd }
+    }
+
+    /// Provide an input file.
+    pub fn input<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.cmd.arg(path.as_ref());
+        self
+    }
+}
+
+impl LlvmPdbutil {
+    /// Construct a new `llvm-pdbutil` invocation. This assumes that `llvm-pdbutil` is available
+    /// at `$LLVM_BIN_DIR/llvm-pdbutil`.
+    pub fn new() -> Self {
+        let llvm_pdbutil = llvm_bin_dir().join("llvm-pdbutil");
+        let cmd = Command::new(llvm_pdbutil);
         Self { cmd }
     }
 
