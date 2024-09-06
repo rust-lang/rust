@@ -704,8 +704,8 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
 
 /// If the type is function like, get the signature for it.
 pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
-    if ty.is_box() {
-        return ty_sig(cx, ty.boxed_ty());
+    if let Some(boxed_ty) = ty.boxed_ty() {
+        return ty_sig(cx, boxed_ty);
     }
     match *ty.kind() {
         ty::Closure(id, subs) => {

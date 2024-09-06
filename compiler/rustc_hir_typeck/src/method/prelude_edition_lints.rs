@@ -63,8 +63,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Instead, the problem is that the array-into_iter hack will no longer
                     // apply in Rust 2021.
                     (ARRAY_INTO_ITER, "2021")
-                } else if self_ty.is_box()
-                    && self_ty.boxed_ty().is_slice()
+                } else if self_ty.boxed_ty().is_some_and(Ty::is_slice)
                     && !span.at_least_rust_2024()
                 {
                     // In this case, it wasn't really a prelude addition that was the problem.
