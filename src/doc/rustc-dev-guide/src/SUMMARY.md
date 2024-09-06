@@ -160,6 +160,7 @@
 - [Type checking](./type-checking.md)
     - [Method Lookup](./method-lookup.md)
     - [Variance](./variance.md)
+    - [Coherence Checking](./coherence.md)
     - [Opaque Types](./opaque-types-type-alias-impl-trait.md)
         - [Inference details](./opaque-types-impl-trait-inference.md)
         - [Return Position Impl Trait In Trait](./return-position-impl-trait-in-trait.md)

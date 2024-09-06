@@ -113,6 +113,8 @@ in the trait solver
 
 #### The type system is complete during the implicit negative overlap check in coherence ✅
 
+For more on overlap checking: [../coherence.md]
+
 During the implicit negative overlap check in coherence we must never return *error* for
 goals which can be proven. This would allow for overlapping impls with potentially different
 associated items, breaking a bunch of other invariants.

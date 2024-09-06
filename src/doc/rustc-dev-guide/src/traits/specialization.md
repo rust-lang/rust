@@ -5,8 +5,8 @@
 Defined in the `specialize` module.
 
 The basic strategy is to build up a *specialization graph* during
-coherence checking (recall that coherence checking looks for overlapping
-impls). Insertion into the graph locates the right place
+coherence checking (coherence checking looks for [overlapping impls](../coherence.md)). 
+Insertion into the graph locates the right place
 to put an impl in the specialization hierarchy; if there is no right
 place (due to partial overlap but no containment), you get an overlap
 error. Specialization is consulted when selecting an impl (of course),
