@@ -691,3 +691,24 @@ mod issue_13092 {
         }
     }
 }
+
+mod crash_check_13128 {
+    struct A;
+
+    impl A {
+        fn a() {
+            struct B;
+
+            // pushes a NoCheck
+            impl Iterator for &B {
+                // Pops the NoCheck
+                type Item = A;
+
+                // Lints A -> Self
+                fn next(&mut self) -> Option<A> {
+                    Some(A)
+                }
+            }
+        }
+    }
+}
