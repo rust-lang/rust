@@ -4,7 +4,7 @@ pub struct Stdin(());
 pub struct Stdout(());
 pub struct Stderr(());
 
-const STDIO_CHANNEL: u32 = 1;
+pub const STDIO_CHANNEL: u32 = 1;
 
 impl Stdin {
     pub const fn new() -> Stdin {
@@ -81,7 +81,7 @@ impl io::Write for Stderr {
 }
 
 pub const STDIN_BUF_SIZE: usize = 4096;
-const STDOUT_BUF_SIZE: usize = 2048;
+pub const STDOUT_BUF_SIZE: usize = 2048;
 
 pub fn is_ebadf(_err: &io::Error) -> bool {
     true

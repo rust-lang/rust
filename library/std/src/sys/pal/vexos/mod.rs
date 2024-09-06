@@ -18,8 +18,10 @@ pub mod stdio;
 pub mod thread;
 pub mod time;
 
-use crate::{arch::asm, ptr::{self, addr_of_mut}};
+use crate::arch::asm;
 use crate::hash::{DefaultHasher, Hasher};
+use crate::ptr::{self, addr_of_mut};
+use crate::time::{Duration, Instant};
 
 #[cfg(not(test))]
 #[no_mangle]
@@ -53,12 +55,8 @@ pub unsafe extern "C" fn _start() -> ! {
 #[link_section = ".code_signature"]
 #[linkage = "weak"]
 #[used]
-static CODE_SIGNATURE: vex_sdk::vcodesig = vex_sdk::vcodesig {
-    magic: u32::from_le_bytes(*b"XVX5"),
-    r#type: 0,
-    owner: 2,
-    options: 0,
-};
+static CODE_SIGNATURE: vex_sdk::vcodesig =
+    vex_sdk::vcodesig { magic: u32::from_le_bytes(*b"XVX5"), r#type: 0, owner: 2, options: 0 };
 
 // This function is needed by the panic runtime. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
@@ -94,8 +92,19 @@ pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
 }
 
 pub fn abort_internal() -> ! {
+    let exit_time = Instant::now();
+    const FLUSH_TIMEOUT: Duration = Duration::from_millis(15);
+
     unsafe {
-        vex_sdk::vexTasksRun();
+        // Force the serial buffer to flush
+        while exit_time.elapsed() < FLUSH_TIMEOUT {
+            // If the buffer has been fully flushed, exit the loop
+            if vex_sdk::vexSerialWriteFree(stdio::STDIO_CHANNEL) == (stdio::STDOUT_BUF_SIZE as i32)
+            {
+                break;
+            }
+            vex_sdk::vexTasksRun();
+        }
         vex_sdk::vexSystemExitRequest();
     }
 
@@ -107,9 +116,7 @@ pub fn abort_internal() -> ! {
 fn hash_time() -> u64 {
     let mut hasher = DefaultHasher::new();
     // The closest we can get to a random number is the time since program start
-    let time = unsafe {
-        vex_sdk::vexSystemHighResTimeGet()
-    };
+    let time = unsafe { vex_sdk::vexSystemHighResTimeGet() };
     hasher.write_u64(time);
     hasher.finish()
 }
