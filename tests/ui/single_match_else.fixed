@@ -173,5 +173,5 @@ fn issue_10808(bar: Option<i32>) {
 }
 
 fn irrefutable_match() -> Option<&'static ExprNode> {
-    { Some(&NODE) }
+    Some(&NODE)
 }

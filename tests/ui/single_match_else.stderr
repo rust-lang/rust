@@ -207,7 +207,7 @@ LL | |             let x = 5;
 LL | |             None
 LL | |         },
 LL | |     }
-   | |_____^ help: try: `{ Some(&NODE) }`
+   | |_____^ help: try: `Some(&NODE)`
 
 error: aborting due to 10 previous errors
 

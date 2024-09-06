@@ -304,13 +304,19 @@ const DATA: Data = Data([1, 2, 3, 4]);
 const CONST_I32: i32 = 1;
 
 fn irrefutable_match() {
-    { println!() }
+    println!();
 
-    { println!() }
+    println!();
 
     let i = 0;
     {
         let a = 1;
         let b = 2;
     }
+
+    
+
+    
+
+    println!()
 }

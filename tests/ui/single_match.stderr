@@ -223,7 +223,7 @@ LL | /     match DATA {
 LL | |         DATA => println!(),
 LL | |         _ => {},
 LL | |     }
-   | |_____^ help: try: `{ println!() }`
+   | |_____^ help: try: `println!();`
 
 error: this pattern is irrefutable, `match` is useless
   --> tests/ui/single_match.rs:376:5
@@ -232,7 +232,7 @@ LL | /     match CONST_I32 {
 LL | |         CONST_I32 => println!(),
 LL | |         _ => {},
 LL | |     }
-   | |_____^ help: try: `{ println!() }`
+   | |_____^ help: try: `println!();`
 
 error: this pattern is irrefutable, `match` is useless
   --> tests/ui/single_match.rs:382:5
@@ -254,5 +254,32 @@ LL +         let b = 2;
 LL +     }
    |
 
-error: aborting due to 23 previous errors
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match.rs:390:5
+   |
+LL | /     match i {
+LL | |         i => {},
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: `match` expression can be removed
+
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match.rs:395:5
+   |
+LL | /     match i {
+LL | |         i => (),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: `match` expression can be removed
+
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match.rs:400:5
+   |
+LL | /     match CONST_I32 {
+LL | |         CONST_I32 => println!(),
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `println!()`
+
+error: aborting due to 26 previous errors
 

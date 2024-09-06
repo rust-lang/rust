@@ -386,4 +386,19 @@ fn irrefutable_match() {
         },
         _ => {},
     }
+
+    match i {
+        i => {},
+        _ => {},
+    }
+
+    match i {
+        i => (),
+        _ => (),
+    }
+
+    match CONST_I32 {
+        CONST_I32 => println!(),
+        _ => {},
+    }
 }
