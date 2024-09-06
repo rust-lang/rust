@@ -1407,16 +1407,17 @@ Executed at: {executed_at}"#,
         None
     }
 
-    /// Returns whether it's requested that `wasm-component-ld` is built as part
-    /// of the sysroot. This is done either with the `extended` key in
-    /// `config.toml` or with the `tools` set.
-    fn build_wasm_component_ld(&self) -> bool {
-        if self.config.extended {
-            return true;
+    /// Returns whether the specified tool is configured as part of this build.
+    ///
+    /// This requires that both the `extended` key is set and the `tools` key is
+    /// either unset or specifically contains the specified tool.
+    fn tool_enabled(&self, tool: &str) -> bool {
+        if !self.config.extended {
+            return false;
         }
         match &self.config.tools {
-            Some(set) => set.contains("wasm-component-ld"),
-            None => false,
+            Some(set) => set.contains(tool),
+            None => true,
         }
     }
 

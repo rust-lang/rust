@@ -693,14 +693,7 @@ impl Step for Cargo {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/cargo").default_condition(
-            builder.config.extended
-                && builder.config.tools.as_ref().map_or(
-                    true,
-                    // If `tools` is set, search list for this tool.
-                    |tools| tools.iter().any(|tool| tool == "cargo"),
-                ),
-        )
+        run.path("src/tools/cargo").default_condition(builder.tool_enabled("cargo"))
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -772,14 +765,7 @@ impl Step for RustAnalyzer {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/rust-analyzer").default_condition(
-            builder.config.extended
-                && builder
-                    .config
-                    .tools
-                    .as_ref()
-                    .map_or(true, |tools| tools.iter().any(|tool| tool == "rust-analyzer")),
-        )
+        run.path("src/tools/rust-analyzer").default_condition(builder.tool_enabled("rust-analyzer"))
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -821,12 +807,8 @@ impl Step for RustAnalyzerProcMacroSrv {
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
             .default_condition(
-                builder.config.extended
-                    && builder.config.tools.as_ref().map_or(true, |tools| {
-                        tools.iter().any(|tool| {
-                            tool == "rust-analyzer" || tool == "rust-analyzer-proc-macro-srv"
-                        })
-                    }),
+                builder.tool_enabled("rust-analyzer")
+                    || builder.tool_enabled("rust-analyzer-proc-macro-srv"),
             )
     }
 
@@ -874,16 +856,8 @@ impl Step for LlvmBitcodeLinker {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/llvm-bitcode-linker").default_condition(
-            builder.config.extended
-                && builder
-                    .config
-                    .tools
-                    .as_ref()
-                    .map_or(builder.build.unstable_features(), |tools| {
-                        tools.iter().any(|tool| tool == "llvm-bitcode-linker")
-                    }),
-        )
+        run.path("src/tools/llvm-bitcode-linker")
+            .default_condition(builder.tool_enabled("llvm-bitcode-linker"))
     }
 
     fn make_run(run: RunConfig<'_>) {
