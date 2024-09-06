@@ -838,14 +838,14 @@ impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
     }
 }
 
-struct OperandCollector<'tcx, 'map, 'locals, 'a> {
+struct OperandCollector<'a, 'locals, 'tcx> {
     state: &'a State<FlatSet<Scalar>>,
     visitor: &'a mut Collector<'tcx, 'locals>,
-    ecx: &'map mut InterpCx<'tcx, DummyMachine>,
-    map: &'map Map<'tcx>,
+    ecx: &'a mut InterpCx<'tcx, DummyMachine>,
+    map: &'a Map<'tcx>,
 }
 
-impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
+impl<'tcx> Visitor<'tcx> for OperandCollector<'_, '_, 'tcx> {
     fn visit_projection_elem(
         &mut self,
         _: PlaceRef<'tcx>,
