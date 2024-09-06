@@ -2033,7 +2033,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let simplified_self_ty = fast_reject::simplify_type(
                     self.tcx,
                     trait_ref.self_ty(),
-                    TreatParams::AsCandidateKey,
+                    TreatParams::InstantiateWithInfer,
                 );
                 trait_impls
                     .entry(trait_ref.def_id)

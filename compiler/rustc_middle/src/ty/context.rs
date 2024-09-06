@@ -426,7 +426,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 let simp = ty::fast_reject::simplify_type(
                     tcx,
                     self_ty,
-                    ty::fast_reject::TreatParams::ForLookup,
+                    ty::fast_reject::TreatParams::AsRigid,
                 )
                 .unwrap();
                 consider_impls_for_simplified_type(simp);

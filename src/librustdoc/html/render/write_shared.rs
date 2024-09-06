@@ -29,7 +29,7 @@ use itertools::Itertools;
 use regex::Regex;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
@@ -832,7 +832,7 @@ impl<'cx, 'cache> DocVisitor for TypeImplCollector<'cx, 'cache> {
             // Be aware of `tests/rustdoc/type-alias/deeply-nested-112515.rs` which might regress.
             let Some(impl_did) = impl_item_id.as_def_id() else { continue };
             let for_ty = self.cx.tcx().type_of(impl_did).skip_binder();
-            let reject_cx = DeepRejectCtxt::new(self.cx.tcx(), TreatParams::AsCandidateKey);
+            let reject_cx = DeepRejectCtxt::relate_infer_infer(self.cx.tcx());
             if !reject_cx.types_may_unify(aliased_ty, for_ty) {
                 continue;
             }
