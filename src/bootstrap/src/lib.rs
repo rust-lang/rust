@@ -332,14 +332,20 @@ impl Build {
         .trim()
         .to_string();
 
-        let initial_libdir = initial_target_dir
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .strip_prefix(&initial_sysroot)
-            .unwrap()
-            .to_path_buf();
+        // FIXME(Zalathar): Determining this path occasionally fails locally for
+        // unknown reasons, so we print some extra context to help track down why.
+        let find_initial_libdir = || {
+            let initial_libdir =
+                initial_target_dir.parent()?.parent()?.strip_prefix(&initial_sysroot).ok()?;
+            Some(initial_libdir.to_path_buf())
+        };
+        let Some(initial_libdir) = find_initial_libdir() else {
+            panic!(
+                "couldn't determine `initial_libdir` \
+                from target dir {initial_target_dir:?} \
+                and sysroot {initial_sysroot:?}"
+            )
+        };
 
         let version = std::fs::read_to_string(src.join("src").join("version"))
             .expect("failed to read src/version");
