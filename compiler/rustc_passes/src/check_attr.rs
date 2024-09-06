@@ -125,7 +125,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::inline, ..] => self.check_inline(hir_id, attr, span, target),
                 [sym::coverage, ..] => self.check_coverage(attr, span, target),
                 [sym::optimize, ..] => self.check_optimize(hir_id, attr, target),
-                [sym::no_sanitize, ..] => self.check_no_sanitize(hir_id, attr, span, target),
+                [sym::no_sanitize, ..] => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
                 [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target),
                 [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
                 [sym::target_feature, ..] => {
@@ -166,10 +168,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_legacy_const_generics(hir_id, attr, span, target, item)
                 }
                 [sym::rustc_lint_query_instability, ..] => {
-                    self.check_rustc_lint_query_instability(hir_id, attr, span, target)
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
+                [sym::rustc_lint_untracked_query_information, ..] => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
                 [sym::rustc_lint_diagnostics, ..] => {
-                    self.check_rustc_lint_diagnostics(hir_id, attr, span, target)
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
                 [sym::rustc_lint_opt_ty, ..] => self.check_rustc_lint_opt_ty(attr, span, target),
                 [sym::rustc_lint_opt_deny_field_access, ..] => {
@@ -450,11 +455,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 );
             }
         }
-    }
-
-    /// Checks that `#[no_sanitize(..)]` is applied to a function or method.
-    fn check_no_sanitize(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
-        self.check_applied_to_fn_or_method(hir_id, attr, span, target)
     }
 
     fn check_generic_attr(
@@ -1633,30 +1633,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 on_crate: hir_id == CRATE_HIR_ID,
             });
         }
-    }
-
-    /// Checks that the `#[rustc_lint_query_instability]` attribute is only applied to a function
-    /// or method.
-    fn check_rustc_lint_query_instability(
-        &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) {
-        self.check_applied_to_fn_or_method(hir_id, attr, span, target)
-    }
-
-    /// Checks that the `#[rustc_lint_diagnostics]` attribute is only applied to a function or
-    /// method.
-    fn check_rustc_lint_diagnostics(
-        &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) {
-        self.check_applied_to_fn_or_method(hir_id, attr, span, target)
     }
 
     /// Checks that the `#[rustc_lint_opt_ty]` attribute is only applied to a struct.
