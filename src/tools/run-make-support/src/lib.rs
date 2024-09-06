@@ -50,6 +50,7 @@ pub use external_deps::{c_build, cc, clang, htmldocck, llvm, python, rustc, rust
 // These rely on external dependencies.
 pub use cc::{cc, cxx, extra_c_flags, extra_cxx_flags, Cc};
 pub use c_build::{build_native_dynamic_lib, build_native_static_lib, build_native_static_lib_optimized, build_native_static_lib_cxx};
+pub use cargo::cargo;
 pub use clang::{clang, Clang};
 pub use htmldocck::htmldocck;
 pub use llvm::{
@@ -58,7 +59,7 @@ pub use llvm::{
     LlvmProfdata, LlvmReadobj,
 };
 pub use python::python_command;
-pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
+pub use rustc::{aux_build, bare_rustc, rustc, rustc_path, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
 /// [`diff`][mod@diff] is implemented in terms of the [similar] library.
@@ -98,3 +99,4 @@ pub use assertion_helpers::{
 pub use string::{
     count_regex_matches_in_files_with_extension, invalid_utf8_contains, invalid_utf8_not_contains,
 };
+use crate::external_deps::cargo;
