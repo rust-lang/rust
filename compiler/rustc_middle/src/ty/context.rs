@@ -3183,8 +3183,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Impl { of_trait: true })
-            && self.impl_trait_header(def_id).is_some_and(|header| header.do_not_recommend)
+        self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
 }
 
