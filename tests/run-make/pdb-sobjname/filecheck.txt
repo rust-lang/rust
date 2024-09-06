@@ -1,0 +1,1 @@
+CHECK: S_OBJNAME{{.+}}my_great_crate_name{{.+}}.o
