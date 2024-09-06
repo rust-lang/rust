@@ -46,7 +46,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    pub fn needs_drop(
+    fn needs_drop(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -76,7 +76,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsNonConstDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    pub fn needs_non_const_drop(
+    pub(crate) fn needs_non_const_drop(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -106,7 +106,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary.
-    pub fn has_mut_interior(
+    fn has_mut_interior(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,

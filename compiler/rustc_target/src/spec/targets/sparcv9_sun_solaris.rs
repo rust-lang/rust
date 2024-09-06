@@ -1,7 +1,7 @@
 use crate::abi::Endian;
 use crate::spec::{base, Cc, LinkerFlavor, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::solaris::opts();
     base.endian = Endian::Big;
     base.add_pre_link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64"]);

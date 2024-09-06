@@ -1443,9 +1443,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Trait = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record_array!(self.tables.explicit_super_predicates_of[def_id] <-
+                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
                     self.tcx.explicit_super_predicates_of(def_id).skip_binder());
-                record_array!(self.tables.explicit_implied_predicates_of[def_id] <-
+                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
                     self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
 
                 let module_children = self.tcx.module_children_local(local_id);
@@ -1454,9 +1454,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::TraitAlias = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record_array!(self.tables.explicit_super_predicates_of[def_id] <-
+                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
                     self.tcx.explicit_super_predicates_of(def_id).skip_binder());
-                record_array!(self.tables.explicit_implied_predicates_of[def_id] <-
+                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
                     self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
             }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {

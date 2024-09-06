@@ -2,7 +2,7 @@ use crate::spec::{
     crt_objects, cvs, Cc, FramePointer, LinkOutputKind, LinkerFlavor, Lld, TargetOptions,
 };
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     // This mirrors the linker options provided by clang. We presume lld for
     // now. When using clang as the linker it will supply these options for us,
     // so we only list them for ld/lld.

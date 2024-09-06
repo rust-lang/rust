@@ -11,7 +11,7 @@ use crate::spec::{
     TargetOptions,
 };
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),

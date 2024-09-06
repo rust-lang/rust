@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{opts, tvos_llvm_target, Arch, TargetAbi};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let arch = Arch::Arm64;
     Target {
         llvm_target: tvos_llvm_target(arch).into(),

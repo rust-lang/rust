@@ -8,7 +8,7 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 // See https://developer.android.com/ndk/guides/abis.html#v7a
 // for target ABI requirements.
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::android::opts();
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-march=armv7-a"]);
     Target {

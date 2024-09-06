@@ -628,7 +628,7 @@ where
         }
 
         // FIXME: This actually should destructure the `Result` we get from transmutability and
-        // register candiates. We probably need to register >1 since we may have an OR of ANDs.
+        // register candidates. We probably need to register >1 since we may have an OR of ANDs.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let certainty = ecx.is_transmutable(
                 goal.param_env,

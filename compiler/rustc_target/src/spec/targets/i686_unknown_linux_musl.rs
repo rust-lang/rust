@@ -1,6 +1,6 @@
 use crate::spec::{base, Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);

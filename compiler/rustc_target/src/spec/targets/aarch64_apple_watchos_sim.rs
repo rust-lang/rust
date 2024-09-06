@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{opts, watchos_sim_llvm_target, Arch, TargetAbi};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let arch = Arch::Arm64;
     Target {
         // Clang automatically chooses a more specific target based on

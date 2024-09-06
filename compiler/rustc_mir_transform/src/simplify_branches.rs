@@ -7,7 +7,7 @@ pub enum SimplifyConstCondition {
     Final,
 }
 /// A pass that replaces a branch with a goto when its condition is known.
-impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
+impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
     fn name(&self) -> &'static str {
         match self {
             SimplifyConstCondition::AfterConstProp => "SimplifyConstCondition-after-const-prop",

@@ -23,6 +23,8 @@
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
 	--copy-path-img-hover-filter: invert(35%);
+        --code-example-button-color: #7f7f7f;
+	--code-example-button-hover-color: #a5a5a5;
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);

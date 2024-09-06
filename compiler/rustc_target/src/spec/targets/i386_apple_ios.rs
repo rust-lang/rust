@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{ios_sim_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let arch = Arch::I386;
     // i386-apple-ios is a simulator target, even though it isn't declared
     // that way in the target name like the other ones...

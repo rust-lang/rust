@@ -354,7 +354,7 @@ struct Shifter<I: Interner> {
 }
 
 impl<I: Interner> Shifter<I> {
-    pub fn new(cx: I, amount: u32) -> Self {
+    fn new(cx: I, amount: u32) -> Self {
         Shifter { cx, current_index: ty::INNERMOST, amount }
     }
 }

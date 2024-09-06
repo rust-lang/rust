@@ -529,7 +529,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
 /// Detect and reject early-bound & escaping late-bound generic params in the type of assoc const bindings.
 ///
-/// FIXME(const_generics): This is a temporary and semi-artifical restriction until the
+/// FIXME(const_generics): This is a temporary and semi-artificial restriction until the
 /// arrival of *generic const generics*[^1].
 ///
 /// It might actually be possible that we can already support early-bound generic params

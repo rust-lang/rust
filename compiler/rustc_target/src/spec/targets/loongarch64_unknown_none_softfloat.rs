@@ -2,7 +2,7 @@ use crate::spec::{
     Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
 };
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "loongarch64-unknown-none".into(),
         metadata: crate::spec::TargetMetadata {

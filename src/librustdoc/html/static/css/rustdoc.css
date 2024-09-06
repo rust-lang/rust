@@ -378,7 +378,7 @@ pre.item-decl {
 .src .content pre {
 	padding: 20px;
 }
-.rustdoc.src .example-wrap pre.src-line-numbers  {
+.rustdoc.src .example-wrap .src-line-numbers  {
 	padding: 20px 0 20px 4px;
 }
 
@@ -568,10 +568,14 @@ img {
 	width: 48px;
 }
 
-ul.block, .block li {
+ul.block, .block li, .block ul {
 	padding: 0;
 	margin: 0;
 	list-style: none;
+}
+
+.block ul a {
+	padding-left: 1rem;
 }
 
 .sidebar-elems a,
@@ -583,6 +587,14 @@ ul.block, .block li {
 	border-left: solid var(--sidebar-elems-left-padding) transparent;
 	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
 	background-clip: border-box;
+}
+
+.hide-toc #rustdoc-toc, .hide-toc .in-crate {
+	display: none;
+}
+
+.hide-modnav #rustdoc-modnav {
+	display: none;
 }
 
 .sidebar h2 {
@@ -745,8 +757,30 @@ ul.block, .block li {
 	margin-bottom: 10px;
 }
 
-.rustdoc .example-wrap > pre {
+.rustdoc .example-wrap > pre,
+.rustdoc .scraped-example .src-line-numbers,
+.rustdoc .scraped-example .src-line-numbers > pre {
 	border-radius: 6px;
+}
+
+/*
+If the code example line numbers are displayed, there will be a weird radius in the middle from
+both the code example and the line numbers, so we need to remove the radius in this case.
+*/
+.rustdoc .example-wrap > .example-line-numbers,
+.rustdoc .scraped-example .src-line-numbers,
+.rustdoc .scraped-example .src-line-numbers > pre {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+.rustdoc .example-wrap > .example-line-numbers + pre,
+.rustdoc .scraped-example .rust {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.rustdoc .scraped-example {
+	position: relative;
 }
 
 /* For the last child of a div, the margin will be taken care of
@@ -760,15 +794,36 @@ ul.block, .block li {
 	flex-grow: 1;
 }
 
-.rustdoc:not(.src) .example-wrap pre {
+.scraped-example:not(.expanded) .example-wrap {
+	/* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
+	 * of lines shown in the un-expanded example code viewer. This pre needs to have
+	 * a max-height equal to line-height * N. The line-height is currently 1.5em,
+	 * and we include additional 10px for padding. */
+	max-height: calc(1.5em * 5 + 10px);
+}
+
+.rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers,
+.rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers > pre,
+.rustdoc:not(.src) .scraped-example:not(.expanded) pre.rust {
+	padding-bottom: 0;
+	/* See above comment, should be the same max-height. */
 	overflow: auto hidden;
+}
+.rustdoc:not(.src) .scraped-example .src-line-numbers {
+	padding-top: 0;
+}
+.rustdoc:not(.src) .scraped-example.expanded .src-line-numbers {
+	padding-bottom: 0;
+}
+
+.rustdoc:not(.src) .example-wrap pre {
+	overflow: auto;
 }
 
 .rustdoc .example-wrap pre.example-line-numbers,
-.rustdoc .example-wrap pre.src-line-numbers {
-	flex-grow: 0;
+.rustdoc .example-wrap .src-line-numbers {
 	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
-	overflow: initial;
+	flex-grow: 0;
 	text-align: right;
 	-webkit-user-select: none;
 	user-select: none;
@@ -776,7 +831,7 @@ ul.block, .block li {
 	color: var(--src-line-numbers-span-color);
 }
 
-.rustdoc .example-wrap pre.src-line-numbers {
+.rustdoc .scraped-example .src-line-numbers {
 	padding: 14px 0;
 }
 .src-line-numbers a, .src-line-numbers span {
@@ -1488,17 +1543,23 @@ instead, we check that it's not a "finger" cursor.
 .example-wrap .button-holder.keep-visible {
 	visibility: visible;
 }
-.example-wrap .button-holder .copy-button, .example-wrap .test-arrow {
+.example-wrap .button-holder > * {
 	background: var(--main-background-color);
 	cursor: pointer;
 	border-radius: var(--button-border-radius);
 	height: var(--copy-path-height);
 	width: var(--copy-path-width);
+	border: 0;
+	color: var(--code-example-button-color);
+}
+.example-wrap .button-holder > *:hover {
+	color: var(--code-example-button-hover-color);
+}
+.example-wrap .button-holder > *:not(:first-child) {
+	margin-left: var(--button-left-margin);
 }
 .example-wrap .button-holder .copy-button {
-	margin-left: var(--button-left-margin);
 	padding: 2px 0 0 4px;
-	border: 0;
 }
 .example-wrap .button-holder .copy-button::before,
 .example-wrap .test-arrow::before {
@@ -1852,6 +1913,11 @@ details.toggle {
 	position: relative;
 }
 
+details.big-toggle {
+	/* This makes [-] on the same line as <summary>. */
+	contain: inline-size;
+}
+
 /* The hideme class is used on summary tags that contain a span with
 	placeholder text shown only when the toggle is closed. For instance,
 	"Expand description" or "Show methods". */
@@ -1940,6 +2006,11 @@ details.toggle > summary:not(.hideme)::before {
 .impl-items > details.toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -24px;
+}
+
+details.big-toggle > summary:not(.hideme)::before {
+	left: -34px;
+	top: 9px;
 }
 
 /* When a "hideme" summary is open and the "Expand description" or "Show
@@ -2232,6 +2303,7 @@ in src-script.js and main.js
 	}
 }
 
+
 /* Should have min-width: (N + 1)px where N is the mobile breakpoint above. */
 @media (min-width: 701px) {
 	/* Places file-link for a scraped example on top of the example to save space.
@@ -2334,99 +2406,41 @@ in src-script.js and main.js
 	color: var(--scrape-example-help-hover-color);
 }
 
-.scraped-example {
-	/* So .scraped-example-title can be positioned absolutely */
-	position: relative;
-}
-
-.scraped-example .code-wrapper {
-	position: relative;
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-	width: 100%;
-}
-
-.scraped-example:not(.expanded) .code-wrapper {
-	/* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
-	 * of lines shown in the un-expanded example code viewer. This pre needs to have
-	 * a max-height equal to line-height * N. The line-height is currently 1.5em,
-	 * and we include additional 10px for padding. */
-	 max-height: calc(1.5em * 5 + 10px);
-}
-
-.scraped-example:not(.expanded) .code-wrapper pre {
-	overflow-y: hidden;
-	padding-bottom: 0;
-	/* See above comment, should be the same max-height. */
-	max-height: calc(1.5em * 5 + 10px);
-}
-
-.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper,
-.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper pre {
-	/* See above comment, except this height is based on HIDDEN_MAX_LINES. */
-	max-height: calc(1.5em * 10 + 10px);
-}
-
-.scraped-example .code-wrapper .next,
-.scraped-example .code-wrapper .prev,
-.scraped-example .code-wrapper .expand {
-	color: var(--main-color);
-	position: absolute;
-	top: 0.25em;
-	z-index: 1;
-	padding: 0;
-	background: none;
-	border: none;
-	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
-	-webkit-appearance: none;
-	opacity: 1;
-}
-.scraped-example .code-wrapper .prev {
-	right: 2.25em;
-}
-.scraped-example .code-wrapper .next {
-	right: 1.25em;
-}
-.scraped-example .code-wrapper .expand {
-	right: 0.25em;
-}
-
-.scraped-example:not(.expanded) .code-wrapper::before,
-.scraped-example:not(.expanded) .code-wrapper::after {
+.scraped-example:not(.expanded) .example-wrap::before,
+.scraped-example:not(.expanded) .example-wrap::after {
 	content: " ";
 	width: 100%;
 	height: 5px;
 	position: absolute;
 	z-index: 1;
 }
-.scraped-example:not(.expanded) .code-wrapper::before {
+.scraped-example:not(.expanded) .example-wrap::before {
 	top: 0;
 	background: linear-gradient(to bottom,
 		var(--scrape-example-code-wrapper-background-start),
 		var(--scrape-example-code-wrapper-background-end));
 }
-.scraped-example:not(.expanded) .code-wrapper::after {
+.scraped-example:not(.expanded) .example-wrap::after {
 	bottom: 0;
 	background: linear-gradient(to top,
 		var(--scrape-example-code-wrapper-background-start),
 		var(--scrape-example-code-wrapper-background-end));
 }
 
-.scraped-example .code-wrapper .example-wrap {
+.scraped-example:not(.expanded) {
 	width: 100%;
 	overflow-y: hidden;
 	margin-bottom: 0;
 }
 
-.scraped-example:not(.expanded) .code-wrapper .example-wrap {
+.scraped-example:not(.expanded) {
 	overflow-x: hidden;
 }
 
-.scraped-example .example-wrap .rust span.highlight {
+.scraped-example .rust span.highlight {
 	background: var(--scrape-example-code-line-highlight);
 }
-.scraped-example .example-wrap .rust span.highlight.focus {
+.scraped-example .rust span.highlight.focus {
 	background: var(--scrape-example-code-line-highlight-focus);
 }
 
@@ -2520,6 +2534,8 @@ by default.
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
 	--copy-path-img-hover-filter: invert(35%);
+	--code-example-button-color: #7f7f7f;
+	--code-example-button-hover-color: #595959;
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
@@ -2622,6 +2638,8 @@ by default.
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
 	--copy-path-img-hover-filter: invert(65%);
+	--code-example-button-color: #7f7f7f;
+	--code-example-button-hover-color: #a5a5a5;
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
@@ -2731,6 +2749,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--copy-path-button-color: #fff;
 	--copy-path-img-filter: invert(70%);
 	--copy-path-img-hover-filter: invert(100%);
+	--code-example-button-color: #b2b2b2;
+	--code-example-button-hover-color: #fff;
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);

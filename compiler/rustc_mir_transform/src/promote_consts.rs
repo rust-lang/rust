@@ -41,7 +41,7 @@ pub struct PromoteTemps<'tcx> {
     pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
 }
 
-impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
+impl<'tcx> crate::MirPass<'tcx> for PromoteTemps<'tcx> {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
@@ -498,7 +498,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 Some(x) if x != 0 => {}        // okay
                                 _ => return Err(Unpromotable), // value not known or 0 -- not okay
                             }
-                            // Furthermore, for signed divison, we also have to exclude `int::MIN / -1`.
+                            // Furthermore, for signed division, we also have to exclude `int::MIN / -1`.
                             if lhs_ty.is_signed() {
                                 match rhs_val.map(|x| x.to_int(sz)) {
                                     Some(-1) | None => {

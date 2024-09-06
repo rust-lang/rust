@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:51:9
+  --> $DIR/patterns_same_crate.rs:52:9
    |
 LL |         Some(_x) => (),
    |         ^^^^^^^^ matches no values because `UninhabitedEnum` is uninhabited
@@ -12,7 +12,7 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:56:9
+  --> $DIR/patterns_same_crate.rs:57:9
    |
 LL |         Some(_x) => (),
    |         ^^^^^^^^ matches no values because `UninhabitedVariants` is uninhabited
@@ -20,7 +20,7 @@ LL |         Some(_x) => (),
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:60:15
+  --> $DIR/patterns_same_crate.rs:61:15
    |
 LL |     while let PartiallyInhabitedVariants::Struct { x } = partially_inhabited_variant() {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ matches no values because `!` is uninhabited
@@ -28,7 +28,7 @@ LL |     while let PartiallyInhabitedVariants::Struct { x } = partially_inhabite
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:64:15
+  --> $DIR/patterns_same_crate.rs:65:15
    |
 LL |     while let Some(_x) = uninhabited_struct() {
    |               ^^^^^^^^ matches no values because `UninhabitedStruct` is uninhabited
@@ -36,7 +36,7 @@ LL |     while let Some(_x) = uninhabited_struct() {
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/patterns_same_crate.rs:67:15
+  --> $DIR/patterns_same_crate.rs:68:15
    |
 LL |     while let Some(_x) = uninhabited_tuple_struct() {
    |               ^^^^^^^^ matches no values because `UninhabitedTupleStruct` is uninhabited

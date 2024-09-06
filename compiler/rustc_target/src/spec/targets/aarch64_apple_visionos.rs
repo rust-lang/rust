@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{opts, visionos_llvm_target, Arch, TargetAbi};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let arch = Arch::Arm64;
     let mut base = opts("visionos", arch, TargetAbi::Normal);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;

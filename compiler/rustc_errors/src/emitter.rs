@@ -2300,7 +2300,7 @@ impl HumanEmitter {
                     // For example, for the following:
                     //   |
                     // 2 -     .await
-                    // 2 +     (note the left over whitepsace)
+                    // 2 +     (note the left over whitespace)
                     //   |
                     // We really want
                     //   |

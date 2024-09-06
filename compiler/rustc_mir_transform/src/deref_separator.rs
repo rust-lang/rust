@@ -78,7 +78,7 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     checker.patcher.apply(body);
 }
 
-impl<'tcx> MirPass<'tcx> for Derefer {
+impl<'tcx> crate::MirPass<'tcx> for Derefer {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         deref_finder(tcx, body);
     }

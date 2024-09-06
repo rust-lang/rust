@@ -1,6 +1,5 @@
 //@ edition:2021
 // skip-filecheck
-// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(async_closure, noop_waker, async_fn_traits)]
 #![allow(unused)]
@@ -22,7 +21,7 @@ pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
     }
 }
 
-async fn call(f: &mut impl AsyncFn(i32)) {
+async fn call(f: &impl AsyncFn(i32)) {
     f(0).await;
 }
 
@@ -43,10 +42,12 @@ async fn call_normal_mut<F: Future<Output = ()>>(f: &mut impl FnMut(i32) -> F) {
 }
 
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}.coroutine_closure_by_move.0.mir
-// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#0}.coroutine_by_move.0.mir
+// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#0}.built.after.mir
+// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#1}.built.after.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}.coroutine_closure_by_ref.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}.coroutine_closure_by_move.0.mir
-// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}-{closure#0}.coroutine_by_move.0.mir
+// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}-{closure#0}.built.after.mir
+// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}-{closure#1}.built.after.mir
 pub fn main() {
     block_on(async {
         let b = 2i32;
@@ -54,7 +55,7 @@ pub fn main() {
             let a = &a;
             let b = &b;
         };
-        call(&mut async_closure).await;
+        call(&async_closure).await;
         call_mut(&mut async_closure).await;
         call_once(async_closure).await;
 

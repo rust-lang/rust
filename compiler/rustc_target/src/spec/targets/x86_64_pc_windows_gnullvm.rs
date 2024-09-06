@@ -1,6 +1,6 @@
 use crate::spec::{base, Cc, LinkerFlavor, Lld, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::windows_gnullvm::opts();
     base.cpu = "x86-64".into();
     base.features = "+cx16,+sse3,+sahf".into();

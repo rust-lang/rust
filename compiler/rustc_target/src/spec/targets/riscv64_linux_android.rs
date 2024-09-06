@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::spec::{base, CodeModel, SanitizerSet, SplitDebuginfo, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "riscv64-linux-android".into(),
         metadata: crate::spec::TargetMetadata {

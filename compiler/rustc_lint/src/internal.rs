@@ -18,7 +18,7 @@ use tracing::debug;
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
     NonGlobImportTypeIrInherent, QueryInstability, SpanUseEqCtxtDiag, TyQualified, TykindDiag,
-    TykindKind, UntranslatableDiag,
+    TykindKind, TypeIrInherentUsage, UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -277,13 +277,39 @@ declare_tool_lint! {
     report_in_external_macro: true
 }
 
-declare_lint_pass!(TypeIr => [NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT]);
+declare_tool_lint! {
+    /// The `usage_of_type_ir_inherent` lint detects usage `rustc_type_ir::inherent`.
+    ///
+    /// This module should only be used within the trait solver.
+    pub rustc::USAGE_OF_TYPE_IR_INHERENT,
+    Allow,
+    "usage `rustc_type_ir::inherent` outside of trait system",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(TypeIr => [NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_INHERENT]);
 
 impl<'tcx> LateLintPass<'tcx> for TypeIr {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         let rustc_hir::ItemKind::Use(path, kind) = item.kind else { return };
 
         let is_mod_inherent = |def_id| cx.tcx.is_diagnostic_item(sym::type_ir_inherent, def_id);
+
+        // Path segments except for the final.
+        if let Some(seg) =
+            path.segments.iter().find(|seg| seg.res.opt_def_id().is_some_and(is_mod_inherent))
+        {
+            cx.emit_span_lint(USAGE_OF_TYPE_IR_INHERENT, seg.ident.span, TypeIrInherentUsage);
+        }
+        // Final path resolutions, like `use rustc_type_ir::inherent`
+        else if path.res.iter().any(|res| res.opt_def_id().is_some_and(is_mod_inherent)) {
+            cx.emit_span_lint(
+                USAGE_OF_TYPE_IR_INHERENT,
+                path.segments.last().unwrap().ident.span,
+                TypeIrInherentUsage,
+            );
+        }
+
         let (lo, hi, snippet) = match path.segments {
             [.., penultimate, segment]
                 if penultimate.res.opt_def_id().is_some_and(is_mod_inherent) =>

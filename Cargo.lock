@@ -199,7 +199,7 @@ version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01667f6f40216b9a0b2945e05fed5f1ad0ab6470e69cb9378001e37b1c0668e4"
 dependencies = [
- "object 0.36.3",
+ "object 0.36.4",
 ]
 
 [[package]]
@@ -2453,9 +2453,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.36.3"
+version = "0.36.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27b64972346851a39438c60b341ebc01bba47464ae329e55cf343eb93964efd9"
+checksum = "084f1a5821ac4c651660a94a7153d27ac9d8a53736203f58b31945ded098070a"
 dependencies = [
  "crc32fast",
  "flate2",
@@ -2463,7 +2463,7 @@ dependencies = [
  "indexmap",
  "memchr",
  "ruzstd 0.7.0",
- "wasmparser 0.215.0",
+ "wasmparser",
 ]
 
 [[package]]
@@ -3129,11 +3129,11 @@ dependencies = [
  "build_helper",
  "gimli 0.31.0",
  "libc",
- "object 0.36.3",
+ "object 0.36.4",
  "regex",
  "serde_json",
  "similar",
- "wasmparser 0.216.0",
+ "wasmparser",
 ]
 
 [[package]]
@@ -3408,7 +3408,7 @@ dependencies = [
  "itertools",
  "libc",
  "measureme",
- "object 0.36.3",
+ "object 0.36.4",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3447,7 +3447,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object 0.36.3",
+ "object 0.36.4",
  "pathdiff",
  "regex",
  "rustc_arena",
@@ -3569,6 +3569,7 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_hir_typeck",
  "rustc_incremental",
+ "rustc_index",
  "rustc_infer",
  "rustc_interface",
  "rustc_lint",
@@ -4431,7 +4432,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.6.0",
- "object 0.36.3",
+ "object 0.36.4",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_feature",
@@ -5849,7 +5850,7 @@ dependencies = [
  "lexopt",
  "tempfile",
  "wasi-preview1-component-adapter-provider",
- "wasmparser 0.216.0",
+ "wasmparser",
  "wat",
  "wit-component",
  "wit-parser",
@@ -5869,7 +5870,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04c23aebea22c8a75833ae08ed31ccc020835b12a41999e58c31464271b94a88"
 dependencies = [
  "leb128",
- "wasmparser 0.216.0",
+ "wasmparser",
 ]
 
 [[package]]
@@ -5885,16 +5886,7 @@ dependencies = [
  "serde_json",
  "spdx",
  "wasm-encoder",
- "wasmparser 0.216.0",
-]
-
-[[package]]
-name = "wasmparser"
-version = "0.215.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53fbde0881f24199b81cf49b6ff8f9c145ac8eb1b7fc439adb5c099734f7d90e"
-dependencies = [
- "bitflags 2.6.0",
+ "wasmparser",
 ]
 
 [[package]]
@@ -6228,7 +6220,7 @@ dependencies = [
  "serde_json",
  "wasm-encoder",
  "wasm-metadata",
- "wasmparser 0.216.0",
+ "wasmparser",
  "wit-parser",
 ]
 
@@ -6247,7 +6239,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "unicode-xid",
- "wasmparser 0.216.0",
+ "wasmparser",
 ]
 
 [[package]]

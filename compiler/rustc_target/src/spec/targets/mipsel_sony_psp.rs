@@ -3,7 +3,7 @@ use crate::spec::{cvs, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions}
 // The PSP has custom linker requirements.
 const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Gnu(Cc::No, Lld::No),
         &["--emit-relocs", "--nmagic"],

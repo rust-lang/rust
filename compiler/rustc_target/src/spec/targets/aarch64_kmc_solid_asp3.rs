@@ -1,6 +1,6 @@
 use crate::spec::{base, RelocModel, StackProbeType, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let base = base::solid::opts("asp3");
     Target {
         llvm_target: "aarch64-unknown-none".into(),

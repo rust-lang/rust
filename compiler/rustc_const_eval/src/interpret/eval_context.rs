@@ -574,7 +574,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                 // be computed as the type references non-existing names.
                                 // See <https://github.com/rust-lang/rust/issues/124348>.
                             } else {
-                                // Looks like the const is not captued by `required_consts`, that's bad.
+                                // Looks like the const is not captured by `required_consts`, that's bad.
                                 span_bug!(span, "interpret const eval failure of {val:?} which is not in required_consts");
                             }
                         }

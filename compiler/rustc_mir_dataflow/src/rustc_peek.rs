@@ -1,7 +1,7 @@
 use rustc_ast::MetaItem;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, Body, Local, Location, MirPass};
+use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -18,8 +18,6 @@ use crate::impls::{
 use crate::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
 use crate::{Analysis, JoinSemiLattice, ResultsCursor};
 
-pub struct SanityCheck;
-
 fn has_rustc_mir_with(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Option<MetaItem> {
     for attr in tcx.get_attrs(def_id, sym::rustc_mir) {
         let items = attr.meta_item_list();
@@ -33,53 +31,50 @@ fn has_rustc_mir_with(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Option<Me
     None
 }
 
-// FIXME: This should be a `MirLint`, but it needs to be moved back to `rustc_mir_transform` first.
-impl<'tcx> MirPass<'tcx> for SanityCheck {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let def_id = body.source.def_id();
-        if !tcx.has_attr(def_id, sym::rustc_mir) {
-            debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
-            return;
-        } else {
-            debug!("running rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
-        }
+pub fn sanity_check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+    let def_id = body.source.def_id();
+    if !tcx.has_attr(def_id, sym::rustc_mir) {
+        debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
+        return;
+    } else {
+        debug!("running rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
+    }
 
-        let param_env = tcx.param_env(def_id);
-        let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
+    let param_env = tcx.param_env(def_id);
+    let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
 
-        if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
-            let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
-                .into_engine(tcx, body)
-                .iterate_to_fixpoint();
+    if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
+        let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
+            .into_engine(tcx, body)
+            .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, flow_inits.into_results_cursor(body));
-        }
+        sanity_check_via_rustc_peek(tcx, flow_inits.into_results_cursor(body));
+    }
 
-        if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_uninit).is_some() {
-            let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
-                .into_engine(tcx, body)
-                .iterate_to_fixpoint();
+    if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_uninit).is_some() {
+        let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
+            .into_engine(tcx, body)
+            .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, flow_uninits.into_results_cursor(body));
-        }
+        sanity_check_via_rustc_peek(tcx, flow_uninits.into_results_cursor(body));
+    }
 
-        if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
-            let flow_def_inits = DefinitelyInitializedPlaces::new(body, &move_data)
-                .into_engine(tcx, body)
-                .iterate_to_fixpoint();
+    if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
+        let flow_def_inits = DefinitelyInitializedPlaces::new(body, &move_data)
+            .into_engine(tcx, body)
+            .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, flow_def_inits.into_results_cursor(body));
-        }
+        sanity_check_via_rustc_peek(tcx, flow_def_inits.into_results_cursor(body));
+    }
 
-        if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
-            let flow_liveness = MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint();
+    if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
+        let flow_liveness = MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, flow_liveness.into_results_cursor(body));
-        }
+        sanity_check_via_rustc_peek(tcx, flow_liveness.into_results_cursor(body));
+    }
 
-        if has_rustc_mir_with(tcx, def_id, sym::stop_after_dataflow).is_some() {
-            tcx.dcx().emit_fatal(StopAfterDataFlowEndedCompilation);
-        }
+    if has_rustc_mir_with(tcx, def_id, sym::stop_after_dataflow).is_some() {
+        tcx.dcx().emit_fatal(StopAfterDataFlowEndedCompilation);
     }
 }
 

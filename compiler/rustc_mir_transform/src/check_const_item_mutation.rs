@@ -6,11 +6,11 @@ use rustc_session::lint::builtin::CONST_ITEM_MUTATION;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
-use crate::{errors, MirLint};
+use crate::errors;
 
 pub struct CheckConstItemMutation;
 
-impl<'tcx> MirLint<'tcx> for CheckConstItemMutation {
+impl<'tcx> crate::MirLint<'tcx> for CheckConstItemMutation {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = ConstMutationChecker { body, tcx, target_local: None };
         checker.visit_body(body);

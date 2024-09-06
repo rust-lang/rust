@@ -349,8 +349,10 @@ declare_features! (
     (unstable, adt_const_params, "1.56.0", Some(95174)),
     /// Allows defining an `#[alloc_error_handler]`.
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
-    /// Allows trait methods with arbitrary self types.
+    /// Allows inherent and trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
+    /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
+    (unstable, arbitrary_self_types_pointers, "CURRENT_RUSTC_VERSION", Some(44874)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Allows using `label` operands in inline assembly.
@@ -585,7 +587,7 @@ declare_features! (
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
     (unstable, sha512_sm_x86, "CURRENT_RUSTC_VERSION", Some(126624)),
-    /// Shortern the tail expression lifetime
+    /// Shorten the tail expression lifetime
     (unstable, shorter_tail_lifetimes, "1.79.0", Some(123739)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),

@@ -10,7 +10,7 @@
 
 use crate::spec::{base, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv7em-none-eabihf".into(),
         metadata: crate::spec::TargetMetadata {

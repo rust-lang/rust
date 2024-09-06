@@ -986,7 +986,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// We **don't** support paths whose self type is an arbitrary type like `Struct::Ty` where
     /// struct `Struct` impls an in-scope trait that defines an associated type called `Ty`.
     /// For the latter case, we report ambiguity.
-    /// While desirable to support, the implemention would be non-trivial. Tracked in [#22519].
+    /// While desirable to support, the implementation would be non-trivial. Tracked in [#22519].
     ///
     /// At the time of writing, *inherent associated types* are also resolved here. This however
     /// is [problematic][iat]. A proper implementation would be as non-trivial as the one

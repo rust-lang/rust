@@ -58,7 +58,7 @@ pub enum Reveal {
     All,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SolverMode {
     /// Ordinary trait solving, using everywhere except for coherence.
     Normal,
@@ -132,7 +132,7 @@ pub enum GoalSource {
     /// results in better error messages by avoiding spurious errors.
     /// We do not erase overflow constraints in `normalizes-to` goals unless
     /// they are from an impl where-clause. This is necessary due to
-    /// backwards compatability, cc trait-system-refactor-initiatitive#70.
+    /// backwards compatibility, cc trait-system-refactor-initiatitive#70.
     ImplWhereBound,
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,

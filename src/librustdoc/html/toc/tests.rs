@@ -9,7 +9,10 @@ fn builder_smoke() {
     // there's been no macro mistake.
     macro_rules! push {
         ($level: expr, $name: expr) => {
-            assert_eq!(builder.push($level, $name.to_string(), "".to_string()), $name);
+            assert_eq!(
+                builder.push($level, $name.to_string(), $name.to_string(), "".to_string()),
+                $name
+            );
         };
     }
     push!(2, "0.1");
@@ -48,6 +51,7 @@ fn builder_smoke() {
                         TocEntry {
                             level: $level,
                             name: $name.to_string(),
+                            html: $name.to_string(),
                             sec_number: $name.to_string(),
                             id: "".to_string(),
                             children: toc!($($sub),*)

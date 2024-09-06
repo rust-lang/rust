@@ -228,7 +228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // coroutine bodies can't borrow from their parent closure. To fix this,
         // we force the inner coroutine to also be `move`. This only matters for
         // coroutine-closures that are `move` since otherwise they themselves will
-        // be borrowing from the outer environment, so there's no self-borrows occuring.
+        // be borrowing from the outer environment, so there's no self-borrows occurring.
         if let UpvarArgs::Coroutine(..) = args
             && let hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) =
                 self.tcx.coroutine_kind(closure_def_id).expect("coroutine should have kind")

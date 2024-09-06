@@ -878,7 +878,7 @@ impl<'tcx> OnUnimplementedFormatString {
             }
         }
         // we cannot return errors from processing the format string as hard error here
-        // as the diagnostic namespace gurantees that malformed input cannot cause an error
+        // as the diagnostic namespace guarantees that malformed input cannot cause an error
         //
         // if we encounter any error while processing we nevertheless want to show it as warning
         // so that users are aware that something is not correct
@@ -986,10 +986,10 @@ impl<'tcx> OnUnimplementedFormatString {
             })
             .collect();
         // we cannot return errors from processing the format string as hard error here
-        // as the diagnostic namespace gurantees that malformed input cannot cause an error
+        // as the diagnostic namespace guarantees that malformed input cannot cause an error
         //
         // if we encounter any error while processing the format string
-        // we don't want to show the potentially half assembled formated string,
+        // we don't want to show the potentially half assembled formatted string,
         // therefore we fall back to just showing the input string in this case
         //
         // The actual parser errors are emitted earlier

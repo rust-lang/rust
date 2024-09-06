@@ -411,7 +411,7 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
     }
 }
 
-pub fn mir_const_from_ty_const<'tcx>(
+pub(crate) fn mir_const_from_ty_const<'tcx>(
     tables: &mut Tables<'tcx>,
     ty_const: ty::Const<'tcx>,
     ty: Ty<'tcx>,

@@ -1,6 +1,6 @@
 use crate::spec::{base, PanicStrategy, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv7a-pc-windows-msvc".into(),
         metadata: crate::spec::TargetMetadata {

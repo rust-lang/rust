@@ -42,7 +42,7 @@ struct CallSite<'tcx> {
     source_info: SourceInfo,
 }
 
-impl<'tcx> MirPass<'tcx> for Inline {
+impl<'tcx> crate::MirPass<'tcx> for Inline {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
         // MIR correctly when Modified Condition/Decision Coverage is enabled.

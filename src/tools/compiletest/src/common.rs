@@ -274,6 +274,9 @@ pub struct Config {
     /// Flags to pass to the compiler when building for the target
     pub target_rustcflags: Vec<String>,
 
+    /// Whether the compiler and stdlib has been built with randomized struct layouts
+    pub rust_randomized_layout: bool,
+
     /// Whether tests should be optimized by default. Individual test-suites and test files may
     /// override this setting.
     pub optimize_tests: bool,

@@ -204,7 +204,7 @@ pub(crate) mod rustc {
     }
 
     impl<'tcx> Tree<Def<'tcx>, Ref<'tcx>> {
-        pub fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, Err> {
+        pub(crate) fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, Err> {
             use rustc_target::abi::HasDataLayout;
             let layout = layout_of(cx, ty)?;
 

@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // > same expression-containing item.
                 //
                 // To achieve this we get try to get the paths of the _Trait_ and
-                // _Type_, and we look inside thoses paths to try a find in one
+                // _Type_, and we look inside those paths to try a find in one
                 // of them a type whose parent is the same as the impl definition.
                 //
                 // If that's the case this means that this impl block declaration

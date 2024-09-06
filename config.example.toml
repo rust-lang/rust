@@ -230,6 +230,13 @@
 # use this rustfmt binary instead as the stage0 snapshot rustfmt.
 #rustfmt = "/path/to/rustfmt"
 
+# Instead of downloading the src/stage0 version of cargo-clippy specified,
+# use this cargo-clippy binary instead as the stage0 snapshot cargo-clippy.
+#
+# Note that this option should be used with the same toolchain as the `rustc` option above. 
+# Otherwise, clippy is likely to fail due to a toolchain conflict.
+#cargo-clippy = "/path/to/cargo-clippy"
+
 # Whether to build documentation by default. If false, rustdoc and
 # friends will still be compiled but they will not be used to generate any
 # documentation.
@@ -511,6 +518,9 @@
 # If you see a message from `tracing` saying "some trace filter directives would enable traces that
 # are disabled statically" because `max_level_info` is enabled, set this value to `true`.
 #debug-logging = rust.debug-assertions (boolean)
+
+# Whether or not to build rustc, tools and the libraries with randomized type layout
+#randomize-layout = false
 
 # Whether or not overflow checks are enabled for the compiler and standard
 # library.

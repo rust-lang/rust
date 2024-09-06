@@ -6,7 +6,7 @@ use tracing::trace;
 
 pub struct RemovePlaceMention;
 
-impl<'tcx> MirPass<'tcx> for RemovePlaceMention {
+impl<'tcx> crate::MirPass<'tcx> for RemovePlaceMention {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         !sess.opts.unstable_opts.mir_keep_place_mention
     }

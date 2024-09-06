@@ -1298,8 +1298,12 @@ impl<'a> Builder<'a> {
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         if run_compiler.stage == 0 {
-            // `ensure(Clippy { stage: 0 })` *builds* clippy with stage0, it doesn't use the beta clippy.
-            let cargo_clippy = self.build.config.download_clippy();
+            let cargo_clippy = self
+                .config
+                .initial_cargo_clippy
+                .clone()
+                .unwrap_or_else(|| self.build.config.download_clippy());
+
             let mut cmd = command(cargo_clippy);
             cmd.env("CARGO", &self.initial_cargo);
             return cmd;
@@ -1612,6 +1616,15 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Csymbol-mangling-version=v0");
         } else {
             rustflags.arg("-Csymbol-mangling-version=legacy");
+        }
+
+        // FIXME: the following components don't build with `-Zrandomize-layout` yet:
+        // - wasm-component-ld, due to the `wast`crate
+        // - rust-analyzer, due to the rowan crate
+        // so we exclude entire categories of steps here due to lack of fine-grained control over
+        // rustflags.
+        if self.config.rust_randomize_layout && mode != Mode::ToolStd && mode != Mode::ToolRustc {
+            rustflags.arg("-Zrandomize-layout");
         }
 
         // Enable compile-time checking of `cfg` names, values and Cargo `features`.
@@ -2188,6 +2201,9 @@ impl<'a> Builder<'a> {
             if let Some(mir_opt_level) = self.config.rust_validate_mir_opts {
                 rustflags.arg("-Zvalidate-mir");
                 rustflags.arg(&format!("-Zmir-opt-level={mir_opt_level}"));
+            }
+            if self.config.rust_randomize_layout {
+                rustflags.arg("--cfg=randomized_layouts");
             }
             // Always enable inlining MIR when building the standard library.
             // Without this flag, MIR inlining is disabled when incremental compilation is enabled.

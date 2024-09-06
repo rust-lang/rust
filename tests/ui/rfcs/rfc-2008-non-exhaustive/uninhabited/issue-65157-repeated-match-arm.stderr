@@ -1,16 +1,23 @@
 error: unreachable pattern
-  --> $DIR/issue-65157-repeated-match-arm.rs:15:9
+  --> $DIR/issue-65157-repeated-match-arm.rs:14:9
    |
-LL |         PartiallyInhabitedVariants::Struct { .. } => {},
-   |         ----------------------------------------- matches all the relevant values
-LL |         PartiallyInhabitedVariants::Struct { .. } => {},
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
+LL |         PartiallyInhabitedVariants::Struct { .. } => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ matches no values because `PartiallyInhabitedVariants` is uninhabited
    |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
   --> $DIR/issue-65157-repeated-match-arm.rs:2:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: unreachable pattern
+  --> $DIR/issue-65157-repeated-match-arm.rs:16:9
+   |
+LL |         PartiallyInhabitedVariants::Struct { .. } => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ matches no values because `PartiallyInhabitedVariants` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: aborting due to 2 previous errors
 

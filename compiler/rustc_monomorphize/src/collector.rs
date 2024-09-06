@@ -397,7 +397,7 @@ fn collect_items_rec<'tcx>(
         MonoItem::Static(def_id) => {
             recursion_depth_reset = None;
 
-            // Statics always get evaluted (which is possible because they can't be generic), so for
+            // Statics always get evaluated (which is possible because they can't be generic), so for
             // `MentionedItems` collection there's nothing to do here.
             if mode == CollectionMode::UsedItems {
                 let instance = Instance::mono(tcx, def_id);
