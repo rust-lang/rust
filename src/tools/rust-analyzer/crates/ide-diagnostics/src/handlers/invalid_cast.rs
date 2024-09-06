@@ -831,7 +831,7 @@ fn main() {
 //- minicore: sized
 fn main() {
     _ = ((), ()) as ();
-      //^^^^^^^^^^^^^^ error: non-primitive cast: `(_, _)` as `()`
+      //^^^^^^^^^^^^^^ error: non-primitive cast: `((), ())` as `()`
 }
 "#,
         );

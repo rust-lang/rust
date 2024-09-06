@@ -94,7 +94,8 @@ pub enum MirLowerError {
     UnresolvedField,
     UnsizedTemporary(Ty),
     MissingFunctionDefinition(DefWithBodyId, ExprId),
-    TypeMismatch(Option<TypeMismatch>),
+    TypeMismatch(TypeMismatch),
+    HasErrors,
     /// This should never happen. Type mismatch should catch everything.
     TypeError(&'static str),
     NotSupported(String),
@@ -179,15 +180,13 @@ impl MirLowerError {
                     body.pretty_print_expr(db.upcast(), *owner, *it, edition)
                 )?;
             }
-            MirLowerError::TypeMismatch(e) => match e {
-                Some(e) => writeln!(
-                    f,
-                    "Type mismatch: Expected {}, found {}",
-                    e.expected.display(db, edition),
-                    e.actual.display(db, edition),
-                )?,
-                None => writeln!(f, "Type mismatch: types mismatch with {{unknown}}",)?,
-            },
+            MirLowerError::HasErrors => writeln!(f, "Type inference result contains errors")?,
+            MirLowerError::TypeMismatch(e) => writeln!(
+                f,
+                "Type mismatch: Expected {}, found {}",
+                e.expected.display(db, edition),
+                e.actual.display(db, edition),
+            )?,
             MirLowerError::GenericArgNotProvided(id, subst) => {
                 let parent = id.parent;
                 let param = &db.generic_params(parent)[id.local_id];
@@ -2184,7 +2183,7 @@ pub fn lower_to_mir(
     root_expr: ExprId,
 ) -> Result<MirBody> {
     if infer.has_errors {
-        return Err(MirLowerError::TypeMismatch(None));
+        return Err(MirLowerError::HasErrors);
     }
     let mut ctx = MirLowerCtx::new(db, owner, body, infer);
     // 0 is return local

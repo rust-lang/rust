@@ -95,8 +95,10 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     fn test_crate(&self) -> CrateId {
         let crate_graph = self.crate_graph();
         let mut it = crate_graph.iter();
-        let res = it.next().unwrap();
-        assert!(it.next().is_none());
+        let mut res = it.next().unwrap();
+        while crate_graph[res].origin.is_lang() {
+            res = it.next().unwrap();
+        }
         res
     }
 }

@@ -851,7 +851,7 @@ impl InferenceContext<'_> {
                 };
 
                 for (expr, ty) in exprs.iter().zip(tys.iter_mut()) {
-                    self.infer_expr_coerce(*expr, &Expectation::has_type(ty.clone()));
+                    *ty = self.infer_expr_coerce(*expr, &Expectation::has_type(ty.clone()));
                 }
 
                 TyKind::Tuple(tys.len(), Substitution::from_iter(Interner, tys)).intern(Interner)
