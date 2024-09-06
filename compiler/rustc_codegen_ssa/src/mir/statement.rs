@@ -1,6 +1,5 @@
 use rustc_middle::mir::{self, NonDivergingIntrinsic};
 use rustc_middle::span_bug;
-use rustc_session::config::OptLevel;
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
@@ -68,10 +67,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_coverage(bx, kind, statement.source_info.scope);
             }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
-                if !matches!(bx.tcx().sess.opts.optimize, OptLevel::No | OptLevel::Less) {
-                    let op_val = self.codegen_operand(bx, op);
-                    bx.assume(op_val.immediate());
-                }
+                let op_val = self.codegen_operand(bx, op);
+                bx.assume(op_val.immediate());
             }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
                 mir::CopyNonOverlapping { ref count, ref src, ref dst },
