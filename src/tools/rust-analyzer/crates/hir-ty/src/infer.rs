@@ -708,7 +708,6 @@ impl<'a> InferenceContext<'a> {
             tuple_field_access_types: _,
             coercion_casts,
         } = &mut result;
-
         table.fallback_if_possible();
 
         // Comment from rustc:
@@ -754,7 +753,7 @@ impl<'a> InferenceContext<'a> {
             *has_errors = *has_errors || ty.contains_unknown();
         }
 
-        *has_errors = !type_mismatches.is_empty();
+        *has_errors |= !type_mismatches.is_empty();
 
         type_mismatches.retain(|_, mismatch| {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
@@ -797,20 +796,30 @@ impl<'a> InferenceContext<'a> {
         });
         for (_, subst) in method_resolutions.values_mut() {
             *subst = table.resolve_completely(subst.clone());
+            *has_errors =
+                *has_errors || subst.type_parameters(Interner).any(|ty| ty.contains_unknown());
         }
         for (_, subst) in assoc_resolutions.values_mut() {
             *subst = table.resolve_completely(subst.clone());
+            *has_errors =
+                *has_errors || subst.type_parameters(Interner).any(|ty| ty.contains_unknown());
         }
         for adjustment in expr_adjustments.values_mut().flatten() {
             adjustment.target = table.resolve_completely(adjustment.target.clone());
+            *has_errors = *has_errors || adjustment.target.contains_unknown();
         }
         for adjustment in pat_adjustments.values_mut().flatten() {
             *adjustment = table.resolve_completely(adjustment.clone());
+            *has_errors = *has_errors || adjustment.contains_unknown();
         }
         result.tuple_field_access_types = tuple_field_accesses_rev
             .into_iter()
             .enumerate()
             .map(|(idx, subst)| (TupleId(idx as u32), table.resolve_completely(subst)))
+            .inspect(|(_, subst)| {
+                *has_errors =
+                    *has_errors || subst.type_parameters(Interner).any(|ty| ty.contains_unknown());
+            })
             .collect();
         result
     }

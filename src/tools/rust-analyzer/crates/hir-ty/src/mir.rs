@@ -185,8 +185,8 @@ impl<V, T> ProjectionElem<V, T> {
                         never!("Out of bound tuple field");
                         TyKind::Error.intern(Interner)
                     }),
-                _ => {
-                    never!("Only tuple has tuple field");
+                ty => {
+                    never!("Only tuple has tuple field: {:?}", ty);
                     TyKind::Error.intern(Interner)
                 }
             },
