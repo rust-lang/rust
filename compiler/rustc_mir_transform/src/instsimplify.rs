@@ -27,7 +27,7 @@ impl InstSimplify {
     }
 }
 
-impl<'tcx> MirPass<'tcx> for InstSimplify {
+impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
     fn name(&self) -> &'static str {
         self.name()
     }

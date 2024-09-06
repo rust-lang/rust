@@ -242,7 +242,7 @@ where
                 //   }
                 // ...if `refs_answer` was computed lazily. The below early
                 // returns can be deleted without impacting the correctness of
-                // the algoritm; only its performance.
+                // the algorithm; only its performance.
                 debug!(?bytes_answer);
                 match bytes_answer {
                     Answer::No(_) if !self.assume.validity => return bytes_answer,
@@ -366,13 +366,13 @@ where
     }
 }
 
-pub enum Quantifier {
+enum Quantifier {
     ThereExists,
     ForAll,
 }
 
 impl Quantifier {
-    pub fn apply<R, I>(&self, iter: I) -> Answer<R>
+    fn apply<R, I>(&self, iter: I) -> Answer<R>
     where
         R: layout::Ref,
         I: IntoIterator<Item = Answer<R>>,

@@ -53,22 +53,20 @@
 //!
 //! # Memory layout
 //!
-//! For non-zero-sized values, a [`Box`] will use the [`Global`] allocator for
-//! its allocation. It is valid to convert both ways between a [`Box`] and a
-//! raw pointer allocated with the [`Global`] allocator, given that the
-//! [`Layout`] used with the allocator is correct for the type. More precisely,
-//! a `value: *mut T` that has been allocated with the [`Global`] allocator
-//! with `Layout::for_value(&*value)` may be converted into a box using
-//! [`Box::<T>::from_raw(value)`]. Conversely, the memory backing a `value: *mut
-//! T` obtained from [`Box::<T>::into_raw`] may be deallocated using the
-//! [`Global`] allocator with [`Layout::for_value(&*value)`].
+//! For non-zero-sized values, a [`Box`] will use the [`Global`] allocator for its allocation. It is
+//! valid to convert both ways between a [`Box`] and a raw pointer allocated with the [`Global`]
+//! allocator, given that the [`Layout`] used with the allocator is correct for the type and the raw
+//! pointer points to a valid value of the right type. More precisely, a `value: *mut T` that has
+//! been allocated with the [`Global`] allocator with `Layout::for_value(&*value)` may be converted
+//! into a box using [`Box::<T>::from_raw(value)`]. Conversely, the memory backing a `value: *mut T`
+//! obtained from [`Box::<T>::into_raw`] may be deallocated using the [`Global`] allocator with
+//! [`Layout::for_value(&*value)`].
 //!
-//! For zero-sized values, the `Box` pointer still has to be [valid] for reads
-//! and writes and sufficiently aligned. In particular, casting any aligned
-//! non-zero integer literal to a raw pointer produces a valid pointer, but a
-//! pointer pointing into previously allocated memory that since got freed is
-//! not valid. The recommended way to build a Box to a ZST if `Box::new` cannot
-//! be used is to use [`ptr::NonNull::dangling`].
+//! For zero-sized values, the `Box` pointer has to be non-null and sufficiently aligned. The
+//! recommended way to build a Box to a ZST if `Box::new` cannot be used is to use
+//! [`ptr::NonNull::dangling`].
+//!
+//! On top of these basic layout requirements, a `Box<T>` must point to a valid value of `T`.
 //!
 //! So long as `T: Sized`, a `Box<T>` is guaranteed to be represented
 //! as a single pointer and is also ABI-compatible with C pointers

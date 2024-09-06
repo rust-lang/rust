@@ -3,7 +3,7 @@ use crate::spec::{base, SanitizerSet, StackProbeType, Target, TargetOptions};
 // See https://developer.android.com/ndk/guides/abis.html#x86
 // for target ABI requirements.
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::android::opts();
 
     base.max_atomic_width = Some(64);

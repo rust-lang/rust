@@ -218,7 +218,7 @@ impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tc
         // This collect is more necessary than immediately apparent
         // because these facts go into `add_drop_live_facts_for()`,
         // which also writes to `all_facts`, and so this is genuinely
-        // a simulatneous overlapping mutable borrow.
+        // a simultaneous overlapping mutable borrow.
         // FIXME for future hackers: investigate whether this is
         // actually necessary; these facts come from Polonius
         // and probably maybe plausibly does not need to go back in.

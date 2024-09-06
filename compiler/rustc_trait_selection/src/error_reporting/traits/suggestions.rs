@@ -4663,7 +4663,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // because this suggest adding both return type in
         // the `FnSig` and a default return value in the body, so it
         // is not suitable for foreign function without a local body,
-        // and neighter for trait method which may be also implemented
+        // and neither for trait method which may be also implemented
         // in other place, so shouldn't change it's FnSig.
         fn choose_suggest_items<'tcx, 'hir>(
             tcx: TyCtxt<'tcx>,
@@ -5023,24 +5023,32 @@ impl<'v> Visitor<'v> for AwaitsVisitor {
     }
 }
 
+/// Suggest a new type parameter name for diagnostic purposes.
+///
+/// `name` is the preferred name you'd like to suggest if it's not in use already.
 pub trait NextTypeParamName {
     fn next_type_param_name(&self, name: Option<&str>) -> String;
 }
 
 impl NextTypeParamName for &[hir::GenericParam<'_>] {
     fn next_type_param_name(&self, name: Option<&str>) -> String {
-        // This is the list of possible parameter names that we might suggest.
+        // Type names are usually single letters in uppercase. So convert the first letter of input string to uppercase.
         let name = name.and_then(|n| n.chars().next()).map(|c| c.to_uppercase().to_string());
         let name = name.as_deref();
+
+        // This is the list of possible parameter names that we might suggest.
         let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];
-        let used_names = self
+
+        // Filter out used names based on `filter_fn`.
+        let used_names: Vec<Symbol> = self
             .iter()
-            .filter_map(|p| match p.name {
+            .filter_map(|param| match param.name {
                 hir::ParamName::Plain(ident) => Some(ident.name),
                 _ => None,
             })
-            .collect::<Vec<_>>();
+            .collect();
 
+        // Find a name from `possible_names` that is not in `used_names`.
         possible_names
             .iter()
             .find(|n| !used_names.contains(&Symbol::intern(n)))

@@ -88,7 +88,7 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
 
 pub struct ElaborateBoxDerefs;
 
-impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
+impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if let Some(def_id) = tcx.lang_items().owned_box() {
             let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::ZERO].did;

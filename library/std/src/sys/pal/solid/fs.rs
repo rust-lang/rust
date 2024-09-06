@@ -538,7 +538,7 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
             }
         };
         // ignore internal NotFound errors
-        if let Err(err) = result
+        if let Err(err) = &result
             && err.kind() != io::ErrorKind::NotFound
         {
             return result;

@@ -403,7 +403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     mode,
                 }));
             } else if bad_ty.reached_raw_pointer
-                && !self.tcx.features().arbitrary_self_types
+                && !self.tcx.features().arbitrary_self_types_pointers
                 && !self.tcx.sess.at_least_rust_2018()
             {
                 // this case used to be allowed by the compiler,

@@ -3,7 +3,7 @@ use crate::spec::{base, Target, TargetOptions};
 // This target is for glibc Linux on ARMv7 without thumb-mode, NEON or
 // hardfloat.
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-gnueabi".into(),
         metadata: crate::spec::TargetMetadata {

@@ -3,7 +3,7 @@ use crate::spec::{
     TargetOptions,
 };
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),
         metadata: crate::spec::TargetMetadata {
@@ -21,7 +21,6 @@ pub fn target() -> Target {
             os: "nuttx".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
-            llvm_abiname: "lp64d".into(),
             cpu: "generic-rv64".into(),
             max_atomic_width: Some(64),
             features: "+m,+a,+c".into(),

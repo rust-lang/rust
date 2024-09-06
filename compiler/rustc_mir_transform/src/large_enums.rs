@@ -27,7 +27,7 @@ pub struct EnumSizeOpt {
     pub(crate) discrepancy: u64,
 }
 
-impl<'tcx> MirPass<'tcx> for EnumSizeOpt {
+impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
     fn is_enabled(&self, sess: &Session) -> bool {
         // There are some differences in behavior on wasm and ARM that are not properly
         // understood, so we conservatively treat this optimization as unsound:

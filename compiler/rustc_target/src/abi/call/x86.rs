@@ -3,12 +3,12 @@ use crate::abi::{Abi, Align, HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::HasTargetSpec;
 
 #[derive(PartialEq)]
-pub enum Flavor {
+pub(crate) enum Flavor {
     General,
     FastcallOrVectorcall,
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, flavor: Flavor)
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, flavor: Flavor)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,

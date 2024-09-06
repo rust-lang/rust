@@ -417,7 +417,7 @@ pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<s
     parse_links(&doc)
 }
 
-/// Similiar version of `markdown_links` from rustdoc.
+/// Similar version of `markdown_links` from rustdoc.
 /// This will collect destination links and display text if exists.
 fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
     let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));

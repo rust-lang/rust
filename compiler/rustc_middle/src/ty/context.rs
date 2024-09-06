@@ -1475,7 +1475,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// provides a `TyCtxt`.
     ///
     /// By only providing the `TyCtxt` inside of the closure we enforce that the type
-    /// context and any interned alue (types, args, etc.) can only be used while `ty::tls`
+    /// context and any interned value (types, args, etc.) can only be used while `ty::tls`
     /// has a valid reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,

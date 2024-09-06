@@ -3,13 +3,11 @@
 #![feature(box_patterns)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
-#![feature(decl_macro)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
-#![feature(option_get_or_insert_default)]
 #![feature(round_char_boundary)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
@@ -17,6 +15,7 @@
 
 use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
+use rustc_const_eval::check_consts::{self, ConstCx};
 use rustc_const_eval::util;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
@@ -27,7 +26,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
     AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
-    MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
+    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
     Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
@@ -41,7 +40,7 @@ use tracing::{debug, trace};
 #[macro_use]
 mod pass_manager;
 
-use pass_manager::{self as pm, Lint, MirLint, WithMinOptLevel};
+use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 
 mod abort_unwinding_calls;
 mod add_call_guards;
@@ -96,6 +95,7 @@ mod remove_unneeded_drops;
 mod remove_zsts;
 mod required_consts;
 mod reveal_all;
+mod sanity_check;
 mod shim;
 mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
@@ -107,9 +107,6 @@ mod sroa;
 mod unreachable_enum_branching;
 mod unreachable_prop;
 mod validate;
-
-use rustc_const_eval::check_consts::{self, ConstCx};
-use rustc_mir_dataflow::rustc_peek;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -128,7 +125,7 @@ pub fn provide(providers: &mut Providers) {
         mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
         optimized_mir,
         is_mir_available,
-        is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
+        is_ctfe_mir_available: is_mir_available,
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
         promoted_mir,
@@ -221,10 +218,8 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
 fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
-    let mut set = FxIndexSet::default();
-
     // All body-owners have MIR associated with them.
-    set.extend(tcx.hir().body_owners());
+    let mut set: FxIndexSet<_> = tcx.hir().body_owners().collect();
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
@@ -249,8 +244,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 
     // No need to const-check a non-const `fn`.
     match const_kind {
-        Some(ConstContext::Const { .. } | ConstContext::Static(_))
-        | Some(ConstContext::ConstFn) => {}
+        Some(ConstContext::Const { .. } | ConstContext::Static(_) | ConstContext::ConstFn) => {}
         None => span_bug!(
             tcx.def_span(def),
             "`mir_const_qualif` should only be called on const fns and const items"
@@ -294,7 +288,7 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             &Lint(function_item_references::FunctionItemReferences),
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::Initial,
-            &rustc_peek::SanityCheck, // Just a lint
+            &Lint(sanity_check::SanityCheck),
         ],
         None,
     );

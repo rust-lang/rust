@@ -72,7 +72,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn has_self(&self, def_id: DefId, span: Span) -> bool {
         if let Some(local_sig_id) = def_id.as_local() {
             // The value may be missing due to recursive delegation.
-            // Error will be emmited later during HIR ty lowering.
+            // Error will be emitted later during HIR ty lowering.
             self.resolver.delegation_fn_sigs.get(&local_sig_id).map_or(false, |sig| sig.has_self)
         } else {
             match self.tcx.def_kind(def_id) {
@@ -139,7 +139,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn param_count(&self, sig_id: DefId) -> (usize, bool /*c_variadic*/) {
         if let Some(local_sig_id) = sig_id.as_local() {
             // Map may be filled incorrectly due to recursive delegation.
-            // Error will be emmited later during HIR ty lowering.
+            // Error will be emitted later during HIR ty lowering.
             match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
                 Some(sig) => (sig.param_count, sig.c_variadic),
                 None => (0, false),

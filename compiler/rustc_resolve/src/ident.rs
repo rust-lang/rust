@@ -445,7 +445,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                     }
                     Scope::DeriveHelpersCompat => {
-                        // FIXME: Try running this logic eariler, to allocate name bindings for
+                        // FIXME: Try running this logic earlier, to allocate name bindings for
                         // legacy derive helpers when creating an attribute invocation with
                         // following derives. Legacy derive helpers are not common, so it shouldn't
                         // affect performance. It should also allow to remove the `derives`

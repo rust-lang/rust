@@ -738,7 +738,7 @@ fn read_buf_full_read() {
 #[test]
 // Miri does not support signalling OOM
 #[cfg_attr(miri, ignore)]
-// 64-bit only to be sure the allocator will fail fast on an impossible to satsify size
+// 64-bit only to be sure the allocator will fail fast on an impossible to satisfy size
 #[cfg(target_pointer_width = "64")]
 fn try_oom_error() {
     let mut v = Vec::<u8>::new();

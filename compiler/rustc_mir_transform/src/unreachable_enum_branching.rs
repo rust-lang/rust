@@ -12,8 +12,6 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{Abi, Variants};
 use tracing::trace;
 
-use crate::MirPass;
-
 pub struct UnreachableEnumBranching;
 
 fn get_discriminant_local(terminator: &TerminatorKind<'_>) -> Option<Local> {
@@ -74,7 +72,7 @@ fn variant_discriminants<'tcx>(
     }
 }
 
-impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
+impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

@@ -968,8 +968,8 @@ fn univariant<
     let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
     let mut max_repr_align = repr.align;
     let mut inverse_memory_index: IndexVec<u32, FieldIdx> = fields.indices().collect();
-    let optimize = !repr.inhibit_struct_field_reordering();
-    if optimize && fields.len() > 1 {
+    let optimize_field_order = !repr.inhibit_struct_field_reordering();
+    if optimize_field_order && fields.len() > 1 {
         let end = if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
         let optimizing = &mut inverse_memory_index.raw[..end];
         let fields_excluding_tail = &fields.raw[..end];
@@ -1176,7 +1176,7 @@ fn univariant<
     // If field 5 has offset 0, offsets[0] is 5, and memory_index[5] should be 0.
     // Field 5 would be the first element, so memory_index is i:
     // Note: if we didn't optimize, it's already right.
-    let memory_index = if optimize {
+    let memory_index = if optimize_field_order {
         inverse_memory_index.invert_bijective_mapping()
     } else {
         debug_assert!(inverse_memory_index.iter().copied().eq(fields.indices()));
@@ -1189,6 +1189,9 @@ fn univariant<
     }
     let mut layout_of_single_non_zst_field = None;
     let mut abi = Abi::Aggregate { sized };
+
+    let optimize_abi = !repr.inhibit_newtype_abi_optimization();
+
     // Try to make this a Scalar/ScalarPair.
     if sized && size.bytes() > 0 {
         // We skip *all* ZST here and later check if we are good in terms of alignment.
@@ -1205,7 +1208,7 @@ fn univariant<
                     match field.abi {
                         // For plain scalars, or vectors of them, we can't unpack
                         // newtypes for `#[repr(C)]`, as that affects C ABIs.
-                        Abi::Scalar(_) | Abi::Vector { .. } if optimize => {
+                        Abi::Scalar(_) | Abi::Vector { .. } if optimize_abi => {
                             abi = field.abi;
                         }
                         // But scalar pairs are Rust-specific and get

@@ -15,7 +15,7 @@ use rustc_span::{sym, FileName, Symbol};
 use tracing::info;
 
 use super::print_item::{full_path, item_path, print_item};
-use super::sidebar::{print_sidebar, sidebar_module_like, Sidebar};
+use super::sidebar::{print_sidebar, sidebar_module_like, ModuleLike, Sidebar};
 use super::write_shared::write_shared;
 use super::{collect_spans_and_sources, scrape_examples_help, AllTypes, LinkFromSrc, StylePath};
 use crate::clean::types::ExternalLocation;
@@ -617,12 +617,14 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = Buffer::html();
 
-        let blocks = sidebar_module_like(all.item_sections());
+        // all.html is not customizable, so a blank id map is fine
+        let blocks = sidebar_module_like(all.item_sections(), &mut IdMap::new(), ModuleLike::Crate);
         let bar = Sidebar {
             title_prefix: "",
             title: "",
             is_crate: false,
             is_mod: false,
+            parent_is_crate: false,
             blocks: vec![blocks],
             path: String::new(),
         };

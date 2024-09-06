@@ -1692,16 +1692,8 @@ impl Step for Sysroot {
             build_helper::exit!(1);
         }
 
-        // Unlike rust-src component, we have to handle rustc-src a bit differently.
-        // When using CI rustc, we copy rustc-src component from its sysroot,
-        // otherwise we handle it in a similar way what we do for rust-src above.
-        if builder.download_rustc() {
-            cp_rustc_component_to_ci_sysroot(
-                builder,
-                &sysroot,
-                builder.config.ci_rustc_dev_contents(),
-            );
-        } else {
+        // rustc-src component is already part of CI rustc's sysroot
+        if !builder.download_rustc() {
             let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
             t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
             let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");

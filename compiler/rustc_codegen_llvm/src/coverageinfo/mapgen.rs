@@ -422,7 +422,7 @@ fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
             (instance.def_id(), body)
         });
 
-    // Functions whose coverage statments were found inlined into other functions.
+    // Functions whose coverage statements were found inlined into other functions.
     let mut used_via_inlining = FxHashSet::default();
     // Functions that were instrumented, but had all of their coverage statements
     // removed by later MIR transforms (e.g. UnreachablePropagation).

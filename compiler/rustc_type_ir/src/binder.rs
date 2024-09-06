@@ -776,7 +776,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     }
 
     /// It is sometimes necessary to adjust the De Bruijn indices during instantiation. This occurs
-    /// when we are instantating a type with escaping bound vars into a context where we have
+    /// when we are instantiating a type with escaping bound vars into a context where we have
     /// passed through binders. That's quite a mouthful. Let's see an example:
     ///
     /// ```

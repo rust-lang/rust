@@ -12,7 +12,7 @@
 
 use crate::spec::{base, crt_objects, Cc, LinkSelfContainedDefault, LinkerFlavor, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();

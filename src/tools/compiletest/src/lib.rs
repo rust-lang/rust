@@ -99,6 +99,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
+        .optflag(
+            "",
+            "rust-randomized-layout",
+            "set this when rustc/stdlib were compiled with randomized layouts",
+        )
         .optflag("", "optimize-tests", "run tests with optimizations enabled")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
@@ -286,6 +291,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         host_rustcflags: matches.opt_strs("host-rustcflags"),
         target_rustcflags: matches.opt_strs("target-rustcflags"),
         optimize_tests: matches.opt_present("optimize-tests"),
+        rust_randomized_layout: matches.opt_present("rust-randomized-layout"),
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,

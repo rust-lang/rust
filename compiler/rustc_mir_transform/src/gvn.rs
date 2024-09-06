@@ -111,7 +111,7 @@ use crate::ssa::{AssignedValue, SsaLocals};
 
 pub struct GVN;
 
-impl<'tcx> MirPass<'tcx> for GVN {
+impl<'tcx> crate::MirPass<'tcx> for GVN {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }

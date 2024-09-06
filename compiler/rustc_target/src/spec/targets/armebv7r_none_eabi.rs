@@ -3,7 +3,7 @@
 use crate::abi::Endian;
 use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armebv7r-none-eabi".into(),
         metadata: crate::spec::TargetMetadata {

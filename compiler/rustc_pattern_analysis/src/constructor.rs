@@ -288,7 +288,7 @@ impl IntRange {
     /// Best effort; will not know that e.g. `255u8..` is a singleton.
     pub fn is_singleton(&self) -> bool {
         // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
-        // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
+        // to infinite, this correctly only detects ranges that contain exactly one `Finite(x)`.
         self.lo.plus_one() == Some(self.hi)
     }
 

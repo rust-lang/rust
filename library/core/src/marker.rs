@@ -288,8 +288,19 @@ marker_impls! {
 /// }
 /// ```
 ///
-/// There is a small difference between the two: the `derive` strategy will also place a `Copy`
-/// bound on type parameters, which isn't always desired.
+/// There is a small difference between the two. The `derive` strategy will also place a `Copy`
+/// bound on type parameters:
+///
+/// ```
+/// #[derive(Clone)]
+/// struct MyStruct<T>(T);
+///
+/// impl<T: Copy> Copy for MyStruct<T> { }
+/// ```
+///
+/// This isn't always desired. For example, shared references (`&T`) can be copied regardless of
+/// whether `T` is `Copy`. Likewise, a generic struct containing markers such as [`PhantomData`]
+/// could potentially be duplicated with a bit-wise copy.
 ///
 /// ## What's the difference between `Copy` and `Clone`?
 ///

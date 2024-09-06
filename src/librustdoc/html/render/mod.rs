@@ -1250,6 +1250,7 @@ fn render_assoc_items_inner(
     let Some(v) = cache.impls.get(&it) else { return };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
+        let mut close_tags = <Vec<&str>>::with_capacity(1);
         let mut tmp_buf = Buffer::html();
         let (render_mode, id, class_html) = match what {
             AssocItemRender::All => {
@@ -1260,6 +1261,8 @@ fn render_assoc_items_inner(
                 let id =
                     cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
                 let derived_id = cx.derive_id(&id);
+                tmp_buf.write_str("<details class=\"toggle big-toggle\" open><summary>");
+                close_tags.push("</details>");
                 write_impl_section_heading(
                     &mut tmp_buf,
                     &format!(
@@ -1269,6 +1272,7 @@ fn render_assoc_items_inner(
                     ),
                     &id,
                 );
+                tmp_buf.write_str("</summary>");
                 if let Some(def_id) = type_.def_id(cx.cache()) {
                     cx.deref_id_map.insert(def_id, id);
                 }
@@ -1302,6 +1306,9 @@ fn render_assoc_items_inner(
                 impls_buf.into_inner()
             )
             .unwrap();
+            for tag in close_tags.into_iter().rev() {
+                w.write_str(tag).unwrap();
+            }
         }
     }
 
@@ -1558,7 +1565,7 @@ fn render_impl(
     let cache = &shared.cache;
     let traits = &cache.traits;
     let trait_ = i.trait_did().map(|did| &traits[&did]);
-    let mut close_tags = String::new();
+    let mut close_tags = <Vec<&str>>::with_capacity(2);
 
     // For trait implementations, the `interesting` output contains all methods that have doc
     // comments, and the `boring` output contains all methods that do not. The distinction is
@@ -1787,13 +1794,64 @@ fn render_impl(
     let mut default_impl_items = Buffer::empty_from(w);
     let impl_ = i.inner_impl();
 
+    // Impl items are grouped by kinds:
+    //
+    // 1. Constants
+    // 2. Types
+    // 3. Functions
+    //
+    // This order is because you can have associated constants used in associated types (like array
+    // length), and both in associcated functions. So with this order, when reading from top to
+    // bottom, you should see items definitions before they're actually used most of the time.
+    let mut assoc_types = Vec::new();
+    let mut methods = Vec::new();
+
     if !impl_.is_negative_trait_impl() {
         for trait_item in &impl_.items {
+            match *trait_item.kind {
+                clean::MethodItem(..) | clean::TyMethodItem(_) => methods.push(trait_item),
+                clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => {
+                    assoc_types.push(trait_item)
+                }
+                clean::TyAssocConstItem(..) | clean::AssocConstItem(_) => {
+                    // We render it directly since they're supposed to come first.
+                    doc_impl_item(
+                        &mut default_impl_items,
+                        &mut impl_items,
+                        cx,
+                        trait_item,
+                        if trait_.is_some() { &i.impl_item } else { parent },
+                        link,
+                        render_mode,
+                        false,
+                        trait_,
+                        rendering_params,
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        for assoc_type in assoc_types {
             doc_impl_item(
                 &mut default_impl_items,
                 &mut impl_items,
                 cx,
-                trait_item,
+                assoc_type,
+                if trait_.is_some() { &i.impl_item } else { parent },
+                link,
+                render_mode,
+                false,
+                trait_,
+                rendering_params,
+            );
+        }
+        for method in methods {
+            doc_impl_item(
+                &mut default_impl_items,
+                &mut impl_items,
+                cx,
+                method,
                 if trait_.is_some() { &i.impl_item } else { parent },
                 link,
                 render_mode,
@@ -1870,7 +1928,7 @@ fn render_impl(
     if render_mode == RenderMode::Normal {
         let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
         if toggled {
-            close_tags.insert_str(0, "</details>");
+            close_tags.push("</details>");
             write!(
                 w,
                 "<details class=\"toggle implementors-toggle\"{}>\
@@ -1916,14 +1974,16 @@ fn render_impl(
         }
         if !default_impl_items.is_empty() || !impl_items.is_empty() {
             w.write_str("<div class=\"impl-items\">");
-            close_tags.insert_str(0, "</div>");
+            close_tags.push("</div>");
         }
     }
     if !default_impl_items.is_empty() || !impl_items.is_empty() {
         w.push_buffer(default_impl_items);
         w.push_buffer(impl_items);
     }
-    w.write_str(&close_tags);
+    for tag in close_tags.into_iter().rev() {
+        w.write_str(tag);
+    }
 }
 
 // Render the items that appear on the right side of methods, impls, and
@@ -2446,28 +2506,6 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
         let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
 
-        write!(
-            &mut w,
-            "<div class=\"scraped-example {expanded_cls}\" data-locs=\"{locations}\">\
-                <div class=\"scraped-example-title\">\
-                   {name} (<a href=\"{url}\">{title}</a>)\
-                </div>\
-                <div class=\"code-wrapper\">",
-            expanded_cls = if needs_expansion { "" } else { "expanded" },
-            name = call_data.display_name,
-            url = init_url,
-            title = init_title,
-            // The locations are encoded as a data attribute, so they can be read
-            // later by the JS for interactions.
-            locations = Escape(&locations_encoded)
-        )
-        .unwrap();
-
-        if line_ranges.len() > 1 {
-            w.write_str(r#"<button class="prev">&pr;</button> <button class="next">&sc;</button>"#)
-                .unwrap();
-        }
-
         // Look for the example file in the source map if it exists, otherwise return a dummy span
         let file_span = (|| {
             let source_map = tcx.sess.source_map();
@@ -2498,9 +2536,16 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
             cx,
             &cx.root_path(),
             highlight::DecorationInfo(decoration_info),
-            sources::SourceContext::Embedded { offset: line_min, needs_expansion },
+            sources::SourceContext::Embedded(sources::ScrapedInfo {
+                needs_prev_next_buttons: line_ranges.len() > 1,
+                needs_expansion,
+                offset: line_min,
+                name: &call_data.display_name,
+                url: init_url,
+                title: init_title,
+                locations: locations_encoded,
+            }),
         );
-        w.write_str("</div></div>").unwrap();
 
         true
     };

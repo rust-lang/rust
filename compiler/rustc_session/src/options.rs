@@ -358,94 +358,98 @@ fn build_options<O: Default>(
 
 #[allow(non_upper_case_globals)]
 mod desc {
-    pub const parse_no_flag: &str = "no value";
-    pub const parse_bool: &str = "one of: `y`, `yes`, `on`, `true`, `n`, `no`, `off` or `false`";
-    pub const parse_opt_bool: &str = parse_bool;
-    pub const parse_string: &str = "a string";
-    pub const parse_opt_string: &str = parse_string;
-    pub const parse_string_push: &str = parse_string;
-    pub const parse_opt_langid: &str = "a language identifier";
-    pub const parse_opt_pathbuf: &str = "a path";
-    pub const parse_list: &str = "a space-separated list of strings";
-    pub const parse_list_with_polarity: &str =
+    pub(crate) const parse_no_flag: &str = "no value";
+    pub(crate) const parse_bool: &str =
+        "one of: `y`, `yes`, `on`, `true`, `n`, `no`, `off` or `false`";
+    pub(crate) const parse_opt_bool: &str = parse_bool;
+    pub(crate) const parse_string: &str = "a string";
+    pub(crate) const parse_opt_string: &str = parse_string;
+    pub(crate) const parse_string_push: &str = parse_string;
+    pub(crate) const parse_opt_langid: &str = "a language identifier";
+    pub(crate) const parse_opt_pathbuf: &str = "a path";
+    pub(crate) const parse_list: &str = "a space-separated list of strings";
+    pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
-    pub const parse_comma_list: &str = "a comma-separated list of strings";
-    pub const parse_opt_comma_list: &str = parse_comma_list;
-    pub const parse_number: &str = "a number";
-    pub const parse_opt_number: &str = parse_number;
-    pub const parse_frame_pointer: &str = "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf` or `always`";
-    pub const parse_threads: &str = parse_number;
-    pub const parse_time_passes_format: &str = "`text` (default) or `json`";
-    pub const parse_passes: &str = "a space-separated list of passes, or `all`";
-    pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
-    pub const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
-    pub const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
-    pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
-    pub const parse_oom_strategy: &str = "either `panic` or `abort`";
-    pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, or `thread`";
-    pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
-    pub const parse_cfguard: &str =
+    pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
+    pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
+    pub(crate) const parse_number: &str = "a number";
+    pub(crate) const parse_opt_number: &str = parse_number;
+    pub(crate) const parse_frame_pointer: &str = "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf` or `always`";
+    pub(crate) const parse_threads: &str = parse_number;
+    pub(crate) const parse_time_passes_format: &str = "`text` (default) or `json`";
+    pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
+    pub(crate) const parse_panic_strategy: &str = "either `unwind` or `abort`";
+    pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
+    pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
+    pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
+    pub(crate) const parse_oom_strategy: &str = "either `panic` or `abort`";
+    pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
+    pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, or `thread`";
+    pub(crate) const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
+    pub(crate) const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
-    pub const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
-    pub const parse_debuginfo: &str = "either an integer (0, 1, 2), `none`, `line-directives-only`, `line-tables-only`, `limited`, or `full`";
-    pub const parse_debuginfo_compression: &str = "one of `none`, `zlib`, or `zstd`";
-    pub const parse_collapse_macro_debuginfo: &str = "one of `no`, `external`, or `yes`";
-    pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
-    pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
-    pub const parse_optimization_fuel: &str = "crate=integer";
-    pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
-    pub const parse_instrument_coverage: &str = parse_bool;
-    pub const parse_coverage_options: &str =
+    pub(crate) const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
+    pub(crate) const parse_debuginfo: &str = "either an integer (0, 1, 2), `none`, `line-directives-only`, `line-tables-only`, `limited`, or `full`";
+    pub(crate) const parse_debuginfo_compression: &str = "one of `none`, `zlib`, or `zstd`";
+    pub(crate) const parse_collapse_macro_debuginfo: &str = "one of `no`, `external`, or `yes`";
+    pub(crate) const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
+    pub(crate) const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
+    pub(crate) const parse_optimization_fuel: &str = "crate=integer";
+    pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
+    pub(crate) const parse_instrument_coverage: &str = parse_bool;
+    pub(crate) const parse_coverage_options: &str =
         "`block` | `branch` | `condition` | `mcdc` | `no-mir-spans`";
-    pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
-    pub const parse_unpretty: &str = "`string` or `string=string`";
-    pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
-    pub const parse_next_solver_config: &str =
+    pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
+    pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
+    pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
+    pub(crate) const parse_next_solver_config: &str =
         "a comma separated list of solver configurations: `globally` (default), and `coherence`";
-    pub const parse_lto: &str =
+    pub(crate) const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
-    pub const parse_linker_plugin_lto: &str =
+    pub(crate) const parse_linker_plugin_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or the path to the linker plugin";
-    pub const parse_location_detail: &str = "either `none`, or a comma separated list of location details to track: `file`, `line`, or `column`";
-    pub const parse_fmt_debug: &str = "either `full`, `shallow`, or `none`";
-    pub const parse_switch_with_opt_path: &str =
+    pub(crate) const parse_location_detail: &str = "either `none`, or a comma separated list of location details to track: `file`, `line`, or `column`";
+    pub(crate) const parse_fmt_debug: &str = "either `full`, `shallow`, or `none`";
+    pub(crate) const parse_switch_with_opt_path: &str =
         "an optional path to the profiling data output directory";
-    pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
-    pub const parse_symbol_mangling_version: &str =
+    pub(crate) const parse_merge_functions: &str =
+        "one of: `disabled`, `trampolines`, or `aliases`";
+    pub(crate) const parse_symbol_mangling_version: &str =
         "one of: `legacy`, `v0` (RFC 2603), or `hashed`";
-    pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
-    pub const parse_relocation_model: &str =
+    pub(crate) const parse_src_file_hash: &str = "either `md5` or `sha1`";
+    pub(crate) const parse_relocation_model: &str =
         "one of supported relocation models (`rustc --print relocation-models`)";
-    pub const parse_code_model: &str = "one of supported code models (`rustc --print code-models`)";
-    pub const parse_tls_model: &str = "one of supported TLS models (`rustc --print tls-models`)";
-    pub const parse_target_feature: &str = parse_string;
-    pub const parse_terminal_url: &str =
+    pub(crate) const parse_code_model: &str =
+        "one of supported code models (`rustc --print code-models`)";
+    pub(crate) const parse_tls_model: &str =
+        "one of supported TLS models (`rustc --print tls-models`)";
+    pub(crate) const parse_target_feature: &str = parse_string;
+    pub(crate) const parse_terminal_url: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `auto`";
-    pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
-    pub const parse_split_debuginfo: &str =
+    pub(crate) const parse_wasi_exec_model: &str = "either `command` or `reactor`";
+    pub(crate) const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
-    pub const parse_split_dwarf_kind: &str =
+    pub(crate) const parse_split_dwarf_kind: &str =
         "one of supported split dwarf modes (`split` or `single`)";
-    pub const parse_link_self_contained: &str = "one of: `y`, `yes`, `on`, `n`, `no`, `off`, or a list of enabled (`+` prefix) and disabled (`-` prefix) \
+    pub(crate) const parse_link_self_contained: &str = "one of: `y`, `yes`, `on`, `n`, `no`, `off`, or a list of enabled (`+` prefix) and disabled (`-` prefix) \
         components: `crto`, `libc`, `unwind`, `linker`, `sanitizers`, `mingw`";
-    pub const parse_linker_features: &str =
+    pub(crate) const parse_linker_features: &str =
         "a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld`";
-    pub const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
-    pub const parse_stack_protector: &str =
+    pub(crate) const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
+    pub(crate) const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
-    pub const parse_branch_protection: &str =
+    pub(crate) const parse_branch_protection: &str =
         "a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf`";
-    pub const parse_proc_macro_execution_strategy: &str =
+    pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
-    pub const parse_remap_path_scope: &str =
+    pub(crate) const parse_remap_path_scope: &str =
         "comma separated list of scopes: `macro`, `diagnostics`, `debuginfo`, `object`, `all`";
-    pub const parse_inlining_threshold: &str =
+    pub(crate) const parse_inlining_threshold: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
-    pub const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
-    pub const parse_function_return: &str = "`keep` or `thunk-extern`";
-    pub const parse_wasm_c_abi: &str = "`legacy` or `spec`";
-    pub const parse_mir_include_spans: &str =
+    pub(crate) const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
+    pub(crate) const parse_function_return: &str = "`keep` or `thunk-extern`";
+    pub(crate) const parse_wasm_c_abi: &str = "`legacy` or `spec`";
+    pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
 }
 

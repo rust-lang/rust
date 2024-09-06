@@ -1358,7 +1358,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
         let mut inner = context.inner.lock();
 
         if let Some(ctxt) = inner.remapped_ctxts.get(raw_id as usize).copied().flatten() {
-            // This has already beeen decoded.
+            // This has already been decoded.
             return ctxt;
         }
 

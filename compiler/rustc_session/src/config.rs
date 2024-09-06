@@ -251,7 +251,7 @@ pub struct LinkSelfContained {
     pub explicitly_set: Option<bool>,
 
     /// The components that are enabled on the CLI, using the `+component` syntax or one of the
-    /// `true` shorcuts.
+    /// `true` shortcuts.
     enabled_components: LinkSelfContainedComponents,
 
     /// The components that are disabled on the CLI, using the `-component` syntax or one of the
@@ -313,13 +313,13 @@ impl LinkSelfContained {
     }
 
     /// Returns whether the self-contained linker component was enabled on the CLI, using the
-    /// `-C link-self-contained=+linker` syntax, or one of the `true` shorcuts.
+    /// `-C link-self-contained=+linker` syntax, or one of the `true` shortcuts.
     pub fn is_linker_enabled(&self) -> bool {
         self.enabled_components.contains(LinkSelfContainedComponents::LINKER)
     }
 
     /// Returns whether the self-contained linker component was disabled on the CLI, using the
-    /// `-C link-self-contained=-linker` syntax, or one of the `false` shorcuts.
+    /// `-C link-self-contained=-linker` syntax, or one of the `false` shortcuts.
     pub fn is_linker_disabled(&self) -> bool {
         self.disabled_components.contains(LinkSelfContainedComponents::LINKER)
     }
@@ -360,7 +360,7 @@ impl LinkerFeaturesCli {
         // Duplicate flags are reduced as we go, the last occurrence wins:
         // `+feature,-feature,+feature` only enables the feature, and does not record it as both
         // enabled and disabled on the CLI.
-        // We also only expose `+/-lld` at the moment, as it's currenty the only implemented linker
+        // We also only expose `+/-lld` at the moment, as it's currently the only implemented linker
         // feature and toggling `LinkerFeatures::CC` would be a noop.
         match feature {
             "+lld" => {
@@ -1102,7 +1102,7 @@ bitflags::bitflags! {
         const MACRO = 1 << 0;
         /// Apply remappings to printed compiler diagnostics
         const DIAGNOSTICS = 1 << 1;
-        /// Apply remappings to debug informations
+        /// Apply remappings to debug information
         const DEBUGINFO = 1 << 3;
 
         /// An alias for `macro` and `debuginfo`. This ensures all paths in compiled

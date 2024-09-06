@@ -23,6 +23,7 @@ rustc_hir_analysis = { path = "../rustc_hir_analysis" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_hir_typeck = { path = "../rustc_hir_typeck" }
 rustc_incremental = { path = "../rustc_incremental" }
+rustc_index = { path = "../rustc_index" }
 rustc_infer = { path = "../rustc_infer" }
 rustc_interface = { path = "../rustc_interface" }
 rustc_lint = { path = "../rustc_lint" }
@@ -72,6 +73,10 @@ ctrlc = "3.4.4"
 # tidy-alphabetical-start
 llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
+rustc_randomized_layouts = [
+    'rustc_index/rustc_randomized_layouts',
+    'rustc_middle/rustc_randomized_layouts'
+]
 rustc_use_parallel_compiler = [
     'rustc_data_structures/rustc_use_parallel_compiler',
     'rustc_interface/rustc_use_parallel_compiler',

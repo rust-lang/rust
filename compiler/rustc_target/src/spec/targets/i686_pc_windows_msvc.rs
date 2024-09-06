@@ -1,6 +1,6 @@
 use crate::spec::{base, LinkerFlavor, Lld, SanitizerSet, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);

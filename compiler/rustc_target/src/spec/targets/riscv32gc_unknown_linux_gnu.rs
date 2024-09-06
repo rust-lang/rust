@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::spec::{base, CodeModel, SplitDebuginfo, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "riscv32-unknown-linux-gnu".into(),
         metadata: crate::spec::TargetMetadata {

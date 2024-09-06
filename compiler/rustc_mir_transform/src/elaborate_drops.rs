@@ -49,7 +49,7 @@ use crate::deref_separator::deref_finder;
 /// ```
 pub struct ElaborateDrops;
 
-impl<'tcx> MirPass<'tcx> for ElaborateDrops {
+impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);

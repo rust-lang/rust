@@ -9,7 +9,7 @@ use crate::take_array;
 
 pub struct LowerIntrinsics;
 
-impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
+impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let local_decls = &body.local_decls;
         for block in body.basic_blocks.as_mut() {

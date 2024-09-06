@@ -402,7 +402,7 @@ impl<'a> Parser<'a> {
             let non_assoc_span = expr.span;
 
             // Parse an associative expression such as `+ expr`, `% expr`, ...
-            // Assignements, ranges and `|` are disabled by [`Restrictions::IS_PAT`].
+            // Assignments, ranges and `|` are disabled by [`Restrictions::IS_PAT`].
             if let Ok((expr, _)) =
                 snapshot.parse_expr_assoc_rest_with(0, false, expr).map_err(|err| err.cancel())
             {

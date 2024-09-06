@@ -894,7 +894,7 @@ pub(crate) struct LendingIteratorReportError {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_anonymous_livetime_non_gat_report_error)]
+#[diag(resolve_anonymous_lifetime_non_gat_report_error)]
 pub(crate) struct AnonymousLivetimeNonGatReportError {
     #[primary_span]
     #[label]

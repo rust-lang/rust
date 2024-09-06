@@ -22,7 +22,7 @@ fn check(patterns: Vec<DeconstructedPat<Cx>>) -> Vec<WitnessPat<Cx>> {
 fn assert_exhaustive(patterns: Vec<DeconstructedPat<Cx>>) {
     let witnesses = check(patterns);
     if !witnesses.is_empty() {
-        panic!("non-exaustive match: missing {witnesses:?}");
+        panic!("non-exhaustive match: missing {witnesses:?}");
     }
 }
 

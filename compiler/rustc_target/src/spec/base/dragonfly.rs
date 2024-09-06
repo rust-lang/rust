@@ -1,6 +1,6 @@
 use crate::spec::{cvs, RelroLevel, TargetOptions};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         os: "dragonfly".into(),
         dynamic_linking: true,

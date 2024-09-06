@@ -62,7 +62,7 @@ pub fn subtype_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     checker.patcher.apply(body);
 }
 
-impl<'tcx> MirPass<'tcx> for Subtyper {
+impl<'tcx> crate::MirPass<'tcx> for Subtyper {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         subtype_finder(tcx, body);
     }

@@ -61,13 +61,13 @@ pub(super) struct MemPlace<Prov: Provenance = CtfeProvenance> {
 
 impl<Prov: Provenance> MemPlace<Prov> {
     /// Adjust the provenance of the main pointer (metadata is unaffected).
-    pub fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
+    fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
         MemPlace { ptr: self.ptr.map_provenance(|p| p.map(f)), ..self }
     }
 
     /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
     #[inline]
-    pub fn to_ref(self, cx: &impl HasDataLayout) -> Immediate<Prov> {
+    fn to_ref(self, cx: &impl HasDataLayout) -> Immediate<Prov> {
         Immediate::new_pointer_with_meta(self.ptr, self.meta, cx)
     }
 
@@ -186,7 +186,7 @@ pub(super) enum Place<Prov: Provenance = CtfeProvenance> {
     /// `Local` places always refer to the current stack frame, so they are unstable under
     /// function calls/returns and switching betweens stacks of different threads!
     /// We carry around the address of the `locals` buffer of the correct stack frame as a sanity
-    /// chec to be able to catch some cases of using a dangling `Place`.
+    /// check to be able to catch some cases of using a dangling `Place`.
     ///
     /// This variant shall not be used for unsized types -- those must always live in memory.
     Local { local: mir::Local, offset: Option<Size>, locals_addr: usize },

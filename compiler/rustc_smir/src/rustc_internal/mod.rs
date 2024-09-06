@@ -397,7 +397,7 @@ macro_rules! run_driver {
     }};
 }
 
-/// Simmilar to rustc's `FxIndexMap`, `IndexMap` with extra
+/// Similar to rustc's `FxIndexMap`, `IndexMap` with extra
 /// safety features added.
 pub struct IndexMap<K, V> {
     index_map: fx::FxIndexMap<K, V>,

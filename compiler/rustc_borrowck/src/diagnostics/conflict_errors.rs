@@ -1179,7 +1179,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         for field in &variant.fields {
             // In practice unless there are more than one field with the same type, we'll be
             // suggesting a single field at a type, because we don't aggregate multiple borrow
-            // checker errors involving the functional record update sytnax into a single one.
+            // checker errors involving the functional record update syntax into a single one.
             let field_ty = field.ty(self.infcx.tcx, args);
             let ident = field.ident(self.infcx.tcx);
             if field_ty == ty && fields.iter().all(|field| field.ident.name != ident.name) {

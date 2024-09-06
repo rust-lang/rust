@@ -9,7 +9,7 @@ use crate::simplify;
 
 pub struct MultipleReturnTerminators;
 
-impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
+impl<'tcx> crate::MirPass<'tcx> for MultipleReturnTerminators {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 4
     }

@@ -229,17 +229,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     } else {
                         let variant =
                             &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
-
-                        // In the cases of either a `#[non_exhaustive]` field list or a non-public
-                        // field, we skip uninhabited fields in order not to reveal the
-                        // uninhabitedness of the whole variant.
-                        let is_non_exhaustive =
-                            variant.is_field_list_non_exhaustive() && !adt.did().is_local();
                         let tys = cx.variant_sub_tys(ty, variant).map(|(field, ty)| {
                             let is_visible =
                                 adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
                             let is_uninhabited = cx.is_uninhabited(*ty);
-                            let skip = is_uninhabited && (!is_visible || is_non_exhaustive);
+                            let skip = is_uninhabited && !is_visible;
                             (ty, PrivateUninhabitedField(skip))
                         });
                         cx.dropless_arena.alloc_from_iter(tys)

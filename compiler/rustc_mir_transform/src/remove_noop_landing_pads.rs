@@ -10,7 +10,7 @@ use tracing::debug;
 /// terrible code for these.
 pub struct RemoveNoopLandingPads;
 
-impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
+impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.panic_strategy() != PanicStrategy::Abort
     }

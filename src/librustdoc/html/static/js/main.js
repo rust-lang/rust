@@ -499,7 +499,7 @@ function preLoadCss(cssUrl) {
         if (!window.SIDEBAR_ITEMS) {
             return;
         }
-        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
+        const sidebar = document.getElementById("rustdoc-modnav");
 
         /**
          * Append to the sidebar a "block" of links - a heading along with a list (`<ul>`) of items.
@@ -885,7 +885,7 @@ function preLoadCss(cssUrl) {
         if (!window.ALL_CRATES) {
             return;
         }
-        const sidebarElems = document.getElementsByClassName("sidebar-elems")[0];
+        const sidebarElems = document.getElementById("rustdoc-modnav");
         if (!sidebarElems) {
             return;
         }
@@ -1855,8 +1855,13 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         // Since the button will be added, no need to keep this listener around.
         elem.removeEventListener("mouseover", addCopyButton);
 
-        const parent = document.createElement("div");
-        parent.className = "button-holder";
+        // If this is a scrapped example, there will already be a "button-holder" element.
+        let parent = elem.querySelector(".button-holder");
+        if (!parent) {
+            parent = document.createElement("div");
+            parent.className = "button-holder";
+        }
+
         const runButton = elem.querySelector(".test-arrow");
         if (runButton !== null) {
             // If there is a run button, we move it into the same div.

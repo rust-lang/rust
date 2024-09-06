@@ -35,6 +35,7 @@ use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_macros::{
     extension, Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable,
@@ -1570,8 +1571,15 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
         }
 
+        // box is special, on the one hand the compiler assumes an ordered layout, with the pointer
+        // always at offset zero. On the other hand we want scalar abi optimizations.
+        let is_box = self.is_lang_item(did.to_def_id(), LangItem::OwnedBox);
+
         // This is here instead of layout because the choice must make it into metadata.
-        if !self.consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did))) {
+        if is_box
+            || !self
+                .consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did)))
+        {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 
@@ -1819,7 +1827,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_attrs(did, attr).next().is_some()
     }
 
-    /// Determines whether an item is annotated with a multi-segement attribute
+    /// Determines whether an item is annotated with a multi-segment attribute
     pub fn has_attrs_with_path(self, did: impl Into<DefId>, attrs: &[Symbol]) -> bool {
         self.get_attrs_by_path(did.into(), attrs).next().is_some()
     }

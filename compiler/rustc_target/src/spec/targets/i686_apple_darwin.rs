@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{macos_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     // ld64 only understands i386 and not i686
     let arch = Arch::I386;
     let mut base = opts("macos", arch, TargetAbi::Normal);

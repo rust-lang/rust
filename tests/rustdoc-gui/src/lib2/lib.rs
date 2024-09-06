@@ -356,3 +356,13 @@ pub mod scroll_traits {
         fn this_is_a_method_with_a_long_name_returning_something() -> String;
     }
 }
+
+pub struct Derefer(String);
+
+impl std::ops::Deref for Derefer {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

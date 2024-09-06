@@ -472,7 +472,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     };
 
                     match infcx.at(&obligation.cause, obligation.param_env).eq(
-                        // Only really excercised by generic_const_exprs
+                        // Only really exercised by generic_const_exprs
                         DefineOpaqueTypes::Yes,
                         ct_ty,
                         ty,
