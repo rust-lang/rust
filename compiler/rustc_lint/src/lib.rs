@@ -610,6 +610,7 @@ fn register_internals(store: &mut LintStore) {
         vec![
             LintId::of(DEFAULT_HASH_TYPES),
             LintId::of(POTENTIAL_QUERY_INSTABILITY),
+            LintId::of(UNTRACKED_QUERY_INFORMATION),
             LintId::of(USAGE_OF_TY_TYKIND),
             LintId::of(PASS_BY_VALUE),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
