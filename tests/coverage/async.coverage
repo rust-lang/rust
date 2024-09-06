@@ -45,9 +45,9 @@
    LL|      1|                    // executed asynchronously.
    LL|      1|    match x {
    LL|      1|        y if c(x).await == y + 1 => { d().await; }
-                      ^0        ^0                  ^0  ^0
+                      ^0                            ^0
    LL|      1|        y if f().await == y + 1 => (),
-                      ^0       ^0                ^0
+                      ^0                         ^0
    LL|      1|        _ => (),
    LL|       |    }
    LL|      1|}
