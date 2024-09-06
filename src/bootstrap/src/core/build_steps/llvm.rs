@@ -529,6 +529,7 @@ impl Step for Llvm {
             }
         };
 
+        // FIXME(ZuseZ4): Do we need that for Enzyme too?
         // When building LLVM with LLVM_LINK_LLVM_DYLIB for macOS, an unversioned
         // libLLVM.dylib will be built. However, llvm-config will still look
         // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
@@ -847,6 +848,100 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
         .or_else(|| env::var_os(format!("{}_{}", var_base, target_u)))
         .or_else(|| env::var_os(format!("{}_{}", kind, var_base)))
         .or_else(|| env::var_os(var_base))
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Enzyme {
+    pub target: TargetSelection,
+}
+
+impl Step for Enzyme {
+    type Output = PathBuf;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/enzyme/enzyme")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Enzyme { target: run.target });
+    }
+
+    /// Compile Enzyme for `target`.
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        builder.require_submodule(
+            "src/tools/enzyme",
+            Some("The Enzyme sources are required for autodiff."),
+        );
+        if builder.config.dry_run() {
+            let out_dir = builder.enzyme_out(self.target);
+            return out_dir;
+        }
+        let target = self.target;
+
+        let LlvmResult { llvm_config, .. } = builder.ensure(Llvm { target: self.target });
+
+        static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
+        let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+            generate_smart_stamp_hash(
+                builder,
+                &builder.config.src.join("src/tools/enzyme"),
+                builder.enzyme_info.sha().unwrap_or_default(),
+            )
+        });
+
+        let out_dir = builder.enzyme_out(target);
+        let stamp = out_dir.join("enzyme-finished-building");
+        let stamp = HashStamp::new(stamp, Some(smart_stamp_hash));
+
+        if stamp.is_done() {
+            if stamp.hash.is_none() {
+                builder.info(
+                    "Could not determine the Enzyme submodule commit hash. \
+                     Assuming that an Enzyme rebuild is not necessary.",
+                );
+                builder.info(&format!(
+                    "To force Enzyme to rebuild, remove the file `{}`",
+                    stamp.path.display()
+                ));
+            }
+            return out_dir;
+        }
+
+        builder.info(&format!("Building Enzyme for {}", target));
+        t!(stamp.remove());
+        let _time = helpers::timeit(builder);
+        t!(fs::create_dir_all(&out_dir));
+
+        builder
+            .config
+            .update_submodule(Path::new("src").join("tools").join("enzyme").to_str().unwrap());
+        let mut cfg = cmake::Config::new(builder.src.join("src/tools/enzyme/enzyme/"));
+        // FIXME(ZuseZ4): Find a nicer way to use Enzyme Debug builds
+        //cfg.profile("Debug");
+        //cfg.define("CMAKE_BUILD_TYPE", "Debug");
+        configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), &[]);
+
+        // Re-use the same flags as llvm to control the level of debug information
+        // generated for lld.
+        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+            (false, _) => "Debug",
+            (true, false) => "Release",
+            (true, true) => "RelWithDebInfo",
+        };
+
+        cfg.out_dir(&out_dir)
+            .profile(profile)
+            .env("LLVM_CONFIG_REAL", &llvm_config)
+            .define("LLVM_ENABLE_ASSERTIONS", "ON")
+            .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
+            .define("LLVM_DIR", builder.llvm_out(target));
+
+        cfg.build();
+
+        t!(stamp.write());
+        out_dir
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
