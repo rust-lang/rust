@@ -96,6 +96,7 @@ pub(crate) mod hack {
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
+    #[allow(missing_docs)]
     pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {
         unsafe {
             let len = b.len();
@@ -105,6 +106,7 @@ pub(crate) mod hack {
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[allow(missing_docs)]
     #[inline]
     pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
         T::to_vec(s, alloc)

@@ -508,6 +508,7 @@ impl String {
     // NB see the slice::hack module in slice.rs for more information
     #[inline]
     #[cfg(test)]
+    #[allow(missing_docs)]
     pub fn from_str(_: &str) -> String {
         panic!("not available with cfg(test)");
     }
