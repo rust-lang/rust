@@ -1645,6 +1645,7 @@ supported_targets! {
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
 
     ("i686-unknown-hurd-gnu", i686_unknown_hurd_gnu),
+    ("x86_64-unknown-hurd-gnu", x86_64_unknown_hurd_gnu),
 
     ("aarch64-apple-darwin", aarch64_apple_darwin),
     ("arm64e-apple-darwin", arm64e_apple_darwin),
