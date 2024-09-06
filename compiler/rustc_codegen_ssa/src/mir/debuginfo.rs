@@ -547,6 +547,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         self.set_debug_loc(bx, var.source_info);
                         let base =
                             Self::spill_operand_to_stack(operand, Some(var.name.to_string()), bx);
+                        bx.clear_dbg_loc();
 
                         bx.dbg_var_addr(
                             dbg_var,
