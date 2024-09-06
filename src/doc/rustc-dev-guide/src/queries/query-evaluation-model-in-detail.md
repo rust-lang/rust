@@ -174,9 +174,9 @@ Since query providers are regular functions, this would behave much as expected:
 Evaluation would get stuck in an infinite recursion. A query like this would not
 be very useful either. However, sometimes certain kinds of invalid user input
 can result in queries being called in a cyclic way. The query engine includes
-a check for cyclic invocations and, because cycles are an irrecoverable error,
-will abort execution with a "cycle error" messages that tries to be human
-readable.
+a check for cyclic invocations of queries with the same input aguments. 
+And, because cycles are an irrecoverable error, will abort execution with a 
+"cycle error" message that tries to be human readable.
 
 At some point the compiler had a notion of "cycle recovery", that is, one could
 "try" to execute a query and if it ended up causing a cycle, proceed in some

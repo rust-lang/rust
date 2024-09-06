@@ -186,7 +186,9 @@ By using red-green marking we can avoid the devastating cumulative effect of
 having false positives during change detection. Whenever a query is executed
 in incremental mode, we first check if its already green. If not, we run
 `try_mark_green()` on it. If it still isn't green after that, then we actually
-invoke the query provider to re-compute the result.
+invoke the query provider to re-compute the result. Re-computing the query might 
+then itself involve recursively invoking more queries, which can mean we come back
+to the `try_mark_green()` algorithm for the dependencies recursively.
 
 
 ## The Real World: How Persistence Makes Everything Complicated
