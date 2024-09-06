@@ -349,8 +349,9 @@ impl MirLowerCtx<'_> {
                     mode,
                 )?,
                 None => {
-                    let unresolved_name =
-                        || MirLowerError::unresolved_path(self.db, p, self.edition());
+                    let unresolved_name = || {
+                        MirLowerError::unresolved_path(self.db, p, self.edition(), &self.body.types)
+                    };
                     let hygiene = self.body.pat_path_hygiene(pattern);
                     let pr = self
                         .resolver

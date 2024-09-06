@@ -61,7 +61,7 @@ use crate::{
     db::DefDatabase,
     generics::GenericParams,
     path::{GenericArgs, ImportAlias, ModPath, Path, PathKind},
-    type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
+    type_ref::{Mutability, TraitRef, TypeBound, TypeRefId, TypesMap, TypesSourceMap},
     visibility::{RawVisibility, VisibilityExplicitness},
     BlockId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
 };
@@ -100,13 +100,20 @@ pub struct ItemTree {
 
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
+        db.file_item_tree_with_source_map(file_id).0
+    }
+
+    pub(crate) fn file_item_tree_with_source_map_query(
+        db: &dyn DefDatabase,
+        file_id: HirFileId,
+    ) -> (Arc<ItemTree>, Arc<ItemTreeSourceMaps>) {
         let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
-        static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
+        static EMPTY: OnceLock<(Arc<ItemTree>, Arc<ItemTreeSourceMaps>)> = OnceLock::new();
 
         let ctx = lower::Ctx::new(db, file_id);
         let syntax = db.parse_or_expand(file_id);
         let mut top_attrs = None;
-        let mut item_tree = match_ast! {
+        let (mut item_tree, mut source_maps) = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
                     top_attrs = Some(RawAttrs::new(db.upcast(), &file, ctx.span_map()));
@@ -136,42 +143,57 @@ impl ItemTree {
         {
             EMPTY
                 .get_or_init(|| {
-                    Arc::new(ItemTree {
-                        top_level: SmallVec::new_const(),
-                        attrs: FxHashMap::default(),
-                        data: None,
-                    })
+                    (
+                        Arc::new(ItemTree {
+                            top_level: SmallVec::new_const(),
+                            attrs: FxHashMap::default(),
+                            data: None,
+                        }),
+                        Arc::default(),
+                    )
                 })
                 .clone()
         } else {
             item_tree.shrink_to_fit();
-            Arc::new(item_tree)
+            source_maps.shrink_to_fit();
+            (Arc::new(item_tree), Arc::new(source_maps))
         }
     }
 
     pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
+        db.block_item_tree_with_source_map(block).0
+    }
+
+    pub(crate) fn block_item_tree_with_source_map_query(
+        db: &dyn DefDatabase,
+        block: BlockId,
+    ) -> (Arc<ItemTree>, Arc<ItemTreeSourceMaps>) {
         let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
-        static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
+        static EMPTY: OnceLock<(Arc<ItemTree>, Arc<ItemTreeSourceMaps>)> = OnceLock::new();
 
         let loc = block.lookup(db);
         let block = loc.ast_id.to_node(db.upcast());
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
-        let mut item_tree = ctx.lower_block(&block);
+        let (mut item_tree, mut source_maps) = ctx.lower_block(&block);
         if item_tree.data.is_none() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
         {
             EMPTY
                 .get_or_init(|| {
-                    Arc::new(ItemTree {
-                        top_level: SmallVec::new_const(),
-                        attrs: FxHashMap::default(),
-                        data: None,
-                    })
+                    (
+                        Arc::new(ItemTree {
+                            top_level: SmallVec::new_const(),
+                            attrs: FxHashMap::default(),
+                            data: None,
+                        }),
+                        Arc::default(),
+                    )
                 })
                 .clone()
         } else {
             item_tree.shrink_to_fit();
-            Arc::new(item_tree)
+            source_maps.shrink_to_fit();
+            (Arc::new(item_tree), Arc::new(source_maps))
         }
     }
 
@@ -308,6 +330,82 @@ struct ItemTreeData {
     vis: ItemVisibilities,
 }
 
+#[derive(Default, Debug, Eq, PartialEq)]
+pub struct GenericItemSourceMap {
+    pub item: TypesSourceMap,
+    pub generics: TypesSourceMap,
+}
+
+#[derive(Default, Debug, Eq, PartialEq)]
+pub struct ItemTreeSourceMaps {
+    functions: Vec<GenericItemSourceMap>,
+    structs: Vec<GenericItemSourceMap>,
+    unions: Vec<GenericItemSourceMap>,
+    enum_generics: Vec<TypesSourceMap>,
+    variants: Vec<TypesSourceMap>,
+    consts: Vec<TypesSourceMap>,
+    statics: Vec<TypesSourceMap>,
+    trait_generics: Vec<TypesSourceMap>,
+    trait_alias_generics: Vec<TypesSourceMap>,
+    impls: Vec<GenericItemSourceMap>,
+    type_aliases: Vec<GenericItemSourceMap>,
+}
+
+impl ItemTreeSourceMaps {
+    fn shrink_to_fit(&mut self) {
+        let ItemTreeSourceMaps {
+            functions,
+            structs,
+            unions,
+            enum_generics,
+            variants,
+            consts,
+            statics,
+            trait_generics,
+            trait_alias_generics,
+            impls,
+            type_aliases,
+        } = self;
+        functions.shrink_to_fit();
+        structs.shrink_to_fit();
+        unions.shrink_to_fit();
+        enum_generics.shrink_to_fit();
+        variants.shrink_to_fit();
+        consts.shrink_to_fit();
+        statics.shrink_to_fit();
+        trait_generics.shrink_to_fit();
+        trait_alias_generics.shrink_to_fit();
+        impls.shrink_to_fit();
+        type_aliases.shrink_to_fit();
+    }
+}
+
+macro_rules! index_source_maps {
+    ( $( $field:ident[$tree_id:ident] = $result:ident, )* ) => {
+        $(
+            impl Index<FileItemTreeId<$tree_id>> for ItemTreeSourceMaps {
+                type Output = $result;
+                fn index(&self, index: FileItemTreeId<$tree_id>) -> &Self::Output {
+                    &self.$field[index.0.into_raw().into_u32() as usize]
+                }
+            }
+        )*
+    };
+}
+index_source_maps! {
+    functions[Function] = GenericItemSourceMap,
+    structs[Struct] = GenericItemSourceMap,
+    unions[Union] = GenericItemSourceMap,
+    enum_generics[Enum] = TypesSourceMap,
+    variants[Variant] = TypesSourceMap,
+    consts[Const] = TypesSourceMap,
+    statics[Static] = TypesSourceMap,
+    trait_generics[Trait] = TypesSourceMap,
+    trait_alias_generics[TraitAlias] = TypesSourceMap,
+    impls[Impl] = GenericItemSourceMap,
+    type_aliases[TypeAlias] = GenericItemSourceMap,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum AttrOwner {
     /// Attributes on an item.
@@ -363,7 +461,7 @@ pub trait ItemTreeNode: Clone {
     fn attr_owner(id: FileItemTreeId<Self>) -> AttrOwner;
 }
 pub trait GenericsItemTreeNode: ItemTreeNode {
-    fn generic_params(&self) -> &Interned<GenericParams>;
+    fn generic_params(&self) -> &Arc<GenericParams>;
 }
 
 pub struct FileItemTreeId<N>(Idx<N>);
@@ -428,6 +526,16 @@ impl TreeId {
         }
     }
 
+    pub fn item_tree_with_source_map(
+        &self,
+        db: &dyn DefDatabase,
+    ) -> (Arc<ItemTree>, Arc<ItemTreeSourceMaps>) {
+        match self.block {
+            Some(block) => db.block_item_tree_with_source_map(block),
+            None => db.file_item_tree_with_source_map(self.file),
+        }
+    }
+
     pub fn file_id(self) -> HirFileId {
         self.file
     }
@@ -458,6 +566,13 @@ impl<N> ItemTreeId<N> {
 
     pub fn item_tree(self, db: &dyn DefDatabase) -> Arc<ItemTree> {
         self.tree.item_tree(db)
+    }
+
+    pub fn item_tree_with_source_map(
+        self,
+        db: &dyn DefDatabase,
+    ) -> (Arc<ItemTree>, Arc<ItemTreeSourceMaps>) {
+        self.tree.item_tree_with_source_map(db)
     }
 
     pub fn resolved<R>(self, db: &dyn DefDatabase, cb: impl FnOnce(&N) -> R) -> R
@@ -592,7 +707,7 @@ macro_rules! mod_items {
 
             $(
                 impl GenericsItemTreeNode for $typ {
-                    fn generic_params(&self) -> &Interned<GenericParams> {
+                    fn generic_params(&self) -> &Arc<GenericParams> {
                         &self.$generic_params
                     }
                 }
@@ -730,17 +845,18 @@ pub struct ExternBlock {
 pub struct Function {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub explicit_generic_params: Interned<GenericParams>,
+    pub explicit_generic_params: Arc<GenericParams>,
     pub abi: Option<Symbol>,
     pub params: Box<[Param]>,
-    pub ret_type: Interned<TypeRef>,
+    pub ret_type: TypeRefId,
     pub ast_id: FileAstId<ast::Fn>,
+    pub types_map: Arc<TypesMap>,
     pub(crate) flags: FnFlags,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Param {
-    pub type_ref: Option<Interned<TypeRef>>,
+    pub type_ref: Option<TypeRefId>,
 }
 
 bitflags::bitflags! {
@@ -761,26 +877,28 @@ bitflags::bitflags! {
 pub struct Struct {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
+    pub generic_params: Arc<GenericParams>,
     pub fields: Box<[Field]>,
     pub shape: FieldsShape,
     pub ast_id: FileAstId<ast::Struct>,
+    pub types_map: Arc<TypesMap>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Union {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
+    pub generic_params: Arc<GenericParams>,
     pub fields: Box<[Field]>,
     pub ast_id: FileAstId<ast::Union>,
+    pub types_map: Arc<TypesMap>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Enum {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
+    pub generic_params: Arc<GenericParams>,
     pub variants: Range<FileItemTreeId<Variant>>,
     pub ast_id: FileAstId<ast::Enum>,
 }
@@ -791,6 +909,7 @@ pub struct Variant {
     pub fields: Box<[Field]>,
     pub shape: FieldsShape,
     pub ast_id: FileAstId<ast::Variant>,
+    pub types_map: Arc<TypesMap>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -804,7 +923,7 @@ pub enum FieldsShape {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Field {
     pub name: Name,
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: TypeRefId,
     pub visibility: RawVisibilityId,
 }
 
@@ -813,9 +932,10 @@ pub struct Const {
     /// `None` for `const _: () = ();`
     pub name: Option<Name>,
     pub visibility: RawVisibilityId,
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: TypeRefId,
     pub ast_id: FileAstId<ast::Const>,
     pub has_body: bool,
+    pub types_map: Arc<TypesMap>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -826,15 +946,16 @@ pub struct Static {
     pub mutable: bool,
     pub has_safe_kw: bool,
     pub has_unsafe_kw: bool,
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: TypeRefId,
     pub ast_id: FileAstId<ast::Static>,
+    pub types_map: Arc<TypesMap>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
+    pub generic_params: Arc<GenericParams>,
     pub is_auto: bool,
     pub is_unsafe: bool,
     pub items: Box<[AssocItem]>,
@@ -845,19 +966,20 @@ pub struct Trait {
 pub struct TraitAlias {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
+    pub generic_params: Arc<GenericParams>,
     pub ast_id: FileAstId<ast::TraitAlias>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Impl {
-    pub generic_params: Interned<GenericParams>,
-    pub target_trait: Option<Interned<TraitRef>>,
-    pub self_ty: Interned<TypeRef>,
+    pub generic_params: Arc<GenericParams>,
+    pub target_trait: Option<TraitRef>,
+    pub self_ty: TypeRefId,
     pub is_negative: bool,
     pub is_unsafe: bool,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Impl>,
+    pub types_map: Arc<TypesMap>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -865,10 +987,11 @@ pub struct TypeAlias {
     pub name: Name,
     pub visibility: RawVisibilityId,
     /// Bounds on the type alias itself. Only valid in trait declarations, eg. `type Assoc: Copy;`.
-    pub bounds: Box<[Interned<TypeBound>]>,
-    pub generic_params: Interned<GenericParams>,
-    pub type_ref: Option<Interned<TypeRef>>,
+    pub bounds: Box<[TypeBound]>,
+    pub generic_params: Arc<GenericParams>,
+    pub type_ref: Option<TypeRefId>,
     pub ast_id: FileAstId<ast::TypeAlias>,
+    pub types_map: Arc<TypesMap>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

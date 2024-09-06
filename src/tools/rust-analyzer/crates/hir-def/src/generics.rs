@@ -10,7 +10,6 @@ use hir_expand::{
     name::{AsName, Name},
     ExpandResult,
 };
-use intern::Interned;
 use la_arena::{Arena, RawIdx};
 use stdx::impl_from;
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
@@ -22,7 +21,8 @@ use crate::{
     item_tree::{AttrOwner, FileItemTreeId, GenericModItem, GenericsItemTreeNode, ItemTree},
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
-    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
+    path::{AssociatedTypeBinding, GenericArg, GenericArgs, Path},
+    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef, TypeRefId, TypesMap, TypesSourceMap},
     AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LifetimeParamId,
     LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
@@ -37,7 +37,7 @@ pub struct TypeParamData {
     /// [`None`] only if the type ref is an [`TypeRef::ImplTrait`]. FIXME: Might be better to just
     /// make it always be a value, giving impl trait a special name.
     pub name: Option<Name>,
-    pub default: Option<Interned<TypeRef>>,
+    pub default: Option<TypeRefId>,
     pub provenance: TypeParamProvenance,
 }
 
@@ -51,7 +51,7 @@ pub struct LifetimeParamData {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ConstParamData {
     pub name: Name,
-    pub ty: Interned<TypeRef>,
+    pub ty: TypeRefId,
     pub default: Option<ConstRef>,
 }
 
@@ -161,6 +161,7 @@ pub struct GenericParams {
     type_or_consts: Arena<TypeOrConstParamData>,
     lifetimes: Arena<LifetimeParamData>,
     where_predicates: Box<[WherePredicate]>,
+    pub types_map: TypesMap,
 }
 
 impl ops::Index<LocalTypeOrConstParamId> for GenericParams {
@@ -183,24 +184,14 @@ impl ops::Index<LocalLifetimeParamId> for GenericParams {
 /// associated type bindings like `Iterator<Item = u32>`.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicate {
-    TypeBound {
-        target: WherePredicateTypeTarget,
-        bound: Interned<TypeBound>,
-    },
-    Lifetime {
-        target: LifetimeRef,
-        bound: LifetimeRef,
-    },
-    ForLifetime {
-        lifetimes: Box<[Name]>,
-        target: WherePredicateTypeTarget,
-        bound: Interned<TypeBound>,
-    },
+    TypeBound { target: WherePredicateTypeTarget, bound: TypeBound },
+    Lifetime { target: LifetimeRef, bound: LifetimeRef },
+    ForLifetime { lifetimes: Box<[Name]>, target: WherePredicateTypeTarget, bound: TypeBound },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicateTypeTarget {
-    TypeRef(Interned<TypeRef>),
+    TypeRef(TypeRefId),
     /// For desugared where predicates that can directly refer to a type param.
     TypeOrConstParam(LocalTypeOrConstParamId),
 }
@@ -300,7 +291,14 @@ impl GenericParams {
     pub(crate) fn generic_params_query(
         db: &dyn DefDatabase,
         def: GenericDefId,
-    ) -> Interned<GenericParams> {
+    ) -> Arc<GenericParams> {
+        db.generic_params_with_source_map(def).0
+    }
+
+    pub(crate) fn generic_params_with_source_map_query(
+        db: &dyn DefDatabase,
+        def: GenericDefId,
+    ) -> (Arc<GenericParams>, Option<Arc<TypesSourceMap>>) {
         let _p = tracing::info_span!("generic_params_query").entered();
 
         let krate = def.krate(db);
@@ -309,7 +307,7 @@ impl GenericParams {
 
         // Returns the generic parameters that are enabled under the current `#[cfg]` options
         let enabled_params =
-            |params: &Interned<GenericParams>, item_tree: &ItemTree, parent: GenericModItem| {
+            |params: &Arc<GenericParams>, item_tree: &ItemTree, parent: GenericModItem| {
                 let enabled = |param| item_tree.attrs(db, krate, param).is_cfg_enabled(cfg_options);
                 let attr_owner_ct = |param| AttrOwner::TypeOrConstParamData(parent, param);
                 let attr_owner_lt = |param| AttrOwner::LifetimeParamData(parent, param);
@@ -325,7 +323,7 @@ impl GenericParams {
                 if all_type_or_consts_enabled && all_lifetimes_enabled {
                     params.clone()
                 } else {
-                    Interned::new(GenericParams {
+                    Arc::new(GenericParams {
                         type_or_consts: all_type_or_consts_enabled
                             .then(|| params.type_or_consts.clone())
                             .unwrap_or_else(|| {
@@ -347,6 +345,7 @@ impl GenericParams {
                                     .collect()
                             }),
                         where_predicates: params.where_predicates.clone(),
+                        types_map: params.types_map.clone(),
                     })
                 }
             };
@@ -357,18 +356,18 @@ impl GenericParams {
                 Data = impl ItemTreeLoc<Id = Id>,
             >,
             enabled_params: impl Fn(
-                &Interned<GenericParams>,
+                &Arc<GenericParams>,
                 &ItemTree,
                 GenericModItem,
-            ) -> Interned<GenericParams>,
-        ) -> Interned<GenericParams>
+            ) -> Arc<GenericParams>,
+        ) -> (Arc<GenericParams>, Option<Arc<TypesSourceMap>>)
         where
             FileItemTreeId<Id>: Into<GenericModItem>,
         {
             let id = id.lookup(db).item_tree_id();
             let tree = id.item_tree(db);
             let item = &tree[id.value];
-            enabled_params(item.generic_params(), &tree, id.value.into())
+            (enabled_params(item.generic_params(), &tree, id.value.into()), None)
         }
 
         match def {
@@ -383,28 +382,37 @@ impl GenericParams {
                 let module = loc.container.module(db);
                 let func_data = db.function_data(id);
                 if func_data.params.is_empty() {
-                    enabled_params
+                    (enabled_params, None)
                 } else {
+                    let source_maps = loc.id.item_tree_with_source_map(db).1;
+                    let item_source_maps = &source_maps[loc.id.value];
                     let mut generic_params = GenericParamsCollector {
                         type_or_consts: enabled_params.type_or_consts.clone(),
                         lifetimes: enabled_params.lifetimes.clone(),
                         where_predicates: enabled_params.where_predicates.clone().into(),
                     };
 
+                    let (mut types_map, mut types_source_maps) =
+                        (enabled_params.types_map.clone(), item_source_maps.generics.clone());
                     // Don't create an `Expander` if not needed since this
                     // could cause a reparse after the `ItemTree` has been created due to the spanmap.
                     let mut expander = None;
-                    for param in func_data.params.iter() {
+                    for &param in func_data.params.iter() {
                         generic_params.fill_implicit_impl_trait_args(
                             db,
+                            &mut types_map,
+                            &mut types_source_maps,
                             &mut expander,
                             &mut || {
                                 (module.def_map(db), Expander::new(db, loc.id.file_id(), module))
                             },
                             param,
+                            &item.types_map,
+                            &item_source_maps.item,
                         );
                     }
-                    Interned::new(generic_params.finish())
+                    let generics = generic_params.finish(types_map, &mut types_source_maps);
+                    (Arc::new(generics), Some(Arc::new(types_source_maps)))
                 }
             }
             GenericDefId::AdtId(AdtId::StructId(id)) => id_to_generics(db, id, enabled_params),
@@ -414,11 +422,15 @@ impl GenericParams {
             GenericDefId::TraitAliasId(id) => id_to_generics(db, id, enabled_params),
             GenericDefId::TypeAliasId(id) => id_to_generics(db, id, enabled_params),
             GenericDefId::ImplId(id) => id_to_generics(db, id, enabled_params),
-            GenericDefId::ConstId(_) => Interned::new(GenericParams {
-                type_or_consts: Default::default(),
-                lifetimes: Default::default(),
-                where_predicates: Default::default(),
-            }),
+            GenericDefId::ConstId(_) => (
+                Arc::new(GenericParams {
+                    type_or_consts: Default::default(),
+                    lifetimes: Default::default(),
+                    where_predicates: Default::default(),
+                    types_map: Default::default(),
+                }),
+                None,
+            ),
         }
     }
 }
@@ -452,7 +464,7 @@ impl GenericParamsCollector {
         &mut self,
         lower_ctx: &LowerCtx<'_>,
         type_bounds: Option<ast::TypeBoundList>,
-        target: Either<TypeRef, LifetimeRef>,
+        target: Either<TypeRefId, LifetimeRef>,
     ) {
         for bound in type_bounds.iter().flat_map(|type_bound_list| type_bound_list.bounds()) {
             self.add_where_predicate_from_bound(lower_ctx, bound, None, target.clone());
@@ -473,16 +485,15 @@ impl GenericParamsCollector {
                 ast::TypeOrConstParam::Type(type_param) => {
                     let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
                     // FIXME: Use `Path::from_src`
-                    let default = type_param
-                        .default_type()
-                        .map(|it| Interned::new(TypeRef::from_ast(lower_ctx, it)));
+                    let default =
+                        type_param.default_type().map(|it| TypeRef::from_ast(lower_ctx, it));
                     let param = TypeParamData {
                         name: Some(name.clone()),
                         default,
                         provenance: TypeParamProvenance::TypeParamList,
                     };
                     let idx = self.type_or_consts.alloc(param.into());
-                    let type_ref = TypeRef::Path(name.into());
+                    let type_ref = lower_ctx.alloc_type_ref_desugared(TypeRef::Path(name.into()));
                     self.fill_bounds(
                         lower_ctx,
                         type_param.type_bound_list(),
@@ -492,12 +503,10 @@ impl GenericParamsCollector {
                 }
                 ast::TypeOrConstParam::Const(const_param) => {
                     let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
-                    let ty = const_param
-                        .ty()
-                        .map_or(TypeRef::Error, |it| TypeRef::from_ast(lower_ctx, it));
+                    let ty = TypeRef::from_ast_opt(lower_ctx, const_param.ty());
                     let param = ConstParamData {
                         name,
-                        ty: Interned::new(ty),
+                        ty,
                         default: ConstRef::from_const_param(lower_ctx, &const_param),
                     };
                     let idx = self.type_or_consts.alloc(param.into());
@@ -557,7 +566,7 @@ impl GenericParamsCollector {
         lower_ctx: &LowerCtx<'_>,
         bound: ast::TypeBound,
         hrtb_lifetimes: Option<&[Name]>,
-        target: Either<TypeRef, LifetimeRef>,
+        target: Either<TypeRefId, LifetimeRef>,
     ) {
         let bound = TypeBound::from_ast(lower_ctx, bound);
         self.fill_impl_trait_bounds(lower_ctx.take_impl_traits_bounds());
@@ -565,12 +574,12 @@ impl GenericParamsCollector {
             (Either::Left(type_ref), bound) => match hrtb_lifetimes {
                 Some(hrtb_lifetimes) => WherePredicate::ForLifetime {
                     lifetimes: hrtb_lifetimes.to_vec().into_boxed_slice(),
-                    target: WherePredicateTypeTarget::TypeRef(Interned::new(type_ref)),
-                    bound: Interned::new(bound),
+                    target: WherePredicateTypeTarget::TypeRef(type_ref),
+                    bound,
                 },
                 None => WherePredicate::TypeBound {
-                    target: WherePredicateTypeTarget::TypeRef(Interned::new(type_ref)),
-                    bound: Interned::new(bound),
+                    target: WherePredicateTypeTarget::TypeRef(type_ref),
+                    bound,
                 },
             },
             (Either::Right(lifetime), TypeBound::Lifetime(bound)) => {
@@ -581,7 +590,7 @@ impl GenericParamsCollector {
         self.where_predicates.push(predicate);
     }
 
-    fn fill_impl_trait_bounds(&mut self, impl_bounds: Vec<Vec<Interned<TypeBound>>>) {
+    fn fill_impl_trait_bounds(&mut self, impl_bounds: Vec<Vec<TypeBound>>) {
         for bounds in impl_bounds {
             let param = TypeParamData {
                 name: None,
@@ -601,12 +610,16 @@ impl GenericParamsCollector {
     fn fill_implicit_impl_trait_args(
         &mut self,
         db: &dyn DefDatabase,
+        generics_types_map: &mut TypesMap,
+        generics_types_source_map: &mut TypesSourceMap,
         // FIXME: Change this back to `LazyCell` if https://github.com/rust-lang/libs-team/issues/429 is accepted.
         exp: &mut Option<(Arc<DefMap>, Expander)>,
         exp_fill: &mut dyn FnMut() -> (Arc<DefMap>, Expander),
-        type_ref: &TypeRef,
+        type_ref: TypeRefId,
+        types_map: &TypesMap,
+        types_source_map: &TypesSourceMap,
     ) {
-        type_ref.walk(&mut |type_ref| {
+        TypeRef::walk(type_ref, types_map, &mut |type_ref| {
             if let TypeRef::ImplTrait(bounds) = type_ref {
                 let param = TypeParamData {
                     name: None,
@@ -615,12 +628,20 @@ impl GenericParamsCollector {
                 };
                 let param_id = self.type_or_consts.alloc(param.into());
                 for bound in bounds {
+                    let bound = copy_type_bound(
+                        bound,
+                        types_map,
+                        types_source_map,
+                        generics_types_map,
+                        generics_types_source_map,
+                    );
                     self.where_predicates.push(WherePredicate::TypeBound {
                         target: WherePredicateTypeTarget::TypeOrConstParam(param_id),
-                        bound: bound.clone(),
+                        bound,
                     });
                 }
             }
+
             if let TypeRef::Macro(mc) = type_ref {
                 let macro_call = mc.to_node(db.upcast());
                 let (def_map, expander) = exp.get_or_insert_with(&mut *exp_fill);
@@ -641,23 +662,210 @@ impl GenericParamsCollector {
                 if let Ok(ExpandResult { value: Some((mark, expanded)), .. }) =
                     expander.enter_expand(db, macro_call, resolver)
                 {
-                    let ctx = expander.ctx(db);
+                    let (mut macro_types_map, mut macro_types_source_map) =
+                        (TypesMap::default(), TypesSourceMap::default());
+                    let ctx = expander.ctx(db, &mut macro_types_map, &mut macro_types_source_map);
                     let type_ref = TypeRef::from_ast(&ctx, expanded.tree());
-                    self.fill_implicit_impl_trait_args(db, &mut *exp, exp_fill, &type_ref);
+                    self.fill_implicit_impl_trait_args(
+                        db,
+                        generics_types_map,
+                        generics_types_source_map,
+                        &mut *exp,
+                        exp_fill,
+                        type_ref,
+                        &macro_types_map,
+                        &macro_types_source_map,
+                    );
                     exp.get_or_insert_with(&mut *exp_fill).1.exit(mark);
                 }
             }
         });
     }
 
-    pub(crate) fn finish(self) -> GenericParams {
-        let Self { mut lifetimes, mut type_or_consts, where_predicates } = self;
+    pub(crate) fn finish(
+        self,
+        mut generics_types_map: TypesMap,
+        generics_types_source_map: &mut TypesSourceMap,
+    ) -> GenericParams {
+        let Self { mut lifetimes, mut type_or_consts, mut where_predicates } = self;
         lifetimes.shrink_to_fit();
         type_or_consts.shrink_to_fit();
+        where_predicates.shrink_to_fit();
+        generics_types_map.shrink_to_fit();
+        generics_types_source_map.shrink_to_fit();
         GenericParams {
             type_or_consts,
             lifetimes,
             where_predicates: where_predicates.into_boxed_slice(),
+            types_map: generics_types_map,
         }
+    }
+}
+
+/// Copies a `TypeRef` from a `TypesMap` (accompanied with `TypesSourceMap`) into another `TypesMap`
+/// (and `TypesSourceMap`).
+fn copy_type_ref(
+    type_ref: TypeRefId,
+    from: &TypesMap,
+    from_source_map: &TypesSourceMap,
+    to: &mut TypesMap,
+    to_source_map: &mut TypesSourceMap,
+) -> TypeRefId {
+    let result = match &from[type_ref] {
+        &TypeRef::Fn { ref params, is_varargs, is_unsafe, ref abi } => {
+            let params = params
+                .iter()
+                .map(|(name, param_type)| {
+                    (
+                        name.clone(),
+                        copy_type_ref(*param_type, from, from_source_map, to, to_source_map),
+                    )
+                })
+                .collect();
+            TypeRef::Fn { params, is_varargs, is_unsafe, abi: abi.clone() }
+        }
+        TypeRef::Tuple(types) => TypeRef::Tuple(
+            types
+                .iter()
+                .map(|&t| copy_type_ref(t, from, from_source_map, to, to_source_map))
+                .collect(),
+        ),
+        &TypeRef::RawPtr(type_ref, mutbl) => TypeRef::RawPtr(
+            copy_type_ref(type_ref, from, from_source_map, to, to_source_map),
+            mutbl,
+        ),
+        TypeRef::Reference(type_ref, lifetime, mutbl) => TypeRef::Reference(
+            copy_type_ref(*type_ref, from, from_source_map, to, to_source_map),
+            lifetime.clone(),
+            *mutbl,
+        ),
+        TypeRef::Array(type_ref, len) => TypeRef::Array(
+            copy_type_ref(*type_ref, from, from_source_map, to, to_source_map),
+            len.clone(),
+        ),
+        &TypeRef::Slice(type_ref) => {
+            TypeRef::Slice(copy_type_ref(type_ref, from, from_source_map, to, to_source_map))
+        }
+        TypeRef::ImplTrait(bounds) => TypeRef::ImplTrait(
+            copy_type_bounds(bounds, from, from_source_map, to, to_source_map).into(),
+        ),
+        TypeRef::DynTrait(bounds) => TypeRef::DynTrait(
+            copy_type_bounds(bounds, from, from_source_map, to, to_source_map).into(),
+        ),
+        TypeRef::Path(path) => {
+            TypeRef::Path(copy_path(path, from, from_source_map, to, to_source_map))
+        }
+        TypeRef::Never => TypeRef::Never,
+        TypeRef::Placeholder => TypeRef::Placeholder,
+        TypeRef::Macro(macro_call) => TypeRef::Macro(*macro_call),
+        TypeRef::Error => TypeRef::Error,
+    };
+    let id = to.types.alloc(result);
+    if let Some(&ptr) = from_source_map.types_map_back.get(id) {
+        to_source_map.types_map_back.insert(id, ptr);
+    }
+    id
+}
+
+fn copy_path(
+    path: &Path,
+    from: &TypesMap,
+    from_source_map: &TypesSourceMap,
+    to: &mut TypesMap,
+    to_source_map: &mut TypesSourceMap,
+) -> Path {
+    match path {
+        Path::Normal { type_anchor, mod_path, generic_args } => {
+            let type_anchor = type_anchor
+                .map(|type_ref| copy_type_ref(type_ref, from, from_source_map, to, to_source_map));
+            let mod_path = mod_path.clone();
+            let generic_args = generic_args.as_ref().map(|generic_args| {
+                generic_args
+                    .iter()
+                    .map(|generic_args| {
+                        copy_generic_args(generic_args, from, from_source_map, to, to_source_map)
+                    })
+                    .collect()
+            });
+            Path::Normal { type_anchor, mod_path, generic_args }
+        }
+        Path::LangItem(lang_item, name) => Path::LangItem(*lang_item, name.clone()),
+    }
+}
+
+fn copy_generic_args(
+    generic_args: &Option<GenericArgs>,
+    from: &TypesMap,
+    from_source_map: &TypesSourceMap,
+    to: &mut TypesMap,
+    to_source_map: &mut TypesSourceMap,
+) -> Option<GenericArgs> {
+    generic_args.as_ref().map(|generic_args| {
+        let args = generic_args
+            .args
+            .iter()
+            .map(|arg| match arg {
+                &GenericArg::Type(ty) => {
+                    GenericArg::Type(copy_type_ref(ty, from, from_source_map, to, to_source_map))
+                }
+                GenericArg::Lifetime(lifetime) => GenericArg::Lifetime(lifetime.clone()),
+                GenericArg::Const(konst) => GenericArg::Const(konst.clone()),
+            })
+            .collect();
+        let bindings = generic_args
+            .bindings
+            .iter()
+            .map(|binding| {
+                let name = binding.name.clone();
+                let args =
+                    copy_generic_args(&binding.args, from, from_source_map, to, to_source_map);
+                let type_ref = binding.type_ref.map(|type_ref| {
+                    copy_type_ref(type_ref, from, from_source_map, to, to_source_map)
+                });
+                let bounds =
+                    copy_type_bounds(&binding.bounds, from, from_source_map, to, to_source_map);
+                AssociatedTypeBinding { name, args, type_ref, bounds }
+            })
+            .collect();
+        GenericArgs {
+            args,
+            has_self_type: generic_args.has_self_type,
+            bindings,
+            desugared_from_fn: generic_args.desugared_from_fn,
+        }
+    })
+}
+
+fn copy_type_bounds(
+    bounds: &[TypeBound],
+    from: &TypesMap,
+    from_source_map: &TypesSourceMap,
+    to: &mut TypesMap,
+    to_source_map: &mut TypesSourceMap,
+) -> Box<[TypeBound]> {
+    bounds
+        .iter()
+        .map(|bound| copy_type_bound(bound, from, from_source_map, to, to_source_map))
+        .collect()
+}
+
+fn copy_type_bound(
+    bound: &TypeBound,
+    from: &TypesMap,
+    from_source_map: &TypesSourceMap,
+    to: &mut TypesMap,
+    to_source_map: &mut TypesSourceMap,
+) -> TypeBound {
+    match bound {
+        TypeBound::Path(path, modifier) => {
+            TypeBound::Path(copy_path(path, from, from_source_map, to, to_source_map), *modifier)
+        }
+        TypeBound::ForLifetime(lifetimes, path) => TypeBound::ForLifetime(
+            lifetimes.clone(),
+            copy_path(path, from, from_source_map, to, to_source_map),
+        ),
+        TypeBound::Lifetime(lifetime) => TypeBound::Lifetime(lifetime.clone()),
+        TypeBound::Use(use_args) => TypeBound::Use(use_args.clone()),
+        TypeBound::Error => TypeBound::Error,
     }
 }

@@ -10,11 +10,12 @@ use crate::{
     item_tree::{
         AttrOwner, Const, DefDatabase, Enum, ExternBlock, ExternCrate, Field, FieldParent,
         FieldsShape, FileItemTreeId, FnFlags, Function, GenericModItem, GenericParams, Impl,
-        Interned, ItemTree, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, Param, Path,
-        RawAttrs, RawVisibilityId, Static, Struct, Trait, TraitAlias, TypeAlias, TypeBound,
-        TypeRef, Union, Use, UseTree, UseTreeKind, Variant,
+        ItemTree, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, Param, Path, RawAttrs,
+        RawVisibilityId, Static, Struct, Trait, TraitAlias, TypeAlias, TypeBound, Union, Use,
+        UseTree, UseTreeKind, Variant,
     },
     pretty::{print_path, print_type_bounds, print_type_ref},
+    type_ref::{TypeRefId, TypesMap},
     visibility::RawVisibility,
 };
 
@@ -121,7 +122,13 @@ impl Printer<'_> {
         };
     }
 
-    fn print_fields(&mut self, parent: FieldParent, kind: FieldsShape, fields: &[Field]) {
+    fn print_fields(
+        &mut self,
+        parent: FieldParent,
+        kind: FieldsShape,
+        fields: &[Field],
+        map: &TypesMap,
+    ) {
         let edition = self.edition;
         match kind {
             FieldsShape::Record => {
@@ -135,7 +142,7 @@ impl Printer<'_> {
                         );
                         this.print_visibility(*visibility);
                         w!(this, "{}: ", name.display(self.db.upcast(), edition));
-                        this.print_type_ref(type_ref);
+                        this.print_type_ref(*type_ref, map);
                         wln!(this, ",");
                     }
                 });
@@ -151,7 +158,7 @@ impl Printer<'_> {
                         );
                         this.print_visibility(*visibility);
                         w!(this, "{}: ", name.display(self.db.upcast(), edition));
-                        this.print_type_ref(type_ref);
+                        this.print_type_ref(*type_ref, map);
                         wln!(this, ",");
                     }
                 });
@@ -167,20 +174,21 @@ impl Printer<'_> {
         kind: FieldsShape,
         fields: &[Field],
         params: &GenericParams,
+        map: &TypesMap,
     ) {
         match kind {
             FieldsShape::Record => {
                 if self.print_where_clause(params) {
                     wln!(self);
                 }
-                self.print_fields(parent, kind, fields);
+                self.print_fields(parent, kind, fields, map);
             }
             FieldsShape::Unit => {
                 self.print_where_clause(params);
-                self.print_fields(parent, kind, fields);
+                self.print_fields(parent, kind, fields, map);
             }
             FieldsShape::Tuple => {
-                self.print_fields(parent, kind, fields);
+                self.print_fields(parent, kind, fields, map);
                 self.print_where_clause(params);
             }
         }
@@ -262,6 +270,7 @@ impl Printer<'_> {
                     params,
                     ret_type,
                     ast_id,
+                    types_map,
                     flags,
                 } = &self.tree[it];
                 self.print_ast_id(ast_id.erase());
@@ -298,7 +307,7 @@ impl Printer<'_> {
                                 w!(this, "self: ");
                             }
                             if let Some(type_ref) = type_ref {
-                                this.print_type_ref(type_ref);
+                                this.print_type_ref(*type_ref, types_map);
                             } else {
                                 wln!(this, "...");
                             }
@@ -307,7 +316,7 @@ impl Printer<'_> {
                     });
                 }
                 w!(self, ") -> ");
-                self.print_type_ref(ret_type);
+                self.print_type_ref(*ret_type, types_map);
                 self.print_where_clause(explicit_generic_params);
                 if flags.contains(FnFlags::HAS_BODY) {
                     wln!(self, " {{ ... }}");
@@ -316,8 +325,15 @@ impl Printer<'_> {
                 }
             }
             ModItem::Struct(it) => {
-                let Struct { visibility, name, fields, shape: kind, generic_params, ast_id } =
-                    &self.tree[it];
+                let Struct {
+                    visibility,
+                    name,
+                    fields,
+                    shape: kind,
+                    generic_params,
+                    ast_id,
+                    types_map,
+                } = &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "struct {}", name.display(self.db.upcast(), self.edition));
@@ -327,6 +343,7 @@ impl Printer<'_> {
                     *kind,
                     fields,
                     generic_params,
+                    types_map,
                 );
                 if matches!(kind, FieldsShape::Record) {
                     wln!(self);
@@ -335,7 +352,8 @@ impl Printer<'_> {
                 }
             }
             ModItem::Union(it) => {
-                let Union { name, visibility, fields, generic_params, ast_id } = &self.tree[it];
+                let Union { name, visibility, fields, generic_params, ast_id, types_map } =
+                    &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "union {}", name.display(self.db.upcast(), self.edition));
@@ -345,6 +363,7 @@ impl Printer<'_> {
                     FieldsShape::Record,
                     fields,
                     generic_params,
+                    types_map,
                 );
                 wln!(self);
             }
@@ -358,18 +377,20 @@ impl Printer<'_> {
                 let edition = self.edition;
                 self.indented(|this| {
                     for variant in FileItemTreeId::range_iter(variants.clone()) {
-                        let Variant { name, fields, shape: kind, ast_id } = &this.tree[variant];
+                        let Variant { name, fields, shape: kind, ast_id, types_map } =
+                            &this.tree[variant];
                         this.print_ast_id(ast_id.erase());
                         this.print_attrs_of(variant, "\n");
                         w!(this, "{}", name.display(self.db.upcast(), edition));
-                        this.print_fields(FieldParent::Variant(variant), *kind, fields);
+                        this.print_fields(FieldParent::Variant(variant), *kind, fields, types_map);
                         wln!(this, ",");
                     }
                 });
                 wln!(self, "}}");
             }
             ModItem::Const(it) => {
-                let Const { name, visibility, type_ref, ast_id, has_body: _ } = &self.tree[it];
+                let Const { name, visibility, type_ref, ast_id, has_body: _, types_map } =
+                    &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "const ");
@@ -378,7 +399,7 @@ impl Printer<'_> {
                     None => w!(self, "_"),
                 }
                 w!(self, ": ");
-                self.print_type_ref(type_ref);
+                self.print_type_ref(*type_ref, types_map);
                 wln!(self, " = _;");
             }
             ModItem::Static(it) => {
@@ -390,6 +411,7 @@ impl Printer<'_> {
                     ast_id,
                     has_safe_kw,
                     has_unsafe_kw,
+                    types_map,
                 } = &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
@@ -404,7 +426,7 @@ impl Printer<'_> {
                     w!(self, "mut ");
                 }
                 w!(self, "{}: ", name.display(self.db.upcast(), self.edition));
-                self.print_type_ref(type_ref);
+                self.print_type_ref(*type_ref, types_map);
                 w!(self, " = _;");
                 wln!(self);
             }
@@ -449,6 +471,7 @@ impl Printer<'_> {
                     items,
                     generic_params,
                     ast_id,
+                    types_map,
                 } = &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 if *is_unsafe {
@@ -461,10 +484,10 @@ impl Printer<'_> {
                     w!(self, "!");
                 }
                 if let Some(tr) = target_trait {
-                    self.print_path(&tr.path);
+                    self.print_path(&tr.path, types_map);
                     w!(self, " for ");
                 }
-                self.print_type_ref(self_ty);
+                self.print_type_ref(*self_ty, types_map);
                 self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
                     for item in &**items {
@@ -474,19 +497,26 @@ impl Printer<'_> {
                 wln!(self, "}}");
             }
             ModItem::TypeAlias(it) => {
-                let TypeAlias { name, visibility, bounds, type_ref, generic_params, ast_id } =
-                    &self.tree[it];
+                let TypeAlias {
+                    name,
+                    visibility,
+                    bounds,
+                    type_ref,
+                    generic_params,
+                    ast_id,
+                    types_map,
+                } = &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "type {}", name.display(self.db.upcast(), self.edition));
                 self.print_generic_params(generic_params, it.into());
                 if !bounds.is_empty() {
                     w!(self, ": ");
-                    self.print_type_bounds(bounds);
+                    self.print_type_bounds(bounds, types_map);
                 }
                 if let Some(ty) = type_ref {
                     w!(self, " = ");
-                    self.print_type_ref(ty);
+                    self.print_type_ref(*ty, types_map);
                 }
                 self.print_where_clause(generic_params);
                 w!(self, ";");
@@ -543,19 +573,19 @@ impl Printer<'_> {
         self.blank();
     }
 
-    fn print_type_ref(&mut self, type_ref: &TypeRef) {
+    fn print_type_ref(&mut self, type_ref: TypeRefId, map: &TypesMap) {
         let edition = self.edition;
-        print_type_ref(self.db, type_ref, self, edition).unwrap();
+        print_type_ref(self.db, type_ref, map, self, edition).unwrap();
     }
 
-    fn print_type_bounds(&mut self, bounds: &[Interned<TypeBound>]) {
+    fn print_type_bounds(&mut self, bounds: &[TypeBound], map: &TypesMap) {
         let edition = self.edition;
-        print_type_bounds(self.db, bounds, self, edition).unwrap();
+        print_type_bounds(self.db, bounds, map, self, edition).unwrap();
     }
 
-    fn print_path(&mut self, path: &Path) {
+    fn print_path(&mut self, path: &Path, map: &TypesMap) {
         let edition = self.edition;
-        print_path(self.db, path, self, edition).unwrap();
+        print_path(self.db, path, map, self, edition).unwrap();
     }
 
     fn print_generic_params(&mut self, params: &GenericParams, parent: GenericModItem) {
@@ -586,7 +616,7 @@ impl Printer<'_> {
                 },
                 TypeOrConstParamData::ConstParamData(konst) => {
                     w!(self, "const {}: ", konst.name.display(self.db.upcast(), self.edition));
-                    self.print_type_ref(&konst.ty);
+                    self.print_type_ref(konst.ty, &params.types_map);
                 }
             }
         }
@@ -640,14 +670,16 @@ impl Printer<'_> {
                 };
 
                 match target {
-                    WherePredicateTypeTarget::TypeRef(ty) => this.print_type_ref(ty),
+                    WherePredicateTypeTarget::TypeRef(ty) => {
+                        this.print_type_ref(*ty, &params.types_map)
+                    }
                     WherePredicateTypeTarget::TypeOrConstParam(id) => match params[*id].name() {
                         Some(name) => w!(this, "{}", name.display(self.db.upcast(), edition)),
                         None => w!(this, "_anon_{}", id.into_raw()),
                     },
                 }
                 w!(this, ": ");
-                this.print_type_bounds(std::slice::from_ref(bound));
+                this.print_type_bounds(std::slice::from_ref(bound), &params.types_map);
             }
         });
         true

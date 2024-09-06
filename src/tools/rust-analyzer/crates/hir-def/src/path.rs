@@ -9,7 +9,7 @@ use std::{
 use crate::{
     lang_item::LangItemTarget,
     lower::LowerCtx,
-    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
+    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRefId},
 };
 use hir_expand::name::Name;
 use intern::Interned;
@@ -51,10 +51,10 @@ pub enum Path {
     Normal {
         /// Type based path like `<T>::foo`.
         /// Note that paths like `<Type as Trait>::foo` are desugared to `Trait::<Self=Type>::foo`.
-        type_anchor: Option<Interned<TypeRef>>,
+        type_anchor: Option<TypeRefId>,
         mod_path: Interned<ModPath>,
         /// Invariant: the same len as `self.mod_path.segments` or `None` if all segments are `None`.
-        generic_args: Option<Box<[Option<Interned<GenericArgs>>]>>,
+        generic_args: Option<Box<[Option<GenericArgs>]>>,
     },
     /// A link to a lang item. It is used in desugaring of things like `it?`. We can show these
     /// links via a normal path since they might be private and not accessible in the usage place.
@@ -86,20 +86,20 @@ pub struct AssociatedTypeBinding {
     pub name: Name,
     /// The generic arguments to the associated type. e.g. For `Trait<Assoc<'a, T> = &'a T>`, this
     /// would be `['a, T]`.
-    pub args: Option<Interned<GenericArgs>>,
+    pub args: Option<GenericArgs>,
     /// The type bound to this associated type (in `Item = T`, this would be the
     /// `T`). This can be `None` if there are bounds instead.
-    pub type_ref: Option<TypeRef>,
+    pub type_ref: Option<TypeRefId>,
     /// Bounds for the associated type, like in `Iterator<Item:
     /// SomeOtherTrait>`. (This is the unstable `associated_type_bounds`
     /// feature.)
-    pub bounds: Box<[Interned<TypeBound>]>,
+    pub bounds: Box<[TypeBound]>,
 }
 
 /// A single generic argument.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericArg {
-    Type(TypeRef),
+    Type(TypeRefId),
     Lifetime(LifetimeRef),
     Const(ConstRef),
 }
@@ -114,7 +114,7 @@ impl Path {
     /// Converts a known mod path to `Path`.
     pub fn from_known_path(
         path: ModPath,
-        generic_args: impl Into<Box<[Option<Interned<GenericArgs>>]>>,
+        generic_args: impl Into<Box<[Option<GenericArgs>]>>,
     ) -> Path {
         let generic_args = generic_args.into();
         assert_eq!(path.len(), generic_args.len());
@@ -137,9 +137,9 @@ impl Path {
         }
     }
 
-    pub fn type_anchor(&self) -> Option<&TypeRef> {
+    pub fn type_anchor(&self) -> Option<TypeRefId> {
         match self {
-            Path::Normal { type_anchor, .. } => type_anchor.as_deref(),
+            Path::Normal { type_anchor, .. } => *type_anchor,
             Path::LangItem(..) => None,
         }
     }
@@ -178,7 +178,7 @@ impl Path {
             return None;
         }
         let res = Path::Normal {
-            type_anchor: type_anchor.clone(),
+            type_anchor: *type_anchor,
             mod_path: Interned::new(ModPath::from_segments(
                 mod_path.kind,
                 mod_path.segments()[..mod_path.segments().len() - 1].iter().cloned(),
@@ -204,7 +204,7 @@ pub struct PathSegment<'a> {
 
 pub struct PathSegments<'a> {
     segments: &'a [Name],
-    generic_args: Option<&'a [Option<Interned<GenericArgs>>]>,
+    generic_args: Option<&'a [Option<GenericArgs>]>,
 }
 
 impl<'a> PathSegments<'a> {
@@ -224,7 +224,7 @@ impl<'a> PathSegments<'a> {
     pub fn get(&self, idx: usize) -> Option<PathSegment<'a>> {
         let res = PathSegment {
             name: self.segments.get(idx)?,
-            args_and_bindings: self.generic_args.and_then(|it| it.get(idx)?.as_deref()),
+            args_and_bindings: self.generic_args.and_then(|it| it.get(idx)?.as_ref()),
         };
         Some(res)
     }
@@ -244,7 +244,7 @@ impl<'a> PathSegments<'a> {
         self.segments
             .iter()
             .zip(self.generic_args.into_iter().flatten().chain(iter::repeat(&None)))
-            .map(|(name, args)| PathSegment { name, args_and_bindings: args.as_deref() })
+            .map(|(name, args)| PathSegment { name, args_and_bindings: args.as_ref() })
     }
 }
 

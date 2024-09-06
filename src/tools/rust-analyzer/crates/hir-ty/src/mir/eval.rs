@@ -2849,7 +2849,8 @@ impl Evaluator<'_> {
                         }
                         let layout = self.layout_adt(id.0, subst.clone())?;
                         match data.variant_data.as_ref() {
-                            VariantData::Record(fields) | VariantData::Tuple(fields) => {
+                            VariantData::Record { fields, .. }
+                            | VariantData::Tuple { fields, .. } => {
                                 let field_types = self.db.field_types(s.into());
                                 for (field, _) in fields.iter() {
                                     let offset = layout

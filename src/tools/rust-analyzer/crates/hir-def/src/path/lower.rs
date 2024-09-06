@@ -51,8 +51,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
                             segment.param_list(),
                             segment.ret_type(),
                         )
-                    })
-                    .map(Interned::new);
+                    });
                 if args.is_some() {
                     generic_args.resize(segments.len(), None);
                     generic_args.push(args);
@@ -70,7 +69,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
                 match trait_ref {
                     // <T>::foo
                     None => {
-                        type_anchor = Some(Interned::new(self_type));
+                        type_anchor = Some(self_type);
                         kind = PathKind::Plain;
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
@@ -95,7 +94,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
 
                         // Insert the type reference (T in the above example) as Self parameter for the trait
                         let last_segment = generic_args.get_mut(segments.len() - num_segments)?;
-                        *last_segment = Some(Interned::new(match last_segment.take() {
+                        *last_segment = Some(match last_segment.take() {
                             Some(it) => GenericArgs {
                                 args: iter::once(self_type)
                                     .chain(it.args.iter().cloned())
@@ -110,7 +109,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
                                 has_self_type: true,
                                 ..GenericArgs::empty()
                             },
-                        }));
+                        });
                     }
                 }
             }
@@ -194,11 +193,13 @@ pub(super) fn lower_generic_args(
         match generic_arg {
             ast::GenericArg::TypeArg(type_arg) => {
                 let type_ref = TypeRef::from_ast_opt(lower_ctx, type_arg.ty());
-                type_ref.walk(&mut |tr| {
+                let types_map = lower_ctx.types_map();
+                TypeRef::walk(type_ref, &types_map, &mut |tr| {
                     if let TypeRef::ImplTrait(bounds) = tr {
                         lower_ctx.update_impl_traits_bounds(bounds.clone());
                     }
                 });
+                drop(types_map);
                 args.push(GenericArg::Type(type_ref));
             }
             ast::GenericArg::AssocTypeArg(assoc_type_arg) => {
@@ -212,20 +213,19 @@ pub(super) fn lower_generic_args(
                     let name = name_ref.as_name();
                     let args = assoc_type_arg
                         .generic_arg_list()
-                        .and_then(|args| lower_generic_args(lower_ctx, args))
-                        .map(Interned::new);
+                        .and_then(|args| lower_generic_args(lower_ctx, args));
                     let type_ref = assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
-                    let type_ref = type_ref.inspect(|tr| {
-                        tr.walk(&mut |tr| {
+                    let type_ref = type_ref.inspect(|&tr| {
+                        let types_map = lower_ctx.types_map();
+                        TypeRef::walk(tr, &types_map, &mut |tr| {
                             if let TypeRef::ImplTrait(bounds) = tr {
                                 lower_ctx.update_impl_traits_bounds(bounds.clone());
                             }
                         });
+                        drop(types_map);
                     });
                     let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
-                        l.bounds()
-                            .map(|it| Interned::new(TypeBound::from_ast(lower_ctx, it)))
-                            .collect()
+                        l.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
                     } else {
                         Box::default()
                     };
@@ -269,7 +269,8 @@ fn lower_generic_args_from_fn_path(
         let type_ref = TypeRef::from_ast_opt(ctx, param.ty());
         param_types.push(type_ref);
     }
-    let args = Box::new([GenericArg::Type(TypeRef::Tuple(param_types))]);
+    let args =
+        Box::new([GenericArg::Type(ctx.alloc_type_ref_desugared(TypeRef::Tuple(param_types)))]);
     let bindings = if let Some(ret_type) = ret_type {
         let type_ref = TypeRef::from_ast_opt(ctx, ret_type.ty());
         Box::new([AssociatedTypeBinding {
@@ -280,7 +281,7 @@ fn lower_generic_args_from_fn_path(
         }])
     } else {
         // -> ()
-        let type_ref = TypeRef::Tuple(Vec::new());
+        let type_ref = ctx.alloc_type_ref_desugared(TypeRef::Tuple(Vec::new()));
         Box::new([AssociatedTypeBinding {
             name: Name::new_symbol_root(sym::Output.clone()),
             args: None,

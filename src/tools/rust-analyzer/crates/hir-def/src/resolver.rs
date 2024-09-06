@@ -3,7 +3,7 @@ use std::{fmt, iter, mem};
 
 use base_db::CrateId;
 use hir_expand::{name::Name, MacroDefId};
-use intern::{sym, Interned};
+use intern::sym;
 use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
@@ -24,7 +24,7 @@ use crate::{
     nameres::{DefMap, MacroSubNs},
     path::{ModPath, Path, PathKind},
     per_ns::PerNs,
-    type_ref::LifetimeRef,
+    type_ref::{LifetimeRef, TypesMap},
     visibility::{RawVisibility, Visibility},
     AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
     ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule,
@@ -76,7 +76,7 @@ enum Scope {
     /// All the items and imported names of a module
     BlockScope(ModuleItemMap),
     /// Brings the generic parameters of an item into scope
-    GenericParams { def: GenericDefId, params: Interned<GenericParams> },
+    GenericParams { def: GenericDefId, params: Arc<GenericParams> },
     /// Brings `Self` in `impl` block into scope
     ImplDefScope(ImplId),
     /// Brings `Self` in enum, struct and union definitions into scope
@@ -620,13 +620,15 @@ impl Resolver {
 
     pub fn where_predicates_in_scope(
         &self,
-    ) -> impl Iterator<Item = (&crate::generics::WherePredicate, &GenericDefId)> {
+    ) -> impl Iterator<Item = (&crate::generics::WherePredicate, (&GenericDefId, &TypesMap))> {
         self.scopes()
             .filter_map(|scope| match scope {
                 Scope::GenericParams { params, def } => Some((params, def)),
                 _ => None,
             })
-            .flat_map(|(params, def)| params.where_predicates().zip(iter::repeat(def)))
+            .flat_map(|(params, def)| {
+                params.where_predicates().zip(iter::repeat((def, &params.types_map)))
+            })
     }
 
     pub fn generic_def(&self) -> Option<GenericDefId> {
@@ -636,9 +638,16 @@ impl Resolver {
         })
     }
 
-    pub fn generic_params(&self) -> Option<&Interned<GenericParams>> {
+    pub fn generic_params(&self) -> Option<&Arc<GenericParams>> {
         self.scopes().find_map(|scope| match scope {
             Scope::GenericParams { params, .. } => Some(params),
+            _ => None,
+        })
+    }
+
+    pub fn all_generic_params(&self) -> impl Iterator<Item = (&GenericParams, &GenericDefId)> {
+        self.scopes().filter_map(|scope| match scope {
+            Scope::GenericParams { params, def } => Some((&**params, def)),
             _ => None,
         })
     }
