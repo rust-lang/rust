@@ -1698,8 +1698,6 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
             trait_ref: ty::EarlyBinder::bind(trait_ref),
             safety: impl_.safety,
             polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
-            do_not_recommend: tcx.features().do_not_recommend
-                && tcx.has_attrs_with_path(def_id, &[sym::diagnostic, sym::do_not_recommend]),
         }
     })
 }
