@@ -662,9 +662,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                                                 // `&dyn Trait`
                                                 ty::Ref(_, ty, _) if ty.is_trait() => true,
                                                 // `Box<dyn Trait>`
-                                                _ if ty.is_box() && ty.boxed_ty().is_trait() => {
+                                                _ if ty.boxed_ty().is_some_and(Ty::is_trait) => {
                                                     true
                                                 }
+
                                                 // `dyn Trait`
                                                 _ if ty.is_trait() => true,
                                                 // Anything else.
