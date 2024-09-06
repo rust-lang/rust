@@ -603,12 +603,12 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
         root_ctxt.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
     let mut res = UnordMap::default();
 
-    struct UnsafeInferVarsVisitor<'a, 'tcx, 'r> {
+    struct UnsafeInferVarsVisitor<'a, 'tcx> {
         root_ctxt: &'a TypeckRootCtxt<'tcx>,
-        res: &'r mut UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>,
+        res: &'a mut UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>,
     }
 
-    impl Visitor<'_> for UnsafeInferVarsVisitor<'_, '_, '_> {
+    impl Visitor<'_> for UnsafeInferVarsVisitor<'_, '_> {
         fn visit_expr(&mut self, ex: &'_ hir::Expr<'_>) {
             let typeck_results = self.root_ctxt.typeck_results.borrow();
 
