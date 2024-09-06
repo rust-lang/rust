@@ -62,7 +62,6 @@ fn is_mutex_kind_normal<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResu
 // pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
 // We ignore the platform layout and store our own fields:
 // - id: u32
-// - kind: i32
 
 fn mutex_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
