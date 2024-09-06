@@ -988,7 +988,7 @@ impl Step for Rustc {
             Kind::Build,
         );
 
-        rustc_cargo(builder, &mut cargo, target, &compiler);
+        rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
 
         // NB: all RUSTFLAGS should be added to `rustc_cargo()` so they will be
         // consistently applied by check/doc/test modes too.
@@ -1047,10 +1047,11 @@ pub fn rustc_cargo(
     cargo: &mut Cargo,
     target: TargetSelection,
     compiler: &Compiler,
+    crates: &[String],
 ) {
     cargo
         .arg("--features")
-        .arg(builder.rustc_features(builder.kind, target))
+        .arg(builder.rustc_features(builder.kind, target, crates))
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
 
