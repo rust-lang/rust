@@ -4,6 +4,7 @@
 use std::{
     fmt,
     ops::Div as _,
+    panic::AssertUnwindSafe,
     time::{Duration, Instant},
 };
 
@@ -552,23 +553,33 @@ impl GlobalState {
                 let fetch_semantic =
                     self.vfs_done && self.fetch_workspaces_queue.last_op_result().is_some();
                 move |sender| {
-                    let diags = fetch_native_diagnostics(
-                        &snapshot,
-                        subscriptions.clone(),
-                        slice.clone(),
-                        NativeDiagnosticsFetchKind::Syntax,
-                    );
+                    // We aren't observing the semantics token cache here
+                    let snapshot = AssertUnwindSafe(&snapshot);
+                    let Ok(diags) = std::panic::catch_unwind(|| {
+                        fetch_native_diagnostics(
+                            &snapshot,
+                            subscriptions.clone(),
+                            slice.clone(),
+                            NativeDiagnosticsFetchKind::Syntax,
+                        )
+                    }) else {
+                        return;
+                    };
                     sender
                         .send(Task::Diagnostics(DiagnosticsTaskKind::Syntax(generation, diags)))
                         .unwrap();
 
                     if fetch_semantic {
-                        let diags = fetch_native_diagnostics(
-                            &snapshot,
-                            subscriptions,
-                            slice,
-                            NativeDiagnosticsFetchKind::Semantic,
-                        );
+                        let Ok(diags) = std::panic::catch_unwind(|| {
+                            fetch_native_diagnostics(
+                                &snapshot,
+                                subscriptions.clone(),
+                                slice.clone(),
+                                NativeDiagnosticsFetchKind::Semantic,
+                            )
+                        }) else {
+                            return;
+                        };
                         sender
                             .send(Task::Diagnostics(DiagnosticsTaskKind::Semantic(
                                 generation, diags,
