@@ -1983,7 +1983,7 @@ impl crate::error::Error for ExitStatusError {}
 ///     ExitCode::SUCCESS
 /// }
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 pub struct ExitCode(imp::ExitCode);
 
