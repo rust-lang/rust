@@ -875,7 +875,7 @@ impl GlobalState {
                 self.discover_workspace_queue.op_completed(());
 
                 let mut config = Config::clone(&*self.config);
-                config.add_linked_projects(project, buildfile);
+                config.add_discovered_project_from_command(project, buildfile);
                 self.update_configuration(config);
             }
             DiscoverProjectMessage::Progress { message } => {
