@@ -301,13 +301,13 @@ pub(super) fn dump_nll_mir<'tcx>(
 
 #[allow(rustc::diagnostic_outside_of_impl)]
 #[allow(rustc::untranslatable_diagnostic)]
-pub(super) fn dump_annotation<'tcx, 'cx>(
-    infcx: &'cx BorrowckInferCtxt<'tcx>,
+pub(super) fn dump_annotation<'tcx, 'infcx>(
+    infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    diags: &mut crate::diags::BorrowckDiags<'cx, 'tcx>,
+    diags: &mut crate::diags::BorrowckDiags<'infcx, 'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
