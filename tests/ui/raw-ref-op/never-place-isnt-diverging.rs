@@ -10,4 +10,13 @@ fn make_up_a_value<T>() -> T {
     }
 }
 
+
+fn make_up_a_pointer<T>() -> *const T {
+    unsafe {
+        let x: *const ! = 0 as _;
+        &raw const *x
+        //~^ ERROR mismatched types
+    }
+}
+
 fn main() {}

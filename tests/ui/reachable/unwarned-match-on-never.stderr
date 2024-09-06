@@ -2,7 +2,7 @@ error: unreachable expression
   --> $DIR/unwarned-match-on-never.rs:10:5
    |
 LL |     match x {}
-   |     ---------- any code following this expression is unreachable
+   |           - any code following this expression is unreachable
 LL |     // But matches in unreachable code are warned.
 LL |     match x {}
    |     ^^^^^^^^^^ unreachable expression

@@ -78,6 +78,65 @@ LL | |     }
    = note:   expected type `!`
            found unit type `()`
 
-error: aborting due to 6 previous errors
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:51:18
+   |
+LL |         let (_ | 1i32) = *x;
+   |                  ^^^^    -- this expression has type `!`
+   |                  |
+   |                  expected `!`, found `i32`
+   |
+   = note: expected type `!`
+              found type `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:48:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const ! = 0 as _;
+LL | |         let (_ | 1i32) = *x;
+LL | |
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:61:14
+   |
+LL |         let (1i32 | _) = *x;
+   |              ^^^^        -- this expression has type `!`
+   |              |
+   |              expected `!`, found `i32`
+   |
+   = note: expected type `!`
+              found type `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:58:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const ! = 0 as _;
+LL | |         let (1i32 | _) = *x;
+LL | |
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:69:26
+   |
+LL |         let ref _x: () = *x;
+   |                          ^^ expected `()`, found `!`
+   |
+   = note: expected unit type `()`
+                   found type `!`
+
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

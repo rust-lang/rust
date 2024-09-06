@@ -65,7 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
-        if ty.is_never() && self.expr_constitutes_read(expr) {
+        if ty.is_never() && self.expr_guaranteed_to_constitute_read_for_never(expr) {
             if let Some(_) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
                 let reported = self.dcx().span_delayed_bug(
                     expr.span,
@@ -245,7 +245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // unless it's a place expression that isn't being read from, in which case
         // diverging would be unsound since we may never actually read the `!`.
         // e.g. `let _ = *never_ptr;` with `never_ptr: *const !`.
-        if ty.is_never() && self.expr_constitutes_read(expr) {
+        if ty.is_never() && self.expr_guaranteed_to_constitute_read_for_never(expr) {
             self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
         }
 
@@ -274,10 +274,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// expression and the *parent* expression is the scrutinee of a match or
     /// the pointee of an `&` addr-of expression, since both of those parent
     /// expressions take a *place* and not a value.
-    ///
-    /// This function is unfortunately a bit heuristical, though it is certainly
-    /// far sounder than the prior status quo: <https://github.com/rust-lang/rust/issues/117288>.
-    pub(super) fn expr_constitutes_read(&self, expr: &'tcx hir::Expr<'tcx>) -> bool {
+    pub(super) fn expr_guaranteed_to_constitute_read_for_never(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> bool {
         // We only care about place exprs. Anything else returns an immediate
         // which would constitute a read. We don't care about distinguishing
         // "syntactic" place exprs since if the base of a field projection is
@@ -300,15 +300,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         expr.hir_id != lhs.hir_id
                     }
 
-                    // If we have a subpattern that performs a read, we want to consider this
-                    // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
+                    // See note on `PatKind::Or` below for why this is `all`.
                     ExprKind::Match(scrutinee, arms, _) => {
                         assert_eq!(scrutinee.hir_id, expr.hir_id);
-                        arms.iter().any(|arm| self.pat_constitutes_read(arm.pat))
+                        arms.iter()
+                            .all(|arm| self.pat_guaranteed_to_constitute_read_for_never(arm.pat))
                     }
                     ExprKind::Let(hir::LetExpr { init, pat, .. }) => {
                         assert_eq!(init.hir_id, expr.hir_id);
-                        self.pat_constitutes_read(*pat)
+                        self.pat_guaranteed_to_constitute_read_for_never(*pat)
                     }
 
                     // Any expression child of these expressions constitute reads.
@@ -349,7 +349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
             hir::Node::LetStmt(hir::LetStmt { init: Some(target), pat, .. }) => {
                 assert_eq!(target.hir_id, expr.hir_id);
-                self.pat_constitutes_read(*pat)
+                self.pat_guaranteed_to_constitute_read_for_never(*pat)
             }
 
             // These nodes (if they have a sub-expr) do constitute a read.
@@ -401,36 +401,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Whether this pattern constitutes a read of value of the scrutinee that
-    /// it is matching against.
+    /// it is matching against. This is used to determine whether we should
+    /// perform `NeverToAny` coercions.
     ///
     /// See above for the nuances of what happens when this returns true.
-    pub(super) fn pat_constitutes_read(&self, pat: &hir::Pat<'_>) -> bool {
-        let mut does_read = false;
-        pat.walk(|pat| {
-            match pat.kind {
-                hir::PatKind::Wild | hir::PatKind::Never | hir::PatKind::Or(_) => {
-                    // Recurse
-                    true
-                }
-                hir::PatKind::Binding(_, _, _, _)
-                | hir::PatKind::Struct(_, _, _)
-                | hir::PatKind::TupleStruct(_, _, _)
-                | hir::PatKind::Path(_)
-                | hir::PatKind::Tuple(_, _)
-                | hir::PatKind::Box(_)
-                | hir::PatKind::Ref(_, _)
-                | hir::PatKind::Deref(_)
-                | hir::PatKind::Lit(_)
-                | hir::PatKind::Range(_, _, _)
-                | hir::PatKind::Slice(_, _, _)
-                | hir::PatKind::Err(_) => {
-                    does_read = true;
-                    // No need to continue.
-                    false
-                }
+    pub(super) fn pat_guaranteed_to_constitute_read_for_never(&self, pat: &hir::Pat<'_>) -> bool {
+        match pat.kind {
+            // Does not constitute a read.
+            hir::PatKind::Wild => false,
+
+            // This is unnecessarily restrictive when the pattern that doesn't
+            // constitute a read is unreachable.
+            //
+            // For example `match *never_ptr { value => {}, _ => {} }` or
+            // `match *never_ptr { _ if false => {}, value => {} }`.
+            //
+            // It is however fine to be restrictive here; only returning `true`
+            // can lead to unsoundness.
+            hir::PatKind::Or(subpats) => {
+                subpats.iter().all(|pat| self.pat_guaranteed_to_constitute_read_for_never(pat))
             }
-        });
-        does_read
+
+            // Does constitute a read, since it is equivalent to a discriminant read.
+            hir::PatKind::Never => true,
+
+            // All of these constitute a read, or match on something that isn't `!`,
+            // which would require a `NeverToAny` coercion.
+            hir::PatKind::Binding(_, _, _, _)
+            | hir::PatKind::Struct(_, _, _)
+            | hir::PatKind::TupleStruct(_, _, _)
+            | hir::PatKind::Path(_)
+            | hir::PatKind::Tuple(_, _)
+            | hir::PatKind::Box(_)
+            | hir::PatKind::Ref(_, _)
+            | hir::PatKind::Deref(_)
+            | hir::PatKind::Lit(_)
+            | hir::PatKind::Range(_, _, _)
+            | hir::PatKind::Slice(_, _, _)
+            | hir::PatKind::Err(_) => true,
+        }
     }
 
     #[instrument(skip(self, expr), level = "debug")]

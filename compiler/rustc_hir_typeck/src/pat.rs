@@ -27,7 +27,6 @@ use tracing::{debug, instrument, trace};
 use ty::VariantDef;
 
 use super::report_unexpected_variant_res;
-use crate::diverges::Diverges;
 use crate::gather_locals::DeclOrigin;
 use crate::{FnCtxt, LoweredTy, errors};
 
@@ -276,12 +275,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
             }
         };
-
-        // All other patterns constitute a read, which causes us to diverge
-        // if the type is never.
-        if ty.is_never() && self.pat_constitutes_read(pat) {
-            self.diverges.set(self.diverges.get() | Diverges::always(pat.span));
-        }
 
         self.write_ty(pat.hir_id, ty);
 

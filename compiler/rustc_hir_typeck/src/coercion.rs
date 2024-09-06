@@ -1066,7 +1066,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let cause =
             cause.unwrap_or_else(|| self.cause(expr.span, ObligationCauseCode::ExprAssignable));
-        let coerce = Coerce::new(self, cause, allow_two_phase, self.expr_constitutes_read(expr));
+        let coerce = Coerce::new(
+            self,
+            cause,
+            allow_two_phase,
+            self.expr_guaranteed_to_constitute_read_for_never(expr),
+        );
         let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
@@ -1268,6 +1273,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // probably aren't processing function arguments here and even if we were,
         // they're going to get autorefed again anyway and we can apply 2-phase borrows
         // at that time.
+        //
+        // NOTE: we set `coerce_never` to `true` here because coercion LUBs only
+        // operate on values and not places, so a never coercion is valid.
         let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No, true);
         coerce.use_lub = true;
 

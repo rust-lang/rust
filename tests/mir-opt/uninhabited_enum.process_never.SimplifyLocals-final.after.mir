@@ -4,10 +4,10 @@ fn process_never(_1: *const !) -> () {
     debug input => _1;
     let mut _0: ();
     scope 1 {
-        debug _input => _1;
+        debug _input => const ();
     }
 
     bb0: {
-        return;
+        unreachable;
     }
 }

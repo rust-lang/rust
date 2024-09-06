@@ -44,4 +44,31 @@ fn field_projection() -> ! {
     }
 }
 
+fn covered_arm() -> ! {
+    unsafe {
+    //~^ ERROR mismatched types
+        let x: *const ! = 0 as _;
+        let (_ | 1i32) = *x;
+        //~^ ERROR mismatched types
+    }
+}
+
+// FIXME: This *could* be considered a read of `!`, but we're not that sophisticated..
+fn uncovered_arm() -> ! {
+    unsafe {
+    //~^ ERROR mismatched types
+        let x: *const ! = 0 as _;
+        let (1i32 | _) = *x;
+        //~^ ERROR mismatched types
+    }
+}
+
+fn coerce_ref_binding() -> ! {
+    unsafe {
+        let x: *const ! = 0 as _;
+        let ref _x: () = *x;
+        //~^ ERROR mismatched types
+    }
+}
+
 fn main() {}
