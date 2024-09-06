@@ -9,9 +9,6 @@
 // which caused the old solver to emit a `Tensor: TensorValue` goal in
 // `fn normalize_to_error` which then failed, causing this test to pass.
 
-//@ revisions: current next
-//@ ignore-compare-mode-next-solver (explicit revisions)
-//@[next] compile-flags: -Znext-solver
 //@ check-pass
 
 pub trait TensorValue {

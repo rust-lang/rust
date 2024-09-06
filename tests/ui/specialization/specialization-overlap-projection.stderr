@@ -9,7 +9,7 @@ LL | #![feature(specialization)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0119]: conflicting implementations of trait `Foo` for type `u32`
-  --> $DIR/specialization-overlap-projection.rs:19:1
+  --> $DIR/specialization-overlap-projection.rs:20:1
    |
 LL | impl Foo for u32 {}
    | ---------------- first implementation here
@@ -17,7 +17,7 @@ LL | impl Foo for <u8 as Assoc>::Output {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
 
 error[E0119]: conflicting implementations of trait `Foo` for type `u32`
-  --> $DIR/specialization-overlap-projection.rs:21:1
+  --> $DIR/specialization-overlap-projection.rs:22:1
    |
 LL | impl Foo for u32 {}
    | ---------------- first implementation here
