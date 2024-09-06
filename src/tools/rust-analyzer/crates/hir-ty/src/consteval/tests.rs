@@ -1556,7 +1556,7 @@ fn builtin_derive_macro() {
         Bar,
     }
     #[derive(Clone)]
-    struct X(i32, Z, i64)
+    struct X(i32, Z, i64);
     #[derive(Clone)]
     struct Y {
         field1: i32,
@@ -1574,20 +1574,20 @@ fn builtin_derive_macro() {
     );
     check_number(
         r#"
-    //- minicore: default, derive, builtin_impls
-    #[derive(Default)]
-    struct X(i32, Y, i64)
-    #[derive(Default)]
-    struct Y {
-        field1: i32,
-        field2: u8,
-    }
+//- minicore: default, derive, builtin_impls
+#[derive(Default)]
+struct X(i32, Y, i64);
+#[derive(Default)]
+struct Y {
+    field1: i32,
+    field2: u8,
+}
 
-    const GOAL: u8 = {
-        let x = X::default();
-        x.1.field2
-    };
-    "#,
+const GOAL: u8 = {
+    let x = X::default();
+    x.1.field2
+};
+"#,
         0,
     );
 }
@@ -2828,7 +2828,7 @@ fn type_error() {
         y.0
     };
     "#,
-        |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::TypeMismatch(_))),
+        |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::HasErrors)),
     );
 }
 

@@ -171,7 +171,7 @@ pub mod default {
     macro_rules! impl_default {
         ($v:literal; $($t:ty)*) => {
             $(
-                impl const Default for $t {
+                impl Default for $t {
                     fn default() -> Self {
                         $v
                     }
@@ -686,7 +686,7 @@ pub mod ops {
     // endregion:fn
     // region:try
     mod try_ {
-        use super::super::convert::Infallible;
+        use crate::convert::Infallible;
 
         pub enum ControlFlow<B, C = ()> {
             #[lang = "Continue"]
@@ -756,7 +756,7 @@ pub mod ops {
         // endregion:option
         // region:result
         // region:from
-        use super::super::convert::From;
+        use crate::convert::From;
 
         impl<T, E> Try for Result<T, E> {
             type Output = T;
@@ -777,7 +777,7 @@ pub mod ops {
         impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {
             fn from_residual(residual: Result<Infallible, E>) -> Self {
                 match residual {
-                    Err(e) => Err(From::from(e)),
+                    Err(e) => Err(F::from(e)),
                     Ok(_) => loop {},
                 }
             }
