@@ -137,45 +137,35 @@ impl InitializationData<'_, '_> {
     }
 }
 
-struct Elaborator<'a, 'b, 'tcx> {
-    ctxt: &'a mut ElaborateDropsCtxt<'b, 'tcx>,
-}
-
-impl fmt::Debug for Elaborator<'_, '_, '_> {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Ok(())
-    }
-}
-
-impl<'b, 'tcx> DropElaborator<'b, 'tcx> for Elaborator<'_, 'b, 'tcx> {
+impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
     type Path = MovePathIndex;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> {
-        &mut self.ctxt.patch
+        &mut self.patch
     }
 
-    fn body(&self) -> &'b Body<'tcx> {
-        self.ctxt.body
+    fn body(&self) -> &'a Body<'tcx> {
+        self.body
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.ctxt.tcx
+        self.tcx
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.ctxt.param_env()
+        self.param_env()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle {
         let ((maybe_live, maybe_dead), multipart) = match mode {
-            DropFlagMode::Shallow => (self.ctxt.init_data.maybe_live_dead(path), false),
+            DropFlagMode::Shallow => (self.init_data.maybe_live_dead(path), false),
             DropFlagMode::Deep => {
                 let mut some_live = false;
                 let mut some_dead = false;
                 let mut children_count = 0;
-                on_all_children_bits(self.ctxt.move_data(), path, |child| {
-                    let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
+                on_all_children_bits(self.move_data(), path, |child| {
+                    let (live, dead) = self.init_data.maybe_live_dead(child);
                     debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
                     some_live |= live;
                     some_dead |= dead;
@@ -195,25 +185,25 @@ impl<'b, 'tcx> DropElaborator<'b, 'tcx> for Elaborator<'_, 'b, 'tcx> {
     fn clear_drop_flag(&mut self, loc: Location, path: Self::Path, mode: DropFlagMode) {
         match mode {
             DropFlagMode::Shallow => {
-                self.ctxt.set_drop_flag(loc, path, DropFlagState::Absent);
+                self.set_drop_flag(loc, path, DropFlagState::Absent);
             }
             DropFlagMode::Deep => {
-                on_all_children_bits(self.ctxt.move_data(), path, |child| {
-                    self.ctxt.set_drop_flag(loc, child, DropFlagState::Absent)
+                on_all_children_bits(self.move_data(), path, |child| {
+                    self.set_drop_flag(loc, child, DropFlagState::Absent)
                 });
             }
         }
     }
 
     fn field_subpath(&self, path: Self::Path, field: FieldIdx) -> Option<Self::Path> {
-        rustc_mir_dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+        rustc_mir_dataflow::move_path_children_matching(self.move_data(), path, |e| match e {
             ProjectionElem::Field(idx, _) => idx == field,
             _ => false,
         })
     }
 
     fn array_subpath(&self, path: Self::Path, index: u64, size: u64) -> Option<Self::Path> {
-        rustc_mir_dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+        rustc_mir_dataflow::move_path_children_matching(self.move_data(), path, |e| match e {
             ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
                 debug_assert!(size == min_length, "min_length should be exact for arrays");
                 assert!(!from_end, "from_end should not be used for array element ConstantIndex");
@@ -224,20 +214,20 @@ impl<'b, 'tcx> DropElaborator<'b, 'tcx> for Elaborator<'_, 'b, 'tcx> {
     }
 
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path> {
-        rustc_mir_dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| {
+        rustc_mir_dataflow::move_path_children_matching(self.move_data(), path, |e| {
             e == ProjectionElem::Deref
         })
     }
 
     fn downcast_subpath(&self, path: Self::Path, variant: VariantIdx) -> Option<Self::Path> {
-        rustc_mir_dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+        rustc_mir_dataflow::move_path_children_matching(self.move_data(), path, |e| match e {
             ProjectionElem::Downcast(_, idx) => idx == variant,
             _ => false,
         })
     }
 
     fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>> {
-        self.ctxt.drop_flag(path).map(Operand::Copy)
+        self.drop_flag(path).map(Operand::Copy)
     }
 }
 
@@ -248,6 +238,12 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     init_data: InitializationData<'a, 'tcx>,
     drop_flags: IndexVec<MovePathIndex, Option<Local>>,
     patch: MirPatch<'tcx>,
+}
+
+impl fmt::Debug for ElaborateDropsCtxt<'_, '_> {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
 }
 
 impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
@@ -370,15 +366,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                         }
                     };
                     self.init_data.seek_before(self.body.terminator_loc(bb));
-                    elaborate_drop(
-                        &mut Elaborator { ctxt: self },
-                        terminator.source_info,
-                        place,
-                        path,
-                        target,
-                        unwind,
-                        bb,
-                    )
+                    elaborate_drop(self, terminator.source_info, place, path, target, unwind, bb)
                 }
                 LookupResult::Parent(None) => {}
                 LookupResult::Parent(Some(_)) => {
