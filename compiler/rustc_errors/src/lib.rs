@@ -502,13 +502,13 @@ struct DiagCtxtInner {
     /// marked as fulfilled. This is a collection of all [`LintExpectationId`]s
     /// that have been marked as fulfilled this way.
     ///
+    /// Emitting expectations after having stolen this field can happen. In particular, an
+    /// `#[expect(warnings)]` can easily make the `UNFULFILLED_LINT_EXPECTATIONS` lint expect
+    /// itself. To avoid needless complexity in this corner case, we tolerate failing to track
+    /// those expectations.
+    ///
     /// [RFC-2383]: https://rust-lang.github.io/rfcs/2383-lint-reasons.html
     fulfilled_expectations: FxIndexSet<LintExpectationId>,
-
-    /// Whether `fulfilled_expectations` has been stolen. This is used to ICE in case we emit
-    /// an expectation diagnostic after stealing it, which means that expectation would not be
-    /// correctly handled.
-    stolen_fulfilled_expectations: bool,
 
     /// The file where the ICE information is stored. This allows delayed_span_bug backtraces to be
     /// stored along side the main panic backtrace.
@@ -724,7 +724,6 @@ impl DiagCtxt {
             stashed_diagnostics,
             future_breakage_diagnostics,
             fulfilled_expectations,
-            stolen_fulfilled_expectations: _,
             ice_file: _,
         } = inner.deref_mut();
 
@@ -1078,7 +1077,6 @@ impl<'a> DiagCtxtHandle<'a> {
     /// [`DiagCtxtInner`] and indicate that the linked expectation has been fulfilled.
     #[must_use]
     pub fn steal_fulfilled_expectation_ids(&self) -> FxIndexSet<LintExpectationId> {
-        self.inner.borrow_mut().stolen_fulfilled_expectations = true;
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
 
@@ -1388,7 +1386,6 @@ impl DiagCtxtInner {
             stashed_diagnostics: Default::default(),
             future_breakage_diagnostics: Vec::new(),
             fulfilled_expectations: Default::default(),
-            stolen_fulfilled_expectations: false,
             ice_file: None,
         }
     }
@@ -1492,10 +1489,6 @@ impl DiagCtxtInner {
                 return None;
             }
             Expect(expect_id) | ForceWarning(Some(expect_id)) => {
-                assert!(
-                    !self.stolen_fulfilled_expectations,
-                    "Attempting to emit an expected diagnostic after `check_expectations`.",
-                );
                 self.fulfilled_expectations.insert(expect_id);
                 if let Expect(_) = diagnostic.level {
                     // Nothing emitted here for expected lints.
