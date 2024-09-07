@@ -1,6 +1,6 @@
 use rustc_ast::mut_visit::{walk_pat, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, Token};
+use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token};
 use rustc_ast::{
     self as ast, AttrVec, BindingMode, ByRef, Expr, ExprKind, MacCall, Mutability, Pat, PatField,
     PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
@@ -548,7 +548,7 @@ impl<'a> Parser<'a> {
                     None => PatKind::Path(qself, path),
                 }
             }
-        } else if let Some(lt) = self.token.lifetime()
+        } else if let Some((lt, IdentIsRaw::No)) = self.token.lifetime()
             // In pattern position, we're totally fine with using "next token isn't colon"
             // as a heuristic. We could probably just always try to recover if it's a lifetime,
             // because we never have `'a: label {}` in a pattern position anyways, but it does
@@ -689,7 +689,7 @@ impl<'a> Parser<'a> {
     /// Parse `&pat` / `&mut pat`.
     fn parse_pat_deref(&mut self, expected: Option<Expected>) -> PResult<'a, PatKind> {
         self.expect_and()?;
-        if let Some(lifetime) = self.token.lifetime() {
+        if let Some((lifetime, _)) = self.token.lifetime() {
             self.bump(); // `'a`
 
             self.dcx().emit_err(UnexpectedLifetimeInPattern {

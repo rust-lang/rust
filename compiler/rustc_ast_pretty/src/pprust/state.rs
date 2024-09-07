@@ -11,7 +11,9 @@ use std::borrow::Cow;
 use ast::TraitBoundModifiers;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{
+    self, BinOpToken, CommentKind, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind,
+};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
@@ -947,8 +949,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::NtIdent(ident, is_raw) => {
                 IdentPrinter::for_ast_ident(ident, is_raw.into()).to_string().into()
             }
-            token::Lifetime(name) => name.to_string().into(),
-            token::NtLifetime(ident) => ident.name.to_string().into(),
+
+            token::Lifetime(name, IdentIsRaw::No)
+            | token::NtLifetime(Ident { name, .. }, IdentIsRaw::No) => name.to_string().into(),
+            token::Lifetime(name, IdentIsRaw::Yes)
+            | token::NtLifetime(Ident { name, .. }, IdentIsRaw::Yes) => {
+                format!("'r#{}", &name.as_str()[1..]).into()
+            }
 
             /* Other */
             token::DocComment(comment_kind, attr_style, data) => {

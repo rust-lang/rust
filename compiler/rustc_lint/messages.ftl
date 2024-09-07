@@ -708,6 +708,10 @@ lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
 lint_range_use_inclusive_range = use an inclusive range instead
 
 
+lint_raw_prefix = prefix `'r` is reserved
+    .label = reserved prefix
+    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+
 lint_reason_must_be_string_literal = reason must be a string literal
 
 lint_reason_must_come_last = reason in lint attribute must come last

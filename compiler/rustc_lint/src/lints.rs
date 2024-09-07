@@ -363,8 +363,9 @@ pub(crate) enum BuiltinEllipsisInclusiveRangePatternsLint {
 pub(crate) struct BuiltinKeywordIdents {
     pub kw: Ident,
     pub next: Edition,
-    #[suggestion(code = "r#{kw}", applicability = "machine-applicable")]
+    #[suggestion(code = "{prefix}r#{kw}", applicability = "machine-applicable")]
     pub suggestion: Span,
+    pub prefix: &'static str,
 }
 
 #[derive(LintDiagnostic)]
@@ -2812,6 +2813,15 @@ pub(crate) struct ReservedPrefix {
     pub suggestion: Span,
 
     pub prefix: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_raw_prefix)]
+pub(crate) struct RawPrefix {
+    #[label]
+    pub label: Span,
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Span,
 }
 
 #[derive(LintDiagnostic)]

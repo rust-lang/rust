@@ -229,15 +229,16 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     span: ident.span,
                 })),
 
-                Lifetime(name) => {
+                Lifetime(name, is_raw) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
-                        TokenTree::Ident(Ident { sym: ident.name, is_raw: false, span }),
+                        TokenTree::Ident(Ident { sym: ident.name, is_raw: is_raw.into(), span }),
                     ]);
                 }
-                NtLifetime(ident) => {
-                    let stream = TokenStream::token_alone(token::Lifetime(ident.name), ident.span);
+                NtLifetime(ident, is_raw) => {
+                    let stream =
+                        TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span);
                     trees.push(TokenTree::Group(Group {
                         delimiter: pm::Delimiter::None,
                         stream: Some(stream),
