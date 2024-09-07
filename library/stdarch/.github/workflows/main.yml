@@ -185,11 +185,6 @@ jobs:
         rustup default nightly
     - run: rustup target add ${{ matrix.target }}
       if: "!endsWith(matrix.target, 'emulated')"
-    - name: Setup (aarch64-apple-darwin)
-      run: |
-        echo "SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path)" >> $GITHUB_ENV
-        echo "MACOS_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version)" >> $GITHUB_ENV
-      if: matrix.target == 'aarch64-apple-darwin'
     - run: cargo generate-lockfile
 
     # Configure some env vars based on matrix configuration
