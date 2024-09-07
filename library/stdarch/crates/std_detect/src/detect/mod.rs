@@ -66,8 +66,8 @@ cfg_if! {
     } else if #[cfg(all(target_os = "windows", any(target_arch = "aarch64", target_arch = "arm64ec")))] {
         #[path = "os/windows/aarch64.rs"]
         mod os;
-    } else if #[cfg(all(target_os = "macos", target_arch = "aarch64", feature = "libc"))] {
-        #[path = "os/macos/aarch64.rs"]
+    } else if #[cfg(all(target_vendor = "apple", target_arch = "aarch64", feature = "libc"))] {
+        #[path = "os/darwin/aarch64.rs"]
         mod os;
     } else {
         #[path = "os/other.rs"]

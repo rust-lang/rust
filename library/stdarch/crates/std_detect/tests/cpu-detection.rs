@@ -188,8 +188,8 @@ fn aarch64_bsd() {
 }
 
 #[test]
-#[cfg(all(target_arch = "aarch64", target_os = "macos"))]
-fn aarch64_macos() {
+#[cfg(all(target_arch = "aarch64", target_vendor = "apple"))]
+fn aarch64_darwin() {
     println!("asimd: {:?}", is_aarch64_feature_detected!("asimd"));
     println!("fp: {:?}", is_aarch64_feature_detected!("fp"));
     println!("fp16: {:?}", is_aarch64_feature_detected!("fp16"));

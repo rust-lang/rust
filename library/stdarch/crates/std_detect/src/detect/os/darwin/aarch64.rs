@@ -1,4 +1,6 @@
-//! Run-time feature detection for aarch64 on macOS.
+//! Run-time feature detection for aarch64 on Darwin (macOS/iOS/tvOS/watchOS/visionOS).
+//!
+//! <https://developer.apple.com/documentation/kernel/1387446-sysctlbyname/determining_instruction_set_characteristics>
 
 use crate::detect::{cache, Feature};
 

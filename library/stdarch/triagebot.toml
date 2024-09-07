@@ -43,10 +43,10 @@ resolved/implemented on Fuchsia. Could one of you weigh in please?
 Thanks!
 """
 
-[ping.macos]
+[ping.apple]
+alias = ["macos", "ios", "tvos", "watchos", "visionos"]
 message = """\
-Hey MacOS Group! This issue or PR could use some MacOS-specific guidance. Could
+Hey Apple Group! This issue or PR could use some Darwin-specific guidance. Could
 one of you weigh in please?
 Thanks!
 """
-
