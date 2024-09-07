@@ -17,7 +17,6 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             os: "vexos".into(),
             vendor: "vex".into(),
-            exe_suffix: ".elf".into(),
             cpu: "cortex-a9".into(),
             abi: "eabihf".into(),
             features: "+v7,+neon,+vfp3,+thumb2".into(),

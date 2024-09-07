@@ -29,7 +29,7 @@ impl Instant {
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        panic!("time not implemented on this platform")
+        panic!("system time not implemented on this platform")
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {

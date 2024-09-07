@@ -37,8 +37,7 @@ pub unsafe extern "C" fn _start() -> ! {
     // Setup the stack
     asm!("ldr sp, =__stack_top", options(nostack));
 
-    // VEXos doesn't explicitly clean out .bss, so as a sanity
-    // check we'll fill it with zeroes.
+    // VEXos doesn't explicitly clean out .bss.
     ptr::slice_from_raw_parts_mut(
         addr_of_mut!(__bss_start),
         addr_of_mut!(__bss_end).offset_from(addr_of_mut!(__bss_start)) as usize,
@@ -52,6 +51,10 @@ pub unsafe extern "C" fn _start() -> ! {
     abort_internal()
 }
 
+// The code signature is a 32 byte header at the start of user programs that
+// identifies the owner and type of the program, as well as certain flags for
+// program behavior dictated by the OS. In the event that the user wants to
+// change this header, we use weak linkage so it can be overwritten.
 #[link_section = ".code_signature"]
 #[linkage = "weak"]
 #[used]

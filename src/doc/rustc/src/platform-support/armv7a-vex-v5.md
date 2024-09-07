@@ -23,7 +23,7 @@ This target is cross-compiled. Dynamic linking is unsupported.
 `#![no_std]` crates can be built using `build-std` to build `core` and optionally
 `alloc`. Unwinding panics are not yet supported.
 
-`std` is partially implemented, but many modules (such as `thread`, `process`, `net`, etc...) will return errors. An allocator is provided along with partial support for the `time`, `env` and `io` modules. Filesystem operations over SDCard through `std::fs` are partially supported within the restrictions of the user enviornment (e.g. directories cannot be created, filesystem objects cannot be removed).
+`std` is partially implemented, but many modules (such as `thread`, `process`, `net`, etc...) will return errors. An allocator is provided along with partial support for the `time`, `env` and `io` modules. Filesystem operations over SDCard through `std::fs` are partially supported within the restrictions of the user environment (e.g. directories cannot be created, filesystem objects cannot be removed).
 
 This target generates binaries in the ELF format that may uploaded to the brain with external tools.
 
@@ -44,7 +44,9 @@ build-std-features = ["compiler-builtins-mem"]
 
 ## Building Rust programs
 
-The recommended way to build artifacts that run on V5 Brain is by using the [cargo-v5](https://github.com/vexide/cargo-v5) tool. This tool wraps the `cargo build` command by supplying arguments necessary to build the target, while also providing functionality for uploading over USB to a V5 Controller or Brain.
+When the compiler builds a binary, an ELF build artifact will be produced. Additional tools are required for this artifact to be recognizable to VEXos as a user program.
+
+The [cargo-v5](https://github.com/vexide/cargo-v5) tool is capable of creating binaries that can be uploaded to the V5 brain. This tool wraps the `cargo build` command by supplying arguments necessary to build the target and produce an artifact recognizable to VEXos, while also providing functionality for uploading over USB to a V5 Controller or Brain.
 
 To install the tool, run:
 
