@@ -410,19 +410,23 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Though `as` casts between raw pointers are not terrible, `pointer::cast_mut` and
     /// `pointer::cast_const` are safer because they cannot accidentally cast the pointer to another
-    /// type.
+    /// type. Or, when null pointers are involved, `null()` and `null_mut()` can be used directly.
     ///
     /// ### Example
     /// ```no_run
     /// let ptr: *const u32 = &42_u32;
     /// let mut_ptr = ptr as *mut u32;
     /// let ptr = mut_ptr as *const u32;
+    /// let ptr1 = std::ptr::null::<u32>() as *mut u32;
+    /// let ptr2 = std::ptr::null_mut::<u32>() as *const u32;
     /// ```
     /// Use instead:
     /// ```no_run
     /// let ptr: *const u32 = &42_u32;
     /// let mut_ptr = ptr.cast_mut();
     /// let ptr = mut_ptr.cast_const();
+    /// let ptr1 = std::ptr::null_mut::<u32>();
+    /// let ptr2 = std::ptr::null::<u32>();
     /// ```
     #[clippy::version = "1.72.0"]
     pub PTR_CAST_CONSTNESS,
