@@ -71,7 +71,7 @@ esac
 # but it ensures that the crates build properly when tested with Miri.
 
 #FIXME: Re-enable this for msvc once CI issues are fixed
-if [ "$HOST_TARGET" != "x86_64-pc-windows-msvc" ]
+if [ "$HOST_TARGET" != "x86_64-pc-windows-msvc" ]; then
   python3 "$X_PY" miri --stage 2 library/core --test-args notest
   python3 "$X_PY" miri --stage 2 library/alloc --test-args notest
   python3 "$X_PY" miri --stage 2 library/std --test-args notest
