@@ -43,8 +43,7 @@ use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 /// conversions that extend the bits of `Src` with trailing padding to fill
 /// trailing uninitialized bytes of `Self`; e.g.:
 ///
-#[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
-#[cfg_attr(not(bootstrap), doc = "```rust")]
+/// ```rust
 /// #![feature(transmutability)]
 ///
 /// use core::mem::{Assume, TransmuteFrom};
@@ -151,8 +150,7 @@ pub struct Assume {
     /// When `false`, [`TransmuteFrom`] is not implemented for transmutations
     /// that might violate the alignment requirements of references; e.g.:
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
-    #[cfg_attr(not(bootstrap), doc = "```compile_fail,E0277")]
+    /// ```compile_fail,E0277
     /// #![feature(transmutability)]
     /// use core::mem::{align_of, TransmuteFrom};
     ///
@@ -171,8 +169,7 @@ pub struct Assume {
     /// that references in the transmuted value satisfy the alignment
     /// requirements of their referent types; e.g.:
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
-    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// ```rust
     /// #![feature(pointer_is_aligned_to, transmutability)]
     /// use core::mem::{align_of, Assume, TransmuteFrom};
     ///
@@ -203,8 +200,7 @@ pub struct Assume {
     /// that might violate the library safety invariants of the destination
     /// type; e.g.:
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
-    #[cfg_attr(not(bootstrap), doc = "```compile_fail,E0277")]
+    /// ```compile_fail,E0277
     /// #![feature(transmutability)]
     /// use core::mem::TransmuteFrom;
     ///
@@ -225,8 +221,7 @@ pub struct Assume {
     /// that undefined behavior does not arise from using the transmuted value;
     /// e.g.:
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
-    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// ```rust
     /// #![feature(transmutability)]
     /// use core::mem::{Assume, TransmuteFrom};
     ///
@@ -254,8 +249,7 @@ pub struct Assume {
     /// that might violate the language-level bit-validity invariant of the
     /// destination type; e.g.:
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
-    #[cfg_attr(not(bootstrap), doc = "```compile_fail,E0277")]
+    /// ```compile_fail,E0277
     /// #![feature(transmutability)]
     /// use core::mem::TransmuteFrom;
     ///
@@ -271,8 +265,7 @@ pub struct Assume {
     /// that the value being transmuted is a bit-valid instance of the
     /// transmuted value; e.g.:
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
-    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// ```rust
     /// #![feature(transmutability)]
     /// use core::mem::{Assume, TransmuteFrom};
     ///
@@ -335,9 +328,7 @@ impl Assume {
     /// This is especially useful for extending [`Assume`] in generic contexts;
     /// e.g.:
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
-    #[cfg_attr(not(bootstrap), doc = "```rust")]
-    #[unstable(feature = "transmutability", issue = "99571")]
+    /// ```rust
     /// #![feature(
     ///     adt_const_params,
     ///     generic_const_exprs,
@@ -379,6 +370,7 @@ impl Assume {
     ///     try_transmute_ref::<_, _, { Assume::NOTHING }>(src)
     /// };
     ///```
+    #[unstable(feature = "transmutability", issue = "99571")]
     pub const fn and(self, other_assumptions: Self) -> Self {
         Self {
             alignment: self.alignment || other_assumptions.alignment,
@@ -390,8 +382,7 @@ impl Assume {
 
     /// Remove `other_assumptions` the obligations of `self`; e.g.:
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
-    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// ```rust
     /// #![feature(transmutability)]
     /// use core::mem::Assume;
     ///

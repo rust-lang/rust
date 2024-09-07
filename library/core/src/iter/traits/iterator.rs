@@ -3953,7 +3953,7 @@ pub trait Iterator {
     /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     /// ```
     #[inline]
-    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[rustc_do_not_const_check]
     fn is_sorted(self) -> bool
     where
@@ -3980,7 +3980,7 @@ pub trait Iterator {
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| false));
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| true));
     /// ```
-    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[rustc_do_not_const_check]
     fn is_sorted_by<F>(mut self, compare: F) -> bool
     where
@@ -4025,7 +4025,7 @@ pub trait Iterator {
     /// assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     /// ```
     #[inline]
-    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[rustc_do_not_const_check]
     fn is_sorted_by_key<F, K>(self, f: F) -> bool
     where

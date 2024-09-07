@@ -2016,7 +2016,7 @@ impl<K, V> Default for Range<'_, K, V> {
     }
 }
 
-#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
 impl<K, V> Default for RangeMut<'_, K, V> {
     /// Creates an empty `btree_map::RangeMut`.
     ///
@@ -2064,7 +2064,7 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
-#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
 impl<K, V> Default for ValuesMut<'_, K, V> {
     /// Creates an empty `btree_map::ValuesMut`.
     ///
