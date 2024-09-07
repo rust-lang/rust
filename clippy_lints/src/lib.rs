@@ -65,7 +65,7 @@ extern crate clippy_utils;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
-pub mod ctfe; // VERY important lint (rust#125116)
+pub mod ctfe; // Very important lint (rust#125116)
 pub mod declared_lints;
 pub mod deprecated_lints;
 
