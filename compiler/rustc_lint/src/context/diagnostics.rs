@@ -8,13 +8,13 @@ use rustc_errors::{
     elided_lifetime_in_path_suggestion, Applicability, Diag, DiagArgValue, LintDiagnostic,
 };
 use rustc_middle::middle::stability;
-use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::{BuiltinLintDiag, ElidedLifetimeResolution};
 use rustc_session::Session;
 use rustc_span::symbol::kw;
 use rustc_span::BytePos;
 use tracing::debug;
 
-use crate::lints;
+use crate::lints::{self, ElidedNamedLifetime};
 
 mod check_cfg;
 
@@ -442,15 +442,14 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by } => {
             lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)
         }
-        BuiltinLintDiag::ElidedIsStatic { elided } => {
-            lints::ElidedNamedLifetime { elided, name: kw::StaticLifetime, named_declaration: None }
-                .decorate_lint(diag)
-        }
-        BuiltinLintDiag::ElidedIsParam { elided, param: (param_name, param_span) } => {
-            lints::ElidedNamedLifetime {
-                elided,
-                name: param_name,
-                named_declaration: Some(param_span),
+        BuiltinLintDiag::ElidedNamedLifetimes { elided: (span, kind), resolution } => {
+            match resolution {
+                ElidedLifetimeResolution::Static => {
+                    ElidedNamedLifetime { span, kind, name: kw::StaticLifetime, declaration: None }
+                }
+                ElidedLifetimeResolution::Param(name, declaration) => {
+                    ElidedNamedLifetime { span, kind, name, declaration: Some(declaration) }
+                }
             }
             .decorate_lint(diag)
         }

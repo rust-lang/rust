@@ -9,6 +9,10 @@ note: the lint level is defined here
    |
 LL | #[warn(elided_named_lifetimes)]
    |        ^^^^^^^^^^^^^^^^^^^^^^
+help: consider specifying it explicitly
+   |
+LL |     fn bar(x: &'static u8) -> &'static u8 {
+   |                                +++++++
 
 error: elided lifetime has a name
   --> $DIR/not-tied-to-crate.rs:11:31
@@ -21,6 +25,10 @@ note: the lint level is defined here
    |
 LL |     #[deny(elided_named_lifetimes)]
    |            ^^^^^^^^^^^^^^^^^^^^^^
+help: consider specifying it explicitly
+   |
+LL |     fn baz(x: &'static u8) -> &'static u8 {
+   |                                +++++++
 
 error: aborting due to 1 previous error; 1 warning emitted
 

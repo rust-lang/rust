@@ -7,6 +7,7 @@
 //@[i686] needs-llvm-components: x86
 //@ compile-flags: -C llvm-args=--x86-asm-syntax=intel
 //@ compile-flags: -C target-feature=+avx512bw
+//@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]
@@ -38,12 +39,6 @@ macro_rules! check {
         // -O and extern "C" guarantee that the selected register is always ax/xmm0
         #[no_mangle]
         pub unsafe extern "C" fn $func() -> i32 {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " {0:", $modifier, "}, {0:", $modifier, "}"), out($reg) y);
             y

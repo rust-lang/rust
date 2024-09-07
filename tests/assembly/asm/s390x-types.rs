@@ -2,6 +2,7 @@
 //@ assembly-output: emit-asm
 //@[s390x] compile-flags: --target s390x-unknown-linux-gnu
 //@[s390x] needs-llvm-components: systemz
+//@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
 #![crate_type = "rlib"]
@@ -42,16 +43,9 @@ extern "C" {
     static extern_static: u8;
 }
 
-// Hack to avoid function merging
-extern "Rust" {
-    fn dont_merge(s: &str);
-}
-
 macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
     #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
         let y;
         asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
         y
@@ -61,8 +55,6 @@ macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
 macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
     #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
         let y;
         asm!(concat!($mov, " %", $reg, ", %", $reg), lateout($reg) y, in($reg) x);
         y

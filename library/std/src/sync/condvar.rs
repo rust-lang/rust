@@ -195,8 +195,11 @@ impl Condvar {
         if poisoned { Err(PoisonError::new(guard)) } else { Ok(guard) }
     }
 
-    /// Blocks the current thread until this condition variable receives a
-    /// notification and the provided condition is false.
+    /// Blocks the current thread until the provided condition becomes false.
+    ///
+    /// `condition` is checked immediately; if not met (returns `true`), this
+    /// will [`wait`] for the next notification then check again. This repeats
+    /// until `condition` returns `false`, in which case this function returns.
     ///
     /// This function will atomically unlock the mutex specified (represented by
     /// `guard`) and block the current thread. This means that any calls
@@ -210,6 +213,7 @@ impl Condvar {
     /// poisoned when this thread re-acquires the lock. For more information,
     /// see information about [poisoning] on the [`Mutex`] type.
     ///
+    /// [`wait`]: Self::wait
     /// [`notify_one`]: Self::notify_one
     /// [`notify_all`]: Self::notify_all
     /// [poisoning]: super::Mutex#poisoning
