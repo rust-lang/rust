@@ -2,6 +2,7 @@
 //@ compile-flags: -O -C panic=abort
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf
 //@ compile-flags: -C target-feature=+neon
+//@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: arm
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd)]
@@ -40,12 +41,6 @@ macro_rules! check {
         // -O and extern "C" guarantee that the selected register is always r0/s0/d0/q0
         #[no_mangle]
         pub unsafe extern "C" fn $func() -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " {0:", $modifier, "}, {0:", $modifier, "}"), out($reg) y);
             y
