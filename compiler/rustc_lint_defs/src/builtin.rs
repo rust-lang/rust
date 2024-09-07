@@ -12,6 +12,8 @@ use rustc_span::edition::Edition;
 use crate::{FutureIncompatibilityReason, declare_lint, declare_lint_pass};
 
 declare_lint_pass! {
+    /// Does nothing as a lint pass, but registers some `Lint`s
+    /// that are used by other parts of the compiler.
     HardwiredLints => [
         // tidy-alphabetical-start
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
@@ -376,7 +378,7 @@ declare_lint! {
     pub ARITHMETIC_OVERFLOW,
     Deny,
     "arithmetic operation overflows",
-    [loadbearing: true]
+    @eval_always = true
 }
 
 declare_lint! {
@@ -401,7 +403,7 @@ declare_lint! {
     pub UNCONDITIONAL_PANIC,
     Deny,
     "operation will cause a panic at runtime",
-    [loadbearing: true]
+    @eval_always = true
 }
 
 declare_lint! {
@@ -633,7 +635,7 @@ declare_lint! {
     pub UNKNOWN_LINTS,
     Warn,
     "unrecognized lint attribute",
-    [loadbearing: true]
+    @eval_always = true
 }
 
 declare_lint! {

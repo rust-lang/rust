@@ -31,7 +31,7 @@ use crate::errors::{
     OverruledAttributeSub, RequestedLevel, UnknownToolInScopedLint, UnsupportedGroup,
 };
 use crate::fluent_generated as fluent;
-use crate::late::{unerased_lint_store /*name_without_tool*/};
+use crate::late::unerased_lint_store;
 use crate::lints::{
     DeprecatedLintName, DeprecatedLintNameFromCommandLine, IgnoredUnlessCrateSpecified,
     OverruledAttributeLint, RemovedLint, RemovedLintFromCommandLine, RenamedLint,
@@ -122,7 +122,7 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
         .get_lints()
         .into_iter()
         .filter_map(|lint| {
-            if !lint.loadbearing && lint.default_level(tcx.sess.edition()) == Level::Allow {
+            if !lint.eval_always && lint.default_level(tcx.sess.edition()) == Level::Allow {
                 Some(LintId::of(lint))
             } else {
                 None
@@ -133,21 +133,6 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
     let mut visitor = LintLevelMaximum { tcx, dont_need_to_run };
     visitor.process_opts();
     tcx.hir().walk_attributes(&mut visitor);
-
-    // let lint_groups = store.get_lint_groups();
-    // for group in lint_groups {
-    //     let binding = group.0.to_lowercase();
-    //     let group_name = name_without_tool(&binding).to_string();
-    //     if visitor.lints_that_actually_run.contains(&group_name) {
-    //         for lint in group.1 {
-    //             visitor.lints_that_actually_run.insert(name_without_tool(&lint.to_string()).to_string());
-    //         }
-    //     } else if visitor.lints_allowed.contains(&group_name) {
-    //         for lint in &group.1 {
-    //             visitor.lints_allowed.insert(name_without_tool(&lint.to_string()).to_string());
-    //         }
-    //     }
-    // }
 
     visitor.dont_need_to_run
 }
@@ -372,83 +357,44 @@ impl<'tcx> Visitor<'tcx> for LintLevelMaximum<'tcx> {
         self.tcx.hir()
     }
 
+    /// FIXME(blyxyas): In a future revision, we should also graph #![allow]s,
+    /// but that is handled with more care
     fn visit_attribute(&mut self, attribute: &'tcx ast::Attribute) {
-        match Level::from_attr(attribute) {
+        if matches!(
+            Level::from_attr(attribute),
             Some(
                 Level::Warn
-                | Level::Deny
-                | Level::Forbid
-                | Level::Expect(..)
-                | Level::ForceWarn(..),
-            ) => {
-                let store = unerased_lint_store(self.tcx.sess);
-                let Some(meta) = attribute.meta() else { return };
-                // SAFETY: Lint attributes are always a metalist inside a
-                // metalist (even with just one lint).
-                let Some(meta_item_list) = meta.meta_item_list() else { return };
+                    | Level::Deny
+                    | Level::Forbid
+                    | Level::Expect(..)
+                    | Level::ForceWarn(..),
+            )
+        ) {
+            let store = unerased_lint_store(self.tcx.sess);
+            let Some(meta) = attribute.meta() else { return };
+            // SAFETY: Lint attributes are always a metalist inside a
+            // metalist (even with just one lint).
+            let Some(meta_item_list) = meta.meta_item_list() else { return };
 
-                for meta_list in meta_item_list {
-                    // Convert Path to String
-                    let Some(meta_item) = meta_list.meta_item() else { return };
-                    let ident: &str = &meta_item
-                        .path
-                        .segments
-                        .iter()
-                        .map(|segment| segment.ident.as_str())
-                        .collect::<Vec<&str>>()
-                        .join("::");
-                    let Ok(lints) = store.find_lints(
-                        // SAFETY: Lint attributes can only have literals
-                        ident,
-                    ) else {
-                        return;
-                    };
-                    for lint in lints {
-                        self.dont_need_to_run.swap_remove(&lint);
-                    }
-                    // // If it's a tool lint (e.g. clippy::my_clippy_lint)
-                    // if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
-                    //     if meta_item.path.segments.len() == 1 {
-                    //         let Ok(lints) = store.find_lints(
-                    //             // SAFETY: Lint attributes can only have literals
-                    //             meta_list.ident().unwrap().name.as_str(),
-                    //         ) else {
-                    //             return;
-                    //         };
-                    //         for lint in lints {
-                    //             dbg!("LINT REMOVED", &lint);
-                    //             self.dont_need_to_run.swap_remove(&lint);
-                    //         }
-                    //     } else {
-                    //         let Ok(lints) = store.find_lints(
-                    //             // SAFETY: Lint attributes can only have literals
-                    //             meta_item.path.segments[1].ident.name.as_str(),
-                    //         ) else {
-                    //             return;
-                    //         };
-                    //         for lint in lints {
-                    //             dbg!("LINT REMOVED", &lint);
-                    //             self.dont_need_to_run.swap_remove(&lint);
-                    //         }
-                    //     }
+            for meta_list in meta_item_list {
+                // Convert Path to String
+                let Some(meta_item) = meta_list.meta_item() else { return };
+                let ident: &str = &meta_item
+                    .path
+                    .segments
+                    .iter()
+                    .map(|segment| segment.ident.as_str())
+                    .collect::<Vec<&str>>()
+                    .join("::");
+                let Ok(lints) = store.find_lints(
+                    // SAFETY: Lint attributes can only have literals
+                    ident,
+                ) else {
+                    return;
+                };
+                for lint in lints {
+                    self.dont_need_to_run.swap_remove(&lint);
                 }
-                // We handle #![allow]s differently, as these remove checking rather than adding.
-            } // Some(Level::Allow) if ast::AttrStyle::Inner == attribute.style => {
-            //     for meta_list in meta.meta_item_list().unwrap() {
-            //         // If it's a tool lint (e.g. clippy::my_clippy_lint)
-            //         if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
-            //             if meta_item.path.segments.len() == 1 {
-            //                 self.lints_allowed
-            //                     .insert(meta_list.name_or_empty().as_str().to_string());
-            //             } else {
-            //                 self.lints_allowed
-            //                     .insert(meta_item.path.segments[1].ident.name.as_str().to_string());
-            //             }
-            //         }
-            //     }
-            // }
-            _ => {
-                return;
             }
         }
     }
