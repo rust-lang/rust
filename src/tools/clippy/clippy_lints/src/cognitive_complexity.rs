@@ -25,7 +25,7 @@ pub static COGNITIVE_COMPLEXITY: &Lint = &Lint {
     future_incompatible: None,
     is_externally_loaded: true,
     crate_level_only: false,
-    loadbearing: true,
+    eval_always: true,
     ..Lint::default_fields_for_macro()
 };
 pub(crate) static COGNITIVE_COMPLEXITY_INFO: &'static LintInfo = &LintInfo {
@@ -44,7 +44,7 @@ Sometimes it's hard to find a way to reduce the complexity.
 ### Example
 You'll see it when you get the warning.",
     version: Some("1.35.0"),
-    location: "#L0",
+    location: "clippy_lints/src/cognitive_complexity.rs#L47",
 };
 
 pub struct CognitiveComplexity {
