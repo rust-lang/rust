@@ -69,7 +69,10 @@ case $HOST_TARGET in
 esac
 # Also smoke-test `x.py miri`. This doesn't run any actual tests (that would take too long),
 # but it ensures that the crates build properly when tested with Miri.
-#FIXME: Re-enable this once CI issues are fixed
-#python3 "$X_PY" miri --stage 2 library/core --test-args notest
-#python3 "$X_PY" miri --stage 2 library/alloc --test-args notest
-#python3 "$X_PY" miri --stage 2 library/std --test-args notest
+
+#FIXME: Re-enable this for msvc once CI issues are fixed
+if [ "$HOST_TARGET" != "x86_64-pc-windows-msvc" ]
+  python3 "$X_PY" miri --stage 2 library/core --test-args notest
+  python3 "$X_PY" miri --stage 2 library/alloc --test-args notest
+  python3 "$X_PY" miri --stage 2 library/std --test-args notest
+fi

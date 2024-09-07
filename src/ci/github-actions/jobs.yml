@@ -382,8 +382,6 @@ auto:
         python x.py miri --stage 2 library/core --test-args notest &&
         python x.py miri --stage 2 library/alloc --test-args notest &&
         python x.py miri --stage 2 library/std --test-args notest
-
-      HOST_TARGET: x86_64-pc-windows-msvc
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
     <<: *job-windows-8c
 
