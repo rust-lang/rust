@@ -138,6 +138,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(hir_id);
 
+    if let Some(sig) = node.fn_sig()
+        && let Some(sig_id) = sig.decl.opt_delegation_sig_id()
+    {
+        return inherit_predicates_for_delegation_item(tcx, def_id, sig_id);
+    }
+
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
 
@@ -163,16 +169,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
             ItemKind::Trait(_, _, _, self_bounds, ..) | ItemKind::TraitAlias(_, self_bounds) => {
                 is_trait = Some(self_bounds);
-            }
-
-            ItemKind::Fn(sig, _, _) => {
-                // For a delegation item inherit predicates from callee.
-                if let Some(sig_id) = sig.decl.opt_delegation_sig_id()
-                    && let Some(predicates) =
-                        inherit_predicates_for_delegation_item(tcx, def_id, sig_id)
-                {
-                    return predicates;
-                }
             }
             _ => {}
         }
