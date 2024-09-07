@@ -9,7 +9,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir};
+use rustc_hir::{self as hir, MissingLifetimeKind};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
@@ -2623,14 +2623,56 @@ pub(crate) struct ElidedLifetimesInPaths {
     pub subdiag: ElidedLifetimeInPathSubdiag,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(lint_elided_named_lifetime)]
 pub(crate) struct ElidedNamedLifetime {
-    #[label(lint_label_elided)]
-    pub elided: Span,
+    pub span: Span,
+    pub kind: MissingLifetimeKind,
     pub name: Symbol,
-    #[label(lint_label_named)]
-    pub named_declaration: Option<Span>,
+    pub declaration: Option<Span>,
+}
+
+impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
+    fn decorate_lint(self, diag: &mut rustc_errors::Diag<'_, G>) {
+        let Self { span, kind, name, declaration } = self;
+        diag.primary_message(fluent::lint_elided_named_lifetime);
+        diag.arg("name", name);
+        diag.span_label(span, fluent::lint_label_elided);
+        if let Some(declaration) = declaration {
+            diag.span_label(declaration, fluent::lint_label_named);
+        }
+        // FIXME(GrigorenkoPV): this `if` and `return` should be removed,
+        //  but currently this lint's suggestions can conflict with those of `clippy::needless_lifetimes`:
+        //  https://github.com/rust-lang/rust/pull/129840#issuecomment-2323349119
+        // HACK: `'static` suggestions will never sonflict, emit only those for now.
+        if name != rustc_span::symbol::kw::StaticLifetime {
+            return;
+        }
+        match kind {
+            MissingLifetimeKind::Underscore => diag.span_suggestion_verbose(
+                span,
+                fluent::lint_suggestion,
+                format!("{name}"),
+                Applicability::MachineApplicable,
+            ),
+            MissingLifetimeKind::Ampersand => diag.span_suggestion_verbose(
+                span.shrink_to_hi(),
+                fluent::lint_suggestion,
+                format!("{name} "),
+                Applicability::MachineApplicable,
+            ),
+            MissingLifetimeKind::Comma => diag.span_suggestion_verbose(
+                span.shrink_to_hi(),
+                fluent::lint_suggestion,
+                format!("{name}, "),
+                Applicability::MachineApplicable,
+            ),
+            MissingLifetimeKind::Brackets => diag.span_suggestion_verbose(
+                span.shrink_to_hi(),
+                fluent::lint_suggestion,
+                format!("<{name}>"),
+                Applicability::MachineApplicable,
+            ),
+        };
+    }
 }
 
 #[derive(LintDiagnostic)]
