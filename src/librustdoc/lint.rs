@@ -2,7 +2,7 @@ use std::sync::LazyLock as Lazy;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::LintStore;
-use rustc_lint_defs::{Lint, LintId, LintPass, declare_tool_lint};
+use rustc_lint_defs::{Lint, LintId, declare_tool_lint};
 use rustc_session::{Session, lint};
 
 /// This function is used to setup the lint initialization. By default, in rustdoc, everything
@@ -31,10 +31,9 @@ where
     allowed_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = || {
-        lint::builtin::HardwiredLints::default()
-            .get_lints()
+        lint::builtin::HardwiredLints::lint_vec()
             .into_iter()
-            .chain(rustc_lint::SoftLints::default().get_lints())
+            .chain(rustc_lint::SoftLints::lint_vec())
     };
 
     let lint_opts = lints()

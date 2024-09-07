@@ -187,7 +187,6 @@ pub struct Session {
     /// errors.
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
 
-    // pub force_ctfe: bool,
     /// This tracks where `-Zunleash-the-miri-inside-of-you` was used to get around a
     /// const check, optionally with the relevant feature gate. We use this to
     /// warn about unleashing, but with a single diagnostic instead of dozens that

@@ -1,41 +1,28 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::Level::Deny;
+use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for comparisons where one side of the relation is
-    /// either the minimum or maximum value for its type and warns if it involves a
-    /// case that is always true or always false. Only integer and boolean types are
-    /// checked.
-    ///
-    /// ### Why is this bad?
-    /// An expression like `min <= x` may misleadingly imply
-    /// that it is possible for `x` to be less than the minimum. Expressions like
-    /// `max < x` are probably mistakes.
-    ///
-    /// ### Known problems
-    /// For `usize` the size of the current compile target will
-    /// be assumed (e.g., 64 bits on 64 bit systems). This means code that uses such
-    /// a comparison to detect target pointer width will trigger this lint. One can
-    /// use `mem::sizeof` and compare its value or conditional compilation
-    /// attributes
-    /// like `#[cfg(target_pointer_width = "64")] ..` instead.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let vec: Vec<isize> = Vec::new();
-    /// if vec.len() <= 0 {}
-    /// if 100 > i32::MAX {}
-    /// ```
-    #[clippy::version = "1.82.0"]
-    pub CLIPPY_CTFE,
-    correctness,
-    "a comparison with a maximum or minimum value that is always true or false"
-}
+/// Ensures that Constant-time Function Evaluation is being done (specifically, MIR lint passes).
+/// See rust-lang/rust#125116 for more info.
+#[clippy::version = "1.82.0"]
+pub static CLIPPY_CTFE: &Lint = &Lint {
+    name: &"clippy::CLIPPY_CTFE",
+    default_level: Deny,
+    desc: "Ensure CTFE is being made",
+    edition_lint_opts: None,
+    report_in_external_macro: true,
+    future_incompatible: None,
+    is_externally_loaded: true,
+    crate_level_only: false,
+    eval_always: true,
+    ..Lint::default_fields_for_macro()
+};
+
+// No static CLIPPY_CTFE_INFO because we want this lint to be invisible
 
 declare_lint_pass! { ClippyCtfe => [CLIPPY_CTFE] }
 
