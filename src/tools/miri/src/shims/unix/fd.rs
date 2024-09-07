@@ -21,7 +21,7 @@ pub(crate) enum FlockOp {
     Unlock,
 }
 
-/// Represents an open file descriptor.
+/// Represents an open file description.
 pub trait FileDescription: std::fmt::Debug + Any {
     fn name(&self) -> &'static str;
 
@@ -303,7 +303,7 @@ pub struct FdTable {
 
 impl VisitProvenance for FdTable {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // All our FileDescriptor do not have any tags.
+        // All our FileDescriptionRef do not have any tags.
     }
 }
 
@@ -411,7 +411,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn flock(&mut self, fd: i32, op: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        let Some(file_descriptor) = this.machine.fds.get(fd) else {
+        let Some(fd_ref) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
 
@@ -436,8 +436,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported flags {:#x}", op);
         };
 
-        let result = file_descriptor.flock(this.machine.communicate(), parsed_op)?;
-        drop(file_descriptor);
+        let result = fd_ref.flock(this.machine.communicate(), parsed_op)?;
+        drop(fd_ref);
         // return `0` if flock is successful
         let result = result.map(|()| 0i32);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
@@ -539,7 +539,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // Isolation check is done via `FileDescriptor` trait.
+        // Isolation check is done via `FileDescription` trait.
 
         trace!("Reading from FD {}, size {}", fd, count);
 
@@ -604,7 +604,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // Isolation check is done via `FileDescriptor` trait.
+        // Isolation check is done via `FileDescription` trait.
 
         // Check that the *entire* buffer is actually valid memory.
         this.check_ptr_access(buf, Size::from_bytes(count), CheckInAllocMsg::MemoryAccessTest)?;

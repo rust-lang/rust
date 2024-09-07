@@ -557,7 +557,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn lseek64(&mut self, fd: i32, offset: i128, whence: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // Isolation check is done via `FileDescriptor` trait.
+        // Isolation check is done via `FileDescription` trait.
 
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET") {
             if offset < 0 {
