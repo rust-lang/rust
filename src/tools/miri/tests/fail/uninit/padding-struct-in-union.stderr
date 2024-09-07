@@ -1,5 +1,5 @@
 error: Undefined Behavior: constructing invalid value at .bytes[2]: encountered uninitialized memory, but expected an integer
-  --> $DIR/padding-struct-in-union.rs:LL:CC
+  --> tests/fail/uninit/padding-struct-in-union.rs:LL:CC
    |
 LL |     let _val = unsafe { (foobar.foo, foobar.bar) };
    |                                      ^^^^^^^^^^ constructing invalid value at .bytes[2]: encountered uninitialized memory, but expected an integer
@@ -7,7 +7,7 @@ LL |     let _val = unsafe { (foobar.foo, foobar.bar) };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/padding-struct-in-union.rs:LL:CC
+   = note: inside `main` at tests/fail/uninit/padding-struct-in-union.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -1,5 +1,5 @@
 error: Undefined Behavior: reborrow through <TAG> at ALLOC[0x4] is forbidden
-  --> $DIR/return_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
    |
 LL |     ret
    |     ^^^ reborrow through <TAG> at ALLOC[0x4] is forbidden
@@ -7,20 +7,20 @@ LL |     ret
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> has state Disabled which forbids this reborrow (acting as a child read access)
 help: the accessed tag <TAG> was created here, in the initial state Frozen
-  --> $DIR/return_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
    |
 LL |     let ret = unsafe { &(*xraw).1 };
    |                        ^^^^^^^^^^
 help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x8]
-  --> $DIR/return_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
    |
 LL |     unsafe { *xraw = (42, 23) }; // unfreeze
    |              ^^^^^^^^^^^^^^^^
    = help: this transition corresponds to a loss of read permissions
    = note: BACKTRACE (of the first span):
-   = note: inside `foo` at $DIR/return_invalid_shr.rs:LL:CC
+   = note: inside `foo` at tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
 note: inside `main`
-  --> $DIR/return_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
    |
 LL |     foo(&mut (1, 2));
    |     ^^^^^^^^^^^^^^^^

@@ -1,11 +1,11 @@
 error: deadlock: the evaluated program deadlocked
-  --> $DIR/windows_join_self.rs:LL:CC
+  --> tests/fail-dep/concurrency/windows_join_self.rs:LL:CC
    |
 LL |             assert_eq!(WaitForSingleObject(native, INFINITE), WAIT_OBJECT_0);
    |                                                            ^ the evaluated program deadlocked
    |
    = note: BACKTRACE on thread `unnamed-ID`:
-   = note: inside closure at $DIR/windows_join_self.rs:LL:CC
+   = note: inside closure at tests/fail-dep/concurrency/windows_join_self.rs:LL:CC
 
 error: deadlock: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
@@ -18,7 +18,7 @@ LL |         let rc = unsafe { c::WaitForSingleObject(self.handle.as_raw_handle(
    = note: inside `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
    = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
 note: inside `main`
-  --> $DIR/windows_join_self.rs:LL:CC
+  --> tests/fail-dep/concurrency/windows_join_self.rs:LL:CC
    |
 LL | /     thread::spawn(|| {
 LL | |         unsafe {

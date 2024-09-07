@@ -1,5 +1,5 @@
 error: Undefined Behavior: constructing invalid value: encountered a dangling reference (0x18[noalloc] has no provenance)
-  --> $DIR/deref_dangling_ref.rs:LL:CC
+  --> tests/fail/dangling_pointers/deref_dangling_ref.rs:LL:CC
    |
 LL |     let _val = unsafe { addr_of_mut!(**outer) };
    |                         ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (0x18[noalloc] has no provenance)

@@ -1,4 +1,4 @@
-//@only-target-windows: Uses win32 api functions
+//@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
 //@error-in-other-file: deadlock

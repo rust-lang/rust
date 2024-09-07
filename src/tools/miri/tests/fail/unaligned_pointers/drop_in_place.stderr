@@ -9,7 +9,7 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
    = note: BACKTRACE:
    = note: inside `std::ptr::drop_in_place::<PartialDrop> - shim(Some(PartialDrop))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
 note: inside `main`
-  --> $DIR/drop_in_place.rs:LL:CC
+  --> tests/fail/unaligned_pointers/drop_in_place.rs:LL:CC
    |
 LL |         core::ptr::drop_in_place(p);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^

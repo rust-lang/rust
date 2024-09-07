@@ -1,5 +1,5 @@
 error: Undefined Behavior: write access through <TAG> (root of the allocation) at ALLOC[0x0] is forbidden
-  --> $DIR/arg_inplace_mutate.rs:LL:CC
+  --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
    |
 LL |     unsafe { ptr.write(S(0)) };
    |              ^^^^^^^^^^^^^^^ write access through <TAG> (root of the allocation) at ALLOC[0x0] is forbidden
@@ -9,7 +9,7 @@ LL |     unsafe { ptr.write(S(0)) };
    = help: this foreign write access would cause the protected tag <TAG> (currently Active) to become Disabled
    = help: protected tags must never be Disabled
 help: the accessed tag <TAG> was created here
-  --> $DIR/arg_inplace_mutate.rs:LL:CC
+  --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
    |
 LL | /     mir! {
 LL | |         let _unit: ();
@@ -20,20 +20,20 @@ LL | |         }
 LL | |     }
    | |_____^
 help: the protected tag <TAG> was created here, in the initial state Reserved
-  --> $DIR/arg_inplace_mutate.rs:LL:CC
+  --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
    |
 LL |     unsafe { ptr.write(S(0)) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the protected tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
-  --> $DIR/arg_inplace_mutate.rs:LL:CC
+  --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
    |
 LL |     unsafe { ptr.write(S(0)) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: BACKTRACE (of the first span):
-   = note: inside `callee` at $DIR/arg_inplace_mutate.rs:LL:CC
+   = note: inside `callee` at tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
 note: inside `main`
-  --> $DIR/arg_inplace_mutate.rs:LL:CC
+  --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
    |
 LL |             Call(_unit = callee(Move(*ptr), ptr), ReturnTo(after_call), UnwindContinue())
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

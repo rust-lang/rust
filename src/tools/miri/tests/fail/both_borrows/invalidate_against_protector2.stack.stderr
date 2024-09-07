@@ -1,5 +1,5 @@
 error: Undefined Behavior: not granting access to tag <TAG> because that would remove [SharedReadOnly for <TAG>] which is strongly protected
-  --> $DIR/invalidate_against_protector2.rs:LL:CC
+  --> tests/fail/both_borrows/invalidate_against_protector2.rs:LL:CC
    |
 LL |     unsafe { *x = 0 };
    |              ^^^^^^ not granting access to tag <TAG> because that would remove [SharedReadOnly for <TAG>] which is strongly protected
@@ -7,19 +7,19 @@ LL |     unsafe { *x = 0 };
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
-  --> $DIR/invalidate_against_protector2.rs:LL:CC
+  --> tests/fail/both_borrows/invalidate_against_protector2.rs:LL:CC
    |
 LL |     let xraw = &mut x as *mut _;
    |                ^^^^^^
 help: <TAG> is this argument
-  --> $DIR/invalidate_against_protector2.rs:LL:CC
+  --> tests/fail/both_borrows/invalidate_against_protector2.rs:LL:CC
    |
 LL | fn inner(x: *mut i32, _y: &i32) {
    |                       ^^
    = note: BACKTRACE (of the first span):
-   = note: inside `inner` at $DIR/invalidate_against_protector2.rs:LL:CC
+   = note: inside `inner` at tests/fail/both_borrows/invalidate_against_protector2.rs:LL:CC
 note: inside `main`
-  --> $DIR/invalidate_against_protector2.rs:LL:CC
+  --> tests/fail/both_borrows/invalidate_against_protector2.rs:LL:CC
    |
 LL |     inner(xraw, xref);
    |     ^^^^^^^^^^^^^^^^^

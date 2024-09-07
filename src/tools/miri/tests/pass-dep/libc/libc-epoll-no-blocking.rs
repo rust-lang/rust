@@ -1,4 +1,4 @@
-//@only-target-linux
+//@only-target: linux
 
 #![feature(strict_provenance)]
 use std::convert::TryInto;

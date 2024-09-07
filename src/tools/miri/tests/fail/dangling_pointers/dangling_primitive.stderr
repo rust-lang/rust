@@ -1,5 +1,5 @@
 error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
-  --> $DIR/dangling_primitive.rs:LL:CC
+  --> tests/fail/dangling_pointers/dangling_primitive.rs:LL:CC
    |
 LL |         dbg!(*ptr);
    |         ^^^^^^^^^^ memory access failed: ALLOC has been freed, so this pointer is dangling
@@ -7,12 +7,12 @@ LL |         dbg!(*ptr);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/dangling_primitive.rs:LL:CC
+  --> tests/fail/dangling_pointers/dangling_primitive.rs:LL:CC
    |
 LL |         let x = 0usize; // This line should appear in the helps
    |             ^
 help: ALLOC was deallocated here:
-  --> $DIR/dangling_primitive.rs:LL:CC
+  --> tests/fail/dangling_pointers/dangling_primitive.rs:LL:CC
    |
 LL |     };
    |     ^

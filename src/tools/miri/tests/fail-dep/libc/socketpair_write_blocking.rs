@@ -1,4 +1,4 @@
-//@ignore-target-windows: no libc socketpair on Windows
+//@ignore-target: windows # no libc socketpair on Windows
 // This is temporarily here because blocking on fd is not supported yet.
 // When blocking is eventually supported, this will be moved to pass-dep/libc/libc-socketpair
 fn main() {

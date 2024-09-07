@@ -1,5 +1,5 @@
-//@ignore-target-windows: No pthreads on Windows
-//@ignore-target-apple: pthread_condattr_setclock is not supported on MacOS.
+//@ignore-target: windows # No pthreads on Windows
+//@ignore-target: apple # pthread_condattr_setclock is not supported on MacOS.
 //@compile-flags: -Zmiri-disable-isolation
 
 /// Test that conditional variable timeouts are working properly with both

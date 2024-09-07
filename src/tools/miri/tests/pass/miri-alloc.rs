@@ -4,7 +4,7 @@
 // windows tls dtors go through libstd right now, thus this test
 // cannot pass. When windows tls dtors go through the special magic
 // windows linker section, we can run this test on windows again.
-//@ignore-target-windows: no-std not supported on Windows
+//@ignore-target: windows # no-std not supported on Windows
 
 extern "Rust" {
     fn miri_alloc(size: usize, align: usize) -> *mut u8;

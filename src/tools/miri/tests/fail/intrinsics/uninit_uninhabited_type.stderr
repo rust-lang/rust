@@ -17,7 +17,7 @@ LL |     ABORT();
    = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
 note: inside `main`
-  --> $DIR/uninit_uninhabited_type.rs:LL:CC
+  --> tests/fail/intrinsics/uninit_uninhabited_type.rs:LL:CC
    |
 LL |     let _ = unsafe { std::mem::uninitialized::<!>() };
    | ^

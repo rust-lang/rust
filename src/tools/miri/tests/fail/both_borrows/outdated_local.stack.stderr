@@ -1,5 +1,5 @@
 error: Undefined Behavior: attempting a read access using <TAG> at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
-  --> $DIR/outdated_local.rs:LL:CC
+  --> tests/fail/both_borrows/outdated_local.rs:LL:CC
    |
 LL |     assert_eq!(unsafe { *y }, 1);
    |                         ^^
@@ -10,17 +10,17 @@ LL |     assert_eq!(unsafe { *y }, 1);
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
-  --> $DIR/outdated_local.rs:LL:CC
+  --> tests/fail/both_borrows/outdated_local.rs:LL:CC
    |
 LL |     let y: *const i32 = &x;
    |                         ^^
 help: <TAG> was later invalidated at offsets [0x0..0x4] by a write access
-  --> $DIR/outdated_local.rs:LL:CC
+  --> tests/fail/both_borrows/outdated_local.rs:LL:CC
    |
 LL |     x = 1; // this invalidates y by reactivating the lowermost uniq borrow for this local
    |     ^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/outdated_local.rs:LL:CC
+   = note: inside `main` at tests/fail/both_borrows/outdated_local.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

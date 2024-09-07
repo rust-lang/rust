@@ -1,5 +1,5 @@
 error: Undefined Behavior: constructing invalid value: encountered a dangling reference ($HEX[noalloc] has no provenance)
-  --> $DIR/int_copy_looses_provenance1.rs:LL:CC
+  --> tests/fail/provenance/int_copy_looses_provenance1.rs:LL:CC
    |
 LL |     let _val = unsafe { *ptr.read() };
    |                          ^^^^^^^^^^ constructing invalid value: encountered a dangling reference ($HEX[noalloc] has no provenance)
@@ -7,7 +7,7 @@ LL |     let _val = unsafe { *ptr.read() };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/int_copy_looses_provenance1.rs:LL:CC
+   = note: inside `main` at tests/fail/provenance/int_copy_looses_provenance1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

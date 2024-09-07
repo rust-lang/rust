@@ -11,7 +11,7 @@ LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
    = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
    = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
 note: inside `main`
-  --> $DIR/stack_free.rs:LL:CC
+  --> tests/fail/alloc/stack_free.rs:LL:CC
    |
 LL |     drop(bad_box);
    |     ^^^^^^^^^^^^^

@@ -11,18 +11,18 @@ LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
    = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
    = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
 note: inside closure
-  --> $DIR/deallocate_against_protector1.rs:LL:CC
+  --> tests/fail/stacked_borrows/deallocate_against_protector1.rs:LL:CC
    |
 LL |         drop(unsafe { Box::from_raw(raw) });
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: inside `<{closure@$DIR/deallocate_against_protector1.rs:LL:CC} as std::ops::FnOnce<(&mut i32,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
+   = note: inside `<{closure@tests/fail/stacked_borrows/deallocate_against_protector1.rs:LL:CC} as std::ops::FnOnce<(&mut i32,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
 note: inside `inner`
-  --> $DIR/deallocate_against_protector1.rs:LL:CC
+  --> tests/fail/stacked_borrows/deallocate_against_protector1.rs:LL:CC
    |
 LL |     f(x)
    |     ^^^^
 note: inside `main`
-  --> $DIR/deallocate_against_protector1.rs:LL:CC
+  --> tests/fail/stacked_borrows/deallocate_against_protector1.rs:LL:CC
    |
 LL | /     inner(Box::leak(Box::new(0)), |x| {
 LL | |         let raw = x as *mut _;

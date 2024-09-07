@@ -1,5 +1,5 @@
-//@ignore-target-windows: No pthreads on Windows
-//@ignore-target-apple: pthread_condattr_setclock is not supported on MacOS.
+//@ignore-target: windows # No pthreads on Windows
+//@ignore-target: apple # pthread_condattr_setclock is not supported on MacOS.
 
 /// Test that conditional variable timeouts are working properly
 /// with monotonic clocks even under isolation.

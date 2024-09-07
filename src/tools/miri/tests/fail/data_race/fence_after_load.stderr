@@ -1,18 +1,18 @@
 error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic write on thread `main` at ALLOC. (2) just happened here
-  --> $DIR/fence_after_load.rs:LL:CC
+  --> tests/fail/data_race/fence_after_load.rs:LL:CC
    |
 LL |     unsafe { V = 2 }
    |              ^^^^^ Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) non-atomic write on thread `main` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
-  --> $DIR/fence_after_load.rs:LL:CC
+  --> tests/fail/data_race/fence_after_load.rs:LL:CC
    |
 LL |         unsafe { V = 1 }
    |                  ^^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/fence_after_load.rs:LL:CC
+   = note: inside `main` at tests/fail/data_race/fence_after_load.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -1,4 +1,4 @@
-//@ignore-target-windows: only very limited libc on Windows
+//@ignore-target: windows # only very limited libc on Windows
 //@compile-flags: -Zmiri-disable-isolation
 #![feature(io_error_more)]
 #![feature(pointer_is_aligned_to)]

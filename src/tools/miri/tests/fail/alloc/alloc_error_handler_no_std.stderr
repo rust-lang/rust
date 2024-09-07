@@ -2,18 +2,18 @@ custom panic handler called!
 panicked at RUSTLIB/alloc/src/alloc.rs:LL:CC:
 memory allocation of 4 bytes failed
 error: abnormal termination: the program aborted execution
-  --> $DIR/alloc_error_handler_no_std.rs:LL:CC
+  --> tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
    |
 LL |     core::intrinsics::abort();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
    |
    = note: BACKTRACE:
-   = note: inside `panic_handler` at $DIR/alloc_error_handler_no_std.rs:LL:CC
+   = note: inside `panic_handler` at tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
    = note: inside `alloc::alloc::__alloc_error_handler::__rdl_oom` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
 note: inside `start`
-  --> $DIR/alloc_error_handler_no_std.rs:LL:CC
+  --> tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
    |
 LL |     handle_alloc_error(Layout::for_value(&0));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
