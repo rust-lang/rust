@@ -74,10 +74,14 @@ fn null_pointers() {
     use std::ptr;
     let _ = ptr::null::<String>() as *mut String;
     let _ = ptr::null_mut::<u32>() as *const u32;
+    let _ = ptr::null::<u32>().cast_mut();
+    let _ = ptr::null_mut::<u32>().cast_const();
 
     // Make sure the lint is triggered inside a macro
     let _ = inline!(ptr::null::<u32>() as *mut u32);
+    let _ = inline!(ptr::null::<u32>().cast_mut());
 
     // Do not lint inside macros from external crates
     let _ = external!(ptr::null::<u32>() as *mut u32);
+    let _ = external!(ptr::null::<u32>().cast_mut());
 }
