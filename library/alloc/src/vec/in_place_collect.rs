@@ -328,7 +328,7 @@ where
 
     mem::forget(dst_guard);
 
-    let vec = unsafe { Vec::from_nonnull(dst_buf, len, dst_cap) };
+    let vec = unsafe { Vec::from_parts(dst_buf, len, dst_cap) };
 
     vec
 }
