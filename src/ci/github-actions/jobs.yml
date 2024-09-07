@@ -373,6 +373,20 @@ auto:
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows-8c
 
+  # Temporary builder to workaround CI issues
+  - image: x86_64-msvc-ext2
+    env:
+      SCRIPT: >
+        python x.py test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass &&
+        python x.py test --stage 2 src/tools/miri --target i686-pc-windows-gnu --test-args pass &&
+        python x.py miri --stage 2 library/core --test-args notest &&
+        python x.py miri --stage 2 library/alloc --test-args notest &&
+        python x.py miri --stage 2 library/std --test-args notest
+
+      HOST_TARGET: x86_64-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
+    <<: *job-windows-8c
+
   # 32/64-bit MinGW builds.
   #
   # We are using MinGW with POSIX threads since LLVM requires
