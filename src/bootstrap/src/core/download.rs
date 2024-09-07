@@ -228,25 +228,42 @@ impl Config {
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
         println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
+        // options should be kept in sync with
+        // src/bootstrap/src/core/download.rs
+        // for consistency
         let mut curl = command("curl");
         curl.args([
-            "-y",
+            // follow redirect
+            "--location",
+            // timeout if speed is < 10 bytes/sec for > 30 seconds
+            "--speed-time",
             "30",
-            "-Y",
-            "10", // timeout if speed is < 10 bytes/sec for > 30 seconds
+            "--speed-limit",
+            "10",
+            // timeout if cannot connect within 30 seconds
             "--connect-timeout",
-            "30", // timeout if cannot connect within 30 seconds
-            "-o",
+            "30",
+            // output file
+            "--output",
             tempfile.to_str().unwrap(),
+            // if there is an error, don't restart the download,
+            // instead continue where it left off.
             "--continue-at",
             "-",
+            // retry up to 3 times.  note that this means a maximum of 4
+            // attempts will be made, since the first attempt isn't a *re*try.
             "--retry",
             "3",
-            "-SRf",
+            // show errors, even if --silent is specified
+            "--show-error",
+            // set timestamp of downloaded file to that of the server
+            "--remote-time",
+            // fail on non-ok http status
+            "--fail",
         ]);
         // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
         if CiEnv::is_ci() {
-            curl.arg("-s");
+            curl.arg("--silent");
         } else {
             curl.arg("--progress-bar");
         }

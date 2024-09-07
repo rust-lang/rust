@@ -1,10 +1,9 @@
 //@ compile-flags: -Zmir-opt-level=0
 //@ run-pass
 
-#![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
-#![feature(f16)]
-#![feature(f128)]
+#![feature(f16, f16_const)]
+#![feature(f128, f128_const)]
 #![allow(unused_macro_rules)]
 // Don't promote
 const fn nop<T>(x: T) -> T { x }
