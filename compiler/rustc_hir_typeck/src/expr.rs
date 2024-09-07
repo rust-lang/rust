@@ -447,7 +447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this time with enough precision to check that the value
                 // whose address was taken can actually be made to live as long
                 // as it needs to live.
-                let region = self.next_region_var(infer::AddrOfRegion(expr.span));
+                let region = self.next_region_var(infer::BorrowRegion(expr.span));
                 Ty::new_ref(self.tcx, region, ty, mutbl)
             }
         }
