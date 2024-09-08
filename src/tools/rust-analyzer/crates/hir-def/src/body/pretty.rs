@@ -599,12 +599,14 @@ impl Printer<'_> {
                 w!(self, ")");
             }
             Pat::Or(pats) => {
+                w!(self, "(");
                 for (i, pat) in pats.iter().enumerate() {
                     if i != 0 {
                         w!(self, " | ");
                     }
                     self.print_pat(*pat);
                 }
+                w!(self, ")");
             }
             Pat::Record { path, args, ellipsis } => {
                 match path {

@@ -8743,7 +8743,6 @@ fn foo() {
     );
 }
 
-
 #[test]
 fn test_hover_function_with_pat_param() {
     check(
@@ -8853,6 +8852,22 @@ fn test_hover_function_with_pat_param() {
 
             ```rust
             fn test_7((x, Foo { a: a, b: b, }): (i32, Foo))
+            ```
+        "#]],
+    );
+
+    // Test case with Enum and Or pattern
+    check(
+        r#"enum MyEnum { A(i32), B(i32) } fn test_8$0((MyEnum::A(x) | MyEnum::B(x)): MyEnum) {}"#,
+        expect![[r#"
+            *test_8*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_8((MyEnum::A(x) | MyEnum::B(x)): MyEnum)
             ```
         "#]],
     );
