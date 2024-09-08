@@ -14,7 +14,7 @@ LL | impl<const N: u64> Q for [u8; N] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `ASSOC` in implementation
 
 error: the constant `13` is not of type `u64`
-  --> $DIR/type_mismatch.rs:13:26
+  --> $DIR/type_mismatch.rs:12:26
    |
 LL | pub fn q_user() -> [u8; <[u8; 13] as Q>::ASSOC] {}
    |                          ^^^^^^^^ expected `u64`, found `usize`
@@ -28,20 +28,14 @@ LL | impl<const N: u64> Q for [u8; N] {}
    |      unsatisfied trait bound introduced here
 
 error[E0308]: mismatched types
-  --> $DIR/type_mismatch.rs:13:20
+  --> $DIR/type_mismatch.rs:12:20
    |
 LL | pub fn q_user() -> [u8; <[u8; 13] as Q>::ASSOC] {}
    |        ------      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `[u8; <[u8; 13] as Q>::ASSOC]`, found `()`
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
 
-error[E0308]: mismatched types
-  --> $DIR/type_mismatch.rs:8:31
-   |
-LL | impl<const N: u64> Q for [u8; N] {}
-   |                               ^ expected `usize`, found `u64`
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0046, E0308.
 For more information about an error, try `rustc --explain E0046`.

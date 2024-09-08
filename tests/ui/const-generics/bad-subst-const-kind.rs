@@ -7,7 +7,6 @@ trait Q {
 
 impl<const N: u64> Q for [u8; N] {
     //~^ ERROR: the constant `N` is not of type `usize`
-    //~| ERROR: mismatched types
     const ASSOC: usize = 1;
 }
 

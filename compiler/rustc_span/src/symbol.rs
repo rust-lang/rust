@@ -599,7 +599,6 @@ symbols! {
         conservative_impl_trait,
         console,
         const_allocate,
-        const_arg_path,
         const_async_blocks,
         const_closures,
         const_compare_raw_pointers,

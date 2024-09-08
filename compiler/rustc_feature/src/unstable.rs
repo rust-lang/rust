@@ -193,8 +193,6 @@ declare_features! (
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
-    /// Gating for a new desugaring of const arguments of usages of const parameters
-    (internal, const_arg_path, "1.81.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
     /// Outputs useful `assert!` messages
