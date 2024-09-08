@@ -426,12 +426,6 @@ impl MissingDoc {
         article: &'static str,
         desc: &'static str,
     ) {
-        // If we're building a test harness, then warning about
-        // documentation is probably not really relevant right now.
-        if cx.sess().opts.test {
-            return;
-        }
-
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
         // have a `NodeId`).
@@ -444,11 +438,10 @@ impl MissingDoc {
         let attrs = cx.tcx.hir().attrs(cx.tcx.local_def_id_to_hir_id(def_id));
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
-            cx.emit_span_lint(
-                MISSING_DOCS,
-                cx.tcx.def_span(def_id),
-                BuiltinMissingDoc { article, desc },
-            );
+            let sp = cx.tcx.def_span(def_id);
+            if !sp.is_dummy() {
+                cx.emit_span_lint(MISSING_DOCS, sp, BuiltinMissingDoc { article, desc });
+            }
         }
     }
 }
