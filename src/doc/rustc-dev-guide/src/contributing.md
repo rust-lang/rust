@@ -316,9 +316,8 @@ There are issues for beginners and advanced compiler devs alike!
 
 Just a few things to keep in mind:
 
-- Please try to avoid overly long lines and use semantic line breaks (so break the line after a sentence).
-  There is no strict limit on line lengths, let the sentence or part of the sentence flow to its proper end on the same line.
-  There is currently nothing stopping anyone from creating overly long lines, just do your best to avoid them.
+- Please try to avoid overly long lines and use semantic line breaks (where you break the line after each sentence).
+  There is no strict limit on line lengths; let the sentence or part of the sentence flow to its proper end on the same line.
 
 - When contributing text to the guide, please contextualize the information with some time period
   and/or a reason so that the reader knows how much to trust or mistrust the information.
@@ -336,26 +335,27 @@ Just a few things to keep in mind:
     - january 2021
 
     There is a CI action (in `~/.github/workflows/date-check.yml`)
-    that generates a monthly issue with any of these that are over 6 months old.
+    that generates a monthly showing those that are over 6 months old
+    ([example](https://github.com/rust-lang/rustc-dev-guide/issues/2052)).
 
     For the action to pick the date,
     add a special annotation before specifying the date:
 
     ```md
-    <!-- date-check --> Jan 2023
+    <!-- date-check --> Sep 2024
     ```
 
     Example:
 
     ```md
-    As of <!-- date-check --> Jan 2023, the foo did the bar.
+    As of <!-- date-check --> Sep 2024, the foo did the bar.
     ```
 
     For cases where the date should not be part of the visible rendered output,
     use the following instead:
 
     ```md
-    <!-- date-check: Jan 2023 -->
+    <!-- date-check: Sep 2024 -->
     ```
 
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
@@ -363,8 +363,9 @@ Just a few things to keep in mind:
     outdated.
 
 - If a text grows rather long (more than a few page scrolls) or complicated (more than four
-  subsections) it might benefit from having a Table of Contents at the beginning, which you can
-  auto-generate by including the `<!-- toc -->` marker.
+  subsections),
+  it might benefit from having a Table of Contents at the beginning,
+  which you can auto-generate by including the `<!-- toc -->` marker at the top.
 
 ## Issue triage
 
