@@ -42,6 +42,9 @@
 # Unless you're developing for a target where Rust CI doesn't build a compiler
 # toolchain or changing LLVM locally, you probably want to leave this enabled.
 #
+# Set this to `true` to download if CI llvm available otherwise it builds
+# from `src/llvm-project`.
+#
 # Set this to `"if-unchanged"` to download only if the llvm-project has not
 # been modified. You can also use this if you are unsure whether you're on a
 # tier 1 target. All tier 1 targets are currently supported.
@@ -236,7 +239,7 @@
 # Instead of downloading the src/stage0 version of cargo-clippy specified,
 # use this cargo-clippy binary instead as the stage0 snapshot cargo-clippy.
 #
-# Note that this option should be used with the same toolchain as the `rustc` option above. 
+# Note that this option should be used with the same toolchain as the `rustc` option above.
 # Otherwise, clippy is likely to fail due to a toolchain conflict.
 #cargo-clippy = "/path/to/cargo-clippy"
 
