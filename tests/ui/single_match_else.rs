@@ -199,3 +199,13 @@ fn issue_10808(bar: Option<i32>) {
         },
     }
 }
+
+fn irrefutable_match() -> Option<&'static ExprNode> {
+    match ExprNode::Butterflies {
+        ExprNode::Butterflies => Some(&NODE),
+        _ => {
+            let x = 5;
+            None
+        },
+    }
+}
