@@ -1065,7 +1065,7 @@ impl<T> Option<T> {
     #[inline]
     #[track_caller]
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const unsafe fn unwrap_unchecked(self) -> T {
         match self {
             Some(val) => val,
