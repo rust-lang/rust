@@ -21,9 +21,11 @@ class Option(object):
 
 
 options = []
+option_defaults = {}
 
 
-def o(*args):
+def o(*args, default):
+    option_defaults[args[0]] = default
     options.append(Option(*args, value=False))
 
 
@@ -31,35 +33,35 @@ def v(*args):
     options.append(Option(*args, value=True))
 
 
-o("debug", "rust.debug", "enables debugging environment; does not affect optimization of bootstrapped code")
-o("docs", "build.docs", "build standard library documentation")
-o("compiler-docs", "build.compiler-docs", "build compiler documentation")
-o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
-o("verbose-tests", "rust.verbose-tests", "enable verbose output when running tests")
-o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files between builds")
-o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds")
-o("local-rust", None, "use an installed rustc rather than downloading a snapshot")
+o("debug", "rust.debug", "enables debugging environment; does not affect optimization of bootstrapped code", default=False)
+o("docs", "build.docs", "build standard library documentation", default=True)
+o("compiler-docs", "build.compiler-docs", "build compiler documentation", default=False)
+o("optimize-tests", "rust.optimize-tests", "build tests with optimizations", default=True)
+o("verbose-tests", "rust.verbose-tests", "enable verbose output when running tests", default=False)
+o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files between builds", default=False)
+o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds", default=False)
+o("local-rust", None, "use an installed rustc rather than downloading a snapshot", default=False)
 v("local-rust-root", None, "set prefix for local rust binary")
-o("local-rebuild", "build.local-rebuild", "assume local-rust matches the current version, for rebuilds; implies local-rust, and is implied if local-rust already matches the current version")
-o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ for LLVM")
-o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)")
-o("rpath", "rust.rpath", "build rpaths into rustc itself")
-o("codegen-tests", "rust.codegen-tests", "run the tests/codegen tests")
-o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")
-o("locked-deps", "build.locked-deps", "force Cargo.lock to be up to date")
-o("vendor", "build.vendor", "enable usage of vendored Rust crates")
-o("sanitizers", "build.sanitizers", "build the sanitizer runtimes (asan, dfsan, lsan, msan, tsan, hwasan)")
-o("dist-src", "rust.dist-src", "when building tarballs enables building a source tarball")
-o("cargo-native-static", "build.cargo-native-static", "static native libraries in cargo")
-o("profiler", "build.profiler", "build the profiler runtime")
-o("full-tools", None, "enable all tools")
-o("lld", "rust.lld", "build lld")
-o("llvm-bitcode-linker", "rust.llvm-bitcode-linker", "build llvm bitcode linker")
-o("clang", "llvm.clang", "build clang")
-o("use-libcxx", "llvm.use-libcxx", "build LLVM with libc++")
-o("control-flow-guard", "rust.control-flow-guard", "Enable Control Flow Guard")
-o("patch-binaries-for-nix", "build.patch-binaries-for-nix", "whether patch binaries for usage with Nix toolchains")
-o("new-symbol-mangling", "rust.new-symbol-mangling", "use symbol-mangling-version v0")
+o("local-rebuild", "build.local-rebuild", "assume local-rust matches the current version, for rebuilds; implies local-rust, and is implied if local-rust already matches the current version", default=False)
+o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ for LLVM", default=False)
+o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)", default=False)
+o("rpath", "rust.rpath", "build rpaths into rustc itself", default=False)
+o("codegen-tests", "rust.codegen-tests", "run the tests/codegen tests", default=False)
+o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)", default=False)
+o("locked-deps", "build.locked-deps", "force Cargo.lock to be up to date", default=False)
+o("vendor", "build.vendor", "enable usage of vendored Rust crates", default=False)
+o("sanitizers", "build.sanitizers", "build the sanitizer runtimes (asan, dfsan, lsan, msan, tsan, hwasan)", default=False)
+o("dist-src", "rust.dist-src", "when building tarballs enables building a source tarball", default=False)
+o("cargo-native-static", "build.cargo-native-static", "static native libraries in cargo", default=False)
+o("profiler", "build.profiler", "build the profiler runtime", default=False)
+o("full-tools", None, "enable all tools", default=False)
+o("lld", "rust.lld", "build lld", default=False)
+o("llvm-bitcode-linker", "rust.llvm-bitcode-linker", "build llvm bitcode linker", default=False)
+o("clang", "llvm.clang", "build clang", default=False)
+o("use-libcxx", "llvm.use-libcxx", "build LLVM with libc++", default=False)
+o("control-flow-guard", "rust.control-flow-guard", "Enable Control Flow Guard", default=False)
+o("patch-binaries-for-nix", "build.patch-binaries-for-nix", "whether patch binaries for usage with Nix toolchains", default=False)
+o("new-symbol-mangling", "rust.new-symbol-mangling", "use symbol-mangling-version v0", default=False)
 
 v("llvm-cflags", "llvm.cflags", "build LLVM with these extra compiler flags")
 v("llvm-cxxflags", "llvm.cxxflags", "build LLVM with these extra compiler flags")
