@@ -16,6 +16,13 @@ use crate::{
 
 use super::*;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum LineFormat {
+    Oneline,
+    Newline,
+    Indentation,
+}
+
 pub(super) fn print_body_hir(
     db: &dyn DefDatabase,
     body: &Body,
@@ -52,7 +59,14 @@ pub(super) fn print_body_hir(
         }
     };
 
-    let mut p = Printer { db, body, buf: header, indent_level: 0, needs_indent: false, edition };
+    let mut p = Printer {
+        db,
+        body,
+        buf: header,
+        indent_level: 0,
+        line_format: LineFormat::Newline,
+        edition,
+    };
     if let DefWithBodyId::FunctionId(it) = owner {
         p.buf.push('(');
         let function_data = &db.function_data(it);
@@ -95,8 +109,14 @@ pub(super) fn print_expr_hir(
     expr: ExprId,
     edition: Edition,
 ) -> String {
-    let mut p =
-        Printer { db, body, buf: String::new(), indent_level: 0, needs_indent: false, edition };
+    let mut p = Printer {
+        db,
+        body,
+        buf: String::new(),
+        indent_level: 0,
+        line_format: LineFormat::Newline,
+        edition,
+    };
     p.print_expr(expr);
     p.buf
 }
@@ -109,10 +129,10 @@ macro_rules! w {
 
 macro_rules! wln {
     ($dst:expr) => {
-        { let _ = writeln!($dst); }
+        { $dst.newline(); }
     };
     ($dst:expr, $($arg:tt)*) => {
-        { let _ = writeln!($dst, $($arg)*); }
+        { let _ = w!($dst, $($arg)*); $dst.newline(); }
     };
 }
 
@@ -121,24 +141,30 @@ struct Printer<'a> {
     body: &'a Body,
     buf: String,
     indent_level: usize,
-    needs_indent: bool,
+    line_format: LineFormat,
     edition: Edition,
 }
 
 impl Write for Printer<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for line in s.split_inclusive('\n') {
-            if self.needs_indent {
+            if matches!(self.line_format, LineFormat::Indentation) {
                 match self.buf.chars().rev().find(|ch| *ch != ' ') {
                     Some('\n') | None => {}
                     _ => self.buf.push('\n'),
                 }
                 self.buf.push_str(&"    ".repeat(self.indent_level));
-                self.needs_indent = false;
             }
 
             self.buf.push_str(line);
-            self.needs_indent = line.ends_with('\n');
+
+            if matches!(self.line_format, LineFormat::Newline | LineFormat::Indentation) {
+                self.line_format = if line.ends_with('\n') {
+                    LineFormat::Indentation
+                } else {
+                    LineFormat::Newline
+                };
+            }
         }
 
         Ok(())
@@ -161,14 +187,28 @@ impl Printer<'_> {
         }
     }
 
+    // Add a newline if the current line is not empty.
+    // If the current line is empty, add a space instead.
+    //
+    // Do not use [`writeln!()`] or [`wln!()`] here, which will result in
+    // infinite recursive calls to this function.
     fn newline(&mut self) {
-        match self.buf.chars().rev().find_position(|ch| *ch != ' ') {
-            Some((_, '\n')) | None => {}
-            Some((idx, _)) => {
-                if idx != 0 {
-                    self.buf.drain(self.buf.len() - idx..);
+        if matches!(self.line_format, LineFormat::Oneline) {
+            match self.buf.chars().last() {
+                Some(' ') | None => {}
+                Some(_) => {
+                    w!(self, " ");
                 }
-                writeln!(self).unwrap()
+            }
+        } else {
+            match self.buf.chars().rev().find_position(|ch| *ch != ' ') {
+                Some((_, '\n')) | None => {}
+                Some((idx, _)) => {
+                    if idx != 0 {
+                        self.buf.drain(self.buf.len() - idx..);
+                    }
+                    w!(self, "\n");
+                }
             }
         }
     }
