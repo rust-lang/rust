@@ -16,7 +16,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     pluralize, Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PErr, PResult,
-    Subdiagnostic,
+    Subdiagnostic, Suggestions,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -775,7 +775,7 @@ impl<'a> Parser<'a> {
         }
 
         // Check for misspelled keywords if there are no suggestions added to the diagnostic.
-        if err.suggestions.as_ref().is_ok_and(|code_suggestions| code_suggestions.is_empty()) {
+        if matches!(&err.suggestions, Suggestions::Enabled(list) if list.is_empty()) {
             self.check_for_misspelled_kw(&mut err, &expected);
         }
         Err(err)
@@ -803,6 +803,9 @@ impl<'a> Parser<'a> {
             && let Some(misspelled_kw) = find_similar_kw(curr_ident, &expected_keywords)
         {
             err.subdiagnostic(misspelled_kw);
+            // We don't want other suggestions to be added as they are most likely meaningless
+            // when there is a misspelled keyword.
+            err.seal_suggestions();
         } else if let Some((prev_ident, _)) = self.prev_token.ident()
             && !prev_ident.is_used_keyword()
         {
@@ -818,6 +821,9 @@ impl<'a> Parser<'a> {
             // positives like suggesting keyword `for` for `extern crate foo {}`.
             if let Some(misspelled_kw) = find_similar_kw(prev_ident, &all_keywords) {
                 err.subdiagnostic(misspelled_kw);
+                // We don't want other suggestions to be added as they are most likely meaningless
+                // when there is a misspelled keyword.
+                err.seal_suggestions();
             }
         }
     }
