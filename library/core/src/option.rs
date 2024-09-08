@@ -1942,7 +1942,7 @@ impl<T> Option<&mut T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn copied(self) -> Option<T>
     where
         T: Copy,
