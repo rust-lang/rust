@@ -383,7 +383,7 @@ impl char {
             // Force the 6th bit to be set to ensure ascii is lower case.
             digit = (self as u32 | 0b10_0000).wrapping_sub('a' as u32).saturating_add(10);
         }
-        // FIXME: once then_some is const fn, use it here
+        // FIXME(const-hack): once then_some is const fn, use it here
         if digit < radix { Some(digit) } else { None }
     }
 

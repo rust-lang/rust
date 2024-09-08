@@ -33,10 +33,11 @@ where
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
+    // FIXME(const-hack): once integer formatting in panics is possible, we
+    // should use the same implementation at compiletime and runtime.
     const_eval_select((index, len), slice_start_index_len_fail_ct, slice_start_index_len_fail_rt)
 }
 
-// FIXME const-hack
 #[inline]
 #[track_caller]
 fn slice_start_index_len_fail_rt(index: usize, len: usize) -> ! {
@@ -54,10 +55,11 @@ const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
+    // FIXME(const-hack): once integer formatting in panics is possible, we
+    // should use the same implementation at compiletime and runtime.
     const_eval_select((index, len), slice_end_index_len_fail_ct, slice_end_index_len_fail_rt)
 }
 
-// FIXME const-hack
 #[inline]
 #[track_caller]
 fn slice_end_index_len_fail_rt(index: usize, len: usize) -> ! {
@@ -75,10 +77,11 @@ const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_index_order_fail(index: usize, end: usize) -> ! {
+    // FIXME(const-hack): once integer formatting in panics is possible, we
+    // should use the same implementation at compiletime and runtime.
     const_eval_select((index, end), slice_index_order_fail_ct, slice_index_order_fail_rt)
 }
 
-// FIXME const-hack
 #[inline]
 #[track_caller]
 fn slice_index_order_fail_rt(index: usize, end: usize) -> ! {
