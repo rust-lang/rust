@@ -18,7 +18,7 @@ mod tests;
 #[derive(Debug, Clone)]
 pub struct IntervalSet<I> {
     // Start, end
-    map: SmallVec<[(u32, u32); 4]>,
+    map: SmallVec<[(u32, u32); 2]>,
     domain: usize,
     _data: PhantomData<I>,
 }
