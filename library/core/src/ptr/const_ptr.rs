@@ -40,15 +40,17 @@ impl<T: ?Sized> *const T {
 
         #[inline]
         const fn const_impl(ptr: *const u8) -> bool {
-            // Compare via a cast to a thin pointer, so fat pointers are only
-            // considering their "data" part for null-ness.
             match (ptr).guaranteed_eq(null_mut()) {
-                None => false,
                 Some(res) => res,
+                // To remain maximally convervative, we stop execution when we don't
+                // know whether the pointer is null or not.
+                // We can *not* return `false` here, that would be unsound in `NonNull::new`!
+                None => panic!("null-ness of this pointer cannot be determined in const context"),
             }
         }
 
-        #[allow(unused_unsafe)]
+        // Compare via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
         const_eval_select((self as *const u8,), const_impl, runtime_impl)
     }
 
