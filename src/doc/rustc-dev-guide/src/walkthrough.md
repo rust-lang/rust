@@ -45,7 +45,7 @@ before, not all of these are needed for every type of contribution.
 - **Idea discussion/Pre-RFC**  A Pre-RFC is an early draft or design discussion
   of a feature. This stage is intended to flesh out the design space a bit and
   get a grasp on the different merits and problems with an idea. It's a great
-  way to get early feedback on your idea before presenting it the wider
+  way to get early feedback on your idea before presenting it to the wider
   audience. You can find the original discussion [here][prerfc].
 - **RFC**  This is when you formally present your idea to the community for
   consideration. You can find the RFC [here][rfc].
