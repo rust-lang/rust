@@ -53,6 +53,8 @@ pub trait Cx: Copy {
         mode: SolverMode,
         f: impl FnOnce(&mut GlobalCache<Self>) -> R,
     ) -> R;
+
+    fn evaluation_is_concurrent(&self) -> bool;
 }
 
 pub trait Delegate {
