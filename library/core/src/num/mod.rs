@@ -6,7 +6,7 @@ use crate::str::FromStr;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ascii, intrinsics, mem};
 
-// Used because the `?` operator is not allowed in a const context.
+// FIXME(const-hack): Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
     ($e:expr) => {
         match $e {

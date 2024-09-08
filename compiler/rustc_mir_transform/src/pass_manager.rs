@@ -42,7 +42,7 @@ fn to_profiler_name(type_name: &'static str) -> &'static str {
 
 // const wrapper for `if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }`
 const fn c_name(name: &'static str) -> &'static str {
-    // FIXME Simplify the implementation once more `str` methods get const-stable.
+    // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
     // and inline into call site
     let bytes = name.as_bytes();
     let mut i = bytes.len();
@@ -61,7 +61,7 @@ const fn c_name(name: &'static str) -> &'static str {
 /// loop that goes over each available MIR and applies `run_pass`.
 pub(super) trait MirPass<'tcx> {
     fn name(&self) -> &'static str {
-        // FIXME Simplify the implementation once more `str` methods get const-stable.
+        // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
         // See copypaste in `MirLint`
         const {
             let name = std::any::type_name::<Self>();
@@ -89,7 +89,7 @@ pub(super) trait MirPass<'tcx> {
 /// disabled (via the `Lint` adapter).
 pub(super) trait MirLint<'tcx> {
     fn name(&self) -> &'static str {
-        // FIXME Simplify the implementation once more `str` methods get const-stable.
+        // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
         // See copypaste in `MirPass`
         const {
             let name = std::any::type_name::<Self>();

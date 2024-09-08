@@ -191,7 +191,7 @@ const fn in_place_collectible<DEST, SRC>(
 
 const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
     if const { mem::align_of::<SRC>() != mem::align_of::<DEST>() } {
-        // FIXME: use unreachable! once that works in const
+        // FIXME(const-hack): use unreachable! once that works in const
         panic!("in_place_collectible() prevents this");
     }
 
