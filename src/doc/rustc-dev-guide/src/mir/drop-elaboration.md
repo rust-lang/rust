@@ -192,4 +192,4 @@ known to be uninitialized) to run these checks.
 [reference-drop]: https://doc.rust-lang.org/reference/destructors.html
 [drops]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_dataflow/src/elaborate_drops.rs
 [drops-shim]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/shim.rs
-[drops-transform]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_dataflow/src/elaborate_drops.rs
+[drops-transform]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/elaborate_drops.rs
