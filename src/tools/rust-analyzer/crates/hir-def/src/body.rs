@@ -227,6 +227,17 @@ impl Body {
         pretty::print_expr_hir(db, self, owner, expr, edition)
     }
 
+    pub fn pretty_print_pat(
+        &self,
+        db: &dyn DefDatabase,
+        owner: DefWithBodyId,
+        pat: PatId,
+        oneline: bool,
+        edition: Edition,
+    ) -> String {
+        pretty::print_pat_hir(db, self, owner, pat, oneline, edition)
+    }
+
     fn new(
         db: &dyn DefDatabase,
         owner: DefWithBodyId,

@@ -121,6 +121,26 @@ pub(super) fn print_expr_hir(
     p.buf
 }
 
+pub(super) fn print_pat_hir(
+    db: &dyn DefDatabase,
+    body: &Body,
+    _owner: DefWithBodyId,
+    pat: PatId,
+    oneline: bool,
+    edition: Edition,
+) -> String {
+    let mut p = Printer {
+        db,
+        body,
+        buf: String::new(),
+        indent_level: 0,
+        line_format: if oneline { LineFormat::Oneline } else { LineFormat::Newline },
+        edition,
+    };
+    p.print_pat(pat);
+    p.buf
+}
+
 macro_rules! w {
     ($dst:expr, $($arg:tt)*) => {
         { let _ = write!($dst, $($arg)*); }
