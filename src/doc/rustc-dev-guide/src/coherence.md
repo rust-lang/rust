@@ -35,7 +35,7 @@ In both cases, all pairs of impls are checked for overlap.
 
 Overlapping is sometimes partially allowed:
 
-1. for maker traits
+1. for marker traits
 2. under [specialization](./specialization.md)
 
 but normally isn't. 
