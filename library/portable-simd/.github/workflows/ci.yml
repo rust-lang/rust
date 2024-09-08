@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: |
           rustup update nightly --no-self-update
@@ -49,7 +49,7 @@ jobs:
           - wasm32-unknown-unknown
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: |
           rustup update nightly --no-self-update
@@ -98,7 +98,7 @@ jobs:
           # avx512vl, but occasionally doesn't.  Maybe one day we can enable it.
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: |
           rustup update nightly --no-self-update
@@ -155,7 +155,7 @@ jobs:
           - { name: default, RUSTFLAGS: "" }
           - { name: simd128, RUSTFLAGS: "-C target-feature=+simd128" }
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: |
           rustup update nightly --no-self-update
@@ -201,7 +201,7 @@ jobs:
           # - { target: riscv64gc-unknown-linux-gnu, target_feature: "+v,+zvl128b" }
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: |
           rustup update nightly --no-self-update
@@ -258,7 +258,7 @@ jobs:
           - "--all-features"
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: |
           rustup update nightly --no-self-update
