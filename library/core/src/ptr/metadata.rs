@@ -187,14 +187,14 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
         // Consider a reference like `&(i32, dyn Send)`: the vtable will only store the size of the
         // `Send` part!
         // SAFETY: DynMetadata always contains a valid vtable pointer
-        return unsafe { crate::intrinsics::vtable_size(self.vtable_ptr() as *const ()) };
+        unsafe { crate::intrinsics::vtable_size(self.vtable_ptr() as *const ()) }
     }
 
     /// Returns the alignment of the type associated with this vtable.
     #[inline]
     pub fn align_of(self) -> usize {
         // SAFETY: DynMetadata always contains a valid vtable pointer
-        return unsafe { crate::intrinsics::vtable_align(self.vtable_ptr() as *const ()) };
+        unsafe { crate::intrinsics::vtable_align(self.vtable_ptr() as *const ()) }
     }
 
     /// Returns the size and alignment together as a `Layout`

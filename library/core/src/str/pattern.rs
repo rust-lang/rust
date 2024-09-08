@@ -1814,7 +1814,7 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
             }
             mask &= !(1 << trailing);
         }
-        return false;
+        false
     };
 
     let test_chunk = |idx| -> u16 {
@@ -1830,7 +1830,7 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
         let both = eq_first.bitand(eq_last);
         let mask = both.to_bitmask() as u16;
 
-        return mask;
+        mask
     };
 
     let mut i = 0;
