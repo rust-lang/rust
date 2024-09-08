@@ -1540,7 +1540,7 @@ impl<T, E> Result<&T, E> {
     where
         T: Copy,
     {
-        // FIXME: this implementation, which sidesteps using `Result::map` since it's not const
+        // FIXME(const-hack): this implementation, which sidesteps using `Result::map` since it's not const
         // ready yet, should be reverted when possible to avoid code repetition
         match self {
             Ok(&v) => Ok(v),
