@@ -1186,3 +1186,11 @@ pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>>
         }
         map
     });
+
+pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool {
+    match sym {
+        sym::on_unimplemented => true,
+        sym::do_not_recommend => features.do_not_recommend,
+        _ => false,
+    }
+}
