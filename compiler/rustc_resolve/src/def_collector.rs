@@ -347,22 +347,20 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, constant: &'a AnonConst) {
-        if self.resolver.tcx.features().const_arg_path {
-            // HACK(min_generic_const_args): don't create defs for anon consts if we think they will
-            // later be turned into ConstArgKind::Path's. because this is before resolve is done, we
-            // may accidentally identify a construction of a unit struct as a param and not create a
-            // def. we'll then create a def later in ast lowering in this case. the parent of nested
-            // items will be messed up, but that's ok because there can't be any if we're just looking
-            // for bare idents.
+        // HACK(min_generic_const_args): don't create defs for anon consts if we think they will
+        // later be turned into ConstArgKind::Path's. because this is before resolve is done, we
+        // may accidentally identify a construction of a unit struct as a param and not create a
+        // def. we'll then create a def later in ast lowering in this case. the parent of nested
+        // items will be messed up, but that's ok because there can't be any if we're just looking
+        // for bare idents.
 
-            if matches!(constant.value.maybe_unwrap_block().kind, ExprKind::MacCall(..)) {
-                // See self.pending_anon_const_info for explanation
-                self.pending_anon_const_info =
-                    Some(PendingAnonConstInfo { id: constant.id, span: constant.value.span });
-                return visit::walk_anon_const(self, constant);
-            } else if constant.value.is_potential_trivial_const_arg() {
-                return visit::walk_anon_const(self, constant);
-            }
+        if matches!(constant.value.maybe_unwrap_block().kind, ExprKind::MacCall(..)) {
+            // See self.pending_anon_const_info for explanation
+            self.pending_anon_const_info =
+                Some(PendingAnonConstInfo { id: constant.id, span: constant.value.span });
+            return visit::walk_anon_const(self, constant);
+        } else if constant.value.is_potential_trivial_const_arg() {
+            return visit::walk_anon_const(self, constant);
         }
 
         let def = self.create_def(constant.id, kw::Empty, DefKind::AnonConst, constant.value.span);
