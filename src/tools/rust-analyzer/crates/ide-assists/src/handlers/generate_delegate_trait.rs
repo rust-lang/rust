@@ -282,8 +282,11 @@ fn generate_impl(
                 ai.assoc_items()
                     .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
                     .for_each(|item| {
-                        let assoc =
-                            process_assoc_item(item, qualified_path_type.clone(), field_name);
+                        let assoc = process_assoc_item(
+                            item.clone_for_update(),
+                            qualified_path_type.clone(),
+                            field_name,
+                        );
                         if let Some(assoc) = assoc {
                             delegate_assoc_items.add_item(assoc);
                         }
@@ -1785,5 +1788,41 @@ impl T for B {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn assoc_items_attributes_mutably_cloned() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+pub struct A;
+pub trait C<D> {
+    #[allow(clippy::dead_code)]
+    fn a_funk(&self) -> &D;
+}
+
+pub struct B<T: C<A>> {
+    has_dr$0ain: T,
+}
+"#,
+            r#"
+pub struct A;
+pub trait C<D> {
+    #[allow(clippy::dead_code)]
+    fn a_funk(&self) -> &D;
+}
+
+pub struct B<T: C<A>> {
+    has_drain: T,
+}
+
+impl<D, T: C<A>> C<D> for B<T> {
+    #[allow(clippy::dead_code)]
+    fn a_funk(&self) -> &D {
+        <T as C<D>>::a_funk(&self.has_drain)
+    }
+}
+"#,
+        )
     }
 }
