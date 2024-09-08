@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// with the appropriate `.to_owned()`/`to_string()` calls.
     ///
     /// ### Why is this bad?
-    /// Requiring the argument to be of the specific size
+    /// Requiring the argument to be of the specific type
     /// makes the function less useful for no benefit; slices in the form of `&[T]`
     /// or `&str` usually suffice and can be obtained from other types, too.
     ///
