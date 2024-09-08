@@ -136,6 +136,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         &"build",
         &"--target",
         &config.target,
+        // TODO: remove this feature?
         &"--features",
         &"std/compiler-builtins-no-f16-f128",
     ];
