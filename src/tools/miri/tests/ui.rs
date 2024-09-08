@@ -315,8 +315,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
-    let path = args.next().expect("./miri run-dep must be followed by a file name");
+fn run_dep_mode(target: String, args: impl Iterator<Item = OsString>) -> Result<()> {
     let mut config = miri_config(
         &target,
         "",
@@ -328,8 +327,6 @@ fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Res
 
     let mut cmd = config.program.build(&config.out_dir);
     cmd.args(dep_args);
-
-    cmd.arg(path);
 
     cmd.args(args);
     if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
