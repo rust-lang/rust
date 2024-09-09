@@ -18,9 +18,6 @@ pub(crate) fn validate_cmse_abi<'tcx>(
     abi: abi::Abi,
     fn_sig: ty::PolyFnSig<'tcx>,
 ) {
-    // this type is only used for layout computation, which does not rely on regions
-    let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
-
     if let abi::Abi::CCmseNonSecureCall = abi {
         let hir_node = tcx.hir_node(hir_id);
         let hir::Node::Ty(hir::Ty {
@@ -70,10 +67,13 @@ pub(crate) fn validate_cmse_abi<'tcx>(
 /// Returns whether the inputs will fit into the available registers
 fn is_valid_cmse_inputs<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_sig: ty::FnSig<'tcx>,
+    fn_sig: ty::PolyFnSig<'tcx>,
 ) -> Result<Result<(), usize>, &'tcx LayoutError<'tcx>> {
     let mut span = None;
     let mut accum = 0u64;
+
+    // this type is only used for layout computation, which does not rely on regions
+    let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
 
     for (index, ty) in fn_sig.inputs().iter().enumerate() {
         let layout = tcx.layout_of(ParamEnv::reveal_all().and(*ty))?;
@@ -99,8 +99,11 @@ fn is_valid_cmse_inputs<'tcx>(
 /// Returns whether the output will fit into the available registers
 fn is_valid_cmse_output<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_sig: ty::FnSig<'tcx>,
+    fn_sig: ty::PolyFnSig<'tcx>,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
+    // this type is only used for layout computation, which does not rely on regions
+    let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
+
     let mut ret_ty = fn_sig.output();
     let layout = tcx.layout_of(ParamEnv::reveal_all().and(ret_ty))?;
     let size = layout.layout.size().bytes();
