@@ -71,7 +71,7 @@ Given these trait implementations `u32: Bar` should _not_ hold. `&'a u32` only i
 - There is a where clause `for<'a> &'^0 T: Trait` on the impl, as we instantiated the early binder with `u32` we actually have to prove `for<'a> &'^0 u32: Trait`
 - We find the `impl<T> Trait for T` impl, we would wind up instantiating the `EarlyBinder` with `&'^0 u32`
 - There is a where clause `for<'a> T: Other<'^0>`, as we instantiated the early binder with `&'^0 u32` we actually have to prove `for<'a> &'^0 u32: Other<'^0>`
-- We find the `impl<'a> Other<'a> for &'a u32` and this impl is enoguh to prove the bound as the lifetime on the borrow and on the trait are both `'^0`
+- We find the `impl<'a> Other<'a> for &'a u32` and this impl is enough to prove the bound as the lifetime on the borrow and on the trait are both `'^0`
 
 This end result is incorrect as we had two separate binders introducing their own generic parameters, the trait bound should have ended up as something like `for<'a1, 'a2> &'^1 u32: Other<'^0>` which is _not_ satisfied by the `impl<'a> Other<'a> for &'a u32`.
 

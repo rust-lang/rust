@@ -73,7 +73,7 @@ fn bad<'a>() -> Opaque<'a, 'a> {}
 //~^ ERROR
 ```
 
-**Semantic lifetime equlity:**
+**Semantic lifetime equality:**
 One complexity with lifetimes compared to type parameters is that
 two lifetimes that are syntactically different may be semantically equal.
 Therefore, we need to be cautious when verifying that the lifetimes are unique.
@@ -219,7 +219,7 @@ fn test::{closure#0}(_upvar: &'?8 str) -> Opaque<'?6, '?7> {
     return _upvar
 }
 
-// where `['?8, '?6, ?7] are universal lifetimes *external* to the closure.
+// where `['?8, '?6, ?7]` are universal lifetimes *external* to the closure.
 // There are no known relations between them *inside* the closure.
 // But in the parent fn it is known that `'?6: '?8`.
 //
