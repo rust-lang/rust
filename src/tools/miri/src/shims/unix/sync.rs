@@ -18,10 +18,10 @@ fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u
 
 fn mutexattr_get_kind<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
-    attr_op: &OpTy<'tcx>,
+    attr_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
-        attr_op,
+        attr_ptr,
         mutexattr_kind_offset(ecx)?,
         ecx.libc_ty_layout("pthread_mutexattr_t"),
         ecx.machine.layouts.i32,
@@ -31,11 +31,11 @@ fn mutexattr_get_kind<'tcx>(
 
 fn mutexattr_set_kind<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    attr_op: &OpTy<'tcx>,
+    attr_ptr: &OpTy<'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
-        attr_op,
+        attr_ptr,
         mutexattr_kind_offset(ecx)?,
         Scalar::from_i32(kind),
         ecx.libc_ty_layout("pthread_mutexattr_t"),
@@ -57,6 +57,25 @@ fn is_mutex_kind_default<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpRes
 fn is_mutex_kind_normal<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResult<'tcx, bool> {
     let mutex_normal_kind = ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL");
     Ok(kind == (mutex_normal_kind | PTHREAD_MUTEX_NORMAL_FLAG))
+}
+
+/// The mutex kind.
+#[derive(Debug, Clone, Copy)]
+pub enum MutexKind {
+    Normal,
+    Default,
+    Recursive,
+    ErrorCheck,
+}
+
+#[derive(Debug)]
+/// Additional data that we attach with each mutex instance.
+pub struct AdditionalMutexData {
+    /// The mutex kind, used by some mutex implementations like pthreads mutexes.
+    pub kind: MutexKind,
+
+    /// The address of the mutex.
+    pub address: u64,
 }
 
 // pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
@@ -94,15 +113,14 @@ fn mutex_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
 /// Eagerly create and initialize a new mutex.
 fn mutex_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    mutex_op: &OpTy<'tcx>,
+    mutex_ptr: &OpTy<'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx> {
-    // FIXME: might be worth changing mutex_create to take the mplace
-    // rather than the `OpTy`.
-    let address = ecx.read_pointer(mutex_op)?.addr().bytes();
+    let mutex = ecx.deref_pointer(mutex_ptr)?;
+    let address = mutex.ptr().addr().bytes();
     let kind = translate_kind(ecx, kind)?;
-    let data = Some(AdditionalMutexData { address, kind });
-    ecx.mutex_create(mutex_op, ecx.libc_ty_layout("pthread_mutex_t"), mutex_id_offset(ecx)?, data)?;
+    let data = Box::new(AdditionalMutexData { address, kind });
+    ecx.mutex_create(&mutex, mutex_id_offset(ecx)?, Some(data))?;
     Ok(())
 }
 
@@ -112,27 +130,23 @@ fn mutex_create<'tcx>(
 /// return an error if it has.
 fn mutex_get_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    mutex_op: &OpTy<'tcx>,
+    mutex_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, MutexId> {
-    let address = ecx.read_pointer(mutex_op)?.addr().bytes();
+    let mutex = ecx.deref_pointer(mutex_ptr)?;
+    let address = mutex.ptr().addr().bytes();
 
-    // FIXME: might be worth changing mutex_get_or_create_id to take the mplace
-    // rather than the `OpTy`.
-    let id = ecx.mutex_get_or_create_id(
-        mutex_op,
-        ecx.libc_ty_layout("pthread_mutex_t"),
-        mutex_id_offset(ecx)?,
-        |ecx| {
-            // This is called if a static initializer was used and the lock has not been assigned
-            // an ID yet. We have to determine the mutex kind from the static initializer.
-            let kind = kind_from_static_initializer(ecx, mutex_op)?;
+    let id = ecx.mutex_get_or_create_id(&mutex, mutex_id_offset(ecx)?, |ecx| {
+        // This is called if a static initializer was used and the lock has not been assigned
+        // an ID yet. We have to determine the mutex kind from the static initializer.
+        let kind = kind_from_static_initializer(ecx, &mutex)?;
 
-            Ok(Some(AdditionalMutexData { kind, address }))
-        },
-    )?;
+        Ok(Some(Box::new(AdditionalMutexData { kind, address })))
+    })?;
 
     // Check that the mutex has not been moved since last use.
-    let data = ecx.mutex_get_data(id).expect("data should be always exist for pthreads");
+    let data = ecx
+        .mutex_get_data::<AdditionalMutexData>(id)
+        .expect("data should always exist for pthreads");
     if data.address != address {
         throw_ub_format!("pthread_mutex_t can't be moved after first use")
     }
@@ -143,20 +157,15 @@ fn mutex_get_id<'tcx>(
 /// Returns the kind of a static initializer.
 fn kind_from_static_initializer<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
-    mutex_op: &OpTy<'tcx>,
+    mutex: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, MutexKind> {
     // Only linux has static initializers other than PTHREAD_MUTEX_DEFAULT.
     let kind = match &*ecx.tcx.sess.target.os {
         "linux" => {
             let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-
-            ecx.deref_pointer_and_read(
-                mutex_op,
-                offset,
-                ecx.libc_ty_layout("pthread_mutex_t"),
-                ecx.machine.layouts.i32,
-            )?
-            .to_i32()?
+            let kind_place =
+                mutex.offset(Size::from_bytes(offset), ecx.machine.layouts.i32, ecx)?;
+            ecx.read_scalar(&kind_place)?.to_i32()?
         }
         | "illumos" | "solaris" | "macos" => ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"),
         os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
@@ -182,6 +191,13 @@ fn translate_kind<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResult<'tc
 // pthread_rwlock_t is between 32 and 56 bytes, depending on the platform.
 // We ignore the platform layout and store our own fields:
 // - id: u32
+
+#[derive(Debug)]
+/// Additional data that may be used by shim implementations.
+pub struct AdditionalRwLockData {
+    /// The address of the rwlock.
+    pub address: u64,
+}
 
 fn rwlock_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
@@ -211,19 +227,19 @@ fn rwlock_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
 
 fn rwlock_get_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    rwlock_op: &OpTy<'tcx>,
+    rwlock_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, RwLockId> {
-    let address = ecx.read_pointer(rwlock_op)?.addr().bytes();
+    let rwlock = ecx.deref_pointer(rwlock_ptr)?;
+    let address = rwlock.ptr().addr().bytes();
 
-    let id = ecx.rwlock_get_or_create_id(
-        rwlock_op,
-        ecx.libc_ty_layout("pthread_rwlock_t"),
-        rwlock_id_offset(ecx)?,
-        |_| Ok(Some(AdditionalRwLockData { address })),
-    )?;
+    let id = ecx.rwlock_get_or_create_id(&rwlock, rwlock_id_offset(ecx)?, |_| {
+        Ok(Some(Box::new(AdditionalRwLockData { address })))
+    })?;
 
     // Check that the rwlock has not been moved since last use.
-    let data = ecx.rwlock_get_data(id).expect("data should be always exist for pthreads");
+    let data = ecx
+        .rwlock_get_data::<AdditionalRwLockData>(id)
+        .expect("data should always exist for pthreads");
     if data.address != address {
         throw_ub_format!("pthread_rwlock_t can't be moved after first use")
     }
@@ -246,10 +262,10 @@ fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u
 
 fn condattr_get_clock_id<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
-    attr_op: &OpTy<'tcx>,
+    attr_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
-        attr_op,
+        attr_ptr,
         condattr_clock_offset(ecx)?,
         ecx.libc_ty_layout("pthread_condattr_t"),
         ecx.machine.layouts.i32,
@@ -259,11 +275,11 @@ fn condattr_get_clock_id<'tcx>(
 
 fn condattr_set_clock_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    attr_op: &OpTy<'tcx>,
+    attr_ptr: &OpTy<'tcx>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
-        attr_op,
+        attr_ptr,
         condattr_clock_offset(ecx)?,
         Scalar::from_i32(clock_id),
         ecx.libc_ty_layout("pthread_condattr_t"),
@@ -337,21 +353,18 @@ fn cond_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> u64 {
 
 fn cond_get_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    cond_op: &OpTy<'tcx>,
+    cond_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, CondvarId> {
-    ecx.condvar_get_or_create_id(
-        cond_op,
-        ecx.libc_ty_layout("pthread_cond_t"),
-        cond_id_offset(ecx)?,
-    )
+    let cond = ecx.deref_pointer(cond_ptr)?;
+    ecx.condvar_get_or_create_id(&cond, cond_id_offset(ecx)?)
 }
 
 fn cond_reset_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    cond_op: &OpTy<'tcx>,
+    cond_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
-        cond_op,
+        cond_ptr,
         cond_id_offset(ecx)?,
         Scalar::from_i32(0),
         ecx.libc_ty_layout("pthread_cond_t"),
@@ -361,10 +374,10 @@ fn cond_reset_id<'tcx>(
 
 fn cond_get_clock_id<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
-    cond_op: &OpTy<'tcx>,
+    cond_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
     ecx.deref_pointer_and_read(
-        cond_op,
+        cond_ptr,
         cond_clock_offset(ecx),
         ecx.libc_ty_layout("pthread_cond_t"),
         ecx.machine.layouts.i32,
@@ -374,11 +387,11 @@ fn cond_get_clock_id<'tcx>(
 
 fn cond_set_clock_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    cond_op: &OpTy<'tcx>,
+    cond_ptr: &OpTy<'tcx>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
     ecx.deref_pointer_and_write(
-        cond_op,
+        cond_ptr,
         cond_clock_offset(ecx),
         Scalar::from_i32(clock_id),
         ecx.libc_ty_layout("pthread_cond_t"),
@@ -490,8 +503,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let id = mutex_get_id(this, mutex_op)?;
-        let kind =
-            this.mutex_get_data(id).expect("data should always exist for pthread mutexes").kind;
+        let kind = this
+            .mutex_get_data::<AdditionalMutexData>(id)
+            .expect("data should always exist for pthread mutexes")
+            .kind;
 
         let ret = if this.mutex_is_locked(id) {
             let owner_thread = this.mutex_get_owner(id);
@@ -509,10 +524,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.mutex_lock(id);
                         0
                     }
-                    _ =>
-                        throw_unsup_format!(
-                            "called pthread_mutex_lock on an unsupported type of mutex"
-                        ),
                 }
             }
         } else {
@@ -528,8 +539,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let id = mutex_get_id(this, mutex_op)?;
-        let kind =
-            this.mutex_get_data(id).expect("data should always exist for pthread mutexes").kind;
+        let kind = this
+            .mutex_get_data::<AdditionalMutexData>(id)
+            .expect("data should always exist for pthread mutexes")
+            .kind;
 
         Ok(Scalar::from_i32(if this.mutex_is_locked(id) {
             let owner_thread = this.mutex_get_owner(id);
@@ -543,10 +556,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.mutex_lock(id);
                         0
                     }
-                    _ =>
-                        throw_unsup_format!(
-                            "called pthread_mutex_trylock on an unsupported type of mutex"
-                        ),
                 }
             }
         } else {
@@ -560,8 +569,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let id = mutex_get_id(this, mutex_op)?;
-        let kind =
-            this.mutex_get_data(id).expect("data should always exist for pthread mutexes").kind;
+        let kind = this
+            .mutex_get_data::<AdditionalMutexData>(id)
+            .expect("data should always exist for pthread mutexes")
+            .kind;
 
         if let Some(_old_locked_count) = this.mutex_unlock(id)? {
             // The mutex was locked by the current thread.
@@ -581,10 +592,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ),
                 MutexKind::ErrorCheck | MutexKind::Recursive =>
                     Ok(Scalar::from_i32(this.eval_libc_i32("EPERM"))),
-                _ =>
-                    throw_unsup_format!(
-                        "called pthread_mutex_unlock on an unsupported type of mutex"
-                    ),
             }
         }
     }
