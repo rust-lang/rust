@@ -195,7 +195,10 @@ if '--help' in sys.argv or '-h' in sys.argv:
         if option.value:
             print('\t{:30} {}'.format('--{}=VAL'.format(option.name), option.desc))
         else:
-            print('\t{:30} {}'.format('--enable-{}'.format(option.name), option.desc))
+            if option_defaults[option.name]:
+                print('\t{:30} {}'.format('--enable-{}'.format(option.name), option.desc))
+            else:
+                print('\t{:30} {}'.format('--disable-{}'.format(option.name), option.desc))
     print('')
     print('This configure script is a thin configuration shim over the true')
     print('configuration system, `config.toml`. You can explore the comments')
@@ -205,7 +208,7 @@ if '--help' in sys.argv or '-h' in sys.argv:
     print('in the TOML configuration if desired')
     print('')
     print('Also note that all options which take `--enable` can similarly')
-    print('be passed with `--disable-foo` to forcibly disable the option')
+    print('be passed with `--disable-foo` to forcibly disable the option and vice versa.')
     sys.exit(0)
 
 VERBOSE = False
