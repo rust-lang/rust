@@ -20,3 +20,4 @@ pub extern "x86-interrupt" fn page_fault_handler(_: u64, _: u64) {
 
 // CHECK: #[[ATTRS]] =
 // CHECK-NOT: sanitize_address
+// CHECK: !llvm.module.flags
