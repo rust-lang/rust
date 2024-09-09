@@ -10,7 +10,7 @@ use hir_expand::proc_macro::{
     ProcMacros,
 };
 use ide_db::{
-    base_db::{CrateGraph, Env, SourceRoot, SourceRootId},
+    base_db::{CrateGraph, CrateWorkspaceData, Env, SourceRoot, SourceRootId},
     prime_caches, ChangeWithProcMacros, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
@@ -447,12 +447,16 @@ fn load_crate_graph(
     let source_roots = source_root_config.partition(vfs);
     analysis_change.set_roots(source_roots);
 
-    let num_crates = crate_graph.len();
-    analysis_change.set_crate_graph(crate_graph);
+    let ws_data = crate_graph
+        .iter()
+        .zip(iter::repeat(From::from(CrateWorkspaceData {
+            proc_macro_cwd: None,
+            data_layout: target_layout.clone(),
+            toolchain: toolchain.clone(),
+        })))
+        .collect();
+    analysis_change.set_crate_graph(crate_graph, ws_data);
     analysis_change.set_proc_macros(proc_macros);
-    analysis_change
-        .set_target_data_layouts(iter::repeat(target_layout.clone()).take(num_crates).collect());
-    analysis_change.set_toolchains(iter::repeat(toolchain.clone()).take(num_crates).collect());
 
     db.apply_change(analysis_change);
     db

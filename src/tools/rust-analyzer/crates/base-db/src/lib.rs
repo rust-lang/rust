@@ -5,11 +5,12 @@ mod input;
 
 use std::panic;
 
+use rustc_hash::FxHashMap;
 use salsa::Durability;
 use span::EditionedFileId;
 use syntax::{ast, Parse, SourceFile, SyntaxError};
 use triomphe::Arc;
-use vfs::FileId;
+use vfs::{AbsPathBuf, FileId};
 
 pub use crate::{
     change::FileChange,
@@ -74,19 +75,30 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
 
-    // FIXME: Consider removing this, making HirDatabase::target_data_layout an input query
     #[salsa::input]
-    fn data_layout(&self, krate: CrateId) -> TargetLayoutLoadResult;
-
-    #[salsa::input]
-    fn toolchain(&self, krate: CrateId) -> Option<Version>;
+    fn crate_workspace_data(&self) -> Arc<FxHashMap<CrateId, Arc<CrateWorkspaceData>>>;
 
     #[salsa::transparent]
     fn toolchain_channel(&self, krate: CrateId) -> Option<ReleaseChannel>;
 }
 
+/// Crate related data shared by the whole workspace.
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct CrateWorkspaceData {
+    /// The working directory to run proc-macros in. This is usually the workspace root of cargo workspaces.
+    pub proc_macro_cwd: Option<AbsPathBuf>,
+    // FIXME: Consider removing this, making HirDatabase::target_data_layout an input query
+    pub data_layout: TargetLayoutLoadResult,
+    /// Toolchain version used to compile the crate.
+    pub toolchain: Option<Version>,
+}
+
 fn toolchain_channel(db: &dyn SourceDatabase, krate: CrateId) -> Option<ReleaseChannel> {
-    db.toolchain(krate).as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
+    db.crate_workspace_data()
+        .get(&krate)?
+        .toolchain
+        .as_ref()
+        .and_then(|v| ReleaseChannel::from_str(&v.pre))
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: EditionedFileId) -> Parse<ast::SourceFile> {
