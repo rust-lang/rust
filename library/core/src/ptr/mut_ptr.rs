@@ -33,22 +33,7 @@ impl<T: ?Sized> *mut T {
     #[rustc_diagnostic_item = "ptr_is_null"]
     #[inline]
     pub const fn is_null(self) -> bool {
-        #[inline]
-        fn runtime_impl(ptr: *mut u8) -> bool {
-            ptr.addr() == 0
-        }
-
-        #[inline]
-        const fn const_impl(ptr: *mut u8) -> bool {
-            // Compare via a cast to a thin pointer, so fat pointers are only
-            // considering their "data" part for null-ness.
-            match (ptr).guaranteed_eq(null_mut()) {
-                None => false,
-                Some(res) => res,
-            }
-        }
-
-        const_eval_select((self as *mut u8,), const_impl, runtime_impl)
+        self.cast_const().is_null()
     }
 
     /// Casts to a pointer of another type.
