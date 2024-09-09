@@ -1928,8 +1928,8 @@ impl Step for Assemble {
             let is_dylib_or_debug = is_dylib(&filename) || is_debug_info(&filename);
 
             // If we link statically to stdlib, do not copy the libstd dynamic library file
-            // Currently, we do not avoid the copy on Windows, as it seems to be causing issues in
-            // post-optimization stage0 tests.
+            // FIXME: Also do this for Windows once incremental post-optimization stage0 tests
+            // work without std.dll (see https://github.com/rust-lang/rust/pull/131188).
             let can_be_rustc_dynamic_dep = if builder
                 .link_std_into_rustc_driver(target_compiler.host)
                 && !target_compiler.host.is_windows()
