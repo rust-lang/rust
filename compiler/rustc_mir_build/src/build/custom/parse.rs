@@ -82,13 +82,11 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     fn statement_as_expr(&self, stmt_id: StmtId) -> PResult<ExprId> {
         match &self.thir[stmt_id].kind {
             StmtKind::Expr { expr, .. } => Ok(*expr),
-            kind @ StmtKind::Let { pattern, .. } => {
-                return Err(ParseError {
-                    span: pattern.span,
-                    item_description: format!("{kind:?}"),
-                    expected: "expression".to_string(),
-                });
-            }
+            kind @ StmtKind::Let { pattern, .. } => Err(ParseError {
+                span: pattern.span,
+                item_description: format!("{kind:?}"),
+                expected: "expression".to_string(),
+            }),
         }
     }
 

@@ -71,7 +71,7 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
         debug_assert_ne!(parent_id, self.current_id);
 
         self.current_id = parent_id;
-        return Some(parent_id);
+        Some(parent_id)
     }
 }
 
@@ -103,7 +103,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
         self.current_id = HirId::make_owner(parent_id.def_id);
 
         let node = self.map.tcx.hir_owner_node(self.current_id.owner);
-        return Some((self.current_id.owner, node));
+        Some((self.current_id.owner, node))
     }
 }
 
@@ -1233,14 +1233,14 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         body_owners,
         ..
     } = collector;
-    return ModuleItems {
+    ModuleItems {
         submodules: submodules.into_boxed_slice(),
         free_items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),
         impl_items: impl_items.into_boxed_slice(),
         foreign_items: foreign_items.into_boxed_slice(),
         body_owners: body_owners.into_boxed_slice(),
-    };
+    }
 }
 
 pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
@@ -1262,14 +1262,14 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         ..
     } = collector;
 
-    return ModuleItems {
+    ModuleItems {
         submodules: submodules.into_boxed_slice(),
         free_items: items.into_boxed_slice(),
         trait_items: trait_items.into_boxed_slice(),
         impl_items: impl_items.into_boxed_slice(),
         foreign_items: foreign_items.into_boxed_slice(),
         body_owners: body_owners.into_boxed_slice(),
-    };
+    }
 }
 
 struct ItemCollector<'tcx> {
