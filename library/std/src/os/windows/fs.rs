@@ -471,21 +471,14 @@ pub trait MetadataExt {
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn file_index(&self) -> Option<u64>;
 
-    /// Returns the value of the `ChangeTime{Low,High}` field from the
-    /// [`FILE_BASIC_INFO`] struct associated with the current file handle.
-    /// [`ChangeTime`] is the last time file metadata was changed, such as
+    /// Returns the value of the `ChangeTime{Low,High}` fields of this metadata.
+    ///
+    /// `ChangeTime` is the last time file metadata was changed, such as
     /// renames, attributes, etc.
     ///
-    /// This will return `None` if `Metadata` was populated without access to
-    /// [`FILE_BASIC_INFO`]. For example, the result of `std::fs::read_dir`
-    /// will be derived from [`WIN32_FIND_DATA`] which does not have access to
-    /// `ChangeTime`.
-    ///
-    /// [`FILE_BASIC_INFO`]: https://learn.microsoft.com/windows/win32/api/winbase/ns-winbase-file_basic_info
-    /// [`WIN32_FIND_DATA`]: https://learn.microsoft.com/windows/win32/api/minwinbase/ns-minwinbase-win32_find_dataw
-    /// [`FindFirstFile`]: https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-findfirstfilea
-    /// [`FindNextFile`]: https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-findnextfilea
-    /// [`ChangeTime`]: https://devblogs.microsoft.com/oldnewthing/20100709-00/?p=13463.
+    /// This will return `None` if `Metadata` instance was created from a call to
+    /// `DirEntry::metadata` or if the `target_vendor` is outside the current platform
+    /// support for this api.
     #[unstable(feature = "windows_change_time", issue = "121478")]
     fn change_time(&self) -> Option<u64>;
 }
