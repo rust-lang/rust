@@ -11,7 +11,7 @@ use std::fmt::Debug;
 //@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.generics" '{"params": [], "where_predicates": []}'
 //@ has    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path"
 //@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.name" \"Box\"
-//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.bindings" []
+//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.constraints" []
 //@ count "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args" 1
 //@ has    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait"
 //@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.lifetime" \"\'static\"
@@ -28,7 +28,7 @@ pub type SyncIntGen = Box<dyn Fn() -> i32 + Send + Sync + 'static>;
 //@ has "$.index[*][?(@.name=='RefFn')].inner.type_alias"
 //@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.generics" '{"params": [{"kind": {"lifetime": {"outlives": []}},"name": "'\''a"}],"where_predicates": []}'
 //@ has "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref"
-//@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.mutable" 'false'
+//@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.is_mutable" 'false'
 //@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.lifetime" "\"'a\""
 //@ has "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait"
 //@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.lifetime" null
