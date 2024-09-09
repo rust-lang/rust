@@ -1,7 +1,8 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
-use crate::iter::{FusedIterator, TrustedFused};
-use crate::iter::{InPlaceIterable, SourceIter, TrustedLen, UncheckedIterator};
+use crate::iter::{
+    FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen, UncheckedIterator,
+};
 use crate::num::NonZero;
 
 /// An iterator that iterates two other iterators simultaneously.

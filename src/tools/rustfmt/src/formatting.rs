@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use rustc_ast::ast;
 use rustc_span::Span;
+use tracing::debug;
 
 use self::newline_style::apply_newline_style;
 use crate::comment::{CharClasses, FullCodeCharKind};

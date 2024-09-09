@@ -221,7 +221,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                         .map(ToString::to_string)
                         .collect::<Vec<_>>()
                         .join(", ");
-                    format!("{adt_def_ty_name}::<{}>", &tys_str)
+                    format!("{adt_def_ty_name}::<{tys_str}>")
                 } else {
                     binding_type.to_string()
                 };

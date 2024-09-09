@@ -1,6 +1,7 @@
 use rustc_ast::{ast, ptr};
 use rustc_span::Span;
 use thin_vec::thin_vec;
+use tracing::debug;
 
 use crate::attr::get_attrs_from_stmt;
 use crate::config::lists::*;

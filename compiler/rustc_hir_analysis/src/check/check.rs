@@ -1,12 +1,9 @@
-use crate::check::intrinsicck::InlineAsmCtxt;
+use std::cell::LazyCell;
+use std::ops::ControlFlow;
 
-use super::compare_impl_item::check_type_bounds;
-use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
-use super::*;
-use rustc_attr as attr;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::{codes::*, MultiSpan};
-use rustc_hir as hir;
+use rustc_errors::codes::*;
+use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::Node;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
@@ -19,9 +16,9 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
-use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
-    AdtDef, ParamEnv, RegionKind, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    AdtDef, GenericArgKind, ParamEnv, RegionKind, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt,
 };
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_target::abi::FieldIdx;
@@ -30,9 +27,12 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_type_ir::fold::TypeFoldable;
+use tracing::{debug, instrument};
+use {rustc_attr as attr, rustc_hir as hir};
 
-use std::cell::LazyCell;
-use std::ops::ControlFlow;
+use super::compare_impl_item::{check_type_bounds, compare_impl_method, compare_impl_ty};
+use super::*;
+use crate::check::intrinsicck::InlineAsmCtxt;
 
 pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
     match tcx.sess.target.is_abi_supported(abi) {
@@ -530,7 +530,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
 
         match tcx.named_bound_var(hir_id) {
             Some(ResolvedArg::EarlyBound(def_id)) => {
-                expected_captures.insert(def_id);
+                expected_captures.insert(def_id.to_def_id());
 
                 // Make sure we allow capturing these lifetimes through `Self` and
                 // `T::Assoc` projection syntax, too. These will occur when we only
@@ -539,7 +539,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                 // feature -- see <https://github.com/rust-lang/rust/pull/115659>.
                 if let DefKind::LifetimeParam = tcx.def_kind(def_id)
                     && let Some(def_id) = tcx
-                        .map_opaque_lifetime_to_parent_lifetime(def_id.expect_local())
+                        .map_opaque_lifetime_to_parent_lifetime(def_id)
                         .opt_param_def_id(tcx, tcx.parent(opaque_def_id.to_def_id()))
                 {
                     shadowed_captures.insert(def_id);
@@ -805,8 +805,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
                         let item = tcx.hir().foreign_item(item.id);
                         match &item.kind {
-                            hir::ForeignItemKind::Fn(fn_decl, _, _, _) => {
-                                require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
+                            hir::ForeignItemKind::Fn(sig, _, _) => {
+                                require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
                             }
                             hir::ForeignItemKind::Static(..) => {
                                 check_static_inhabited(tcx, def_id);
@@ -1054,7 +1054,7 @@ fn check_impl_items_against_trait<'tcx>(
     }
 }
 
-pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
+fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
     let t = tcx.type_of(def_id).instantiate_identity();
     if let ty::Adt(def, args) = t.kind()
         && def.is_struct()
@@ -1260,7 +1260,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                 ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
                 ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
                 ty::Adt(def, args) => {
-                    if !def.did().is_local() {
+                    if !def.did().is_local() && !tcx.has_attr(def.did(), sym::rustc_pub_transparent)
+                    {
                         let non_exhaustive = def.is_variant_list_non_exhaustive()
                             || def
                                 .variants()
@@ -1565,7 +1566,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             // * compare the param span to the pred span to detect lone user-written `Sized` bounds
             let has_explicit_bounds = bounded_params.is_empty()
                 || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| pred_sp != span);
-            let const_param_help = (!has_explicit_bounds).then_some(());
+            let const_param_help = !has_explicit_bounds;
 
             let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
                 span,

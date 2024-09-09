@@ -6,10 +6,11 @@ use base_db::CrateId;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
-    attrs::RawAttrs, mod_path::ModPath, span_map::SpanMap, ExpandError, ExpandResult, HirFileId,
-    InFile, MacroCallId,
+    attrs::RawAttrs, mod_path::ModPath, span_map::SpanMap, ExpandError, ExpandErrorKind,
+    ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
 };
 use limit::Limit;
+use span::SyntaxContextId;
 use syntax::{ast, Parse};
 use triomphe::Arc;
 
@@ -50,6 +51,11 @@ impl Expander {
 
     pub fn krate(&self) -> CrateId {
         self.module.krate
+    }
+
+    pub fn syntax_context(&self) -> SyntaxContextId {
+        // FIXME:
+        SyntaxContextId::ROOT
     }
 
     pub fn enter_expand<T: ast::AstNode>(
@@ -154,26 +160,30 @@ impl Expander {
             // so don't return overflow error here to avoid diagnostics duplication.
             cov_mark::hit!(overflow_but_not_me);
             return ExpandResult::ok(None);
-        } else if self.recursion_limit.check(self.recursion_depth as usize + 1).is_err() {
-            self.recursion_depth = u32::MAX;
-            cov_mark::hit!(your_stack_belongs_to_me);
-            return ExpandResult::only_err(ExpandError::RecursionOverflow);
         }
 
         let ExpandResult { value, err } = op(self);
         let Some(call_id) = value else {
             return ExpandResult { value: None, err };
         };
+        if self.recursion_limit.check(self.recursion_depth as usize + 1).is_err() {
+            self.recursion_depth = u32::MAX;
+            cov_mark::hit!(your_stack_belongs_to_me);
+            return ExpandResult::only_err(ExpandError::new(
+                db.macro_arg_considering_derives(call_id, &call_id.lookup(db.upcast()).kind).2,
+                ExpandErrorKind::RecursionOverflow,
+            ));
+        }
 
         let macro_file = call_id.as_macro_file();
         let res = db.parse_macro_expansion(macro_file);
 
         let err = err.or(res.err);
         ExpandResult {
-            value: match err {
+            value: match &err {
                 // If proc-macro is disabled or unresolved, we want to expand to a missing expression
                 // instead of an empty tree which might end up in an empty block.
-                Some(ExpandError::UnresolvedProcMacro(_)) => None,
+                Some(e) if matches!(e.kind(), ExpandErrorKind::MissingProcMacroExpander(_)) => None,
                 _ => (|| {
                     let parse = res.value.0.cast::<T>()?;
 

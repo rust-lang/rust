@@ -1,4 +1,5 @@
 use core::ops::ControlFlow;
+
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -6,6 +7,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::{self, Region, TyCtxt};
+use tracing::debug;
 
 /// This function calls the `visit_ty` method for the parameters
 /// corresponding to the anonymous regions. The `nested_visitor.found_type`
@@ -84,7 +86,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
             }
 
             hir::TyKind::TraitObject(bounds, ..) => {
-                for bound in bounds {
+                for (bound, _) in bounds {
                     self.current_index.shift_in(1);
                     self.visit_poly_trait_ref(bound);
                     self.current_index.shift_out(1);
@@ -100,7 +102,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                     // region at the right depth with the same index
                     (Some(rbv::ResolvedArg::EarlyBound(id)), ty::BrNamed(def_id, _)) => {
                         debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
-                        if id == def_id {
+                        if id.to_def_id() == def_id {
                             return ControlFlow::Break(arg);
                         }
                     }
@@ -117,7 +119,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                             debruijn_index
                         );
                         debug!("LateBound id={:?} def_id={:?}", id, def_id);
-                        if debruijn_index == self.current_index && id == def_id {
+                        if debruijn_index == self.current_index && id.to_def_id() == def_id {
                             return ControlFlow::Break(arg);
                         }
                     }
@@ -191,7 +193,7 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
             // the lifetime of the TyPath!
             (Some(rbv::ResolvedArg::EarlyBound(id)), ty::BrNamed(def_id, _)) => {
                 debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
-                if id == def_id {
+                if id.to_def_id() == def_id {
                     return ControlFlow::Break(());
                 }
             }
@@ -200,7 +202,7 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
                 debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}", debruijn_index,);
                 debug!("id={:?}", id);
                 debug!("def_id={:?}", def_id);
-                if debruijn_index == self.current_index && id == def_id {
+                if debruijn_index == self.current_index && id.to_def_id() == def_id {
                     return ControlFlow::Break(());
                 }
             }

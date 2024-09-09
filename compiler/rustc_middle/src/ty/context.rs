@@ -4,36 +4,14 @@
 
 pub mod tls;
 
-pub use rustc_type_ir::lift::Lift;
+use std::assert_matches::assert_matches;
+use std::borrow::Borrow;
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+use std::ops::{Bound, Deref};
+use std::{fmt, iter, mem};
 
-use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepKindStruct};
-use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::lint_level;
-use crate::metadata::ModChild;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::resolve_bound_vars;
-use crate::middle::stability;
-use crate::mir::interpret::{self, Allocation, ConstAllocation};
-use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
-use crate::query::plumbing::QuerySystem;
-use crate::query::LocalCrate;
-use crate::query::Providers;
-use crate::query::{IntoQueryParam, TyCtxtAt};
-use crate::thir::Thir;
-use crate::traits;
-use crate::traits::solve;
-use crate::traits::solve::{
-    ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
-};
-use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
-use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericParamDefKind,
-    ImplPolarity, List, ListWithCachedTypeInfo, ParamConst, ParamTy, Pattern, PatternKind,
-    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity, Region,
-    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, Visibility,
-};
-use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -74,20 +52,37 @@ use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx}
 use rustc_target::spec::abi;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::solve::SolverMode;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::{search_graph, CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo};
 use tracing::{debug, instrument};
 
-use std::assert_matches::assert_matches;
-use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::iter;
-use std::marker::PhantomData;
-use std::mem;
-use std::ops::{Bound, Deref};
+use crate::arena::Arena;
+use crate::dep_graph::{DepGraph, DepKindStruct};
+use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
+use crate::lint::lint_level;
+use crate::metadata::ModChild;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::{resolve_bound_vars, stability};
+use crate::mir::interpret::{self, Allocation, ConstAllocation};
+use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::query::plumbing::QuerySystem;
+use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
+use crate::thir::Thir;
+use crate::traits;
+use crate::traits::solve;
+use crate::traits::solve::{
+    ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
+};
+use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
+use crate::ty::{
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
+    GenericArgsRef, GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst,
+    ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
+    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
+    Visibility,
+};
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
@@ -112,8 +107,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_predefined_opaques_in_body(data)
     }
     type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
-    type CanonicalGoalEvaluationStepRef =
-        &'tcx solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>>;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -282,13 +275,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.debug_assert_args_compatible(def_id, args);
     }
 
-    fn intern_canonical_goal_evaluation_step(
-        self,
-        step: solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>>,
-    ) -> &'tcx solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>> {
-        self.arena.alloc(step)
-    }
-
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -363,16 +349,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        ty::EarlyBinder::bind(self.explicit_super_predicates_of(def_id).instantiate_identity(self))
+        self.explicit_super_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
     fn explicit_implied_predicates_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        ty::EarlyBinder::bind(
-            self.explicit_implied_predicates_of(def_id).instantiate_identity(self),
-        )
+        self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
     fn has_target_features(self, def_id: DefId) -> bool {
@@ -432,7 +416,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(_, _, _)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -442,7 +426,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 let simp = ty::fast_reject::simplify_type(
                     tcx,
                     self_ty,
-                    ty::fast_reject::TreatParams::ForLookup,
+                    ty::fast_reject::TreatParams::AsRigid,
                 )
                 .unwrap();
                 consider_impls_for_simplified_type(simp);
@@ -1443,11 +1427,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
     /// Returns the same `AllocId` if called again with the same bytes.
-    pub fn allocate_bytes_dedup(self, bytes: &[u8]) -> interpret::AllocId {
+    pub fn allocate_bytes_dedup(self, bytes: &[u8], salt: usize) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
         let alloc = self.mk_const_alloc(alloc);
-        self.reserve_and_set_memory_dedup(alloc)
+        self.reserve_and_set_memory_dedup(alloc, salt)
     }
 
     /// Returns a range of the start/end indices specified with the
@@ -1491,7 +1475,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// provides a `TyCtxt`.
     ///
     /// By only providing the `TyCtxt` inside of the closure we enforce that the type
-    /// context and any interned alue (types, args, etc.) can only be used while `ty::tls`
+    /// context and any interned value (types, args, etc.) can only be used while `ty::tls`
     /// has a valid reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
@@ -1591,6 +1575,12 @@ impl<'tcx> TyCtxt<'tcx> {
             self.coroutine_kind(def_id),
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _))
         )
+    }
+
+    // Whether the body owner is synthetic, which in this case means it does not correspond to
+    // meaningful HIR. This is currently used to skip over MIR borrowck.
+    pub fn is_synthetic_mir(self, def_id: impl Into<DefId>) -> bool {
+        matches!(self.def_kind(def_id.into()), DefKind::SyntheticCoroutineBody)
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
@@ -2198,7 +2188,7 @@ macro_rules! sty_debug_print {
                 all_infer: usize,
             }
 
-            pub fn go(fmt: &mut std::fmt::Formatter<'_>, tcx: TyCtxt<'_>) -> std::fmt::Result {
+            pub(crate) fn go(fmt: &mut std::fmt::Formatter<'_>, tcx: TyCtxt<'_>) -> std::fmt::Result {
                 let mut total = DebugStat {
                     total: 0,
                     lt_infer: 0,
@@ -3049,13 +3039,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
             match self.named_bound_var(lifetime.hir_id) {
                 Some(resolve_bound_vars::ResolvedArg::EarlyBound(ebv)) => {
-                    let new_parent = self.parent(ebv);
+                    let new_parent = self.local_parent(ebv);
 
                     // If we map to another opaque, then it should be a parent
                     // of the opaque we mapped from. Continue mapping.
                     if matches!(self.def_kind(new_parent), DefKind::OpaqueTy) {
-                        debug_assert_eq!(self.parent(parent.to_def_id()), new_parent);
-                        opaque_lifetime_param_def_id = ebv.expect_local();
+                        debug_assert_eq!(self.local_parent(parent), new_parent);
+                        opaque_lifetime_param_def_id = ebv;
                         continue;
                     }
 
@@ -3064,20 +3054,20 @@ impl<'tcx> TyCtxt<'tcx> {
                         self,
                         ty::EarlyParamRegion {
                             index: generics
-                                .param_def_id_to_index(self, ebv)
+                                .param_def_id_to_index(self, ebv.to_def_id())
                                 .expect("early-bound var should be present in fn generics"),
-                            name: self.hir().name(self.local_def_id_to_hir_id(ebv.expect_local())),
+                            name: self.item_name(ebv.to_def_id()),
                         },
                     );
                 }
                 Some(resolve_bound_vars::ResolvedArg::LateBound(_, _, lbv)) => {
-                    let new_parent = self.parent(lbv);
+                    let new_parent = self.local_parent(lbv);
                     return ty::Region::new_late_param(
                         self,
-                        new_parent,
+                        new_parent.to_def_id(),
                         ty::BoundRegionKind::BrNamed(
-                            lbv,
-                            self.hir().name(self.local_def_id_to_hir_id(lbv.expect_local())),
+                            lbv.to_def_id(),
+                            self.item_name(lbv.to_def_id()),
                         ),
                     );
                 }
@@ -3103,10 +3093,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 Some(stability) if stability.is_const_unstable() => {
                     // has a `rustc_const_unstable` attribute, check whether the user enabled the
                     // corresponding feature gate.
-                    self.features()
-                        .declared_lib_features
-                        .iter()
-                        .any(|&(sym, _)| sym == stability.feature)
+                    self.features().declared(stability.feature)
                 }
                 // functions without const stability are either stable user written
                 // const fn or the user is using feature gates and we thus don't
@@ -3141,11 +3128,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.globally)
+        self.sess.opts.unstable_opts.next_solver.globally
     }
 
     pub fn next_trait_solver_in_coherence(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.coherence)
+        self.sess.opts.unstable_opts.next_solver.coherence
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
@@ -3180,6 +3167,23 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
         self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
+    }
+
+    pub fn needs_coroutine_by_move_body_def_id(self, def_id: LocalDefId) -> bool {
+        if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
+            self.coroutine_kind(def_id)
+            && let ty::Coroutine(_, args) = self.type_of(def_id).instantiate_identity().kind()
+            && args.as_coroutine().kind_ty().to_opt_closure_kind() != Some(ty::ClosureKind::FnOnce)
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
+    pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
+        self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
 }
 

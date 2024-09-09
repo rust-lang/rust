@@ -12,19 +12,17 @@ use hir::def_id::DefId;
 use hir::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
-use rustc_infer::traits::ObligationCause;
-use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation, SelectionError};
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
+use tracing::{debug, instrument, trace};
 
+use super::SelectionCandidate::*;
+use super::{BuiltinImplConditions, SelectionCandidateSet, SelectionContext, TraitObligationStack};
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::util;
-
-use super::BuiltinImplConditions;
-use super::SelectionCandidate::*;
-use super::{SelectionCandidateSet, SelectionContext, TraitObligationStack};
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self, stack), level = "debug")]
@@ -250,11 +248,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
             .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
 
+        let drcx = DeepRejectCtxt::relate_rigid_rigid(self.tcx());
+        let obligation_args = stack.obligation.predicate.skip_binder().trait_ref.args;
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in bounds {
+            let bound_trait_ref = bound.map_bound(|t| t.trait_ref);
+            if !drcx.args_may_unify(obligation_args, bound_trait_ref.skip_binder().args) {
+                continue;
+            }
             // FIXME(oli-obk): it is suspicious that we are dropping the constness and
             // polarity here.
-            let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref))?;
+            let wc = self.where_clause_may_apply(stack, bound_trait_ref)?;
             if wc.may_apply() {
                 candidates.vec.push(ParamCandidate(bound));
             }
@@ -470,8 +474,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 candidates.vec.push(AsyncClosureCandidate);
             }
-            ty::FnDef(..) | ty::FnPtr(..) => {
-                candidates.vec.push(AsyncClosureCandidate);
+            // Provide an impl, but only for suitable `fn` pointers.
+            ty::FnPtr(sig_tys, hdr) => {
+                if sig_tys.with(hdr).is_fn_trait_compatible() {
+                    candidates.vec.push(AsyncClosureCandidate);
+                }
+            }
+            // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
+            ty::FnDef(def_id, _) => {
+                let tcx = self.tcx();
+                if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
+                    && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                {
+                    candidates.vec.push(AsyncClosureCandidate);
+                }
             }
             _ => {}
         }
@@ -526,8 +542,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true; // Could wind up being a fn() type.
             }
             // Provide an impl, but only for suitable `fn` pointers.
-            ty::FnPtr(sig) => {
-                if sig.is_fn_trait_compatible() {
+            ty::FnPtr(sig_tys, hdr) => {
+                if sig_tys.with(hdr).is_fn_trait_compatible() {
                     candidates
                         .vec
                         .push(FnPointerCandidate { fn_host_effect: self.tcx().consts.true_ });
@@ -571,7 +587,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let drcx = DeepRejectCtxt::new(self.tcx(), TreatParams::ForLookup);
+        let drcx = DeepRejectCtxt::relate_rigid_infer(self.tcx());
         let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
@@ -810,7 +826,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::RawPtr(_, _)
                 | ty::Ref(..)
                 | ty::FnDef(..)
-                | ty::FnPtr(_)
+                | ty::FnPtr(..)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Coroutine(..)
@@ -1198,7 +1214,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Never
             | ty::Foreign(_)
             | ty::Array(..)
@@ -1281,7 +1297,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::Pat(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(_, _, _)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -1330,7 +1346,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
 
         match self_ty.skip_binder().kind() {
-            ty::FnPtr(_) => candidates.vec.push(BuiltinCandidate { has_nested: false }),
+            ty::FnPtr(..) => candidates.vec.push(BuiltinCandidate { has_nested: false }),
             ty::Bool
             | ty::Char
             | ty::Int(_)

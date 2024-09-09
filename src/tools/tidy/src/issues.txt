@@ -1289,8 +1289,7 @@ ui/imports/auxiliary/issue-52891.rs
 ui/imports/auxiliary/issue-55811.rs
 ui/imports/auxiliary/issue-56125.rs
 ui/imports/auxiliary/issue-59764.rs
-ui/imports/auxiliary/issue-85992-extern-1.rs
-ui/imports/auxiliary/issue-85992-extern-2.rs
+ui/imports/auxiliary/issue-85992-extern.rs
 ui/imports/issue-109148.rs
 ui/imports/issue-109343.rs
 ui/imports/issue-113953.rs

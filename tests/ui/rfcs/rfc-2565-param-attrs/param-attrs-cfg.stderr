@@ -16,6 +16,12 @@ error: unused variable: `a`
 LL |         #[cfg(something)] a: i32,
    |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
 
+error: unused variable: `a`
+  --> $DIR/param-attrs-cfg.rs:107:27
+   |
+LL |         #[cfg(something)] a: i32,
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
+
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:30:23
    |
@@ -99,12 +105,6 @@ error: unused variable: `c`
    |
 LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
    |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
-
-error: unused variable: `a`
-  --> $DIR/param-attrs-cfg.rs:107:27
-   |
-LL |         #[cfg(something)] a: i32,
-   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:113:27

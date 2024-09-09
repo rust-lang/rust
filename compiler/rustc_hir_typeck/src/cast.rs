@@ -28,12 +28,9 @@
 //! expression, `e as U2` is not necessarily so (in fact it will only be valid if
 //! `U1` coerces to `U2`).
 
-use super::FnCtxt;
-
-use crate::errors;
-use crate::type_error_struct;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{codes::*, Applicability, Diag, ErrorGuaranteed};
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
@@ -41,14 +38,16 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitableExt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef};
 use rustc_session::lint;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
+use tracing::{debug, instrument};
+
+use super::FnCtxt;
+use crate::{errors, type_error_struct};
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
@@ -98,6 +97,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.type_is_sized_modulo_regions(self.param_env, t) {
             return Ok(Some(PointerKind::Thin));
         }
+
+        let t = self.try_structurally_resolve_type(span, t);
 
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
@@ -505,7 +506,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     span: self.span,
                     expr_ty: self.expr_ty,
                     cast_ty: fcx.ty_to_string(self.cast_ty),
-                    teach: fcx.tcx.sess.teach(E0607).then_some(()),
+                    teach: fcx.tcx.sess.teach(E0607),
                 });
             }
             CastError::IntToFatCast(known_metadata) => {
@@ -649,7 +650,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // cannot distinguish. This would cause us to erroneously discard a cast which will
                         // lead to a borrowck error like #113257.
                         // We still did a coercion above to unify inference variables for `ptr as _` casts.
-                        // This does cause us to miss some trivial casts in the trival cast lint.
+                        // This does cause us to miss some trivial casts in the trivial cast lint.
                         debug!(" -> PointerCast");
                     } else {
                         self.trivial_cast_lint(fcx);
@@ -967,7 +968,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // need to special-case obtaining a raw pointer
                 // from a region pointer to a vector.
 
-                // Coerce to a raw pointer so that we generate AddressOf in MIR.
+                // Coerce to a raw pointer so that we generate RawPtr in MIR.
                 let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr.ty, m_expr.mutbl);
                 fcx.coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {

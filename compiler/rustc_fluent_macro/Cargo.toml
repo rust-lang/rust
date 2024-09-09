@@ -8,7 +8,7 @@ proc-macro = true
 
 [dependencies]
 # tidy-alphabetical-start
-annotate-snippets = "0.10"
+annotate-snippets = "0.11"
 fluent-bundle = "0.15.2"
 fluent-syntax = "0.11"
 proc-macro2 = "1"

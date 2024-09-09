@@ -12,11 +12,11 @@
   
       bb0: {
 -         StorageLive(_2);
--         _2 = _1;
+-         _2 = copy _1;
 +         nop;
-+         _0 = _1;
++         _0 = copy _1;
           _1 = const 123_i32;
--         _0 = _2;
+-         _0 = copy _2;
 -         StorageDead(_2);
 +         nop;
 +         nop;

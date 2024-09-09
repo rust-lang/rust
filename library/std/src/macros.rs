@@ -382,7 +382,7 @@ macro_rules! assert_approx_eq {
         let diff = (*a - *b).abs();
         assert!(
             diff < $lim,
-            "{a:?} is not approximately equal to {b:?} (threshold {lim:?}, actual {diff:?})",
+            "{a:?} is not approximately equal to {b:?} (threshold {lim:?}, difference {diff:?})",
             lim = $lim
         );
     }};

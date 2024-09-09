@@ -1,14 +1,17 @@
-use super::ItemCtxt;
-use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::traits::util;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 use rustc_type_ir::Upcast;
+use tracing::{debug, instrument};
+
+use super::ItemCtxt;
+use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
 
 /// For associated types we include both bounds written on the type
 /// (`type X: Trait`) and predicates from the trait: `where Self::X: Trait`.
@@ -210,6 +213,8 @@ pub(super) fn item_super_predicates(
     })
 }
 
+/// This exists as an optimization to compute only the item bounds of the item
+/// that are not `Self` bounds.
 pub(super) fn item_non_self_assumptions(
     tcx: TyCtxt<'_>,
     def_id: DefId,
@@ -222,6 +227,25 @@ pub(super) fn item_non_self_assumptions(
     } else {
         ty::EarlyBinder::bind(tcx.mk_clauses_from_iter(all_bounds.difference(&own_bounds).copied()))
     }
+}
+
+/// This exists as an optimization to compute only the supertraits of this impl's
+/// trait that are outlives bounds.
+pub(super) fn impl_super_outlives(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
+    tcx.impl_trait_header(def_id).expect("expected an impl of trait").trait_ref.map_bound(
+        |trait_ref| {
+            let clause: ty::Clause<'_> = trait_ref.upcast(tcx);
+            tcx.mk_clauses_from_iter(util::elaborate(tcx, [clause]).filter(|clause| {
+                matches!(
+                    clause.kind().skip_binder(),
+                    ty::ClauseKind::TypeOutlives(_) | ty::ClauseKind::RegionOutlives(_)
+                )
+            }))
+        },
+    )
 }
 
 struct AssocTyToOpaque<'tcx> {

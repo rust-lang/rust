@@ -1,8 +1,12 @@
+use std::assert_matches::assert_matches;
+
+use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+
 use super::Const;
 use crate::mir;
 use crate::ty::abstract_const::CastKind;
-use crate::ty::{self, visit::TypeVisitableExt as _, Ty, TyCtxt};
-use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use crate::ty::visit::TypeVisitableExt as _;
+use crate::ty::{self, Ty, TyCtxt};
 
 #[extension(pub(crate) trait UnevaluatedConstEvalExt<'tcx>)]
 impl<'tcx> ty::UnevaluatedConst<'tcx> {
@@ -78,7 +82,7 @@ impl<'tcx> Expr<'tcx> {
     }
 
     pub fn binop_args(self) -> (Ty<'tcx>, Ty<'tcx>, Const<'tcx>, Const<'tcx>) {
-        assert!(matches!(self.kind, ExprKind::Binop(_)));
+        assert_matches!(self.kind, ExprKind::Binop(_));
 
         match self.args().as_slice() {
             [lhs_ty, rhs_ty, lhs_ct, rhs_ct] => (
@@ -99,7 +103,7 @@ impl<'tcx> Expr<'tcx> {
     }
 
     pub fn unop_args(self) -> (Ty<'tcx>, Const<'tcx>) {
-        assert!(matches!(self.kind, ExprKind::UnOp(_)));
+        assert_matches!(self.kind, ExprKind::UnOp(_));
 
         match self.args().as_slice() {
             [ty, ct] => (ty.expect_ty(), ct.expect_const()),
@@ -123,7 +127,7 @@ impl<'tcx> Expr<'tcx> {
     }
 
     pub fn call_args(self) -> (Ty<'tcx>, Const<'tcx>, impl Iterator<Item = Const<'tcx>>) {
-        assert!(matches!(self.kind, ExprKind::FunctionCall));
+        assert_matches!(self.kind, ExprKind::FunctionCall);
 
         match self.args().as_slice() {
             [func_ty, func, rest @ ..] => (
@@ -150,7 +154,7 @@ impl<'tcx> Expr<'tcx> {
     }
 
     pub fn cast_args(self) -> (Ty<'tcx>, Const<'tcx>, Ty<'tcx>) {
-        assert!(matches!(self.kind, ExprKind::Cast(_)));
+        assert_matches!(self.kind, ExprKind::Cast(_));
 
         match self.args().as_slice() {
             [value_ty, value, to_ty] => {

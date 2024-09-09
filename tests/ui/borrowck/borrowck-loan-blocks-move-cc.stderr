@@ -16,9 +16,8 @@ LL |     w.use_ref();
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     let w = &v;
-LL +     let w = v.clone();
-   |
+LL |     let w = &v.clone();
+   |               ++++++++
 
 error[E0505]: cannot move out of `v` because it is borrowed
   --> $DIR/borrowck-loan-blocks-move-cc.rs:24:19
@@ -38,9 +37,8 @@ LL |     w.use_ref();
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     let w = &v;
-LL +     let w = v.clone();
-   |
+LL |     let w = &v.clone();
+   |               ++++++++
 
 error: aborting due to 2 previous errors
 

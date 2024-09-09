@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-permissive-provenance
+//@normalize-stderr-test: "\d+ bytes" -> "$$BYTES bytes"
 
 fn main() {
     let ptr = Box::into_raw(Box::new(0u32));

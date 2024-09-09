@@ -55,7 +55,7 @@ fn main() -> () {
     }
 
     bb6: {
-        _5 = ((_1 as Some).0: u8);
+        _5 = copy ((_1 as Some).0: u8);
         _0 = const ();
         StorageDead(_5);
         StorageDead(_1);

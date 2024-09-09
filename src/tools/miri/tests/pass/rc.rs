@@ -1,7 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(new_uninit)]
 #![feature(get_mut_unchecked)]
 #![allow(ambiguous_wide_pointer_comparisons)]
 
@@ -75,7 +74,8 @@ fn rc_fat_ptr_eq() {
     let p = Rc::new(1) as Rc<dyn Debug>;
     let a: *const dyn Debug = &*p;
     let r = Rc::into_raw(p);
-    assert!(a == r);
+    // Only compare the pointer parts, as the vtable might differ.
+    assert!(a as *const () == r as *const ());
     drop(unsafe { Rc::from_raw(r) });
 }
 

@@ -83,7 +83,6 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 
 use std::mem;
 
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
@@ -95,6 +94,8 @@ use rustc_session::lint::Level;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
 use tracing::{debug, instrument};
+
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 
 #[derive(Debug)]
 pub(crate) struct Scopes<'tcx> {
@@ -747,7 +748,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
     }
 
-    /// Sets up the drops for explict tail calls.
+    /// Sets up the drops for explicit tail calls.
     ///
     /// Unlike other kinds of early exits, tail calls do not go through the drop tree.
     /// Instead, all scheduled drops are immediately added to the CFG.

@@ -103,29 +103,26 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
-use crate::errors;
-use rustc_data_structures::base_n;
-use rustc_data_structures::base_n::BaseNString;
-use rustc_data_structures::base_n::ToBaseN;
-use rustc_data_structures::base_n::CASE_INSENSITIVE;
-use rustc_data_structures::flock;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_data_structures::svh::Svh;
-use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::ErrorGuaranteed;
-use rustc_fs_util::{link_or_copy, try_canonicalize, LinkOrCopy};
-use rustc_middle::bug;
-use rustc_session::config::CrateType;
-use rustc_session::output::{collect_crate_types, find_crate_name};
-use rustc_session::{Session, StableCrateId};
-
 use std::fs as std_fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rand::{thread_rng, RngCore};
+use rustc_data_structures::base_n::{BaseNString, ToBaseN, CASE_INSENSITIVE};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::svh::Svh;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::{base_n, flock};
+use rustc_errors::ErrorGuaranteed;
+use rustc_fs_util::{link_or_copy, try_canonicalize, LinkOrCopy};
+use rustc_middle::bug;
+use rustc_session::config::CrateType;
+use rustc_session::output::{collect_crate_types, find_crate_name};
+use rustc_session::{Session, StableCrateId};
 use tracing::debug;
+
+use crate::errors;
 
 #[cfg(test)]
 mod tests;
@@ -160,7 +157,7 @@ pub(crate) fn work_products_path(sess: &Session) -> PathBuf {
 }
 
 /// Returns the path to a session's query cache.
-pub fn query_cache_path(sess: &Session) -> PathBuf {
+pub(crate) fn query_cache_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, QUERY_CACHE_FILENAME)
 }
 
@@ -489,12 +486,12 @@ fn lock_directory(
         // the lock should be exclusive
         Ok(lock) => Ok((lock, lock_file_path)),
         Err(lock_err) => {
-            let is_unsupported_lock = flock::Lock::error_unsupported(&lock_err).then_some(());
+            let is_unsupported_lock = flock::Lock::error_unsupported(&lock_err);
             Err(sess.dcx().emit_err(errors::CreateLock {
                 lock_err,
                 session_dir,
                 is_unsupported_lock,
-                is_cargo: rustc_session::utils::was_invoked_from_cargo().then_some(()),
+                is_cargo: rustc_session::utils::was_invoked_from_cargo(),
             }))
         }
     }
@@ -854,7 +851,7 @@ fn delete_old(sess: &Session, path: &Path) {
     debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
     if let Err(err) = safe_remove_dir_all(path) {
-        sess.dcx().emit_warn(errors::SessionGcFailed { path: path, err });
+        sess.dcx().emit_warn(errors::SessionGcFailed { path, err });
     } else {
         delete_session_dir_lock_file(sess, &lock_file_path(path));
     }

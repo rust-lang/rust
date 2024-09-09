@@ -94,7 +94,7 @@ where
         match rvalue {
             // We ignore fake borrows as these get removed after analysis and shouldn't effect
             // the layout of generators.
-            Rvalue::AddressOf(_, borrowed_place)
+            Rvalue::RawPtr(_, borrowed_place)
             | Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shared, borrowed_place) => {
                 if !borrowed_place.is_indirect() {
                     self.trans.gen_(borrowed_place.local);

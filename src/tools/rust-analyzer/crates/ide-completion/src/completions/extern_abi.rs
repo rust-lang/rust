@@ -52,8 +52,13 @@ pub(crate) fn complete_extern_abi(
     let abi_str = expanded;
     let source_range = abi_str.text_range_between_quotes()?;
     for &abi in SUPPORTED_CALLING_CONVENTIONS {
-        CompletionItem::new(CompletionItemKind::Keyword, source_range, SmolStr::new_static(abi))
-            .add_to(acc, ctx.db);
+        CompletionItem::new(
+            CompletionItemKind::Keyword,
+            source_range,
+            SmolStr::new_static(abi),
+            ctx.edition,
+        )
+        .add_to(acc, ctx.db);
     }
     Some(())
 }

@@ -1,8 +1,7 @@
 //! Converts unsigned integers into a string representation with some base.
 //! Bases up to and including 36 can be used for case-insensitive things.
 
-use std::ascii;
-use std::fmt;
+use std::{ascii, fmt};
 
 #[cfg(test)]
 mod tests;
@@ -43,7 +42,7 @@ impl fmt::Display for BaseNString {
 }
 
 // This trait just lets us reserve the exact right amount of space when doing fixed-length
-// case-insensitve encoding. Add any impls you need.
+// case-insensitive encoding. Add any impls you need.
 pub trait ToBaseN: Into<u128> {
     fn encoded_len(base: usize) -> usize;
 

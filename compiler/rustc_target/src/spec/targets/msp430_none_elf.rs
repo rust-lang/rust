@@ -1,6 +1,6 @@
 use crate::spec::{cvs, Cc, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "msp430-none-elf".into(),
         metadata: crate::spec::TargetMetadata {

@@ -1,8 +1,8 @@
-use crate::rmeta::*;
-
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
 use tracing::trace;
+
+use crate::rmeta::*;
 
 pub(super) trait IsDefault: Default {
     fn is_default(&self) -> bool;
@@ -171,6 +171,7 @@ fixed_size_enum! {
         ( Macro(MacroKind::Bang)                   )
         ( Macro(MacroKind::Attr)                   )
         ( Macro(MacroKind::Derive)                 )
+        ( SyntheticCoroutineBody                   )
     }
 }
 

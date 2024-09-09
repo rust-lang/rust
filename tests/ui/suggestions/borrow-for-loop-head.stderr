@@ -10,9 +10,8 @@ LL |         for j in a {
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     for i in &a {
-LL +     for i in a.clone() {
-   |
+LL |     for i in &a.clone() {
+   |                ++++++++
 
 error[E0382]: use of moved value: `a`
   --> $DIR/borrow-for-loop-head.rs:4:18

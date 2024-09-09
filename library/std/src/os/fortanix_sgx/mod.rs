@@ -22,20 +22,12 @@ pub mod usercalls {
     /// Lowest-level interfaces to usercalls and usercall ABI type definitions.
     pub mod raw {
         pub use crate::sys::abi::usercalls::raw::{
-            accept_stream, alloc, async_queues, bind_stream, close, connect_stream, exit, flush,
-            free, insecure_time, launch_thread, read, read_alloc, send, wait, write,
-        };
-        pub use crate::sys::abi::usercalls::raw::{do_usercall, Usercalls as UsercallNrs};
-        pub use crate::sys::abi::usercalls::raw::{Register, RegisterArgument, ReturnValue};
-
-        pub use crate::sys::abi::usercalls::raw::Error;
-        pub use crate::sys::abi::usercalls::raw::{
-            ByteBuffer, Cancel, FifoDescriptor, Return, Usercall,
-        };
-        pub use crate::sys::abi::usercalls::raw::{Fd, Result, Tcs};
-        pub use crate::sys::abi::usercalls::raw::{
-            EV_RETURNQ_NOT_EMPTY, EV_UNPARK, EV_USERCALLQ_NOT_FULL, FD_STDERR, FD_STDIN, FD_STDOUT,
-            RESULT_SUCCESS, USERCALL_USER_DEFINED, WAIT_INDEFINITE, WAIT_NO,
+            accept_stream, alloc, async_queues, bind_stream, close, connect_stream, do_usercall,
+            exit, flush, free, insecure_time, launch_thread, read, read_alloc, send, wait, write,
+            ByteBuffer, Cancel, Error, Fd, FifoDescriptor, Register, RegisterArgument, Result,
+            Return, ReturnValue, Tcs, Usercall, Usercalls as UsercallNrs, EV_RETURNQ_NOT_EMPTY,
+            EV_UNPARK, EV_USERCALLQ_NOT_FULL, FD_STDERR, FD_STDIN, FD_STDOUT, RESULT_SUCCESS,
+            USERCALL_USER_DEFINED, WAIT_INDEFINITE, WAIT_NO,
         };
     }
 }

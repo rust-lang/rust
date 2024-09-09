@@ -1,7 +1,8 @@
 [package]
 name = "ide-completion"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Utilities for generating completions of user input for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -16,7 +17,6 @@ cov-mark = "2.0.0-pre.1"
 itertools.workspace = true
 tracing.workspace = true
 
-once_cell = "1.17.0"
 smallvec.workspace = true
 
 

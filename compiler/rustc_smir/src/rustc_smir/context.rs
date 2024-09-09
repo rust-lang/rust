@@ -5,6 +5,9 @@
 
 #![allow(rustc::usage_of_qualified_ty)]
 
+use std::cell::RefCell;
+use std::iter;
+
 use rustc_abi::HasDataLayout;
 use rustc_hir::LangItem;
 use rustc_middle::ty::layout::{
@@ -28,8 +31,6 @@ use stable_mir::ty::{
     TyConst, TyKind, UintTy, VariantDef,
 };
 use stable_mir::{Crate, CrateDef, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, Symbol};
-use std::cell::RefCell;
-use std::iter;
 
 use crate::rustc_internal::RustcInternal;
 use crate::rustc_smir::builder::BodyBuilder;
@@ -783,7 +784,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     }
 }
 
-pub struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
+pub(crate) struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
 
 /// Implement error handling for extracting function ABI information.
 impl<'tcx> FnAbiOfHelpers<'tcx> for Tables<'tcx> {

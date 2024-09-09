@@ -1,8 +1,8 @@
-use rustc_macros::Diagnostic;
-use rustc_span::{Span, Symbol};
-
 use std::io;
 use std::path::Path;
+
+use rustc_macros::Diagnostic;
+use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(interface_ferris_identifier)]

@@ -6,12 +6,13 @@
 
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use tracing::{debug, trace};
 
 use super::simplify::simplify_cfg;
 
 pub struct RemoveUnneededDrops;
 
-impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
+impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("Running RemoveUnneededDrops on {:?}", body.source);
 

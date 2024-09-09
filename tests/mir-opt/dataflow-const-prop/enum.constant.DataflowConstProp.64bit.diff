@@ -37,16 +37,16 @@
   
       bb2: {
           StorageLive(_5);
-          _5 = ((_1 as V2).0: i32);
-          _2 = _5;
+          _5 = copy ((_1 as V2).0: i32);
+          _2 = copy _5;
           StorageDead(_5);
           goto -> bb4;
       }
   
       bb3: {
           StorageLive(_4);
--         _4 = ((_1 as V1).0: i32);
--         _2 = _4;
+-         _4 = copy ((_1 as V1).0: i32);
+-         _2 = copy _4;
 +         _4 = const 0_i32;
 +         _2 = const 0_i32;
           StorageDead(_4);

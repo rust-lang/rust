@@ -1,24 +1,17 @@
-use super::method::probe::ProbeScope;
-use super::method::MethodCallee;
-use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use std::{iter, slice};
 
-use crate::errors;
 use rustc_ast::util::parser::PREC_UNAMBIGUOUS;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
-use rustc_infer::traits::ObligationCauseCode;
-use rustc_infer::{
-    infer,
-    traits::{self, Obligation, ObligationCause},
-};
+use rustc_infer::infer;
+use rustc_infer::traits::{self, Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
@@ -27,13 +20,17 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use tracing::{debug, instrument, trace};
 
-use std::{iter, slice};
+use super::method::probe::ProbeScope;
+use super::method::MethodCallee;
+use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use crate::errors;
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called).
-pub fn check_legal_trait_for_method_call(
+pub(crate) fn check_legal_trait_for_method_call(
     tcx: TyCtxt<'_>,
     span: Span,
     receiver: Option<Span>,
@@ -66,7 +63,7 @@ enum CallStep<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn check_call(
+    pub(crate) fn check_call(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
         callee_expr: &'tcx hir::Expr<'tcx>,
@@ -141,7 +138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the callee is a bare function or a closure, then we're all set.
         match *adjusted_ty.kind() {
-            ty::FnDef(..) | ty::FnPtr(_) => {
+            ty::FnDef(..) | ty::FnPtr(..) => {
                 let adjustments = self.adjust_steps(autoderef);
                 self.apply_adjustments(callee_expr, adjustments);
                 return Some(CallStep::Builtin(adjusted_ty));
@@ -471,7 +468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (fn_sig, Some(def_id))
             }
             // FIXME(effects): these arms should error because we can't enforce them
-            ty::FnPtr(sig) => (sig, None),
+            ty::FnPtr(sig_tys, hdr) => (sig_tys.with(hdr), None),
             _ => {
                 for arg in arg_exprs {
                     self.check_expr(arg);
@@ -506,18 +503,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig = self.instantiate_binder_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig);
         let fn_sig = self.normalize(call_expr.span, fn_sig);
 
-        // Call the generic checker.
-        let expected_arg_tys = self.expected_inputs_for_expected_output(
-            call_expr.span,
-            expected,
-            fn_sig.output(),
-            fn_sig.inputs(),
-        );
         self.check_argument_types(
             call_expr.span,
             call_expr,
             fn_sig.inputs(),
-            expected_arg_tys,
+            fn_sig.output(),
+            expected,
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::DontTupleArguments,
@@ -869,19 +860,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // don't know the full details yet (`Fn` vs `FnMut` etc), but we
         // do know the types expected for each argument and the return
         // type.
-
-        let expected_arg_tys = self.expected_inputs_for_expected_output(
-            call_expr.span,
-            expected,
-            fn_sig.output(),
-            fn_sig.inputs(),
-        );
-
         self.check_argument_types(
             call_expr.span,
             call_expr,
             fn_sig.inputs(),
-            expected_arg_tys,
+            fn_sig.output(),
+            expected,
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::TupleArguments,
@@ -944,7 +928,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-pub struct DeferredCallResolution<'tcx> {
+pub(crate) struct DeferredCallResolution<'tcx> {
     call_expr: &'tcx hir::Expr<'tcx>,
     callee_expr: &'tcx hir::Expr<'tcx>,
     closure_ty: Ty<'tcx>,
@@ -953,7 +937,7 @@ pub struct DeferredCallResolution<'tcx> {
 }
 
 impl<'a, 'tcx> DeferredCallResolution<'tcx> {
-    pub fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) {
+    pub(crate) fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) {
         debug!("DeferredCallResolution::resolve() {:?}", self);
 
         // we should not be invoked until the closure kind has been

@@ -1,8 +1,8 @@
-error: Undefined Behavior: memory access failed: null pointer is a dangling pointer (it has no provenance)
+error: Undefined Behavior: memory access failed: expected a pointer to 4 bytes of memory, but got a null pointer
   --> $DIR/null_pointer_write.rs:LL:CC
    |
 LL |     unsafe { *std::ptr::null_mut() = 0i32 };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: null pointer is a dangling pointer (it has no provenance)
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got a null pointer
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

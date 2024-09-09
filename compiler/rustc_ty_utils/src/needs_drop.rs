@@ -5,8 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::sym;
 use tracing::debug;
@@ -367,7 +366,7 @@ fn adt_consider_insignificant_dtor<'tcx>(
 fn adt_drop_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> Result<&ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
     // This is for the "adt_drop_tys" query, that considers all `Drop` impls, therefore all dtors are
     // significant.
     let adt_has_dtor =

@@ -12,5 +12,5 @@ use run_make_support::{cwd, rustc, rustdoc};
 fn main() {
     rustc().input("foo.rs").run();
     rustc().input("bar.rs").run();
-    rustdoc().input("baz.rs").library_search_path(cwd()).output(cwd()).run();
+    rustdoc().input("baz.rs").library_search_path(cwd()).out_dir(cwd()).run();
 }

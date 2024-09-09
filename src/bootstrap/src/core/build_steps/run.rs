@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::TargetSelection;
 use crate::utils::exec::command;
@@ -40,7 +40,7 @@ impl Step for BuildManifest {
             panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
         });
 
-        let today = command("date").capture_stdout().arg("+%Y-%m-%d").run(builder).stdout();
+        let today = command("date").arg("+%Y-%m-%d").run_capture_stdout(builder).stdout();
 
         cmd.arg(sign);
         cmd.arg(distdir(builder));
@@ -142,7 +142,7 @@ impl Step for Miri {
             host_compiler,
             Mode::ToolRustc,
             host,
-            "run",
+            Kind::Run,
             "src/tools/miri",
             SourceType::InTree,
             &[],
@@ -212,11 +212,13 @@ impl Step for GenerateCopyright {
         let license_metadata = builder.ensure(CollectLicenseMetadata);
 
         // Temporary location, it will be moved to the proper one once it's accurate.
-        let dest = builder.out.join("COPYRIGHT.md");
+        let dest = builder.out.join("COPYRIGHT.html");
 
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("LICENSE_METADATA", &license_metadata);
         cmd.env("DEST", &dest);
+        cmd.env("OUT_DIR", &builder.out);
+        cmd.env("CARGO", &builder.initial_cargo);
         cmd.run(builder);
 
         dest

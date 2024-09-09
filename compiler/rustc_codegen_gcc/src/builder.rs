@@ -28,9 +28,8 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
-use rustc_target::abi::{
-    self, call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange,
-};
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
 
 use crate::common::{type_is_pointer, SignType, TypeReflection};
@@ -1128,6 +1127,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.llbb().add_assignment(self.location, aligned_destination, val);
         // TODO(antoyo): handle align and flags.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
+        // When adding support for NONTEMPORAL, make sure to not just emit MOVNT on x86; see the
+        // LLVM backend for details.
         self.cx.context.new_rvalue_zero(self.type_i32())
     }
 
@@ -1922,15 +1923,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         v2: RValue<'gcc>,
         mask: RValue<'gcc>,
     ) -> RValue<'gcc> {
-        let struct_type = mask.get_type().is_struct().expect("mask should be of struct type");
-
         // TODO(antoyo): use a recursive unqualified() here.
         let vector_type = v1.get_type().unqualified().dyncast_vector().expect("vector type");
         let element_type = vector_type.get_element_type();
         let vec_num_units = vector_type.get_num_units();
 
-        let mask_num_units = struct_type.get_field_count();
-        let mut vector_elements = vec![];
         let mask_element_type = if element_type.is_integral() {
             element_type
         } else {
@@ -1941,19 +1938,39 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             #[cfg(not(feature = "master"))]
             self.int_type
         };
-        for i in 0..mask_num_units {
-            let field = struct_type.get_field(i as i32);
-            vector_elements.push(self.context.new_cast(
-                self.location,
-                mask.access_field(self.location, field).to_rvalue(),
-                mask_element_type,
-            ));
-        }
+
+        let mut mask_elements = if let Some(vector_type) = mask.get_type().dyncast_vector() {
+            let mask_num_units = vector_type.get_num_units();
+            let mut mask_elements = vec![];
+            for i in 0..mask_num_units {
+                let index = self.context.new_rvalue_from_long(self.cx.type_u32(), i as _);
+                mask_elements.push(self.context.new_cast(
+                    self.location,
+                    self.extract_element(mask, index).to_rvalue(),
+                    mask_element_type,
+                ));
+            }
+            mask_elements
+        } else {
+            let struct_type = mask.get_type().is_struct().expect("mask should be of struct type");
+            let mask_num_units = struct_type.get_field_count();
+            let mut mask_elements = vec![];
+            for i in 0..mask_num_units {
+                let field = struct_type.get_field(i as i32);
+                mask_elements.push(self.context.new_cast(
+                    self.location,
+                    mask.access_field(self.location, field).to_rvalue(),
+                    mask_element_type,
+                ));
+            }
+            mask_elements
+        };
+        let mask_num_units = mask_elements.len();
 
         // NOTE: the mask needs to be the same length as the input vectors, so add the missing
         // elements in the mask if needed.
         for _ in mask_num_units..vec_num_units {
-            vector_elements.push(self.context.new_rvalue_zero(mask_element_type));
+            mask_elements.push(self.context.new_rvalue_zero(mask_element_type));
         }
 
         let result_type = self.context.new_vector_type(element_type, mask_num_units as u64);
@@ -1997,7 +2014,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let new_mask_num_units = std::cmp::max(mask_num_units, vec_num_units);
         let mask_type = self.context.new_vector_type(mask_element_type, new_mask_num_units as u64);
-        let mask = self.context.new_rvalue_from_vector(self.location, mask_type, &vector_elements);
+        let mask = self.context.new_rvalue_from_vector(self.location, mask_type, &mask_elements);
         let result = self.context.new_rvalue_vector_perm(self.location, v1, v2, mask);
 
         if vec_num_units != mask_num_units {

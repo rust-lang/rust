@@ -4,8 +4,7 @@ codegen_ssa_add_native_library = failed to add native library {$library_path}: {
 
 codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
 
-codegen_ssa_archive_build_failure =
-    failed to build archive: {$error}
+codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
 codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
 
@@ -25,7 +24,21 @@ codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$e
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
+codegen_ssa_dlltool_fail_import_library =
+    Dlltool could not create import library with {$dlltool_path} {$dlltool_args}:
+    {$stdout}
+    {$stderr}
+
+codegen_ssa_error_calling_dlltool =
+    Error calling dlltool '{$dlltool_path}': {$error}
+
+codegen_ssa_error_creating_import_library =
+    Error creating import library for {$lib_name}: {$error}
+
 codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
+
+codegen_ssa_error_writing_def_file =
+    Error writing .DEF file: {$error}
 
 codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
@@ -198,7 +211,7 @@ codegen_ssa_read_file = failed to read file: {$message}
 
 codegen_ssa_repair_vs_build_tools = the Visual Studio build tools may need to be repaired using the Visual Studio installer
 
-codegen_ssa_rlib_archive_build_failure = failed to build archive from rlib: {$error}
+codegen_ssa_rlib_archive_build_failure = failed to build archive from rlib at `{$path}`: {$error}
 
 codegen_ssa_rlib_incompatible_dependency_formats = `{$ty1}` and `{$ty2}` do not have equivalent dependency formats (`{$list1}` vs `{$list2}`)
 

@@ -1,6 +1,6 @@
-use crate::{fmt, io::ErrorKind};
-
 use super::abi;
+use crate::fmt;
+use crate::io::ErrorKind;
 
 /// Wraps a μITRON error code.
 #[derive(Debug, Copy, Clone)]
@@ -9,7 +9,7 @@ pub struct ItronError {
 }
 
 impl ItronError {
-    /// Construct `ItronError` from the specified error code. Returns `None` if the
+    /// Constructs `ItronError` from the specified error code. Returns `None` if the
     /// error code does not represent a failure or warning.
     #[inline]
     pub fn new(er: abi::ER) -> Option<Self> {
@@ -22,7 +22,7 @@ impl ItronError {
         if let Some(error) = Self::new(er) { Err(error) } else { Ok(er) }
     }
 
-    /// Get the raw error code.
+    /// Gets the raw error code.
     #[inline]
     pub fn as_raw(&self) -> abi::ER {
         self.er

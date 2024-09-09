@@ -3,6 +3,7 @@
 use std::mem;
 
 use cfg::{CfgAtom, CfgExpr};
+use hir::sym;
 use ide::{Cancellable, CrateId, FileId, RunnableKind, TestId};
 use project_model::project_json::Runnable;
 use project_model::{CargoFeatures, ManifestPath, TargetKind};
@@ -56,10 +57,12 @@ pub(crate) struct CargoTargetSpec {
     pub(crate) crate_id: CrateId,
     pub(crate) required_features: Vec<String>,
     pub(crate) features: FxHashSet<String>,
+    pub(crate) sysroot_root: Option<vfs::AbsPathBuf>,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct ProjectJsonTargetSpec {
+    pub(crate) crate_id: CrateId,
     pub(crate) label: String,
     pub(crate) target_kind: TargetKind,
     pub(crate) shell_runnables: Vec<Runnable>,
@@ -237,14 +240,14 @@ impl CargoTargetSpec {
 /// Fill minimal features needed
 fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
     match cfg_expr {
-        CfgExpr::Atom(CfgAtom::KeyValue { key, value }) if key == "feature" => {
+        CfgExpr::Atom(CfgAtom::KeyValue { key, value }) if *key == sym::feature => {
             features.push(value.to_string())
         }
         CfgExpr::All(preds) => {
             preds.iter().for_each(|cfg| required_features(cfg, features));
         }
         CfgExpr::Any(preds) => {
-            for cfg in preds {
+            for cfg in preds.iter() {
                 let len_features = features.len();
                 required_features(cfg, features);
                 if len_features != features.len() {
@@ -261,10 +264,13 @@ mod tests {
     use super::*;
 
     use ide::Edition;
-    use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, DummyTestSpanMap, DUMMY};
     use syntax::{
         ast::{self, AstNode},
         SmolStr,
+    };
+    use syntax_bridge::{
+        dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
+        syntax_node_to_token_tree, DocCommentDesugarMode,
     };
 
     fn check(cfg: &str, expected_features: &[&str]) {

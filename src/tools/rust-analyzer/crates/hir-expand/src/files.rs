@@ -3,8 +3,8 @@ use std::borrow::Borrow;
 
 use either::Either;
 use span::{
-    AstIdNode, ErasedFileAstId, FileAstId, FileId, FileRange, HirFileId, HirFileIdRepr,
-    MacroFileId, SyntaxContextId,
+    AstIdNode, EditionedFileId, ErasedFileAstId, FileAstId, HirFileId, HirFileIdRepr, MacroFileId,
+    SyntaxContextId,
 };
 use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize};
 
@@ -27,7 +27,36 @@ pub struct InFileWrapper<FileKind, T> {
 }
 pub type InFile<T> = InFileWrapper<HirFileId, T>;
 pub type InMacroFile<T> = InFileWrapper<MacroFileId, T>;
-pub type InRealFile<T> = InFileWrapper<FileId, T>;
+pub type InRealFile<T> = InFileWrapper<EditionedFileId, T>;
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct FilePositionWrapper<FileKind> {
+    pub file_id: FileKind,
+    pub offset: TextSize,
+}
+pub type HirFilePosition = FilePositionWrapper<HirFileId>;
+pub type MacroFilePosition = FilePositionWrapper<MacroFileId>;
+pub type FilePosition = FilePositionWrapper<EditionedFileId>;
+
+impl From<FilePositionWrapper<EditionedFileId>> for FilePositionWrapper<span::FileId> {
+    fn from(value: FilePositionWrapper<EditionedFileId>) -> Self {
+        FilePositionWrapper { file_id: value.file_id.into(), offset: value.offset }
+    }
+}
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct FileRangeWrapper<FileKind> {
+    pub file_id: FileKind,
+    pub range: TextRange,
+}
+pub type HirFileRange = FileRangeWrapper<HirFileId>;
+pub type MacroFileRange = FileRangeWrapper<MacroFileId>;
+pub type FileRange = FileRangeWrapper<EditionedFileId>;
+
+impl From<FileRangeWrapper<EditionedFileId>> for FileRangeWrapper<span::FileId> {
+    fn from(value: FileRangeWrapper<EditionedFileId>) -> Self {
+        FileRangeWrapper { file_id: value.file_id.into(), range: value.range }
+    }
+}
 
 /// `AstId` points to an AST node in any file.
 ///
@@ -128,7 +157,7 @@ trait FileIdToSyntax: Copy {
     fn file_syntax(self, db: &dyn db::ExpandDatabase) -> SyntaxNode;
 }
 
-impl FileIdToSyntax for FileId {
+impl FileIdToSyntax for EditionedFileId {
     fn file_syntax(self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
         db.parse(self).syntax_node()
     }
@@ -430,5 +459,14 @@ impl<N: AstNode> InFile<N> {
         let anc = db.parse(file_id).syntax_node().covering_element(range);
         let value = anc.ancestors().find_map(N::cast)?;
         Some(InRealFile::new(file_id, value))
+    }
+}
+
+impl<T> InFile<T> {
+    pub fn into_real_file(self) -> Result<InRealFile<T>, InFile<T>> {
+        match self.file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => Ok(InRealFile { file_id, value: self.value }),
+            HirFileIdRepr::MacroFile(_) => Err(self),
+        }
     }
 }

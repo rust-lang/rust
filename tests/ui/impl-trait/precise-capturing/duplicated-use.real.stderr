@@ -1,5 +1,5 @@
 error: duplicate `use<...>` precise capturing syntax
-  --> $DIR/duplicated-use.rs:7:32
+  --> $DIR/duplicated-use.rs:5:32
    |
 LL | fn hello<'a>() -> impl Sized + use<'a> + use<'a> {}
    |                                ^^^^^^^   ------- second `use<...>` here

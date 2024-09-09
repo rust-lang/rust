@@ -516,26 +516,6 @@ impl ::core::cmp::Ord for Unsized {
     }
 }
 
-// A packed struct with an unsized `[u8]` field. This is currently allowed, but
-// causes a warning and will be phased out at some point.
-#[repr(packed)]
-struct PackedUnsizedU8([u8]);
-#[automatically_derived]
-impl ::core::fmt::Debug for PackedUnsizedU8 {
-    #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::debug_tuple_field1_finish(f,
-            "PackedUnsizedU8", &&self.0)
-    }
-}
-#[automatically_derived]
-impl ::core::hash::Hash for PackedUnsizedU8 {
-    #[inline]
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        ::core::hash::Hash::hash(&self.0, state)
-    }
-}
-
 trait Trait {
     type A;
 }

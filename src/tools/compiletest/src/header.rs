@@ -11,8 +11,7 @@ use regex::Regex;
 use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
-use crate::header::cfg::parse_cfg_name_directive;
-use crate::header::cfg::MatchOutcome;
+use crate::header::cfg::{parse_cfg_name_directive, MatchOutcome};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
 use crate::{extract_cdb_version, extract_gdb_version};
@@ -96,6 +95,8 @@ pub struct TestProps {
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
     pub run_flags: Vec<String>,
+    /// Extra flags to pass to rustdoc but not the compiler.
+    pub doc_flags: Vec<String>,
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<PathBuf>,
@@ -123,6 +124,9 @@ pub struct TestProps {
     pub unset_exec_env: Vec<String>,
     // Build documentation for all specified aux-builds as well
     pub build_aux_docs: bool,
+    /// Build the documentation for each crate in a unique output directory.
+    /// Uses <root output directory>/docs/<test name>/doc
+    pub unique_doc_out_dir: bool,
     // Flag to force a crate to be built with the host architecture
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
@@ -221,8 +225,10 @@ mod directives {
     pub const REGEX_ERROR_PATTERN: &'static str = "regex-error-pattern";
     pub const COMPILE_FLAGS: &'static str = "compile-flags";
     pub const RUN_FLAGS: &'static str = "run-flags";
+    pub const DOC_FLAGS: &'static str = "doc-flags";
     pub const SHOULD_ICE: &'static str = "should-ice";
     pub const BUILD_AUX_DOCS: &'static str = "build-aux-docs";
+    pub const UNIQUE_DOC_OUT_DIR: &'static str = "unique-doc-out-dir";
     pub const FORCE_HOST: &'static str = "force-host";
     pub const CHECK_STDOUT: &'static str = "check-stdout";
     pub const CHECK_RUN_RESULTS: &'static str = "check-run-results";
@@ -268,6 +274,7 @@ impl TestProps {
             regex_error_patterns: vec![],
             compile_flags: vec![],
             run_flags: vec![],
+            doc_flags: vec![],
             pp_exact: None,
             aux_builds: vec![],
             aux_bins: vec![],
@@ -282,6 +289,7 @@ impl TestProps {
             exec_env: vec![],
             unset_exec_env: vec![],
             build_aux_docs: false,
+            unique_doc_out_dir: false,
             force_host: false,
             check_stdout: false,
             check_run_results: false,
@@ -331,6 +339,7 @@ impl TestProps {
     pub fn from_file(testfile: &Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
         props.load_from(testfile, revision, config);
+        props.exec_env.push(("RUSTC".to_string(), config.rustc_path.display().to_string()));
 
         match (props.pass_mode, props.fail_mode) {
             (None, None) if config.mode == Mode::Ui => props.fail_mode = Some(FailMode::Check),
@@ -378,6 +387,8 @@ impl TestProps {
                         |r| r,
                     );
 
+                    config.push_name_value_directive(ln, DOC_FLAGS, &mut self.doc_flags, |r| r);
+
                     fn split_flags(flags: &str) -> Vec<String> {
                         // Individual flags can be single-quoted to preserve spaces; see
                         // <https://github.com/rust-lang/rust/pull/115948/commits/957c5db6>.
@@ -415,6 +426,8 @@ impl TestProps {
 
                     config.set_name_directive(ln, SHOULD_ICE, &mut self.should_ice);
                     config.set_name_directive(ln, BUILD_AUX_DOCS, &mut self.build_aux_docs);
+                    config.set_name_directive(ln, UNIQUE_DOC_OUT_DIR, &mut self.unique_doc_out_dir);
+
                     config.set_name_directive(ln, FORCE_HOST, &mut self.force_host);
                     config.set_name_directive(ln, CHECK_STDOUT, &mut self.check_stdout);
                     config.set_name_directive(ln, CHECK_RUN_RESULTS, &mut self.check_run_results);
@@ -1188,6 +1201,107 @@ pub fn extract_llvm_version_from_binary(binary_path: &str) -> Option<u32> {
         }
     }
     None
+}
+
+/// For tests using the `needs-llvm-zstd` directive:
+/// - for local LLVM builds, try to find the static zstd library in the llvm-config system libs.
+/// - for `download-ci-llvm`, see if `lld` was built with zstd support.
+pub fn llvm_has_libzstd(config: &Config) -> bool {
+    // Strategy 1: works for local builds but not with `download-ci-llvm`.
+    //
+    // We check whether `llvm-config` returns the zstd library. Bootstrap's `llvm.libzstd` will only
+    // ask to statically link it when building LLVM, so we only check if the list of system libs
+    // contains a path to that static lib, and that it exists.
+    //
+    // See compiler/rustc_llvm/build.rs for more details and similar expectations.
+    fn is_zstd_in_config(llvm_bin_dir: &Path) -> Option<()> {
+        let llvm_config_path = llvm_bin_dir.join("llvm-config");
+        let output = Command::new(llvm_config_path).arg("--system-libs").output().ok()?;
+        assert!(output.status.success(), "running llvm-config --system-libs failed");
+
+        let libs = String::from_utf8(output.stdout).ok()?;
+        for lib in libs.split_whitespace() {
+            if lib.ends_with("libzstd.a") && Path::new(lib).exists() {
+                return Some(());
+            }
+        }
+
+        None
+    }
+
+    // Strategy 2: `download-ci-llvm`'s `llvm-config --system-libs` will not return any libs to
+    // use.
+    //
+    // The CI artifacts also don't contain the bootstrap config used to build them: otherwise we
+    // could have looked at the `llvm.libzstd` config.
+    //
+    // We infer whether `LLVM_ENABLE_ZSTD` was used to build LLVM as a byproduct of testing whether
+    // `lld` supports it. If not, an error will be emitted: "LLVM was not built with
+    // LLVM_ENABLE_ZSTD or did not find zstd at build time".
+    #[cfg(unix)]
+    fn is_lld_built_with_zstd(llvm_bin_dir: &Path) -> Option<()> {
+        let lld_path = llvm_bin_dir.join("lld");
+        if lld_path.exists() {
+            // We can't call `lld` as-is, it expects to be invoked by a compiler driver using a
+            // different name. Prepare a temporary symlink to do that.
+            let lld_symlink_path = llvm_bin_dir.join("ld.lld");
+            if !lld_symlink_path.exists() {
+                std::os::unix::fs::symlink(lld_path, &lld_symlink_path).ok()?;
+            }
+
+            // Run `lld` with a zstd flag. We expect this command to always error here, we don't
+            // want to link actual files and don't pass any.
+            let output = Command::new(&lld_symlink_path)
+                .arg("--compress-debug-sections=zstd")
+                .output()
+                .ok()?;
+            assert!(!output.status.success());
+
+            // Look for a specific error caused by LLVM not being built with zstd support. We could
+            // also look for the "no input files" message, indicating the zstd flag was accepted.
+            let stderr = String::from_utf8(output.stderr).ok()?;
+            let zstd_available = !stderr.contains("LLVM was not built with LLVM_ENABLE_ZSTD");
+
+            // We don't particularly need to clean the link up (so the previous commands could fail
+            // in theory but won't in practice), but we can try.
+            std::fs::remove_file(lld_symlink_path).ok()?;
+
+            if zstd_available {
+                return Some(());
+            }
+        }
+
+        None
+    }
+
+    #[cfg(not(unix))]
+    fn is_lld_built_with_zstd(_llvm_bin_dir: &Path) -> Option<()> {
+        None
+    }
+
+    if let Some(llvm_bin_dir) = &config.llvm_bin_dir {
+        // Strategy 1: for local LLVM builds.
+        if is_zstd_in_config(llvm_bin_dir).is_some() {
+            return true;
+        }
+
+        // Strategy 2: for LLVM artifacts built on CI via `download-ci-llvm`.
+        //
+        // It doesn't work for cases where the artifacts don't contain the linker, but it's
+        // best-effort: CI has `llvm.libzstd` and `lld` enabled on the x64 linux artifacts, so it
+        // will at least work there.
+        //
+        // If this can be improved and expanded to less common cases in the future, it should.
+        if config.target == "x86_64-unknown-linux-gnu"
+            && config.host == config.target
+            && is_lld_built_with_zstd(llvm_bin_dir).is_some()
+        {
+            return true;
+        }
+    }
+
+    // Otherwise, all hope is lost.
+    false
 }
 
 /// Takes a directive of the form "<version1> [- <version2>]",

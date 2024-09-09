@@ -278,3 +278,16 @@ mod issue_10058 {
         }
     }
 }
+
+mod issue_13123 {
+    pub fn test() {
+        let mut vec = vec![1, 2, 3, 4];
+        let mut _index = 0;
+        'label: for v in vec {
+            _index += 1;
+            if v == 1 {
+                break 'label;
+            }
+        }
+    }
+}

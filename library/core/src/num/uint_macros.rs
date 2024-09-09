@@ -9,6 +9,7 @@ macro_rules! uint_impl {
         // literal is fine if they need to be multiple code tokens.
         // In non-comments, use the associated constants rather than these.
         BITS = $BITS:literal,
+        BITS_MINUS_ONE = $BITS_MINUS_ONE:literal,
         MAX = $MaxV:literal,
         rot = $rot:literal,
         rot_op = $rot_op:literal,
@@ -949,10 +950,10 @@ macro_rules! uint_impl {
         }
 
         /// Strict integer division. Computes `self / rhs`.
-        /// Strict division on unsigned types is just normal division.
-        /// There's no way overflow could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the strict operations.
+        ///
+        /// Strict division on unsigned types is just normal division. There's no
+        /// way overflow could ever happen. This function exists so that all
+        /// operations are accounted for in the strict operations.
         ///
         /// # Panics
         ///
@@ -1008,12 +1009,11 @@ macro_rules! uint_impl {
         }
 
         /// Strict Euclidean division. Computes `self.div_euclid(rhs)`.
-        /// Strict division on unsigned types is just normal division.
-        /// There's no way overflow could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the strict operations.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
+        ///
+        /// Strict division on unsigned types is just normal division. There's no
+        /// way overflow could ever happen. This function exists so that all
+        /// operations are accounted for in the strict operations. Since, for the
+        /// positive integers, all common definitions of division are equal, this
         /// is exactly equal to `self.strict_div(rhs)`.
         ///
         /// # Panics
@@ -1071,11 +1071,11 @@ macro_rules! uint_impl {
         }
 
         /// Strict integer remainder. Computes `self % rhs`.
-        /// Strict remainder calculation on unsigned types is
-        /// just the regular remainder calculation.
-        /// There's no way overflow could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the strict operations.
+        ///
+        /// Strict remainder calculation on unsigned types is just the regular
+        /// remainder calculation. There's no way overflow could ever happen.
+        /// This function exists so that all operations are accounted for in the
+        /// strict operations.
         ///
         /// # Panics
         ///
@@ -1131,14 +1131,13 @@ macro_rules! uint_impl {
         }
 
         /// Strict Euclidean modulo. Computes `self.rem_euclid(rhs)`.
-        /// Strict modulo calculation on unsigned types is
-        /// just the regular remainder calculation.
-        /// There's no way overflow could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the strict operations.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
-        /// is exactly equal to `self.strict_rem(rhs)`.
+        ///
+        /// Strict modulo calculation on unsigned types is just the regular
+        /// remainder calculation. There's no way overflow could ever happen.
+        /// This function exists so that all operations are accounted for in the
+        /// strict operations. Since, for the positive integers, all common
+        /// definitions of division are equal, this is exactly equal to
+        /// `self.strict_rem(rhs)`.
         ///
         /// # Panics
         ///
@@ -1413,6 +1412,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".checked_shl(4), Some(0x10));")]
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".checked_shl(", stringify!($BITS_MINUS_ONE), "), Some(0));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
@@ -1498,6 +1498,34 @@ macro_rules! uint_impl {
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {
                 intrinsics::unchecked_shl(self, rhs)
+            }
+        }
+
+        /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`
+        ///
+        /// If `rhs` is larger or equal to the number of bits in `self`,
+        /// the entire value is shifted out, and `0` is returned.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        /// ```
+        /// #![feature(unbounded_shifts)]
+        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
+        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        /// ```
+        #[unstable(feature = "unbounded_shifts", issue = "129375")]
+        #[rustc_const_unstable(feature = "const_unbounded_shifts", issue = "129375")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn unbounded_shl(self, rhs: u32) -> $SelfT{
+            if rhs < Self::BITS {
+                // SAFETY:
+                // rhs is just checked to be in-range above
+                unsafe { self.unchecked_shl(rhs) }
+            } else {
+                0
             }
         }
 
@@ -1599,6 +1627,34 @@ macro_rules! uint_impl {
             }
         }
 
+        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`
+        ///
+        /// If `rhs` is larger or equal to the number of bits in `self`,
+        /// the entire value is shifted out, and `0` is returned.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        /// ```
+        /// #![feature(unbounded_shifts)]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(4), 0x1);")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(129), 0);")]
+        /// ```
+        #[unstable(feature = "unbounded_shifts", issue = "129375")]
+        #[rustc_const_unstable(feature = "const_unbounded_shifts", issue = "129375")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn unbounded_shr(self, rhs: u32) -> $SelfT{
+            if rhs < Self::BITS {
+                // SAFETY:
+                // rhs is just checked to be in-range above
+                unsafe { self.unchecked_shr(rhs) }
+            } else {
+                0
+            }
+        }
+
         /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
         /// overflow occurred.
         ///
@@ -1622,20 +1678,17 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc: Self = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = try_opt!(acc.checked_mul(base));
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return Some(acc);
+                    }
                 }
                 exp /= 2;
                 base = try_opt!(base.checked_mul(base));
             }
-
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-
-            acc.checked_mul(base)
         }
 
         /// Strict exponentiation. Computes `self.pow(exp)`, panicking if
@@ -1675,18 +1728,17 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc: Self = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = acc.strict_mul(base);
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return acc;
+                    }
                 }
                 exp /= 2;
                 base = base.strict_mul(base);
             }
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc.strict_mul(base)
         }
 
         /// Saturating integer addition. Computes `self + rhs`, saturating at
@@ -1914,10 +1966,10 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) division. Computes `self / rhs`.
-        /// Wrapped division on unsigned types is just normal division.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
+        ///
+        /// Wrapped division on unsigned types is just normal division. There's
+        /// no way wrapping could ever happen. This function exists so that all
+        /// operations are accounted for in the wrapping operations.
         ///
         /// # Panics
         ///
@@ -1941,13 +1993,12 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping Euclidean division. Computes `self.div_euclid(rhs)`.
-        /// Wrapped division on unsigned types is just normal division.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
-        /// is exactly equal to `self.wrapping_div(rhs)`.
+        ///
+        /// Wrapped division on unsigned types is just normal division. There's
+        /// no way wrapping could ever happen. This function exists so that all
+        /// operations are accounted for in the wrapping operations. Since, for
+        /// the positive integers, all common definitions of division are equal,
+        /// this is exactly equal to `self.wrapping_div(rhs)`.
         ///
         /// # Panics
         ///
@@ -1971,11 +2022,11 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) remainder. Computes `self % rhs`.
-        /// Wrapped remainder calculation on unsigned types is
-        /// just the regular remainder calculation.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
+        ///
+        /// Wrapped remainder calculation on unsigned types is just the regular
+        /// remainder calculation. There's no way wrapping could ever happen.
+        /// This function exists so that all operations are accounted for in the
+        /// wrapping operations.
         ///
         /// # Panics
         ///
@@ -1999,14 +2050,13 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping Euclidean modulo. Computes `self.rem_euclid(rhs)`.
-        /// Wrapped modulo calculation on unsigned types is
-        /// just the regular remainder calculation.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
-        /// is exactly equal to `self.wrapping_rem(rhs)`.
+        ///
+        /// Wrapped modulo calculation on unsigned types is just the regular
+        /// remainder calculation. There's no way wrapping could ever happen.
+        /// This function exists so that all operations are accounted for in the
+        /// wrapping operations. Since, for the positive integers, all common
+        /// definitions of division are equal, this is exactly equal to
+        /// `self.wrapping_rem(rhs)`.
         ///
         /// # Panics
         ///
@@ -2140,6 +2190,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn wrapping_pow(self, mut exp: u32) -> Self {
             if exp == 0 {
                 return 1;
@@ -2147,22 +2198,39 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc: Self = 1;
 
-            while exp > 1 {
-                if (exp & 1) == 1 {
-                    acc = acc.wrapping_mul(base);
+            if intrinsics::is_val_statically_known(exp) {
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.wrapping_mul(base);
+                    }
+                    exp /= 2;
+                    base = base.wrapping_mul(base);
                 }
-                exp /= 2;
-                base = base.wrapping_mul(base);
-            }
 
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc.wrapping_mul(base)
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary.
+                acc.wrapping_mul(base)
+            } else {
+                // This is faster than the above when the exponent is not known
+                // at compile time. We can't use the same code for the constant
+                // exponent case because LLVM is currently unable to unroll
+                // this loop.
+                loop {
+                    if (exp & 1) == 1 {
+                        acc = acc.wrapping_mul(base);
+                        // since exp!=0, finally the exp must be 1.
+                        if exp == 1 {
+                            return acc;
+                        }
+                    }
+                    exp /= 2;
+                    base = base.wrapping_mul(base);
+                }
+            }
         }
 
-        /// Calculates `self` + `rhs`
+        /// Calculates `self` + `rhs`.
         ///
         /// Returns a tuple of the addition along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
@@ -2236,7 +2304,7 @@ macro_rules! uint_impl {
             (c, b || d)
         }
 
-        /// Calculates `self` + `rhs` with a signed `rhs`
+        /// Calculates `self` + `rhs` with a signed `rhs`.
         ///
         /// Returns a tuple of the addition along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
@@ -2541,6 +2609,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(4), (0x10, false));")]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(132), (0x10, true));")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(", stringify!($BITS_MINUS_ONE), "), (0, false));")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
@@ -2604,9 +2673,14 @@ macro_rules! uint_impl {
             // Scratch space for storing results of overflowing_mul.
             let mut r;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     r = acc.overflowing_mul(base);
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        r.1 |= overflown;
+                        return r;
+                    }
                     acc = r.0;
                     overflown |= r.1;
                 }
@@ -2615,15 +2689,6 @@ macro_rules! uint_impl {
                 base = r.0;
                 overflown |= r.1;
             }
-
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            r = acc.overflowing_mul(base);
-            r.1 |= overflown;
-
-            r
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.
@@ -2641,6 +2706,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
+        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
             if exp == 0 {
                 return 1;
@@ -2648,19 +2714,37 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc = 1;
 
-            while exp > 1 {
-                if (exp & 1) == 1 {
-                    acc = acc * base;
+            if intrinsics::is_val_statically_known(exp) {
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc * base;
+                    }
+                    exp /= 2;
+                    base = base * base;
                 }
-                exp /= 2;
-                base = base * base;
-            }
 
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc * base
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                acc * base
+            } else {
+                // This is faster than the above when the exponent is not known
+                // at compile time. We can't use the same code for the constant
+                // exponent case because LLVM is currently unable to unroll
+                // this loop.
+                loop {
+                    if (exp & 1) == 1 {
+                        acc = acc * base;
+                        // since exp!=0, finally the exp must be 1.
+                        if exp == 1 {
+                            return acc;
+                        }
+                    }
+                    exp /= 2;
+                    base = base * base;
+                }
+            }
         }
 
         /// Returns the square root of the number, rounded down.
@@ -2678,10 +2762,24 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            match NonZero::new(self) {
-                Some(x) => x.isqrt().get(),
-                None => 0,
+            let result = crate::num::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
+
+            // Inform the optimizer what the range of outputs is. If testing
+            // `core` crashes with no panic message and a `num::int_sqrt::u*`
+            // test failed, it's because your edits caused these assertions or
+            // the assertions in `fn isqrt` of `nonzero.rs` to become false.
+            //
+            // SAFETY: Integer square root is a monotonically nondecreasing
+            // function, which means that increasing the input will never
+            // cause the output to decrease. Thus, since the input for unsigned
+            // integers is bounded by `[0, <$ActualT>::MAX]`, sqrt(n) will be
+            // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
+            unsafe {
+                const MAX_RESULT: $SelfT = crate::num::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT;
+                crate::hint::assert_unchecked(result <= MAX_RESULT);
             }
+
+            result
         }
 
         /// Performs Euclidean division.
@@ -2854,6 +2952,35 @@ macro_rules! uint_impl {
             }
         }
 
+        /// Returns `true` if `self` is an integer multiple of `rhs`, and false otherwise.
+        ///
+        /// This function is equivalent to `self % rhs == 0`, except that it will not panic
+        /// for `rhs == 0`. Instead, `0.is_multiple_of(0) == true`, and for any non-zero `n`,
+        /// `n.is_multiple_of(0) == false`.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(unsigned_is_multiple_of)]
+        #[doc = concat!("assert!(6_", stringify!($SelfT), ".is_multiple_of(2));")]
+        #[doc = concat!("assert!(!5_", stringify!($SelfT), ".is_multiple_of(2));")]
+        ///
+        #[doc = concat!("assert!(0_", stringify!($SelfT), ".is_multiple_of(0));")]
+        #[doc = concat!("assert!(!6_", stringify!($SelfT), ".is_multiple_of(0));")]
+        /// ```
+        #[unstable(feature = "unsigned_is_multiple_of", issue = "128101")]
+        #[must_use]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        pub const fn is_multiple_of(self, rhs: Self) -> bool {
+            match rhs {
+                0 => self == 0,
+                _ => self % rhs == 0,
+            }
+        }
+
         /// Returns `true` if and only if `self == 2^k` for some `k`.
         ///
         /// # Examples
@@ -2967,7 +3094,7 @@ macro_rules! uint_impl {
             self.one_less_than_next_power_of_two().wrapping_add(1)
         }
 
-        /// Return the memory representation of this integer as a byte array in
+        /// Returns the memory representation of this integer as a byte array in
         /// big-endian (network) byte order.
         ///
         #[doc = $to_xe_bytes_doc]
@@ -2987,7 +3114,7 @@ macro_rules! uint_impl {
             self.to_be().to_ne_bytes()
         }
 
-        /// Return the memory representation of this integer as a byte array in
+        /// Returns the memory representation of this integer as a byte array in
         /// little-endian byte order.
         ///
         #[doc = $to_xe_bytes_doc]
@@ -3007,7 +3134,7 @@ macro_rules! uint_impl {
             self.to_le().to_ne_bytes()
         }
 
-        /// Return the memory representation of this integer as a byte array in
+        /// Returns the memory representation of this integer as a byte array in
         /// native byte order.
         ///
         /// As the target platform's native endianness is used, portable code
@@ -3045,7 +3172,7 @@ macro_rules! uint_impl {
             unsafe { mem::transmute(self) }
         }
 
-        /// Create a native endian integer value from its representation
+        /// Creates a native endian integer value from its representation
         /// as a byte array in big endian.
         ///
         #[doc = $from_xe_bytes_doc]
@@ -3074,7 +3201,7 @@ macro_rules! uint_impl {
             Self::from_be(Self::from_ne_bytes(bytes))
         }
 
-        /// Create a native endian integer value from its representation
+        /// Creates a native endian integer value from its representation
         /// as a byte array in little endian.
         ///
         #[doc = $from_xe_bytes_doc]
@@ -3103,7 +3230,7 @@ macro_rules! uint_impl {
             Self::from_le(Self::from_ne_bytes(bytes))
         }
 
-        /// Create a native endian integer value from its memory representation
+        /// Creates a native endian integer value from its memory representation
         /// as a byte array in native endianness.
         ///
         /// As the target platform's native endianness is used, portable code

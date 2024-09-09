@@ -57,10 +57,10 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_6);
         StorageLive(_4);
         StorageLive(_5);
-        _3 = PtrMetadata(_1);
+        _3 = PtrMetadata(copy _1);
         _4 = &raw const (*_1);
-        _5 = _4 as *const T (PtrToPtr);
-        _6 = NonNull::<T> { pointer: _5 };
+        _5 = copy _4 as *const T (PtrToPtr);
+        _6 = NonNull::<T> { pointer: copy _5 };
         StorageLive(_9);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
@@ -68,8 +68,8 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb1: {
         StorageLive(_8);
         StorageLive(_7);
-        _7 = _4 as *mut T (PtrToPtr);
-        _8 = Offset(_7, _3);
+        _7 = copy _4 as *mut T (PtrToPtr);
+        _8 = Offset(copy _7, copy _3);
         StorageDead(_7);
         _9 = move _8 as *const T (PtrToPtr);
         StorageDead(_8);
@@ -77,14 +77,14 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb2: {
-        _9 = _3 as *const T (Transmute);
+        _9 = copy _3 as *const T (Transmute);
         goto -> bb3;
     }
 
     bb3: {
         StorageLive(_10);
-        _10 = _9;
-        _11 = std::slice::Iter::<'_, T> { ptr: _6, end_or_len: move _10, _marker: const ZeroSized: PhantomData<&T> };
+        _10 = copy _9;
+        _11 = std::slice::Iter::<'_, T> { ptr: copy _6, end_or_len: move _10, _marker: const ZeroSized: PhantomData<&T> };
         StorageDead(_10);
         StorageDead(_9);
         StorageDead(_5);
@@ -92,19 +92,17 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_6);
         StorageDead(_3);
         StorageLive(_12);
-        _12 = _11;
+        _12 = copy _11;
         goto -> bb4;
     }
 
     bb4: {
         StorageLive(_14);
-        StorageLive(_13);
         _13 = &mut _12;
         _14 = <std::slice::Iter<'_, T> as Iterator>::next(move _13) -> [return: bb5, unwind: bb11];
     }
 
     bb5: {
-        StorageDead(_13);
         _15 = discriminant(_14);
         switchInt(move _15) -> [0: bb6, 1: bb8, otherwise: bb10];
     }
@@ -120,11 +118,11 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb8: {
-        _16 = ((_14 as Some).0: &T);
+        _16 = copy ((_14 as Some).0: &T);
         StorageLive(_17);
         _17 = &_2;
         StorageLive(_18);
-        _18 = (_16,);
+        _18 = (copy _16,);
         _19 = <impl Fn(&T) as Fn<(&T,)>>::call(move _17, move _18) -> [return: bb9, unwind: bb11];
     }
 

@@ -1,24 +1,26 @@
-use crate::bounds::Bounds;
-use crate::hir_ty_lowering::{
-    GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds, RegionInferReason,
-};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::{codes::*, struct_span_code_err};
+use rustc_errors::codes::*;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::{self, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable};
-use rustc_middle::ty::{DynKind, Upcast};
+use rustc_middle::ty::{
+    self, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable, Upcast,
+};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_object_safety_error;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_object_safety_violations};
-
 use smallvec::{smallvec, SmallVec};
+use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
+use crate::bounds::Bounds;
+use crate::hir_ty_lowering::{
+    GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds, RegionInferReason,
+};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Lower a trait object type from the HIR to our internal notion of a type.
@@ -27,9 +29,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_trait_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_trait_bounds: &[(hir::PolyTraitRef<'tcx>, hir::TraitBoundModifier)],
         lifetime: &hir::Lifetime,
-        borrowed: bool,
         representation: DynKind,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
@@ -37,7 +38,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut bounds = Bounds::default();
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
-        for trait_bound in hir_trait_bounds.iter().rev() {
+        for (trait_bound, modifier) in hir_trait_bounds.iter().rev() {
+            if *modifier == hir::TraitBoundModifier::Maybe {
+                continue;
+            }
             if let GenericArgCountResult {
                 correct:
                     Err(GenericArgCountMismatch { invalid_args: cur_potential_assoc_types, .. }),
@@ -249,7 +253,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let args = tcx.mk_args(&args);
 
                 let span = i.bottom().1;
-                let empty_generic_args = hir_trait_bounds.iter().any(|hir_bound| {
+                let empty_generic_args = hir_trait_bounds.iter().any(|(hir_bound, _)| {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });
@@ -321,22 +325,32 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         v.dedup();
         let existential_predicates = tcx.mk_poly_existential_predicates(&v);
 
-        // Use explicitly-specified region bound.
+        // Use explicitly-specified region bound, unless the bound is missing.
         let region_bound = if !lifetime.is_elided() {
-            self.lower_lifetime(lifetime, RegionInferReason::ObjectLifetimeDefault)
+            self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
+                // Curiously, we prefer object lifetime default for `+ '_`...
                 if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.lower_lifetime(lifetime, RegionInferReason::ObjectLifetimeDefault)
+                    self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
                 } else {
-                    self.re_infer(
-                        span,
-                        if borrowed {
-                            RegionInferReason::ObjectLifetimeDefault
+                    let reason =
+                        if let hir::LifetimeName::ImplicitObjectLifetimeDefault = lifetime.res {
+                            if let hir::Node::Ty(hir::Ty {
+                                kind: hir::TyKind::Ref(parent_lifetime, _),
+                                ..
+                            }) = tcx.parent_hir_node(hir_id)
+                                && tcx.named_bound_var(parent_lifetime.hir_id).is_none()
+                            {
+                                // Parent lifetime must have failed to resolve. Don't emit a redundant error.
+                                RegionInferReason::ExplicitObjectLifetime
+                            } else {
+                                RegionInferReason::ObjectLifetimeDefault
+                            }
                         } else {
-                            RegionInferReason::BorrowedObjectLifetimeDefault
-                        },
-                    )
+                            RegionInferReason::ExplicitObjectLifetime
+                        };
+                    self.re_infer(span, reason)
                 }
             })
         };

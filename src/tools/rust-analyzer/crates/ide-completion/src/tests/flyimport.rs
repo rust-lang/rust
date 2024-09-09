@@ -767,8 +767,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
             ct SPECIAL_CONST (use dep::test_mod::TestTrait) u8 DEPRECATED
+            fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
             me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
         "#]],
     );
@@ -1615,6 +1615,57 @@ pub struct FooStruct;
 "#,
         expect![[r#"
             tt FooTrait (use dep::FooTrait)
+        "#]],
+    );
+}
+
+#[test]
+fn primitive_mod() {
+    check(
+        r#"
+//- minicore: str
+fn main() {
+    str::from$0
+}
+"#,
+        expect![[r#"
+            fn from_utf8_unchecked(…) (use core::str) const unsafe fn(&[u8]) -> &str
+        "#]],
+    );
+}
+
+#[test]
+fn trait_impl_on_slice_method_on_deref_slice_type() {
+    check(
+        r#"
+//- minicore: deref, sized
+struct SliceDeref;
+impl core::ops::Deref for SliceDeref {
+    type Target = [()];
+
+    fn deref(&self) -> &Self::Target {
+        &[]
+    }
+}
+fn main() {
+    SliceDeref.choose$0();
+}
+mod module {
+    pub(super) trait SliceRandom {
+        type Item;
+
+        fn choose(&self);
+    }
+
+    impl<T> SliceRandom for [T] {
+        type Item = T;
+
+        fn choose(&self) {}
+    }
+}
+"#,
+        expect![[r#"
+            me choose (use module::SliceRandom) fn(&self)
         "#]],
     );
 }

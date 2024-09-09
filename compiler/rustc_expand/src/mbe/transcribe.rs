@@ -1,26 +1,27 @@
-use crate::errors::{
-    CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
-    NoSyntaxVarsExprRepeat, VarStillRepeating,
-};
-use crate::mbe::macro_parser::{NamedMatch, NamedMatch::*};
-use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
-use crate::mbe::{self, KleeneOp, MetaVarExpr};
+use std::mem;
+
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
-use rustc_ast::token::{IdentIsRaw, Lit, LitKind};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, LitKind, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::ExprKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
-use rustc_session::parse::ParseSess;
-use rustc_session::parse::SymbolGallery;
+use rustc_session::parse::{ParseSess, SymbolGallery};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::{with_metavar_spans, Span, Symbol, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
-use std::mem;
+
+use crate::errors::{
+    CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
+    NoSyntaxVarsExprRepeat, VarStillRepeating,
+};
+use crate::mbe::macro_parser::NamedMatch;
+use crate::mbe::macro_parser::NamedMatch::*;
+use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
+use crate::mbe::{self, KleeneOp, MetaVarExpr};
 
 // A Marker adds the given mark to the syntax context.
 struct Marker(LocalExpnId, Transparency, FxHashMap<SyntaxContext, SyntaxContext>);
@@ -282,9 +283,9 @@ pub(super) fn transcribe<'a>(
                             let kind = token::NtIdent(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
-                        MatchedSingle(ParseNtResult::Lifetime(ident)) => {
+                        MatchedSingle(ParseNtResult::Lifetime(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
-                            let kind = token::NtLifetime(*ident);
+                            let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
                         MatchedSingle(ParseNtResult::Nt(nt)) => {

@@ -1,7 +1,8 @@
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+
 use super::ScalarInt;
 use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 
 #[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq)]
 #[derive(HashStable)]

@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{
@@ -190,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 }
             },
             ExprKind::Index(target, _idx, _) => {
-                let e_ty = cx.typeck_results().expr_ty(target).peel_refs();
+                let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
                 if e_ty.is_str() || is_type_lang_item(cx, e_ty, LangItem::String) {
                     span_lint(
                         cx,
@@ -399,17 +399,16 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             && let ty::Ref(_, ty, ..) = ty.kind()
             && ty.is_str()
         {
-            let mut applicability = Applicability::MachineApplicable;
-            let snippet = snippet_with_applicability(cx, self_arg.span, "..", &mut applicability);
-
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 STR_TO_STRING,
                 expr.span,
                 "`to_string()` called on a `&str`",
-                "try",
-                format!("{snippet}.to_owned()"),
-                applicability,
+                |diag| {
+                    let mut applicability = Applicability::MachineApplicable;
+                    let snippet = snippet_with_applicability(cx, self_arg.span, "..", &mut applicability);
+                    diag.span_suggestion(expr.span, "try", format!("{snippet}.to_owned()"), applicability);
+                },
             );
         }
     }
@@ -455,13 +454,15 @@ impl<'tcx> LateLintPass<'tcx> for StringToString {
             && let ty = cx.typeck_results().expr_ty(self_arg)
             && is_type_lang_item(cx, ty, LangItem::String)
         {
-            span_lint_and_help(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 STRING_TO_STRING,
                 expr.span,
                 "`to_string()` called on a `String`",
-                None,
-                "consider using `.clone()`",
+                |diag| {
+                    diag.help("consider using `.clone()`");
+                },
             );
         }
     }

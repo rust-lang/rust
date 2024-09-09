@@ -1,11 +1,10 @@
+use super::once::ExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::mem::ManuallyDrop;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
 use crate::{fmt, ptr};
-
-use super::once::ExclusiveState;
 
 // We use the state of a Once as discriminant value. Upon creation, the state is
 // "incomplete" and `f` contains the initialization closure. In the first call to
@@ -175,7 +174,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 }
 
 impl<T, F> LazyLock<T, F> {
-    /// Get the inner value if it has already been initialized.
+    /// Gets the inner value if it has already been initialized.
     fn get(&self) -> Option<&T> {
         if self.once.is_completed() {
             // SAFETY:

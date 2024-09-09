@@ -1,9 +1,8 @@
 //! Conversion of internal Rust compiler `mir` items to stable ones.
 
-use rustc_middle::bug;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::alloc_range;
 use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::{bug, mir};
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
 use stable_mir::ty::{Allocation, ConstantKind, MirConst};
@@ -175,7 +174,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
             ThreadLocalRef(def_id) => {
                 stable_mir::mir::Rvalue::ThreadLocalRef(tables.crate_item(*def_id))
             }
-            AddressOf(mutability, place) => {
+            RawPtr(mutability, place) => {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(tables), place.stable(tables))
             }
             Len(place) => stable_mir::mir::Rvalue::Len(place.stable(tables)),

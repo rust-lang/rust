@@ -1,7 +1,6 @@
-use crate::errors;
-use crate::util::{
-    check_zero_tts, get_single_str_from_tts, get_single_str_spanned_from_tts, parse_expr,
-};
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -20,8 +19,11 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Pos, Span};
 use smallvec::SmallVec;
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
+
+use crate::errors;
+use crate::util::{
+    check_zero_tts, get_single_str_from_tts, get_single_str_spanned_from_tts, parse_expr,
+};
 
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
@@ -71,7 +73,8 @@ pub(crate) fn expand_file(
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
+    use rustc_session::config::RemapPathScopeComponents;
+    use rustc_session::RemapFileNameExt;
     ExpandResult::Ready(MacEager::expr(cx.expr_str(
         topmost,
         Symbol::intern(

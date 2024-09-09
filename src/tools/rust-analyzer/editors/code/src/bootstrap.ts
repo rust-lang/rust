@@ -4,6 +4,7 @@ import type { Config } from "./config";
 import { type Env, log } from "./util";
 import type { PersistentState } from "./persistent_state";
 import { exec, spawnSync } from "child_process";
+import { TextDecoder } from "node:util";
 
 export async function bootstrap(
     context: vscode.ExtensionContext,
@@ -42,6 +43,7 @@ async function getServer(
         enableProposedApi: boolean | undefined;
     } = context.extension.packageJSON;
 
+    // check if the server path is configured explicitly
     const explicitPath = process.env["__RA_LSP_SERVER_DEBUG"] ?? config.serverPath;
     if (explicitPath) {
         if (explicitPath.startsWith("~/")) {
@@ -49,14 +51,40 @@ async function getServer(
         }
         return explicitPath;
     }
+
+    let toolchainServerPath = undefined;
+    if (vscode.workspace.workspaceFolders) {
+        for (const workspaceFolder of vscode.workspace.workspaceFolders) {
+            // otherwise check if there is a toolchain override for the current vscode workspace
+            // and if the toolchain of this override has a rust-analyzer component
+            // if so, use the rust-analyzer component
+            const toolchainUri = vscode.Uri.joinPath(workspaceFolder.uri, "rust-toolchain.toml");
+            if (await hasToolchainFileWithRaDeclared(toolchainUri)) {
+                const res = spawnSync("rustup", ["which", "rust-analyzer"], {
+                    encoding: "utf8",
+                    env: { ...process.env },
+                    cwd: workspaceFolder.uri.fsPath,
+                });
+                if (!res.error && res.status === 0) {
+                    toolchainServerPath = earliestToolchainPath(
+                        toolchainServerPath,
+                        res.stdout.trim(),
+                        raVersionResolver,
+                    );
+                }
+            }
+        }
+    }
+    if (toolchainServerPath) {
+        return toolchainServerPath;
+    }
+
     if (packageJson.releaseTag === null) return "rust-analyzer";
 
+    // finally, use the bundled one
     const ext = process.platform === "win32" ? ".exe" : "";
     const bundled = vscode.Uri.joinPath(context.extensionUri, "server", `rust-analyzer${ext}`);
-    const bundledExists = await vscode.workspace.fs.stat(bundled).then(
-        () => true,
-        () => false,
-    );
+    const bundledExists = await fileExists(bundled);
     if (bundledExists) {
         let server = bundled;
         if (await isNixOs()) {
@@ -84,6 +112,77 @@ async function getServer(
     return undefined;
 }
 
+// Given a path to a rust-analyzer executable, resolve its version and return it.
+function raVersionResolver(path: string): string | undefined {
+    const res = spawnSync(path, ["--version"], {
+        encoding: "utf8",
+    });
+    if (!res.error && res.status === 0) {
+        return res.stdout;
+    } else {
+        return undefined;
+    }
+}
+
+// Given a path to two rust-analyzer executables, return the earliest one by date.
+function earliestToolchainPath(
+    path0: string | undefined,
+    path1: string,
+    raVersionResolver: (path: string) => string | undefined,
+): string {
+    if (path0) {
+        if (orderFromPath(path0, raVersionResolver) < orderFromPath(path1, raVersionResolver)) {
+            return path0;
+        } else {
+            return path1;
+        }
+    } else {
+        return path1;
+    }
+}
+
+// Further to extracting a date for comparison, determine the order of a toolchain as follows:
+//  Highest - nightly
+//  Medium  - versioned
+//  Lowest  - stable
+// Example paths:
+//  nightly   - /Users/myuser/.rustup/toolchains/nightly-2022-11-22-aarch64-apple-darwin/bin/rust-analyzer
+//  versioned - /Users/myuser/.rustup/toolchains/1.72.1-aarch64-apple-darwin/bin/rust-analyzer
+//  stable    - /Users/myuser/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rust-analyzer
+function orderFromPath(
+    path: string,
+    raVersionResolver: (path: string) => string | undefined,
+): string {
+    const raVersion = raVersionResolver(path);
+    const raDate = raVersion?.match(/^rust-analyzer .*\(.* (\d{4}-\d{2}-\d{2})\)$/);
+    if (raDate?.length === 2) {
+        const precedence = path.includes("nightly-") ? "0" : "1";
+        return "0-" + raDate[1] + "/" + precedence;
+    } else {
+        return "2";
+    }
+}
+
+async function fileExists(uri: vscode.Uri) {
+    return await vscode.workspace.fs.stat(uri).then(
+        () => true,
+        () => false,
+    );
+}
+
+async function hasToolchainFileWithRaDeclared(uri: vscode.Uri): Promise<boolean> {
+    try {
+        const toolchainFileContents = new TextDecoder().decode(
+            await vscode.workspace.fs.readFile(uri),
+        );
+        return (
+            toolchainFileContents.match(/components\s*=\s*\[.*\"rust-analyzer\".*\]/g)?.length === 1
+        );
+    } catch (e) {
+        return false;
+    }
+}
+
 export function isValidExecutable(path: string, extraEnv: Env): boolean {
     log.debug("Checking availability of a binary at", path);
 
@@ -92,9 +191,11 @@ export function isValidExecutable(path: string, extraEnv: Env): boolean {
         env: { ...process.env, ...extraEnv },
     });
 
-    const printOutput = res.error ? log.warn : log.info;
-    printOutput(path, "--version:", res);
-
+    if (res.error) {
+        log.warn(path, "--version:", res);
+    } else {
+        log.info(path, "--version:", res);
+    }
     return res.status === 0;
 }
 
@@ -180,3 +281,8 @@ async function patchelf(dest: vscode.Uri): Promise<void> {
         },
     );
 }
+
+export const _private = {
+    earliestToolchainPath,
+    orderFromPath,
+};

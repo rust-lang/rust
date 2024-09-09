@@ -118,7 +118,8 @@ macro_rules! $1 {
 }
 
 fn snippet(ctx: &CompletionContext<'_>, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
-    let mut item = CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
+    let mut item =
+        CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label, ctx.edition);
     item.insert_snippet(cap, snippet);
     item
 }

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, SuggestionStyle};
+use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_span::{BytePos, Pos, Span};
 use url::Url;
@@ -92,6 +92,10 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, b
             && matches!(prefix.chars().last(), Some('S' | 'X'))
         {
             prefix
+        } else if let Some(prefix) = s.strip_suffix("ified")
+            && prefix.chars().all(|c| c.is_ascii_uppercase())
+        {
+            prefix
         } else {
             s.strip_suffix('s').unwrap_or(s)
         };
@@ -133,24 +137,15 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, b
     }
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) || word.ends_with("()") {
-        let mut applicability = Applicability::MachineApplicable;
-
         span_lint_and_then(
             cx,
             DOC_MARKDOWN,
             span,
             "item in documentation is missing backticks",
             |diag| {
+                let mut applicability = Applicability::MachineApplicable;
                 let snippet = snippet_with_applicability(cx, span, "..", &mut applicability);
-                diag.span_suggestion_with_style(
-                    span,
-                    "try",
-                    format!("`{snippet}`"),
-                    applicability,
-                    // always show the suggestion in a separate line, since the
-                    // inline presentation adds another pair of backticks
-                    SuggestionStyle::ShowAlways,
-                );
+                diag.span_suggestion_verbose(span, "try", format!("`{snippet}`"), applicability);
             },
         );
     }

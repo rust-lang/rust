@@ -7,6 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
+use tracing::{debug, instrument, trace};
 
 use crate::errors::{TaitForwardCompat, TaitForwardCompat2, UnconstrainedOpaqueType};
 
@@ -331,7 +332,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     owner_def_id: LocalDefId,
-) -> Ty<'_> {
+) -> Ty<'tcx> {
     let tables = tcx.typeck(owner_def_id);
 
     // Check that all of the opaques we inferred during HIR are compatible.

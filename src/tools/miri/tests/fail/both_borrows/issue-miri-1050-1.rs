@@ -1,6 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-//@error-in-other-file: pointer to 4 bytes starting at offset 0 is out-of-bounds
+//@error-in-other-file: expected a pointer to 4 bytes of memory
 
 fn main() {
     unsafe {

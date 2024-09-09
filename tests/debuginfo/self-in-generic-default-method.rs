@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -8,8 +6,7 @@
 
 // STACK BY REF
 // gdb-command:print *self
-// gdbg-check:$1 = {x = 987}
-// gdbr-check:$1 = self_in_generic_default_method::Struct {x: 987}
+// gdb-check:$1 = self_in_generic_default_method::Struct {x: 987}
 // gdb-command:print arg1
 // gdb-check:$2 = -1
 // gdb-command:print arg2
@@ -18,8 +15,7 @@
 
 // STACK BY VAL
 // gdb-command:print self
-// gdbg-check:$4 = {x = 987}
-// gdbr-check:$4 = self_in_generic_default_method::Struct {x: 987}
+// gdb-check:$4 = self_in_generic_default_method::Struct {x: 987}
 // gdb-command:print arg1
 // gdb-check:$5 = -3
 // gdb-command:print arg2
@@ -28,8 +24,7 @@
 
 // OWNED BY REF
 // gdb-command:print *self
-// gdbg-check:$7 = {x = 879}
-// gdbr-check:$7 = self_in_generic_default_method::Struct {x: 879}
+// gdb-check:$7 = self_in_generic_default_method::Struct {x: 879}
 // gdb-command:print arg1
 // gdb-check:$8 = -5
 // gdb-command:print arg2
@@ -38,8 +33,7 @@
 
 // OWNED BY VAL
 // gdb-command:print self
-// gdbg-check:$10 = {x = 879}
-// gdbr-check:$10 = self_in_generic_default_method::Struct {x: 879}
+// gdb-check:$10 = self_in_generic_default_method::Struct {x: 879}
 // gdb-command:print arg1
 // gdb-check:$11 = -7
 // gdb-command:print arg2
@@ -48,8 +42,7 @@
 
 // OWNED MOVED
 // gdb-command:print *self
-// gdbg-check:$13 = {x = 879}
-// gdbr-check:$13 = self_in_generic_default_method::Struct {x: 879}
+// gdb-check:$13 = self_in_generic_default_method::Struct {x: 879}
 // gdb-command:print arg1
 // gdb-check:$14 = -9
 // gdb-command:print arg2
@@ -63,62 +56,47 @@
 
 // STACK BY REF
 // lldb-command:v *self
-// lldbg-check:[...] { x = 987 }
-// lldbr-check:(self_in_generic_default_method::Struct) *self = Struct { x: 987 }
+// lldb-check:[...] { x = 987 }
 // lldb-command:v arg1
-// lldbg-check:[...] -1
-// lldbr-check:(isize) arg1 = -1
+// lldb-check:[...] -1
 // lldb-command:v arg2
-// lldbg-check:[...] 2
-// lldbr-check:(u16) arg2 = 2
+// lldb-check:[...] 2
 // lldb-command:continue
 
 // STACK BY VAL
 // lldb-command:v self
-// lldbg-check:[...] { x = 987 }
-// lldbr-check:(self_in_generic_default_method::Struct) self = Struct { x: 987 }
+// lldb-check:[...] { x = 987 }
 // lldb-command:v arg1
-// lldbg-check:[...] -3
-// lldbr-check:(isize) arg1 = -3
+// lldb-check:[...] -3
 // lldb-command:v arg2
-// lldbg-check:[...] -4
-// lldbr-check:(i16) arg2 = -4
+// lldb-check:[...] -4
 // lldb-command:continue
 
 // OWNED BY REF
 // lldb-command:v *self
-// lldbg-check:[...] { x = 879 }
-// lldbr-check:(self_in_generic_default_method::Struct) *self = Struct { x: 879 }
+// lldb-check:[...] { x = 879 }
 // lldb-command:v arg1
-// lldbg-check:[...] -5
-// lldbr-check:(isize) arg1 = -5
+// lldb-check:[...] -5
 // lldb-command:v arg2
-// lldbg-check:[...] -6
-// lldbr-check:(i32) arg2 = -6
+// lldb-check:[...] -6
 // lldb-command:continue
 
 // OWNED BY VAL
 // lldb-command:v self
-// lldbg-check:[...] { x = 879 }
-// lldbr-check:(self_in_generic_default_method::Struct) self = Struct { x: 879 }
+// lldb-check:[...] { x = 879 }
 // lldb-command:v arg1
-// lldbg-check:[...] -7
-// lldbr-check:(isize) arg1 = -7
+// lldb-check:[...] -7
 // lldb-command:v arg2
-// lldbg-check:[...] -8
-// lldbr-check:(i64) arg2 = -8
+// lldb-check:[...] -8
 // lldb-command:continue
 
 // OWNED MOVED
 // lldb-command:v *self
-// lldbg-check:[...] { x = 879 }
-// lldbr-check:(self_in_generic_default_method::Struct) *self = Struct { x: 879 }
+// lldb-check:[...] { x = 879 }
 // lldb-command:v arg1
-// lldbg-check:[...] -9
-// lldbr-check:(isize) arg1 = -9
+// lldb-check:[...] -9
 // lldb-command:v arg2
-// lldbg-check:[...] -10.5
-// lldbr-check:(f32) arg2 = -10.5
+// lldb-check:[...] -10.5
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

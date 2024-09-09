@@ -1,20 +1,17 @@
+use std::alloc::Layout;
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
+use std::ops::Deref;
+use std::{fmt, iter, mem, ptr, slice};
+
+use rustc_data_structures::aligned::{align_of, Aligned};
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sync::DynSync;
+use rustc_serialize::{Encodable, Encoder};
+
 use super::flags::FlagComputation;
 use super::{DebruijnIndex, TypeFlags};
 use crate::arena::Arena;
-use rustc_data_structures::aligned::{align_of, Aligned};
-use rustc_serialize::{Encodable, Encoder};
-use std::alloc::Layout;
-use std::cmp::Ordering;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::iter;
-use std::mem;
-use std::ops::Deref;
-use std::ptr;
-use std::slice;
-
-#[cfg(parallel_compiler)]
-use rustc_data_structures::sync::DynSync;
 
 /// `List<T>` is a bit like `&[T]`, but with some critical differences.
 /// - IMPORTANT: Every `List<T>` is *required* to have unique contents. The
@@ -61,7 +58,7 @@ impl<T> Default for &List<T> {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     /// A dummy type used to force `List` to be unsized while not requiring
     /// references to it be wide pointers.
     type OpaqueListContents;

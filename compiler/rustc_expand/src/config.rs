@@ -1,19 +1,16 @@
 //! Conditional compilation stripping.
 
-use crate::errors::{
-    FeatureNotAllowed, FeatureRemoved, FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute,
-    MalformedFeatureAttributeHelp, RemoveExprNotSupported,
-};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, Spacing};
-use rustc_ast::tokenstream::{LazyAttrTokenStream, TokenTree};
-use rustc_ast::NodeId;
-use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem};
+use rustc_ast::tokenstream::{
+    AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
+};
+use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, NodeId};
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_feature::Features;
-use rustc_feature::{ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES};
+use rustc_feature::{
+    AttributeSafety, Features, ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES,
+};
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;
@@ -22,6 +19,11 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use thin_vec::ThinVec;
 use tracing::instrument;
+
+use crate::errors::{
+    FeatureNotAllowed, FeatureRemoved, FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute,
+    MalformedFeatureAttributeHelp, RemoveExprNotSupported,
+};
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
@@ -117,6 +119,12 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             // Otherwise, the feature is unknown. Record it as a lib feature.
             // It will be checked later.
             features.set_declared_lib_feature(name, mi.span());
+
+            // Similar to above, detect internal lib features to suppress
+            // the ICE message that asks for a report.
+            if features.internal(name) && ![sym::core, sym::alloc, sym::std].contains(&crate_name) {
+                sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
         }
     }
 
@@ -257,6 +265,8 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
+        validate_attr::check_attribute_safety(&self.sess.psess, AttributeSafety::Normal, &cfg_attr);
+
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(cfg_attr, &self.sess.psess)
         else {
@@ -379,6 +389,9 @@ impl<'a> StripUnconfigured<'a> {
                 return (true, None);
             }
         };
+
+        validate_attr::deny_builtin_meta_unsafety(&self.sess.psess, &meta_item);
+
         (
             parse_cfg(&meta_item, self.sess).map_or(true, |meta_item| {
                 attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)

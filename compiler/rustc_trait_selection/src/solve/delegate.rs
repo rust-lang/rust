@@ -13,6 +13,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_type_ir::solve::{Certainty, NoSolution, SolverMode};
+use tracing::trace;
 
 use crate::traits::specialization_graph;
 

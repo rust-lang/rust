@@ -2,8 +2,10 @@
 //!
 //! As of writing, only checks that sanity-check assembly test for targets doesn't miss any targets.
 
+use std::collections::HashSet;
+use std::path::Path;
+
 use crate::walk::{filter_not_rust, walk};
-use std::{collections::HashSet, path::Path};
 
 const TARGET_DEFINITIONS_PATH: &str = "compiler/rustc_target/src/spec/targets/";
 const ASSEMBLY_TEST_PATH: &str = "tests/assembly/targets/";

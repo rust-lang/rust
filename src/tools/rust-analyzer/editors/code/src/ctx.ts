@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as lc from "vscode-languageclient/node";
+import type * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 
 import { Config, prepareVSCodeConfig } from "./config";
@@ -22,11 +22,10 @@ import {
 import { execRevealDependency } from "./commands";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
-import type { RustAnalyzerExtensionApi } from "./main";
-import type { JsonProject } from "./rust_project";
 import { prepareTestExplorer } from "./test_explorer";
 import { spawn } from "node:child_process";
 import { text } from "node:stream/consumers";
+import type { RustAnalyzerExtensionApi } from "./main";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -71,7 +70,7 @@ export type CtxInit = Ctx & {
 
 export class Ctx implements RustAnalyzerExtensionApi {
     readonly statusBar: vscode.StatusBarItem;
-    config: Config;
+    readonly config: Config;
     readonly workspace: Workspace;
     readonly version: string;
 
@@ -187,19 +186,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
         }
 
         if (!this._client) {
-            this._serverPath = await bootstrap(this.extCtx, this.config, this.state).catch(
-                (err) => {
-                    let message = "bootstrap error. ";
-
-                    message +=
-                        'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
-                    message +=
-                        'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
-
-                    log.error("Bootstrap error", err);
-                    throw new Error(message);
-                },
-            );
+            this._serverPath = await this.bootstrap();
             text(spawn(this._serverPath, ["--version"]).stdout.setEncoding("utf-8")).then(
                 (data) => {
                     const prefix = `rust-analyzer `;
@@ -224,15 +211,6 @@ export class Ctx implements RustAnalyzerExtensionApi {
             };
 
             let rawInitializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
-            if (this.config.discoverProjectRunner) {
-                const command = `${this.config.discoverProjectRunner}.discoverWorkspaceCommand`;
-                log.info(`running command: ${command}`);
-                const uris = vscode.workspace.textDocuments
-                    .filter(isRustDocument)
-                    .map((document) => document.uri);
-                const projects: JsonProject[] = await vscode.commands.executeCommand(command, uris);
-                this.setWorkspaces(projects);
-            }
 
             if (this.workspace.kind === "Detached Files") {
                 rawInitializationOptions = {
@@ -241,16 +219,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 };
             }
 
-            const initializationOptions = prepareVSCodeConfig(
-                rawInitializationOptions,
-                (key, obj) => {
-                    // we only want to set discovered workspaces on the right key
-                    // and if a workspace has been discovered.
-                    if (key === "linkedProjects" && this.config.discoveredWorkspaces.length > 0) {
-                        obj["linkedProjects"] = this.config.discoveredWorkspaces;
-                    }
-                },
-            );
+            const initializationOptions = prepareVSCodeConfig(rawInitializationOptions);
 
             this._client = await createClient(
                 this.traceOutputChannel,
@@ -270,25 +239,22 @@ export class Ctx implements RustAnalyzerExtensionApi {
                     this.outputChannel!.show();
                 }),
             );
-            this.pushClientCleanup(
-                this._client.onNotification(ra.unindexedProject, async (params) => {
-                    if (this.config.discoverProjectRunner) {
-                        const command = `${this.config.discoverProjectRunner}.discoverWorkspaceCommand`;
-                        log.info(`running command: ${command}`);
-                        const uris = params.textDocuments.map((doc) =>
-                            vscode.Uri.parse(doc.uri, true),
-                        );
-                        const projects: JsonProject[] = await vscode.commands.executeCommand(
-                            command,
-                            uris,
-                        );
-                        this.setWorkspaces(projects);
-                        await this.notifyRustAnalyzer();
-                    }
-                }),
-            );
         }
         return this._client;
+    }
+
+    private async bootstrap(): Promise<string> {
+        return bootstrap(this.extCtx, this.config, this.state).catch((err) => {
+            let message = "bootstrap error. ";
+
+            message +=
+                'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
+            message +=
+                'To enable verbose logs, click the gear icon in the "OUTPUT" tab and select "Debug".';
+
+            log.error("Bootstrap error", err);
+            throw new Error(message);
+        });
     }
 
     async start() {
@@ -399,19 +365,6 @@ export class Ctx implements RustAnalyzerExtensionApi {
         return this.extCtx.subscriptions;
     }
 
-    setWorkspaces(workspaces: JsonProject[]) {
-        this.config.discoveredWorkspaces = workspaces;
-    }
-
-    async notifyRustAnalyzer(): Promise<void> {
-        // this is a workaround to avoid needing writing the `rust-project.json` into
-        // a workspace-level VS Code-specific settings folder. We'd like to keep the
-        // `rust-project.json` entirely in-memory.
-        await this.client?.sendNotification(lc.DidChangeConfigurationNotification.type, {
-            settings: "",
-        });
-    }
-
     private updateCommands(forceDisable?: "disable") {
         this.commandDisposables.forEach((disposable) => disposable.dispose());
         this.commandDisposables = [];
@@ -501,7 +454,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
 
         const toggleCheckOnSave = this.config.checkOnSave ? "Disable" : "Enable";
         statusBar.tooltip.appendMarkdown(
-            `[Extension Info](command:analyzer.serverVersion "Show version and server binary info"): Version ${this.version}, Server Version ${this._serverVersion}` +
+            `[Extension Info](command:rust-analyzer.serverVersion "Show version and server binary info"): Version ${this.version}, Server Version ${this._serverVersion}` +
                 "\n\n---\n\n" +
                 '[$(terminal) Open Logs](command:rust-analyzer.openLogs "Open the server logs")' +
                 "\n\n" +

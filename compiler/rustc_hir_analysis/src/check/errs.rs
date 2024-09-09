@@ -6,7 +6,7 @@ use rustc_span::Span;
 use crate::errors;
 
 /// Check for shared or mutable references of `static mut` inside expression
-pub fn maybe_expr_static_mut(tcx: TyCtxt<'_>, expr: hir::Expr<'_>) {
+pub(crate) fn maybe_expr_static_mut(tcx: TyCtxt<'_>, expr: hir::Expr<'_>) {
     let span = expr.span;
     let hir_id = expr.hir_id;
     if let hir::ExprKind::AddrOf(borrow_kind, m, expr) = expr.kind
@@ -26,7 +26,7 @@ pub fn maybe_expr_static_mut(tcx: TyCtxt<'_>, expr: hir::Expr<'_>) {
 }
 
 /// Check for shared or mutable references of `static mut` inside statement
-pub fn maybe_stmt_static_mut(tcx: TyCtxt<'_>, stmt: hir::Stmt<'_>) {
+pub(crate) fn maybe_stmt_static_mut(tcx: TyCtxt<'_>, stmt: hir::Stmt<'_>) {
     if let hir::StmtKind::Let(loc) = stmt.kind
         && let hir::PatKind::Binding(ba, _, _, _) = loc.pat.kind
         && let hir::ByRef::Yes(rmutbl) = ba.0

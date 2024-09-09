@@ -1,5 +1,6 @@
-#[macro_use]
-extern crate tracing;
+// We need this feature as it changes `dylib` linking behavior and allows us to link to
+// `rustc_driver`.
+#![feature(rustc_private)]
 
 use std::env;
 use std::io::stdout;
@@ -9,6 +10,7 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 use rustfmt_nightly as rustfmt;
+use tracing::debug;
 use tracing_subscriber::EnvFilter;
 
 use crate::rustfmt::{load_config, CliOptions, FormatReportFormatterBuilder, Input, Session};

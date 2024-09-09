@@ -3,8 +3,8 @@ use std::{iter, ops::RangeInclusive};
 use ast::make;
 use either::Either;
 use hir::{
-    DescendPreference, HasSource, HirDisplay, ImportPathConfig, InFile, Local, LocalSource,
-    ModuleDef, PathResolution, Semantics, TypeInfo, TypeParam,
+    HasSource, HirDisplay, InFile, Local, LocalSource, ModuleDef, PathResolution, Semantics,
+    TypeInfo, TypeParam,
 };
 use ide_db::{
     defs::{Definition, NameRefClass},
@@ -23,7 +23,7 @@ use syntax::{
         self, edit::IndentLevel, edit_in_place::Indent, AstNode, AstToken, HasGenericParams,
         HasName,
     },
-    match_ast, ted, SyntaxElement,
+    match_ast, ted, Edition, SyntaxElement,
     SyntaxKind::{self, COMMENT},
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, WalkEvent, T,
 };
@@ -84,7 +84,6 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     };
 
     let body = extraction_target(&node, range)?;
-    let (container_info, contains_tail_expr) = body.analyze_container(&ctx.sema)?;
 
     let (locals_used, self_param) = body.analyze(&ctx.sema);
 
@@ -92,6 +91,9 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     let insert_after = node_to_insert_after(&body, anchor)?;
     let semantics_scope = ctx.sema.scope(&insert_after)?;
     let module = semantics_scope.module();
+    let edition = semantics_scope.krate().edition(ctx.db());
+
+    let (container_info, contains_tail_expr) = body.analyze_container(&ctx.sema, edition)?;
 
     let ret_ty = body.return_ty(ctx)?;
     let control_flow = body.external_control_flow(ctx, &container_info)?;
@@ -213,15 +215,15 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         ctx.sema.db,
                         ModuleDef::from(control_flow_enum),
                         ctx.config.insert_use.prefix_kind,
-                        ImportPathConfig {
-                            prefer_no_std: ctx.config.prefer_no_std,
-                            prefer_prelude: ctx.config.prefer_prelude,
-                            prefer_absolute: ctx.config.prefer_absolute,
-                        },
+                        ctx.config.import_path_config(),
                     );
 
                     if let Some(mod_path) = mod_path {
-                        insert_use(&scope, mod_path_to_ast(&mod_path), &ctx.config.insert_use);
+                        insert_use(
+                            &scope,
+                            mod_path_to_ast(&mod_path, edition),
+                            &ctx.config.insert_use,
+                        );
                     }
                 }
             }
@@ -242,7 +244,13 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef {
     let mut names_in_scope = vec![];
     semantics_scope.process_all_names(&mut |name, _| {
-        names_in_scope.push(name.display(semantics_scope.db.upcast()).to_string())
+        names_in_scope.push(
+            name.display(
+                semantics_scope.db.upcast(),
+                semantics_scope.krate().edition(semantics_scope.db),
+            )
+            .to_string(),
+        )
     });
 
     let default_name = "fun_name";
@@ -370,6 +378,7 @@ struct ContainerInfo {
     ret_type: Option<hir::Type>,
     generic_param_lists: Vec<ast::GenericParamList>,
     where_clauses: Vec<ast::WhereClause>,
+    edition: Edition,
 }
 
 /// Control flow that is exported from extracted function
@@ -493,8 +502,8 @@ impl Param {
         }
     }
 
-    fn to_arg(&self, ctx: &AssistContext<'_>) -> ast::Expr {
-        let var = path_expr_from_local(ctx, self.var);
+    fn to_arg(&self, ctx: &AssistContext<'_>, edition: Edition) -> ast::Expr {
+        let var = path_expr_from_local(ctx, self.var, edition);
         match self.kind() {
             ParamKind::Value | ParamKind::MutValue => var,
             ParamKind::SharedRef => make::expr_ref(var, false),
@@ -502,8 +511,13 @@ impl Param {
         }
     }
 
-    fn to_param(&self, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Param {
-        let var = self.var.name(ctx.db()).display(ctx.db()).to_string();
+    fn to_param(
+        &self,
+        ctx: &AssistContext<'_>,
+        module: hir::Module,
+        edition: Edition,
+    ) -> ast::Param {
+        let var = self.var.name(ctx.db()).display(ctx.db(), edition).to_string();
         let var_name = make::name(&var);
         let pat = match self.kind() {
             ParamKind::MutValue => make::ident_pat(false, true, var_name),
@@ -524,7 +538,7 @@ impl Param {
 }
 
 impl TryKind {
-    fn of_ty(ty: hir::Type, ctx: &AssistContext<'_>) -> Option<TryKind> {
+    fn of_ty(ty: hir::Type, ctx: &AssistContext<'_>, edition: Edition) -> Option<TryKind> {
         if ty.is_unknown() {
             // We favour Result for `expr?`
             return Some(TryKind::Result { ty });
@@ -533,7 +547,7 @@ impl TryKind {
         let name = adt.name(ctx.db());
         // FIXME: use lang items to determine if it is std type or user defined
         //        E.g. if user happens to define type named `Option`, we would have false positive
-        let name = &name.display(ctx.db()).to_string();
+        let name = &name.display(ctx.db(), edition).to_string();
         match name.as_str() {
             "Option" => Some(TryKind::Option),
             "Result" => Some(TryKind::Result { ty }),
@@ -820,7 +834,7 @@ impl FunctionBody {
                         .descendants_with_tokens()
                         .filter_map(SyntaxElement::into_token)
                         .filter(|it| matches!(it.kind(), SyntaxKind::IDENT | T![self]))
-                        .flat_map(|t| sema.descend_into_macros(DescendPreference::None, t))
+                        .flat_map(|t| sema.descend_into_macros_exact(t))
                         .for_each(|t| add_name_if_local(t.parent().and_then(ast::NameRef::cast)));
                 }
             }
@@ -832,6 +846,7 @@ impl FunctionBody {
     fn analyze_container(
         &self,
         sema: &Semantics<'_, RootDatabase>,
+        edition: Edition,
     ) -> Option<(ContainerInfo, bool)> {
         let mut ancestors = self.parent()?.ancestors();
         let infer_expr_opt = |expr| sema.type_of_expr(&expr?).map(TypeInfo::adjusted);
@@ -931,6 +946,7 @@ impl FunctionBody {
                 ret_type: ty,
                 generic_param_lists,
                 where_clauses,
+                edition,
             },
             contains_tail_expr,
         ))
@@ -1019,7 +1035,7 @@ impl FunctionBody {
         let kind = match (try_expr, ret_expr, break_expr, continue_expr) {
             (Some(_), _, None, None) => {
                 let ret_ty = container_info.ret_type.clone()?;
-                let kind = TryKind::of_ty(ret_ty, ctx)?;
+                let kind = TryKind::of_ty(ret_ty, ctx, container_info.edition)?;
 
                 Some(FlowKind::Try { kind })
             }
@@ -1401,7 +1417,7 @@ fn fixup_call_site(builder: &mut SourceChangeBuilder, body: &FunctionBody) {
 fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> SyntaxNode {
     let ret_ty = fun.return_type(ctx);
 
-    let args = make::arg_list(fun.params.iter().map(|param| param.to_arg(ctx)));
+    let args = make::arg_list(fun.params.iter().map(|param| param.to_arg(ctx, fun.mods.edition)));
     let name = fun.name.clone();
     let mut call_expr = if fun.self_param.is_some() {
         let self_arg = make::expr_path(make::ext::ident_path("self"));
@@ -1424,13 +1440,13 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> Sy
         [] => None,
         [var] => {
             let name = var.local.name(ctx.db());
-            let name = make::name(&name.display(ctx.db()).to_string());
+            let name = make::name(&name.display(ctx.db(), fun.mods.edition).to_string());
             Some(ast::Pat::IdentPat(make::ident_pat(false, var.mut_usage_outside_body, name)))
         }
         vars => {
             let binding_pats = vars.iter().map(|var| {
                 let name = var.local.name(ctx.db());
-                let name = make::name(&name.display(ctx.db()).to_string());
+                let name = make::name(&name.display(ctx.db(), fun.mods.edition).to_string());
                 make::ident_pat(false, var.mut_usage_outside_body, name).into()
             });
             Some(ast::Pat::TuplePat(make::tuple_pat(binding_pats)))
@@ -1573,8 +1589,8 @@ impl FlowHandler {
     }
 }
 
-fn path_expr_from_local(ctx: &AssistContext<'_>, var: Local) -> ast::Expr {
-    let name = var.name(ctx.db()).display(ctx.db()).to_string();
+fn path_expr_from_local(ctx: &AssistContext<'_>, var: Local, edition: Edition) -> ast::Expr {
+    let name = var.name(ctx.db()).display(ctx.db(), edition).to_string();
     make::expr_path(make::ext::ident_path(&name))
 }
 
@@ -1585,7 +1601,7 @@ fn format_function(
     old_indent: IndentLevel,
 ) -> ast::Fn {
     let fun_name = make::name(&fun.name.text());
-    let params = fun.make_param_list(ctx, module);
+    let params = fun.make_param_list(ctx, module, fun.mods.edition);
     let ret_ty = fun.make_ret_ty(ctx, module);
     let body = make_body(ctx, old_indent, fun);
     let (generic_params, where_clause) = make_generic_params_and_where_clause(ctx, fun);
@@ -1601,6 +1617,7 @@ fn format_function(
         fun.control_flow.is_async,
         fun.mods.is_const,
         fun.control_flow.is_unsafe,
+        false,
     )
 }
 
@@ -1711,9 +1728,14 @@ impl Function {
         type_params_in_descendant_paths.chain(type_params_in_params).collect()
     }
 
-    fn make_param_list(&self, ctx: &AssistContext<'_>, module: hir::Module) -> ast::ParamList {
+    fn make_param_list(
+        &self,
+        ctx: &AssistContext<'_>,
+        module: hir::Module,
+        edition: Edition,
+    ) -> ast::ParamList {
         let self_param = self.self_param.clone();
-        let params = self.params.iter().map(|param| param.to_param(ctx, module));
+        let params = self.params.iter().map(|param| param.to_param(ctx, module, edition));
         make::param_list(self_param, params)
     }
 
@@ -1846,10 +1868,12 @@ fn make_body(ctx: &AssistContext<'_>, old_indent: IndentLevel, fun: &Function) -
                 None => match fun.outliving_locals.as_slice() {
                     [] => {}
                     [var] => {
-                        tail_expr = Some(path_expr_from_local(ctx, var.local));
+                        tail_expr = Some(path_expr_from_local(ctx, var.local, fun.mods.edition));
                     }
                     vars => {
-                        let exprs = vars.iter().map(|var| path_expr_from_local(ctx, var.local));
+                        let exprs = vars
+                            .iter()
+                            .map(|var| path_expr_from_local(ctx, var.local, fun.mods.edition));
                         let expr = make::expr_tuple(exprs);
                         tail_expr = Some(expr);
                     }
@@ -5626,7 +5650,7 @@ fn func<T: Debug>(i: Struct<'_, T>) {
     fun_name(i);
 }
 
-fn $0fun_name(i: Struct<T>) {
+fn $0fun_name(i: Struct<'_, T>) {
     foo(i);
 }
 "#,

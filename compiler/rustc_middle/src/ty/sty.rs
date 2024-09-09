@@ -2,14 +2,11 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use crate::infer::canonical::Canonical;
-use crate::ty::InferTy::*;
-use crate::ty::{
-    self, AdtDef, BoundRegionKind, Discr, Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
-};
-use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
-use crate::ty::{List, ParamEnv};
+use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
+use std::iter;
+use std::ops::{ControlFlow, Range};
+
 use hir::def::{CtorKind, DefKind};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
@@ -22,16 +19,17 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi;
 use rustc_type_ir::visit::TypeVisitableExt;
-use std::assert_matches::debug_assert_matches;
-use std::borrow::Cow;
-use std::iter;
-use std::ops::{ControlFlow, Range};
-use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
-
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
+use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
 use super::GenericParamDefKind;
+use crate::infer::canonical::Canonical;
+use crate::ty::InferTy::*;
+use crate::ty::{
+    self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
+    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+};
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
 #[rustc_diagnostic_item = "TyKind"]
@@ -660,7 +658,8 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_fn_ptr(tcx: TyCtxt<'tcx>, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        Ty::new(tcx, FnPtr(fty))
+        let (sig_tys, hdr) = fty.split();
+        Ty::new(tcx, FnPtr(sig_tys, hdr))
     }
 
     #[inline]
@@ -971,6 +970,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
 /// Type utilities
 impl<'tcx> Ty<'tcx> {
+    // It would be nicer if this returned the value instead of a reference,
+    // like how `Predicate::kind` and `Region::kind` do. (It would result in
+    // many fewer subsequent dereferences.) But that gives a small but
+    // noticeable performance hit. See #126069 for details.
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
         self.0.0
@@ -997,7 +1000,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_primitive(self) -> bool {
-        self.kind().is_primitive()
+        matches!(self.kind(), Bool | Char | Int(_) | Uint(_) | Float(_))
     }
 
     #[inline]
@@ -1146,7 +1149,10 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Tests whether this is a Box using the global allocator.
+    /// Tests whether this is a Box definitely using the global allocator.
+    ///
+    /// If the allocator is still generic, the answer is `false`, but it may
+    /// later turn out that it does use the global allocator.
     #[inline]
     pub fn is_box_global(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
@@ -1164,12 +1170,17 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Panics if called on any type other than `Box<T>`.
-    pub fn boxed_ty(self) -> Ty<'tcx> {
+    pub fn boxed_ty(self) -> Option<Ty<'tcx>> {
         match self.kind() {
-            Adt(def, args) if def.is_box() => args.type_at(0),
-            _ => bug!("`boxed_ty` is called on non-box type {:?}", self),
+            Adt(def, args) if def.is_box() => Some(args.type_at(0)),
+            _ => None,
         }
+    }
+
+    /// Panics if called on any type other than `Box<T>`.
+    pub fn expect_boxed_ty(self) -> Ty<'tcx> {
+        self.boxed_ty()
+            .unwrap_or_else(|| bug!("`expect_boxed_ty` is called on non-box type {:?}", self))
     }
 
     /// A scalar type is one that denotes an atomic datum, with no sub-components.
@@ -1184,7 +1195,7 @@ impl<'tcx> Ty<'tcx> {
                 | Float(_)
                 | Uint(_)
                 | FnDef(..)
-                | FnPtr(_)
+                | FnPtr(..)
                 | RawPtr(_, _)
                 | Infer(IntVar(_) | FloatVar(_))
         )
@@ -1317,7 +1328,7 @@ impl<'tcx> Ty<'tcx> {
     /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'tcx>> {
         match *self.kind() {
-            Adt(def, _) if def.is_box() => Some(self.boxed_ty()),
+            _ if let Some(boxed) = self.boxed_ty() => Some(boxed),
             Ref(_, ty, _) => Some(ty),
             RawPtr(ty, _) if explicit => Some(ty),
             _ => None,
@@ -1335,7 +1346,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
-            FnPtr(f) => *f,
+            FnPtr(sig_tys, hdr) => sig_tys.with(*hdr),
             Error(_) => {
                 // ignore errors (#54954)
                 Binder::dummy(ty::FnSig {
@@ -1354,12 +1365,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_fn(self) -> bool {
-        matches!(self.kind(), FnDef(..) | FnPtr(_))
+        matches!(self.kind(), FnDef(..) | FnPtr(..))
     }
 
     #[inline]
     pub fn is_fn_ptr(self) -> bool {
-        matches!(self.kind(), FnPtr(_))
+        matches!(self.kind(), FnPtr(..))
     }
 
     #[inline]
@@ -1592,7 +1603,7 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
-        let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
+        let tail = tcx.struct_tail_raw(self, normalize, || {});
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -1601,7 +1612,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -1616,10 +1627,10 @@ impl<'tcx> Ty<'tcx> {
             | ty::Foreign(..)
             // `dyn*` has metadata = ().
             | ty::Dynamic(_, _, ty::DynStar)
-            // If returned by `struct_tail_with_normalize` this is a unit struct
+            // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
-            // If returned by `struct_tail_with_normalize` this is the empty tuple,
+            // If returned by `struct_tail_raw` this is the empty tuple,
             // a.k.a. unit type, which is Sized
             | ty::Tuple(..) => Ok(tcx.types.unit),
 
@@ -1793,7 +1804,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -1917,14 +1928,14 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn is_c_void(self, tcx: TyCtxt<'_>) -> bool {
         match self.kind() {
-            ty::Adt(adt, _) => tcx.lang_items().get(LangItem::CVoid) == Some(adt.did()),
+            ty::Adt(adt, _) => tcx.is_lang_item(adt.did(), LangItem::CVoid),
             _ => false,
         }
     }
 
     /// Returns `true` when the outermost type cannot be further normalized,
     /// resolved, or instantiated. This includes all primitive types, but also
-    /// things like ADTs and trait objects, sice even if their arguments or
+    /// things like ADTs and trait objects, since even if their arguments or
     /// nested types may be further simplified, the outermost [`TyKind`] or
     /// type constructor remains the same.
     pub fn is_known_rigid(self) -> bool {
@@ -1943,7 +1954,7 @@ impl<'tcx> Ty<'tcx> {
             | RawPtr(_, _)
             | Ref(_, _, _)
             | FnDef(_, _)
-            | FnPtr(_)
+            | FnPtr(..)
             | Dynamic(_, _, _)
             | Closure(_, _)
             | CoroutineClosure(_, _)
@@ -1957,19 +1968,23 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
-    fn split_inputs_and_output(self) -> (&'tcx [Ty<'tcx>], Ty<'tcx>) {
-        let (output, inputs) = self.split_last().unwrap();
-        (inputs, *output)
+    fn inputs(self) -> &'tcx [Ty<'tcx>] {
+        self.split_last().unwrap().1
+    }
+
+    fn output(self) -> Ty<'tcx> {
+        *self.split_last().unwrap().0
     }
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ty::RegionKind<'_>, 24);
-    static_assert_size!(ty::TyKind<'_>, 32);
+    static_assert_size!(ty::TyKind<'_>, 24);
     // tidy-alphabetical-end
 }

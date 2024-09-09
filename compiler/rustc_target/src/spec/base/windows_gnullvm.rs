@@ -1,7 +1,8 @@
-use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
 use std::borrow::Cow;
 
-pub fn opts() -> TargetOptions {
+use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
+
+pub(crate) fn opts() -> TargetOptions {
     // We cannot use `-nodefaultlibs` because compiler-rt has to be passed
     // as a path since it's not added to linker search path by the default.
     // There were attempts to make it behave like libgcc (so one can just use -l<name>)

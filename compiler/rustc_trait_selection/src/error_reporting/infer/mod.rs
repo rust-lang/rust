@@ -60,15 +60,15 @@ use rustc_hir::{self as hir};
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
-use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::error::TypeErrorToStringExt;
+use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError, PrintTraitRefExt as _};
 use rustc_middle::ty::{
-    self, error::TypeError, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt,
+    self, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt,
 };
 use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
+use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
@@ -348,8 +348,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
-                    && ty.is_box()
-                    && ty.boxed_ty() == found
+                    && ty.boxed_ty() == Some(found)
                     && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
                 {
                     err.span_suggestion(
@@ -1088,9 +1087,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 values
             }
 
-            (ty::FnDef(did1, args1), ty::FnPtr(sig2)) => {
+            (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
-                let mut values = self.cmp_fn_sig(&sig1, sig2);
+                let mut values = self.cmp_fn_sig(&sig1, &sig_tys2.with(*hdr2));
                 values.0.push_highlighted(format!(
                     " {{{}}}",
                     self.tcx.def_path_str_with_args(*did1, args1)
@@ -1098,16 +1097,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 values
             }
 
-            (ty::FnPtr(sig1), ty::FnDef(did2, args2)) => {
+            (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                let mut values = self.cmp_fn_sig(sig1, &sig2);
+                let mut values = self.cmp_fn_sig(&sig_tys1.with(*hdr1), &sig2);
                 values
                     .1
                     .push_normal(format!(" {{{}}}", self.tcx.def_path_str_with_args(*did2, args2)));
                 values
             }
 
-            (ty::FnPtr(sig1), ty::FnPtr(sig2)) => self.cmp_fn_sig(sig1, sig2),
+            (ty::FnPtr(sig_tys1, hdr1), ty::FnPtr(sig_tys2, hdr2)) => {
+                self.cmp_fn_sig(&sig_tys1.with(*hdr1), &sig_tys2.with(*hdr2))
+            }
 
             _ => {
                 let mut strs = (DiagStyledString::new(), DiagStyledString::new());

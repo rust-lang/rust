@@ -1,6 +1,5 @@
-use super::{probe, MethodCallee};
+use std::ops::Deref;
 
-use crate::{callee, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
@@ -12,17 +11,21 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
-use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, UserArgs, UserType,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, UserArgs,
+    UserType,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
+use tracing::debug;
 
-use std::ops::Deref;
+use super::{probe, MethodCallee};
+use crate::{callee, FnCtxt};
 
 struct ConfirmContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -40,13 +43,13 @@ impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-pub struct ConfirmResult<'tcx> {
+pub(crate) struct ConfirmResult<'tcx> {
     pub callee: MethodCallee<'tcx>,
     pub illegal_sized_bound: Option<Span>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn confirm_method(
+    pub(crate) fn confirm_method(
         &self,
         span: Span,
         self_expr: &'tcx hir::Expr<'tcx>,
@@ -64,7 +67,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         confirm_cx.confirm(unadjusted_self_ty, pick, segment)
     }
 
-    pub fn confirm_method_for_diagnostic(
+    pub(crate) fn confirm_method_for_diagnostic(
         &self,
         span: Span,
         self_expr: &'tcx hir::Expr<'tcx>,
@@ -246,7 +249,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     }
 
     /// Returns a set of generic parameters for the method *receiver* where all type and region
-    /// parameters are instantiated with fresh variables. This generic paramters does not include any
+    /// parameters are instantiated with fresh variables. This generic parameters does not include any
     /// parameters declared on the method itself.
     ///
     /// Note that this generic parameters may include late-bound regions from the impl level. If so,
@@ -268,6 +271,17 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             probe::ObjectPick => {
                 let trait_def_id = pick.item.container_id(self.tcx);
+
+                // This shouldn't happen for non-region error kinds, but may occur
+                // when we have error regions. Specifically, since we canonicalize
+                // during method steps, we may successfully deref when we assemble
+                // the pick, but fail to deref when we try to extract the object
+                // type from the pick during confirmation. This is fine, we're basically
+                // already doomed by this point.
+                if self_ty.references_error() {
+                    return ty::GenericArgs::extend_with_error(self.tcx, trait_def_id, &[]);
+                }
+
                 self.extract_existential_trait_ref(self_ty, |this, object_ty, principal| {
                     // The object data has no entry for the Self
                     // Type. For the purposes of this method call, we
@@ -361,7 +375,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             IsMethodCall::Yes,
         );
 
-        // Create generic paramters for early-bound lifetime parameters,
+        // Create generic parameters for early-bound lifetime parameters,
         // combining parameters from the type and those from the method.
         assert_eq!(generics.parent_count, parent_args.len());
 
@@ -532,7 +546,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         debug!("instantiate_method_sig(pick={:?}, all_args={:?})", pick, all_args);
 
         // Instantiate the bounds on the method with the
-        // type/early-bound-regions instatiations performed. There can
+        // type/early-bound-regions instantiations performed. There can
         // be no late-bound regions appearing here.
         let def_id = pick.item.def_id;
         let method_predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, all_args);
@@ -641,17 +655,17 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             traits::upcast_choices(self.tcx, source_trait_ref, target_trait_def_id);
 
         // must be exactly one trait ref or we'd get an ambig error etc
-        if upcast_trait_refs.len() != 1 {
+        let [upcast_trait_ref] = upcast_trait_refs.as_slice() else {
             span_bug!(
                 self.span,
                 "cannot uniquely upcast `{:?}` to `{:?}`: `{:?}`",
                 source_trait_ref,
                 target_trait_def_id,
                 upcast_trait_refs
-            );
-        }
+            )
+        };
 
-        upcast_trait_refs.into_iter().next().unwrap()
+        *upcast_trait_ref
     }
 
     fn instantiate_binder_with_fresh_vars<T>(&self, value: ty::Binder<'tcx, T>) -> T

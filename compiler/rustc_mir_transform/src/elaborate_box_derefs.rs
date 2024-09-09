@@ -62,11 +62,13 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
         let base_ty = self.local_decls[place.local].ty;
 
         // Derefer ensures that derefs are always the first projection
-        if place.projection.first() == Some(&PlaceElem::Deref) && base_ty.is_box() {
+        if let Some(PlaceElem::Deref) = place.projection.first()
+            && let Some(boxed_ty) = base_ty.boxed_ty()
+        {
             let source_info = self.local_decls[place.local].source_info;
 
             let (unique_ty, nonnull_ty, ptr_ty) =
-                build_ptr_tys(tcx, base_ty.boxed_ty(), self.unique_did, self.nonnull_did);
+                build_ptr_tys(tcx, boxed_ty, self.unique_did, self.nonnull_did);
 
             let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
 
@@ -88,7 +90,7 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
 
 pub struct ElaborateBoxDerefs;
 
-impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
+impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if let Some(def_id) = tcx.lang_items().owned_box() {
             let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::ZERO].did;
@@ -116,29 +118,32 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
             for debug_info in body.var_debug_info.iter_mut() {
                 if let VarDebugInfoContents::Place(place) = &mut debug_info.value {
                     let mut new_projections: Option<Vec<_>> = None;
-                    let mut last_deref = 0;
 
-                    for (i, (base, elem)) in place.iter_projections().enumerate() {
+                    for (base, elem) in place.iter_projections() {
                         let base_ty = base.ty(&body.local_decls, tcx).ty;
 
-                        if elem == PlaceElem::Deref && base_ty.is_box() {
-                            let new_projections = new_projections.get_or_insert_default();
+                        if let PlaceElem::Deref = elem
+                            && let Some(boxed_ty) = base_ty.boxed_ty()
+                        {
+                            // Clone the projections before us, since now we need to mutate them.
+                            let new_projections =
+                                new_projections.get_or_insert_with(|| base.projection.to_vec());
 
                             let (unique_ty, nonnull_ty, ptr_ty) =
-                                build_ptr_tys(tcx, base_ty.boxed_ty(), unique_did, nonnull_did);
+                                build_ptr_tys(tcx, boxed_ty, unique_did, nonnull_did);
 
-                            new_projections.extend_from_slice(&base.projection[last_deref..]);
                             new_projections.extend_from_slice(&build_projection(
                                 unique_ty, nonnull_ty, ptr_ty,
                             ));
                             new_projections.push(PlaceElem::Deref);
-
-                            last_deref = i;
+                        } else if let Some(new_projections) = new_projections.as_mut() {
+                            // Keep building up our projections list once we've started it.
+                            new_projections.push(elem);
                         }
                     }
 
-                    if let Some(mut new_projections) = new_projections {
-                        new_projections.extend_from_slice(&place.projection[last_deref..]);
+                    // Store the mutated projections if we actually changed something.
+                    if let Some(new_projections) = new_projections {
                         place.projection = tcx.mk_place_elems(&new_projections);
                     }
                 }

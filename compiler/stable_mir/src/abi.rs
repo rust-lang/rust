@@ -1,14 +1,14 @@
-use crate::compiler_interface::with;
-use crate::error;
-use crate::mir::FieldIdx;
-use crate::target::{MachineInfo, MachineSize as Size};
-use crate::ty::{Align, IndexedVal, Ty, VariantIdx};
-use crate::Error;
-use crate::Opaque;
-use serde::Serialize;
 use std::fmt::{self, Debug};
 use std::num::NonZero;
 use std::ops::RangeInclusive;
+
+use serde::Serialize;
+
+use crate::compiler_interface::with;
+use crate::mir::FieldIdx;
+use crate::target::{MachineInfo, MachineSize as Size};
+use crate::ty::{Align, IndexedVal, Ty, VariantIdx};
+use crate::{error, Error, Opaque};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -70,7 +70,7 @@ pub struct TyAndLayout {
 /// The layout of a type in memory.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct LayoutShape {
-    /// The fields location withing the layout
+    /// The fields location within the layout
     pub fields: FieldsShape,
 
     /// Encodes information about multi-variant layouts.

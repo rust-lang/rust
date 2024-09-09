@@ -1,6 +1,6 @@
 use std::iter::successors;
 
-use hir::{DescendPreference, Semantics};
+use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
     algo::{self, skip_trivia_token},
@@ -26,7 +26,7 @@ use crate::FileRange;
 // image::https://user-images.githubusercontent.com/48062697/113020651-b42fc800-917a-11eb-8a4f-cf1a07859fac.gif[]
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let sema = Semantics::new(db);
-    let src = sema.parse(frange.file_id);
+    let src = sema.parse_guess_edition(frange.file_id);
     try_extend_selection(&sema, src.syntax(), frange).unwrap_or(frange.range)
 }
 
@@ -140,10 +140,8 @@ fn extend_tokens_from_range(
 
     // compute original mapped token range
     let extended = {
-        let fst_expanded =
-            sema.descend_into_macros_single(DescendPreference::None, first_token.clone());
-        let lst_expanded =
-            sema.descend_into_macros_single(DescendPreference::None, last_token.clone());
+        let fst_expanded = sema.descend_into_macros_single_exact(first_token.clone());
+        let lst_expanded = sema.descend_into_macros_single_exact(last_token.clone());
         let mut lca =
             algo::least_common_ancestor(&fst_expanded.parent()?, &lst_expanded.parent()?)?;
         lca = shallowest_node(&lca);
@@ -157,7 +155,7 @@ fn extend_tokens_from_range(
     let validate = || {
         let extended = &extended;
         move |token: &SyntaxToken| -> bool {
-            let expanded = sema.descend_into_macros_single(DescendPreference::None, token.clone());
+            let expanded = sema.descend_into_macros_single_exact(token.clone());
             let parent = match expanded.parent() {
                 Some(it) => it,
                 None => return false,

@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -92,11 +92,10 @@ impl SemicolonBlock {
             semi_span,
             "consider moving the `;` inside the block for consistent formatting",
             |diag| {
-                multispan_sugg_with_applicability(
-                    diag,
+                diag.multipart_suggestion(
                     "put the `;` here",
+                    vec![(remove_span, String::new()), (insert_span, ";".to_owned())],
                     Applicability::MachineApplicable,
-                    [(remove_span, String::new()), (insert_span, ";".to_owned())],
                 );
             },
         );
@@ -124,11 +123,10 @@ impl SemicolonBlock {
             block.span,
             "consider moving the `;` outside the block for consistent formatting",
             |diag| {
-                multispan_sugg_with_applicability(
-                    diag,
+                diag.multipart_suggestion(
                     "put the `;` here",
+                    vec![(remove_span, String::new()), (insert_span, ";".to_owned())],
                     Applicability::MachineApplicable,
-                    [(remove_span, String::new()), (insert_span, ";".to_owned())],
                 );
             },
         );

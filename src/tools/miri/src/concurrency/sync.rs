@@ -66,6 +66,27 @@ pub(super) use declare_id;
 
 declare_id!(MutexId);
 
+/// The mutex kind.
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub enum MutexKind {
+    Invalid,
+    Normal,
+    Default,
+    Recursive,
+    ErrorCheck,
+}
+
+#[derive(Debug)]
+/// Additional data that may be used by shim implementations.
+pub struct AdditionalMutexData {
+    /// The mutex kind, used by some mutex implementations like pthreads mutexes.
+    pub kind: MutexKind,
+
+    /// The address of the mutex.
+    pub address: u64,
+}
+
 /// The mutex state.
 #[derive(Default, Debug)]
 struct Mutex {
@@ -77,6 +98,9 @@ struct Mutex {
     queue: VecDeque<ThreadId>,
     /// Mutex clock. This tracks the moment of the last unlock.
     clock: VClock,
+
+    /// Additional data that can be set by shim implementations.
+    data: Option<AdditionalMutexData>,
 }
 
 declare_id!(RwLockId);
@@ -164,25 +188,31 @@ pub struct SynchronizationObjects {
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Lazily initialize the ID of this Miri sync structure.
-    /// ('0' indicates uninit.)
+    /// If memory stores '0', that indicates uninit and we generate a new instance.
+    /// Returns `None` if memory stores a non-zero invalid ID.
+    ///
+    /// `get_objs` must return the `IndexVec` that stores all the objects of this type.
+    /// `create_obj` must create the new object if initialization is needed.
     #[inline]
-    fn get_or_create_id<Id: SyncId>(
+    fn get_or_create_id<Id: SyncId + Idx, T>(
         &mut self,
-        next_id: Id,
         lock_op: &OpTy<'tcx>,
         lock_layout: TyAndLayout<'tcx>,
         offset: u64,
+        get_objs: impl for<'a> Fn(&'a mut MiriInterpCx<'tcx>) -> &'a mut IndexVec<Id, T>,
+        create_obj: impl for<'a> FnOnce(&'a mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
     ) -> InterpResult<'tcx, Option<Id>> {
         let this = self.eval_context_mut();
         let value_place =
             this.deref_pointer_and_offset(lock_op, offset, lock_layout, this.machine.layouts.u32)?;
+        let next_index = get_objs(this).next_index();
 
         // Since we are lazy, this update has to be atomic.
         let (old, success) = this
             .atomic_compare_exchange_scalar(
                 &value_place,
                 &ImmTy::from_uint(0u32, this.machine.layouts.u32),
-                Scalar::from_u32(next_id.to_u32()),
+                Scalar::from_u32(next_index.to_u32()),
                 AtomicRwOrd::Relaxed, // deliberately *no* synchronization
                 AtomicReadOrd::Relaxed,
                 false,
@@ -190,74 +220,47 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .to_scalar_pair();
 
         Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
-            // Caller of the closure needs to allocate next_id
-            None
+            // We set the in-memory ID to `next_index`, now also create this object in the machine
+            // state.
+            let obj = create_obj(this)?;
+            let new_index = get_objs(this).push(obj);
+            assert_eq!(next_index, new_index);
+            Some(new_index)
         } else {
-            Some(Id::from_u32(old.to_u32().expect("layout is u32")))
+            let id = Id::from_u32(old.to_u32().expect("layout is u32"));
+            if get_objs(this).get(id).is_none() {
+                // The in-memory ID is invalid.
+                None
+            } else {
+                Some(id)
+            }
         })
     }
 
-    /// Provides the closure with the next MutexId. Creates that mutex if the closure returns None,
-    /// otherwise returns the value from the closure.
-    #[inline]
-    fn mutex_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, MutexId>
-    where
-        F: FnOnce(&mut MiriInterpCx<'tcx>, MutexId) -> InterpResult<'tcx, Option<MutexId>>,
-    {
+    /// Eagerly creates a Miri sync structure.
+    ///
+    /// `create_id` will store the index of the sync_structure in the memory pointed to by
+    /// `lock_op`, so that future calls to `get_or_create_id` will see it as initialized.
+    /// - `lock_op` must hold a pointer to the sync structure.
+    /// - `lock_layout` must be the memory layout of the sync structure.
+    /// - `offset` must be the offset inside the sync structure where its miri id will be stored.
+    /// - `get_objs` is described in `get_or_create_id`.
+    /// - `obj` must be the new sync object.
+    fn create_id<Id: SyncId + Idx, T>(
+        &mut self,
+        lock_op: &OpTy<'tcx>,
+        lock_layout: TyAndLayout<'tcx>,
+        offset: u64,
+        get_objs: impl for<'a> Fn(&'a mut MiriInterpCx<'tcx>) -> &'a mut IndexVec<Id, T>,
+        obj: T,
+    ) -> InterpResult<'tcx, Id> {
         let this = self.eval_context_mut();
-        let next_index = this.machine.sync.mutexes.next_index();
-        if let Some(old) = existing(this, next_index)? {
-            if this.machine.sync.mutexes.get(old).is_none() {
-                throw_ub_format!("mutex has invalid ID");
-            }
-            Ok(old)
-        } else {
-            let new_index = this.machine.sync.mutexes.push(Default::default());
-            assert_eq!(next_index, new_index);
-            Ok(new_index)
-        }
-    }
+        let value_place =
+            this.deref_pointer_and_offset(lock_op, offset, lock_layout, this.machine.layouts.u32)?;
 
-    /// Provides the closure with the next RwLockId. Creates that RwLock if the closure returns None,
-    /// otherwise returns the value from the closure.
-    #[inline]
-    fn rwlock_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, RwLockId>
-    where
-        F: FnOnce(&mut MiriInterpCx<'tcx>, RwLockId) -> InterpResult<'tcx, Option<RwLockId>>,
-    {
-        let this = self.eval_context_mut();
-        let next_index = this.machine.sync.rwlocks.next_index();
-        if let Some(old) = existing(this, next_index)? {
-            if this.machine.sync.rwlocks.get(old).is_none() {
-                throw_ub_format!("rwlock has invalid ID");
-            }
-            Ok(old)
-        } else {
-            let new_index = this.machine.sync.rwlocks.push(Default::default());
-            assert_eq!(next_index, new_index);
-            Ok(new_index)
-        }
-    }
-
-    /// Provides the closure with the next CondvarId. Creates that Condvar if the closure returns None,
-    /// otherwise returns the value from the closure.
-    #[inline]
-    fn condvar_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, CondvarId>
-    where
-        F: FnOnce(&mut MiriInterpCx<'tcx>, CondvarId) -> InterpResult<'tcx, Option<CondvarId>>,
-    {
-        let this = self.eval_context_mut();
-        let next_index = this.machine.sync.condvars.next_index();
-        if let Some(old) = existing(this, next_index)? {
-            if this.machine.sync.condvars.get(old).is_none() {
-                throw_ub_format!("condvar has invalid ID");
-            }
-            Ok(old)
-        } else {
-            let new_index = this.machine.sync.condvars.push(Default::default());
-            assert_eq!(next_index, new_index);
-            Ok(new_index)
-        }
+        let new_index = get_objs(this).push(obj);
+        this.write_scalar(Scalar::from_u32(new_index.to_u32()), &value_place)?;
+        Ok(new_index)
     }
 
     fn condvar_reacquire_mutex(
@@ -286,16 +289,53 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 // situations.
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Eagerly create and initialize a new mutex.
+    fn mutex_create(
+        &mut self,
+        lock_op: &OpTy<'tcx>,
+        lock_layout: TyAndLayout<'tcx>,
+        offset: u64,
+        data: Option<AdditionalMutexData>,
+    ) -> InterpResult<'tcx, MutexId> {
+        let this = self.eval_context_mut();
+        this.create_id(
+            lock_op,
+            lock_layout,
+            offset,
+            |ecx| &mut ecx.machine.sync.mutexes,
+            Mutex { data, ..Default::default() },
+        )
+    }
+
+    /// Lazily create a new mutex.
+    /// `initialize_data` must return any additional data that a user wants to associate with the mutex.
     fn mutex_get_or_create_id(
         &mut self,
         lock_op: &OpTy<'tcx>,
         lock_layout: TyAndLayout<'tcx>,
         offset: u64,
+        initialize_data: impl for<'a> FnOnce(
+            &'a mut MiriInterpCx<'tcx>,
+        ) -> InterpResult<'tcx, Option<AdditionalMutexData>>,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
-        this.mutex_get_or_create(|ecx, next_id| {
-            ecx.get_or_create_id(next_id, lock_op, lock_layout, offset)
-        })
+        this.get_or_create_id(
+            lock_op,
+            lock_layout,
+            offset,
+            |ecx| &mut ecx.machine.sync.mutexes,
+            |ecx| initialize_data(ecx).map(|data| Mutex { data, ..Default::default() }),
+        )?
+        .ok_or_else(|| err_ub_format!("mutex has invalid ID").into())
+    }
+
+    /// Retrieve the additional data stored for a mutex.
+    fn mutex_get_data<'a>(&'a mut self, id: MutexId) -> Option<&'a AdditionalMutexData>
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_ref();
+        this.machine.sync.mutexes[id].data.as_ref()
     }
 
     fn rwlock_get_or_create_id(
@@ -305,9 +345,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         offset: u64,
     ) -> InterpResult<'tcx, RwLockId> {
         let this = self.eval_context_mut();
-        this.rwlock_get_or_create(|ecx, next_id| {
-            ecx.get_or_create_id(next_id, lock_op, lock_layout, offset)
-        })
+        this.get_or_create_id(
+            lock_op,
+            lock_layout,
+            offset,
+            |ecx| &mut ecx.machine.sync.rwlocks,
+            |_| Ok(Default::default()),
+        )?
+        .ok_or_else(|| err_ub_format!("rwlock has invalid ID").into())
     }
 
     fn condvar_get_or_create_id(
@@ -317,9 +362,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         offset: u64,
     ) -> InterpResult<'tcx, CondvarId> {
         let this = self.eval_context_mut();
-        this.condvar_get_or_create(|ecx, next_id| {
-            ecx.get_or_create_id(next_id, lock_op, lock_layout, offset)
-        })
+        this.get_or_create_id(
+            lock_op,
+            lock_layout,
+            offset,
+            |ecx| &mut ecx.machine.sync.condvars,
+            |_| Ok(Default::default()),
+        )?
+        .ok_or_else(|| err_ub_format!("condvar has invalid ID").into())
     }
 
     #[inline]

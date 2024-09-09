@@ -1,39 +1,33 @@
-use crate::{
-    fluent_generated as fluent,
-    lints::{
-        AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
-        AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
-        AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
-        InvalidNanComparisonsSuggestion, OnlyCastu8ToChar, OverflowingBinHex,
-        OverflowingBinHexSign, OverflowingBinHexSignBitSub, OverflowingBinHexSub, OverflowingInt,
-        OverflowingIntHelp, OverflowingLiteral, OverflowingUInt, RangeEndpointOutOfRange,
-        UnusedComparisons, UseInclusiveRange, VariantSizeDifferencesDiag,
-    },
-};
-use crate::{LateContext, LateLintPass, LintContext};
-use rustc_ast as ast;
-use rustc_attr as attr;
+use std::iter;
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
-use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
-use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{
-    self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
-use rustc_target::abi::{Abi, Size, WrappingRange};
-use rustc_target::abi::{Integer, TagEncoding, Variants};
+use rustc_span::{source_map, Span, Symbol};
+use rustc_target::abi::{Abi, Integer, Size, TagEncoding, Variants, WrappingRange};
 use rustc_target::spec::abi::Abi as SpecAbi;
-use std::iter;
-use std::ops::ControlFlow;
 use tracing::debug;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+
+use crate::lints::{
+    AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
+    AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
+    AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
+    InvalidNanComparisonsSuggestion, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
+    OverflowingBinHexSignBitSub, OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp,
+    OverflowingLiteral, OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons,
+    UseInclusiveRange, VariantSizeDifferencesDiag,
+};
+use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `unused_comparisons` lint detects comparisons made useless by
@@ -171,7 +165,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct TypeLimits {
+pub(crate) struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: Option<hir::HirId>,
     /// Span of the last visited negated expression
@@ -186,7 +180,7 @@ impl_lint_pass!(TypeLimits => [
 ]);
 
 impl TypeLimits {
-    pub fn new() -> TypeLimits {
+    pub(crate) fn new() -> TypeLimits {
         TypeLimits { negated_expr_id: None, negated_expr_span: None }
     }
 }
@@ -217,15 +211,12 @@ fn lint_overflowing_range_endpoint<'tcx>(
     if !is_range_literal(struct_expr) {
         return false;
     };
-    let ExprKind::Struct(_, eps, _) = &struct_expr.kind else { return false };
-    if eps.len() != 2 {
-        return false;
-    }
+    let ExprKind::Struct(_, [start, end], _) = &struct_expr.kind else { return false };
 
     // We can suggest using an inclusive range
     // (`..=`) instead only if it is the `end` that is
     // overflowing and only by 1.
-    if !(eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max) {
+    if !(end.expr.hir_id == expr.hir_id && lit_val - 1 == max) {
         return false;
     };
 
@@ -238,7 +229,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
     };
 
     let sub_sugg = if expr.span.lo() == lit_span.lo() {
-        let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) else { return false };
+        let Ok(start) = cx.sess().source_map().span_to_snippet(start.span) else { return false };
         UseInclusiveRange::WithoutParen {
             sugg: struct_expr.span.shrink_to_lo().to(lit_span.shrink_to_hi()),
             start,
@@ -315,11 +306,7 @@ fn report_bin_hex_error(
 ) {
     let (t, actually) = match ty {
         attr::IntType::SignedInt(t) => {
-            let actually = if negative {
-                -(size.sign_extend(val) as i128)
-            } else {
-                size.sign_extend(val) as i128
-            };
+            let actually = if negative { -(size.sign_extend(val)) } else { size.sign_extend(val) };
             (t.name_str(), actually.to_string())
         }
         attr::IntType::UnsignedInt(t) => {
@@ -468,8 +455,11 @@ fn lint_int_literal<'tcx>(
         }
 
         let span = if negative { type_limits.negated_expr_span.unwrap() } else { e.span };
-        let lit =
-            cx.sess().source_map().span_to_snippet(span).expect("must get snippet from literal");
+        let lit = cx
+            .sess()
+            .source_map()
+            .span_to_snippet(span)
+            .unwrap_or_else(|_| if negative { format!("-{v}") } else { v.to_string() });
         let help = get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
@@ -495,6 +485,7 @@ fn lint_uint_literal<'tcx>(
         ast::LitKind::Int(v, _) => v.get(),
         _ => bug!(),
     };
+
     if lit_val < min || lit_val > max {
         if let Node::Expr(par_e) = cx.tcx.parent_hir_node(e.hir_id) {
             match par_e.kind {
@@ -536,7 +527,7 @@ fn lint_uint_literal<'tcx>(
                     .sess()
                     .source_map()
                     .span_to_snippet(lit.span)
-                    .expect("must get snippet from literal"),
+                    .unwrap_or_else(|_| lit_val.to_string()),
                 min,
                 max,
             },
@@ -561,14 +552,14 @@ fn lint_literal<'tcx>(
         }
         ty::Uint(t) => lint_uint_literal(cx, e, lit, t),
         ty::Float(t) => {
-            let is_infinite = match lit.node {
+            let (is_infinite, sym) = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
                     // FIXME(f16_f128): add this check once `is_infinite` is reliable (ABI
                     // issues resolved).
-                    ty::FloatTy::F16 => Ok(false),
-                    ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                    ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
-                    ty::FloatTy::F128 => Ok(false),
+                    ty::FloatTy::F16 => (Ok(false), v),
+                    ty::FloatTy::F32 => (v.as_str().parse().map(f32::is_infinite), v),
+                    ty::FloatTy::F64 => (v.as_str().parse().map(f64::is_infinite), v),
+                    ty::FloatTy::F128 => (Ok(false), v),
                 },
                 _ => bug!(),
             };
@@ -582,7 +573,7 @@ fn lint_literal<'tcx>(
                             .sess()
                             .source_map()
                             .span_to_snippet(lit.span)
-                            .expect("must get snippet from literal"),
+                            .unwrap_or_else(|_| sym.to_string()),
                     },
                 );
             }
@@ -994,6 +985,14 @@ struct ImproperCTypesVisitor<'a, 'tcx> {
     mode: CItemKind,
 }
 
+/// Accumulator for recursive ffi type checking
+struct CTypesVisitorState<'tcx> {
+    cache: FxHashSet<Ty<'tcx>>,
+    /// The original type being checked, before we recursed
+    /// to any other types it contains.
+    base_ty: Ty<'tcx>,
+}
+
 enum FfiResult<'tcx> {
     FfiSafe,
     FfiPhantom(Ty<'tcx>),
@@ -1009,7 +1008,7 @@ pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
 
 /// `repr(transparent)` structs can have a single non-1-ZST field, this function returns that
 /// field.
-pub fn transparent_newtype_field<'a, 'tcx>(
+pub(crate) fn transparent_newtype_field<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     variant: &'a ty::VariantDef,
 ) -> Option<&'a ty::FieldDef> {
@@ -1031,7 +1030,7 @@ fn ty_is_known_nonnull<'tcx>(
     let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
 
     match ty.kind() {
-        ty::FnPtr(_) => true,
+        ty::FnPtr(..) => true,
         ty::Ref(..) => true,
         ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
         ty::Adt(def, args) if def.repr().transparent() && !def.is_union() => {
@@ -1222,7 +1221,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Checks if the given field's type is "ffi-safe".
     fn check_field_type_for_ffi(
         &self,
-        cache: &mut FxHashSet<Ty<'tcx>>,
+        acc: &mut CTypesVisitorState<'tcx>,
         field: &ty::FieldDef,
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
@@ -1232,13 +1231,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             .tcx
             .try_normalize_erasing_regions(self.cx.param_env, field_ty)
             .unwrap_or(field_ty);
-        self.check_type_for_ffi(cache, field_ty)
+        self.check_type_for_ffi(acc, field_ty)
     }
 
     /// Checks if the given `VariantDef`'s field types are "ffi-safe".
     fn check_variant_for_ffi(
         &self,
-        cache: &mut FxHashSet<Ty<'tcx>>,
+        acc: &mut CTypesVisitorState<'tcx>,
         ty: Ty<'tcx>,
         def: ty::AdtDef<'tcx>,
         variant: &ty::VariantDef,
@@ -1248,7 +1247,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let transparent_with_all_zst_fields = if def.repr().transparent() {
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
-                match self.check_field_type_for_ffi(cache, field, args) {
+                match self.check_field_type_for_ffi(acc, field, args) {
                     FfiUnsafe { ty, .. } if ty.is_unit() => (),
                     r => return r,
                 }
@@ -1266,7 +1265,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
-            all_phantom &= match self.check_field_type_for_ffi(cache, field, args) {
+            all_phantom &= match self.check_field_type_for_ffi(acc, field, args) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
                 FfiUnsafe { ty, .. } if ty.is_unit() => false,
@@ -1286,7 +1285,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn check_type_for_ffi(&self, cache: &mut FxHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn check_type_for_ffi(
+        &self,
+        acc: &mut CTypesVisitorState<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
         let tcx = self.cx.tcx;
@@ -1295,14 +1298,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // `struct S(*mut S);`.
         // FIXME: A recursion limit is necessary as well, for irregular
         // recursive types.
-        if !cache.insert(ty) {
+        if !acc.cache.insert(ty) {
             return FfiSafe;
         }
 
         match *ty.kind() {
             ty::Adt(def, args) => {
-                if def.is_box() && matches!(self.mode, CItemKind::Definition) {
-                    if ty.boxed_ty().is_sized(tcx, self.cx.param_env) {
+                if let Some(boxed) = ty.boxed_ty()
+                    && matches!(self.mode, CItemKind::Definition)
+                {
+                    if boxed.is_sized(tcx, self.cx.param_env) {
                         return FfiSafe;
                     } else {
                         return FfiUnsafe {
@@ -1317,6 +1322,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
+                        if let Some(sym::cstring_type | sym::cstr_type) =
+                            tcx.get_diagnostic_name(def.did())
+                            && !acc.base_ty.is_mutable_ptr()
+                        {
+                            return FfiUnsafe {
+                                ty,
+                                reason: fluent::lint_improper_ctypes_cstr_reason,
+                                help: Some(fluent::lint_improper_ctypes_cstr_help),
+                            };
+                        }
+
                         if !def.repr().c() && !def.repr().transparent() {
                             return FfiUnsafe {
                                 ty,
@@ -1363,7 +1379,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        self.check_variant_for_ffi(cache, ty, def, def.non_enum_variant(), args)
+                        self.check_variant_for_ffi(acc, ty, def, def.non_enum_variant(), args)
                     }
                     AdtKind::Enum => {
                         if def.variants().is_empty() {
@@ -1387,7 +1403,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             if let Some(ty) =
                                 repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
                             {
-                                return self.check_type_for_ffi(cache, ty);
+                                return self.check_type_for_ffi(acc, ty);
                             }
 
                             return FfiUnsafe {
@@ -1408,7 +1424,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 };
                             }
 
-                            match self.check_variant_for_ffi(cache, ty, def, variant, args) {
+                            match self.check_variant_for_ffi(acc, ty, def, variant, args) {
                                 FfiSafe => (),
                                 r => return r,
                             }
@@ -1478,11 +1494,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => self.check_type_for_ffi(cache, ty),
+            ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => self.check_type_for_ffi(acc, ty),
 
-            ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, inner_ty),
+            ty::Array(inner_ty, _) => self.check_type_for_ffi(acc, inner_ty),
 
-            ty::FnPtr(sig) => {
+            ty::FnPtr(sig_tys, hdr) => {
+                let sig = sig_tys.with(hdr);
                 if self.is_internal_abi(sig.abi()) {
                     return FfiUnsafe {
                         ty,
@@ -1493,7 +1510,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                 let sig = tcx.instantiate_bound_regions_with_erased(sig);
                 for arg in sig.inputs() {
-                    match self.check_type_for_ffi(cache, *arg) {
+                    match self.check_type_for_ffi(acc, *arg) {
                         FfiSafe => {}
                         r => return r,
                     }
@@ -1504,7 +1521,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     return FfiSafe;
                 }
 
-                self.check_type_for_ffi(cache, ret_ty)
+                self.check_type_for_ffi(acc, ret_ty)
             }
 
             ty::Foreign(..) => FfiSafe,
@@ -1627,7 +1644,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return;
         }
 
-        match self.check_type_for_ffi(&mut FxHashSet::default(), ty) {
+        let mut acc = CTypesVisitorState { cache: FxHashSet::default(), base_ty: ty };
+        match self.check_type_for_ffi(&mut acc, ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {
                 self.emit_ffi_unsafe_type_lint(
@@ -1718,8 +1736,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             type Result = ControlFlow<Ty<'tcx>>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-                if let ty::FnPtr(sig) = ty.kind()
-                    && !self.visitor.is_internal_abi(sig.abi())
+                if let ty::FnPtr(_, hdr) = ty.kind()
+                    && !self.visitor.is_internal_abi(hdr.abi)
                 {
                     self.tys.push(ty);
                 }
@@ -1742,13 +1760,16 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
 
         match it.kind {
-            hir::ForeignItemKind::Fn(decl, _, _, _) if !vis.is_internal_abi(abi) => {
-                vis.check_foreign_fn(it.owner_id.def_id, decl);
+            hir::ForeignItemKind::Fn(sig, _, _) => {
+                if vis.is_internal_abi(abi) {
+                    vis.check_fn(it.owner_id.def_id, sig.decl)
+                } else {
+                    vis.check_foreign_fn(it.owner_id.def_id, sig.decl);
+                }
             }
             hir::ForeignItemKind::Static(ty, _, _) if !vis.is_internal_abi(abi) => {
                 vis.check_foreign_static(it.owner_id, ty.span);
             }
-            hir::ForeignItemKind::Fn(decl, _, _, _) => vis.check_fn(it.owner_id.def_id, decl),
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
         }
     }

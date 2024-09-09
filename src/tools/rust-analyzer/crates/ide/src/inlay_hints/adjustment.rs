@@ -10,6 +10,7 @@ use hir::{
 };
 use ide_db::RootDatabase;
 
+use span::EditionedFileId;
 use stdx::never;
 use syntax::{
     ast::{self, make, AstNode},
@@ -25,6 +26,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
+    file_id: EditionedFileId,
     expr: &ast::Expr,
 ) -> Option<()> {
     if config.adjustment_hints_hide_outside_unsafe && !sema.is_inside_unsafe(expr) {
@@ -141,8 +143,8 @@ pub(super) fn hints(
             if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
             Some(InlayTooltip::Markdown(format!(
                 "`{}` → `{}` ({coercion} coercion)",
-                source.display(sema.db),
-                target.display(sema.db),
+                source.display(sema.db, file_id.edition()),
+                target.display(sema.db, file_id.edition()),
             ))),
             None,
         );

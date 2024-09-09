@@ -1,4 +1,4 @@
-use hir::{DescendPreference, GenericParam};
+use hir::GenericParam;
 use ide_db::{base_db::Upcast, defs::Definition, helpers::pick_best_token, RootDatabase};
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
 
@@ -21,7 +21,7 @@ pub(crate) fn goto_type_definition(
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = hir::Semantics::new(db);
 
-    let file: ast::SourceFile = sema.parse(file_id);
+    let file: ast::SourceFile = sema.parse_guess_edition(file_id);
     let token: SyntaxToken =
         pick_best_token(file.syntax().token_at_offset(offset), |kind| match kind {
             IDENT | INT_NUMBER | T![self] => 2,
@@ -69,7 +69,7 @@ pub(crate) fn goto_type_definition(
     }
 
     let range = token.text_range();
-    sema.descend_into_macros(DescendPreference::None, token)
+    sema.descend_into_macros(token)
         .into_iter()
         .filter_map(|token| {
             let ty = sema
@@ -113,7 +113,7 @@ pub(crate) fn goto_type_definition(
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::FileRange;
+    use ide_db::FileRange;
     use itertools::Itertools;
 
     use crate::fixture;

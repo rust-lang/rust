@@ -277,13 +277,14 @@
 )]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
-
-use LabelText::*;
 
 use std::borrow::Cow;
 use std::io;
 use std::io::prelude::*;
+
+use LabelText::*;
 
 /// The text for a graphviz label on a node or edge.
 pub enum LabelText<'a> {

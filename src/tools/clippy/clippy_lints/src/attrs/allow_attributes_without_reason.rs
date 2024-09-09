@@ -1,5 +1,5 @@
 use super::{Attribute, ALLOW_ATTRIBUTES_WITHOUT_REASON};
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_lint::{LateContext, LintContext};
@@ -21,12 +21,14 @@ pub(super) fn check<'cx>(cx: &LateContext<'cx>, name: Symbol, items: &[NestedMet
         return;
     }
 
-    span_lint_and_help(
+    #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+    span_lint_and_then(
         cx,
         ALLOW_ATTRIBUTES_WITHOUT_REASON,
         attr.span,
         format!("`{}` attribute without specifying a reason", name.as_str()),
-        None,
-        "try adding a reason at the end with `, reason = \"..\"`",
+        |diag| {
+            diag.help("try adding a reason at the end with `, reason = \"..\"`");
+        },
     );
 }

@@ -1,4 +1,5 @@
-use crate::const_eval::{CompileTimeInterpCx, CompileTimeMachine, InterpretationResult};
+use std::ops::ControlFlow;
+
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{Allocation, InterpResult, Pointer};
@@ -6,10 +7,10 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use std::ops::ControlFlow;
 use tracing::debug;
 
 use super::{throw_inval, InterpCx, MPlaceTy, MemPlaceMeta, MemoryKind};
+use crate::const_eval::{CompileTimeInterpCx, CompileTimeMachine, InterpretationResult};
 
 /// Checks whether a type contains generic parameters which must be instantiated.
 ///

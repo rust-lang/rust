@@ -1,20 +1,23 @@
 //! Errors emitted by codegen_ssa
 
-use crate::assert_module_sources::CguReuse;
-use crate::back::command::Command;
-use crate::fluent_generated as fluent;
+use std::borrow::Cow;
+use std::io::Error;
+use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
+
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
 use rustc_type_ir::FloatTy;
-use std::borrow::Cow;
-use std::io::Error;
-use std::path::{Path, PathBuf};
-use std::process::ExitStatus;
+
+use crate::assert_module_sources::CguReuse;
+use crate::back::command::Command;
+use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_incorrect_cgu_reuse_type)]
@@ -497,6 +500,7 @@ pub struct UnableToWriteDebuggerVisualizer {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_rlib_archive_build_failure)]
 pub struct RlibArchiveBuildFailure {
+    pub path: PathBuf,
     pub error: Error,
 }
 
@@ -554,6 +558,7 @@ pub struct UnsupportedLinkSelfContained;
 #[diag(codegen_ssa_archive_build_failure)]
 // Public for rustc_codegen_llvm::back::archive
 pub struct ArchiveBuildFailure {
+    pub path: PathBuf,
     pub error: std::io::Error,
 }
 
@@ -1022,6 +1027,28 @@ pub struct FailedToGetLayout<'tcx> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_dlltool_fail_import_library)]
+pub(crate) struct DlltoolFailImportLibrary<'a> {
+    pub dlltool_path: Cow<'a, str>,
+    pub dlltool_args: String,
+    pub stdout: Cow<'a, str>,
+    pub stderr: Cow<'a, str>,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_error_writing_def_file)]
+pub(crate) struct ErrorWritingDEFFile {
+    pub error: std::io::Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_error_calling_dlltool)]
+pub(crate) struct ErrorCallingDllTool<'a> {
+    pub dlltool_path: Cow<'a, str>,
+    pub error: std::io::Error,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_error_creating_remark_dir)]
 pub struct ErrorCreatingRemarkDir {
     pub error: std::io::Error,
@@ -1032,4 +1059,11 @@ pub struct ErrorCreatingRemarkDir {
 pub struct CompilerBuiltinsCannotCall {
     pub caller: String,
     pub callee: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_error_creating_import_library)]
+pub(crate) struct ErrorCreatingImportLibrary<'a> {
+    pub lib_name: &'a str,
+    pub error: String,
 }

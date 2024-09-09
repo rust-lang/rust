@@ -8,13 +8,16 @@
 //! Typical examples would include: minimum element in SCC, maximum element
 //! reachable from it, etc.
 
+use std::assert_matches::debug_assert_matches;
+use std::fmt::Debug;
+use std::ops::Range;
+
+use rustc_index::{Idx, IndexSlice, IndexVec};
+use tracing::{debug, instrument};
+
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
 use crate::graph::{DirectedGraph, NumEdges, Successors};
-use rustc_index::{Idx, IndexSlice, IndexVec};
-use std::fmt::Debug;
-use std::ops::Range;
-use tracing::{debug, instrument};
 
 #[cfg(test)]
 mod tests;
@@ -474,7 +477,7 @@ where
         // will know when we hit the state where previous_node == node.
         loop {
             // Back at the beginning, we can return. Note that we return the root state.
-            // This is becuse for components being explored, we would otherwise get a
+            // This is because for components being explored, we would otherwise get a
             // `node_state[n] = InCycleWith{ parent: n }` and that's wrong.
             if previous_node == node {
                 return root_state;
@@ -567,7 +570,7 @@ where
                     // This None marks that we still have the initialize this node's frame.
                     debug!(?depth, ?node);
 
-                    debug_assert!(matches!(self.node_states[node], NodeState::NotVisited));
+                    debug_assert_matches!(self.node_states[node], NodeState::NotVisited);
 
                     // Push `node` onto the stack.
                     self.node_states[node] = NodeState::BeingVisited {

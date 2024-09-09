@@ -1,13 +1,34 @@
 #![doc = include_str!("doc.md")]
 
-use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
-use rustc_data_structures::unord::UnordMap;
+use std::cell::{OnceCell, RefCell};
+use std::iter;
+use std::ops::Range;
 
-use self::metadata::{file_metadata, type_di_node};
-use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
+use libc::c_uint;
+use rustc_codegen_ssa::debuginfo::type_names;
+use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
+use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
+use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::unord::UnordMap;
+use rustc_hir::def_id::{DefId, DefIdMap};
+use rustc_index::IndexVec;
+use rustc_middle::mir;
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, GenericArgsRef, Instance, ParamEnv, Ty, TypeVisitableExt};
+use rustc_session::config::{self, DebugInfo};
+use rustc_session::Session;
+use rustc_span::symbol::Symbol;
+use rustc_span::{
+    BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId,
+};
+use rustc_target::abi::Size;
+use smallvec::SmallVec;
+use tracing::debug;
+
+use self::metadata::{file_metadata, type_di_node, UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
-
 use crate::abi::FnAbi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
@@ -18,40 +39,14 @@ use crate::llvm::debuginfo::{
 };
 use crate::value::Value;
 
-use rustc_codegen_ssa::debuginfo::type_names;
-use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
-use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::sync::Lrc;
-use rustc_hir::def_id::{DefId, DefIdMap};
-use rustc_index::IndexVec;
-use rustc_middle::mir;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitableExt};
-use rustc_session::config::{self, DebugInfo};
-use rustc_session::Session;
-use rustc_span::symbol::Symbol;
-use rustc_span::{
-    BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId,
-};
-use rustc_target::abi::Size;
-
-use libc::c_uint;
-use smallvec::SmallVec;
-use std::cell::OnceCell;
-use std::cell::RefCell;
-use std::iter;
-use std::ops::Range;
-use tracing::debug;
-
 mod create_scope_map;
-pub mod gdb;
-pub mod metadata;
+mod gdb;
+pub(crate) mod metadata;
 mod namespace;
 mod utils;
 
-pub use self::create_scope_map::compute_mir_scopes;
-pub use self::metadata::build_global_var_di_node;
+use self::create_scope_map::compute_mir_scopes;
+pub(crate) use self::metadata::build_global_var_di_node;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
@@ -59,7 +54,7 @@ const DW_TAG_auto_variable: c_uint = 0x100;
 const DW_TAG_arg_variable: c_uint = 0x101;
 
 /// A context object for maintaining all state needed by the debuginfo module.
-pub struct CodegenUnitDebugContext<'ll, 'tcx> {
+pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     llcontext: &'ll llvm::Context,
     llmod: &'ll llvm::Module,
     builder: &'ll mut DIBuilder<'ll>,
@@ -79,7 +74,7 @@ impl Drop for CodegenUnitDebugContext<'_, '_> {
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
-    pub fn new(llmod: &'ll llvm::Module) -> Self {
+    pub(crate) fn new(llmod: &'ll llvm::Module) -> Self {
         debug!("CodegenUnitDebugContext::new");
         let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
@@ -95,7 +90,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
         }
     }
 
-    pub fn finalize(&self, sess: &Session) {
+    pub(crate) fn finalize(&self, sess: &Session) {
         unsafe {
             llvm::LLVMRustDIBuilderFinalize(self.builder);
 
@@ -114,7 +109,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 llvm::LLVMRustAddModuleFlagU32(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    c"Dwarf Version".as_ptr().cast(),
+                    c"Dwarf Version".as_ptr(),
                     dwarf_version,
                 );
             } else {
@@ -122,7 +117,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 llvm::LLVMRustAddModuleFlagU32(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    c"CodeView".as_ptr().cast(),
+                    c"CodeView".as_ptr(),
                     1,
                 )
             }
@@ -131,7 +126,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             llvm::LLVMRustAddModuleFlagU32(
                 self.llmod,
                 llvm::LLVMModFlagBehavior::Warning,
-                c"Debug Info Version".as_ptr().cast(),
+                c"Debug Info Version".as_ptr(),
                 llvm::LLVMRustDebugMetadataVersion(),
             );
         }
@@ -139,7 +134,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 }
 
 /// Creates any deferred debug metadata nodes
-pub fn finalize(cx: &CodegenCx<'_, '_>) {
+pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     if let Some(dbg_cx) = &cx.dbg_cx {
         debug!("finalize");
 
@@ -246,13 +241,13 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
 // FIXME(eddyb) rename this to better indicate it's a duplicate of
 // `rustc_span::Loc` rather than `DILocation`, perhaps by making
 // `lookup_char_pos` return the right information instead.
-pub struct DebugLoc {
+struct DebugLoc {
     /// Information about the original source file.
-    pub file: Lrc<SourceFile>,
+    file: Lrc<SourceFile>,
     /// The (1-based) line number.
-    pub line: u32,
+    line: u32,
     /// The (1-based) column number.
-    pub col: u32,
+    col: u32,
 }
 
 impl CodegenCx<'_, '_> {
@@ -260,7 +255,7 @@ impl CodegenCx<'_, '_> {
     // FIXME(eddyb) rename this to better indicate it's a duplicate of
     // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
     // `lookup_char_pos` return the right information instead.
-    pub fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
+    fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
         let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
             Ok(SourceFileAndLine { sf: file, line }) => {
                 let line_pos = file.lines()[line];
@@ -575,7 +570,17 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         inlined_at: Option<&'ll DILocation>,
         span: Span,
     ) -> &'ll DILocation {
-        let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+        // When emitting debugging information, DWARF (i.e. everything but MSVC)
+        // treats line 0 as a magic value meaning that the code could not be
+        // attributed to any line in the source. That's also exactly what dummy
+        // spans are. Make that equivalence here, rather than passing dummy spans
+        // to lookup_debug_loc, which will return line 1 for them.
+        let (line, col) = if span.is_dummy() && !self.sess().target.is_like_msvc {
+            (0, 0)
+        } else {
+            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+            (line, col)
+        };
 
         unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) }
     }

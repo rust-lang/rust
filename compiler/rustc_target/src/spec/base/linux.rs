@@ -1,7 +1,8 @@
-use crate::spec::{cvs, RelroLevel, SplitDebuginfo, TargetOptions};
 use std::borrow::Cow;
 
-pub fn opts() -> TargetOptions {
+use crate::spec::{cvs, RelroLevel, SplitDebuginfo, TargetOptions};
+
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         os: "linux".into(),
         dynamic_linking: true,

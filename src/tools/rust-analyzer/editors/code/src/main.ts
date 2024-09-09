@@ -6,16 +6,12 @@ import { type CommandFactory, Ctx, fetchWorkspace } from "./ctx";
 import * as diagnostics from "./diagnostics";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
-import type { JsonProject } from "./rust_project";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
-// This API is not stable and may break in between minor releases.
 export interface RustAnalyzerExtensionApi {
+    // FIXME: this should be non-optional
     readonly client?: lc.LanguageClient;
-
-    setWorkspaces(workspaces: JsonProject[]): void;
-    notifyRustAnalyzer(): Promise<void>;
 }
 
 export async function deactivate() {
@@ -145,7 +141,6 @@ function createCommands(): Record<string, CommandFactory> {
 
         analyzerStatus: { enabled: commands.analyzerStatus },
         memoryUsage: { enabled: commands.memoryUsage },
-        shuffleCrateGraph: { enabled: commands.shuffleCrateGraph },
         reloadWorkspace: { enabled: commands.reloadWorkspace },
         rebuildProcMacros: { enabled: commands.rebuildProcMacros },
         matchingBrace: { enabled: commands.matchingBrace },
@@ -179,7 +174,6 @@ function createCommands(): Record<string, CommandFactory> {
         toggleCheckOnSave: { enabled: commands.toggleCheckOnSave },
         toggleLSPLogs: { enabled: commands.toggleLSPLogs },
         openWalkthrough: { enabled: commands.openWalkthrough },
-        openFAQ: { enabled: commands.openFAQ },
         // Internal commands which are invoked by the server.
         applyActionGroup: { enabled: commands.applyActionGroup },
         applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },
@@ -190,6 +184,7 @@ function createCommands(): Record<string, CommandFactory> {
         runSingle: { enabled: commands.runSingle },
         showReferences: { enabled: commands.showReferences },
         triggerParameterHints: { enabled: commands.triggerParameterHints },
+        rename: { enabled: commands.rename },
         openLogs: { enabled: commands.openLogs },
         revealDependency: { enabled: commands.revealDependency },
     };

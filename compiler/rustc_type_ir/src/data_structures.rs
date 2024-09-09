@@ -1,23 +1,21 @@
+use std::hash::BuildHasherDefault;
+
+use rustc_hash::FxHasher;
+pub use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+
+pub type IndexMap<K, V> = indexmap::IndexMap<K, V, BuildHasherDefault<FxHasher>>;
+pub type IndexSet<V> = indexmap::IndexSet<V, BuildHasherDefault<FxHasher>>;
+
 #[cfg(feature = "nightly")]
 mod impl_ {
-    pub use rustc_data_structures::fx::FxHashMap as HashMap;
-    pub use rustc_data_structures::fx::FxHashSet as HashSet;
-    pub use rustc_data_structures::fx::FxIndexMap as IndexMap;
-    pub use rustc_data_structures::fx::FxIndexSet as IndexSet;
-    pub use rustc_data_structures::sso::SsoHashMap;
-    pub use rustc_data_structures::sso::SsoHashSet;
+    pub use rustc_data_structures::sso::{SsoHashMap, SsoHashSet};
     pub use rustc_data_structures::stack::ensure_sufficient_stack;
     pub use rustc_data_structures::sync::Lrc;
 }
 
 #[cfg(not(feature = "nightly"))]
 mod impl_ {
-    pub use indexmap::IndexMap;
-    pub use indexmap::IndexSet;
-    pub use std::collections::HashMap;
-    pub use std::collections::HashMap as SsoHashMap;
-    pub use std::collections::HashSet;
-    pub use std::collections::HashSet as SsoHashSet;
+    pub use std::collections::{HashMap as SsoHashMap, HashSet as SsoHashSet};
     pub use std::sync::Arc as Lrc;
 
     #[inline]

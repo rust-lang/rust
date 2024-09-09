@@ -1,5 +1,15 @@
 #![allow(non_snake_case)]
 
+use std::cell::RefCell;
+use std::ffi::{CStr, CString};
+use std::str::FromStr;
+use std::string::FromUtf8Error;
+
+use libc::c_uint;
+use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_llvm::RustString;
+use rustc_target::abi::{Align, Size, WrappingRange};
+
 pub use self::AtomicRmwBinOp::*;
 pub use self::CallConv::*;
 pub use self::CodeGenOptSize::*;
@@ -7,15 +17,6 @@ pub use self::IntPredicate::*;
 pub use self::Linkage::*;
 pub use self::MetadataType::*;
 pub use self::RealPredicate::*;
-
-use libc::c_uint;
-use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_llvm::RustString;
-use rustc_target::abi::Align;
-use std::cell::RefCell;
-use std::ffi::{CStr, CString};
-use std::str::FromStr;
-use std::string::FromUtf8Error;
 
 pub mod archive_ro;
 pub mod diagnostic;
@@ -102,6 +103,21 @@ pub fn CreateAllocSizeAttr(llcx: &Context, size_arg: u32) -> &Attribute {
 
 pub fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &Attribute {
     unsafe { LLVMRustCreateAllocKindAttr(llcx, kind_arg.bits()) }
+}
+
+pub fn CreateRangeAttr(llcx: &Context, size: Size, range: WrappingRange) -> &Attribute {
+    let lower = range.start;
+    let upper = range.end.wrapping_add(1);
+    let lower_words = [lower as u64, (lower >> 64) as u64];
+    let upper_words = [upper as u64, (upper >> 64) as u64];
+    unsafe {
+        LLVMRustCreateRangeAttribute(
+            llcx,
+            size.bits().try_into().unwrap(),
+            lower_words.as_ptr(),
+            upper_words.as_ptr(),
+        )
+    }
 }
 
 #[derive(Copy, Clone)]

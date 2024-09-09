@@ -1,9 +1,13 @@
 //! POSIX conditional variable implementation based on user-space wait queues.
 
-use crate::sys::pal::itron::{
-    abi, error::expect_success_aborting, spin::SpinMutex, task, time::with_tmos_strong,
-};
-use crate::{mem::replace, ptr::NonNull, sys::sync::Mutex, time::Duration};
+use crate::mem::replace;
+use crate::ptr::NonNull;
+use crate::sys::pal::itron::error::expect_success_aborting;
+use crate::sys::pal::itron::spin::SpinMutex;
+use crate::sys::pal::itron::time::with_tmos_strong;
+use crate::sys::pal::itron::{abi, task};
+use crate::sys::sync::Mutex;
+use crate::time::Duration;
 
 // The implementation is inspired by the queue-based implementation shown in
 // Andrew D. Birrell's paper "Implementing Condition Variables with Semaphores"

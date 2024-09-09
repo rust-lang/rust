@@ -2,9 +2,9 @@
 //! 1/ They are only assigned-to once, either as a function parameter, or in an assign statement;
 //! 2/ This single assignment dominates all uses;
 //!
-//! As we do not track indirect assignments, a local that has its address taken (either by
-//! AddressOf or by borrowing) is considered non-SSA. However, it is UB to modify through an
-//! immutable borrow of a `Freeze` local. Those can still be considered to be SSA.
+//! As we do not track indirect assignments, a local that has its address taken (via a borrow or raw
+//! borrow operator) is considered non-SSA. However, it is UB to modify through an immutable borrow
+//! of a `Freeze` local. Those can still be considered to be SSA.
 
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
@@ -14,6 +14,7 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
+use tracing::{debug, instrument, trace};
 
 pub struct SsaLocals {
     /// Assignments to each local. This defines whether the local is SSA.
@@ -262,7 +263,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'tcx, '_> {
             PlaceContext::MutatingUse(MutatingUseContext::Projection)
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => bug!(),
             // Anything can happen with raw pointers, so remove them.
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow)
             | PlaceContext::MutatingUse(_) => {
                 self.assignments[local] = Set1::Many;
             }

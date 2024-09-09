@@ -1,18 +1,15 @@
-use crate::ffi::CStr;
-use crate::io;
-use crate::num::NonZero;
-use crate::os::windows::io::AsRawHandle;
-use crate::os::windows::io::HandleOrNull;
-use crate::ptr;
-use crate::sys::c;
-use crate::sys::handle::Handle;
-use crate::sys::stack_overflow;
-use crate::sys_common::FromInner;
-use crate::time::Duration;
 use core::ffi::c_void;
 
 use super::time::WaitableTimer;
 use super::to_u16s;
+use crate::ffi::CStr;
+use crate::num::NonZero;
+use crate::os::windows::io::{AsRawHandle, HandleOrNull};
+use crate::sys::handle::Handle;
+use crate::sys::{c, stack_overflow};
+use crate::sys_common::FromInner;
+use crate::time::Duration;
+use crate::{io, ptr};
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 

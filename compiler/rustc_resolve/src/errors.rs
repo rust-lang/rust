@@ -1,11 +1,11 @@
-use rustc_errors::{codes::*, Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{
-    symbol::{Ident, Symbol},
-    Span,
-};
+use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::Span;
 
-use crate::{late::PatternSource, Res};
+use crate::late::PatternSource;
+use crate::Res;
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
@@ -850,7 +850,7 @@ pub(crate) struct MacroExternDeprecated {
     #[primary_span]
     pub(crate) span: Span,
     #[help]
-    pub inner_attribute: Option<()>,
+    pub inner_attribute: bool,
 }
 
 #[derive(Diagnostic)]
@@ -894,7 +894,7 @@ pub(crate) struct LendingIteratorReportError {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_anonymous_livetime_non_gat_report_error)]
+#[diag(resolve_anonymous_lifetime_non_gat_report_error)]
 pub(crate) struct AnonymousLivetimeNonGatReportError {
     #[primary_span]
     #[label]

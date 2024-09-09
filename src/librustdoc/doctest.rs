@@ -1,10 +1,18 @@
 mod make;
 mod markdown;
+mod runner;
 mod rust;
 
-pub(crate) use make::make_test;
-pub(crate) use markdown::test as test_markdown;
+use std::fs::File;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+use std::process::{self, Command, Stdio};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+use std::{panic, str};
 
+pub(crate) use make::DocTestBuilder;
+pub(crate) use markdown::test as test_markdown;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
@@ -17,23 +25,13 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use rustc_target::spec::{Target, TargetTriple};
-
-use std::fs::File;
-use std::io::{self, Write};
-use std::panic;
-use std::path::{Path, PathBuf};
-use std::process::{self, Command, Stdio};
-use std::str;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
-
 use tempfile::{Builder as TempFileBuilder, TempDir};
+use tracing::debug;
 
+use self::rust::HirCollector;
 use crate::config::Options as RustdocOptions;
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
-
-use self::rust::HirCollector;
 
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone)]
@@ -154,8 +152,6 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
         expanded_args: options.expanded_args.clone(),
     };
 
-    let test_args = options.test_args.clone();
-    let nocapture = options.nocapture;
     let externs = options.externs.clone();
     let json_unused_externs = options.json_unused_externs;
 
@@ -168,39 +164,46 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
     let args_path = temp_dir.path().join("rustdoc-cfgs");
     crate::wrap_return(dcx, generate_args_file(&args_path, &options))?;
 
-    let (tests, unused_extern_reports, compiling_test_count) =
-        interface::run_compiler(config, |compiler| {
-            compiler.enter(|queries| {
-                let collector = queries.global_ctxt()?.enter(|tcx| {
-                    let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
-                    let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
-                    let opts = scrape_test_config(crate_name, crate_attrs, args_path);
-                    let enable_per_target_ignores = options.enable_per_target_ignores;
+    let CreateRunnableDocTests {
+        standalone_tests,
+        mergeable_tests,
+        rustdoc_options,
+        opts,
+        unused_extern_reports,
+        compiling_test_count,
+        ..
+    } = interface::run_compiler(config, |compiler| {
+        compiler.enter(|queries| {
+            let collector = queries.global_ctxt()?.enter(|tcx| {
+                let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
+                let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
+                let opts = scrape_test_config(crate_name, crate_attrs, args_path);
+                let enable_per_target_ignores = options.enable_per_target_ignores;
 
-                    let mut collector = CreateRunnableDoctests::new(options, opts);
-                    let hir_collector = HirCollector::new(
-                        &compiler.sess,
-                        tcx.hir(),
-                        ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
-                        enable_per_target_ignores,
-                        tcx,
-                    );
-                    let tests = hir_collector.collect_crate();
-                    tests.into_iter().for_each(|t| collector.add_test(t));
+                let mut collector = CreateRunnableDocTests::new(options, opts);
+                let hir_collector = HirCollector::new(
+                    &compiler.sess,
+                    tcx.hir(),
+                    ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
+                    enable_per_target_ignores,
+                    tcx,
+                );
+                let tests = hir_collector.collect_crate();
+                tests.into_iter().for_each(|t| collector.add_test(t));
 
-                    collector
-                });
-                if compiler.sess.dcx().has_errors().is_some() {
-                    FatalError.raise();
-                }
+                collector
+            });
+            if compiler.sess.dcx().has_errors().is_some() {
+                FatalError.raise();
+            }
 
-                let unused_extern_reports = collector.unused_extern_reports.clone();
-                let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
-                Ok((collector.tests, unused_extern_reports, compiling_test_count))
-            })
-        })?;
+            Ok(collector)
+        })
+    })?;
 
-    run_tests(test_args, nocapture, tests);
+    run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
+
+    let compiling_test_count = compiling_test_count.load(Ordering::SeqCst);
 
     // Collect and warn about unused externs, but only if we've gotten
     // reports for each doctest
@@ -244,16 +247,83 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
 }
 
 pub(crate) fn run_tests(
-    mut test_args: Vec<String>,
-    nocapture: bool,
-    mut tests: Vec<test::TestDescAndFn>,
+    opts: GlobalTestOptions,
+    rustdoc_options: &Arc<RustdocOptions>,
+    unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
+    mut standalone_tests: Vec<test::TestDescAndFn>,
+    mergeable_tests: FxHashMap<Edition, Vec<(DocTestBuilder, ScrapedDocTest)>>,
 ) {
+    let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
-    if nocapture {
+    test_args.extend_from_slice(&rustdoc_options.test_args);
+    if rustdoc_options.nocapture {
         test_args.push("--nocapture".to_string());
     }
-    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
-    test::test_main(&test_args, tests, None);
+
+    let mut nb_errors = 0;
+    let mut ran_edition_tests = 0;
+    let target_str = rustdoc_options.target.to_string();
+
+    for (edition, mut doctests) in mergeable_tests {
+        if doctests.is_empty() {
+            continue;
+        }
+        doctests.sort_by(|(_, a), (_, b)| a.name.cmp(&b.name));
+
+        let mut tests_runner = runner::DocTestRunner::new();
+
+        let rustdoc_test_options = IndividualTestOptions::new(
+            rustdoc_options,
+            &Some(format!("merged_doctest_{edition}")),
+            PathBuf::from(format!("doctest_{edition}.rs")),
+        );
+
+        for (doctest, scraped_test) in &doctests {
+            tests_runner.add_test(doctest, scraped_test, &target_str);
+        }
+        if let Ok(success) = tests_runner.run_merged_tests(
+            rustdoc_test_options,
+            edition,
+            &opts,
+            &test_args,
+            rustdoc_options,
+        ) {
+            ran_edition_tests += 1;
+            if !success {
+                nb_errors += 1;
+            }
+            continue;
+        }
+        // We failed to compile all compatible tests as one so we push them into the
+        // `standalone_tests` doctests.
+        debug!("Failed to compile compatible doctests for edition {} all at once", edition);
+        for (doctest, scraped_test) in doctests {
+            doctest.generate_unique_doctest(
+                &scraped_test.text,
+                scraped_test.langstr.test_harness,
+                &opts,
+                Some(&opts.crate_name),
+            );
+            standalone_tests.push(generate_test_desc_and_fn(
+                doctest,
+                scraped_test,
+                opts.clone(),
+                Arc::clone(rustdoc_options),
+                unused_extern_reports.clone(),
+            ));
+        }
+    }
+
+    // We need to call `test_main` even if there is no doctest to run to get the output
+    // `running 0 tests...`.
+    if ran_edition_tests == 0 || !standalone_tests.is_empty() {
+        standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(b.desc.name.as_slice()));
+        test::test_main(&test_args, standalone_tests, None);
+    }
+    if nb_errors != 0 {
+        // libtest::ERROR_EXIT_CODE is not public but it's the same value.
+        std::process::exit(101);
+    }
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
@@ -334,7 +404,7 @@ impl DirState {
 // We could unify this struct the one in rustc but they have different
 // ownership semantics, so doing so would create wasteful allocations.
 #[derive(serde::Serialize, serde::Deserialize)]
-struct UnusedExterns {
+pub(crate) struct UnusedExterns {
     /// Lint level of the unused_crate_dependencies lint
     lint_level: String,
     /// List of unused externs by their names.
@@ -352,7 +422,7 @@ fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
 }
 
 fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Command {
-    let mut args = rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary].into_iter());
+    let mut args = rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary]);
 
     let exe = args.next().expect("unable to create rustc command");
     let mut command = Command::new(exe);
@@ -363,22 +433,41 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
     command
 }
 
-struct RunnableDoctest {
+/// Information needed for running a bundle of doctests.
+///
+/// This data structure contains the "full" test code, including the wrappers
+/// (if multiple doctests are merged), `main` function,
+/// and everything needed to calculate the compiler's command-line arguments.
+/// The `# ` prefix on boring lines has also been stripped.
+pub(crate) struct RunnableDocTest {
     full_test_code: String,
     full_test_line_offset: usize,
     test_opts: IndividualTestOptions,
     global_opts: GlobalTestOptions,
-    scraped_test: ScrapedDoctest,
+    langstr: LangString,
+    line: usize,
+    edition: Edition,
+    no_run: bool,
+    is_multiple_tests: bool,
 }
 
+impl RunnableDocTest {
+    fn path_for_merged_doctest(&self) -> PathBuf {
+        self.test_opts.outdir.path().join(format!("doctest_{}.rs", self.edition))
+    }
+}
+
+/// Execute a `RunnableDoctest`.
+///
+/// This is the function that calculates the compiler command line, invokes the compiler, then
+/// invokes the test or tests in a separate executable (if applicable).
 fn run_test(
-    doctest: RunnableDoctest,
+    doctest: RunnableDocTest,
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
-    let scraped_test = &doctest.scraped_test;
-    let langstr = &scraped_test.langstr;
+    let langstr = &doctest.langstr;
     // Make sure we emit well-formed executable names for our target.
     let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
     let output_file = doctest.test_opts.outdir.path().join(rust_out);
@@ -389,18 +478,21 @@ fn run_test(
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
-    compiler.arg(&format!("@{}", doctest.global_opts.args_file.display()));
+    compiler.arg(format!("@{}", doctest.global_opts.args_file.display()));
 
     if let Some(sysroot) = &rustdoc_options.maybe_sysroot {
         compiler.arg(format!("--sysroot={}", sysroot.display()));
     }
 
-    compiler.arg("--edition").arg(&scraped_test.edition(rustdoc_options).to_string());
-    compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
-    compiler.env(
-        "UNSTABLE_RUSTDOC_TEST_LINE",
-        format!("{}", scraped_test.line as isize - doctest.full_test_line_offset as isize),
-    );
+    compiler.arg("--edition").arg(doctest.edition.to_string());
+    if !doctest.is_multiple_tests {
+        // Setting these environment variables is unneeded if this is a merged doctest.
+        compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
+        compiler.env(
+            "UNSTABLE_RUSTDOC_TEST_LINE",
+            format!("{}", doctest.line as isize - doctest.full_test_line_offset as isize),
+        );
+    }
     compiler.arg("-o").arg(&output_file);
     if langstr.test_harness {
         compiler.arg("--test");
@@ -412,10 +504,7 @@ fn run_test(
         compiler.arg("-Z").arg("unstable-options");
     }
 
-    if scraped_test.no_run(rustdoc_options)
-        && !langstr.compile_fail
-        && rustdoc_options.persist_doctests.is_none()
-    {
+    if doctest.no_run && !langstr.compile_fail && rustdoc_options.persist_doctests.is_none() {
         // FIXME: why does this code check if it *shouldn't* persist doctests
         //        -- shouldn't it be the negation?
         compiler.arg("--emit=metadata");
@@ -426,8 +515,8 @@ fn run_test(
             path_for_rustdoc.to_str().expect("target path must be valid unicode")
         }
     });
-    if let ErrorOutputType::HumanReadable(kind) = rustdoc_options.error_format {
-        let (short, color_config) = kind.unzip();
+    if let ErrorOutputType::HumanReadable(kind, color_config) = rustdoc_options.error_format {
+        let short = kind.short();
 
         if short {
             compiler.arg("--error-format").arg("short");
@@ -446,18 +535,40 @@ fn run_test(
         }
     }
 
-    compiler.arg("-");
-    compiler.stdin(Stdio::piped());
-    compiler.stderr(Stdio::piped());
+    // If this is a merged doctest, we need to write it into a file instead of using stdin
+    // because if the size of the merged doctests is too big, it'll simply break stdin.
+    if doctest.is_multiple_tests {
+        // It makes the compilation failure much faster if it is for a combined doctest.
+        compiler.arg("--error-format=short");
+        let input_file = doctest.path_for_merged_doctest();
+        if std::fs::write(&input_file, &doctest.full_test_code).is_err() {
+            // If we cannot write this file for any reason, we leave. All combined tests will be
+            // tested as standalone tests.
+            return Err(TestFailure::CompileError);
+        }
+        compiler.arg(input_file);
+        if !rustdoc_options.nocapture {
+            // If `nocapture` is disabled, then we don't display rustc's output when compiling
+            // the merged doctests.
+            compiler.stderr(Stdio::null());
+        }
+    } else {
+        compiler.arg("-");
+        compiler.stdin(Stdio::piped());
+        compiler.stderr(Stdio::piped());
+    }
 
     debug!("compiler invocation for doctest: {compiler:?}");
 
     let mut child = compiler.spawn().expect("Failed to spawn rustc process");
-    {
+    let output = if doctest.is_multiple_tests {
+        let status = child.wait().expect("Failed to wait");
+        process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
+    } else {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         stdin.write_all(doctest.full_test_code.as_bytes()).expect("could write out test sources");
-    }
-    let output = child.wait_with_output().expect("Failed to read stdout");
+        child.wait_with_output().expect("Failed to read stdout")
+    };
 
     struct Bomb<'a>(&'a str);
     impl Drop for Bomb<'_> {
@@ -496,8 +607,7 @@ fn run_test(
                 // We used to check if the output contained "error[{}]: " but since we added the
                 // colored output, we can't anymore because of the color escape characters before
                 // the ":".
-                let missing_codes: Vec<String> = scraped_test
-                    .langstr
+                let missing_codes: Vec<String> = langstr
                     .error_codes
                     .iter()
                     .filter(|err| !out.contains(&format!("error[{err}]")))
@@ -514,7 +624,7 @@ fn run_test(
         }
     }
 
-    if scraped_test.no_run(rustdoc_options) {
+    if doctest.no_run {
         return Ok(());
     }
 
@@ -526,15 +636,19 @@ fn run_test(
         let tool = make_maybe_absolute_path(tool.into());
         cmd = Command::new(tool);
         cmd.args(&rustdoc_options.runtool_args);
-        cmd.arg(output_file);
+        cmd.arg(&output_file);
     } else {
-        cmd = Command::new(output_file);
+        cmd = Command::new(&output_file);
+        if doctest.is_multiple_tests {
+            cmd.arg("*doctest-bin-path");
+            cmd.arg(&output_file);
+        }
     }
     if let Some(run_directory) = &rustdoc_options.test_run_directory {
         cmd.current_dir(run_directory);
     }
 
-    let result = if rustdoc_options.nocapture {
+    let result = if doctest.is_multiple_tests || rustdoc_options.nocapture {
         cmd.status().map(|status| process::Output {
             status,
             stdout: Vec::new(),
@@ -572,15 +686,14 @@ fn make_maybe_absolute_path(path: PathBuf) -> PathBuf {
 }
 struct IndividualTestOptions {
     outdir: DirState,
-    test_id: String,
     path: PathBuf,
 }
 
 impl IndividualTestOptions {
-    fn new(options: &RustdocOptions, test_id: String, test_path: PathBuf) -> Self {
+    fn new(options: &RustdocOptions, test_id: &Option<String>, test_path: PathBuf) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
-            path.push(&test_id);
+            path.push(&test_id.as_deref().unwrap_or("<doctest>"));
 
             if let Err(err) = std::fs::create_dir_all(&path) {
                 eprintln!("Couldn't create directory for doctest executables: {err}");
@@ -592,20 +705,45 @@ impl IndividualTestOptions {
             DirState::Temp(get_doctest_dir().expect("rustdoc needs a tempdir"))
         };
 
-        Self { outdir, test_id, path: test_path }
+        Self { outdir, path: test_path }
     }
 }
 
 /// A doctest scraped from the code, ready to be turned into a runnable test.
-struct ScrapedDoctest {
+///
+/// The pipeline goes: [`clean`] AST -> `ScrapedDoctest` -> `RunnableDoctest`.
+/// [`run_merged_tests`] converts a bunch of scraped doctests to a single runnable doctest,
+/// while [`generate_unique_doctest`] does the standalones.
+///
+/// [`clean`]: crate::clean
+/// [`run_merged_tests`]: crate::doctest::runner::DocTestRunner::run_merged_tests
+/// [`generate_unique_doctest`]: crate::doctest::make::DocTestBuilder::generate_unique_doctest
+pub(crate) struct ScrapedDocTest {
     filename: FileName,
     line: usize,
-    logical_path: Vec<String>,
     langstr: LangString,
     text: String,
+    name: String,
 }
 
-impl ScrapedDoctest {
+impl ScrapedDocTest {
+    fn new(
+        filename: FileName,
+        line: usize,
+        logical_path: Vec<String>,
+        langstr: LangString,
+        text: String,
+    ) -> Self {
+        let mut item_path = logical_path.join("::");
+        item_path.retain(|c| c != ' ');
+        if !item_path.is_empty() {
+            item_path.push(' ');
+        }
+        let name =
+            format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly());
+
+        Self { filename, line, langstr, text, name }
+    }
     fn edition(&self, opts: &RustdocOptions) -> Edition {
         self.langstr.edition.unwrap_or(opts.edition)
     }
@@ -613,54 +751,8 @@ impl ScrapedDoctest {
     fn no_run(&self, opts: &RustdocOptions) -> bool {
         self.langstr.no_run || opts.no_run
     }
-}
-
-pub(crate) trait DoctestVisitor {
-    fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine);
-    fn visit_header(&mut self, _name: &str, _level: u32) {}
-}
-
-struct CreateRunnableDoctests {
-    tests: Vec<test::TestDescAndFn>,
-
-    rustdoc_options: Arc<RustdocOptions>,
-    opts: GlobalTestOptions,
-    visited_tests: FxHashMap<(String, usize), usize>,
-    unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
-    compiling_test_count: AtomicUsize,
-}
-
-impl CreateRunnableDoctests {
-    fn new(rustdoc_options: RustdocOptions, opts: GlobalTestOptions) -> CreateRunnableDoctests {
-        CreateRunnableDoctests {
-            tests: Vec::new(),
-            rustdoc_options: Arc::new(rustdoc_options),
-            opts,
-            visited_tests: FxHashMap::default(),
-            unused_extern_reports: Default::default(),
-            compiling_test_count: AtomicUsize::new(0),
-        }
-    }
-
-    fn generate_name(&self, filename: &FileName, line: usize, logical_path: &[String]) -> String {
-        let mut item_path = logical_path.join("::");
-        item_path.retain(|c| c != ' ');
-        if !item_path.is_empty() {
-            item_path.push(' ');
-        }
-        format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly())
-    }
-
-    fn add_test(&mut self, test: ScrapedDoctest) {
-        let name = self.generate_name(&test.filename, test.line, &test.logical_path);
-        let opts = self.opts.clone();
-        let target_str = self.rustdoc_options.target.to_string();
-        let unused_externs = self.unused_extern_reports.clone();
-        if !test.langstr.compile_fail {
-            self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
-        }
-
-        let path = match &test.filename {
+    fn path(&self) -> PathBuf {
+        match &self.filename {
             FileName::Real(path) => {
                 if let Some(local_path) = path.local_path() {
                     local_path.to_path_buf()
@@ -670,10 +762,45 @@ impl CreateRunnableDoctests {
                 }
             }
             _ => PathBuf::from(r"doctest.rs"),
-        };
+        }
+    }
+}
 
+pub(crate) trait DocTestVisitor {
+    fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine);
+    fn visit_header(&mut self, _name: &str, _level: u32) {}
+}
+
+struct CreateRunnableDocTests {
+    standalone_tests: Vec<test::TestDescAndFn>,
+    mergeable_tests: FxHashMap<Edition, Vec<(DocTestBuilder, ScrapedDocTest)>>,
+
+    rustdoc_options: Arc<RustdocOptions>,
+    opts: GlobalTestOptions,
+    visited_tests: FxHashMap<(String, usize), usize>,
+    unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
+    compiling_test_count: AtomicUsize,
+    can_merge_doctests: bool,
+}
+
+impl CreateRunnableDocTests {
+    fn new(rustdoc_options: RustdocOptions, opts: GlobalTestOptions) -> CreateRunnableDocTests {
+        let can_merge_doctests = rustdoc_options.edition >= Edition::Edition2024;
+        CreateRunnableDocTests {
+            standalone_tests: Vec::new(),
+            mergeable_tests: FxHashMap::default(),
+            rustdoc_options: Arc::new(rustdoc_options),
+            opts,
+            visited_tests: FxHashMap::default(),
+            unused_extern_reports: Default::default(),
+            compiling_test_count: AtomicUsize::new(0),
+            can_merge_doctests,
+        }
+    }
+
+    fn add_test(&mut self, scraped_test: ScrapedDocTest) {
         // For example `module/file.rs` would become `module_file_rs`
-        let file = test
+        let file = scraped_test
             .filename
             .prefer_local()
             .to_string_lossy()
@@ -683,75 +810,134 @@ impl CreateRunnableDoctests {
         let test_id = format!(
             "{file}_{line}_{number}",
             file = file,
-            line = test.line,
+            line = scraped_test.line,
             number = {
                 // Increases the current test number, if this file already
                 // exists or it creates a new entry with a test number of 0.
                 self.visited_tests
-                    .entry((file.clone(), test.line))
+                    .entry((file.clone(), scraped_test.line))
                     .and_modify(|v| *v += 1)
                     .or_insert(0)
             },
         );
 
-        let rustdoc_options = self.rustdoc_options.clone();
-        let rustdoc_test_options = IndividualTestOptions::new(&self.rustdoc_options, test_id, path);
+        let edition = scraped_test.edition(&self.rustdoc_options);
+        let doctest = DocTestBuilder::new(
+            &scraped_test.text,
+            Some(&self.opts.crate_name),
+            edition,
+            self.can_merge_doctests,
+            Some(test_id),
+            Some(&scraped_test.langstr),
+        );
+        let is_standalone = !doctest.can_be_merged
+            || scraped_test.langstr.compile_fail
+            || scraped_test.langstr.test_harness
+            || scraped_test.langstr.standalone
+            || self.rustdoc_options.nocapture
+            || self.rustdoc_options.test_args.iter().any(|arg| arg == "--show-output");
+        if is_standalone {
+            let test_desc = self.generate_test_desc_and_fn(doctest, scraped_test);
+            self.standalone_tests.push(test_desc);
+        } else {
+            self.mergeable_tests.entry(edition).or_default().push((doctest, scraped_test));
+        }
+    }
 
-        debug!("creating test {name}: {}", test.text);
-        self.tests.push(test::TestDescAndFn {
-            desc: test::TestDesc {
-                name: test::DynTestName(name),
-                ignore: match test.langstr.ignore {
-                    Ignore::All => true,
-                    Ignore::None => false,
-                    Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
-                },
-                ignore_message: None,
-                source_file: "",
-                start_line: 0,
-                start_col: 0,
-                end_line: 0,
-                end_col: 0,
-                // compiler failures are test failures
-                should_panic: test::ShouldPanic::No,
-                compile_fail: test.langstr.compile_fail,
-                no_run: test.no_run(&rustdoc_options),
-                test_type: test::TestType::DocTest,
+    fn generate_test_desc_and_fn(
+        &mut self,
+        test: DocTestBuilder,
+        scraped_test: ScrapedDocTest,
+    ) -> test::TestDescAndFn {
+        if !scraped_test.langstr.compile_fail {
+            self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
+        }
+
+        generate_test_desc_and_fn(
+            test,
+            scraped_test,
+            self.opts.clone(),
+            Arc::clone(&self.rustdoc_options),
+            self.unused_extern_reports.clone(),
+        )
+    }
+}
+
+fn generate_test_desc_and_fn(
+    test: DocTestBuilder,
+    scraped_test: ScrapedDocTest,
+    opts: GlobalTestOptions,
+    rustdoc_options: Arc<RustdocOptions>,
+    unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+) -> test::TestDescAndFn {
+    let target_str = rustdoc_options.target.to_string();
+    let rustdoc_test_options =
+        IndividualTestOptions::new(&rustdoc_options, &test.test_id, scraped_test.path());
+
+    debug!("creating test {}: {}", scraped_test.name, scraped_test.text);
+    test::TestDescAndFn {
+        desc: test::TestDesc {
+            name: test::DynTestName(scraped_test.name.clone()),
+            ignore: match scraped_test.langstr.ignore {
+                Ignore::All => true,
+                Ignore::None => false,
+                Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
             },
-            testfn: test::DynTestFn(Box::new(move || {
-                doctest_run_fn(rustdoc_test_options, opts, test, rustdoc_options, unused_externs)
-            })),
-        });
+            ignore_message: None,
+            source_file: "",
+            start_line: 0,
+            start_col: 0,
+            end_line: 0,
+            end_col: 0,
+            // compiler failures are test failures
+            should_panic: test::ShouldPanic::No,
+            compile_fail: scraped_test.langstr.compile_fail,
+            no_run: scraped_test.no_run(&rustdoc_options),
+            test_type: test::TestType::DocTest,
+        },
+        testfn: test::DynTestFn(Box::new(move || {
+            doctest_run_fn(
+                rustdoc_test_options,
+                opts,
+                test,
+                scraped_test,
+                rustdoc_options,
+                unused_externs,
+            )
+        })),
     }
 }
 
 fn doctest_run_fn(
     test_opts: IndividualTestOptions,
     global_opts: GlobalTestOptions,
-    scraped_test: ScrapedDoctest,
+    doctest: DocTestBuilder,
+    scraped_test: ScrapedDocTest,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> Result<(), String> {
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);
     };
-    let edition = scraped_test.edition(&rustdoc_options);
-    let (full_test_code, full_test_line_offset, supports_color) = make_test(
+    let (full_test_code, full_test_line_offset) = doctest.generate_unique_doctest(
         &scraped_test.text,
-        Some(&global_opts.crate_name),
         scraped_test.langstr.test_harness,
         &global_opts,
-        edition,
-        Some(&test_opts.test_id),
+        Some(&global_opts.crate_name),
     );
-    let runnable_test = RunnableDoctest {
+    let runnable_test = RunnableDocTest {
         full_test_code,
         full_test_line_offset,
         test_opts,
         global_opts,
-        scraped_test,
+        langstr: scraped_test.langstr.clone(),
+        line: scraped_test.line,
+        edition: scraped_test.edition(&rustdoc_options),
+        no_run: scraped_test.no_run(&rustdoc_options),
+        is_multiple_tests: false,
     };
-    let res = run_test(runnable_test, &rustdoc_options, supports_color, report_unused_externs);
+    let res =
+        run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);
 
     if let Err(err) = res {
         match err {
@@ -808,7 +994,7 @@ fn doctest_run_fn(
 }
 
 #[cfg(test)] // used in tests
-impl DoctestVisitor for Vec<usize> {
+impl DocTestVisitor for Vec<usize> {
     fn visit_test(&mut self, _test: String, _config: LangString, rel_line: MdRelLine) {
         self.push(1 + rel_line.offset());
     }

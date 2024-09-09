@@ -14,7 +14,7 @@ use syntax::{
         edit_in_place::{AttrsOwnerEdit, Indent, Removable},
         make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
-    ted, AstNode, AstToken, Direction, NodeOrToken, SourceFile,
+    ted, AstNode, AstToken, Direction, Edition, NodeOrToken, SourceFile,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
@@ -88,8 +88,8 @@ pub fn has_test_related_attribute(attrs: &hir::AttrsWithOwner) -> bool {
         let path = attr.path();
         (|| {
             Some(
-                path.segments().first()?.as_text()?.starts_with("test")
-                    || path.segments().last()?.as_text()?.ends_with("test"),
+                path.segments().first()?.as_str().starts_with("test")
+                    || path.segments().last()?.as_str().ends_with("test"),
             )
         })()
         .unwrap_or_default()
@@ -174,7 +174,7 @@ pub fn add_trait_assoc_items_to_impl(
     original_items: &[InFile<ast::AssocItem>],
     trait_: hir::Trait,
     impl_: &ast::Impl,
-    target_scope: hir::SemanticsScope<'_>,
+    target_scope: &hir::SemanticsScope<'_>,
 ) -> ast::AssocItem {
     let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
     let items = original_items.iter().map(|InFile { file_id, value: original_item }| {
@@ -195,7 +195,7 @@ pub fn add_trait_assoc_items_to_impl(
             // FIXME: Paths in nested macros are not handled well. See
             // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
             let transform =
-                PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
+                PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
             transform.apply(cloned_item.syntax());
         }
         cloned_item.remove_attrs_and_docs();
@@ -684,31 +684,31 @@ enum ReferenceConversionType {
 }
 
 impl ReferenceConversion {
-    pub(crate) fn convert_type(&self, db: &dyn HirDatabase) -> ast::Type {
+    pub(crate) fn convert_type(&self, db: &dyn HirDatabase, edition: Edition) -> ast::Type {
         let ty = match self.conversion {
-            ReferenceConversionType::Copy => self.ty.display(db).to_string(),
+            ReferenceConversionType::Copy => self.ty.display(db, edition).to_string(),
             ReferenceConversionType::AsRefStr => "&str".to_owned(),
             ReferenceConversionType::AsRefSlice => {
                 let type_argument_name =
-                    self.ty.type_arguments().next().unwrap().display(db).to_string();
+                    self.ty.type_arguments().next().unwrap().display(db, edition).to_string();
                 format!("&[{type_argument_name}]")
             }
             ReferenceConversionType::Dereferenced => {
                 let type_argument_name =
-                    self.ty.type_arguments().next().unwrap().display(db).to_string();
+                    self.ty.type_arguments().next().unwrap().display(db, edition).to_string();
                 format!("&{type_argument_name}")
             }
             ReferenceConversionType::Option => {
                 let type_argument_name =
-                    self.ty.type_arguments().next().unwrap().display(db).to_string();
+                    self.ty.type_arguments().next().unwrap().display(db, edition).to_string();
                 format!("Option<&{type_argument_name}>")
             }
             ReferenceConversionType::Result => {
                 let mut type_arguments = self.ty.type_arguments();
                 let first_type_argument_name =
-                    type_arguments.next().unwrap().display(db).to_string();
+                    type_arguments.next().unwrap().display(db, edition).to_string();
                 let second_type_argument_name =
-                    type_arguments.next().unwrap().display(db).to_string();
+                    type_arguments.next().unwrap().display(db, edition).to_string();
                 format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
         };

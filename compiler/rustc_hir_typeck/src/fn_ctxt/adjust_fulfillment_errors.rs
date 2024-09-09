@@ -1,16 +1,18 @@
-use crate::FnCtxt;
+use std::ops::ControlFlow;
+
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::{symbol::kw, Span};
+use rustc_span::symbol::kw;
+use rustc_span::Span;
 use rustc_trait_selection::traits;
 
-use std::ops::ControlFlow;
+use crate::FnCtxt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn adjust_fulfillment_error_for_expr_obligation(
+    pub(crate) fn adjust_fulfillment_error_for_expr_obligation(
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
@@ -481,7 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
      *
      * This function only updates the error span.
      */
-    pub fn blame_specific_expr_if_possible(
+    pub(crate) fn blame_specific_expr_if_possible(
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,

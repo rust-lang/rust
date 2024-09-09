@@ -24,7 +24,7 @@ pub struct PanicInfo<'a> {
 /// that were given to the `panic!()` macro.
 ///
 /// See [`PanicInfo::message`].
-#[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "panic_info_message", since = "1.81.0")]
 pub struct PanicMessage<'a> {
     message: fmt::Arguments<'a>,
 }
@@ -57,7 +57,7 @@ impl<'a> PanicInfo<'a> {
     /// }
     /// ```
     #[must_use]
-    #[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "panic_info_message", since = "1.81.0")]
     pub fn message(&self) -> PanicMessage<'_> {
         PanicMessage { message: self.message }
     }
@@ -152,7 +152,7 @@ impl Display for PanicInfo<'_> {
 }
 
 impl<'a> PanicMessage<'a> {
-    /// Get the formatted message, if it has no arguments to be formatted at runtime.
+    /// Gets the formatted message, if it has no arguments to be formatted at runtime.
     ///
     /// This can be used to avoid allocations in some cases.
     ///
@@ -164,7 +164,7 @@ impl<'a> PanicMessage<'a> {
     /// For most cases with placeholders, this function will return `None`.
     ///
     /// See [`fmt::Arguments::as_str`] for details.
-    #[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "panic_info_message", since = "1.81.0")]
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
     #[must_use]
     #[inline]
@@ -173,7 +173,7 @@ impl<'a> PanicMessage<'a> {
     }
 }
 
-#[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "panic_info_message", since = "1.81.0")]
 impl Display for PanicMessage<'_> {
     #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -181,7 +181,7 @@ impl Display for PanicMessage<'_> {
     }
 }
 
-#[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "panic_info_message", since = "1.81.0")]
 impl fmt::Debug for PanicMessage<'_> {
     #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

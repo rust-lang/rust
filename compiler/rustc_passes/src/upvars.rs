@@ -9,7 +9,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.upvars_mentioned = |tcx, def_id| {
         if !tcx.is_closure_like(def_id) {
             return None;

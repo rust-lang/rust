@@ -2,7 +2,7 @@ use crate::ascii;
 
 #[cfg(not(test))]
 impl<const N: usize> [u8; N] {
-    /// Converts this array of bytes into a array of ASCII characters,
+    /// Converts this array of bytes into an array of ASCII characters,
     /// or returns `None` if any of the characters is non-ASCII.
     ///
     /// # Examples
@@ -29,7 +29,7 @@ impl<const N: usize> [u8; N] {
         }
     }
 
-    /// Converts this array of bytes into a array of ASCII characters,
+    /// Converts this array of bytes into an array of ASCII characters,
     /// without checking whether they're valid.
     ///
     /// # Safety

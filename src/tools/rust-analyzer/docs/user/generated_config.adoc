@@ -45,22 +45,14 @@ Automatically refresh project info via `cargo metadata` on
 --
 Run build scripts (`build.rs`) for more precise code analysis.
 --
-[[rust-analyzer.cargo.buildScripts.invocationLocation]]rust-analyzer.cargo.buildScripts.invocationLocation (default: `"workspace"`)::
-+
---
-Specifies the working directory for running build scripts.
-- "workspace": run build scripts for a workspace in the workspace's root directory.
-  This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.
-- "root": run build scripts in the project's root directory.
-This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-is set.
---
 [[rust-analyzer.cargo.buildScripts.invocationStrategy]]rust-analyzer.cargo.buildScripts.invocationStrategy (default: `"per_workspace"`)::
 +
 --
 Specifies the invocation strategy to use when running the build scripts command.
-If `per_workspace` is set, the command will be executed for each workspace.
-If `once` is set, the command will be executed once.
+If `per_workspace` is set, the command will be executed for each Rust workspace with the
+workspace as the working directory.
+If `once` is set, the command will be executed once with the opened project as the
+working directory.
 This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
 is set.
 --
@@ -75,14 +67,13 @@ option.
 If there are multiple linked projects/workspaces, this command is invoked for
 each of them, with the working directory being the workspace root
 (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#` and
-`#rust-analyzer.cargo.buildScripts.invocationLocation#`.
+by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#`.
 
 By default, a cargo invocation will be constructed for the configured
 targets and features, with the following base command line:
 
 ```bash
-cargo check --quiet --workspace --message-format=json --all-targets
+cargo check --quiet --workspace --message-format=json --all-targets --keep-going
 ```
 .
 --
@@ -143,16 +134,6 @@ Relative path to the sysroot, or "discover" to try to automatically find it via
 Unsetting this disables sysroot loading.
 
 This option does not take effect until rust-analyzer is restarted.
---
-[[rust-analyzer.cargo.sysrootQueryMetadata]]rust-analyzer.cargo.sysrootQueryMetadata (default: `false`)::
-+
---
-Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze
-third-party dependencies of the standard libraries.
-
-This will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer
-will attempt to clean up afterwards, but nevertheless requires the location to be
-writable to.
 --
 [[rust-analyzer.cargo.sysrootSrc]]rust-analyzer.cargo.sysrootSrc (default: `null`)::
 +
@@ -219,16 +200,6 @@ List of `cargo check` (or other command specified in `check.command`) diagnostic
 
 For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
 --
-[[rust-analyzer.check.invocationLocation]]rust-analyzer.check.invocationLocation (default: `"workspace"`)::
-+
---
-Specifies the working directory for running checks.
-- "workspace": run checks for workspaces in the corresponding workspaces' root directories.
-  This falls back to "root" if `#rust-analyzer.check.invocationStrategy#` is set to `once`.
-- "root": run checks in the project's root directory.
-This config only has an effect when `#rust-analyzer.check.overrideCommand#`
-is set.
---
 [[rust-analyzer.check.invocationStrategy]]rust-analyzer.check.invocationStrategy (default: `"per_workspace"`)::
 +
 --
@@ -260,8 +231,7 @@ Cargo, you might also want to change
 If there are multiple linked projects/workspaces, this command is invoked for
 each of them, with the working directory being the workspace root
 (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-by changing `#rust-analyzer.check.invocationStrategy#` and
-`#rust-analyzer.check.invocationLocation#`.
+by changing `#rust-analyzer.check.invocationStrategy#`.
 
 If `$saved_file` is part of the command, rust-analyzer will pass
 the absolute path of the saved file to the provided command. This is
@@ -655,12 +625,12 @@ Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
 --
 Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
 --
-[[rust-analyzer.inlayHints.genericParameterHints.const.enable]]rust-analyzer.inlayHints.genericParameterHints.const.enable (default: `false`)::
+[[rust-analyzer.inlayHints.genericParameterHints.const.enable]]rust-analyzer.inlayHints.genericParameterHints.const.enable (default: `true`)::
 +
 --
 Whether to show const generic parameter name inlay hints.
 --
-[[rust-analyzer.inlayHints.genericParameterHints.lifetime.enable]]rust-analyzer.inlayHints.genericParameterHints.lifetime.enable (default: `true`)::
+[[rust-analyzer.inlayHints.genericParameterHints.lifetime.enable]]rust-analyzer.inlayHints.genericParameterHints.lifetime.enable (default: `false`)::
 +
 --
 Whether to show generic lifetime parameter name inlay hints.
@@ -764,12 +734,6 @@ Whether to show `Debug` lens. Only applies when
 --
 Whether to show CodeLens in Rust files.
 --
-[[rust-analyzer.lens.forceCustomCommands]]rust-analyzer.lens.forceCustomCommands (default: `true`)::
-+
---
-Internal config: use custom client-side commands even when the
-client doesn't set the corresponding capability.
---
 [[rust-analyzer.lens.implementations.enable]]rust-analyzer.lens.implementations.enable (default: `true`)::
 +
 --
@@ -835,11 +799,6 @@ Sets the LRU capacity of the specified queries.
 +
 --
 Whether to show `can't find Cargo.toml` error message.
---
-[[rust-analyzer.notifications.unindexedProject]]rust-analyzer.notifications.unindexedProject (default: `false`)::
-+
---
-Whether to send an UnindexedProject notification to the client.
 --
 [[rust-analyzer.numThreads]]rust-analyzer.numThreads (default: `null`)::
 +
@@ -1014,6 +973,103 @@ Show documentation.
 +
 --
 Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
+--
+[[rust-analyzer.workspace.discoverConfig]]rust-analyzer.workspace.discoverConfig (default: `null`)::
++
+--
+Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
+
+[`DiscoverWorkspaceConfig`] also requires setting `progress_label` and `files_to_watch`.
+`progress_label` is used for the title in progress indicators, whereas `files_to_watch`
+is used to determine which build system-specific files should be watched in order to
+reload rust-analyzer.
+
+Below is an example of a valid configuration:
+```json
+"rust-analyzer.workspace.discoverConfig": {
+    "command": [
+        "rust-project",
+        "develop-json"
+    ],
+    "progressLabel": "rust-analyzer",
+    "filesToWatch": [
+        "BUCK"
+    ]
+}
+```
+
+## On `DiscoverWorkspaceConfig::command`
+
+**Warning**: This format is provisional and subject to change.
+
+[`DiscoverWorkspaceConfig::command`] *must* return a JSON object
+corresponding to `DiscoverProjectData::Finished`:
+
+```norun
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "kind")]
+#[serde(rename_all = "snake_case")]
+enum DiscoverProjectData {
+    Finished { buildfile: Utf8PathBuf, project: ProjectJsonData },
+    Error { error: String, source: Option<String> },
+    Progress { message: String },
+}
+```
+
+As JSON, `DiscoverProjectData::Finished` is:
+
+```json
+{
+    // the internally-tagged representation of the enum.
+    "kind": "finished",
+    // the file used by a non-Cargo build system to define
+    // a package or target.
+    "buildfile": "rust-analyzer/BUILD",
+    // the contents of a rust-project.json, elided for brevity
+    "project": {
+        "sysroot": "foo",
+        "crates": []
+    }
+}
+```
+
+It is encouraged, but not required, to use the other variants on
+`DiscoverProjectData` to provide a more polished end-user experience.
+
+`DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`,
+which will be substituted with the JSON-serialized form of the following
+enum:
+
+```norun
+#[derive(PartialEq, Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DiscoverArgument {
+   Path(AbsPathBuf),
+   Buildfile(AbsPathBuf),
+}
+```
+
+The JSON representation of `DiscoverArgument::Path` is:
+
+```json
+{
+    "path": "src/main.rs"
+}
+```
+
+Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
+
+```
+{
+    "buildfile": "BUILD"
+}
+```
+
+`DiscoverArgument::Path` is used to find and generate a `rust-project.json`,
+and therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to
+to update an existing workspace. As a reference for implementors,
+buck2's `rust-project` will likely be useful:
+https://github.com/facebook/buck2/tree/main/integrations/rust-project.
 --
 [[rust-analyzer.workspace.symbol.search.kind]]rust-analyzer.workspace.symbol.search.kind (default: `"only_types"`)::
 +

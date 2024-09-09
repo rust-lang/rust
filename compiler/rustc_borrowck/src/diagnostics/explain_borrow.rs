@@ -3,6 +3,8 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use std::assert_matches::assert_matches;
+
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -18,14 +20,13 @@ use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
-
-use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
-use crate::{
-    borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
-    WriteKind,
-};
+use tracing::{debug, instrument};
 
 use super::{find_use, RegionName, UseSpans};
+use crate::borrow_set::BorrowData;
+use crate::nll::ConstraintDescription;
+use crate::region_infer::{BlameConstraint, Cause, ExtraConstraintInfo};
+use crate::{MirBorrowckCtxt, WriteKind};
 
 #[derive(Debug)]
 pub(crate) enum BorrowExplanation<'tcx> {
@@ -118,7 +119,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     // path_span must be `Some` as otherwise the if condition is true
                     let path_span = path_span.unwrap();
                     // path_span is only present in the case of closure capture
-                    assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
+                    assert_matches!(later_use_kind, LaterUseKind::ClosureCapture);
                     if !borrow_span.is_some_and(|sp| sp.overlaps(var_or_use_span)) {
                         let path_label = "used here by closure";
                         let capture_kind_label = message;
@@ -149,7 +150,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     // path_span must be `Some` as otherwise the if condition is true
                     let path_span = path_span.unwrap();
                     // path_span is only present in the case of closure capture
-                    assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
+                    assert_matches!(later_use_kind, LaterUseKind::ClosureCapture);
                     if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
                         let path_label = "used here by closure";
                         let capture_kind_label = message;
@@ -661,9 +662,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                                                 // `&dyn Trait`
                                                 ty::Ref(_, ty, _) if ty.is_trait() => true,
                                                 // `Box<dyn Trait>`
-                                                _ if ty.is_box() && ty.boxed_ty().is_trait() => {
+                                                _ if ty.boxed_ty().is_some_and(Ty::is_trait) => {
                                                     true
                                                 }
+
                                                 // `dyn Trait`
                                                 _ if ty.is_trait() => true,
                                                 // Anything else.

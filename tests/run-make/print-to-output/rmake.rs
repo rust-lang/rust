@@ -1,7 +1,12 @@
-//! This checks the output of some `--print` options when
-//! output to a file (instead of stdout)
+//! This checks the output of some `--print` options when output to a file (instead of stdout)
 
-use std::ffi::OsString;
+// ignore-tidy-linelength
+//@ needs-llvm-components: aarch64 arm avr bpf csky hexagon loongarch m68k mips msp430 nvptx powerpc riscv sparc systemz webassembly x86
+// FIXME(jieyouxu): there has to be a better way to do this, without the needs-llvm-components it
+// will fail on LLVM built without all of the components listed above. If adding a new target that
+// relies on a llvm component not listed above, it will need to be added to the required llvm
+// components above.
+
 use std::path::PathBuf;
 
 use run_make_support::{rfs, rustc, target};
@@ -44,10 +49,8 @@ fn check(args: Option) {
     // --print={option}=PATH
     let output = {
         let tmp_path = PathBuf::from(format!("{}.txt", args.option));
-        let mut print_arg = OsString::from(format!("--print={}=", args.option));
-        print_arg.push(tmp_path.as_os_str());
 
-        rustc().target(args.target).arg(print_arg).run();
+        rustc().target(args.target).print(&format!("{}={}", args.option, tmp_path.display())).run();
 
         rfs::read_to_string(&tmp_path)
     };

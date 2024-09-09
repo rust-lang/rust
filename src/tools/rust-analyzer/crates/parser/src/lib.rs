@@ -82,8 +82,6 @@ pub enum TopEntryPoint {
     /// Edge case -- macros generally don't expand to attributes, with the
     /// exception of `cfg_attr` which does!
     MetaItem,
-    /// Edge case 2 -- eager macros expand their input to a delimited list of comma separated expressions
-    MacroEagerInput,
 }
 
 impl TopEntryPoint {
@@ -97,7 +95,6 @@ impl TopEntryPoint {
             TopEntryPoint::Type => grammar::entry::top::type_,
             TopEntryPoint::Expr => grammar::entry::top::expr,
             TopEntryPoint::MetaItem => grammar::entry::top::meta_item,
-            TopEntryPoint::MacroEagerInput => grammar::entry::top::eager_macro_input,
         };
         let mut p = parser::Parser::new(input, edition);
         entry_point(&mut p);

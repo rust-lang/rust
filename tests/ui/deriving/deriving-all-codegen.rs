@@ -73,16 +73,6 @@ impl Copy for PackedManualCopy {}
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Unsized([u32]);
 
-// A packed struct with an unsized `[u8]` field. This is currently allowed, but
-// causes a warning and will be phased out at some point.
-#[derive(Debug, Hash)]
-#[repr(packed)]
-struct PackedUnsizedU8([u8]);
-//~^ WARNING byte slice in a packed struct that derives a built-in trait
-//~^^ WARNING byte slice in a packed struct that derives a built-in trait
-//~^^^ this was previously accepted
-//~^^^^ this was previously accepted
-
 trait Trait {
     type A;
 }

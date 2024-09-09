@@ -2,7 +2,7 @@
 
 use rustc_ast_ir::Movability;
 use rustc_type_ir::data_structures::IndexSet;
-use rustc_type_ir::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
@@ -47,7 +47,7 @@ where
         let cx = ecx.cx();
 
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::new(ecx.cx(), TreatParams::ForLookup)
+        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
             .args_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args)
         {
             return Err(NoSolution);
@@ -87,6 +87,19 @@ where
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
+            // We currently elaborate all supertrait outlives obligations from impls.
+            // This can be removed when we actually do coinduction correctly, and prove
+            // all supertrait obligations unconditionally.
+            let goal_clause: I::Clause = goal.predicate.upcast(cx);
+            for clause in elaborate::elaborate(cx, [goal_clause]) {
+                if matches!(
+                    clause.kind().skip_binder(),
+                    ty::ClauseKind::TypeOutlives(..) | ty::ClauseKind::RegionOutlives(..)
+                ) {
+                    ecx.add_goal(GoalSource::Misc, goal.with(cx, clause));
+                }
+            }
+
             ecx.evaluate_added_goals_and_make_canonical_response(maximal_certainty)
         })
     }
@@ -111,6 +124,13 @@ where
             if trait_clause.def_id() == goal.predicate.def_id()
                 && trait_clause.polarity() == goal.predicate.polarity
             {
+                if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                    goal.predicate.trait_ref.args,
+                    trait_clause.skip_binder().trait_ref.args,
+                ) {
+                    return Err(NoSolution);
+                }
+
                 ecx.probe_trait_candidate(source).enter(|ecx| {
                     let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
                     ecx.eq(
@@ -615,7 +635,7 @@ where
         }
 
         // FIXME: This actually should destructure the `Result` we get from transmutability and
-        // register candiates. We probably need to register >1 since we may have an OR of ANDs.
+        // register candidates. We probably need to register >1 since we may have an OR of ANDs.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let certainty = ecx.is_transmutable(
                 goal.param_env,
@@ -1132,7 +1152,7 @@ where
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)

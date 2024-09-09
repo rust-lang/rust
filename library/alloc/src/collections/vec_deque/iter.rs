@@ -28,6 +28,20 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     }
 }
 
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
+impl<T> Default for Iter<'_, T> {
+    /// Creates an empty `vec_deque::Iter`.
+    ///
+    /// ```
+    /// # use std::collections::vec_deque;
+    /// let iter: vec_deque::Iter<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Iter { i1: Default::default(), i2: Default::default() }
+    }
+}
+
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
@@ -59,7 +73,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let remaining = self.i1.advance_by(n);
         match remaining {
-            Ok(()) => return Ok(()),
+            Ok(()) => Ok(()),
             Err(n) => {
                 mem::swap(&mut self.i1, &mut self.i2);
                 self.i1.advance_by(n.get())
@@ -130,7 +144,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         match self.i2.advance_back_by(n) {
-            Ok(()) => return Ok(()),
+            Ok(()) => Ok(()),
             Err(n) => {
                 mem::swap(&mut self.i1, &mut self.i2);
                 self.i2.advance_back_by(n.get())

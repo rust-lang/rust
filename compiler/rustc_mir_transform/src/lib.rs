@@ -3,24 +3,19 @@
 #![feature(box_patterns)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
-#![feature(decl_macro)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
-#![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
-#![feature(option_get_or_insert_default)]
 #![feature(round_char_boundary)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
 use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
+use rustc_const_eval::check_consts::{self, ConstCx};
 use rustc_const_eval::util;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
@@ -29,23 +24,23 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
-use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
-    traversal, AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs,
-    LocalDecl, MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
-    SourceInfo, Statement, StatementKind, TerminatorKind, START_BLOCK,
+    AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
+    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
+    Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
-use rustc_middle::query;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
-use rustc_middle::{bug, span_bug};
-use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
+use rustc_middle::{bug, query, span_bug};
+use rustc_span::source_map::Spanned;
+use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
+use tracing::{debug, trace};
 
 #[macro_use]
 mod pass_manager;
 
-use pass_manager::{self as pm, Lint, MirLint, WithMinOptLevel};
+use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 
 mod abort_unwinding_calls;
 mod add_call_guards;
@@ -100,6 +95,7 @@ mod remove_unneeded_drops;
 mod remove_zsts;
 mod required_consts;
 mod reveal_all;
+mod sanity_check;
 mod shim;
 mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
@@ -111,9 +107,6 @@ mod sroa;
 mod unreachable_enum_branching;
 mod unreachable_prop;
 mod validate;
-
-use rustc_const_eval::check_consts::{self, ConstCx};
-use rustc_mir_dataflow::rustc_peek;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -132,11 +125,12 @@ pub fn provide(providers: &mut Providers) {
         mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
         optimized_mir,
         is_mir_available,
-        is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
+        is_ctfe_mir_available: is_mir_available,
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
+        coroutine_by_move_body_def_id: coroutine::coroutine_by_move_body_def_id,
         ..providers.queries
     };
 }
@@ -224,10 +218,8 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
 fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
-    let mut set = FxIndexSet::default();
-
     // All body-owners have MIR associated with them.
-    set.extend(tcx.hir().body_owners());
+    let mut set: FxIndexSet<_> = tcx.hir().body_owners().collect();
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
@@ -252,8 +244,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 
     // No need to const-check a non-const `fn`.
     match const_kind {
-        Some(ConstContext::Const { .. } | ConstContext::Static(_))
-        | Some(ConstContext::ConstFn) => {}
+        Some(ConstContext::Const { .. } | ConstContext::Static(_) | ConstContext::ConstFn) => {}
         None => span_bug!(
             tcx.def_span(def),
             "`mir_const_qualif` should only be called on const fns and const items"
@@ -295,13 +286,9 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             &Lint(check_packed_ref::CheckPackedRef),
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
-            // If this is an async closure's output coroutine, generate
-            // by-move and by-mut bodies if needed. We do this first so
-            // they can be optimized in lockstep with their parent bodies.
-            &coroutine::ByMoveBody,
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::Initial,
-            &rustc_peek::SanityCheck, // Just a lint
+            &Lint(sanity_check::SanityCheck),
         ],
         None,
     );
@@ -331,8 +318,15 @@ fn mir_promoted(
         | DefKind::AnonConst => tcx.mir_const_qualif(def),
         _ => ConstQualifs::default(),
     };
-    // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
+
+    // the `has_ffi_unwind_calls` query uses the raw mir, so make sure it is run.
     tcx.ensure_with_value().has_ffi_unwind_calls(def);
+
+    // the `by_move_body` query uses the raw mir, so make sure it is run.
+    if tcx.needs_coroutine_by_move_body_def_id(def) {
+        tcx.ensure_with_value().coroutine_by_move_body_def_id(def);
+    }
+
     let mut body = tcx.mir_built(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
@@ -340,12 +334,7 @@ fn mir_promoted(
 
     // Collect `required_consts` *before* promotion, so if there are any consts being promoted
     // we still add them to the list in the outer MIR body.
-    let mut required_consts = Vec::new();
-    let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
-    for (bb, bb_data) in traversal::reverse_postorder(&body) {
-        required_consts_visitor.visit_basic_block_data(bb, bb_data);
-    }
-    body.required_consts = required_consts;
+    RequiredConstsVisitor::compute_required_consts(&mut body);
 
     // What we need to run borrowck etc.
     let promote_pass = promote_consts::PromoteTemps::default();
@@ -397,7 +386,10 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     if tcx.is_coroutine(def.to_def_id()) {
         tcx.ensure_with_value().mir_coroutine_witnesses(def);
     }
-    let mir_borrowck = tcx.mir_borrowck(def);
+
+    // We only need to borrowck non-synthetic MIR.
+    let tainted_by_errors =
+        if !tcx.is_synthetic_mir(def) { tcx.mir_borrowck(def).tainted_by_errors } else { None };
 
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
@@ -409,7 +401,8 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
-    if let Some(error_reported) = mir_borrowck.tainted_by_errors {
+
+    if let Some(error_reported) = tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
     }
 
@@ -562,9 +555,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         tcx,
         body,
         &[
-            // Before doing anything, remember which items are being mentioned so that the set of items
-            // visited does not depend on the optimization level.
-            &mentioned_items::MentionedItems,
             // Add some UB checks before any UB gets optimized away.
             &check_alignment::CheckAlignment,
             // Before inlining: trim down MIR with passes to reduce inlining work.
@@ -572,6 +562,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
             // Also simple, so can just do first
             &lower_slice_len::LowerSliceLenCalls,
+            // Perform instsimplify before inline to eliminate some trivial calls (like clone shims).
+            &instsimplify::InstSimplify::BeforeInline,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
             // Code from other crates may have storage markers, so this needs to happen after inlining.
@@ -591,7 +583,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
-            &instsimplify::InstSimplify,
+            // After simplifycfg, it allows us to discover new opportunities for peephole optimizations.
+            &instsimplify::InstSimplify::AfterSimplifyCfg,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
@@ -655,6 +648,11 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         return body;
     }
 
+    // Before doing anything, remember which items are being mentioned so that the set of items
+    // visited does not depend on the optimization level.
+    // We do not use `run_passes` for this as that might skip the pass if `injection_phase` is set.
+    mentioned_items::MentionedItems.run_pass(tcx, &mut body);
+
     // If `mir_drops_elaborated_and_const_checked` found that the current body has unsatisfiable
     // predicates, it will shrink the MIR to a single `unreachable` terminator.
     // More generally, if MIR is a lone `unreachable`, there is nothing to optimize.
@@ -676,7 +674,9 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
         return tcx.arena.alloc(IndexVec::new());
     }
 
-    tcx.ensure_with_value().mir_borrowck(def);
+    if !tcx.is_synthetic_mir(def) {
+        tcx.ensure_with_value().mir_borrowck(def);
+    }
     let mut promoted = tcx.mir_promoted(def).1.steal();
 
     for body in &mut promoted {

@@ -1,7 +1,8 @@
-use crate::fmt_list;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::{self, Write};
 use std::ops::Range;
+
+use crate::fmt_list;
 
 #[derive(Clone)]
 pub struct RawEmitter {

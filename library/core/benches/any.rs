@@ -1,4 +1,5 @@
 use core::any::*;
+
 use test::{black_box, Bencher};
 
 #[bench]

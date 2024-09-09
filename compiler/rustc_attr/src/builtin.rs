@@ -1,8 +1,12 @@
 //! Parsing and validation of builtin attributes
 
+use std::num::NonZero;
+
 use rustc_abi::Align;
-use rustc_ast::{self as ast, attr};
-use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
+use rustc_ast::{
+    self as ast, attr, Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem,
+    NodeId,
+};
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorGuaranteed;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
@@ -13,9 +17,10 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::hygiene::Transparency;
-use rustc_span::{symbol::sym, symbol::Symbol, Span};
-use std::num::NonZero;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 
+use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
 /// The version placeholder that recently stabilized features contain inside the
@@ -517,7 +522,6 @@ pub struct Condition {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn cfg_matches(
     cfg: &ast::MetaItem,
     sess: &Session,
@@ -574,7 +578,7 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &Session, features: &Fea
 /// Parse a rustc version number written inside string literal in an attribute,
 /// like appears in `since = "1.0.0"`. Suffixes like "-dev" and "-nightly" are
 /// not accepted in this position, unlike when parsing CFG_RELEASE.
-fn parse_version(s: Symbol) -> Option<RustcVersion> {
+pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
     let mut components = s.as_str().split('-');
     let d = components.next()?;
     if components.next().is_some() {
@@ -589,7 +593,6 @@ fn parse_version(s: Symbol) -> Option<RustcVersion> {
 
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn eval_condition(
     cfg: &ast::MetaItem,
     sess: &Session,
@@ -661,12 +664,12 @@ pub fn eval_condition(
                         res & eval_condition(mi.meta_item().unwrap(), sess, features, eval)
                     }),
                 sym::not => {
-                    if mis.len() != 1 {
+                    let [mi] = mis.as_slice() else {
                         dcx.emit_err(session_diagnostics::ExpectedOneCfgPattern { span: cfg.span });
                         return false;
-                    }
+                    };
 
-                    !eval_condition(mis[0].meta_item().unwrap(), sess, features, eval)
+                    !eval_condition(mi.meta_item().unwrap(), sess, features, eval)
                 }
                 sym::target => {
                     if let Some(features) = features
@@ -676,7 +679,7 @@ pub fn eval_condition(
                             sess,
                             sym::cfg_target_compact,
                             cfg.span,
-                            "compact `cfg(target(..))` is experimental and subject to change",
+                            fluent_generated::attr_unstable_cfg_target_compact,
                         )
                         .emit();
                     }
@@ -843,7 +846,7 @@ pub fn find_deprecation(
                                     sess.dcx().emit_err(
                                         session_diagnostics::DeprecatedItemSuggestion {
                                             span: mi.span,
-                                            is_nightly: sess.is_nightly_build().then_some(()),
+                                            is_nightly: sess.is_nightly_build(),
                                             details: (),
                                         },
                                     );
@@ -1047,10 +1050,10 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     MetaItemKind::List(nested_items) => {
                         if meta_item.has_name(sym::align) {
                             recognised = true;
-                            if nested_items.len() == 1 {
+                            if let [nested_item] = nested_items.as_slice() {
                                 sess.dcx().emit_err(
                                     session_diagnostics::IncorrectReprFormatExpectInteger {
-                                        span: nested_items[0].span(),
+                                        span: nested_item.span(),
                                     },
                                 );
                             } else {
@@ -1062,10 +1065,10 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                             }
                         } else if meta_item.has_name(sym::packed) {
                             recognised = true;
-                            if nested_items.len() == 1 {
+                            if let [nested_item] = nested_items.as_slice() {
                                 sess.dcx().emit_err(
                                     session_diagnostics::IncorrectReprFormatPackedExpectInteger {
-                                        span: nested_items[0].span(),
+                                        span: nested_item.span(),
                                     },
                                 );
                             } else {

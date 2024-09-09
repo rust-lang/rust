@@ -5,7 +5,7 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `cfg` that excludes code from `test` builds. (i.e., `#{cfg(not(test))]`)
+    /// Checks for usage of `cfg` that excludes code from `test` builds. (i.e., `#[cfg(not(test))]`)
     ///
     /// ### Why is this bad?
     /// This may give the false impression that a codebase has 100% coverage, yet actually has untested code.

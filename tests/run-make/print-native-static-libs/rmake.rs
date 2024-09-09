@@ -12,8 +12,6 @@
 //@ ignore-cross-compile
 //@ ignore-wasm
 
-use std::io::BufRead;
-
 use run_make_support::{is_msvc, rustc};
 
 fn main() {

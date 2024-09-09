@@ -4,8 +4,12 @@ use rustc_middle::mir::{
     Terminator, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
+use tracing::debug;
 
-use crate::{borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, places_conflict};
+use crate::borrow_set::BorrowSet;
+use crate::facts::AllFacts;
+use crate::location::LocationTable;
+use crate::places_conflict;
 
 /// Emit `loan_killed_at` and `cfg_edge` facts at the same time.
 pub(super) fn emit_loan_kills<'tcx>(

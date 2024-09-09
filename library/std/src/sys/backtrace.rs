@@ -3,12 +3,10 @@
 
 use crate::backtrace_rs::{self, BacktraceFmt, BytesOrWideString, PrintFmt};
 use crate::borrow::Cow;
-use crate::env;
-use crate::fmt;
-use crate::io;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
 use crate::sync::{Mutex, MutexGuard, PoisonError};
+use crate::{env, fmt, io};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;

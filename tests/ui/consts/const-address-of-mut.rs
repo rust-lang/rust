@@ -1,5 +1,3 @@
-#![feature(raw_ref_op)]
-
 const A: () = { let mut x = 2; &raw mut x; };           //~ mutable pointer
 
 static B: () = { let mut x = 2; &raw mut x; };          //~ mutable pointer

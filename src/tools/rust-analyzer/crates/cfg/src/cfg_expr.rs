@@ -2,20 +2,20 @@
 //!
 //! See: <https://doc.rust-lang.org/reference/conditional-compilation.html#conditional-compilation>
 
-use std::{fmt, slice::Iter as SliceIter};
+use std::fmt;
 
-use tt::SmolStr;
+use intern::Symbol;
 
 /// A simple configuration value passed in from the outside.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CfgAtom {
     /// eg. `#[cfg(test)]`
-    Flag(SmolStr),
+    Flag(Symbol),
     /// eg. `#[cfg(target_os = "linux")]`
     ///
     /// Note that a key can have multiple values that are all considered "active" at the same time.
     /// For example, `#[cfg(target_feature = "sse")]` and `#[cfg(target_feature = "sse2")]`.
-    KeyValue { key: SmolStr, value: SmolStr },
+    KeyValue { key: Symbol, value: Symbol },
 }
 
 impl fmt::Display for CfgAtom {
@@ -32,8 +32,8 @@ impl fmt::Display for CfgAtom {
 pub enum CfgExpr {
     Invalid,
     Atom(CfgAtom),
-    All(Vec<CfgExpr>),
-    Any(Vec<CfgExpr>),
+    All(Box<[CfgExpr]>),
+    Any(Box<[CfgExpr]>),
     Not(Box<CfgExpr>),
 }
 
@@ -44,6 +44,7 @@ impl From<CfgAtom> for CfgExpr {
 }
 
 impl CfgExpr {
+    #[cfg(feature = "tt")]
     pub fn parse<S>(tt: &tt::Subtree<S>) -> CfgExpr {
         next_cfg_expr(&mut tt.token_trees.iter()).unwrap_or(CfgExpr::Invalid)
     }
@@ -63,10 +64,14 @@ impl CfgExpr {
         }
     }
 }
-fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr> {
+
+#[cfg(feature = "tt")]
+fn next_cfg_expr<S>(it: &mut std::slice::Iter<'_, tt::TokenTree<S>>) -> Option<CfgExpr> {
+    use intern::sym;
+
     let name = match it.next() {
         None => return None,
-        Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.text.clone(),
+        Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.sym.clone(),
         Some(_) => return Some(CfgExpr::Invalid),
     };
 
@@ -77,10 +82,7 @@ fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr>
                 Some(tt::TokenTree::Leaf(tt::Leaf::Literal(literal))) => {
                     it.next();
                     it.next();
-                    // FIXME: escape? raw string?
-                    let value =
-                        SmolStr::new(literal.text.trim_start_matches('"').trim_end_matches('"'));
-                    CfgAtom::KeyValue { key: name, value }.into()
+                    CfgAtom::KeyValue { key: name, value: literal.symbol.clone() }.into()
                 }
                 _ => return Some(CfgExpr::Invalid),
             }
@@ -88,11 +90,13 @@ fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr>
         Some(tt::TokenTree::Subtree(subtree)) => {
             it.next();
             let mut sub_it = subtree.token_trees.iter();
-            let mut subs = std::iter::from_fn(|| next_cfg_expr(&mut sub_it)).collect();
-            match name.as_str() {
-                "all" => CfgExpr::All(subs),
-                "any" => CfgExpr::Any(subs),
-                "not" => CfgExpr::Not(Box::new(subs.pop().unwrap_or(CfgExpr::Invalid))),
+            let mut subs = std::iter::from_fn(|| next_cfg_expr(&mut sub_it));
+            match name {
+                s if s == sym::all => CfgExpr::All(subs.collect()),
+                s if s == sym::any => CfgExpr::Any(subs.collect()),
+                s if s == sym::not => {
+                    CfgExpr::Not(Box::new(subs.next().unwrap_or(CfgExpr::Invalid)))
+                }
                 _ => CfgExpr::Invalid,
             }
         }
@@ -112,11 +116,11 @@ fn next_cfg_expr<S>(it: &mut SliceIter<'_, tt::TokenTree<S>>) -> Option<CfgExpr>
 impl arbitrary::Arbitrary<'_> for CfgAtom {
     fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
         if u.arbitrary()? {
-            Ok(CfgAtom::Flag(String::arbitrary(u)?.into()))
+            Ok(CfgAtom::Flag(Symbol::intern(<_>::arbitrary(u)?)))
         } else {
             Ok(CfgAtom::KeyValue {
-                key: String::arbitrary(u)?.into(),
-                value: String::arbitrary(u)?.into(),
+                key: Symbol::intern(<_>::arbitrary(u)?),
+                value: Symbol::intern(<_>::arbitrary(u)?),
             })
         }
     }

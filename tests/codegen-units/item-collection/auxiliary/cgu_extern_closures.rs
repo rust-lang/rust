@@ -1,3 +1,5 @@
+//@ compile-flags: -Zinline-mir=no
+
 #![crate_type = "lib"]
 
 #[inline]

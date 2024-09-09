@@ -1,9 +1,10 @@
 //! Interface with `rustc_pattern_analysis`.
 
+use std::cell::LazyCell;
 use std::fmt;
 
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
-use once_cell::unsync::Lazy;
+use intern::sym;
 use rustc_pattern_analysis::{
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     usefulness::{compute_match_usefulness, PlaceValidity, UsefulnessReport},
@@ -68,25 +69,31 @@ pub(crate) struct MatchCheckCtx<'db> {
     body: DefWithBodyId,
     pub(crate) db: &'db dyn HirDatabase,
     exhaustive_patterns: bool,
-    min_exhaustive_patterns: bool,
 }
 
 impl<'db> MatchCheckCtx<'db> {
     pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'db dyn HirDatabase) -> Self {
         let def_map = db.crate_def_map(module.krate());
-        let exhaustive_patterns = def_map.is_unstable_feature_enabled("exhaustive_patterns");
-        let min_exhaustive_patterns =
-            def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
-        Self { module, body, db, exhaustive_patterns, min_exhaustive_patterns }
+        let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
+        Self { module, body, db, exhaustive_patterns }
     }
 
     pub(crate) fn compute_match_usefulness(
         &self,
         arms: &[MatchArm<'db>],
         scrut_ty: Ty,
+        known_valid_scrutinee: Option<bool>,
     ) -> Result<UsefulnessReport<'db, Self>, ()> {
-        // FIXME: Determine place validity correctly. For now, err on the safe side.
-        let place_validity = PlaceValidity::MaybeInvalid;
+        if scrut_ty.contains_unknown() {
+            return Err(());
+        }
+        for arm in arms {
+            if arm.pat.ty().contains_unknown() {
+                return Err(());
+            }
+        }
+
+        let place_validity = PlaceValidity::from_bool(known_valid_scrutinee.unwrap_or(true));
         // Measured to take ~100ms on modern hardware.
         let complexity_limit = Some(500000);
         compute_match_usefulness(self, arms, scrut_ty, place_validity, complexity_limit)
@@ -99,7 +106,7 @@ impl<'db> MatchCheckCtx<'db> {
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
     fn is_foreign_non_exhaustive(&self, adt: hir_def::AdtId) -> bool {
         let is_local = adt.krate(self.db.upcast()) == self.module.krate();
-        !is_local && self.db.attrs(adt.into()).by_key("non_exhaustive").exists()
+        !is_local && self.db.attrs(adt.into()).by_key(&sym::non_exhaustive).exists()
     }
 
     fn variant_id_for_adt(
@@ -297,7 +304,8 @@ impl<'db> MatchCheckCtx<'db> {
             &Str(void) => match void {},
             Wildcard | NonExhaustive | Hidden | PrivateUninhabited => PatKind::Wild,
             Never => PatKind::Never,
-            Missing | F32Range(..) | F64Range(..) | Opaque(..) | Or => {
+            Missing | F16Range(..) | F32Range(..) | F64Range(..) | F128Range(..) | Opaque(..)
+            | Or => {
                 never!("can't convert to pattern: {:?}", pat.ctor());
                 PatKind::Wild
             }
@@ -316,9 +324,6 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.exhaustive_patterns
-    }
-    fn is_min_exhaustive_patterns_feature_on(&self) -> bool {
-        self.min_exhaustive_patterns
     }
 
     fn ctor_arity(
@@ -346,8 +351,9 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
             },
             Ref => 1,
             Slice(..) => unimplemented!(),
-            Never | Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..)
-            | Opaque(..) | NonExhaustive | PrivateUninhabited | Hidden | Missing | Wildcard => 0,
+            Never | Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
+            | F128Range(..) | Str(..) | Opaque(..) | NonExhaustive | PrivateUninhabited
+            | Hidden | Missing | Wildcard => 0,
             Or => {
                 never!("The `Or` constructor doesn't have a fixed arity");
                 0
@@ -378,8 +384,9 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                         let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
 
                         // Whether we must not match the fields of this variant exhaustively.
-                        let is_non_exhaustive = Lazy::new(|| self.is_foreign_non_exhaustive(adt));
-                        let visibilities = Lazy::new(|| self.db.field_visibilities(variant));
+                        let is_non_exhaustive =
+                            LazyCell::new(|| self.is_foreign_non_exhaustive(adt));
+                        let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
 
                         self.list_variant_fields(ty, variant)
                             .map(move |(fid, ty)| {
@@ -409,8 +416,9 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                 }
             },
             Slice(_) => unreachable!("Found a `Slice` constructor in match checking"),
-            Never | Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..)
-            | Opaque(..) | NonExhaustive | PrivateUninhabited | Hidden | Missing | Wildcard => {
+            Never | Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
+            | F128Range(..) | Str(..) | Opaque(..) | NonExhaustive | PrivateUninhabited
+            | Hidden | Missing | Wildcard => {
                 smallvec![]
             }
             Or => {

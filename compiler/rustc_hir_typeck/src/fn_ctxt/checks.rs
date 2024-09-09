@@ -1,3 +1,35 @@
+use std::{iter, mem};
+
+use itertools::Itertools;
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_errors::codes::*;
+use rustc_errors::{
+    a_or_an, display_list_with_comma_and, pluralize, Applicability, Diag, ErrorGuaranteed,
+    MultiSpan, StashKey,
+};
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::{ExprKind, HirId, Node, QPath};
+use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
+use rustc_hir_analysis::check::potentially_plural_count;
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_index::IndexVec;
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TypeTrace};
+use rustc_middle::ty::adjustment::AllowTwoPhase;
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::visit::TypeVisitableExt;
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
+use rustc_session::Session;
+use rustc_span::symbol::{kw, Ident};
+use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
+use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
+use tracing::debug;
+use {rustc_ast as ast, rustc_hir as hir};
+
 use crate::coercion::CoerceMany;
 use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
@@ -7,46 +39,15 @@ use crate::method::probe::IsSuggestion;
 use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
 use crate::method::MethodCallee;
+use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
-use crate::{errors, Expectation::*};
 use crate::{
-    struct_span_code_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, Needs,
+    errors, struct_span_code_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, Needs,
     TupleArgumentsFlag,
 };
-use itertools::Itertools;
-use rustc_ast as ast;
-use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{
-    a_or_an, codes::*, display_list_with_comma_and, pluralize, Applicability, Diag,
-    ErrorGuaranteed, MultiSpan, StashKey,
-};
-use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, HirId, Node, QPath};
-use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
-use rustc_hir_analysis::check::potentially_plural_count;
-use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_index::IndexVec;
-use rustc_infer::infer::TypeTrace;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_session::Session;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, BytePos, Span, DUMMY_SP};
-use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
-use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
-
-use std::iter;
-use std::mem;
 
 #[derive(Clone, Copy, Default)]
-pub enum DivergingBlockBehavior {
+pub(crate) enum DivergingBlockBehavior {
     /// This is the current stable behavior:
     ///
     /// ```rust
@@ -124,6 +125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let Err(guar) = has_error {
             let err_inputs = self.err_args(args_no_rcvr.len(), guar);
+            let err_output = Ty::new_error(self.tcx, guar);
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
@@ -134,28 +136,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sp,
                 expr,
                 &err_inputs,
-                None,
+                err_output,
+                NoExpectation,
                 args_no_rcvr,
                 false,
                 tuple_arguments,
                 method.ok().map(|method| method.def_id),
             );
-            return Ty::new_error(self.tcx, guar);
+            return err_output;
         }
 
         let method = method.unwrap();
-        // HACK(eddyb) ignore self in the definition (see above).
-        let expected_input_tys = self.expected_inputs_for_expected_output(
-            sp,
-            expected,
-            method.sig.output(),
-            &method.sig.inputs()[1..],
-        );
         self.check_argument_types(
             sp,
             expr,
             &method.sig.inputs()[1..],
-            expected_input_tys,
+            method.sig.output(),
+            expected,
             args_no_rcvr,
             method.sig.c_variadic,
             tuple_arguments,
@@ -175,8 +172,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         // Types (as defined in the *signature* of the target function)
         formal_input_tys: &[Ty<'tcx>],
-        // More specific expected types, after unifying with caller output types
-        expected_input_tys: Option<Vec<Ty<'tcx>>>,
+        formal_output: Ty<'tcx>,
+        // Expected output from the parent expression or statement
+        expectation: Expectation<'tcx>,
         // The expressions for each provided argument
         provided_args: &'tcx [hir::Expr<'tcx>],
         // Whether the function is variadic, for example when imported from C
@@ -209,6 +207,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ObligationCauseCode::Misc,
             );
         }
+
+        // First, let's unify the formal method signature with the expectation eagerly.
+        // We use this to guide coercion inference; it's output is "fudged" which means
+        // any remaining type variables are assigned to new, unrelated variables. This
+        // is because the inference guidance here is only speculative.
+        let formal_output = self.resolve_vars_with_obligations(formal_output);
+        let expected_input_tys: Option<Vec<_>> = expectation
+            .only_has_type(self)
+            .and_then(|expected_output| {
+                self.fudge_inference_if_ok(|| {
+                    let ocx = ObligationCtxt::new(self);
+
+                    // Attempt to apply a subtyping relationship between the formal
+                    // return type (likely containing type variables if the function
+                    // is polymorphic) and the expected return type.
+                    // No argument expectations are produced if unification fails.
+                    let origin = self.misc(call_span);
+                    ocx.sup(&origin, self.param_env, expected_output, formal_output)?;
+                    if !ocx.select_where_possible().is_empty() {
+                        return Err(TypeError::Mismatch);
+                    }
+
+                    // Record all the argument types, with the args
+                    // produced from the above subtyping unification.
+                    Ok(Some(
+                        formal_input_tys
+                            .iter()
+                            .map(|&ty| self.resolve_vars_if_possible(ty))
+                            .collect(),
+                    ))
+                })
+                .ok()
+            })
+            .unwrap_or_default();
 
         let mut err_code = E0061;
 
@@ -292,21 +324,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let coerce_error =
                 self.coerce(provided_arg, checked_ty, coerced_ty, AllowTwoPhase::Yes, None).err();
-
             if coerce_error.is_some() {
                 return Compatibility::Incompatible(coerce_error);
             }
 
-            // 3. Check if the formal type is a supertype of the checked one
-            //    and register any such obligations for future type checks
-            let supertype_error = self.at(&self.misc(provided_arg.span), self.param_env).sup(
+            // 3. Check if the formal type is actually equal to the checked one
+            //    and register any such obligations for future type checks.
+            let formal_ty_error = self.at(&self.misc(provided_arg.span), self.param_env).eq(
                 DefineOpaqueTypes::Yes,
                 formal_input_ty,
                 coerced_ty,
             );
 
             // If neither check failed, the types are compatible
-            match supertype_error {
+            match formal_ty_error {
                 Ok(InferOk { obligations, value: () }) => {
                     self.register_predicates(obligations);
                     Compatibility::Compatible
@@ -407,9 +438,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ) {
                     let (sugg_span, replace, help) =
                         if let Ok(snippet) = sess.source_map().span_to_snippet(span) {
-                            (Some(span), format!("{snippet} as {cast_ty}"), None)
+                            (Some(span), format!("{snippet} as {cast_ty}"), false)
                         } else {
-                            (None, "".to_string(), Some(()))
+                            (None, "".to_string(), true)
                         };
 
                     sess.dcx().emit_err(errors::PassToVariadicFunction {
@@ -419,7 +450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         help,
                         replace,
                         sugg_span,
-                        teach: sess.teach(E0617).then_some(()),
+                        teach: sess.teach(E0617),
                     });
                 }
 
@@ -1141,8 +1172,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .get(arg_idx + 1)
                                 .map(|&(_, sp)| sp)
                                 .unwrap_or_else(|| {
-                                    // Subtract one to move before `)`
-                                    call_expr.span.with_lo(call_expr.span.hi() - BytePos(1))
+                                    // Try to move before `)`. Note that `)` here is not necessarily
+                                    // the latin right paren, it could be a Unicode-confusable that
+                                    // looks like a `)`, so we must not use `- BytePos(1)`
+                                    // manipulations here.
+                                    self.tcx().sess.source_map().end_point(call_expr.span)
                                 });
 
                             // Include next comma
@@ -1528,7 +1562,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
                     ty::Char => Some(tcx.types.u8),
                     ty::RawPtr(..) => Some(tcx.types.usize),
-                    ty::FnDef(..) | ty::FnPtr(_) => Some(tcx.types.usize),
+                    ty::FnDef(..) | ty::FnPtr(..) => Some(tcx.types.usize),
                     _ => None,
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())
@@ -1554,7 +1588,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_struct_path(
+    pub(crate) fn check_struct_path(
         &self,
         qpath: &QPath<'tcx>,
         hir_id: HirId,
@@ -1620,7 +1654,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_decl_initializer(
+    fn check_decl_initializer(
         &self,
         hir_id: HirId,
         pat: &'tcx hir::Pat<'tcx>,
@@ -1698,7 +1732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Type check a `let` statement.
-    pub fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
+    fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
         self.check_decl(local.into());
         if local.pat.is_never_pattern() {
             self.diverges.set(Diverges::Always {
@@ -1708,7 +1742,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
+    fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
@@ -1743,7 +1777,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.diverges.set(self.diverges.get() | old_diverges);
     }
 
-    pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
+    pub(crate) fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
         let unit = self.tcx.types.unit;
         let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
 

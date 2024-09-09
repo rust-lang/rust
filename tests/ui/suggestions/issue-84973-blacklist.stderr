@@ -66,6 +66,11 @@ note: required by a bound in `f_sized`
    |
 LL | fn f_sized<T: Sized>(t: T) {}
    |               ^^^^^ required by this bound in `f_sized`
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     f_sized(*ref_cl);
+LL +     f_sized(ref_cl);
+   |
 
 error[E0277]: `Rc<{integer}>` cannot be sent between threads safely
   --> $DIR/issue-84973-blacklist.rs:27:12

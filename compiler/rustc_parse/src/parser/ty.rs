@@ -1,15 +1,5 @@
-use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
-
-use crate::errors::{
-    self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
-    FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPtrWithGenerics, FnPtrWithGenericsSugg,
-    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
-    NestedCVariadicType, ReturnTypesUseThinArrow,
-};
-use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, FnRetTy, GenericBound,
@@ -20,6 +10,15 @@ use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use thin_vec::{thin_vec, ThinVec};
+
+use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
+use crate::errors::{
+    self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
+    FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPtrWithGenerics, FnPtrWithGenericsSugg,
+    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
+    NestedCVariadicType, ReturnTypesUseThinArrow,
+};
+use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 /// Signals whether parsing a type should allow `+`.
 ///
@@ -421,7 +420,7 @@ impl<'a> Parser<'a> {
         let mut trailing_plus = false;
         let (ts, trailing) = self.parse_paren_comma_seq(|p| {
             let ty = p.parse_ty()?;
-            trailing_plus = p.prev_token.kind == TokenKind::BinOp(token::Plus);
+            trailing_plus = p.prev_token == TokenKind::BinOp(token::Plus);
             Ok(ty)
         })?;
 
@@ -500,8 +499,8 @@ impl<'a> Parser<'a> {
         let elt_ty = match self.parse_ty() {
             Ok(ty) => ty,
             Err(err)
-                if self.look_ahead(1, |t| t.kind == token::CloseDelim(Delimiter::Bracket))
-                    | self.look_ahead(1, |t| t.kind == token::Semi) =>
+                if self.look_ahead(1, |t| *t == token::CloseDelim(Delimiter::Bracket))
+                    | self.look_ahead(1, |t| *t == token::Semi) =>
             {
                 // Recover from `[LIT; EXPR]` and `[LIT]`
                 self.bump();
@@ -602,7 +601,7 @@ impl<'a> Parser<'a> {
         let span_start = self.token.span;
         let ast::FnHeader { ext, safety, constness, coroutine_kind } =
             self.parse_fn_front_matter(&inherited_vis, Case::Sensitive)?;
-        if self.may_recover() && self.token.kind == TokenKind::Lt {
+        if self.may_recover() && self.token == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
@@ -682,7 +681,7 @@ impl<'a> Parser<'a> {
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
 
-        *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::BinOp(token::Plus);
 
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
     }
@@ -728,8 +727,7 @@ impl<'a> Parser<'a> {
         self.check_keyword(kw::Dyn)
             && (self.token.uninterpolated_span().at_least_rust_2018()
                 || self.look_ahead(1, |t| {
-                    (can_begin_dyn_bound_in_edition_2015(t)
-                        || t.kind == TokenKind::BinOp(token::Star))
+                    (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::BinOp(token::Star))
                         && !can_continue_type_after_non_fn_ident(t)
                 }))
     }
@@ -751,7 +749,7 @@ impl<'a> Parser<'a> {
 
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
-        *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::BinOp(token::Plus);
         Ok(TyKind::TraitObject(bounds, syntax))
     }
 
@@ -853,7 +851,6 @@ impl<'a> Parser<'a> {
             // lifetimes and ident params (including SelfUpper). These are validated later
             // for order, duplication, and whether they actually reference params.
             let use_span = self.prev_token.span;
-            self.psess.gated_spans.gate(sym::precise_capturing, use_span);
             let (args, args_span) = self.parse_precise_capturing_args()?;
             GenericBound::Use(args, use_span.to(args_span))
         } else {
@@ -1061,7 +1058,7 @@ impl<'a> Parser<'a> {
         }
 
         let mut path = if self.token.is_keyword(kw::Fn)
-            && self.look_ahead(1, |tok| tok.kind == TokenKind::OpenDelim(Delimiter::Parenthesis))
+            && self.look_ahead(1, |t| *t == TokenKind::OpenDelim(Delimiter::Parenthesis))
             && let Some(path) = self.recover_path_from_fn()
         {
             path
@@ -1288,8 +1285,9 @@ impl<'a> Parser<'a> {
 
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
-        if let Some(ident) = self.token.lifetime() {
-            if ident.without_first_quote().is_reserved()
+        if let Some((ident, is_raw)) = self.token.lifetime() {
+            if matches!(is_raw, IdentIsRaw::No)
+                && ident.without_first_quote().is_reserved()
                 && ![kw::UnderscoreLifetime, kw::StaticLifetime].contains(&ident.name)
             {
                 self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });

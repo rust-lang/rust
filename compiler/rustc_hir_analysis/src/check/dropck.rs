@@ -3,13 +3,13 @@
 // We don't do any drop checking during hir typeck.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::util::CheckRegions;
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::ty::{GenericArgsRef, Ty};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 

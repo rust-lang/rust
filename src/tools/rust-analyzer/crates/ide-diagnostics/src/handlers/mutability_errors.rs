@@ -40,7 +40,7 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
             DiagnosticCode::RustcHardError("E0384"),
             format!(
                 "cannot mutate immutable variable `{}`",
-                d.local.name(ctx.sema.db).display(ctx.sema.db)
+                d.local.name(ctx.sema.db).display(ctx.sema.db, ctx.edition)
             ),
             d.span,
         )

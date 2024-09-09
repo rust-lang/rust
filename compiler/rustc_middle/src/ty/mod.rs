@@ -11,39 +11,31 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
-pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-pub use self::AssocItemContainer::*;
-pub use self::BorrowKind::*;
-pub use self::IntVarValue::*;
-use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
-use crate::metadata::ModChild;
-use crate::middle::privacy::EffectiveVisibilities;
-use crate::mir::{Body, CoroutineLayout};
-use crate::query::Providers;
-use crate::traits::{self, Reveal};
-use crate::ty;
-use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::util::Discr;
+use std::assert_matches::assert_matches;
+use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+use std::num::NonZero;
+use std::ptr::NonNull;
+use std::{fmt, mem, str};
+
 pub use adt::*;
 pub use assoc::*;
 pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
-use rustc_ast as ast;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{try_visit, Movability, Mutability};
-use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_macros::{
     extension, Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable,
@@ -59,24 +51,14 @@ use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
-use tracing::{debug, instrument};
-pub use vtable::*;
-
-use std::assert_matches::assert_matches;
-use std::fmt::Debug;
-use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
-use std::mem;
-use std::num::NonZero;
-use std::ptr::NonNull;
-use std::{fmt, str};
-
-pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::ConstKind::{
     Bound as BoundCt, Error as ErrorCt, Expr as ExprCt, Infer as InferCt, Param as ParamCt,
     Placeholder as PlaceholderCt, Unevaluated, Value,
 };
 pub use rustc_type_ir::*;
+use tracing::{debug, instrument};
+pub use vtable::*;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
 pub use self::closure::{
     analyze_coroutine_closure_captures, is_ancestor_or_same_capture, place_to_string_for_capture,
@@ -91,6 +73,7 @@ pub use self::context::{
     tls, CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift,
     TyCtxt, TyCtxtFeed,
 };
+pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShortInstance, UnusedGenericParams};
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
@@ -105,9 +88,9 @@ pub use self::predicate::{
     PredicateKind, ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef,
     TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
+pub use self::region::BoundRegionKind::*;
 pub use self::region::{
-    BoundRegion, BoundRegionKind, BoundRegionKind::*, EarlyParamRegion, LateParamRegion, Region,
-    RegionKind, RegionVid,
+    BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, Region, RegionKind, RegionVid,
 };
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{
@@ -120,6 +103,20 @@ pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
     TypeckResults, UserType, UserTypeAnnotationIndex,
 };
+pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+pub use self::AssocItemContainer::*;
+pub use self::BorrowKind::*;
+pub use self::IntVarValue::*;
+use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
+use crate::metadata::ModChild;
+use crate::middle::privacy::EffectiveVisibilities;
+use crate::mir::{Body, CoroutineLayout};
+use crate::query::Providers;
+use crate::traits::{self, Reveal};
+use crate::ty;
+pub use crate::ty::diagnostics::*;
+use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::util::Discr;
 
 pub mod abstract_const;
 pub mod adjustment;
@@ -1573,8 +1570,15 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
         }
 
+        // box is special, on the one hand the compiler assumes an ordered layout, with the pointer
+        // always at offset zero. On the other hand we want scalar abi optimizations.
+        let is_box = self.is_lang_item(did.to_def_id(), LangItem::OwnedBox);
+
         // This is here instead of layout because the choice must make it into metadata.
-        if !self.consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did))) {
+        if is_box
+            || !self
+                .consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did)))
+        {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 
@@ -1759,7 +1763,6 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceKind::Virtual(..)
             | ty::InstanceKind::ClosureOnceShim { .. }
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::CoroutineKindShim { .. }
             | ty::InstanceKind::DropGlue(..)
             | ty::InstanceKind::CloneShim(..)
             | ty::InstanceKind::ThreadLocalShim(..)
@@ -1793,6 +1796,37 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Get an attribute from the diagnostic attribute namespace
+    ///
+    /// This function requests an attribute with the following structure:
+    ///
+    /// `#[diagnostic::$attr]`
+    ///
+    /// This function performs feature checking, so if an attribute is returned
+    /// it can be used by the consumer
+    pub fn get_diagnostic_attr(
+        self,
+        did: impl Into<DefId>,
+        attr: Symbol,
+    ) -> Option<&'tcx ast::Attribute> {
+        let did: DefId = did.into();
+        if did.as_local().is_some() {
+            // it's a crate local item, we need to check feature flags
+            if rustc_feature::is_stable_diagnostic_attribute(attr, self.features()) {
+                self.get_attrs_by_path(did, &[sym::diagnostic, sym::do_not_recommend]).next()
+            } else {
+                None
+            }
+        } else {
+            // we filter out unstable diagnostic attributes before
+            // encoding attributes
+            debug_assert!(rustc_feature::encode_cross_crate(attr));
+            self.item_attrs(did)
+                .iter()
+                .find(|a| matches!(a.path().as_ref(), [sym::diagnostic, a] if *a == attr))
+        }
+    }
+
     pub fn get_attrs_by_path<'attr>(
         self,
         did: DefId,
@@ -1823,7 +1857,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_attrs(did, attr).next().is_some()
     }
 
-    /// Determines whether an item is annotated with a multi-segement attribute
+    /// Determines whether an item is annotated with a multi-segment attribute
     pub fn has_attrs_with_path(self, did: impl Into<DefId>, attrs: &[Symbol]) -> bool {
         self.get_attrs_by_path(did.into(), attrs).next().is_some()
     }
@@ -1877,7 +1911,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     identity_kind_ty.to_opt_closure_kind(),
                     Some(ClosureKind::Fn | ClosureKind::FnMut)
                 );
-                mir.coroutine_by_move_body().unwrap().coroutine_layout_raw()
+                self.optimized_mir(self.coroutine_by_move_body_def_id(def_id))
+                    .coroutine_layout_raw()
             }
         }
     }
@@ -2148,10 +2183,11 @@ pub struct DestructuredConst<'tcx> {
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(PredicateKind<'_>, 32);
-    static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 56);
+    static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 48);
     // tidy-alphabetical-end
 }

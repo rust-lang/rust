@@ -252,6 +252,11 @@ lint_duplicate_macro_attribute =
 
 lint_duplicate_matcher_binding = duplicate matcher binding
 
+lint_elided_named_lifetime = elided lifetime has a name
+    .label_elided = this elided lifetime gets resolved as `{$name}`
+    .label_named = lifetime `{$name}` declared here
+    .suggestion = consider specifying it explicitly
+
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum
@@ -361,6 +366,11 @@ lint_improper_ctypes_box = box cannot be represented as a single pointer
 lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
+
+lint_improper_ctypes_cstr_help =
+    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+lint_improper_ctypes_cstr_reason = `CStr`/`CString` do not have a guaranteed layout
+
 lint_improper_ctypes_dyn = trait objects have no C equivalent
 
 lint_improper_ctypes_enum_repr_help =
@@ -518,8 +528,8 @@ lint_non_binding_let_multi_suggestion =
 lint_non_binding_let_on_drop_type =
     non-binding let on a type that implements `Drop`
 
-lint_non_binding_let_on_sync_lock =
-    non-binding let on a synchronization lock
+lint_non_binding_let_on_sync_lock = non-binding let on a synchronization lock
+    .label = this lock is not assigned to a binding and is immediately dropped
 
 lint_non_binding_let_suggestion =
     consider binding to an unused variable to avoid immediately dropping the value
@@ -690,20 +700,27 @@ lint_ptr_null_checks_ref = references are not nullable, so checking them for nul
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
+lint_query_untracked = `{$method}` accesses information that is not tracked by the query system
+    .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
 lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
 
 lint_range_use_inclusive_range = use an inclusive range instead
 
+
+lint_raw_prefix = prefix `'r` is reserved
+    .label = reserved prefix
+    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
 
 lint_reason_must_be_string_literal = reason must be a string literal
 
 lint_reason_must_come_last = reason in lint attribute must come last
 
 lint_redundant_import = the item `{$ident}` is imported redundantly
-    .label_imported_here = the item `{ident}` is already imported here
-    .label_defined_here = the item `{ident}` is already defined here
-    .label_imported_prelude = the item `{ident}` is already imported by the extern prelude
-    .label_defined_prelude = the item `{ident}` is already defined by the extern prelude
+    .label_imported_here = the item `{$ident}` is already imported here
+    .label_defined_here = the item `{$ident}` is already defined here
+    .label_imported_prelude = the item `{$ident}` is already imported by the extern prelude
+    .label_defined_prelude = the item `{$ident}` is already defined by the extern prelude
 
 lint_redundant_import_visibility = glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough
     .note = the most public imported item is `{$max_vis}`
@@ -758,6 +775,9 @@ lint_suspicious_double_ref_clone =
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
 
+lint_tail_expr_drop_order = these values and local bindings have significant drop implementation that will have a different drop order from that of Edition 2021
+    .label = these values have significant drop implementation and will observe changes in drop order under Edition 2024
+
 lint_trailing_semi_macro = trailing semicolon in macro used in expression position
     .note1 = macro invocations at the end of a block are treated as expressions
     .note2 = to ignore the value produced by the macro, add a semicolon after the invocation of `{$name}`
@@ -771,9 +791,16 @@ lint_tykind = usage of `ty::TyKind`
 lint_tykind_kind = usage of `ty::TyKind::<kind>`
     .suggestion = try using `ty::<kind>` directly
 
+lint_type_ir_inherent_usage = do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
+    .note = the method or struct you're looking for is likely defined somewhere else downstream in the compiler
+
 lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
     .label = argument has type `{$arg_ty}`
     .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
+
+lint_unexpected_builtin_cfg = unexpected `--cfg {$cfg}` flag
+    .controlled_by = config `{$cfg_name}` is only supposed to be controlled by `{$controlled_by}`
+    .incoherent = manually setting a built-in cfg can and does create incoherent behaviors
 
 lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_println}` to the top of the `build.rs`
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead

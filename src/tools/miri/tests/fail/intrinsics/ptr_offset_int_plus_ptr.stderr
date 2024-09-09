@@ -1,8 +1,8 @@
-error: Undefined Behavior: out-of-bounds pointer arithmetic: 0x1[noalloc] is a dangling pointer (it has no provenance)
+error: Undefined Behavior: out-of-bounds pointer arithmetic: expected a pointer to $BYTES bytes of memory, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
   --> $DIR/ptr_offset_int_plus_ptr.rs:LL:CC
    |
 LL |         let _val = (1 as *mut u8).offset(ptr as isize);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: 0x1[noalloc] is a dangling pointer (it has no provenance)
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: expected a pointer to $BYTES bytes of memory, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

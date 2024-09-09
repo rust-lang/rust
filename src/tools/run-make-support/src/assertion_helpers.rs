@@ -3,7 +3,7 @@
 use std::panic;
 use std::path::Path;
 
-use crate::fs;
+use crate::{fs, regex};
 
 /// Assert that `actual` is equal to `expected`.
 #[track_caller]
@@ -44,6 +44,50 @@ pub fn assert_not_contains<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N)
         eprintln!("=== NEEDLE ===");
         eprintln!("{}", needle);
         panic!("needle was unexpectedly found in haystack");
+    }
+}
+
+/// Assert that `haystack` contains the regex pattern `needle`.
+#[track_caller]
+pub fn assert_contains_regex<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N) {
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
+    let re = regex::Regex::new(needle).unwrap();
+    if !re.is_match(haystack) {
+        eprintln!("=== HAYSTACK ===");
+        eprintln!("{}", haystack);
+        eprintln!("=== NEEDLE ===");
+        eprintln!("{}", needle);
+        panic!("needle was not found in haystack");
+    }
+}
+
+/// Assert that `haystack` does not contain the regex pattern `needle`.
+#[track_caller]
+pub fn assert_not_contains_regex<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N) {
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
+    let re = regex::Regex::new(needle).unwrap();
+    if re.is_match(haystack) {
+        eprintln!("=== HAYSTACK ===");
+        eprintln!("{}", haystack);
+        eprintln!("=== NEEDLE ===");
+        eprintln!("{}", needle);
+        panic!("needle was unexpectedly found in haystack");
+    }
+}
+
+/// Assert that `haystack` contains `needle` a `count` number of times.
+#[track_caller]
+pub fn assert_count_is<H: AsRef<str>, N: AsRef<str>>(count: usize, haystack: H, needle: N) {
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
+    if count != haystack.matches(needle).count() {
+        eprintln!("=== HAYSTACK ===");
+        eprintln!("{}", haystack);
+        eprintln!("=== NEEDLE ===");
+        eprintln!("{}", needle);
+        panic!("needle did not appear {count} times in haystack");
     }
 }
 

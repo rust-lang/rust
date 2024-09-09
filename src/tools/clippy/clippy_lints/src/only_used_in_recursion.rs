@@ -243,7 +243,6 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 owner_id,
                 ..
             }) => {
-                #[allow(trivial_casts)]
                 if let Node::Item(item) = cx.tcx.parent_hir_node(owner_id.into())
                     && let Some(trait_ref) = cx
                         .tcx

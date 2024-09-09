@@ -1,7 +1,8 @@
 [package]
 name = "hir"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "A high-level object-oriented access to Rust code for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -19,7 +20,6 @@ itertools.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 triomphe.workspace = true
-once_cell = "1.17.1"
 
 # local deps
 base-db.workspace = true

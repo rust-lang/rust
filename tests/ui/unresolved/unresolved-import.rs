@@ -1,7 +1,8 @@
 use foo::bar;
 //~^ ERROR unresolved import `foo` [E0432]
 //~| NOTE you might be missing crate `foo`
-//~| HELP consider adding `extern crate foo` to use the `foo` crate
+//~| HELP consider importing the `foo` crate
+//~| SUGGESTION extern crate foo;
 
 use bar::Baz as x;
 //~^ ERROR unresolved import `bar::Baz` [E0432]

@@ -203,6 +203,12 @@ The `rust-analyzer` binary can be installed via https://brew.sh/[Homebrew].
 $ brew install rust-analyzer
 ----
 
+==== Windows
+
+It is recommended to install the latest Microsoft Visual C++ Redistributable prior to installation.
+Download links can be found
+https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist[here].
+
 === VS Code or VSCodium in Flatpak
 
 Setting up `rust-analyzer` with a Flatpak version of Code is not trivial because of the Flatpak sandbox.
@@ -623,7 +629,7 @@ https://github.com/rust-lang/rust-analyzer/tree/master/docs/dev[dev docs]!
 
 **Source:** https://github.com/rust-lang/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs[config.rs]
 
-The <<_installation,Installation>> section contains details on configuration for some of the editors.
+The <<installation,Installation>> section contains details on configuration for some of the editors.
 In general `rust-analyzer` is configured via LSP messages, which means that it's up to the editor to decide on the exact format and location of configuration files.
 
 Some clients, such as <<vs-code,VS Code>> or <<coc-rust-analyzer,COC plugin in Vim>> provide `rust-analyzer` specific configuration UIs. Others may require you to know a bit more about the interaction with `rust-analyzer`.
@@ -699,6 +705,12 @@ interface JsonProject {
     /// several different "sysroots" in one graph of
     /// crates.
     sysroot_src?: string;
+    /// List of groups of common cfg values, to allow
+    /// sharing them between crates.
+    ///
+    /// Maps from group name to its cfgs. Cfg follow
+    /// the same format as `Crate.cfg`.
+    cfg_groups?: { [key: string]: string[]; };
     /// The set of crates comprising the current
     /// project. Must include all transitive
     /// dependencies as well as sysroot crate (libstd,
@@ -748,6 +760,12 @@ interface Crate {
         include_dirs: string[],
         exclude_dirs: string[],
     },
+    /// List of cfg groups this crate inherits.
+    ///
+    /// All cfg in these groups will be concatenated to
+    /// `cfg`. It is impossible to replace a value from
+    /// the groups.
+    cfg_groups?: string[];
     /// The set of cfgs activated for a given crate, like
     /// `["unix", "feature=\"foo\"", "feature=\"bar\""]`.
     cfg: string[];

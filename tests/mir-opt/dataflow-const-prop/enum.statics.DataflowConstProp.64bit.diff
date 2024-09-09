@@ -44,7 +44,7 @@
           StorageLive(_1);
           StorageLive(_2);
           _2 = const {ALLOC0: &E};
--         _1 = (*_2);
+-         _1 = copy (*_2);
 +         _1 = const E::V1(0_i32);
           StorageDead(_2);
           StorageLive(_3);
@@ -60,16 +60,16 @@
   
       bb2: {
           StorageLive(_6);
-          _6 = ((_1 as V2).0: i32);
-          _3 = _6;
+          _6 = copy ((_1 as V2).0: i32);
+          _3 = copy _6;
           StorageDead(_6);
           goto -> bb4;
       }
   
       bb3: {
           StorageLive(_5);
--         _5 = ((_1 as V1).0: i32);
--         _3 = _5;
+-         _5 = copy ((_1 as V1).0: i32);
+-         _3 = copy _5;
 +         _5 = const 0_i32;
 +         _3 = const 0_i32;
           StorageDead(_5);
@@ -80,7 +80,7 @@
           StorageLive(_7);
           StorageLive(_8);
           _8 = const {ALLOC1: &&E};
-          _7 = (*_8);
+          _7 = copy (*_8);
           StorageDead(_8);
           StorageLive(_9);
           _10 = discriminant((*_7));
@@ -98,7 +98,7 @@
       bb6: {
           StorageLive(_11);
           _11 = &(((*_7) as V1).0: i32);
-          _9 = _11;
+          _9 = copy _11;
           StorageDead(_11);
           goto -> bb7;
       }

@@ -7,6 +7,7 @@ use hir_def::{
     AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
 };
 use hir_expand::name::Name;
+use intern::sym;
 use stdx::never;
 
 use crate::{
@@ -227,7 +228,7 @@ impl InferenceContext<'_> {
             Path::LangItem(..) => (
                 PathSegment {
                     name: {
-                        _d = hir_expand::name::known::Unknown;
+                        _d = Name::new_symbol_root(sym::Unknown.clone());
                         &_d
                     },
                     args_and_bindings: None,

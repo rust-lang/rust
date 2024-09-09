@@ -1,8 +1,3 @@
-use super::command::Command;
-use super::symbol_export;
-use crate::errors;
-use rustc_span::symbol::sym;
-
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -10,8 +5,9 @@ use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 use std::{env, iter, mem, str};
 
+use cc::windows_registry;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::find_native_static_library;
+use rustc_metadata::{find_native_static_library, try_find_native_static_library};
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols;
@@ -19,10 +15,13 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, S
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_session::Session;
+use rustc_span::symbol::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
-
-use cc::windows_registry;
 use tracing::{debug, warn};
+
+use super::command::Command;
+use super::symbol_export;
+use crate::errors;
 
 /// Disables non-English messages from localized linkers.
 /// Such messages may cause issues with text encoding on Windows (#35785)
@@ -892,9 +891,15 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
-        let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-        let suffix = if verbatim { "" } else { ".lib" };
-        self.link_arg(format!("{prefix}{name}{suffix}"));
+        // On MSVC-like targets rustc supports static libraries using alternative naming
+        // scheme (`libfoo.a`) unsupported by linker, search for such libraries manually.
+        if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
+            self.link_staticlib_by_path(&path, whole_archive);
+        } else {
+            let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
+            let suffix = if verbatim { "" } else { ".lib" };
+            self.link_arg(format!("{prefix}{name}{suffix}"));
+        }
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, whole_archive: bool) {
@@ -1501,7 +1506,7 @@ impl<'a> Linker for L4Bender<'a> {
 
 impl<'a> L4Bender<'a> {
     pub fn new(cmd: Command, sess: &'a Session) -> L4Bender<'a> {
-        L4Bender { cmd, sess: sess, hinted_static: false }
+        L4Bender { cmd, sess, hinted_static: false }
     }
 
     fn hint_static(&mut self) {
@@ -1521,7 +1526,7 @@ pub struct AixLinker<'a> {
 
 impl<'a> AixLinker<'a> {
     pub fn new(cmd: Command, sess: &'a Session) -> AixLinker<'a> {
-        AixLinker { cmd, sess: sess, hinted_static: None }
+        AixLinker { cmd, sess, hinted_static: None }
     }
 
     fn hint_static(&mut self) {

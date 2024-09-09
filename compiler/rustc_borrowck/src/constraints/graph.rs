@@ -4,11 +4,8 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, VarianceDiagInfo};
 use rustc_span::DUMMY_SP;
 
-use crate::{
-    constraints::OutlivesConstraintIndex,
-    constraints::{OutlivesConstraint, OutlivesConstraintSet},
-    type_check::Locations,
-};
+use crate::constraints::{OutlivesConstraint, OutlivesConstraintIndex, OutlivesConstraintSet};
+use crate::type_check::Locations;
 
 /// The construct graph organizes the constraints by their end-points.
 /// It can be used to view a `R1: R2` constraint as either an edge `R1

@@ -1,6 +1,7 @@
-use super::BackendTypes;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
+
+use super::BackendTypes;
 
 pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
     /// Performs any start-of-function codegen needed for coverage instrumentation.

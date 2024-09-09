@@ -1,6 +1,7 @@
 //! Nameres-specific procedural macro data and helpers.
 
 use hir_expand::name::{AsName, Name};
+use intern::sym;
 
 use crate::attr::Attrs;
 use crate::tt::{Leaf, TokenTree};
@@ -35,8 +36,8 @@ impl Attrs {
             Some(ProcMacroDef { name: func_name.clone(), kind: ProcMacroKind::Bang })
         } else if self.is_proc_macro_attribute() {
             Some(ProcMacroDef { name: func_name.clone(), kind: ProcMacroKind::Attr })
-        } else if self.by_key("proc_macro_derive").exists() {
-            let derive = self.by_key("proc_macro_derive").tt_values().next()?;
+        } else if self.by_key(&sym::proc_macro_derive).exists() {
+            let derive = self.by_key(&sym::proc_macro_derive).tt_values().next()?;
             let def = parse_macro_name_and_helper_attrs(&derive.token_trees)
                 .map(|(name, helpers)| ProcMacroDef { name, kind: ProcMacroKind::Derive { helpers } });
 
@@ -67,7 +68,7 @@ pub(crate) fn parse_macro_name_and_helper_attrs(tt: &[TokenTree]) -> Option<(Nam
             TokenTree::Leaf(Leaf::Punct(comma)),
             TokenTree::Leaf(Leaf::Ident(attributes)),
             TokenTree::Subtree(helpers)
-        ] if comma.char == ',' && attributes.text == "attributes" =>
+        ] if comma.char == ',' && attributes.sym == sym::attributes =>
         {
             let helpers = helpers
                 .token_trees

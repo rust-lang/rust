@@ -1,5 +1,4 @@
-//@ignore-target-windows: Windows uses a different mechanism for `thread_local!`
-#![feature(thread_local)]
+#![feature(thread_local, cfg_target_thread_local)]
 
 use std::cell::Cell;
 
@@ -8,16 +7,20 @@ use std::cell::Cell;
 //
 // The test covers both TLS statics and the TLS macro.
 pub fn main() {
-    thread_local! {
-        static TLS_KEY: Cell<Option<&'static i32>> = Cell::new(None);
-    }
-
-    TLS_KEY.with(|cell| {
-        cell.set(Some(Box::leak(Box::new(123))));
-    });
-
     #[thread_local]
     static TLS: Cell<Option<&'static i32>> = Cell::new(None);
 
     TLS.set(Some(Box::leak(Box::new(123))));
+
+    // We can only ignore leaks on targets that use `#[thread_local]` statics to implement
+    // `thread_local!`. Ignore the test on targest that don't.
+    if cfg!(target_thread_local) {
+        thread_local! {
+            static TLS_KEY: Cell<Option<&'static i32>> = Cell::new(None);
+        }
+
+        TLS_KEY.with(|cell| {
+            cell.set(Some(Box::leak(Box::new(123))));
+        });
+    }
 }

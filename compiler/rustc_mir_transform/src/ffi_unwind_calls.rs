@@ -1,13 +1,12 @@
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_middle::mir::*;
-use rustc_middle::query::LocalCrate;
-use rustc_middle::query::Providers;
-use rustc_middle::ty::layout;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::query::{LocalCrate, Providers};
+use rustc_middle::ty::{self, layout, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::FFI_UNWIND_CALLS;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
+use tracing::debug;
 
 use crate::errors;
 
@@ -59,7 +58,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         };
 
         let fn_def_id = match ty.kind() {
-            ty::FnPtr(_) => None,
+            ty::FnPtr(..) => None,
             &ty::FnDef(def_id, _) => {
                 // Rust calls cannot themselves create foreign unwinds (even if they use a non-Rust ABI).
                 // So the leak of the foreign unwind into Rust can only be elsewhere, not here.

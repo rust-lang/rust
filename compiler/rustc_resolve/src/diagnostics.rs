@@ -1,12 +1,15 @@
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_ID};
-use rustc_ast::{MetaItemKind, NestedMetaItem};
+use rustc_ast::{
+    self as ast, Crate, ItemKind, MetaItemKind, ModKind, NestedMetaItem, NodeId, Path,
+    CRATE_NODE_ID,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
+    report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
     ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -16,9 +19,10 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE;
-use rustc_session::lint::builtin::AMBIGUOUS_GLOB_IMPORTS;
-use rustc_session::lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS;
+use rustc_session::lint::builtin::{
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
+    MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+};
 use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -36,13 +40,13 @@ use crate::errors::{
 };
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
-use crate::{errors as errs, BindingKey};
-use crate::{path_names_to_string, Used};
-use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, Finalize};
-use crate::{HasGenericParams, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{LexicalScopeBinding, NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
-use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet};
-use crate::{Segment, UseError};
+use crate::{
+    errors as errs, path_names_to_string, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind,
+    BindingError, BindingKey, Finalize, HasGenericParams, LexicalScopeBinding, MacroRulesScope,
+    Module, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
+    PrivacyError, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
+    VisResolutionError,
+};
 
 type Res = def::Res<ast::NodeId>;
 
@@ -1048,6 +1052,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 parent_scope,
                                 false,
                                 false,
+                                None,
                             ) {
                                 suggestions.extend(
                                     ext.helper_attrs
@@ -1451,7 +1456,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let label_span = ident.span.shrink_to_hi();
             let mut spans = MultiSpan::from_span(label_span);
             spans.push_span_label(label_span, "put a macro name here");
-            err.subdiagnostic(MaybeMissingMacroRulesName { spans: spans });
+            err.subdiagnostic(MaybeMissingMacroRulesName { spans });
             return;
         }
 
@@ -1501,6 +1506,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 parent_scope,
                 None,
                 false,
+                None,
                 None,
             ) {
                 let desc = match binding.res() {
@@ -1979,6 +1985,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent_scope: &ParentScope<'a>,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
         ignore_binding: Option<NameBinding<'a>>,
+        ignore_import: Option<Import<'a>>,
         module: Option<ModuleOrUniformRoot<'a>>,
         failed_segment_idx: usize,
         ident: Ident,
@@ -2022,14 +2029,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     )),
                 )
+            } else if ident.name == kw::Underscore {
+                (format!("`_` is not a valid crate or module name"), None)
             } else if self.tcx.sess.is_rust_2015() {
                 (
                     format!("you might be missing crate `{ident}`"),
                     Some((
-                        vec![],
-                        format!(
-                            "consider adding `extern crate {ident}` to use the `{ident}` crate"
-                        ),
+                        vec![(
+                            self.current_crate_outer_attr_insert_span,
+                            format!("extern crate {ident};\n"),
+                        )],
+                        format!("consider importing the `{ident}` crate"),
                         Applicability::MaybeIncorrect,
                     )),
                 )
@@ -2059,11 +2069,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         parent_scope,
                         None,
                         ignore_binding,
+                        ignore_import,
                     )
                     .ok()
                 } else if let Some(ribs) = ribs
                     && let Some(TypeNS | ValueNS) = opt_ns
                 {
+                    assert!(ignore_import.is_none());
                     match self.resolve_ident_in_lexical_scope(
                         ident,
                         ns_to_try,
@@ -2084,6 +2096,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         None,
                         false,
                         ignore_binding,
+                        ignore_import,
                     )
                     .ok()
                 };
@@ -2125,6 +2138,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         } else if ident.name.as_str().chars().next().is_some_and(|c| c.is_ascii_uppercase()) {
             // Check whether the name refers to an item in the value namespace.
             let binding = if let Some(ribs) = ribs {
+                assert!(ignore_import.is_none());
                 self.resolve_ident_in_lexical_scope(
                     ident,
                     ValueNS,
@@ -2199,6 +2213,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None,
                 false,
                 ignore_binding,
+                ignore_import,
             ) {
                 let descr = binding.res().descr();
                 (format!("{descr} `{ident}` is not a crate or module"), suggestion)
@@ -2252,7 +2267,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
-        let result = self.maybe_resolve_path(&path, None, parent_scope);
+        let result = self.maybe_resolve_path(&path, None, parent_scope, None);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
@@ -2271,7 +2286,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
-        let result = self.maybe_resolve_path(&path, None, parent_scope);
+        let result = self.maybe_resolve_path(&path, None, parent_scope, None);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((
@@ -2302,7 +2317,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
-        let result = self.maybe_resolve_path(&path, None, parent_scope);
+        let result = self.maybe_resolve_path(&path, None, parent_scope, None);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
@@ -2336,7 +2351,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.
             path[0].ident.name = name;
-            let result = self.maybe_resolve_path(&path, None, parent_scope);
+            let result = self.maybe_resolve_path(&path, None, parent_scope, None);
             debug!(
                 "make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                 name, path, result
@@ -2502,12 +2517,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Finds a cfg-ed out item inside `module` with the matching name.
-    pub(crate) fn find_cfg_stripped(
-        &mut self,
-        err: &mut Diag<'_>,
-        segment: &Symbol,
-        module: DefId,
-    ) {
+    pub(crate) fn find_cfg_stripped(&self, err: &mut Diag<'_>, segment: &Symbol, module: DefId) {
         let local_items;
         let symbols = if module.is_local() {
             local_items = self

@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+
 use test::Bencher;
 
 #[bench]

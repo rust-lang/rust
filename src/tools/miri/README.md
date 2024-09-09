@@ -212,7 +212,6 @@ degree documented below):
 - All Rust [Tier 1 targets](https://doc.rust-lang.org/rustc/platform-support.html) are supported by
   Miri. They are all checked on Miri's CI, and some (at least one per OS) are even checked on every
   Rust PR, so the shipped Miri should always work on these targets.
-- `aarch64-apple-darwin` is supported.
 - `s390x-unknown-linux-gnu` is supported as our "big-endian target of choice".
 - For every other target with OS `linux`, `macos`, or `windows`, Miri should generally work, but we
   make no promises and we don't run tests for such targets.
@@ -384,7 +383,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   file descriptors will be mixed up.
   This is **work in progress**; currently, only integer arguments and return values are
   supported (and no, pointer/integer casts to work around this limitation will not work;
-  they will fail horribly). It also only works on Linux hosts for now.
+  they will fail horribly). It also only works on Unix hosts for now.
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file inside a directory called `<name>`, and can be processed
@@ -398,6 +397,8 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
+* `-Zmiri-recursive-validation` is a *highly experimental* flag that makes validity checking
+  recurse below references.
 * `-Zmiri-retag-fields[=<all|none|scalar>]` controls when Stacked Borrows retagging recurses into
   fields. `all` means it always recurses (the default, and equivalent to `-Zmiri-retag-fields`
   without an explicit value), `none` means it never recurses, `scalar` means it only recurses for
@@ -412,10 +413,6 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-track-alloc-id=<id1>,<id2>,...` shows a backtrace when the given allocations are
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous
-  values, instead it appends its values to the list. Listing an id multiple times has no effect.
-* `-Zmiri-track-call-id=<id1>,<id2>,...` shows a backtrace when the given call ids are
-  assigned to a stack frame.  This helps in debugging UB related to Stacked
-  Borrows "protectors". Specifying this argument multiple times does not overwrite the previous
   values, instead it appends its values to the list. Listing an id multiple times has no effect.
 * `-Zmiri-track-pointer-tag=<tag1>,<tag2>,...` shows a backtrace when a given pointer tag
   is created and when (if ever) it is popped from a borrow stack (which is where the tag becomes invalid
@@ -473,6 +470,19 @@ Moreover, Miri recognizes some environment variables:
 Miri provides some `extern` functions that programs can import to access
 Miri-specific functionality. They are declared in
 [/tests/utils/miri\_extern.rs](/tests/utils/miri_extern.rs).
+
+## Entry point for no-std binaries
+
+Binaries that do not use the standard library are expected to declare a function like this so that
+Miri knows where it is supposed to start execution:
+
+```rust
+#[cfg(miri)]
+#[no_mangle]
+fn miri_start(argc: isize, argv: *const *const u8) -> isize {
+    // Call the actual start function that your project implements, based on your target's conventions.
+}
+```
 
 ## Contributing and getting help
 

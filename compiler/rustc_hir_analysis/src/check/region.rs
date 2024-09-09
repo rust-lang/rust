@@ -6,6 +6,8 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
+use std::mem;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -16,13 +18,12 @@ use rustc_middle::bug;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
+use tracing::debug;
 
 use super::errs::{maybe_expr_static_mut, maybe_stmt_static_mut};
 
-use std::mem;
-
 #[derive(Debug, Copy, Clone)]
-pub struct Context {
+struct Context {
     /// The scope that contains any new variables declared, plus its depth in
     /// the scope tree.
     var_parent: Option<(Scope, ScopeDepth)>,
@@ -893,7 +894,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 /// re-use in incremental scenarios. We may sometimes need to rerun the
 /// type checker even when the HIR hasn't changed, and in those cases
 /// we can avoid reconstructing the region scope tree.
-pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
+pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
     let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
     if typeck_root_def_id != def_id {
         return tcx.region_scope_tree(typeck_root_def_id);

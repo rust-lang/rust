@@ -297,14 +297,11 @@
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
-use crate::fmt;
-use crate::mem::take;
-use crate::ops::{Deref, DerefMut};
-use crate::slice;
-use crate::str;
-use crate::sys;
+#[unstable(feature = "read_buf", issue = "78485")]
+pub use core::io::{BorrowedBuf, BorrowedCursor};
 use core::slice::memchr;
+
+pub(crate) use error::const_io_error;
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
@@ -328,10 +325,9 @@ pub use self::{
     stdio::{stderr, stdin, stdout, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock},
     util::{empty, repeat, sink, Empty, Repeat, Sink},
 };
-
-#[unstable(feature = "read_buf", issue = "78485")]
-pub use core::io::{BorrowedBuf, BorrowedCursor};
-pub(crate) use error::const_io_error;
+use crate::mem::take;
+use crate::ops::{Deref, DerefMut};
+use crate::{cmp, fmt, slice, str, sys};
 
 mod buffered;
 pub(crate) mod copy;
@@ -782,7 +778,7 @@ pub trait Read {
         false
     }
 
-    /// Read all bytes until EOF in this source, placing them into `buf`.
+    /// Reads all bytes until EOF in this source, placing them into `buf`.
     ///
     /// All bytes read from this source will be appended to the specified buffer
     /// `buf`. This function will continuously call [`read()`] to append more data to
@@ -866,7 +862,7 @@ pub trait Read {
         default_read_to_end(self, buf, None)
     }
 
-    /// Read all bytes until EOF in this source, appending them to `buf`.
+    /// Reads all bytes until EOF in this source, appending them to `buf`.
     ///
     /// If successful, this function returns the number of bytes which were read
     /// and appended to `buf`.
@@ -909,7 +905,7 @@ pub trait Read {
         default_read_to_string(self, buf, None)
     }
 
-    /// Read the exact number of bytes required to fill `buf`.
+    /// Reads the exact number of bytes required to fill `buf`.
     ///
     /// This function reads as many bytes as necessary to completely fill the
     /// specified buffer `buf`.
@@ -973,7 +969,7 @@ pub trait Read {
         default_read_buf(|b| self.read(b), buf)
     }
 
-    /// Read the exact number of bytes required to fill `cursor`.
+    /// Reads the exact number of bytes required to fill `cursor`.
     ///
     /// This is similar to the [`read_exact`](Read::read_exact) method, except
     /// that it is passed a [`BorrowedCursor`] rather than `[u8]` to allow use
@@ -1159,7 +1155,7 @@ pub trait Read {
     }
 }
 
-/// Read all bytes from a [reader][Read] into a new [`String`].
+/// Reads all bytes from a [reader][Read] into a new [`String`].
 ///
 /// This is a convenience function for [`Read::read_to_string`]. Using this
 /// function avoids having to create a variable first and provides more type
@@ -1212,7 +1208,7 @@ pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
 
 /// A buffer type used with `Read::read_vectored`.
 ///
-/// It is semantically a wrapper around an `&mut [u8]`, but is guaranteed to be
+/// It is semantically a wrapper around a `&mut [u8]`, but is guaranteed to be
 /// ABI compatible with the `iovec` type on Unix platforms and `WSABUF` on
 /// Windows.
 #[stable(feature = "iovec", since = "1.36.0")]
@@ -1266,7 +1262,7 @@ impl<'a> IoSliceMut<'a> {
     /// buf.advance(3);
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
-    #[stable(feature = "io_slice_advance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_slice_advance", since = "1.81.0")]
     #[inline]
     pub fn advance(&mut self, n: usize) {
         self.0.advance(n)
@@ -1305,7 +1301,7 @@ impl<'a> IoSliceMut<'a> {
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
     /// ```
-    #[stable(feature = "io_slice_advance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_slice_advance", since = "1.81.0")]
     #[inline]
     pub fn advance_slices(bufs: &mut &mut [IoSliceMut<'a>], n: usize) {
         // Number of buffers to remove.
@@ -1406,7 +1402,7 @@ impl<'a> IoSlice<'a> {
     /// buf.advance(3);
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
-    #[stable(feature = "io_slice_advance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_slice_advance", since = "1.81.0")]
     #[inline]
     pub fn advance(&mut self, n: usize) {
         self.0.advance(n)
@@ -1444,7 +1440,7 @@ impl<'a> IoSlice<'a> {
     /// IoSlice::advance_slices(&mut bufs, 10);
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
-    #[stable(feature = "io_slice_advance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "io_slice_advance", since = "1.81.0")]
     #[inline]
     pub fn advance_slices(bufs: &mut &mut [IoSlice<'a>], n: usize) {
         // Number of buffers to remove.
@@ -1531,7 +1527,7 @@ impl<'a> Deref for IoSlice<'a> {
 #[doc(notable_trait)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoWrite")]
 pub trait Write {
-    /// Write a buffer into this writer, returning how many bytes were written.
+    /// Writes a buffer into this writer, returning how many bytes were written.
     ///
     /// This function will attempt to write the entire contents of `buf`, but
     /// the entire write might not succeed, or the write may also generate an
@@ -1630,7 +1626,7 @@ pub trait Write {
         false
     }
 
-    /// Flush this output stream, ensuring that all intermediately buffered
+    /// Flushes this output stream, ensuring that all intermediately buffered
     /// contents reach their destination.
     ///
     /// # Errors
@@ -2247,7 +2243,7 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
 
-    /// Check if the underlying `Read` has any data left to be read.
+    /// Checks if the underlying `Read` has any data left to be read.
     ///
     /// This function may fill the buffer to check for data,
     /// so this functions returns `Result<bool>`, not `bool`.
@@ -2278,7 +2274,7 @@ pub trait BufRead: Read {
         self.fill_buf().map(|b| !b.is_empty())
     }
 
-    /// Read all bytes into `buf` until the delimiter `byte` or EOF is reached.
+    /// Reads all bytes into `buf` until the delimiter `byte` or EOF is reached.
     ///
     /// This function will read bytes from the underlying stream until the
     /// delimiter or EOF is found. Once found, all bytes up to, and including,
@@ -2337,7 +2333,7 @@ pub trait BufRead: Read {
         read_until(self, byte, buf)
     }
 
-    /// Skip all bytes until the delimiter `byte` or EOF is reached.
+    /// Skips all bytes until the delimiter `byte` or EOF is reached.
     ///
     /// This function will read (and discard) bytes from the underlying stream until the
     /// delimiter or EOF is found.
@@ -2399,7 +2395,7 @@ pub trait BufRead: Read {
         skip_until(self, byte)
     }
 
-    /// Read all bytes until a newline (the `0xA` byte) is reached, and append
+    /// Reads all bytes until a newline (the `0xA` byte) is reached, and append
     /// them to the provided `String` buffer.
     ///
     /// Previous content of the buffer will be preserved. To avoid appending to
@@ -3038,7 +3034,7 @@ where
     }
 }
 
-/// Read a single byte in a slow, generic way. This is used by the default
+/// Reads a single byte in a slow, generic way. This is used by the default
 /// `spec_read_byte`.
 #[inline]
 fn inlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {

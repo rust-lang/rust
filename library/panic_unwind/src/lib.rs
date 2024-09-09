@@ -24,7 +24,6 @@
 #![feature(rustc_attrs)]
 #![panic_runtime]
 #![feature(panic_runtime)]
-#![cfg_attr(bootstrap, feature(c_unwind))]
 // `real_imp` is unused with Miri, so silence warnings.
 #![cfg_attr(miri, allow(dead_code))]
 #![allow(internal_features)]
@@ -49,7 +48,7 @@ cfg_if::cfg_if! {
         target_os = "psp",
         target_os = "xous",
         target_os = "solid_asp3",
-        all(target_family = "unix", not(target_os = "espidf")),
+        all(target_family = "unix", not(any(target_os = "espidf", target_os = "rtems"))),
         all(target_vendor = "fortanix", target_env = "sgx"),
         target_family = "wasm",
     ))] {

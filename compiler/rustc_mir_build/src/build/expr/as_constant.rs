@@ -1,18 +1,20 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::{parse_float_into_constval, Builder};
 use rustc_ast as ast;
 use rustc_hir::LangItem;
-use rustc_middle::mir;
-use rustc_middle::mir::interpret::{Allocation, LitToConstError, LitToConstInput, Scalar};
+use rustc_middle::mir::interpret::{
+    Allocation, LitToConstError, LitToConstInput, Scalar, CTFE_ALLOC_SALT,
+};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
     self, CanonicalUserType, CanonicalUserTypeAnnotation, Ty, TyCtxt, UserTypeAnnotationIndex,
 };
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_target::abi::Size;
 use tracing::{instrument, trace};
+
+use crate::build::{parse_float_into_constval, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
@@ -125,7 +127,7 @@ fn lit_to_mir_constant<'tcx>(
         Ok(ConstValue::Scalar(Scalar::from_uint(result, width)))
     };
 
-    let value = match (lit, &ty.kind()) {
+    let value = match (lit, ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
             let s = s.as_str();
             let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes());
@@ -140,7 +142,7 @@ fn lit_to_mir_constant<'tcx>(
             ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
-            let id = tcx.allocate_bytes_dedup(data);
+            let id = tcx.allocate_bytes_dedup(data, CTFE_ALLOC_SALT);
             ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
         }
         (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) =>

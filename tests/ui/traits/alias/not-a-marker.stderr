@@ -1,0 +1,11 @@
+error: attribute should be applied to a trait
+  --> $DIR/not-a-marker.rs:3:1
+   |
+LL | #[marker]
+   | ^^^^^^^^^
+LL |
+LL | trait Foo = Send;
+   | ----------------- not a trait
+
+error: aborting due to 1 previous error
+

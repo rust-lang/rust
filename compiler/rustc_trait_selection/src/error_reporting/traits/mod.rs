@@ -18,11 +18,11 @@ use rustc_infer::traits::{
 use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
-
-use crate::error_reporting::TypeErrCtxt;
-use crate::traits::{FulfillmentError, FulfillmentErrorCode};
+use tracing::{info, instrument};
 
 pub use self::overflow::*;
+use crate::error_reporting::TypeErrCtxt;
+use crate::traits::{FulfillmentError, FulfillmentErrorCode};
 
 // When outputting impl candidates, prefer showing those that are more similar.
 //
@@ -437,7 +437,7 @@ pub fn report_object_safety_error<'tcx>(
         if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
             // Do not suggest `impl Trait` when dealing with things like super-traits.
             err.span_suggestion_verbose(
-                ty.span.until(trait_ref.span),
+                ty.span.until(trait_ref.0.span),
                 "consider using an opaque type instead",
                 "impl ",
                 Applicability::MaybeIncorrect,

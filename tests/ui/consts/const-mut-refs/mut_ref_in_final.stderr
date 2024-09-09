@@ -1,11 +1,11 @@
 error[E0764]: mutable references are not allowed in the final value of constants
-  --> $DIR/mut_ref_in_final.rs:10:21
+  --> $DIR/mut_ref_in_final.rs:9:21
    |
 LL | const B: *mut i32 = &mut 4;
    |                     ^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:16:40
+  --> $DIR/mut_ref_in_final.rs:15:40
    |
 LL | const B3: Option<&mut i32> = Some(&mut 42);
    |                              ----------^^-
@@ -15,7 +15,7 @@ LL | const B3: Option<&mut i32> = Some(&mut 42);
    |                              using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:19:42
+  --> $DIR/mut_ref_in_final.rs:18:42
    |
 LL | const B4: Option<&mut i32> = helper(&mut 42);
    |                              ------------^^-
@@ -25,7 +25,7 @@ LL | const B4: Option<&mut i32> = helper(&mut 42);
    |                              using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:34:65
+  --> $DIR/mut_ref_in_final.rs:33:65
    |
 LL | const FOO: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                  -------------------------------^^--
@@ -35,7 +35,7 @@ LL | const FOO: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                  using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:37:67
+  --> $DIR/mut_ref_in_final.rs:36:67
    |
 LL | static FOO2: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                    -------------------------------^^--
@@ -45,7 +45,7 @@ LL | static FOO2: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                    using this value as a static requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:40:71
+  --> $DIR/mut_ref_in_final.rs:39:71
    |
 LL | static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                        -------------------------------^^--
@@ -55,25 +55,25 @@ LL | static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                        using this value as a static requires that borrow lasts for `'static`
 
 error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/mut_ref_in_final.rs:53:53
+  --> $DIR/mut_ref_in_final.rs:52:53
    |
 LL | static RAW_MUT_CAST_S: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
    |                                                     ^^^^^^^
 
 error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/mut_ref_in_final.rs:55:54
+  --> $DIR/mut_ref_in_final.rs:54:54
    |
 LL | static RAW_MUT_COERCE_S: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                      ^^^^^^
 
 error[E0764]: mutable references are not allowed in the final value of constants
-  --> $DIR/mut_ref_in_final.rs:57:52
+  --> $DIR/mut_ref_in_final.rs:56:52
    |
 LL | const RAW_MUT_CAST_C: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
    |                                                    ^^^^^^^
 
 error[E0764]: mutable references are not allowed in the final value of constants
-  --> $DIR/mut_ref_in_final.rs:59:53
+  --> $DIR/mut_ref_in_final.rs:58:53
    |
 LL | const RAW_MUT_COERCE_C: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                     ^^^^^^

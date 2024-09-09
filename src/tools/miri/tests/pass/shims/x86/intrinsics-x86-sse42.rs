@@ -6,7 +6,7 @@
 //@ignore-target-avr
 //@ignore-target-s390x
 //@ignore-target-thumbv7em
-//@ignore-target-wasm32
+//@ignore-target-wasm
 //@compile-flags: -C target-feature=+sse4.2
 
 #[cfg(target_arch = "x86")]

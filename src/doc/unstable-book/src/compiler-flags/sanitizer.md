@@ -775,17 +775,46 @@ See the [Clang SafeStack documentation][clang-safestack] for more details.
 
 # ShadowCallStack
 
-ShadowCallStack provides backward edge control flow protection by storing a function's return address in a separately allocated 'shadow call stack' and loading the return address from that shadow call stack.
-
-ShadowCallStack requires a platform ABI which reserves `x18` as the instrumentation makes use of this register.
+ShadowCallStack provides backward edge control flow protection by storing a function's return address in a separately allocated 'shadow call stack'
+and loading the return address from that shadow call stack.
+AArch64 and RISC-V both have a platform register defined in their ABIs, which is `x18` and `x3`/`gp` respectively, that can optionally be reserved for this purpose.
+Software support from the operating system and runtime may be required depending on the target platform which is detailed in the remaining section.
+See the [Clang ShadowCallStack documentation][clang-scs] for more details.
 
 ShadowCallStack can be enabled with `-Zsanitizer=shadow-call-stack` option and is supported on the following targets:
 
-* `aarch64-linux-android`
+## AArch64 family
 
+ShadowCallStack requires the use of the ABI defined platform register, `x18`, which is required for code generation purposes.
+When `x18` is not reserved, and is instead used as a scratch register subsequently, enabling ShadowCallStack would lead to undefined behaviour
+due to corruption of return address or invalid memory access when the instrumentation restores return register to the link register `lr` from the
+already clobbered `x18` register.
+In other words, code that is calling into or called by functions instrumented with ShadowCallStack must reserve the `x18` register or preserve its value.
+
+### `aarch64-linux-android` and `aarch64-unknown-fuchsia`/`aarch64-fuchsia`
+
+This target already reserves the `x18` register.
 A runtime must be provided by the application or operating system.
+If `bionic` is used on this target, the software support is provided.
+Otherwise, a runtime needs to prepare a memory region and points `x18` to the region which serves as the shadow call stack.
 
-See the [Clang ShadowCallStack documentation][clang-scs] for more details.
+### `aarch64-unknown-none`
+
+In addition to support from a runtime by the application or operating system, the `-Zfixed-x18` flag is also mandatory.
+
+## RISC-V 64 family
+
+ShadowCallStack uses either the `gp` register for software shadow stack, also known as `x3`, or the `ssp` register if [`Zicfiss`][riscv-zicfiss] extension is available.
+`gp`/`x3` is currently always reserved and available for ShadowCallStack instrumentation, and `ssp` in case of `Zicfiss` is only accessible through its dedicated shadow stack instructions.
+
+Support from the runtime and operating system is required when `gp`/`x3` is used for software shadow stack.
+A runtime must prepare a memory region and point `gp`/`x3` to the region before executing the code.
+
+The following targets support ShadowCallStack.
+
+* `riscv64imac-unknown-none-elf`
+* `riscv64gc-unknown-none-elf`
+* `riscv64gc-unknown-fuchsia`
 
 # ThreadSanitizer
 
@@ -908,3 +937,4 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 [clang-tsan]: https://clang.llvm.org/docs/ThreadSanitizer.html
 [linux-kasan]: https://www.kernel.org/doc/html/latest/dev-tools/kasan.html
 [llvm-memtag]: https://llvm.org/docs/MemTagSanitizer.html
+[riscv-zicfiss]: https://github.com/riscv/riscv-cfi/blob/3f8e450c481ac303bd5643444f7a89672f24476e/src/cfi_backward.adoc

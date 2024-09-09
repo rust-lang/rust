@@ -1,10 +1,8 @@
 use std::iter::FromIterator;
 
-use gccjit::ToRValue;
-use gccjit::{BinaryOp, RValue, Type};
+use gccjit::{BinaryOp, RValue, ToRValue, Type};
 #[cfg(feature = "master")]
 use gccjit::{ComparisonOp, UnaryOp};
-
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 #[cfg(feature = "master")]
@@ -355,19 +353,24 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     if name == sym::simd_shuffle {
-        // Make sure this is actually an array, since typeck only checks the length-suffixed
+        // Make sure this is actually an array or SIMD vector, since typeck only checks the length-suffixed
         // version of this intrinsic.
-        let n: u64 = match *args[2].layout.ty.kind() {
+        let idx_ty = args[2].layout.ty;
+        let n: u64 = match idx_ty.kind() {
             ty::Array(ty, len) if matches!(*ty.kind(), ty::Uint(ty::UintTy::U32)) => {
                 len.try_eval_target_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(
                     || span_bug!(span, "could not evaluate shuffle index array length"),
                 )
             }
-            _ => return_error!(InvalidMonomorphization::SimdShuffle {
-                span,
-                name,
-                ty: args[2].layout.ty
-            }),
+            _ if idx_ty.is_simd()
+                && matches!(
+                    idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(),
+                    ty::Uint(ty::UintTy::U32)
+                ) =>
+            {
+                idx_ty.simd_size_and_type(bx.cx.tcx).0
+            }
+            _ => return_error!(InvalidMonomorphization::SimdShuffle { span, name, ty: idx_ty }),
         };
         require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
 

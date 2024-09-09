@@ -1,4 +1,4 @@
-use hir::{ImportPathConfig, InFile, MacroFileIdExt, ModuleDef};
+use hir::{InFile, MacroFileIdExt, ModuleDef};
 use ide_db::{helpers::mod_path_to_ast, imports::import_assets::NameToImport, items_locator};
 use itertools::Itertools;
 use syntax::{
@@ -70,6 +70,7 @@ pub(crate) fn replace_derive_with_manual_impl(
 
     let current_module = ctx.sema.scope(adt.syntax())?.module();
     let current_crate = current_module.krate();
+    let current_edition = current_crate.edition(ctx.db());
 
     let found_traits = items_locator::items_with_name(
         &ctx.sema,
@@ -83,17 +84,9 @@ pub(crate) fn replace_derive_with_manual_impl(
     })
     .flat_map(|trait_| {
         current_module
-            .find_path(
-                ctx.sema.db,
-                hir::ModuleDef::Trait(trait_),
-                ImportPathConfig {
-                    prefer_no_std: ctx.config.prefer_no_std,
-                    prefer_prelude: ctx.config.prefer_prelude,
-                    prefer_absolute: ctx.config.prefer_absolute,
-                },
-            )
+            .find_path(ctx.sema.db, hir::ModuleDef::Trait(trait_), ctx.config.import_path_config())
             .as_ref()
-            .map(mod_path_to_ast)
+            .map(|path| mod_path_to_ast(path, current_edition))
             .zip(Some(trait_))
     });
 
@@ -222,7 +215,7 @@ fn impl_def_from_trait(
     let impl_def = generate_trait_impl(adt, make::ty_path(trait_path.clone()));
 
     let first_assoc_item =
-        add_trait_assoc_items_to_impl(sema, &trait_items, trait_, &impl_def, target_scope);
+        add_trait_assoc_items_to_impl(sema, &trait_items, trait_, &impl_def, &target_scope);
 
     // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(ref func) = first_assoc_item {

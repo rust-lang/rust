@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use itertools::{Either, Itertools};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::visit::{TyContext, Visitor};
@@ -9,14 +11,12 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::ResultsCursor;
-use std::rc::Rc;
-
-use crate::{
-    constraints::OutlivesConstraintSet, region_infer::values::LivenessValues,
-    universal_regions::UniversalRegions,
-};
+use tracing::debug;
 
 use super::TypeChecker;
+use crate::constraints::OutlivesConstraintSet;
+use crate::region_infer::values::LivenessValues;
+use crate::universal_regions::UniversalRegions;
 
 mod local_use_map;
 mod polonius;

@@ -3,8 +3,6 @@
 // Check that the `CURRENT_RUSTC_VERSION` placeholder is correctly replaced by the current
 // `rustc` version and the `since` property in feature stability gating is properly respected.
 
-use std::path::PathBuf;
-
 use run_make_support::{aux_build, rfs, rustc, source_root};
 
 fn main() {

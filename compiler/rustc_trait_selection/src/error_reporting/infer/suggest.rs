@@ -1,5 +1,5 @@
-use crate::error_reporting::infer::hir::Path;
 use core::ops::ControlFlow;
+
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
 use hir::{LetStmt, QPath};
@@ -7,8 +7,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::MatchSource;
-use rustc_hir::Node;
+use rustc_hir::{MatchSource, Node};
 use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
     StatementAsExpression,
@@ -16,7 +15,9 @@ use rustc_middle::traits::{
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{sym, Span};
+use tracing::debug;
 
+use crate::error_reporting::infer::hir::Path;
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
@@ -382,9 +383,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if !expected_inner.is_fn() || !found_inner.is_fn() {
             return;
         }
-        match (&expected_inner.kind(), &found_inner.kind()) {
-            (ty::FnPtr(sig), ty::FnDef(did, args)) => {
-                let expected_sig = &(self.normalize_fn_sig)(*sig);
+        match (expected_inner.kind(), found_inner.kind()) {
+            (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
+                let sig = sig_tys.with(*hdr);
+                let expected_sig = &(self.normalize_fn_sig)(sig);
                 let found_sig =
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
 
@@ -402,11 +404,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (false, true) => FunctionPointerSuggestion::RemoveRef { span, fn_name },
                     (true, true) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
-                        FunctionPointerSuggestion::CastRef { span, fn_name, sig: *sig }
+                        FunctionPointerSuggestion::CastRef { span, fn_name, sig }
                     }
                     (false, false) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
-                        FunctionPointerSuggestion::Cast { span, fn_name, sig: *sig }
+                        FunctionPointerSuggestion::Cast { span, fn_name, sig }
                     }
                 };
                 diag.subdiagnostic(sugg);
@@ -449,10 +451,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 diag.subdiagnostic(sug);
             }
-            (ty::FnDef(did, args), ty::FnPtr(sig)) => {
+            (ty::FnDef(did, args), ty::FnPtr(sig_tys, hdr)) => {
                 let expected_sig =
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
-                let found_sig = &(self.normalize_fn_sig)(*sig);
+                let found_sig = &(self.normalize_fn_sig)(sig_tys.with(*hdr));
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig) {
                     return;

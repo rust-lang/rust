@@ -7,9 +7,9 @@
       let mut _4: *const u8;
   
       bb0: {
-          _3 = (*_1) as *const u8 (PtrToPtr);
-          _4 = _2 as *const u8 (PtrToPtr);
-          _0 = Eq(_3, _4);
+          _3 = copy (*_1) as *const u8 (PtrToPtr);
+          _4 = copy _2 as *const u8 (PtrToPtr);
+          _0 = Eq(copy _3, copy _4);
           return;
       }
   }

@@ -1,13 +1,12 @@
-use std::marker::PhantomData;
-
-use crate::build::expr::as_place::PlaceBase;
-use crate::build::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestCase};
-use crate::build::Builder;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 use tracing::debug;
+
+use crate::build::expr::as_place::PlaceBase;
+use crate::build::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestCase};
+use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Creates a false edge to `imaginary_target` and a real edge to
@@ -17,18 +16,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         from_block: BasicBlock,
         real_target: BasicBlock,
-        imaginary_target: Option<BasicBlock>,
+        imaginary_target: BasicBlock,
         source_info: SourceInfo,
     ) {
-        match imaginary_target {
-            Some(target) if target != real_target => {
-                self.cfg.terminate(
-                    from_block,
-                    source_info,
-                    TerminatorKind::FalseEdge { real_target, imaginary_target: target },
-                );
-            }
-            _ => self.cfg.goto(from_block, source_info, real_target),
+        if imaginary_target != real_target {
+            self.cfg.terminate(
+                from_block,
+                source_info,
+                TerminatorKind::FalseEdge { real_target, imaginary_target },
+            );
+        } else {
+            self.cfg.goto(from_block, source_info, real_target)
         }
     }
 }
@@ -70,10 +68,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 ///    a MIR pass run after borrow checking.
 pub(super) fn collect_fake_borrows<'tcx>(
     cx: &mut Builder<'_, 'tcx>,
-    candidates: &[&mut Candidate<'_, 'tcx>],
+    candidates: &[Candidate<'_, 'tcx>],
     temp_span: Span,
     scrutinee_base: PlaceBase,
 ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
+    if candidates.iter().all(|candidate| !candidate.has_guard) {
+        // Fake borrows are only used when there is a guard.
+        return Vec::new();
+    }
     let mut collector =
         FakeBorrowCollector { cx, scrutinee_base, fake_borrows: FxIndexMap::default() };
     for candidate in candidates.iter() {
@@ -218,57 +220,6 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
         //     x => (),
         // }
         self.fake_borrow_deref_prefixes(*source, FakeBorrowKind::Shallow);
-    }
-}
-
-/// Visit all the bindings of these candidates. Because or-alternatives bind the same variables, we
-/// only explore the first one of each or-pattern.
-pub(super) fn visit_bindings<'tcx>(
-    candidates: &[&mut Candidate<'_, 'tcx>],
-    f: impl FnMut(&Binding<'tcx>),
-) {
-    let mut visitor = BindingsVisitor { f, phantom: PhantomData };
-    for candidate in candidates.iter() {
-        visitor.visit_candidate(candidate);
-    }
-}
-
-pub(super) struct BindingsVisitor<'tcx, F> {
-    f: F,
-    phantom: PhantomData<&'tcx ()>,
-}
-
-impl<'tcx, F> BindingsVisitor<'tcx, F>
-where
-    F: FnMut(&Binding<'tcx>),
-{
-    fn visit_candidate(&mut self, candidate: &Candidate<'_, 'tcx>) {
-        for binding in &candidate.extra_data.bindings {
-            (self.f)(binding)
-        }
-        for match_pair in &candidate.match_pairs {
-            self.visit_match_pair(match_pair);
-        }
-    }
-
-    fn visit_flat_pat(&mut self, flat_pat: &FlatPat<'_, 'tcx>) {
-        for binding in &flat_pat.extra_data.bindings {
-            (self.f)(binding)
-        }
-        for match_pair in &flat_pat.match_pairs {
-            self.visit_match_pair(match_pair);
-        }
-    }
-
-    fn visit_match_pair(&mut self, match_pair: &MatchPairTree<'_, 'tcx>) {
-        if let TestCase::Or { pats, .. } = &match_pair.test_case {
-            // All the or-alternatives should bind the same locals, so we only visit the first one.
-            self.visit_flat_pat(&pats[0])
-        } else {
-            for subpair in &match_pair.subpairs {
-                self.visit_match_pair(subpair);
-            }
-        }
     }
 }
 

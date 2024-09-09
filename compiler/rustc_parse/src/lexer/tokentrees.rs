@@ -1,13 +1,14 @@
-use super::diagnostics::report_suspicious_mismatch_block;
-use super::diagnostics::same_indentation_level;
-use super::diagnostics::TokenTreeDiagInfo;
-use super::{StringReader, UnmatchedDelim};
-use crate::Parser;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_errors::{Applicability, PErr};
 use rustc_span::symbol::kw;
+
+use super::diagnostics::{
+    report_suspicious_mismatch_block, same_indentation_level, TokenTreeDiagInfo,
+};
+use super::{StringReader, UnmatchedDelim};
+use crate::Parser;
 
 pub(super) struct TokenTreesReader<'psess, 'src> {
     string_reader: StringReader<'psess, 'src>,
@@ -72,14 +73,29 @@ impl<'psess, 'src> TokenTreesReader<'psess, 'src> {
     fn eof_err(&mut self) -> PErr<'psess> {
         let msg = "this file contains an unclosed delimiter";
         let mut err = self.string_reader.dcx().struct_span_err(self.token.span, msg);
-        for &(_, sp) in &self.diag_info.open_braces {
-            err.span_label(sp, "unclosed delimiter");
+
+        let unclosed_delimiter_show_limit = 5;
+        let len = usize::min(unclosed_delimiter_show_limit, self.diag_info.open_braces.len());
+        for &(_, span) in &self.diag_info.open_braces[..len] {
+            err.span_label(span, "unclosed delimiter");
             self.diag_info.unmatched_delims.push(UnmatchedDelim {
                 found_delim: None,
                 found_span: self.token.span,
-                unclosed_span: Some(sp),
+                unclosed_span: Some(span),
                 candidate_span: None,
             });
+        }
+
+        if let Some((_, span)) = self.diag_info.open_braces.get(unclosed_delimiter_show_limit)
+            && self.diag_info.open_braces.len() >= unclosed_delimiter_show_limit + 2
+        {
+            err.span_label(
+                *span,
+                format!(
+                    "another {} unclosed delimiters begin from here",
+                    self.diag_info.open_braces.len() - unclosed_delimiter_show_limit
+                ),
+            );
         }
 
         if let Some((delim, _)) = self.diag_info.open_braces.last() {
@@ -213,7 +229,7 @@ impl<'psess, 'src> TokenTreesReader<'psess, 'src> {
             } else {
                 let this_spacing = if next_tok.is_punct() {
                     Spacing::Joint
-                } else if next_tok.kind == token::Eof {
+                } else if next_tok == token::Eof {
                     Spacing::Alone
                 } else {
                     Spacing::JointHidden

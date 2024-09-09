@@ -1,7 +1,8 @@
 [package]
 name = "vfs-notify"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Implementation of `loader::Handle` for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -14,12 +15,14 @@ doctest = false
 [dependencies]
 tracing.workspace = true
 walkdir = "2.3.2"
-crossbeam-channel = "0.5.5"
+crossbeam-channel.workspace = true
 notify = "6.1.1"
+rayon = "1.10.0"
 
 stdx.workspace = true
 vfs.workspace = true
 paths.workspace = true
+rustc-hash.workspace = true
 
 [lints]
 workspace = true

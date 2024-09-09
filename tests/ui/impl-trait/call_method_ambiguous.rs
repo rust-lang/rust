@@ -2,8 +2,6 @@
 //@[next] compile-flags: -Znext-solver
 //@[current] run-pass
 
-#![feature(precise_capturing)]
-
 trait Get {
     fn get(&mut self) -> u32;
 }

@@ -1,5 +1,5 @@
 use super::FLOAT_ARITHMETIC;
-use clippy_utils::consts::constant_simple;
+use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -55,7 +55,7 @@ impl Context {
             return;
         }
         let ty = cx.typeck_results().expr_ty(arg);
-        if constant_simple(cx, cx.typeck_results(), expr).is_none() && ty.is_floating_point() {
+        if ConstEvalCtxt::new(cx).eval_simple(expr).is_none() && ty.is_floating_point() {
             span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
             self.expr_id = Some(expr.hir_id);
         }

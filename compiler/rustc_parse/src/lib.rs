@@ -5,24 +5,25 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
+use std::path::Path;
+
 use rustc_ast as ast;
-use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AttrItem, Attribute, MetaItem};
+use rustc_ast::{token, AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, FatalError, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
-
-use std::path::Path;
 
 pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 

@@ -1,13 +1,8 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
-use crate::check::check_function_signature;
-use crate::errors::{
-    UnrecognizedAtomicOperation, UnrecognizedIntrinsicFunction,
-    WrongNumberOfGenericArgumentsToIntrinsic,
-};
-
-use rustc_errors::{codes::*, struct_span_code_err, DiagMessage};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, DiagMessage};
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -16,6 +11,12 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
+
+use crate::check::check_function_signature;
+use crate::errors::{
+    UnrecognizedAtomicOperation, UnrecognizedIntrinsicFunction,
+    WrongNumberOfGenericArgumentsToIntrinsic,
+};
 
 fn equate_intrinsic_type<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -29,7 +30,7 @@ fn equate_intrinsic_type<'tcx>(
     let (generics, span) = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
         | hir::Node::ForeignItem(hir::ForeignItem {
-            kind: hir::ForeignItemKind::Fn(.., generics, _),
+            kind: hir::ForeignItemKind::Fn(_, _, generics),
             ..
         }) => (tcx.generics_of(def_id), generics.span),
         _ => {
@@ -119,6 +120,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::type_id
         | sym::likely
         | sym::unlikely
+        | sym::select_unpredictable
         | sym::ptr_guaranteed_cmp
         | sym::minnumf16
         | sym::minnumf32
@@ -487,6 +489,7 @@ pub fn check_intrinsic_type(
             sym::assume => (0, 0, vec![tcx.types.bool], tcx.types.unit),
             sym::likely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
             sym::unlikely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
+            sym::select_unpredictable => (1, 0, vec![tcx.types.bool, param(0), param(0)], param(0)),
 
             sym::read_via_copy => (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
             sym::write_via_move => {

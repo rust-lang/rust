@@ -7,8 +7,7 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, Ty, TyCtxt, ValTree};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -130,7 +129,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let err = TypeNotPartialEq { span: self.span, non_peq_ty: ty };
                 let e = self.tcx().dcx().emit_err(err);
                 let kind = PatKind::Error(e);
-                return Box::new(Pat { span: self.span, ty: ty, kind });
+                return Box::new(Pat { span: self.span, ty, kind });
             }
         }
 

@@ -3,6 +3,7 @@
 #![doc(rust_logo)]
 #![feature(box_patterns)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod helpers;

@@ -58,7 +58,7 @@ fn try_get_caller_ty_name_and_method_name(
 fn is_map_to_option(cx: &LateContext<'_>, map_arg: &Expr<'_>) -> bool {
     let map_closure_ty = cx.typeck_results().expr_ty(map_arg);
     match map_closure_ty.kind() {
-        ty::Closure(_, _) | ty::FnDef(_, _) | ty::FnPtr(_) => {
+        ty::Closure(_, _) | ty::FnDef(_, _) | ty::FnPtr(..) => {
             let map_closure_sig = match map_closure_ty.kind() {
                 ty::Closure(_, args) => args.as_closure().sig(),
                 _ => map_closure_ty.fn_sig(cx.tcx),

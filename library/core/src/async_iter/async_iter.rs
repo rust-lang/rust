@@ -18,7 +18,7 @@ pub trait AsyncIterator {
     /// The type of items yielded by the async iterator.
     type Item;
 
-    /// Attempt to pull out the next value of this async iterator, registering the
+    /// Attempts to pull out the next value of this async iterator, registering the
     /// current task for wakeup if the value is not yet available, and returning
     /// `None` if the async iterator is exhausted.
     ///
@@ -139,7 +139,7 @@ impl<T> Poll<Option<T>> {
     pub const FINISHED: Self = Poll::Ready(None);
 }
 
-/// Convert something into an async iterator
+/// Converts something into an async iterator
 #[unstable(feature = "async_iterator", issue = "79024")]
 pub trait IntoAsyncIterator {
     /// The type of the item yielded by the iterator

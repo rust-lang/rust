@@ -167,7 +167,7 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn sub_regions(&self, sub: ty::Region<'tcx>, sup: ty::Region<'tcx>) {
-        self.sub_regions(SubregionOrigin::RelateRegionParamBound(DUMMY_SP), sub, sup)
+        self.sub_regions(SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None), sub, sup)
     }
 
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>) {

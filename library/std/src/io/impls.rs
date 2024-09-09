@@ -2,12 +2,9 @@
 mod tests;
 
 use crate::alloc::Allocator;
-use crate::cmp;
 use crate::collections::VecDeque;
-use crate::fmt;
 use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
-use crate::mem;
-use crate::str;
+use crate::{cmp, fmt, mem, str};
 
 // =============================================================================
 // Forwarding implementations

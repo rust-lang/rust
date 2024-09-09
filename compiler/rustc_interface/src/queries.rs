@@ -1,6 +1,6 @@
-use crate::errors::FailedWritingFile;
-use crate::interface::{Compiler, Result};
-use crate::{errors, passes};
+use std::any::Any;
+use std::cell::{RefCell, RefMut};
+use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -15,9 +15,10 @@ use rustc_middle::ty::{GlobalCtxt, TyCtxt};
 use rustc_serialize::opaque::FileEncodeResult;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::Session;
-use std::any::Any;
-use std::cell::{RefCell, RefMut};
-use std::sync::Arc;
+
+use crate::errors::FailedWritingFile;
+use crate::interface::{Compiler, Result};
+use crate::{errors, passes};
 
 /// Represent the result of a query.
 ///
@@ -97,7 +98,7 @@ impl<'tcx> Queries<'tcx> {
         self.parse.compute(|| passes::parse(&self.compiler.sess))
     }
 
-    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
+    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'tcx, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
             let krate = self.parse()?.steal();
 

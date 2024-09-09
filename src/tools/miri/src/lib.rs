@@ -10,10 +10,11 @@
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![feature(trait_upcasting)]
 #![feature(strict_overflow_ops)]
-#![feature(is_none_or)]
+#![feature(strict_provenance)]
+#![feature(exposed_provenance)]
+#![feature(pointer_is_aligned_to)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -37,6 +38,7 @@
     clippy::box_default,
     clippy::needless_question_mark,
     clippy::needless_lifetimes,
+    clippy::too_long_first_doc_paragraph,
     rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
@@ -59,6 +61,7 @@ extern crate tracing;
 // The rustc crates we need
 extern crate rustc_apfloat;
 extern crate rustc_ast;
+extern crate rustc_attr;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -124,15 +127,16 @@ pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };
 pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
-pub use crate::borrow_tracker::{
-    BorTag, BorrowTrackerMethod, CallId, EvalContextExt as _, RetagFields,
-};
+pub use crate::borrow_tracker::{BorTag, BorrowTrackerMethod, EvalContextExt as _, RetagFields};
 pub use crate::clock::{Clock, Instant};
 pub use crate::concurrency::{
     cpu_affinity::MAX_CPUS,
     data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
     init_once::{EvalContextExt as _, InitOnceId},
-    sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SynchronizationObjects},
+    sync::{
+        AdditionalMutexData, CondvarId, EvalContextExt as _, MutexId, MutexKind, RwLockId,
+        SynchronizationObjects,
+    },
     thread::{
         BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager,
         TimeoutAnchor, TimeoutClock, UnblockCallback,
@@ -143,6 +147,7 @@ pub use crate::diagnostics::{
 };
 pub use crate::eval::{
     create_ecx, eval_entry, AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith,
+    ValidationMode,
 };
 pub use crate::helpers::{AccessKind, EvalContextExt as _};
 pub use crate::machine::{

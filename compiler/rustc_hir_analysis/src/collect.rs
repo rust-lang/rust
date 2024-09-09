@@ -14,6 +14,10 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
+use std::cell::Cell;
+use std::iter;
+use std::ops::Bound;
+
 use rustc_ast::Recovered;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -24,14 +28,13 @@ use rustc_errors::{
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, walk_generics, Visitor};
-use rustc_hir::{self as hir};
-use rustc_hir::{GenericParamKind, Node};
+use rustc_hir::{self as hir, GenericParamKind, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -39,9 +42,7 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
-use std::cell::Cell;
-use std::iter;
-use std::ops::Bound;
+use tracing::{debug, instrument};
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
@@ -67,9 +68,9 @@ pub fn provide(providers: &mut Providers) {
         item_super_predicates: item_bounds::item_super_predicates,
         explicit_item_super_predicates: item_bounds::explicit_item_super_predicates,
         item_non_self_assumptions: item_bounds::item_non_self_assumptions,
+        impl_super_outlives: item_bounds::impl_super_outlives,
         generics_of: generics_of::generics_of,
         predicates_of: predicates_of::predicates_of,
-        predicates_defined_on,
         explicit_predicates_of: predicates_of::explicit_predicates_of,
         explicit_super_predicates_of: predicates_of::explicit_super_predicates_of,
         explicit_implied_predicates_of: predicates_of::explicit_implied_predicates_of,
@@ -391,7 +392,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
-        if let RegionInferReason::BorrowedObjectLifetimeDefault = reason {
+        if let RegionInferReason::ObjectLifetimeDefault = reason {
             let e = struct_span_code_err!(
                 self.dcx(),
                 span,
@@ -420,7 +421,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         span: Span,
         def_id: LocalDefId,
         assoc_name: Ident,
-    ) -> ty::GenericPredicates<'tcx> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_name))
     }
 
@@ -1036,7 +1037,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
 
     /// Check the uniqueness of fields in a struct variant, and recursively
     /// check the nested fields if it is an unnamed field with type of an
-    /// annoymous adt.
+    /// anonymous adt.
     fn check_field(&mut self, field: &hir::FieldDef<'_>) {
         if field.ident.name != kw::Underscore {
             self.check_field_decl(field.ident, field.span.into());
@@ -1207,25 +1208,29 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir().expect_item(def_id);
 
-    let (is_auto, safety, items) = match item.kind {
+    let (is_alias, is_auto, safety, items) = match item.kind {
         hir::ItemKind::Trait(is_auto, safety, .., items) => {
-            (is_auto == hir::IsAuto::Yes, safety, items)
+            (false, is_auto == hir::IsAuto::Yes, safety, items)
         }
-        hir::ItemKind::TraitAlias(..) => (false, hir::Safety::Safe, &[][..]),
+        hir::ItemKind::TraitAlias(..) => (true, false, hir::Safety::Safe, &[][..]),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
-    let constness = if tcx.has_attr(def_id, sym::const_trait) {
+    // Only regular traits can be const.
+    let constness = if !is_alias && tcx.has_attr(def_id, sym::const_trait) {
         hir::Constness::Const
     } else {
         hir::Constness::NotConst
     };
+
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
-    let is_marker = tcx.has_attr(def_id, sym::marker);
+    // Only regular traits can be marker.
+    let is_marker = !is_alias && tcx.has_attr(def_id, sym::marker);
+
     let rustc_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
     let is_fundamental = tcx.has_attr(def_id, sym::fundamental);
 
@@ -1435,11 +1440,9 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
             icx.lowerer().lower_fn_ty(hir_id, header.safety, header.abi, decl, Some(generics), None)
         }
 
-        ForeignItem(&hir::ForeignItem {
-            kind: ForeignItemKind::Fn(fn_decl, _, _, safety), ..
-        }) => {
+        ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(sig, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
-            compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi, safety)
+            compute_sig_of_foreign_fn_decl(tcx, def_id, sig.decl, abi, sig.header.safety)
         }
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor().is_some() => {
@@ -1488,7 +1491,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
         Some(ty) => {
             let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
             // Typeck doesn't expect erased regions to be returned from `type_of`.
-            // This is a heuristic approach. If the scope has region paramters,
+            // This is a heuristic approach. If the scope has region parameters,
             // we should change fn_sig's lifetime from `ReErased` to `ReError`,
             // otherwise to `ReStatic`.
             let has_region_params = generics.params.iter().any(|param| match param.kind {
@@ -1768,34 +1771,6 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
         GenericParamKind::Lifetime { .. } => !tcx.is_late_bound(param.hir_id),
         _ => false,
     })
-}
-
-/// Returns a list of type predicates for the definition with ID `def_id`, including inferred
-/// lifetime constraints. This includes all predicates returned by `explicit_predicates_of`, plus
-/// inferred constraints concerning which regions outlive other regions.
-#[instrument(level = "debug", skip(tcx))]
-fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
-    let mut result = tcx.explicit_predicates_of(def_id);
-    debug!("predicates_defined_on: explicit_predicates_of({:?}) = {:?}", def_id, result);
-    let inferred_outlives = tcx.inferred_outlives_of(def_id);
-    if !inferred_outlives.is_empty() {
-        debug!(
-            "predicates_defined_on: inferred_outlives_of({:?}) = {:?}",
-            def_id, inferred_outlives,
-        );
-        let inferred_outlives_iter =
-            inferred_outlives.iter().map(|(clause, span)| ((*clause).upcast(tcx), *span));
-        if result.predicates.is_empty() {
-            result.predicates = tcx.arena.alloc_from_iter(inferred_outlives_iter);
-        } else {
-            result.predicates = tcx.arena.alloc_from_iter(
-                result.predicates.into_iter().copied().chain(inferred_outlives_iter),
-            );
-        }
-    }
-
-    debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
-    result
 }
 
 fn compute_sig_of_foreign_fn_decl<'tcx>(

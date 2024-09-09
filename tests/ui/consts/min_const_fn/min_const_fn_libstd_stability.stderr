@@ -14,30 +14,47 @@ LL | const fn bar2() -> u32 { foo2() }
    |
    = help: const-stable functions can only call other const-stable functions
 
-error: const-stable function cannot use `#[feature(const_fn_floating_point_arithmetic)]`
-  --> $DIR/min_const_fn_libstd_stability.rs:29:26
+error: const-stable function cannot use `#[feature(const_refs_to_cell)]`
+  --> $DIR/min_const_fn_libstd_stability.rs:31:5
    |
-LL | const fn bar3() -> u32 { (5f32 + 6f32) as u32 }
-   |                          ^^^^^^^^^^^^^
+LL |     x.get();
+   |     ^
    |
-help: if it is not part of the public API, make this function unstably const
+help: if the function is not (yet) meant to be stable, make this function unstably const
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn bar3() -> u32 { (5f32 + 6f32) as u32 }
+LL | const fn bar3() -> u32 {
    |
-help: otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (but requires team approval)
    |
-LL + #[rustc_allow_const_fn_unstable(const_fn_floating_point_arithmetic)]
-LL | const fn bar3() -> u32 { (5f32 + 6f32) as u32 }
+LL + #[rustc_allow_const_fn_unstable(const_refs_to_cell)]
+LL | const fn bar3() -> u32 {
    |
 
+error[E0015]: cannot call non-const fn `Cell::<u32>::get` in constant functions
+  --> $DIR/min_const_fn_libstd_stability.rs:31:7
+   |
+LL |     x.get();
+   |       ^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: `foo` is not yet stable as a const fn
+  --> $DIR/min_const_fn_libstd_stability.rs:34:5
+   |
+LL |     foo()
+   |     ^^^^^
+   |
+   = help: const-stable functions can only call other const-stable functions
+
 error: `foo2_gated` is not yet stable as a const fn
-  --> $DIR/min_const_fn_libstd_stability.rs:39:32
+  --> $DIR/min_const_fn_libstd_stability.rs:45:32
    |
 LL | const fn bar2_gated() -> u32 { foo2_gated() }
    |                                ^^^^^^^^^^^^
    |
    = help: const-stable functions can only call other const-stable functions
 
-error: aborting due to 4 previous errors
+error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0015`.

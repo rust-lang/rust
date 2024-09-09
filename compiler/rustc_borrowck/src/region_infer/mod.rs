@@ -17,36 +17,35 @@ use rustc_middle::mir::{
     ClosureRegionRequirements, ConstraintCategory, Local, Location, ReturnConstraint,
     TerminatorKind,
 };
-use rustc_middle::traits::ObligationCause;
-use rustc_middle::traits::ObligationCauseCode;
+use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
+use tracing::{debug, instrument, trace};
 
 use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
+use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
-use crate::{
-    constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet},
-    diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo},
-    member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
-    nll::PoloniusOutput,
-    region_infer::reverse_sccs::ReverseSccGraph,
-    region_infer::values::{
-        LivenessValues, PlaceholderIndices, RegionElement, RegionValues, ToElementIndex,
-    },
-    type_check::{free_region_relations::UniversalRegionRelations, Locations},
-    universal_regions::UniversalRegions,
-    BorrowckInferCtxt,
+use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
+use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
+use crate::nll::PoloniusOutput;
+use crate::region_infer::reverse_sccs::ReverseSccGraph;
+use crate::region_infer::values::{
+    LivenessValues, PlaceholderIndices, RegionElement, RegionValues, ToElementIndex,
 };
+use crate::type_check::free_region_relations::UniversalRegionRelations;
+use crate::type_check::Locations;
+use crate::universal_regions::UniversalRegions;
+use crate::BorrowckInferCtxt;
 
 mod dump_mir;
 mod graphviz;
 mod opaque_types;
 mod reverse_sccs;
 
-pub mod values;
+pub(crate) mod values;
 
-pub type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex, RegionTracker>;
+pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex, RegionTracker>;
 
 /// An annotation for region graph SCCs that tracks
 /// the values of its elements.
@@ -228,7 +227,7 @@ pub(crate) struct AppliedMemberConstraint {
 }
 
 #[derive(Debug)]
-pub struct RegionDefinition<'tcx> {
+pub(crate) struct RegionDefinition<'tcx> {
     /// What kind of variable is this -- a free region? existential
     /// variable? etc. (See the `NllRegionVariableOrigin` for more
     /// info.)
@@ -290,7 +289,7 @@ pub(crate) enum Cause {
 /// `InferCtxt::process_registered_region_obligations` and
 /// `InferCtxt::type_must_outlive` in `rustc_infer::infer::InferCtxt`.
 #[derive(Clone, Debug)]
-pub struct TypeTest<'tcx> {
+pub(crate) struct TypeTest<'tcx> {
     /// The type `T` that must outlive the region.
     pub generic_kind: GenericKind<'tcx>,
 
@@ -322,7 +321,7 @@ enum Trace<'tcx> {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum ExtraConstraintInfo {
+pub(crate) enum ExtraConstraintInfo {
     PlaceholderFromPredicate(Span),
 }
 
@@ -2261,7 +2260,7 @@ impl<'tcx> RegionDefinition<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct BlameConstraint<'tcx> {
+pub(crate) struct BlameConstraint<'tcx> {
     pub category: ConstraintCategory<'tcx>,
     pub from_closure: bool,
     pub cause: ObligationCause<'tcx>,

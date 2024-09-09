@@ -10,7 +10,7 @@ bitflags = "2.4.1"
 either = "1.0"
 elsa = "=1.7.1"
 ena = "0.14.3"
-indexmap = { version = "2.0.0" }
+indexmap = { version = "2.4.0" }
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "11"
 rustc-hash = "1.1.0"
@@ -22,7 +22,7 @@ rustc_index = { path = "../rustc_index", package = "rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
-stacker = "0.1.15"
+stacker = "0.1.17"
 tempfile = "3.2"
 thin-vec = "0.2.12"
 tracing = "0.1"

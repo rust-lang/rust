@@ -5,6 +5,11 @@
 //! - MISSING_DOC_CODE_EXAMPLES: this lint is **UNSTABLE** and looks for public items missing doctests.
 //! - PRIVATE_DOC_TESTS: this lint is **STABLE** and looks for private items with doctests.
 
+use rustc_hir as hir;
+use rustc_middle::lint::LintLevelSource;
+use rustc_session::lint;
+use tracing::debug;
+
 use super::Pass;
 use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
@@ -12,9 +17,6 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::visit::DocVisitor;
-use rustc_hir as hir;
-use rustc_middle::lint::LintLevelSource;
-use rustc_session::lint;
 
 pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
     name: "check_doc_test_visibility",
@@ -44,7 +46,7 @@ pub(crate) struct Tests {
     pub(crate) found_tests: usize,
 }
 
-impl crate::doctest::DoctestVisitor for Tests {
+impl crate::doctest::DocTestVisitor for Tests {
     fn visit_test(&mut self, _: String, config: LangString, _: MdRelLine) {
         if config.rust && config.ignore == Ignore::None {
             self.found_tests += 1;
@@ -62,7 +64,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::AssocTypeItem(..)
                 | clean::TypeAliasItem(_)
                 | clean::StaticItem(_)
-                | clean::ConstantItem(_, _, _)
+                | clean::ConstantItem(..)
                 | clean::ExternCrateItem { .. }
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)

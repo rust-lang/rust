@@ -1,18 +1,13 @@
+use super::super::{
+    try_process, ArrayChunks, ByRefSized, Chain, Cloned, Copied, Cycle, Enumerate, Filter,
+    FilterMap, FlatMap, Flatten, Fuse, Inspect, Intersperse, IntersperseWith, Map, MapWhile,
+    MapWindows, Peekable, Product, Rev, Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile,
+    TrustedRandomAccessNoCoerce, Zip,
+};
 use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
-
-use super::super::try_process;
-use super::super::ByRefSized;
-use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
-use super::super::{FlatMap, Flatten};
-use super::super::{
-    Inspect, Map, MapWhile, MapWindows, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take,
-    TakeWhile,
-};
-use super::super::{Intersperse, IntersperseWith, Product, Sum, Zip};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 
@@ -823,7 +818,7 @@ pub trait Iterator {
     ///
     /// Given an element the closure must return `true` or `false`. The returned
     /// iterator will yield only the elements for which the closure returns
-    /// true.
+    /// `true`.
     ///
     /// # Examples
     ///
@@ -3951,8 +3946,6 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
-    ///
     /// assert!([1, 2, 2, 9].iter().is_sorted());
     /// assert!(![1, 3, 2, 4].iter().is_sorted());
     /// assert!([0].iter().is_sorted());
@@ -3960,7 +3953,7 @@ pub trait Iterator {
     /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     /// ```
     #[inline]
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[rustc_do_not_const_check]
     fn is_sorted(self) -> bool
     where
@@ -3978,8 +3971,6 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
-    ///
     /// assert!([1, 2, 2, 9].iter().is_sorted_by(|a, b| a <= b));
     /// assert!(![1, 2, 2, 9].iter().is_sorted_by(|a, b| a < b));
     ///
@@ -3989,7 +3980,7 @@ pub trait Iterator {
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| false));
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| true));
     /// ```
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[rustc_do_not_const_check]
     fn is_sorted_by<F>(mut self, compare: F) -> bool
     where
@@ -4030,13 +4021,11 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
-    ///
     /// assert!(["c", "bb", "aaa"].iter().is_sorted_by_key(|s| s.len()));
     /// assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     /// ```
     #[inline]
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[rustc_do_not_const_check]
     fn is_sorted_by_key<F, K>(self, f: F) -> bool
     where

@@ -1,8 +1,9 @@
-use super::{sa4, sa6};
 use core::net::{
     IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope, SocketAddr, SocketAddrV4, SocketAddrV6,
 };
 use core::str::FromStr;
+
+use super::{sa4, sa6};
 
 #[test]
 fn test_from_str_ipv4() {

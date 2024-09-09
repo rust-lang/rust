@@ -2,8 +2,8 @@ use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use tracing::instrument;
 
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::relate::{self as relate, Relate, RelateResult, TypeRelation};

@@ -1,9 +1,7 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::convert::identity;
-use std::fmt;
-use std::mem;
-use std::panic;
 use std::rc::Rc;
+use std::{fmt, mem, panic};
 
 fn square(n: usize) -> usize {
     n * n
@@ -911,8 +909,7 @@ fn test_split_iterators_size_hint() {
             // become maximally long, so the size_hint upper bounds are tight
             ((|_| true) as fn(&_) -> _, Bounds::Upper),
         ] {
-            use assert_tight_size_hints as a;
-            use format_args as f;
+            use {assert_tight_size_hints as a, format_args as f};
 
             a(v.split(p), b, "split");
             a(v.split_mut(p), b, "split_mut");

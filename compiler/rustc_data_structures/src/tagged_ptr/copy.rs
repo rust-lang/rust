@@ -1,5 +1,3 @@
-use super::{Pointer, Tag};
-use crate::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -7,6 +5,9 @@ use std::mem::ManuallyDrop;
 use std::num::NonZero;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
+
+use super::{Pointer, Tag};
+use crate::stable_hasher::{HashStable, StableHasher};
 
 /// A [`Copy`] tagged pointer.
 ///

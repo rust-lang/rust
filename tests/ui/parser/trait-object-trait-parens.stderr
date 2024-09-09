@@ -1,20 +1,29 @@
-error: `?Trait` is not permitted in trait object types
+error[E0658]: `?Trait` is not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:8:24
    |
 LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
    |                        ^^^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: `?Trait` is not permitted in trait object types
+error[E0658]: `?Trait` is not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:13:16
    |
 LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
    |                ^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: `?Trait` is not permitted in trait object types
+error[E0658]: `?Trait` is not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:18:44
    |
 LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
    |                                            ^^^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/trait-object-trait-parens.rs:8:16
@@ -91,4 +100,5 @@ LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
 
 error: aborting due to 6 previous errors; 3 warnings emitted
 
-For more information about this error, try `rustc --explain E0225`.
+Some errors have detailed explanations: E0225, E0658.
+For more information about an error, try `rustc --explain E0225`.

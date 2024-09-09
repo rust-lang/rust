@@ -1,7 +1,7 @@
 use quote::{quote, ToTokens};
 use syn::parse_quote;
 
-pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+pub(super) fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     if let syn::Data::Union(_) = s.ast().data {
         panic!("cannot derive on union")
     }

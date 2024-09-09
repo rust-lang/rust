@@ -1,4 +1,4 @@
-error: internal compiler error: compiler/rustc_const_eval/src/interpret/step.rs:LL:CC: SizeOf MIR operator called for unsized type dyn Debug
+error: internal compiler error: compiler/rustc_const_eval/src/interpret/operator.rs:LL:CC: unsized type for `NullaryOp::SizeOf`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 Box<dyn Any>

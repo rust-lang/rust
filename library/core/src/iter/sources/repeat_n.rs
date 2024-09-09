@@ -18,7 +18,6 @@ use crate::num::NonZero;
 /// Basic usage:
 ///
 /// ```
-/// #![feature(iter_repeat_n)]
 /// use std::iter;
 ///
 /// // four of the number four:
@@ -36,7 +35,6 @@ use crate::num::NonZero;
 /// For non-`Copy` types,
 ///
 /// ```
-/// #![feature(iter_repeat_n)]
 /// use std::iter;
 ///
 /// let v: Vec<i32> = Vec::with_capacity(123);
@@ -58,7 +56,7 @@ use crate::num::NonZero;
 /// assert_eq!(None, it.next());
 /// ```
 #[inline]
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
     let mut element = ManuallyDrop::new(element);
 
@@ -77,7 +75,7 @@ pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
 /// This `struct` is created by the [`repeat_n()`] function.
 /// See its documentation for more.
 #[derive(Clone, Debug)]
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 pub struct RepeatN<A> {
     count: usize,
     // Invariant: has been dropped iff count == 0.
@@ -101,32 +99,25 @@ impl<A> RepeatN<A> {
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A> Drop for RepeatN<A> {
     fn drop(&mut self) {
         self.take_element();
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> Iterator for RepeatN<A> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if self.count == 0 {
-            return None;
-        }
-
-        self.count -= 1;
-        Some(if self.count == 0 {
-            // SAFETY: the check above ensured that the count used to be non-zero,
-            // so element hasn't been dropped yet, and we just lowered the count to
-            // zero so it won't be dropped later, and thus it's okay to take it here.
-            unsafe { ManuallyDrop::take(&mut self.element) }
+        if self.count > 0 {
+            // SAFETY: Just checked it's not empty
+            unsafe { Some(self.next_unchecked()) }
         } else {
-            A::clone(&self.element)
-        })
+            None
+        }
     }
 
     #[inline]
@@ -163,14 +154,14 @@ impl<A: Clone> Iterator for RepeatN<A> {
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> ExactSizeIterator for RepeatN<A> {
     fn len(&self) -> usize {
         self.count
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -188,10 +179,24 @@ impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     }
 }
 
-#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> FusedIterator for RepeatN<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: Clone> TrustedLen for RepeatN<A> {}
-#[unstable(feature = "trusted_len_next_unchecked", issue = "37572")]
-impl<A: Clone> UncheckedIterator for RepeatN<A> {}
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
+impl<A: Clone> UncheckedIterator for RepeatN<A> {
+    #[inline]
+    unsafe fn next_unchecked(&mut self) -> Self::Item {
+        // SAFETY: The caller promised the iterator isn't empty
+        self.count = unsafe { self.count.unchecked_sub(1) };
+        if self.count == 0 {
+            // SAFETY: the check above ensured that the count used to be non-zero,
+            // so element hasn't been dropped yet, and we just lowered the count to
+            // zero so it won't be dropped later, and thus it's okay to take it here.
+            unsafe { ManuallyDrop::take(&mut self.element) }
+        } else {
+            A::clone(&self.element)
+        }
+    }
+}

@@ -1,6 +1,6 @@
 use crate::spec::{base, StackProbeType, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-netbsd".into(),
         metadata: crate::spec::TargetMetadata {

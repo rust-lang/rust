@@ -9,10 +9,10 @@ LL | fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y>
 LL |     x
    |     ^
    |
-help: to declare that `impl Trait<'y>` captures `'x`, you can add an explicit `'x` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'x`
    |
-LL | fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y> + 'x
-   |                                                    ++++
+LL | fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y> + use<'y, 'x>
+   |                                                    +++++++++++++
 
 error: aborting due to 1 previous error
 

@@ -1,12 +1,12 @@
-//@ revisions: linux apple windows
+//@ revisions: linux apple win
 //@ compile-flags: -O -C no-prepopulate-passes
 
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[linux] needs-llvm-components: x86
 //@[apple] compile-flags: --target x86_64-apple-darwin
 //@[apple] needs-llvm-components: x86
-//@[windows] compile-flags: --target x86_64-pc-windows-msvc
-//@[windows] needs-llvm-components: x86
+//@[win] compile-flags: --target x86_64-pc-windows-msvc
+//@[win] needs-llvm-components: x86
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]

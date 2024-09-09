@@ -1,12 +1,13 @@
-use crate::deriving::generic::ty::*;
-use crate::deriving::generic::*;
-use crate::deriving::path_std;
-
 use rustc_ast::{self as ast, EnumDef, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_session::config::FmtDebug;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
+
+use crate::deriving::generic::ty::*;
+use crate::deriving::generic::*;
+use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_debug(
     cx: &ExtCtxt<'_>,
@@ -49,6 +50,11 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
     // We want to make sure we have the ctxt set so that we can use unstable methods
     let span = cx.with_def_site_ctxt(span);
 
+    let fmt_detail = cx.sess.opts.unstable_opts.fmt_debug;
+    if fmt_detail == FmtDebug::None {
+        return BlockOrExpr::new_expr(cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())));
+    }
+
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
         EnumMatching(_, v, fields) => (v.ident, &v.data, fields),
@@ -60,6 +66,13 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
 
     let name = cx.expr_str(span, ident.name);
     let fmt = substr.nonselflike_args[0].clone();
+
+    // Fieldless enums have been special-cased earlier
+    if fmt_detail == FmtDebug::Shallow {
+        let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
+        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
+        return BlockOrExpr::new_expr(expr);
+    }
 
     // Struct and tuples are similar enough that we use the same code for both,
     // with some extra pieces for structs due to the field names.

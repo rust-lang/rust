@@ -1,7 +1,9 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use crate::errors;
+use std::mem::replace;
+use std::num::NonZero;
+
 use rustc_attr::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
     Unstable, UnstableReason, VERSION_PLACEHOLDER,
@@ -25,9 +27,9 @@ use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPR
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-use std::mem::replace;
-use std::num::NonZero;
 use tracing::{debug, info};
+
+use crate::errors;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
@@ -542,9 +544,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         let is_stable =
             self.tcx.lookup_stability(def_id).is_some_and(|stability| stability.level.is_stable());
         let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
-        let is_reachable = self.effective_visibilities.is_reachable(def_id);
 
-        if is_const && is_stable && missing_const_stability_attribute && is_reachable {
+        if is_const && is_stable && missing_const_stability_attribute {
             let descr = self.tcx.def_descr(def_id.to_def_id());
             self.tcx.dcx().emit_err(errors::MissingConstStabAttr { span, descr });
         }

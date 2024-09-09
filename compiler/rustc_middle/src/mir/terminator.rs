@@ -1,14 +1,13 @@
 //! Functionality for terminators and helper types that appear in terminators.
 
-use rustc_hir::LangItem;
-use smallvec::{smallvec, SmallVec};
-
-use super::TerminatorKind;
-use rustc_data_structures::packed::Pu128;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use std::slice;
 
-use super::*;
+use rustc_data_structures::packed::Pu128;
+use rustc_hir::LangItem;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use smallvec::{smallvec, SmallVec};
+
+use super::{TerminatorKind, *};
 
 impl SwitchTargets {
     /// Creates switch targets from an iterator of values and target blocks.
@@ -295,8 +294,9 @@ impl<O> AssertKind<O> {
     /// Note that we deliberately show more details here than we do at runtime, such as the actual
     /// numbers that overflowed -- it is much easier to do so here than at runtime.
     pub fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         use AssertKind::*;
+
+        use crate::fluent_generated::*;
 
         match self {
             BoundsCheck { .. } => middle_bounds_check,

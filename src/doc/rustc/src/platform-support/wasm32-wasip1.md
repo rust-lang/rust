@@ -132,3 +132,9 @@ It's recommended to conditionally compile code for this target with:
 
 Note that the `target_env = "p1"` condition first appeared in Rust 1.80. Prior
 to Rust 1.80 the `target_env` condition was not set.
+
+## Enabled WebAssembly features
+
+The default set of WebAssembly features enabled for compilation is currently the
+same as [`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md). See the
+documentation there for more information.

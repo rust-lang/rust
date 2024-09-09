@@ -6,8 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::util::AsyncDropGlueMorphology;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
@@ -249,7 +248,7 @@ fn resolve_associated_item<'tcx>(
                 if name == sym::clone {
                     let self_ty = trait_ref.self_ty();
                     match self_ty.kind() {
-                        ty::FnDef(..) | ty::FnPtr(_) => (),
+                        ty::FnDef(..) | ty::FnPtr(..) => (),
                         ty::Coroutine(..)
                         | ty::CoroutineWitness(..)
                         | ty::Closure(..)
@@ -364,6 +363,11 @@ fn resolve_associated_item<'tcx>(
                         tcx.item_name(trait_item_id)
                     ),
                 }
+            } else if tcx.is_lang_item(trait_ref.def_id, LangItem::TransmuteTrait) {
+                let name = tcx.item_name(trait_item_id);
+                assert_eq!(name, sym::transmute);
+                let args = tcx.erase_regions(rcvr_args);
+                Some(ty::Instance::new(trait_item_id, args))
             } else {
                 Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, trait_id, rcvr_args)
             }

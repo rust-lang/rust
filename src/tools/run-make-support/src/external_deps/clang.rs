@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::command::Command;
-use crate::{bin_name, env_var};
+use crate::{bin_name, cwd, env_var};
 
 /// Construct a new `clang` invocation. `clang` is not always available for all targets.
 #[track_caller]
@@ -23,7 +23,8 @@ impl Clang {
     #[track_caller]
     pub fn new() -> Self {
         let clang = env_var("CLANG");
-        let cmd = Command::new(clang);
+        let mut cmd = Command::new(clang);
+        cmd.arg("-L").arg(cwd());
         Self { cmd }
     }
 

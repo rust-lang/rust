@@ -255,6 +255,7 @@ use crate::fmt::{self, Debug, Display};
 use crate::marker::{PhantomData, Unsize};
 use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
+use crate::pin::PinCoerceUnsized;
 use crate::ptr::{self, NonNull};
 
 mod lazy;
@@ -305,6 +306,7 @@ pub use once::OnceCell;
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
+#[rustc_pub_transparent]
 pub struct Cell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
@@ -427,7 +429,9 @@ impl<T> Cell<T> {
     }
 
     /// Swaps the values of two `Cell`s.
-    /// Difference with `std::mem::swap` is that this function doesn't require `&mut` reference.
+    ///
+    /// The difference with `std::mem::swap` is that this function doesn't
+    /// require a `&mut` reference.
     ///
     /// # Panics
     ///
@@ -1579,7 +1583,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         )
     }
 
-    /// Convert into a reference to the underlying data.
+    /// Converts into a reference to the underlying data.
     ///
     /// The underlying `RefCell` can never be mutably borrowed from again and will always appear
     /// already immutably borrowed. It is not a good idea to leak more than a constant number of
@@ -1747,7 +1751,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         )
     }
 
-    /// Convert into a mutable reference to the underlying data.
+    /// Converts into a mutable reference to the underlying data.
     ///
     /// The underlying `RefCell` can not be borrowed from again and will always appear already
     /// mutably borrowed, making the returned reference the only to the interior.
@@ -1879,7 +1883,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// If you have a reference `&T`, then normally in Rust the compiler performs optimizations based on
 /// the knowledge that `&T` points to immutable data. Mutating that data, for example through an
-/// alias or by transmuting an `&T` into an `&mut T`, is considered undefined behavior.
+/// alias or by transmuting a `&T` into a `&mut T`, is considered undefined behavior.
 /// `UnsafeCell<T>` opts-out of the immutability guarantee for `&T`: a shared reference
 /// `&UnsafeCell<T>` may point to data that is being mutated. This is called "interior mutability".
 ///
@@ -1936,7 +1940,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// to have multiple `&mut UnsafeCell<T>` aliases. That is, `UnsafeCell` is a wrapper
 /// designed to have a special interaction with _shared_ accesses (_i.e._, through an
 /// `&UnsafeCell<_>` reference); there is no magic whatsoever when dealing with _exclusive_
-/// accesses (_e.g._, through an `&mut UnsafeCell<_>`): neither the cell nor the wrapped value
+/// accesses (_e.g._, through a `&mut UnsafeCell<_>`): neither the cell nor the wrapped value
 /// may be aliased for the duration of that `&mut` borrow.
 /// This is showcased by the [`.get_mut()`] accessor, which is a _safe_ getter that yields
 /// a `&mut T`.
@@ -2052,6 +2056,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 #[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
+#[rustc_pub_transparent]
 pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }
@@ -2294,6 +2299,7 @@ impl<T> UnsafeCell<*mut T> {
 /// See [`UnsafeCell`] for details.
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 #[repr(transparent)]
+#[rustc_pub_transparent]
 pub struct SyncUnsafeCell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
@@ -2394,3 +2400,21 @@ fn assert_coerce_unsized(
     let _: Cell<&dyn Send> = c;
     let _: RefCell<&dyn Send> = d;
 }
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for UnsafeCell<T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for SyncUnsafeCell<T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for Cell<T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for RefCell<T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<'b, T: ?Sized> PinCoerceUnsized for Ref<'b, T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<'b, T: ?Sized> PinCoerceUnsized for RefMut<'b, T> {}

@@ -3,6 +3,7 @@
 use rustc_ast::ast;
 use rustc_ast::HasAttrs;
 use rustc_span::{symbol::sym, Span};
+use tracing::debug;
 
 use self::doc_comment::DocCommentFormatter;
 use crate::comment::{contains_comment, rewrite_doc_comment, CommentStyle};

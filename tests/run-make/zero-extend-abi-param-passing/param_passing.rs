@@ -2,7 +2,7 @@
 // LLVM optimization choices. See additional note below for an
 // example.
 
-#[link(name = "bad")]
+#[link(name = "bad", kind = "static")]
 extern "C" {
     pub fn c_read_value(a: u32, b: u32, c: u32) -> u16;
 }

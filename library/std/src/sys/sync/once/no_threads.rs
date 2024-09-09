@@ -57,6 +57,12 @@ impl Once {
 
     #[cold]
     #[track_caller]
+    pub fn wait(&self, _ignore_poisoning: bool) {
+        panic!("not implementable on this target");
+    }
+
+    #[cold]
+    #[track_caller]
     pub fn call(&self, ignore_poisoning: bool, f: &mut impl FnMut(&public::OnceState)) {
         let state = self.state.get();
         match state {

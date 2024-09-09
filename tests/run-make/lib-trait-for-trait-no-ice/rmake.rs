@@ -5,8 +5,9 @@
 // the lib crate-type flag was actually followed.
 // See https://github.com/rust-lang/rust/issues/18943
 
-use run_make_support::{rust_lib_name, rustc};
 use std::path::Path;
+
+use run_make_support::{rust_lib_name, rustc};
 
 fn main() {
     rustc().input("foo.rs").crate_type("lib").run();

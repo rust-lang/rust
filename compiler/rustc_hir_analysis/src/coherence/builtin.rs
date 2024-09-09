@@ -1,7 +1,8 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use crate::errors;
+use std::assert_matches::assert_matches;
+use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
@@ -10,8 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::infer::{self, RegionResolutionError};
+use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -22,9 +22,10 @@ use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
     ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
 };
-use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::{self, ObligationCause};
-use std::collections::BTreeMap;
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
+use tracing::debug;
+
+use crate::errors;
 
 pub(super) fn check_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -130,7 +131,7 @@ fn visit_implementation_of_const_param_ty(
     checker: &Checker<'_>,
     kind: LangItem,
 ) -> Result<(), ErrorGuaranteed> {
-    assert!(matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy));
+    assert_matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
 
     let tcx = checker.tcx;
     let header = checker.impl_header;
@@ -218,7 +219,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // Later parts of the compiler rely on all DispatchFromDyn types to be ABI-compatible with raw
     // pointers. This is enforced here: we only allow impls for references, raw pointers, and things
     // that are effectively repr(transparent) newtypes around types that already hav a
-    // DispatchedFromDyn impl. We cannot literally use repr(transparent) on those tpyes since some
+    // DispatchedFromDyn impl. We cannot literally use repr(transparent) on those types since some
     // of them support an allocator, but we ensure that for the cases where the type implements this
     // trait, they *do* satisfy the repr(transparent) rules, and then we assume that everything else
     // in the compiler (in particular, all the call ABI logic) will treat them as repr(transparent)
@@ -332,7 +333,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     }
 }
 
-pub fn coerce_unsized_info<'tcx>(
+pub(crate) fn coerce_unsized_info<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
 ) -> Result<CoerceUnsizedInfo, ErrorGuaranteed> {

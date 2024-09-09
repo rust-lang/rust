@@ -1,12 +1,11 @@
-use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
-use crate::places_conflict;
-use crate::AccessDepth;
-use crate::BorrowIndex;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_middle::mir::BorrowKind;
-use rustc_middle::mir::{BasicBlock, Body, Location, Place, PlaceRef, ProjectionElem};
+use rustc_middle::mir::{BasicBlock, Body, BorrowKind, Location, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::FieldIdx;
+use tracing::debug;
+
+use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
+use crate::{places_conflict, AccessDepth, BorrowIndex};
 
 /// Returns `true` if the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and

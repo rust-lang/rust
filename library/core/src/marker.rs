@@ -9,8 +9,7 @@
 use crate::cell::UnsafeCell;
 use crate::cmp;
 use crate::fmt::Debug;
-use crate::hash::Hash;
-use crate::hash::Hasher;
+use crate::hash::{Hash, Hasher};
 
 /// Implements a given marker trait for multiple types at the same time.
 ///
@@ -289,8 +288,19 @@ marker_impls! {
 /// }
 /// ```
 ///
-/// There is a small difference between the two: the `derive` strategy will also place a `Copy`
-/// bound on type parameters, which isn't always desired.
+/// There is a small difference between the two. The `derive` strategy will also place a `Copy`
+/// bound on type parameters:
+///
+/// ```
+/// #[derive(Clone)]
+/// struct MyStruct<T>(T);
+///
+/// impl<T: Copy> Copy for MyStruct<T> { }
+/// ```
+///
+/// This isn't always desired. For example, shared references (`&T`) can be copied regardless of
+/// whether `T` is `Copy`. Likewise, a generic struct containing markers such as [`PhantomData`]
+/// could potentially be duplicated with a bit-wise copy.
 ///
 /// ## What's the difference between `Copy` and `Clone`?
 ///
@@ -871,7 +881,7 @@ marker_impls! {
 ///
 /// *However*, you cannot use [`mem::replace`] on `!Unpin` data which is *pinned* by being wrapped
 /// inside a [`Pin<Ptr>`] pointing at it. This is because you cannot (safely) use a
-/// [`Pin<Ptr>`] to get an `&mut T` to its pointee value, which you would need to call
+/// [`Pin<Ptr>`] to get a `&mut T` to its pointee value, which you would need to call
 /// [`mem::replace`], and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
@@ -993,7 +1003,7 @@ pub macro ConstParamTy($item:item) {
     /* compiler built-in */
 }
 
-#[cfg_attr(not(bootstrap), lang = "unsized_const_param_ty")]
+#[lang = "unsized_const_param_ty"]
 #[unstable(feature = "unsized_const_params", issue = "95174")]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 /// A marker for types which can be used as types of `const` generic parameters.
@@ -1003,10 +1013,9 @@ pub macro ConstParamTy($item:item) {
 pub trait UnsizedConstParamTy: StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
-#[cfg(not(bootstrap))]
-#[cfg_attr(not(bootstrap), rustc_builtin_macro)]
-#[cfg_attr(not(bootstrap), allow_internal_unstable(unsized_const_params))]
-#[cfg_attr(not(bootstrap), unstable(feature = "unsized_const_params", issue = "95174"))]
+#[rustc_builtin_macro]
+#[allow_internal_unstable(unsized_const_params)]
+#[unstable(feature = "unsized_const_params", issue = "95174")]
 pub macro UnsizedConstParamTy($item:item) {
     /* compiler built-in */
 }
@@ -1021,14 +1030,6 @@ marker_impls! {
         char,
         (),
         {T: ConstParamTy_, const N: usize} [T; N],
-}
-#[cfg(bootstrap)]
-marker_impls! {
-    #[unstable(feature = "adt_const_params", issue = "95174")]
-    ConstParamTy_ for
-        str,
-        {T: ConstParamTy_} [T],
-        {T: ConstParamTy_ + ?Sized} &T,
 }
 
 marker_impls! {
@@ -1061,8 +1062,7 @@ pub trait FnPtr: Copy + Clone {
 }
 
 /// Derive macro generating impls of traits related to smart pointers.
-#[cfg(not(bootstrap))]
-#[rustc_builtin_macro]
+#[rustc_builtin_macro(SmartPointer, attributes(pointee))]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
 #[unstable(feature = "derive_smart_pointer", issue = "123430")]
 pub macro SmartPointer($item:item) {
@@ -1079,7 +1079,6 @@ pub macro SmartPointer($item:item) {
     reason = "internal module for implementing effects"
 )]
 #[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
-#[cfg(not(bootstrap))]
 pub mod effects {
     #[lang = "EffectsNoRuntime"]
     pub struct NoRuntime;
@@ -1100,7 +1099,6 @@ pub mod effects {
     pub trait TyCompat<T: ?Sized> {}
 
     impl<T: ?Sized> TyCompat<T> for T {}
-    impl<T: ?Sized> TyCompat<T> for Maybe {}
     impl<T: ?Sized> TyCompat<Maybe> for T {}
 
     #[lang = "EffectsIntersection"]

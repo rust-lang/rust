@@ -1,9 +1,11 @@
-use crate::build::ExprCategory;
-use crate::errors::*;
+use std::borrow::Cow;
+use std::mem;
+use std::ops::Bound;
 
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
+use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::span_bug;
 use rustc_middle::thir::visit::Visitor;
@@ -16,9 +18,8 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 
-use std::borrow::Cow;
-use std::mem;
-use std::ops::Bound;
+use crate::build::ExprCategory;
+use crate::errors::*;
 
 struct UnsafetyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -31,7 +32,7 @@ struct UnsafetyVisitor<'a, 'tcx> {
     safety_context: SafetyContext,
     /// The `#[target_feature]` attributes of the body. Used for checking
     /// calls to functions with `#[target_feature]` (RFC 2396).
-    body_target_features: &'tcx [Symbol],
+    body_target_features: &'tcx [TargetFeature],
     /// When inside the LHS of an assignment to a field, this is the type
     /// of the LHS and the span of the assignment expression.
     assignment_info: Option<Ty<'tcx>>,
@@ -95,9 +96,32 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             // from an edition before 2024.
             &UnsafeOpKind::CallToUnsafeFunction(Some(id))
                 if !span.at_least_rust_2024()
-                    && self.tcx.has_attr(id, sym::rustc_deprecated_safe_2024) =>
+                    && let Some(attr) = self.tcx.get_attr(id, sym::rustc_deprecated_safe_2024) =>
             {
+                let suggestion = attr
+                    .meta_item_list()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .find(|item| item.has_name(sym::audit_that))
+                    .map(|item| {
+                        item.value_str().expect(
+                            "`#[rustc_deprecated_safe_2024(audit_that)]` must have a string value",
+                        )
+                    });
+
                 let sm = self.tcx.sess.source_map();
+                let guarantee = suggestion
+                    .as_ref()
+                    .map(|suggestion| format!("that {}", suggestion))
+                    .unwrap_or_else(|| String::from("its unsafe preconditions"));
+                let suggestion = suggestion
+                    .and_then(|suggestion| {
+                        sm.indentation_before(span).map(|indent| {
+                            format!("{}// TODO: Audit that {}.\n", indent, suggestion) // ignore-tidy-todo
+                        })
+                    })
+                    .unwrap_or_default();
+
                 self.tcx.emit_node_span_lint(
                     DEPRECATED_SAFE_2024,
                     self.hir_context,
@@ -105,8 +129,9 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     CallToDeprecatedSafeFnRequiresUnsafe {
                         span,
                         function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
+                        guarantee,
                         sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
-                            indent: sm.indentation_before(span).unwrap_or_default(),
+                            start_of_line_suggestion: suggestion,
                             start_of_line: sm.span_extend_to_line(span).shrink_to_lo(),
                             left: span.shrink_to_lo(),
                             right: span.shrink_to_hi(),
@@ -372,7 +397,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Scope { .. }
             | ExprKind::Cast { .. } => {}
 
-            ExprKind::AddressOf { .. }
+            ExprKind::RawBorrow { .. }
             | ExprKind::Adt { .. }
             | ExprKind::Array { .. }
             | ExprKind::Binary { .. }
@@ -442,14 +467,21 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     // is_like_wasm check in hir_analysis/src/collect.rs
                     let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
                     if !self.tcx.sess.target.options.is_like_wasm
-                        && !callee_features
-                            .iter()
-                            .all(|feature| self.body_target_features.contains(feature))
+                        && !callee_features.iter().all(|feature| {
+                            self.body_target_features.iter().any(|f| f.name == feature.name)
+                        })
                     {
                         let missing: Vec<_> = callee_features
                             .iter()
                             .copied()
-                            .filter(|feature| !self.body_target_features.contains(feature))
+                            .filter(|feature| {
+                                !feature.implied
+                                    && !self
+                                        .body_target_features
+                                        .iter()
+                                        .any(|body_feature| body_feature.name == feature.name)
+                            })
+                            .map(|feature| feature.name)
                             .collect();
                         let build_enabled = self
                             .tcx
@@ -466,7 +498,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     }
                 }
             }
-            ExprKind::AddressOf { arg, .. } => {
+            ExprKind::RawBorrow { arg, .. } => {
                 if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind
                 // THIR desugars UNSAFE_STATIC into *UNSAFE_STATIC_REF, where
                 // UNSAFE_STATIC_REF holds the addr of the UNSAFE_STATIC, so: take two steps
@@ -761,7 +793,7 @@ impl UnsafeOpKind {
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
-                    note: if build_enabled.is_empty() { None } else { Some(()) },
+                    note: !build_enabled.is_empty(),
                     build_target_features: DiagArgValue::StrListSepByAnd(
                         build_enabled
                             .iter()
@@ -926,7 +958,7 @@ impl UnsafeOpKind {
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
-                    note: if build_enabled.is_empty() { None } else { Some(()) },
+                    note: !build_enabled.is_empty(),
                     build_target_features: DiagArgValue::StrListSepByAnd(
                         build_enabled
                             .iter()
@@ -945,7 +977,7 @@ impl UnsafeOpKind {
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
-                    note: if build_enabled.is_empty() { None } else { Some(()) },
+                    note: !build_enabled.is_empty(),
                     build_target_features: DiagArgValue::StrListSepByAnd(
                         build_enabled
                             .iter()
@@ -961,7 +993,7 @@ impl UnsafeOpKind {
     }
 }
 
-pub fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
+pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // Closures and inline consts are handled by their owner, if it has a body
     // Also, don't safety check custom MIR
     if tcx.is_typeck_child(def.to_def_id()) || tcx.has_attr(def, sym::custom_mir) {

@@ -18,7 +18,6 @@ use rustc_middle::mir::{
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, GenericArgKind, TraitRef, Ty, TyCtxt};
-use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits::{ObligationCtxt, SelectionContext};
@@ -110,7 +109,7 @@ fn check_rvalue<'tcx>(
 ) -> McfResult {
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
-        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
             check_place(tcx, *place, span, body, msrv)
         },
         Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, msrv),
@@ -142,7 +141,7 @@ fn check_rvalue<'tcx>(
                 // We cannot allow this for now.
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
             };
-            let unsized_ty = tcx.struct_tail_erasing_lifetimes(pointee_ty, tcx.param_env(def_id));
+            let unsized_ty = tcx.struct_tail_for_codegen(pointee_ty, tcx.param_env(def_id));
             if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
                 check_operand(tcx, op, span, body, msrv)?;
                 // Casting/coercing things to slices is fine.
@@ -391,11 +390,7 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
                     StableSince::Err => return false,
                 };
 
-                msrv.meets(RustcVersion::new(
-                    u32::from(const_stab_rust_version.major),
-                    u32::from(const_stab_rust_version.minor),
-                    u32::from(const_stab_rust_version.patch),
-                ))
+                msrv.meets(const_stab_rust_version)
             } else {
                 // Unstable const fn with the feature enabled.
                 msrv.current().is_none()

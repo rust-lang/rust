@@ -1,24 +1,23 @@
 use rustc_errors::MultiSpan;
+use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::HirId;
-use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, TyKind};
-use rustc_hir::{Path, QPath};
+use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, QPath, TyKind};
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable, TypeFolder};
-use rustc_middle::ty::{EarlyBinder, TraitRef, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, Binder, EarlyBinder, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::Span;
-use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind, Symbol};
+use rustc_span::symbol::kw;
+use rustc_span::{sym, ExpnKind, MacroKind, Span, Symbol};
 use rustc_trait_selection::error_reporting::traits::ambiguity::{
     compute_applicable_impls_for_diagnostics, CandidateSource,
 };
 use rustc_trait_selection::infer::TyCtxtInferExt;
 
-use crate::fluent_generated as fluent;
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
-use crate::{LateContext, LateLintPass, LintContext};
+use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `non_local_definitions` lint checks for `impl` blocks and `#[macro_export]`
@@ -56,7 +55,7 @@ declare_lint! {
 }
 
 #[derive(Default)]
-pub struct NonLocalDefinitions {
+pub(crate) struct NonLocalDefinitions {
     body_depth: u32,
 }
 
@@ -127,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // > same expression-containing item.
                 //
                 // To achieve this we get try to get the paths of the _Trait_ and
-                // _Type_, and we look inside thoses paths to try a find in one
+                // _Type_, and we look inside those paths to try a find in one
                 // of them a type whose parent is the same as the impl definition.
                 //
                 // If that's the case this means that this impl block declaration
@@ -429,7 +428,7 @@ fn ty_has_local_parent(
             path_has_local_parent(ty_path, cx, impl_parent, impl_parent_parent)
         }
         TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => path_has_local_parent(
-            principle_poly_trait_ref.trait_ref.path,
+            principle_poly_trait_ref.0.trait_ref.path,
             cx,
             impl_parent,
             impl_parent_parent,
@@ -527,7 +526,7 @@ fn self_ty_kind_for_diagnostic(ty: &rustc_hir::Ty<'_>, tcx: TyCtxt<'_>) -> (Span
                 .to_string(),
         ),
         TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => {
-            let path = &principle_poly_trait_ref.trait_ref.path;
+            let path = &principle_poly_trait_ref.0.trait_ref.path;
             (
                 path_span_without_args(path),
                 path.res

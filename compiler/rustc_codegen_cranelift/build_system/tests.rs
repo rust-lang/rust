@@ -3,14 +3,12 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::build_sysroot;
-use crate::config;
 use crate::path::{Dirs, RelPath};
 use crate::prepare::{apply_patches, GitRepo};
 use crate::rustc_info::get_default_sysroot;
 use crate::shared_utils::rustflags_from_env;
 use crate::utils::{spawn_and_wait, CargoProject, Compiler, LogGroup};
-use crate::{CodegenBackend, SysrootKind};
+use crate::{build_sysroot, config, CodegenBackend, SysrootKind};
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
 
@@ -108,6 +106,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         ]);
         runner.run_out_command("gen_block_iterate", &[]);
     }),
+    TestCase::build_bin_and_run("aot.raw-dylib", "example/raw-dylib.rs", &[]),
 ];
 
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
@@ -439,7 +438,7 @@ impl<'a> TestRunner<'a> {
         cmd.arg("-L");
         cmd.arg(format!("crate={}", BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs).display()));
         cmd.arg("--out-dir");
-        cmd.arg(format!("{}", BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs).display()));
+        cmd.arg(BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs));
         cmd.arg("-Cdebuginfo=2");
         cmd.arg("--target");
         cmd.arg(&self.target_compiler.triple);

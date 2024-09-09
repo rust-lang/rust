@@ -6,7 +6,7 @@
 //!   - otherwise, we search for the nearest `{}` block which contains the edit
 //!     and try to parse only this block.
 
-use parser::Reparser;
+use parser::{Edition, Reparser};
 use text_edit::Indel;
 
 use crate::{
@@ -21,14 +21,13 @@ pub(crate) fn incremental_reparse(
     node: &SyntaxNode,
     edit: &Indel,
     errors: impl IntoIterator<Item = SyntaxError>,
+    edition: Edition,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
-    if let Some((green, new_errors, old_range)) = reparse_token(node, edit) {
+    if let Some((green, new_errors, old_range)) = reparse_token(node, edit, edition) {
         return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
     }
 
-    if let Some((green, new_errors, old_range)) =
-        reparse_block(node, edit, parser::Edition::CURRENT)
-    {
+    if let Some((green, new_errors, old_range)) = reparse_block(node, edit, edition) {
         return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
     }
     None
@@ -37,6 +36,7 @@ pub(crate) fn incremental_reparse(
 fn reparse_token(
     root: &SyntaxNode,
     edit: &Indel,
+    edition: Edition,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let prev_token = root.covering_element(edit.delete).as_token()?.clone();
     let prev_token_kind = prev_token.kind();
@@ -51,7 +51,7 @@ fn reparse_token(
             }
 
             let mut new_text = get_text_after_edit(prev_token.clone().into(), edit);
-            let (new_token_kind, new_err) = parser::LexedStr::single_token(&new_text)?;
+            let (new_token_kind, new_err) = parser::LexedStr::single_token(edition, &new_text)?;
 
             if new_token_kind != prev_token_kind
                 || (new_token_kind == IDENT && is_contextual_kw(&new_text))
@@ -64,7 +64,7 @@ fn reparse_token(
             // `b` no longer remains an identifier, but becomes a part of byte string literal
             if let Some(next_char) = root.text().char_at(prev_token.text_range().end()) {
                 new_text.push(next_char);
-                let token_with_next_char = parser::LexedStr::single_token(&new_text);
+                let token_with_next_char = parser::LexedStr::single_token(edition, &new_text);
                 if let Some((_kind, _error)) = token_with_next_char {
                     return None;
                 }
@@ -91,8 +91,8 @@ fn reparse_block(
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
     let text = get_text_after_edit(node.clone().into(), edit);
 
-    let lexed = parser::LexedStr::new(text.as_str());
-    let parser_input = lexed.to_input();
+    let lexed = parser::LexedStr::new(edition, text.as_str());
+    let parser_input = lexed.to_input(edition);
     if !is_balanced(&lexed) {
         return None;
     }
@@ -199,6 +199,7 @@ mod tests {
                 before.tree().syntax(),
                 &edit,
                 before.errors.as_deref().unwrap_or_default().iter().cloned(),
+                Edition::CURRENT,
             )
             .unwrap();
             assert_eq!(range.len(), reparsed_len.into(), "reparsed fragment has wrong length");

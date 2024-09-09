@@ -3,6 +3,6 @@
 #![feature(transmutability)]
 #![feature(unboxed_closures,effects)]
 
-const fn test() -> impl std::mem::BikeshedIntrinsicFrom() {
+const fn test() -> impl std::mem::TransmuteFrom() {
     || {}
 }

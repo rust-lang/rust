@@ -1,8 +1,8 @@
+use libc::{c_void, iovec};
+
 use crate::marker::PhantomData;
 use crate::os::fd::{AsFd, AsRawFd};
 use crate::slice;
-
-use libc::{c_void, iovec};
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]

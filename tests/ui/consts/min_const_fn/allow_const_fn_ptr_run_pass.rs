@@ -1,6 +1,4 @@
 //@ run-pass
-#![feature(rustc_allow_const_fn_unstable)]
-
 #![feature(rustc_attrs, staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
 

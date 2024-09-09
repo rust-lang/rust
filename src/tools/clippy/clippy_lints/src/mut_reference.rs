@@ -79,7 +79,7 @@ fn check_arguments<'tcx>(
     fn_kind: &str,
 ) {
     match type_definition.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(..) => {
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
             for (argument, parameter) in iter::zip(arguments, parameters) {
                 match parameter.kind() {

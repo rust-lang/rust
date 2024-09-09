@@ -250,7 +250,7 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::from_millis(2569);
+    /// let duration = Duration::from_millis(2_569);
     ///
     /// assert_eq!(2, duration.as_secs());
     /// assert_eq!(569_000_000, duration.subsec_nanos());
@@ -279,7 +279,7 @@ impl Duration {
     /// let duration = Duration::from_micros(1_000_002);
     ///
     /// assert_eq!(1, duration.as_secs());
-    /// assert_eq!(2000, duration.subsec_nanos());
+    /// assert_eq!(2_000, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration_from_micros", since = "1.27.0")]
     #[must_use]
@@ -472,7 +472,7 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::new(5, 730023852);
+    /// let duration = Duration::new(5, 730_023_852);
     /// assert_eq!(duration.as_secs(), 5);
     /// ```
     ///
@@ -501,7 +501,7 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::from_millis(5432);
+    /// let duration = Duration::from_millis(5_432);
     /// assert_eq!(duration.as_secs(), 5);
     /// assert_eq!(duration.subsec_millis(), 432);
     /// ```
@@ -547,7 +547,7 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::from_millis(5010);
+    /// let duration = Duration::from_millis(5_010);
     /// assert_eq!(duration.as_secs(), 5);
     /// assert_eq!(duration.subsec_nanos(), 10_000_000);
     /// ```
@@ -566,8 +566,8 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::new(5, 730023852);
-    /// assert_eq!(duration.as_millis(), 5730);
+    /// let duration = Duration::new(5, 730_023_852);
+    /// assert_eq!(duration.as_millis(), 5_730);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
@@ -584,8 +584,8 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::new(5, 730023852);
-    /// assert_eq!(duration.as_micros(), 5730023);
+    /// let duration = Duration::new(5, 730_023_852);
+    /// assert_eq!(duration.as_micros(), 5_730_023);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
@@ -602,8 +602,8 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::new(5, 730023852);
-    /// assert_eq!(duration.as_nanos(), 5730023852);
+    /// let duration = Duration::new(5, 730_023_852);
+    /// assert_eq!(duration.as_nanos(), 5_730_023_852);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
@@ -617,16 +617,14 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(100, 0).abs_diff(Duration::new(80, 0)), Duration::new(20, 0));
     /// assert_eq!(Duration::new(100, 400_000_000).abs_diff(Duration::new(110, 0)), Duration::new(9, 600_000_000));
     /// ```
-    #[stable(feature = "duration_abs_diff", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "duration_abs_diff", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "duration_abs_diff", since = "1.81.0")]
+    #[rustc_const_stable(feature = "duration_abs_diff", since = "1.81.0")]
     #[rustc_allow_const_fn_unstable(const_option)]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
@@ -639,8 +637,6 @@ impl Duration {
     /// if overflow occurred.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::time::Duration;
@@ -700,8 +696,6 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::time::Duration;
     ///
@@ -758,8 +752,6 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::time::Duration;
     ///
@@ -813,8 +805,6 @@ impl Duration {
     /// if `other == 0`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::time::Duration;
@@ -889,7 +879,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 345_678_000);
-    /// assert_eq!(dur.as_millis_f64(), 2345.678);
+    /// assert_eq!(dur.as_millis_f64(), 2_345.678);
     /// ```
     #[unstable(feature = "duration_millis_float", issue = "122451")]
     #[must_use]
@@ -910,7 +900,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 345_678_000);
-    /// assert_eq!(dur.as_millis_f32(), 2345.678);
+    /// assert_eq!(dur.as_millis_f32(), 2_345.678);
     /// ```
     #[unstable(feature = "duration_millis_float", issue = "122451")]
     #[must_use]
@@ -1027,7 +1017,7 @@ impl Duration {
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
-    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847800, 0));
+    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -1037,7 +1027,7 @@ impl Duration {
         Duration::from_secs_f32(rhs * self.as_secs_f32())
     }
 
-    /// Divide `Duration` by `f64`.
+    /// Divides `Duration` by `f64`.
     ///
     /// # Panics
     /// This method will panic if result is negative, overflows `Duration` or not finite.
@@ -1058,7 +1048,7 @@ impl Duration {
         Duration::from_secs_f64(self.as_secs_f64() / rhs)
     }
 
-    /// Divide `Duration` by `f32`.
+    /// Divides `Duration` by `f32`.
     ///
     /// # Panics
     /// This method will panic if result is negative, overflows `Duration` or not finite.
@@ -1081,7 +1071,7 @@ impl Duration {
         Duration::from_secs_f32(self.as_secs_f32() / rhs)
     }
 
-    /// Divide `Duration` by `Duration` and return `f64`.
+    /// Divides `Duration` by `Duration` and returns `f64`.
     ///
     /// # Examples
     /// ```
@@ -1102,7 +1092,7 @@ impl Duration {
         self_nanos / rhs_nanos
     }
 
-    /// Divide `Duration` by `Duration` and return `f32`.
+    /// Divides `Duration` by `Duration` and returns `f32`.
     ///
     /// # Examples
     /// ```

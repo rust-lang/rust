@@ -1,7 +1,7 @@
-use super::*;
-
 use rustc_resolve::rustdoc::{unindent_doc_fragments, DocFragmentKind};
 use rustc_span::create_default_session_globals_then;
+
+use super::*;
 
 fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
     vec![DocFragment {

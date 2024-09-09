@@ -1,5 +1,6 @@
 use quote::quote;
-use syn::{parse_quote, visit_mut::VisitMut};
+use syn::parse_quote;
+use syn::visit_mut::VisitMut;
 use synstructure::decl_derive;
 
 decl_derive!(

@@ -1,23 +1,21 @@
 #![allow(rustc::bad_opt_access)]
-use crate::interface::{initialize_checked_jobserver, parse_cfg};
+use std::collections::{BTreeMap, BTreeSet};
+use std::num::NonZero;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
 use rustc_data_structures::profiling::TimePassesFormat;
-use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
-use rustc_session::config::{build_configuration, build_session_options, rustc_optgroups};
+use rustc_errors::emitter::HumanReadableErrorType;
+use rustc_errors::{registry, ColorConfig};
 use rustc_session::config::{
-    BranchProtection, CFGuard, Cfg, CollapseMacroDebuginfo, CoverageLevel, CoverageOptions,
-    DebugInfo, DumpMonoStatsFormat, ErrorOutputType,
-};
-use rustc_session::config::{
-    ExternEntry, ExternLocation, Externs, FunctionReturn, InliningThreshold, Input,
-    InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto,
-};
-use rustc_session::config::{
-    LocationDetail, LtoCli, NextSolverConfig, OomStrategy, Options, OutFileName, OutputType,
-    OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry,
-};
-use rustc_session::config::{
-    Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion,
-    WasiExecModel,
+    build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
+    CollapseMacroDebuginfo, CoverageLevel, CoverageOptions, DebugInfo, DumpMonoStatsFormat,
+    ErrorOutputType, ExternEntry, ExternLocation, Externs, FmtDebug, FunctionReturn,
+    InliningThreshold, Input, InstrumentCoverage, InstrumentXRay, LinkSelfContained,
+    LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, OomStrategy,
+    Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes,
+    PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
+    SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -31,10 +29,8 @@ use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel, WasmCAbi,
 };
-use std::collections::{BTreeMap, BTreeSet};
-use std::num::NonZero;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+
+use crate::interface::{initialize_checked_jobserver, parse_cfg};
 
 fn sess_and_cfg<F>(args: &[&'static str], f: F)
 where
@@ -320,7 +316,8 @@ fn test_search_paths_tracking_hash_different_order() {
     let early_dcx = EarlyDiagCtxt::new(JSON);
     const JSON: ErrorOutputType = ErrorOutputType::Json {
         pretty: false,
-        json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
+        json_rendered: HumanReadableErrorType::Default,
+        color_config: ColorConfig::Never,
     };
 
     let push = |opts: &mut Options, search_path| {
@@ -709,7 +706,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(ls, vec!["all".to_owned()]);
     untracked!(macro_backtrace, true);
     untracked!(meta_stats, true);
-    untracked!(mir_include_spans, true);
+    untracked!(mir_include_spans, MirIncludeSpans::On);
     untracked!(nll_facts, true);
     untracked!(no_analysis, true);
     untracked!(no_leak_check, true);
@@ -778,11 +775,13 @@ fn test_unstable_options_tracking_hash() {
     tracked!(direct_access_external_data, Some(true));
     tracked!(dual_proc_macros, true);
     tracked!(dwarf_version, Some(5));
+    tracked!(embed_source, true);
     tracked!(emit_thin_lto, false);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(fixed_x18, true);
     tracked!(flatten_format_args, false);
+    tracked!(fmt_debug, FmtDebug::Shallow);
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_return, FunctionReturn::ThunkExtern);
@@ -797,6 +796,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(instrument_xray, Some(InstrumentXRay::default()));
     tracked!(link_directives, false);
     tracked!(link_only, true);
+    tracked!(lint_llvm_ir, true);
     tracked!(llvm_module_flag, vec![("bar".to_string(), 123, "max".to_string())]);
     tracked!(llvm_plugins, vec![String::from("plugin_name")]);
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });
@@ -808,7 +808,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, false);
-    tracked!(next_solver, Some(NextSolverConfig { coherence: true, globally: false }));
+    tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
     tracked!(no_generate_arange_section, true);
     tracked!(no_jump_tables, true);
     tracked!(no_link, true);

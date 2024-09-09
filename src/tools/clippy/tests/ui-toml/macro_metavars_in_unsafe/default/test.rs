@@ -1,7 +1,7 @@
 //! Tests macro_metavars_in_unsafe with default configuration
 #![feature(decl_macro)]
 #![warn(clippy::macro_metavars_in_unsafe)]
-#![allow(clippy::no_effect)]
+#![allow(clippy::no_effect, clippy::not_unsafe_ptr_arg_deref)]
 
 #[macro_export]
 macro_rules! allow_works {
@@ -235,6 +235,19 @@ macro_rules! nested_macros {
             $v;
         }
     }};
+}
+
+pub mod issue13219 {
+    #[macro_export]
+    macro_rules! m {
+        ($e:expr) => {
+            // Metavariable in a block tail expression
+            unsafe { $e }
+        };
+    }
+    pub fn f(p: *const i32) -> i32 {
+        m!(*p)
+    }
 }
 
 fn main() {

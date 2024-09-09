@@ -12,10 +12,11 @@ use hir_def::{
         ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
-    path::{GenericArgs, Path},
+    path::{GenericArg, GenericArgs, Path},
     BlockId, FieldId, GenericDefId, GenericParamId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::Name;
+use intern::sym;
 use stdx::always;
 use syntax::ast::RangeOp;
 
@@ -634,7 +635,10 @@ impl InferenceContext<'_> {
                 let inner_ty = self.infer_expr_inner(*expr, &expectation);
                 match rawness {
                     Rawness::RawPtr => TyKind::Raw(mutability, inner_ty),
-                    Rawness::Ref => TyKind::Ref(mutability, error_lifetime(), inner_ty),
+                    Rawness::Ref => {
+                        let lt = self.table.new_lifetime_var();
+                        TyKind::Ref(mutability, lt, inner_ty)
+                    }
                 }
                 .intern(Interner)
             }
@@ -646,8 +650,10 @@ impl InferenceContext<'_> {
                 match op {
                     UnaryOp::Deref => {
                         if let Some(deref_trait) = self.resolve_lang_trait(LangItem::Deref) {
-                            if let Some(deref_fn) =
-                                self.db.trait_data(deref_trait).method_by_name(&name![deref])
+                            if let Some(deref_fn) = self
+                                .db
+                                .trait_data(deref_trait)
+                                .method_by_name(&Name::new_symbol_root(sym::deref.clone()))
                             {
                                 // FIXME: this is wrong in multiple ways, subst is empty, and we emit it even for builtin deref (note that
                                 // the mutability is not wrong, and will be fixed in `self.infer_mut`).
@@ -783,16 +789,23 @@ impl InferenceContext<'_> {
                             adj.apply(&mut self.table, base_ty)
                         });
                     // mutability will be fixed up in `InferenceContext::infer_mut`;
-                    adj.push(Adjustment::borrow(Mutability::Not, self_ty.clone()));
+                    adj.push(Adjustment::borrow(
+                        Mutability::Not,
+                        self_ty.clone(),
+                        self.table.new_lifetime_var(),
+                    ));
                     self.write_expr_adj(*base, adj);
-                    if let Some(func) =
-                        self.db.trait_data(index_trait).method_by_name(&name!(index))
+                    if let Some(func) = self
+                        .db
+                        .trait_data(index_trait)
+                        .method_by_name(&Name::new_symbol_root(sym::index.clone()))
                     {
-                        let substs = TyBuilder::subst_for_def(self.db, index_trait, None)
-                            .push(self_ty.clone())
-                            .push(index_ty.clone())
-                            .build();
-                        self.write_method_resolution(tgt_expr, func, substs);
+                        let subst = TyBuilder::subst_for_def(self.db, index_trait, None);
+                        if subst.remaining() != 2 {
+                            return self.err_ty();
+                        }
+                        let subst = subst.push(self_ty.clone()).push(index_ty.clone()).build();
+                        self.write_method_resolution(tgt_expr, func, subst);
                     }
                     let assoc = self.resolve_ops_index_output();
                     let res = self.resolve_associated_type_with_params(
@@ -985,7 +998,7 @@ impl InferenceContext<'_> {
         match fn_x {
             FnTrait::FnOnce => (),
             FnTrait::FnMut => {
-                if let TyKind::Ref(Mutability::Mut, _, inner) = derefed_callee.kind(Interner) {
+                if let TyKind::Ref(Mutability::Mut, lt, inner) = derefed_callee.kind(Interner) {
                     if adjustments
                         .last()
                         .map(|it| matches!(it.kind, Adjust::Borrow(_)))
@@ -994,15 +1007,27 @@ impl InferenceContext<'_> {
                         // prefer reborrow to move
                         adjustments
                             .push(Adjustment { kind: Adjust::Deref(None), target: inner.clone() });
-                        adjustments.push(Adjustment::borrow(Mutability::Mut, inner.clone()))
+                        adjustments.push(Adjustment::borrow(
+                            Mutability::Mut,
+                            inner.clone(),
+                            lt.clone(),
+                        ))
                     }
                 } else {
-                    adjustments.push(Adjustment::borrow(Mutability::Mut, derefed_callee.clone()));
+                    adjustments.push(Adjustment::borrow(
+                        Mutability::Mut,
+                        derefed_callee.clone(),
+                        self.table.new_lifetime_var(),
+                    ));
                 }
             }
             FnTrait::Fn => {
                 if !matches!(derefed_callee.kind(Interner), TyKind::Ref(Mutability::Not, _, _)) {
-                    adjustments.push(Adjustment::borrow(Mutability::Not, derefed_callee.clone()));
+                    adjustments.push(Adjustment::borrow(
+                        Mutability::Not,
+                        derefed_callee.clone(),
+                        self.table.new_lifetime_var(),
+                    ));
                 }
             }
         }
@@ -1165,7 +1190,7 @@ impl InferenceContext<'_> {
             Expr::Tuple { exprs, .. } => {
                 // We don't consider multiple ellipses. This is analogous to
                 // `hir_def::body::lower::ExprCollector::collect_tuple_pat()`.
-                let ellipsis = exprs.iter().position(|e| is_rest_expr(*e));
+                let ellipsis = exprs.iter().position(|e| is_rest_expr(*e)).map(|it| it as u32);
                 let exprs: Vec<_> = exprs.iter().filter(|e| !is_rest_expr(**e)).copied().collect();
 
                 self.infer_tuple_pat_like(&rhs_ty, (), ellipsis, &exprs)
@@ -1179,7 +1204,7 @@ impl InferenceContext<'_> {
 
                 // We don't consider multiple ellipses. This is analogous to
                 // `hir_def::body::lower::ExprCollector::collect_tuple_pat()`.
-                let ellipsis = args.iter().position(|e| is_rest_expr(*e));
+                let ellipsis = args.iter().position(|e| is_rest_expr(*e)).map(|it| it as u32);
                 let args: Vec<_> = args.iter().filter(|e| !is_rest_expr(**e)).copied().collect();
 
                 self.infer_tuple_struct_pat_like(path, &rhs_ty, (), lhs, ellipsis, &args)
@@ -1290,10 +1315,12 @@ impl InferenceContext<'_> {
 
         // HACK: We can use this substitution for the function because the function itself doesn't
         // have its own generic parameters.
-        let subst = TyBuilder::subst_for_def(self.db, trait_, None)
-            .push(lhs_ty.clone())
-            .push(rhs_ty.clone())
-            .build();
+        let subst = TyBuilder::subst_for_def(self.db, trait_, None);
+        if subst.remaining() != 2 {
+            return Ty::new(Interner, TyKind::Error);
+        }
+        let subst = subst.push(lhs_ty.clone()).push(rhs_ty.clone()).build();
+
         self.write_method_resolution(tgt_expr, func, subst.clone());
 
         let method_ty = self.db.value_ty(func.into()).unwrap().substitute(Interner, &subst);
@@ -1305,11 +1332,11 @@ impl InferenceContext<'_> {
             Some(sig) => {
                 let p_left = &sig.params()[0];
                 if matches!(op, BinaryOp::CmpOp(..) | BinaryOp::Assignment { .. }) {
-                    if let &TyKind::Ref(mtbl, _, _) = p_left.kind(Interner) {
+                    if let TyKind::Ref(mtbl, lt, _) = p_left.kind(Interner) {
                         self.write_expr_adj(
                             lhs,
                             vec![Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(mtbl)),
+                                kind: Adjust::Borrow(AutoBorrow::Ref(lt.clone(), *mtbl)),
                                 target: p_left.clone(),
                             }],
                         );
@@ -1317,11 +1344,11 @@ impl InferenceContext<'_> {
                 }
                 let p_right = &sig.params()[1];
                 if matches!(op, BinaryOp::CmpOp(..)) {
-                    if let &TyKind::Ref(mtbl, _, _) = p_right.kind(Interner) {
+                    if let TyKind::Ref(mtbl, lt, _) = p_right.kind(Interner) {
                         self.write_expr_adj(
                             rhs,
                             vec![Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(mtbl)),
+                                kind: Adjust::Borrow(AutoBorrow::Ref(lt.clone(), *mtbl)),
                                 target: p_right.clone(),
                             }],
                         );
@@ -1754,13 +1781,14 @@ impl InferenceContext<'_> {
         skip_indices: &[u32],
         is_varargs: bool,
     ) {
-        if args.len() != param_tys.len() + skip_indices.len() && !is_varargs {
+        let arg_count_mismatch = args.len() != param_tys.len() + skip_indices.len() && !is_varargs;
+        if arg_count_mismatch {
             self.push_diagnostic(InferenceDiagnostic::MismatchedArgCount {
                 call_expr: expr,
                 expected: param_tys.len() + skip_indices.len(),
                 found: args.len(),
             });
-        }
+        };
 
         // Quoting https://github.com/rust-lang/rust/blob/6ef275e6c3cb1384ec78128eceeb4963ff788dca/src/librustc_typeck/check/mod.rs#L3325 --
         // We do this in a pretty awful way: first we type-check any arguments
@@ -1814,7 +1842,7 @@ impl InferenceContext<'_> {
                 // The function signature may contain some unknown types, so we need to insert
                 // type vars here to avoid type mismatch false positive.
                 let coercion_target = self.insert_type_vars(coercion_target);
-                if self.coerce(Some(arg), &ty, &coercion_target).is_err() {
+                if self.coerce(Some(arg), &ty, &coercion_target).is_err() && !arg_count_mismatch {
                     self.result.type_mismatches.insert(
                         arg.into(),
                         TypeMismatch { expected: coercion_target, actual: ty.clone() },
@@ -1846,29 +1874,45 @@ impl InferenceContext<'_> {
         if let Some(generic_args) = generic_args {
             // if args are provided, it should be all of them, but we can't rely on that
             let self_params = type_params + const_params + lifetime_params;
-            for (arg, kind_id) in
-                generic_args.args.iter().zip(def_generics.iter_self_id()).take(self_params)
-            {
-                let arg = generic_arg_to_chalk(
-                    self.db,
-                    kind_id,
-                    arg,
-                    self,
-                    |this, type_ref| this.make_ty(type_ref),
-                    |this, c, ty| {
-                        const_or_path_to_chalk(
-                            this.db,
-                            &this.resolver,
-                            this.owner.into(),
-                            ty,
-                            c,
-                            ParamLoweringMode::Placeholder,
-                            || this.generics(),
-                            DebruijnIndex::INNERMOST,
-                        )
-                    },
-                    |this, lt_ref| this.make_lifetime(lt_ref),
-                );
+
+            let mut args = generic_args.args.iter().peekable();
+            for kind_id in def_generics.iter_self_id().take(self_params) {
+                let arg = args.peek();
+                let arg = match (kind_id, arg) {
+                    // Lifetimes can be elided.
+                    // Once we have implemented lifetime elision correctly,
+                    // this should be handled in a proper way.
+                    (
+                        GenericParamId::LifetimeParamId(_),
+                        None | Some(GenericArg::Type(_) | GenericArg::Const(_)),
+                    ) => error_lifetime().cast(Interner),
+
+                    // If we run out of `generic_args`, stop pushing substs
+                    (_, None) => break,
+
+                    // Normal cases
+                    (_, Some(_)) => generic_arg_to_chalk(
+                        self.db,
+                        kind_id,
+                        args.next().unwrap(), // `peek()` is `Some(_)`, so guaranteed no panic
+                        self,
+                        |this, type_ref| this.make_ty(type_ref),
+                        |this, c, ty| {
+                            const_or_path_to_chalk(
+                                this.db,
+                                &this.resolver,
+                                this.owner.into(),
+                                ty,
+                                c,
+                                ParamLoweringMode::Placeholder,
+                                || this.generics(),
+                                DebruijnIndex::INNERMOST,
+                            )
+                        },
+                        |this, lt_ref| this.make_lifetime(lt_ref),
+                    ),
+                };
+
                 substs.push(arg);
             }
         };
@@ -1945,25 +1989,25 @@ impl InferenceContext<'_> {
         };
 
         let data = self.db.function_data(func);
-        if data.legacy_const_generics_indices.is_empty() {
+        let Some(legacy_const_generics_indices) = &data.legacy_const_generics_indices else {
             return Default::default();
-        }
+        };
 
         // only use legacy const generics if the param count matches with them
-        if data.params.len() + data.legacy_const_generics_indices.len() != args.len() {
+        if data.params.len() + legacy_const_generics_indices.len() != args.len() {
             if args.len() <= data.params.len() {
                 return Default::default();
             } else {
                 // there are more parameters than there should be without legacy
                 // const params; use them
-                let mut indices = data.legacy_const_generics_indices.clone();
+                let mut indices = legacy_const_generics_indices.as_ref().clone();
                 indices.sort();
                 return indices;
             }
         }
 
         // check legacy const parameters
-        for (subst_idx, arg_idx) in data.legacy_const_generics_indices.iter().copied().enumerate() {
+        for (subst_idx, arg_idx) in legacy_const_generics_indices.iter().copied().enumerate() {
             let arg = match subst.at(Interner, subst_idx).constant(Interner) {
                 Some(c) => c,
                 None => continue, // not a const parameter?
@@ -1976,7 +2020,7 @@ impl InferenceContext<'_> {
             self.infer_expr(args[arg_idx as usize], &expected);
             // FIXME: evaluate and unify with the const
         }
-        let mut indices = data.legacy_const_generics_indices.clone();
+        let mut indices = legacy_const_generics_indices.as_ref().clone();
         indices.sort();
         indices
     }

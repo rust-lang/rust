@@ -1,20 +1,27 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use tracing::trace;
 
 use super::check::Qualifs;
 use super::ops::{self, NonConstOp};
 use super::qualifs::{NeedsNonConstDrop, Qualif};
 use super::ConstCx;
+use crate::check_consts::rustc_allow_const_fn_unstable;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop
 /// elaboration.
 pub fn checking_enabled(ccx: &ConstCx<'_, '_>) -> bool {
-    // Const-stable functions must always use the stable live drop checker.
+    // Const-stable functions must always use the stable live drop checker...
     if ccx.is_const_stable_const_fn() {
-        return false;
+        // ...except if they have the feature flag set via `rustc_allow_const_fn_unstable`.
+        return rustc_allow_const_fn_unstable(
+            ccx.tcx,
+            ccx.body.source.def_id().expect_local(),
+            sym::const_precise_live_drops,
+        );
     }
 
     ccx.tcx.features().const_precise_live_drops

@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -166,7 +166,7 @@ fn check_ineffective_gt(cx: &LateContext<'_>, span: Span, m: u128, c: u128, op: 
 }
 
 fn fetch_int_literal(cx: &LateContext<'_>, lit: &Expr<'_>) -> Option<u128> {
-    match constant(cx, cx.typeck_results(), lit)? {
+    match ConstEvalCtxt::new(cx).eval(lit)? {
         Constant::Int(n) => Some(n),
         _ => None,
     }

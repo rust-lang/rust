@@ -63,7 +63,7 @@ impl<T> LazyStorage<T> {
         LazyStorage { value: UnsafeCell::new(None) }
     }
 
-    /// Get a pointer to the TLS value, potentially initializing it with the
+    /// Gets a pointer to the TLS value, potentially initializing it with the
     /// provided parameters.
     ///
     /// The resulting pointer may not be used after reentrant inialialization

@@ -3,6 +3,7 @@
 //@ edition:2021
 //@ exec-env:RUST_BACKTRACE=0
 //@ needs-threads
+//@ needs-unwind
 use std::thread;
 const PANIC_MESSAGE: &str = "oops oh no woe is me";
 

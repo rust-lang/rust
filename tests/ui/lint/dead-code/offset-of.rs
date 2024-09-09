@@ -1,4 +1,3 @@
-#![feature(offset_of_nested)]
 #![deny(dead_code)]
 
 use std::mem::offset_of;

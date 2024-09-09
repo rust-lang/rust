@@ -19,25 +19,25 @@
           _4 = &_2;
           _5 = &mut _3;
           (*_5) = const 7_i32;
--         _6 = (*_4);
-+         _6 = _2;
-          switchInt(_1) -> [1: bb1, otherwise: bb2];
+-         _6 = copy (*_4);
++         _6 = copy _2;
+          switchInt(copy _1) -> [1: bb1, otherwise: bb2];
       }
   
       bb1: {
           StorageDead(_2);
           StorageDead(_3);
-          _0 = opaque::<i32>(_6) -> [return: bb2, unwind continue];
+          _0 = opaque::<i32>(copy _6) -> [return: bb2, unwind continue];
       }
   
       bb2: {
-          _7 = (*_4);
-          _0 = opaque::<i32>(_7) -> [return: bb3, unwind continue];
+          _7 = copy (*_4);
+          _0 = opaque::<i32>(copy _7) -> [return: bb3, unwind continue];
       }
   
       bb3: {
-          _8 = (*_5);
-          _0 = opaque::<i32>(_8) -> [return: bb4, unwind continue];
+          _8 = copy (*_5);
+          _0 = opaque::<i32>(copy _8) -> [return: bb4, unwind continue];
       }
   
       bb4: {

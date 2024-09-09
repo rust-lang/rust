@@ -1,6 +1,6 @@
 use crate::spec::{add_link_args, base, LinkerFlavor, Lld, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.max_atomic_width = Some(128);
     base.features = "+v8a,+neon,+fp-armv8".into();

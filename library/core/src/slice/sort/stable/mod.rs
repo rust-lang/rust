@@ -1,12 +1,10 @@
 //! This module contains the entry points for `slice::sort`.
 
-use crate::cmp;
-use crate::intrinsics;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
-
 use crate::slice::sort::shared::smallsort::{
     insertion_sort_shift_left, StableSmallSortTypeImpl, SMALL_SORT_GENERAL_SCRATCH_LEN,
 };
+use crate::{cmp, intrinsics};
 
 pub(crate) mod drift;
 pub(crate) mod merge;

@@ -1,7 +1,7 @@
 //@ edition: 2021
 //@ compile-flags: -Zno-profiler-runtime
 //@ compile-flags: -Cinstrument-coverage -Copt-level=0
-//@ revisions: LINUX DARWIN WINDOWS
+//@ revisions: LINUX DARWIN WIN
 
 //@ [LINUX] only-linux
 //@ [LINUX] filecheck-flags: -DINSTR_PROF_DATA=__llvm_prf_data
@@ -19,13 +19,13 @@
 //@ [DARWIN] filecheck-flags: -DINSTR_PROF_COVFUN=__LLVM_COV,__llvm_covfun
 //@ [DARWIN] filecheck-flags: -DCOMDAT_IF_SUPPORTED=
 
-//@ [WINDOWS] only-windows
-//@ [WINDOWS] filecheck-flags: -DINSTR_PROF_DATA=.lprfd$M
-//@ [WINDOWS] filecheck-flags: -DINSTR_PROF_NAME=.lprfn$M
-//@ [WINDOWS] filecheck-flags: -DINSTR_PROF_CNTS=.lprfc$M
-//@ [WINDOWS] filecheck-flags: -DINSTR_PROF_COVMAP=.lcovmap$M
-//@ [WINDOWS] filecheck-flags: -DINSTR_PROF_COVFUN=.lcovfun$M
-//@ [WINDOWS] filecheck-flags: '-DCOMDAT_IF_SUPPORTED=, comdat'
+//@ [WIN] only-windows
+//@ [WIN] filecheck-flags: -DINSTR_PROF_DATA=.lprfd$M
+//@ [WIN] filecheck-flags: -DINSTR_PROF_NAME=.lprfn$M
+//@ [WIN] filecheck-flags: -DINSTR_PROF_CNTS=.lprfc$M
+//@ [WIN] filecheck-flags: -DINSTR_PROF_COVMAP=.lcovmap$M
+//@ [WIN] filecheck-flags: -DINSTR_PROF_COVFUN=.lcovfun$M
+//@ [WIN] filecheck-flags: '-DCOMDAT_IF_SUPPORTED=, comdat'
 
 // ignore-tidy-linelength
 
@@ -71,7 +71,7 @@ fn main() {
 // Check for metadata, variables, declarations, and function definitions injected
 // into LLVM IR when compiling with -Cinstrument-coverage.
 
-// WINDOWS:      $__llvm_profile_runtime_user = comdat any
+// WIN:          $__llvm_profile_runtime_user = comdat any
 
 // CHECK:        @__llvm_coverage_mapping = private constant
 // CHECK-SAME:   section "[[INSTR_PROF_COVMAP]]", align 8
@@ -79,7 +79,7 @@ fn main() {
 // CHECK:        @__covrec_{{[A-F0-9]+}}u = linkonce_odr hidden constant
 // CHECK-SAME:   section "[[INSTR_PROF_COVFUN]]"[[COMDAT_IF_SUPPORTED]], align 8
 
-// WINDOWS:      @__llvm_profile_runtime = external{{.*}}global i32
+// WIN:          @__llvm_profile_runtime = external{{.*}}global i32
 
 // CHECK:        @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called = {{private|internal}} global
 // CHECK-SAME:   section "[[INSTR_PROF_CNTS]]"{{.*}}, align 8
@@ -111,10 +111,10 @@ fn main() {
 
 // CHECK:        declare void @llvm.instrprof.increment(ptr, i64, i32, i32) #[[LLVM_INSTRPROF_INCREMENT_ATTR:[0-9]+]]
 
-// WINDOWS:      define linkonce_odr hidden i32 @__llvm_profile_runtime_user() #[[LLVM_PROFILE_RUNTIME_USER_ATTR:[0-9]+]] comdat {
-// WINDOWS-NEXT: %1 = load i32, ptr @__llvm_profile_runtime
-// WINDOWS-NEXT: ret i32 %1
-// WINDOWS-NEXT: }
+// WIN:          define linkonce_odr hidden i32 @__llvm_profile_runtime_user() #[[LLVM_PROFILE_RUNTIME_USER_ATTR:[0-9]+]] comdat {
+// WIN-NEXT:     %1 = load i32, ptr @__llvm_profile_runtime
+// WIN-NEXT:     ret i32 %1
+// WIN-NEXT:     }
 
 // CHECK:        attributes #[[LLVM_INSTRPROF_INCREMENT_ATTR]] = { nounwind }
-// WINDOWS:      attributes #[[LLVM_PROFILE_RUNTIME_USER_ATTR]] = { noinline }
+// WIN:          attributes #[[LLVM_PROFILE_RUNTIME_USER_ATTR]] = { noinline }

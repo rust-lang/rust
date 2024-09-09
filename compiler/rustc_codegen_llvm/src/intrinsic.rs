@@ -1,17 +1,11 @@
-use crate::abi::{Abi, FnAbi, FnAbiLlvmExt, LlvmType, PassMode};
-use crate::builder::Builder;
-use crate::context::CodegenCx;
-use crate::llvm;
-use crate::type_::Type;
-use crate::type_of::LayoutLlvmExt;
-use crate::va_arg::emit_va_arg;
-use crate::value::Value;
+use std::assert_matches::assert_matches;
+use std::cmp::Ordering;
 
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
@@ -23,7 +17,14 @@ use rustc_target::abi::{self, Align, Float, HasDataLayout, Primitive, Size};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 use tracing::debug;
 
-use std::cmp::Ordering;
+use crate::abi::{Abi, FnAbi, FnAbiLlvmExt, LlvmType, PassMode};
+use crate::builder::Builder;
+use crate::context::CodegenCx;
+use crate::llvm;
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::va_arg::emit_va_arg;
+use crate::value::Value;
 
 fn get_simple_intrinsic<'ll>(
     cx: &CodegenCx<'ll, '_>,
@@ -35,10 +36,10 @@ fn get_simple_intrinsic<'ll>(
         sym::sqrtf64 => "llvm.sqrt.f64",
         sym::sqrtf128 => "llvm.sqrt.f128",
 
-        sym::powif16 => "llvm.powi.f16",
-        sym::powif32 => "llvm.powi.f32",
-        sym::powif64 => "llvm.powi.f64",
-        sym::powif128 => "llvm.powi.f128",
+        sym::powif16 => "llvm.powi.f16.i32",
+        sym::powif32 => "llvm.powi.f32.i32",
+        sym::powif64 => "llvm.powi.f64.i32",
+        sym::powif128 => "llvm.powi.f128.i32",
 
         sym::sinf16 => "llvm.sin.f16",
         sym::sinf32 => "llvm.sin.f32",
@@ -186,23 +187,57 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Some(instance),
                 )
             }
-            sym::likely => {
-                self.call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(true)])
-            }
+            sym::likely => self.expect(args[0].immediate(), true),
             sym::is_val_statically_known => {
                 let intrinsic_type = args[0].layout.immediate_llvm_type(self.cx);
-                match self.type_kind(intrinsic_type) {
-                    TypeKind::Pointer | TypeKind::Integer | TypeKind::Float | TypeKind::Double => {
-                        self.call_intrinsic(
-                            &format!("llvm.is.constant.{:?}", intrinsic_type),
-                            &[args[0].immediate()],
-                        )
+                let kind = self.type_kind(intrinsic_type);
+                let intrinsic_name = match kind {
+                    TypeKind::Pointer | TypeKind::Integer => {
+                        Some(format!("llvm.is.constant.{intrinsic_type:?}"))
                     }
-                    _ => self.const_bool(false),
+                    // LLVM float types' intrinsic names differ from their type names.
+                    TypeKind::Half => Some(format!("llvm.is.constant.f16")),
+                    TypeKind::Float => Some(format!("llvm.is.constant.f32")),
+                    TypeKind::Double => Some(format!("llvm.is.constant.f64")),
+                    TypeKind::FP128 => Some(format!("llvm.is.constant.f128")),
+                    _ => None,
+                };
+                if let Some(intrinsic_name) = intrinsic_name {
+                    self.call_intrinsic(&intrinsic_name, &[args[0].immediate()])
+                } else {
+                    self.const_bool(false)
                 }
             }
-            sym::unlikely => self
-                .call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(false)]),
+            sym::unlikely => self.expect(args[0].immediate(), false),
+            sym::select_unpredictable => {
+                let cond = args[0].immediate();
+                assert_eq!(args[1].layout, args[2].layout);
+                let select = |bx: &mut Self, true_val, false_val| {
+                    let result = bx.select(cond, true_val, false_val);
+                    bx.set_unpredictable(&result);
+                    result
+                };
+                match (args[1].val, args[2].val) {
+                    (OperandValue::Ref(true_val), OperandValue::Ref(false_val)) => {
+                        assert!(true_val.llextra.is_none());
+                        assert!(false_val.llextra.is_none());
+                        assert_eq!(true_val.align, false_val.align);
+                        let ptr = select(self, true_val.llval, false_val.llval);
+                        let selected =
+                            OperandValue::Ref(PlaceValue::new_sized(ptr, true_val.align));
+                        selected.store(self, result);
+                        return Ok(());
+                    }
+                    (OperandValue::Immediate(_), OperandValue::Immediate(_))
+                    | (OperandValue::Pair(_, _), OperandValue::Pair(_, _)) => {
+                        let true_val = args[1].immediate_or_packed_pair(self);
+                        let false_val = args[2].immediate_or_packed_pair(self);
+                        select(self, true_val, false_val)
+                    }
+                    (OperandValue::ZeroSized, OperandValue::ZeroSized) => return Ok(()),
+                    _ => span_bug!(span, "Incompatible OperandValue for select_unpredictable"),
+                }
+            }
             sym::catch_unwind => {
                 catch_unwind_intrinsic(
                     self,
@@ -566,11 +601,17 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 
     fn assume(&mut self, val: Self::Value) {
-        self.call_intrinsic("llvm.assume", &[val]);
+        if self.cx.sess().opts.optimize != rustc_session::config::OptLevel::No {
+            self.call_intrinsic("llvm.assume", &[val]);
+        }
     }
 
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value {
-        self.call_intrinsic("llvm.expect.i1", &[cond, self.const_bool(expected)])
+        if self.cx.sess().opts.optimize != rustc_session::config::OptLevel::No {
+            self.call_intrinsic("llvm.expect.i1", &[cond, self.const_bool(expected)])
+        } else {
+            cond
+        }
     }
 
     fn type_test(&mut self, pointer: Self::Value, typeid: Self::Value) -> Self::Value {
@@ -1113,7 +1154,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if cfg!(debug_assertions) {
         for (ty, arg) in arg_tys.iter().zip(args) {
             if ty.is_simd() {
-                assert!(matches!(arg.val, OperandValue::Immediate(_)));
+                assert_matches!(arg.val, OperandValue::Immediate(_));
             }
         }
     }
@@ -1249,19 +1290,24 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_shuffle {
-        // Make sure this is actually an array, since typeck only checks the length-suffixed
+        // Make sure this is actually an array or SIMD vector, since typeck only checks the length-suffixed
         // version of this intrinsic.
-        let n: u64 = match args[2].layout.ty.kind() {
+        let idx_ty = args[2].layout.ty;
+        let n: u64 = match idx_ty.kind() {
             ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => {
                 len.try_eval_target_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(
                     || span_bug!(span, "could not evaluate shuffle index array length"),
                 )
             }
-            _ => return_error!(InvalidMonomorphization::SimdShuffle {
-                span,
-                name,
-                ty: args[2].layout.ty
-            }),
+            _ if idx_ty.is_simd()
+                && matches!(
+                    idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(),
+                    ty::Uint(ty::UintTy::U32)
+                ) =>
+            {
+                idx_ty.simd_size_and_type(bx.cx.tcx).0
+            }
+            _ => return_error!(InvalidMonomorphization::SimdShuffle { span, name, ty: idx_ty }),
         };
 
         let (out_len, out_ty) = require_simd!(ret_ty, SimdReturn);

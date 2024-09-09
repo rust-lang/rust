@@ -3,12 +3,12 @@
 #![allow(deprecated)]
 //@ needs-threads
 
-use std::sync::mpsc::{TryRecvError, channel};
+use std::sync::mpsc::{channel, TryRecvError};
 use std::thread;
 
 pub fn main() {
     let (tx, rx) = channel();
-    let t = thread::spawn(move||{
+    let t = thread::spawn(move || {
         thread::sleep_ms(10);
         tx.send(()).unwrap();
     });
@@ -16,7 +16,7 @@ pub fn main() {
         match rx.try_recv() {
             Ok(()) => break,
             Err(TryRecvError::Empty) => {}
-            Err(TryRecvError::Disconnected) => unreachable!()
+            Err(TryRecvError::Disconnected) => unreachable!(),
         }
     }
     t.join();

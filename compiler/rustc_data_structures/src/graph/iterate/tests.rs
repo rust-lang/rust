@@ -1,5 +1,4 @@
 use super::super::tests::TestGraph;
-
 use super::*;
 
 #[test]

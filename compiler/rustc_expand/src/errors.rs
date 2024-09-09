@@ -1,10 +1,11 @@
+use std::borrow::Cow;
+
 use rustc_ast::ast;
 use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::Limit;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::{Span, Symbol};
-use std::borrow::Cow;
 
 #[derive(Diagnostic)]
 #[diag(expand_expr_repeat_no_syntax_vars)]
@@ -280,7 +281,7 @@ pub(crate) struct IncompleteParse<'a> {
     pub macro_path: &'a ast::Path,
     pub kind_name: &'a str,
     #[note(expand_macro_expands_to_match_arm)]
-    pub expands_to_match_arm: Option<()>,
+    pub expands_to_match_arm: bool,
 
     #[suggestion(
         expand_suggestion_add_semi,
@@ -349,7 +350,7 @@ pub(crate) struct ModuleMultipleCandidates {
 
 #[derive(Diagnostic)]
 #[diag(expand_trace_macro)]
-pub struct TraceMacro {
+pub(crate) struct TraceMacro {
     #[primary_span]
     pub span: Span,
 }
@@ -401,14 +402,14 @@ pub(crate) struct CustomAttributePanickedHelp {
 
 #[derive(Diagnostic)]
 #[diag(expand_proc_macro_derive_tokens)]
-pub struct ProcMacroDeriveTokens {
+pub(crate) struct ProcMacroDeriveTokens {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(expand_duplicate_matcher_binding)]
-pub struct DuplicateMatcherBinding {
+pub(crate) struct DuplicateMatcherBinding {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -417,9 +418,26 @@ pub struct DuplicateMatcherBinding {
 }
 
 #[derive(Diagnostic)]
+#[diag(expand_missing_fragment_specifier)]
+#[note]
+#[help(expand_valid)]
+pub(crate) struct MissingFragmentSpecifier {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        expand_suggestion_add_fragspec,
+        style = "verbose",
+        code = ":spec",
+        applicability = "maybe-incorrect"
+    )]
+    pub add_span: Span,
+    pub valid: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(expand_invalid_fragment_specifier)]
 #[help]
-pub struct InvalidFragmentSpecifier {
+pub(crate) struct InvalidFragmentSpecifier {
     #[primary_span]
     pub span: Span,
     pub fragment: Ident,
@@ -428,7 +446,7 @@ pub struct InvalidFragmentSpecifier {
 
 #[derive(Diagnostic)]
 #[diag(expand_expected_paren_or_brace)]
-pub struct ExpectedParenOrBrace<'a> {
+pub(crate) struct ExpectedParenOrBrace<'a> {
     #[primary_span]
     pub span: Span,
     pub token: Cow<'a, str>,
@@ -461,7 +479,7 @@ pub(crate) struct GlobDelegationTraitlessQpath {
 #[derive(Diagnostic)]
 #[diag(expand_proc_macro_back_compat)]
 #[note]
-pub struct ProcMacroBackCompat {
+pub(crate) struct ProcMacroBackCompat {
     pub crate_name: String,
     pub fixed_version: String,
 }

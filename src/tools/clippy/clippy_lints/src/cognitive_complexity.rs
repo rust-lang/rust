@@ -1,5 +1,3 @@
-//! calculate cognitive complexity and warn about overly complex functions
-
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::{IntoSpan, SpanRangeExt};

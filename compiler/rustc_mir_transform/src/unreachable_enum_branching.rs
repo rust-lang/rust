@@ -1,6 +1,5 @@
 //! A pass that eliminates branches on uninhabited or unreachable enum variants.
 
-use crate::MirPass;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::mir::patch::MirPatch;
@@ -11,6 +10,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{Abi, Variants};
+use tracing::trace;
 
 pub struct UnreachableEnumBranching;
 
@@ -72,7 +72,7 @@ fn variant_discriminants<'tcx>(
     }
 }
 
-impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
+impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

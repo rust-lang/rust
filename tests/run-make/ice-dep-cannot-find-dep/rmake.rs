@@ -16,7 +16,7 @@
 //       If we used `rustc` the additional '-L rmake_out' option would allow rustc to
 //       actually find the crate.
 
-use run_make_support::{bare_rustc, rfs, rust_lib_name, rustc};
+use run_make_support::{bare_rustc, rust_lib_name, rustc};
 
 fn main() {
     rustc().crate_name("a").crate_type("rlib").input("a.rs").arg("--verbose").run();

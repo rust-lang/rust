@@ -1,19 +1,15 @@
-use super::abi;
-use crate::{
-    cmp,
-    ffi::CStr,
-    io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut},
-    mem,
-    net::{Shutdown, SocketAddr},
-    os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd},
-    ptr, str,
-    sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr},
-    sys_common::{FromInner, IntoInner},
-    time::Duration,
-};
+use libc::{c_int, c_void, size_t};
 
 use self::netc::{sockaddr, socklen_t, MSG_PEEK};
-use libc::{c_int, c_void, size_t};
+use super::abi;
+use crate::ffi::CStr;
+use crate::io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
+use crate::net::{Shutdown, SocketAddr};
+use crate::os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd};
+use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
+use crate::sys_common::{FromInner, IntoInner};
+use crate::time::Duration;
+use crate::{cmp, mem, ptr, str};
 
 pub mod netc {
     pub use super::super::abi::sockets::*;

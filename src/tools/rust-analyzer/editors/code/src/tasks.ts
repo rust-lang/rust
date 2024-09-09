@@ -125,7 +125,7 @@ export async function targetToExecution(
     let command, args;
     if (isCargoTask(definition)) {
         // FIXME: The server should provide cargo
-        command = cargo || (await toolchain.cargoPath());
+        command = cargo || (await toolchain.cargoPath(options?.env));
         args = [definition.command].concat(definition.args || []);
     } else {
         command = definition.command;

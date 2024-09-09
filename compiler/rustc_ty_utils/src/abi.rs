@@ -1,3 +1,5 @@
+use std::iter;
+
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
@@ -15,8 +17,6 @@ use rustc_target::abi::call::{
 use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
-
-use std::iter;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
@@ -169,39 +169,6 @@ fn fn_sig_for_fn_abi<'tcx>(
                 kind: ty::BoundRegionKind::BrEnv,
             };
 
-            let mut ty = ty;
-            // When this `Closure` comes from a `CoroutineKindShim`,
-            // make sure we respect the `target_kind` in that shim.
-            // FIXME(async_closures): This shouldn't be needed, and we should be populating
-            // a separate def-id for these bodies.
-            if let InstanceKind::CoroutineKindShim { .. } = instance.def {
-                // Grab the parent coroutine-closure. It has the same args for the purposes
-                // of instantiation, so this will be okay to do.
-                let ty::CoroutineClosure(_, coroutine_closure_args) = *tcx
-                    .instantiate_and_normalize_erasing_regions(
-                        args,
-                        param_env,
-                        tcx.type_of(tcx.parent(did)),
-                    )
-                    .kind()
-                else {
-                    bug!("CoroutineKindShim comes from calling a coroutine-closure");
-                };
-                let coroutine_closure_args = coroutine_closure_args.as_coroutine_closure();
-                ty = tcx.instantiate_bound_regions_with_erased(
-                    coroutine_closure_args.coroutine_closure_sig().map_bound(|sig| {
-                        sig.to_coroutine_given_kind_and_upvars(
-                            tcx,
-                            coroutine_closure_args.parent_args(),
-                            did,
-                            ty::ClosureKind::FnOnce,
-                            tcx.lifetimes.re_erased,
-                            coroutine_closure_args.tupled_upvars_ty(),
-                            coroutine_closure_args.coroutine_captures_by_ref_ty(),
-                        )
-                    }),
-                );
-            }
             let env_ty = Ty::new_mut_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), ty);
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
@@ -549,7 +516,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // With metadata. Must be unsized and not on the stack.
                 assert!(arg.layout.is_unsized() && !on_stack);
                 // Also, must not be `extern` type.
-                let tail = cx.tcx.struct_tail_with_normalize(arg.layout.ty, |ty| ty, || {});
+                let tail = cx.tcx.struct_tail_for_codegen(arg.layout.ty, cx.param_env());
                 if matches!(tail.kind(), ty::Foreign(..)) {
                     // These types do not have metadata, so having `meta_attrs` is bogus.
                     // Conceptually, unsized arguments must be copied around, which requires dynamically
@@ -584,7 +551,7 @@ fn fn_abi_new_uncached<'tcx>(
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
 
     let mut inputs = sig.inputs();
-    let extra_args = if sig.abi == RustCall {
+    let extra_args = if sig.abi == SpecAbi::RustCall {
         assert!(!sig.c_variadic && extra_args.is_empty());
 
         if let Some(input) = sig.inputs().last() {
@@ -608,20 +575,8 @@ fn fn_abi_new_uncached<'tcx>(
         extra_args
     };
 
-    let target = &cx.tcx.sess.target;
-    let target_env_gnu_like = matches!(&target.env[..], "gnu" | "musl" | "uclibc");
-    let win_x64_gnu = target.os == "windows" && target.arch == "x86_64" && target.env == "gnu";
-    let linux_s390x_gnu_like =
-        target.os == "linux" && target.arch == "s390x" && target_env_gnu_like;
-    let linux_sparc64_gnu_like =
-        target.os == "linux" && target.arch == "sparc64" && target_env_gnu_like;
-    let linux_powerpc_gnu_like =
-        target.os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
-    use SpecAbi::*;
-    let rust_abi = matches!(sig.abi, RustIntrinsic | Rust | RustCall);
-
     let is_drop_in_place =
-        fn_def_id.is_some() && fn_def_id == cx.tcx.lang_items().drop_in_place_fn();
+        fn_def_id.is_some_and(|def_id| cx.tcx.is_lang_item(def_id, LangItem::DropInPlace));
 
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
@@ -659,18 +614,7 @@ fn fn_abi_new_uncached<'tcx>(
         });
 
         if arg.layout.is_zst() {
-            // For some forsaken reason, x86_64-pc-windows-gnu
-            // doesn't ignore zero-sized struct arguments.
-            // The same is true for {s390x,sparc64,powerpc}-unknown-linux-{gnu,musl,uclibc}.
-            if is_return
-                || rust_abi
-                || (!win_x64_gnu
-                    && !linux_s390x_gnu_like
-                    && !linux_sparc64_gnu_like
-                    && !linux_powerpc_gnu_like)
-            {
-                arg.mode = PassMode::Ignore;
-            }
+            arg.mode = PassMode::Ignore;
         }
 
         Ok(arg)

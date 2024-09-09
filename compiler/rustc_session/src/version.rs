@@ -1,10 +1,8 @@
-use rustc_macros::{current_rustc_version, Decodable, Encodable, HashStable_Generic};
-use std::{
-    borrow::Cow,
-    fmt::{self, Display},
-};
+use std::borrow::Cow;
+use std::fmt::{self, Display};
 
 use rustc_errors::IntoDiagArg;
+use rustc_macros::{current_rustc_version, Decodable, Encodable, HashStable_Generic};
 
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(HashStable_Generic)]

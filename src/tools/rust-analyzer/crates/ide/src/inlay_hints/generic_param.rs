@@ -46,7 +46,7 @@ pub(crate) fn hints(
         }
 
         let name = param.name(sema.db);
-        let param_name = name.as_str()?;
+        let param_name = name.as_str();
 
         let should_hide = {
             let argument = get_string_representation(&arg)?;

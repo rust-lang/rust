@@ -1,6 +1,3 @@
-use crate::mir::traversal::Postorder;
-use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind, START_BLOCK};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
@@ -11,6 +8,9 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
+use crate::mir::traversal::Postorder;
+use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind, START_BLOCK};
+
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlocks<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
@@ -18,9 +18,9 @@ pub struct BasicBlocks<'tcx> {
 }
 
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
-pub type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
+type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
 
-pub type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
+type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
 
 #[derive(Clone, Default, Debug)]
 struct Cache {

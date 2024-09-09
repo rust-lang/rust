@@ -5,24 +5,22 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
+use rinja::Template;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::{sym, FileName, Symbol};
+use tracing::info;
 
 use super::print_item::{full_path, item_path, print_item};
-use super::search_index::build_index;
+use super::sidebar::{print_sidebar, sidebar_module_like, ModuleLike, Sidebar};
 use super::write_shared::write_shared;
-use super::{
-    collect_spans_and_sources, scrape_examples_help,
-    sidebar::print_sidebar,
-    sidebar::{sidebar_module_like, Sidebar},
-    AllTypes, LinkFromSrc, StylePath,
-};
+use super::{collect_spans_and_sources, scrape_examples_help, AllTypes, LinkFromSrc, StylePath};
+use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
-use crate::clean::{self, types::ExternalLocation, ExternalCrate};
+use crate::clean::{self, ExternalCrate};
 use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
@@ -36,7 +34,6 @@ use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
-use rinja::Template;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -576,13 +573,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         }
 
         if !no_emit_shared {
-            // Build our search index
-            let index = build_index(&krate, &mut Rc::get_mut(&mut cx.shared).unwrap().cache, tcx);
-
-            // Write shared runs within a flock; disable thread dispatching of IO temporarily.
-            Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-            write_shared(&mut cx, &krate, index, &md_opts)?;
-            Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+            write_shared(&mut cx, &krate, &md_opts, tcx)?;
         }
 
         Ok((cx, krate))
@@ -626,12 +617,14 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = Buffer::html();
 
-        let blocks = sidebar_module_like(all.item_sections());
+        // all.html is not customizable, so a blank id map is fine
+        let blocks = sidebar_module_like(all.item_sections(), &mut IdMap::new(), ModuleLike::Crate);
         let bar = Sidebar {
             title_prefix: "",
             title: "",
             is_crate: false,
             is_mod: false,
+            parent_is_crate: false,
             blocks: vec![blocks],
             path: String::new(),
         };

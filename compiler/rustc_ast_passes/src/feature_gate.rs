@@ -1,7 +1,6 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{attr, NodeId};
-use rustc_ast::{token, PatKind};
+use rustc_ast::{attr, token, NodeId, PatKind};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
@@ -540,7 +539,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         }
     }
     gate_all!(gen_blocks, "gen blocks are experimental");
-    gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
     gate_all!(
         half_open_range_patterns_in_slices,
@@ -558,13 +556,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
-    gate_all!(precise_capturing, "precise captures on `impl Trait` are experimental");
     gate_all!(global_registration, "global registration is experimental");
-    gate_all!(unsafe_attributes, "`#[unsafe()]` markers for attributes are experimental");
-    gate_all!(
-        unsafe_extern_blocks,
-        "`unsafe extern {}` blocks and `safe` keyword are experimental"
-    );
     gate_all!(return_type_notation, "return type notation is experimental");
 
     if !visitor.features.never_patterns {

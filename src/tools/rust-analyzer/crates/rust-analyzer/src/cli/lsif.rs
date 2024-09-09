@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use ide::{
     Analysis, AnalysisHost, FileId, FileRange, MonikerKind, PackageInformation, RootDatabase,
-    StaticIndex, StaticIndexedFile, TokenId, TokenStaticData,
+    StaticIndex, StaticIndexedFile, TokenId, TokenStaticData, VendoredLibrariesConfig,
 };
 use ide_db::{line_index::WideEncoding, LineIndexDatabase};
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -276,7 +276,7 @@ impl flags::Lsif {
         eprintln!("Generating LSIF started...");
         let now = Instant::now();
         let cargo_config =
-            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
+            &CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let no_progress = &|_| ();
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
@@ -284,9 +284,11 @@ impl flags::Lsif {
             prefill_caches: false,
         };
         let path = AbsPathBuf::assert_utf8(env::current_dir()?.join(self.path));
-        let manifest = ProjectManifest::discover_single(&path)?;
+        let root = ProjectManifest::discover_single(&path)?;
+        let mut workspace = ProjectWorkspace::load(root, cargo_config, no_progress)?;
 
-        let workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
+        let build_scripts = workspace.run_build_scripts(cargo_config, no_progress)?;
+        workspace.set_build_scripts(build_scripts);
 
         let (db, vfs, _proc_macro) =
             load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
@@ -294,7 +296,13 @@ impl flags::Lsif {
         let db = host.raw_database();
         let analysis = host.analysis();
 
-        let si = StaticIndex::compute(&analysis);
+        let vendored_libs_config = if self.exclude_vendored_libraries {
+            VendoredLibrariesConfig::Excluded
+        } else {
+            VendoredLibrariesConfig::Included { workspace_root: &path.clone().into() }
+        };
+
+        let si = StaticIndex::compute(&analysis, vendored_libs_config);
 
         let mut lsif = LsifManager::new(&analysis, db, &vfs);
         lsif.add_vertex(lsif::Vertex::MetaData(lsif::MetaData {

@@ -3,7 +3,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{higher, in_constant, path_to_local, peel_ref_operators};
+use clippy_utils::{higher, is_in_const_context, path_to_local, peel_ref_operators};
 use rustc_ast::ast::RangeLimits;
 use rustc_ast::LitKind::{Byte, Char};
 use rustc_errors::Applicability;
@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             return;
         }
 
-        if in_constant(cx, expr.hir_id) && !self.msrv.meets(msrvs::IS_ASCII_DIGIT_CONST) {
+        if is_in_const_context(cx) && !self.msrv.meets(msrvs::IS_ASCII_DIGIT_CONST) {
             return;
         }
 

@@ -9,13 +9,13 @@
 //! * All unstable lang features have tests to ensure they are actually unstable.
 //! * Language features in a group are sorted by feature name.
 
-use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 use std::collections::hash_map::{Entry, HashMap};
 use std::ffi::OsStr;
-use std::fmt;
-use std::fs;
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
+use std::{fmt, fs};
+
+use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 
 #[cfg(test)]
 mod tests;
@@ -455,9 +455,10 @@ fn get_and_check_lib_features(
                     if f.tracking_issue != s.tracking_issue && f.level != Status::Accepted {
                         tidy_error!(
                             bad,
-                            "{}:{}: `issue` \"{}\" mismatches the {} `issue` of \"{}\"",
+                            "{}:{}: feature gate {} has inconsistent `issue`: \"{}\" mismatches the {} `issue` of \"{}\"",
                             file.display(),
                             line,
+                            name,
                             f.tracking_issue_display(),
                             display,
                             s.tracking_issue_display(),

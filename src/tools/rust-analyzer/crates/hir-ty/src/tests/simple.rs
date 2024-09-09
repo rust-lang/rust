@@ -1201,8 +1201,8 @@ fn infer_array() {
             209..215 '[1, 2]': [i32; 2]
             210..211 '1': i32
             213..214 '2': i32
-            225..226 'i': [&'? str; 2]
-            229..239 '["a", "b"]': [&'? str; 2]
+            225..226 'i': [&'static str; 2]
+            229..239 '["a", "b"]': [&'static str; 2]
             230..233 '"a"': &'static str
             235..238 '"b"': &'static str
             250..251 'b': [[&'? str; 1]; 2]
@@ -3684,5 +3684,38 @@ fn main() {
     }
 }
 "#,
+    );
+}
+
+#[test]
+fn infer_bad_lang_item() {
+    check_infer(
+        r#"
+#[lang="eq"]
+pub trait Eq {
+    fn eq(&self, ) -> bool;
+
+}
+
+#[lang="shr"]
+pub trait Shr<RHS,Result> {
+    fn shr(&self, rhs: &RHS) -> Result;
+}
+
+fn test() -> bool {
+    1 >> 1;
+    1 == 1;
+}
+"#,
+        expect![[r#"
+            39..43 'self': &'? Self
+            114..118 'self': &'? Self
+            120..123 'rhs': &'? RHS
+            163..190 '{     ...= 1; }': bool
+            169..170 '1': i32
+            169..175 '1 >> 1': {unknown}
+            181..182 '1': i32
+            181..187 '1 == 1': {unknown}
+        "#]],
     );
 }

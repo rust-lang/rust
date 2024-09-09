@@ -35,9 +35,9 @@
           _4 = move ((_2 as Some).0: Empty);
           StorageLive(_5);
           StorageLive(_6);
-          _6 = _1;
+          _6 = copy _1;
 -         switchInt(move _6) -> [0: bb4, otherwise: bb3];
-+         _8 = Ne(_6, const false);
++         _8 = Ne(copy _6, const false);
 +         assume(move _8);
 +         goto -> bb3;
       }

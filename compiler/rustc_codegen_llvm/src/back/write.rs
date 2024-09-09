@@ -1,19 +1,10 @@
-use crate::back::lto::ThinBuffer;
-use crate::back::owned_target_machine::OwnedTargetMachine;
-use crate::back::profiling::{
-    selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
-};
-use crate::base;
-use crate::common;
-use crate::errors::{
-    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
-    WithLlvmError, WriteBytecode,
-};
-use crate::llvm::{self, DiagnosticInfo, PassManager};
-use crate::llvm_util;
-use crate::type_::Type;
-use crate::LlvmCodegenBackend;
-use crate::ModuleLlvm;
+use std::ffi::CString;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::{fs, slice, str};
+
+use libc::{c_char, c_int, c_void, size_t};
 use llvm::{
     LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
 };
@@ -29,32 +20,37 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{DiagCtxtHandle, FatalError, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, Lto, OutputType, Passes};
-use rustc_session::config::{RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath};
+use rustc_session::config::{
+    self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
+};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::debug;
 
+use crate::back::lto::ThinBuffer;
+use crate::back::owned_target_machine::OwnedTargetMachine;
+use crate::back::profiling::{
+    selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
+};
+use crate::errors::{
+    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
+    WithLlvmError, WriteBytecode,
+};
 use crate::llvm::diagnostic::OptimizationDiagnosticKind;
-use libc::{c_char, c_int, c_void, size_t};
-use std::ffi::CString;
-use std::fs;
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
-use std::slice;
-use std::str;
-use std::sync::Arc;
+use crate::llvm::{self, DiagnosticInfo, PassManager};
+use crate::type_::Type;
+use crate::{base, common, llvm_util, LlvmCodegenBackend, ModuleLlvm};
 
-pub fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> FatalError {
+pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> FatalError {
     match llvm::last_error() {
         Some(llvm_err) => dcx.emit_almost_fatal(WithLlvmError(err, llvm_err)),
         None => dcx.emit_almost_fatal(err),
     }
 }
 
-pub fn write_output_file<'ll>(
+fn write_output_file<'ll>(
     dcx: DiagCtxtHandle<'_>,
     target: &'ll llvm::TargetMachine,
     pm: &llvm::PassManager<'ll>,
@@ -99,16 +95,19 @@ pub fn write_output_file<'ll>(
     }
 }
 
-pub fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
+pub(crate) fn create_informational_target_machine(
+    sess: &Session,
+    only_base_features: bool,
+) -> OwnedTargetMachine {
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, false);
+    let features = llvm_util::global_llvm_features(sess, false, only_base_features);
     target_machine_factory(sess, config::OptLevel::No, &features)(config)
         .unwrap_or_else(|err| llvm_err(sess.dcx(), err).raise())
 }
 
-pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
+pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(()).split_dwarf_path(
             tcx.sess.split_debuginfo(),
@@ -131,9 +130,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMach
     .unwrap_or_else(|err| llvm_err(tcx.dcx(), err).raise())
 }
 
-pub fn to_llvm_opt_settings(
-    cfg: config::OptLevel,
-) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
+fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
     use self::config::OptLevel::*;
     match cfg {
         No => (llvm::CodeGenOptLevel::None, llvm::CodeGenOptSizeNone),
@@ -180,7 +177,7 @@ pub(crate) fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeMod
     }
 }
 
-pub fn target_machine_factory(
+pub(crate) fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
     target_features: &[String],
@@ -321,7 +318,7 @@ pub(crate) fn save_temp_bitcode(
 }
 
 /// In what context is a dignostic handler being attached to a codegen unit?
-pub enum CodegenDiagnosticsStage {
+pub(crate) enum CodegenDiagnosticsStage {
     /// Prelink optimization stage.
     Opt,
     /// LTO/ThinLTO postlink optimization stage.
@@ -330,14 +327,14 @@ pub enum CodegenDiagnosticsStage {
     Codegen,
 }
 
-pub struct DiagnosticHandlers<'a> {
+pub(crate) struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext<LlvmCodegenBackend>, DiagCtxtHandle<'a>),
     llcx: &'a llvm::Context,
     old_handler: Option<&'a llvm::DiagnosticHandler>,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
-    pub fn new(
+    pub(crate) fn new(
         cgcx: &'a CodegenContext<LlvmCodegenBackend>,
         dcx: DiagCtxtHandle<'a>,
         llcx: &'a llvm::Context,
@@ -574,6 +571,7 @@ pub(crate) unsafe fn llvm_optimize(
             cgcx.opts.cg.linker_plugin_lto.enabled(),
             config.no_prepopulate_passes,
             config.verify_llvm_ir,
+            config.lint_llvm_ir,
             using_thin_buffers,
             config.merge_functions,
             unroll_loops,
@@ -1032,7 +1030,7 @@ unsafe fn embed_bitcode(
             let llglobal = llvm::LLVMAddGlobal(
                 llmod,
                 common::val_ty(llconst),
-                c"rustc.embedded.module".as_ptr().cast(),
+                c"rustc.embedded.module".as_ptr(),
             );
             llvm::LLVMSetInitializer(llglobal, llconst);
 
@@ -1045,7 +1043,7 @@ unsafe fn embed_bitcode(
             let llglobal = llvm::LLVMAddGlobal(
                 llmod,
                 common::val_ty(llconst),
-                c"rustc.embedded.cmdline".as_ptr().cast(),
+                c"rustc.embedded.cmdline".as_ptr(),
             );
             llvm::LLVMSetInitializer(llglobal, llconst);
             let section = if is_apple {
@@ -1055,7 +1053,7 @@ unsafe fn embed_bitcode(
             } else {
                 c".llvmcmd"
             };
-            llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
+            llvm::LLVMSetSection(llglobal, section.as_ptr());
             llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
         } else {
             // We need custom section flags, so emit module-level inline assembly.
@@ -1108,7 +1106,7 @@ fn create_msvc_imps(
             .collect::<Vec<_>>();
 
         for (imp_name, val) in globals {
-            let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr().cast());
+            let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr());
             llvm::LLVMSetInitializer(imp, val);
             llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
         }

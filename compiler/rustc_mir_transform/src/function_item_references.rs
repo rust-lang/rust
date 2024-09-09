@@ -5,14 +5,15 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::source_map::Spanned;
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-use crate::{errors, MirLint};
+use crate::errors;
 
 pub struct FunctionItemReferences;
 
-impl<'tcx> MirLint<'tcx> for FunctionItemReferences {
+impl<'tcx> crate::MirLint<'tcx> for FunctionItemReferences {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = FunctionItemRefChecker { tcx, body };
         checker.visit_body(body);

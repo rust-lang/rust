@@ -4,16 +4,14 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
-use tracing::trace;
-
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_middle::{mir, ty};
+use rustc_middle::{bug, mir, span_bug, ty};
 use rustc_target::abi::{self, Abi, HasDataLayout, Size};
+use tracing::trace;
 
 use super::{
     alloc_range, err_ub, from_known_layout, mir_assign_valid_types, throw_ub, CtfeProvenance,
@@ -186,6 +184,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_scalar(val: Scalar<Prov>, layout: TyAndLayout<'tcx>) -> Self {
         debug_assert!(layout.abi.is_scalar(), "`ImmTy::from_scalar` on non-scalar layout");
+        debug_assert_eq!(val.size(), layout.size);
         ImmTy { imm: val.into(), layout }
     }
 
@@ -320,6 +319,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             // some fieldless enum variants can have non-zero size but still `Aggregate` ABI... try
             // to detect those here and also give them no data
             _ if matches!(layout.abi, Abi::Aggregate { .. })
+                && matches!(layout.variants, abi::Variants::Single { .. })
                 && matches!(&layout.fields, abi::FieldsShape::Arbitrary { offsets, .. } if offsets.len() == 0) =>
             {
                 Immediate::Uninit
@@ -329,8 +329,9 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
                 assert_eq!(offset.bytes(), 0);
                 assert!(
                     match (self.layout.abi, layout.abi) {
-                        (Abi::Scalar(..), Abi::Scalar(..)) => true,
-                        (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                        (Abi::Scalar(l), Abi::Scalar(r)) => l.size(cx) == r.size(cx),
+                        (Abi::ScalarPair(l1, l2), Abi::ScalarPair(r1, r2)) =>
+                            l1.size(cx) == r1.size(cx) && l2.size(cx) == r2.size(cx),
                         _ => false,
                     },
                     "cannot project into {} immediate with equally-sized field {}\nouter ABI: {:#?}\nfield ABI: {:#?}",
@@ -343,18 +344,25 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             }
             // extract fields from types with `ScalarPair` ABI
             (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
-                assert!(matches!(layout.abi, Abi::Scalar(..)));
+                assert_matches!(layout.abi, Abi::Scalar(..));
                 Immediate::from(if offset.bytes() == 0 {
-                    debug_assert_eq!(layout.size, a.size(cx));
+                    // It is "okay" to transmute from `usize` to a pointer (GVN relies on that).
+                    // So only compare the size.
+                    assert_eq!(layout.size, a.size(cx));
                     a_val
                 } else {
-                    debug_assert_eq!(offset, a.size(cx).align_to(b.align(cx).abi));
-                    debug_assert_eq!(layout.size, b.size(cx));
+                    assert_eq!(offset, a.size(cx).align_to(b.align(cx).abi));
+                    assert_eq!(layout.size, b.size(cx));
                     b_val
                 })
             }
             // everything else is a bug
-            _ => bug!("invalid field access on immediate {}, layout {:#?}", self, self.layout),
+            _ => bug!(
+                "invalid field access on immediate {} at offset {}, original layout {:#?}",
+                self,
+                offset.bytes(),
+                self.layout
+            ),
         };
 
         ImmTy::from_immediate(inner_val, layout)
@@ -835,8 +843,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Immediate, 48);
     static_assert_size!(ImmTy<'_>, 64);

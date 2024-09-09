@@ -1,4 +1,4 @@
-error[E0049]: method `foo` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const_trait_impl.rs:6:1
    |
 LL | #[const_trait]
@@ -7,7 +7,7 @@ LL | pub unsafe trait Sup {
 LL |     fn foo() -> u32;
    |           - expected 0 const parameters
 
-error[E0049]: method `foo` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const_trait_impl.rs:6:1
    |
 LL | #[const_trait]
@@ -36,7 +36,7 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | impl<T: ~const Default + ~const Sub> const A for T {
    |                ^^^^^^^
 
-error[E0049]: method `a` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `a` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const_trait_impl.rs:29:1
    |
 LL | #[const_trait]
@@ -45,7 +45,7 @@ LL | pub trait A {
 LL |     fn a() -> u32;
    |         - expected 0 const parameters
 
-error[E0049]: method `a` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `a` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const_trait_impl.rs:29:1
    |
 LL | #[const_trait]
@@ -56,7 +56,7 @@ LL |     fn a() -> u32;
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0049]: method `a` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `a` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const_trait_impl.rs:29:1
    |
 LL | #[const_trait]

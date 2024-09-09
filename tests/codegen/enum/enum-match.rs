@@ -34,7 +34,7 @@ pub enum Enum1 {
 
 // CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match1{{.*}}
 // CHECK-NEXT: start:
-// CHECK-NEXT: %1 = add i8 %0, -2
+// CHECK-NEXT: %1 = add{{( nsw)?}} i8 %0, -2
 // CHECK-NEXT: %2 = zext i8 %1 to i64
 // CHECK-NEXT: %3 = icmp ult i8 %1, 2
 // CHECK-NEXT: %4 = add nuw nsw i64 %2, 1

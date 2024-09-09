@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -8,7 +10,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeStorageDead;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::Analysis;
-use std::borrow::Cow;
+use tracing::{debug, instrument};
 
 use crate::ssa::{SsaLocals, StorageLiveLocals};
 
@@ -70,7 +72,7 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 /// so we perform all the possible instantiations without removing the `_1 = &_2` statement.
 pub struct ReferencePropagation;
 
-impl<'tcx> MirPass<'tcx> for ReferencePropagation {
+impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }
@@ -226,7 +228,7 @@ fn compute_replacement<'tcx>(
                     }
                 }
             }
-            Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+            Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
                 let mut place = *place;
                 // Try to see through `place` in order to collapse reborrow chains.
                 if place.projection.first() == Some(&PlaceElem::Deref)
@@ -343,7 +345,7 @@ fn fully_replacable_locals(ssa: &SsaLocals) -> BitSet<Local> {
     replacable
 }
 
-/// Utility to help performing subtitution of `*pattern` by `target`.
+/// Utility to help performing substitution of `*pattern` by `target`.
 struct Replacer<'tcx> {
     tcx: TyCtxt<'tcx>,
     targets: IndexVec<Local, Value<'tcx>>,

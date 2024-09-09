@@ -73,13 +73,12 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 round_all::<rustc_apfloat::ieee::Double>(this, op, rounding, dest)?;
             }
-            // Used to implement _mm256_{sqrt,rcp,rsqrt}_ps functions.
+            // Used to implement _mm256_{rcp,rsqrt}_ps functions.
             // Performs the operations on all components of `op`.
-            "sqrt.ps.256" | "rcp.ps.256" | "rsqrt.ps.256" => {
+            "rcp.ps.256" | "rsqrt.ps.256" => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
                 let which = match unprefixed_name {
-                    "sqrt.ps.256" => FloatUnaryOp::Sqrt,
                     "rcp.ps.256" => FloatUnaryOp::Rcp,
                     "rsqrt.ps.256" => FloatUnaryOp::Rsqrt,
                     _ => unreachable!(),

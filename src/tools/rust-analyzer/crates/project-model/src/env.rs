@@ -3,7 +3,7 @@ use base_db::Env;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{utf8_stdout, ManifestPath, PackageData, Sysroot, TargetKind};
+use crate::{utf8_stdout, CargoWorkspace, ManifestPath, PackageData, Sysroot, TargetKind};
 
 /// Recreates the compile-time environment variables that Cargo sets.
 ///
@@ -50,13 +50,23 @@ pub(crate) fn inject_cargo_env(env: &mut Env) {
     env.set("CARGO", Tool::Cargo.path().to_string());
 }
 
-pub(crate) fn inject_rustc_tool_env(env: &mut Env, cargo_name: &str, kind: TargetKind) {
+pub(crate) fn inject_rustc_tool_env(
+    env: &mut Env,
+    cargo: &CargoWorkspace,
+    cargo_name: &str,
+    kind: TargetKind,
+) {
     _ = kind;
     // FIXME
     // if kind.is_executable() {
     //     env.set("CARGO_BIN_NAME", cargo_name);
     // }
     env.set("CARGO_CRATE_NAME", cargo_name.replace('-', "_"));
+    // NOTE: Technically we should set this for all crates, but that will worsen the deduplication
+    // logic so for now just keeping it proc-macros ought to be fine.
+    if kind.is_proc_macro() {
+        env.set("CARGO_RUSTC_CURRENT_DIR", cargo.manifest_path().parent().to_string());
+    }
 }
 
 pub(crate) fn cargo_config_env(
@@ -75,14 +85,29 @@ pub(crate) fn cargo_config_env(
     }
     // if successful we receive `env.key.value = "value" per entry
     tracing::debug!("Discovering cargo config env by {:?}", cargo_config);
-    utf8_stdout(cargo_config).map(parse_output_cargo_config_env).unwrap_or_default()
+    utf8_stdout(cargo_config)
+        .map(parse_output_cargo_config_env)
+        .inspect(|env| {
+            tracing::debug!("Discovered cargo config env: {:?}", env);
+        })
+        .inspect_err(|err| {
+            tracing::debug!("Failed to discover cargo config env: {:?}", err);
+        })
+        .unwrap_or_default()
 }
 
 fn parse_output_cargo_config_env(stdout: String) -> FxHashMap<String, String> {
     stdout
         .lines()
         .filter_map(|l| l.strip_prefix("env."))
-        .filter_map(|l| l.split_once(".value = "))
+        .filter_map(|l| l.split_once(" = "))
+        .filter_map(|(k, v)| {
+            if k.contains('.') {
+                k.strip_suffix(".value").zip(Some(v))
+            } else {
+                Some((k, v))
+            }
+        })
         .map(|(key, value)| (key.to_owned(), value.trim_matches('"').to_owned()))
         .collect()
 }

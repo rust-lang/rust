@@ -17,7 +17,7 @@ pub(crate) fn trait_impl_missing_assoc_item(
             hir::AssocItem::Const(_) => "`const ",
             hir::AssocItem::TypeAlias(_) => "`type ",
         })?;
-        f(&name.display(ctx.sema.db))?;
+        f(&name.display(ctx.sema.db, ctx.edition))?;
         f(&"`")
     });
     Diagnostic::new(

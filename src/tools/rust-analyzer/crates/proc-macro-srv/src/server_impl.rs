@@ -14,9 +14,9 @@ mod token_stream;
 pub use token_stream::TokenStream;
 
 pub mod rust_analyzer_span;
-mod symbol;
+// mod symbol;
 pub mod token_id;
-pub use symbol::*;
+// pub use symbol::*;
 use tt::Spacing;
 
 fn delim_to_internal<S>(d: proc_macro::Delimiter, span: bridge::DelimSpan<S>) -> tt::Delimiter<S> {
@@ -49,58 +49,39 @@ fn spacing_to_internal(spacing: proc_macro::Spacing) -> Spacing {
 #[allow(unused)]
 fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
     match spacing {
-        Spacing::Alone => proc_macro::Spacing::Alone,
+        Spacing::Alone | Spacing::JointHidden => proc_macro::Spacing::Alone,
         Spacing::Joint => proc_macro::Spacing::Joint,
     }
 }
 
-/// Invokes the callback with a `&[&str]` consisting of each part of the
-/// literal's representation. This is done to allow the `ToString` and
-/// `Display` implementations to borrow references to symbol values, and
-/// both be optimized to reduce overhead.
-fn literal_with_stringify_parts<S, R>(
-    literal: &bridge::Literal<S, Symbol>,
-    interner: SymbolInternerRef,
-    f: impl FnOnce(&[&str]) -> R,
-) -> R {
-    /// Returns a string containing exactly `num` '#' characters.
-    /// Uses a 256-character source string literal which is always safe to
-    /// index with a `u8` index.
-    fn get_hashes_str(num: u8) -> &'static str {
-        const HASHES: &str = "\
-                        ################################################################\
-                        ################################################################\
-                        ################################################################\
-                        ################################################################\
-                        ";
-        const _: () = assert!(HASHES.len() == 256);
-        &HASHES[..num as usize]
+fn literal_kind_to_external(kind: tt::LitKind) -> bridge::LitKind {
+    match kind {
+        tt::LitKind::Byte => bridge::LitKind::Byte,
+        tt::LitKind::Char => bridge::LitKind::Char,
+        tt::LitKind::Integer => bridge::LitKind::Integer,
+        tt::LitKind::Float => bridge::LitKind::Float,
+        tt::LitKind::Str => bridge::LitKind::Str,
+        tt::LitKind::StrRaw(r) => bridge::LitKind::StrRaw(r),
+        tt::LitKind::ByteStr => bridge::LitKind::ByteStr,
+        tt::LitKind::ByteStrRaw(r) => bridge::LitKind::ByteStrRaw(r),
+        tt::LitKind::CStr => bridge::LitKind::CStr,
+        tt::LitKind::CStrRaw(r) => bridge::LitKind::CStrRaw(r),
+        tt::LitKind::Err(_) => bridge::LitKind::ErrWithGuar,
     }
+}
 
-    {
-        let symbol = &*literal.symbol.text(interner);
-        let suffix = &*literal.suffix.map(|s| s.text(interner)).unwrap_or_default();
-        match literal.kind {
-            bridge::LitKind::Byte => f(&["b'", symbol, "'", suffix]),
-            bridge::LitKind::Char => f(&["'", symbol, "'", suffix]),
-            bridge::LitKind::Str => f(&["\"", symbol, "\"", suffix]),
-            bridge::LitKind::StrRaw(n) => {
-                let hashes = get_hashes_str(n);
-                f(&["r", hashes, "\"", symbol, "\"", hashes, suffix])
-            }
-            bridge::LitKind::ByteStr => f(&["b\"", symbol, "\"", suffix]),
-            bridge::LitKind::ByteStrRaw(n) => {
-                let hashes = get_hashes_str(n);
-                f(&["br", hashes, "\"", symbol, "\"", hashes, suffix])
-            }
-            bridge::LitKind::CStr => f(&["c\"", symbol, "\"", suffix]),
-            bridge::LitKind::CStrRaw(n) => {
-                let hashes = get_hashes_str(n);
-                f(&["cr", hashes, "\"", symbol, "\"", hashes, suffix])
-            }
-            bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::ErrWithGuar => {
-                f(&[symbol, suffix])
-            }
-        }
+fn literal_kind_to_internal(kind: bridge::LitKind) -> tt::LitKind {
+    match kind {
+        bridge::LitKind::Byte => tt::LitKind::Byte,
+        bridge::LitKind::Char => tt::LitKind::Char,
+        bridge::LitKind::Str => tt::LitKind::Str,
+        bridge::LitKind::StrRaw(r) => tt::LitKind::StrRaw(r),
+        bridge::LitKind::ByteStr => tt::LitKind::ByteStr,
+        bridge::LitKind::ByteStrRaw(r) => tt::LitKind::ByteStrRaw(r),
+        bridge::LitKind::CStr => tt::LitKind::CStr,
+        bridge::LitKind::CStrRaw(r) => tt::LitKind::CStrRaw(r),
+        bridge::LitKind::Integer => tt::LitKind::Integer,
+        bridge::LitKind::Float => tt::LitKind::Float,
+        bridge::LitKind::ErrWithGuar => tt::LitKind::Err(()),
     }
 }

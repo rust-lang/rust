@@ -1,11 +1,9 @@
 //! This module contains an unstable quicksort and two partition implementations.
 
-use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
-use crate::ptr;
-
 use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::UnstableSmallSortTypeImpl;
+use crate::{intrinsics, ptr};
 
 /// Sorts `v` recursively.
 ///

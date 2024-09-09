@@ -2,6 +2,7 @@
 #![allow(unused)]
 #![allow(
     clippy::needless_borrow,
+    clippy::needless_option_as_deref,
     clippy::needless_pass_by_value,
     clippy::no_effect,
     clippy::option_map_unit_fn,
@@ -480,5 +481,21 @@ mod issue_12853 {
     fn f_by_ref<F: Fn(u32)>(f: &F) {
         let x = Box::new(|| None.map(|x| f(x)));
         x();
+    }
+}
+
+mod issue_13073 {
+    fn get_default() -> Option<&'static str> {
+        Some("foo")
+    }
+
+    pub fn foo() {
+        // shouldn't lint
+        let bind: Option<String> = None;
+        let _field = bind.as_deref().or_else(|| get_default()).unwrap();
+        let bind: Option<&'static str> = None;
+        let _field = bind.as_deref().or_else(|| get_default()).unwrap();
+        // should lint
+        let _field = bind.or_else(|| get_default()).unwrap();
     }
 }

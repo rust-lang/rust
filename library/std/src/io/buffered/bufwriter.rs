@@ -1,10 +1,8 @@
-use crate::error;
-use crate::fmt;
 use crate::io::{
     self, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
 use crate::mem::{self, ManuallyDrop};
-use crate::ptr;
+use crate::{error, fmt, ptr};
 
 /// Wraps a writer and buffers its output.
 ///

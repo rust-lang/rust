@@ -1,5 +1,5 @@
-use crate::common::{Config, Debugger, Sanitizer};
-use crate::header::IgnoreDecision;
+use crate::common::{Config, Sanitizer};
+use crate::header::{llvm_has_libzstd, IgnoreDecision};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
@@ -115,11 +115,6 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without Rust's LLD",
         },
         Need {
-            name: "needs-rust-lldb",
-            condition: config.debugger != Some(Debugger::Lldb) || config.lldb_native_rust,
-            ignore_reason: "ignored on targets without Rust's LLDB",
-        },
-        Need {
             name: "needs-dlltool",
             condition: cache.dlltool,
             ignore_reason: "ignored when dlltool for the current architecture is not present",
@@ -140,6 +135,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without PIC relocation model",
         },
         Need {
+            name: "needs-deterministic-layouts",
+            condition: !config.rust_randomized_layout,
+            ignore_reason: "ignored when randomizing layouts",
+        },
+        Need {
             name: "needs-wasmtime",
             condition: config.runner.as_ref().is_some_and(|r| r.contains("wasmtime")),
             ignore_reason: "ignored when wasmtime runner is not available",
@@ -148,6 +148,11 @@ pub(super) fn handle_needs(
             name: "needs-symlink",
             condition: cache.symlinks,
             ignore_reason: "ignored if symlinks are unavailable",
+        },
+        Need {
+            name: "needs-llvm-zstd",
+            condition: cache.llvm_zstd,
+            ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression",
         },
     ];
 
@@ -174,7 +179,7 @@ pub(super) fn handle_needs(
             } else {
                 return IgnoreDecision::Ignore {
                     reason: if let Some(comment) = comment {
-                        format!("{} ({comment})", need.ignore_reason)
+                        format!("{} ({})", need.ignore_reason, comment.trim())
                     } else {
                         need.ignore_reason.into()
                     },
@@ -215,6 +220,8 @@ pub(super) struct CachedNeedsConditions {
     rust_lld: bool,
     dlltool: bool,
     symlinks: bool,
+    /// Whether LLVM built with zstd, for the `needs-llvm-zstd` directive.
+    llvm_zstd: bool,
 }
 
 impl CachedNeedsConditions {
@@ -258,6 +265,7 @@ impl CachedNeedsConditions {
                 .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
                 .exists(),
 
+            llvm_zstd: llvm_has_libzstd(&config),
             dlltool: find_dlltool(&config),
             symlinks: has_symlinks(),
         }

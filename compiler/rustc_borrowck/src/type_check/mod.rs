@@ -4,7 +4,6 @@ use std::rc::Rc;
 use std::{fmt, iter, mem};
 
 use either::Either;
-
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
@@ -28,44 +27,39 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    Dynamic, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType,
-    UserTypeAnnotationIndex,
+    Dynamic, GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserArgs,
+    UserType, UserTypeAnnotationIndex,
 };
-use rustc_middle::ty::{GenericArgsRef, UserArgs};
 use rustc_middle::{bug, span_bug};
+use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
+use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
-use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
-use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
+use rustc_trait_selection::traits::query::type_op::custom::{
+    scrape_region_constraints, CustomTypeOp,
+};
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
-
 use rustc_trait_selection::traits::PredicateObligation;
+use tracing::{debug, instrument, trace};
 
-use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir_dataflow::move_paths::MoveData;
-use rustc_mir_dataflow::ResultsCursor;
-
+use crate::borrow_set::BorrowSet;
+use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
+use crate::diagnostics::UniverseInfo;
+use crate::facts::AllFacts;
+use crate::location::LocationTable;
+use crate::member_constraints::MemberConstraintSet;
+use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
+use crate::region_infer::TypeTest;
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
-use crate::{
-    borrow_set::BorrowSet,
-    constraints::{OutlivesConstraint, OutlivesConstraintSet},
-    diagnostics::UniverseInfo,
-    facts::AllFacts,
-    location::LocationTable,
-    member_constraints::MemberConstraintSet,
-    path_utils,
-    region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices},
-    region_infer::TypeTest,
-    type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
-    universal_regions::{DefiningTy, UniversalRegions},
-    BorrowckInferCtxt,
-};
+use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
+use crate::universal_regions::{DefiningTy, UniversalRegions};
+use crate::{path_utils, BorrowckInferCtxt};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -93,7 +87,7 @@ macro_rules! span_mirbug_and_err {
 
 mod canonical;
 mod constraint_conversion;
-pub mod free_region_relations;
+pub(crate) mod free_region_relations;
 mod input_output;
 pub(crate) mod liveness;
 mod relate_tys;
@@ -763,7 +757,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             PlaceContext::MutatingUse(_) => ty::Invariant,
             PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
             PlaceContext::NonMutatingUse(
-                Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | AddressOf
+                Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow
                 | Projection,
             ) => ty::Covariant,
             PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
@@ -1371,7 +1365,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 debug!("func_ty.kind: {:?}", func_ty.kind());
 
                 let sig = match func_ty.kind() {
-                    ty::FnDef(..) | ty::FnPtr(_) => func_ty.fn_sig(tcx),
+                    ty::FnDef(..) | ty::FnPtr(..) => func_ty.fn_sig(tcx),
                     _ => {
                         span_mirbug!(self, term, "call to non-function {:?}", func_ty);
                         return;
@@ -1985,20 +1979,77 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 match cast_kind {
                     CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                        let src_sig = op.ty(body, tcx).fn_sig(tcx);
+
+                        // HACK: This shouldn't be necessary... We can remove this when we actually
+                        // get binders with where clauses, then elaborate implied bounds into that
+                        // binder, and implement a higher-ranked subtyping algorithm that actually
+                        // respects these implied bounds.
+                        //
+                        // This protects against the case where we are casting from a higher-ranked
+                        // fn item to a non-higher-ranked fn pointer, where the cast throws away
+                        // implied bounds that would've needed to be checked at the call site. This
+                        // only works when we're casting to a non-higher-ranked fn ptr, since
+                        // placeholders in the target signature could have untracked implied
+                        // bounds, resulting in incorrect errors.
+                        //
+                        // We check that this signature is WF before subtyping the signature with
+                        // the target fn sig.
+                        if src_sig.has_bound_regions()
+                            && let ty::FnPtr(target_fn_tys, target_hdr) = *ty.kind()
+                            && let target_sig = target_fn_tys.with(target_hdr)
+                            && let Some(target_sig) = target_sig.no_bound_vars()
+                        {
+                            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
+                                span,
+                                BoundRegionConversionTime::HigherRankedType,
+                                src_sig,
+                            );
+                            let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
+                            self.prove_predicate(
+                                ty::ClauseKind::WellFormed(src_ty.into()),
+                                location.to_locations(),
+                                ConstraintCategory::Cast { unsize_to: None },
+                            );
+
+                            let src_ty = self.normalize(src_ty, location);
+                            if let Err(terr) = self.sub_types(
+                                src_ty,
+                                *ty,
+                                location.to_locations(),
+                                ConstraintCategory::Cast { unsize_to: None },
+                            ) {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "equating {:?} with {:?} yields {:?}",
+                                    target_sig,
+                                    src_sig,
+                                    terr
+                                );
+                            };
+                        }
+
+                        let src_ty = Ty::new_fn_ptr(tcx, src_sig);
+                        // HACK: We want to assert that the signature of the source fn is
+                        // well-formed, because we don't enforce that via the WF of FnDef
+                        // types normally. This should be removed when we improve the tracking
+                        // of implied bounds of fn signatures.
+                        self.prove_predicate(
+                            ty::ClauseKind::WellFormed(src_ty.into()),
+                            location.to_locations(),
+                            ConstraintCategory::Cast { unsize_to: None },
+                        );
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
                         // function definition. When we extract the
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
-                        let fn_sig = self.normalize(fn_sig, location);
-
-                        let ty_fn_ptr_from = Ty::new_fn_ptr(tcx, fn_sig);
-
-                        if let Err(terr) = self.eq_types(
+                        let src_ty = self.normalize(src_ty, location);
+                        if let Err(terr) = self.sub_types(
+                            src_ty,
                             *ty,
-                            ty_fn_ptr_from,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {
@@ -2006,7 +2057,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 self,
                                 rvalue,
                                 "equating {:?} with {:?} yields {:?}",
-                                ty_fn_ptr_from,
+                                src_ty,
                                 ty,
                                 terr
                             );
@@ -2021,9 +2072,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_fn_ptr_from =
                             Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, *safety));
 
-                        if let Err(terr) = self.eq_types(
-                            *ty,
+                        if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
+                            *ty,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {
@@ -2050,9 +2101,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
-                        if let Err(terr) = self.eq_types(
-                            *ty,
+                        if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
+                            *ty,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {
@@ -2336,11 +2387,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Ptr(src)), Some(CastTy::Ptr(dst))) => {
-                                let mut normalize = |t| self.normalize(t, location);
-                                let src_tail =
-                                    tcx.struct_tail_with_normalize(src.ty, &mut normalize, || ());
-                                let dst_tail =
-                                    tcx.struct_tail_with_normalize(dst.ty, &mut normalize, || ());
+                                let src_tail = self.struct_tail(src.ty, location);
+                                let dst_tail = self.struct_tail(dst.ty, location);
 
                                 // This checks (lifetime part of) vtable validity for pointer casts,
                                 // which is irrelevant when there are aren't principal traits on both sides (aka only auto traits).
@@ -2421,7 +2469,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let ty_left = left.ty(body, tcx);
                 match ty_left.kind() {
                     // Types with regions are comparable if they have a common super-type.
-                    ty::RawPtr(_, _) | ty::FnPtr(_) => {
+                    ty::RawPtr(_, _) | ty::FnPtr(..) => {
                         let ty_right = right.ty(body, tcx);
                         let common_ty = self.infcx.next_ty_var(body.source_info(location).span);
                         self.sub_types(
@@ -2478,7 +2526,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(right, location);
             }
 
-            Rvalue::AddressOf(..)
+            Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Len(..)
             | Rvalue::Discriminant(..)
@@ -2495,7 +2543,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::Repeat(..)
             | Rvalue::Ref(..)
-            | Rvalue::AddressOf(..)
+            | Rvalue::RawPtr(..)
             | Rvalue::Len(..)
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)

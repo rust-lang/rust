@@ -1,4 +1,6 @@
-use crate::{HashStableContext, SpanDecoder, SpanEncoder, Symbol};
+use std::fmt;
+use std::hash::{BuildHasherDefault, Hash, Hasher};
+
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{
     Hash64, HashStable, StableHasher, StableOrd, ToStableHashKey,
@@ -8,8 +10,8 @@ use rustc_data_structures::AtomicRef;
 use rustc_index::Idx;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
-use std::fmt;
-use std::hash::{BuildHasherDefault, Hash, Hasher};
+
+use crate::{HashStableContext, SpanDecoder, SpanEncoder, Symbol};
 
 pub type StableCrateIdMap =
     indexmap::IndexMap<StableCrateId, CrateNum, BuildHasherDefault<Unhasher>>;

@@ -85,10 +85,9 @@ mod vtable;
 mod prelude {
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
-    pub(crate) use cranelift_codegen::ir::types;
     pub(crate) use cranelift_codegen::ir::{
-        AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot,
-        StackSlotData, StackSlotKind, TrapCode, Type, Value,
+        types, AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc,
+        StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value,
     };
     pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
@@ -191,9 +190,20 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if sess.target.arch == "x86_64" && sess.target.os != "none" {
             // x86_64 mandates SSE2 support
             vec![Symbol::intern("fxsr"), sym::sse, Symbol::intern("sse2")]
-        } else if sess.target.arch == "aarch64" && sess.target.os != "none" {
-            // AArch64 mandates Neon support
-            vec![sym::neon]
+        } else if sess.target.arch == "aarch64" {
+            match &*sess.target.os {
+                "none" => vec![],
+                // On macOS the aes, sha2 and sha3 features are enabled by default and ring
+                // fails to compile on macOS when they are not present.
+                "macos" => vec![
+                    sym::neon,
+                    Symbol::intern("aes"),
+                    Symbol::intern("sha2"),
+                    Symbol::intern("sha3"),
+                ],
+                // AArch64 mandates Neon support
+                _ => vec![sym::neon],
+            }
         } else {
             vec![]
         }

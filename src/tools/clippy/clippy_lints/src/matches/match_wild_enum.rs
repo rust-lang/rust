@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_refutable, peel_hir_pat_refs, recurse_or_patterns};
 use rustc_errors::Applicability;
@@ -148,23 +148,27 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
             Applicability::MaybeIncorrect,
         ),
         variants => {
-            let mut suggestions: Vec<_> = variants.iter().copied().map(format_suggestion).collect();
-            let message = if adt_def.is_variant_list_non_exhaustive() || has_external_hidden {
-                suggestions.push("_".into());
-                "wildcard matches known variants and will also match future added variants"
+            let (message, add_wildcard) = if adt_def.is_variant_list_non_exhaustive() || has_external_hidden {
+                (
+                    "wildcard matches known variants and will also match future added variants",
+                    true,
+                )
             } else {
-                "wildcard match will also match any future added variants"
+                ("wildcard match will also match any future added variants", false)
             };
 
-            span_lint_and_sugg(
-                cx,
-                WILDCARD_ENUM_MATCH_ARM,
-                wildcard_span,
-                message,
-                "try",
-                suggestions.join(" | "),
-                Applicability::MaybeIncorrect,
-            );
+            span_lint_and_then(cx, WILDCARD_ENUM_MATCH_ARM, wildcard_span, message, |diag| {
+                let mut suggestions: Vec<_> = variants.iter().copied().map(format_suggestion).collect();
+                if add_wildcard {
+                    suggestions.push("_".into());
+                }
+                diag.span_suggestion(
+                    wildcard_span,
+                    "try",
+                    suggestions.join(" | "),
+                    Applicability::MaybeIncorrect,
+                );
+            });
         },
     };
 }
@@ -176,9 +180,8 @@ enum CommonPrefixSearcher<'a> {
 }
 impl<'a> CommonPrefixSearcher<'a> {
     fn with_path(&mut self, path: &'a [PathSegment<'a>]) {
-        match path {
-            [path @ .., _] => self.with_prefix(path),
-            [] => (),
+        if let [path @ .., _] = path {
+            self.with_prefix(path);
         }
     }
 

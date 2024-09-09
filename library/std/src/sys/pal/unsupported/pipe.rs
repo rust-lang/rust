@@ -1,7 +1,5 @@
-use crate::{
-    fmt,
-    io::{self, BorrowedCursor, IoSlice, IoSliceMut},
-};
+use crate::fmt;
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 
 pub struct AnonPipe(!);
 

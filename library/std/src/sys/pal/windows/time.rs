@@ -1,13 +1,12 @@
+use core::hash::{Hash, Hasher};
+use core::ops::Neg;
+
 use crate::cmp::Ordering;
-use crate::fmt;
-use crate::mem;
 use crate::ptr::null;
 use crate::sys::c;
 use crate::sys_common::IntoInner;
 use crate::time::Duration;
-
-use core::hash::{Hash, Hasher};
-use core::ops::Neg;
+use crate::{fmt, mem};
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 const INTERVALS_PER_SEC: u64 = NANOS_PER_SEC / 100;
@@ -166,8 +165,7 @@ fn intervals2dur(intervals: u64) -> Duration {
 mod perf_counter {
     use super::NANOS_PER_SEC;
     use crate::sync::atomic::{AtomicU64, Ordering};
-    use crate::sys::c;
-    use crate::sys::cvt;
+    use crate::sys::{c, cvt};
     use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
 
@@ -230,7 +228,7 @@ pub(super) struct WaitableTimer {
     handle: c::HANDLE,
 }
 impl WaitableTimer {
-    /// Create a high-resolution timer. Will fail before Windows 10, version 1803.
+    /// Creates a high-resolution timer. Will fail before Windows 10, version 1803.
     pub fn high_resolution() -> Result<Self, ()> {
         let handle = unsafe {
             c::CreateWaitableTimerExW(

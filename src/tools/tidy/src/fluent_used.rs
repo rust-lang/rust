@@ -1,8 +1,9 @@
 //! Checks that all Fluent messages appear at least twice
 
-use crate::walk::{filter_dirs, walk};
 use std::collections::HashMap;
 use std::path::Path;
+
+use crate::walk::{filter_dirs, walk};
 
 fn filter_used_messages(
     contents: &str,

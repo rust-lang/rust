@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::spec::{base, CodeModel, SplitDebuginfo, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "riscv64-unknown-linux-musl".into(),
         metadata: crate::spec::TargetMetadata {
@@ -21,6 +21,7 @@ pub fn target() -> Target {
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
+            crt_static_default: false,
             ..base::linux_musl::opts()
         },
     }

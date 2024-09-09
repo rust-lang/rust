@@ -1,17 +1,19 @@
 use std::ops::Deref;
 
-use base_db::{CrateGraph, FileId, ProcMacroPaths};
+use base_db::{CrateGraph, ProcMacroPaths};
 use cargo_metadata::Metadata;
 use cfg::{CfgAtom, CfgDiff};
 use expect_test::{expect_file, ExpectFile};
+use intern::sym;
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
+use span::FileId;
 use triomphe::Arc;
 
 use crate::{
-    workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides, ManifestPath, ProjectJson,
-    ProjectJsonData, ProjectWorkspace, Sysroot, WorkspaceBuildScripts,
+    sysroot::SysrootMode, workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides,
+    ManifestPath, ProjectJson, ProjectJsonData, ProjectWorkspace, Sysroot, WorkspaceBuildScripts,
 };
 
 fn load_cargo(file: &str) -> (CrateGraph, ProcMacroPaths) {
@@ -32,6 +34,7 @@ fn load_cargo_with_overrides(
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
+            error: None,
         },
         cfg_overrides,
         sysroot: Sysroot::empty(),
@@ -56,6 +59,7 @@ fn load_cargo_with_fake_sysroot(
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
+            error: None,
         },
         sysroot: get_fake_sysroot(),
         rustc_cfg: Vec::new(),
@@ -144,7 +148,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), false)
+    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir))
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
@@ -180,7 +184,7 @@ fn check_crate_graph(crate_graph: CrateGraph, expect: ExpectFile) {
 #[test]
 fn cargo_hello_world_project_model_with_wildcard_overrides() {
     let cfg_overrides = CfgOverrides {
-        global: CfgDiff::new(Vec::new(), vec![CfgAtom::Flag("test".into())]).unwrap(),
+        global: CfgDiff::new(Vec::new(), vec![CfgAtom::Flag(sym::test.clone())]).unwrap(),
         selective: Default::default(),
     };
     let (crate_graph, _proc_macros) =
@@ -199,7 +203,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
         global: Default::default(),
         selective: std::iter::once((
             "libc".to_owned(),
-            CfgDiff::new(Vec::new(), vec![CfgAtom::Flag("test".into())]).unwrap(),
+            CfgDiff::new(Vec::new(), vec![CfgAtom::Flag(sym::test.clone())]).unwrap(),
         ))
         .collect(),
     };
@@ -229,6 +233,12 @@ fn rust_project_hello_world_project_model() {
         crate_graph,
         expect_file!["../test_data/output/rust_project_hello_world_project_model.txt"],
     );
+}
+
+#[test]
+fn rust_project_cfg_groups() {
+    let (crate_graph, _proc_macros) = load_rust_project("cfg-groups.json");
+    check_crate_graph(crate_graph, expect_file!["../test_data/output/rust_project_cfg_groups.txt"]);
 }
 
 #[test]
@@ -272,10 +282,9 @@ fn crate_graph_dedup() {
 }
 
 #[test]
+// FIXME Remove the ignore
+#[ignore = "requires nightly until the sysroot ships a cargo workspace for library on stable"]
 fn smoke_test_real_sysroot_cargo() {
-    if std::env::var("SYSROOT_CARGO_METADATA").is_err() {
-        return;
-    }
     let file_map = &mut FxHashMap::<AbsPathBuf, FileId>::default();
     let meta: Metadata = get_test_json_file("hello-world-metadata.json");
     let manifest_path =
@@ -284,8 +293,8 @@ fn smoke_test_real_sysroot_cargo() {
     let sysroot = Sysroot::discover(
         AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
-        true,
     );
+    assert!(matches!(sysroot.mode(), SysrootMode::Workspace(_)));
 
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
@@ -293,6 +302,7 @@ fn smoke_test_real_sysroot_cargo() {
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
+            error: None,
         },
         sysroot,
         rustc_cfg: Vec::new(),

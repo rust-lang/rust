@@ -6,9 +6,8 @@
 #![allow(dead_code)] // runtime init functions not used during testing
 
 use crate::ffi::{CStr, OsString};
-use crate::fmt;
 use crate::os::unix::ffi::OsStringExt;
-use crate::vec;
+use crate::{fmt, vec};
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
@@ -113,6 +112,7 @@ impl DoubleEndedIterator for Args {
     target_os = "aix",
     target_os = "nto",
     target_os = "hurd",
+    target_os = "rtems",
 ))]
 mod imp {
     use crate::ffi::c_char;

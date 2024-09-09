@@ -2,23 +2,25 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use core::ops::ControlFlow;
+
 use hir::{ExprKind, Param};
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_middle::bug;
-use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
-use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
-use rustc_middle::{
-    hir::place::PlaceBase,
-    mir::{self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location},
+use rustc_middle::hir::place::PlaceBase;
+use rustc_middle::mir::{
+    self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location, Mutability, Place,
+    PlaceRef, ProjectionElem,
 };
+use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, DesugaringKind, Span};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
+use tracing::debug;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::util::FindAssignments;
@@ -847,10 +849,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
     fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diag<'_>, span: Span) {
-        use hir::{
-            BorrowKind, Expr,
-            ExprKind::{AddrOf, Block, Call, MethodCall},
-        };
+        use hir::ExprKind::{AddrOf, Block, Call, MethodCall};
+        use hir::{BorrowKind, Expr};
 
         let hir_map = self.infcx.tcx.hir();
         struct Finder {
@@ -1375,7 +1375,7 @@ impl<'tcx> Visitor<'tcx> for BindingFinder {
     }
 }
 
-pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symbol>) -> bool {
+fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symbol>) -> bool {
     debug!("local_info: {:?}, ty.kind(): {:?}", local_decl.local_info, local_decl.ty.kind());
 
     match *local_decl.local_info() {

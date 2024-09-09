@@ -7,7 +7,7 @@ use rustc_span::Span;
 use super::utils::get_last_chain_binding_hir_id;
 use super::NEEDLESS_CHARACTER_ITERATION;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{match_def_path, path_to_local_id, peel_blocks};
 
 fn peels_expr_ref<'a, 'tcx>(mut expr: &'a Expr<'tcx>) -> &'a Expr<'tcx> {
@@ -35,7 +35,7 @@ fn handle_expr(
                 && path_to_local_id(receiver, first_param)
                 && let char_arg_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs()
                 && *char_arg_ty.kind() == ty::Char
-                && let Some(snippet) = snippet_opt(cx, before_chars)
+                && let Some(snippet) = before_chars.get_source_text(cx)
             {
                 span_lint_and_sugg(
                     cx,
@@ -79,7 +79,7 @@ fn handle_expr(
                 && let Some(fn_def_id) = cx.qpath_res(&path, fn_path.hir_id).opt_def_id()
                 && match_def_path(cx, fn_def_id, &["core", "char", "methods", "<impl char>", "is_ascii"])
                 && path_to_local_id(peels_expr_ref(arg), first_param)
-                && let Some(snippet) = snippet_opt(cx, before_chars)
+                && let Some(snippet) = before_chars.get_source_text(cx)
             {
                 span_lint_and_sugg(
                     cx,

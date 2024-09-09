@@ -1,8 +1,8 @@
-use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
-
 use smallvec::SmallVec;
+
+use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     pub(super) fn lower_block(

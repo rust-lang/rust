@@ -4,8 +4,7 @@
 // one appearing in stderr in this scenario.
 // See https://github.com/rust-lang/rust/pull/12645
 
-use run_make_support::rfs;
-use run_make_support::{llvm_ar, rustc};
+use run_make_support::{llvm_ar, rfs, rustc};
 
 fn main() {
     rfs::create_file("lib.rmeta");

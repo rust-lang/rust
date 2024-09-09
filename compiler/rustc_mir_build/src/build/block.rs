@@ -1,12 +1,13 @@
+use rustc_middle::middle::region::Scope;
+use rustc_middle::mir::*;
+use rustc_middle::thir::*;
+use rustc_middle::{span_bug, ty};
+use rustc_span::Span;
+use tracing::debug;
+
 use crate::build::matches::{DeclareLetBindings, EmitStorageLive, ScheduleDrops};
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use rustc_middle::middle::region::Scope;
-use rustc_middle::span_bug;
-use rustc_middle::thir::*;
-use rustc_middle::{mir::*, ty};
-use rustc_span::Span;
-use tracing::debug;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn ast_block(

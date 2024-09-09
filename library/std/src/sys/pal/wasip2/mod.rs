@@ -6,8 +6,6 @@
 //! To begin with, this target mirrors the wasi target 1 to 1, but over
 //! time this will change significantly.
 
-#[path = "../unix/alloc.rs"]
-pub mod alloc;
 #[path = "../wasi/args.rs"]
 pub mod args;
 #[path = "../wasi/env.rs"]
@@ -51,10 +49,7 @@ mod helpers;
 // import conflict rules. If we glob export `helpers` and `common` together,
 // then the compiler complains about conflicts.
 
-pub use helpers::abort_internal;
-pub use helpers::decode_error_kind;
 use helpers::err2io;
-pub use helpers::hashmap_random_keys;
-pub use helpers::is_interrupted;
+pub use helpers::{abort_internal, decode_error_kind, hashmap_random_keys, is_interrupted};
 
 mod cabi_realloc;

@@ -97,9 +97,15 @@ def find_run_type(ctx: GitHubCtx) -> Optional[WorkflowRunType]:
             "refs/heads/automation/bors/try"
         )
 
+        # Unrolled branch from a rollup for testing perf
+        # This should **not** allow custom try jobs
+        is_unrolled_perf_build = ctx.ref == "refs/heads/try-perf"
+
         if try_build:
-            jobs = get_custom_jobs(ctx)
-            return TryRunType(custom_jobs=jobs)
+            custom_jobs = []
+            if not is_unrolled_perf_build:
+                custom_jobs = get_custom_jobs(ctx)
+            return TryRunType(custom_jobs=custom_jobs)
 
         if ctx.ref == "refs/heads/auto":
             return AutoRunType()

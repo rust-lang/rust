@@ -46,13 +46,19 @@ fn integrated_highlighting_benchmark() {
 
     let (db, vfs, _proc_macro) = {
         let _it = stdx::timeit("workspace loading");
-        load_workspace_at(&workspace_to_load, &cargo_config, &load_cargo_config, &|_| {}).unwrap()
+        load_workspace_at(
+            workspace_to_load.as_std_path(),
+            &cargo_config,
+            &load_cargo_config,
+            &|_| {},
+        )
+        .unwrap()
     };
     let mut host = AnalysisHost::with_database(db);
 
     let file_id = {
         let file = workspace_to_load.join(file);
-        let path = VfsPath::from(AbsPathBuf::assert_utf8(file));
+        let path = VfsPath::from(AbsPathBuf::assert(file));
         vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
@@ -106,13 +112,19 @@ fn integrated_completion_benchmark() {
 
     let (db, vfs, _proc_macro) = {
         let _it = stdx::timeit("workspace loading");
-        load_workspace_at(&workspace_to_load, &cargo_config, &load_cargo_config, &|_| {}).unwrap()
+        load_workspace_at(
+            workspace_to_load.as_std_path(),
+            &cargo_config,
+            &load_cargo_config,
+            &|_| {},
+        )
+        .unwrap()
     };
     let mut host = AnalysisHost::with_database(db);
 
     let file_id = {
         let file = workspace_to_load.join(file);
-        let path = VfsPath::from(AbsPathBuf::assert_utf8(file));
+        let path = VfsPath::from(AbsPathBuf::assert(file));
         vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
@@ -274,13 +286,19 @@ fn integrated_diagnostics_benchmark() {
 
     let (db, vfs, _proc_macro) = {
         let _it = stdx::timeit("workspace loading");
-        load_workspace_at(&workspace_to_load, &cargo_config, &load_cargo_config, &|_| {}).unwrap()
+        load_workspace_at(
+            workspace_to_load.as_std_path(),
+            &cargo_config,
+            &load_cargo_config,
+            &|_| {},
+        )
+        .unwrap()
     };
     let mut host = AnalysisHost::with_database(db);
 
     let file_id = {
         let file = workspace_to_load.join(file);
-        let path = VfsPath::from(AbsPathBuf::assert_utf8(file));
+        let path = VfsPath::from(AbsPathBuf::assert(file));
         vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
@@ -307,7 +325,7 @@ fn integrated_diagnostics_benchmark() {
         term_search_borrowck: true,
     };
     host.analysis()
-        .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
+        .full_diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
         .unwrap();
 
     let _g = crate::tracing::hprof::init("*");
@@ -325,7 +343,7 @@ fn integrated_diagnostics_benchmark() {
         let _p = tracing::info_span!("diagnostics").entered();
         let _span = profile::cpu_span();
         host.analysis()
-            .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
+            .full_diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)
             .unwrap();
     }
 }

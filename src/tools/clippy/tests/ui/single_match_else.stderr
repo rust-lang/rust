@@ -64,7 +64,7 @@ LL +     }
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> tests/ui/single_match_else.rs:101:5
    |
-LL | /     match Result::<i32, Infallible>::Ok(1) {
+LL | /     match Result::<i32, &Infallible>::Ok(1) {
 LL | |         Ok(a) => println!("${:?}", a),
 LL | |         Err(_) => {
 LL | |             println!("else block");
@@ -75,7 +75,7 @@ LL | |     }
    |
 help: try
    |
-LL ~     if let Ok(a) = Result::<i32, Infallible>::Ok(1) { println!("${:?}", a) } else {
+LL ~     if let Ok(a) = Result::<i32, &Infallible>::Ok(1) { println!("${:?}", a) } else {
 LL +         println!("else block");
 LL +         return;
 LL +     }

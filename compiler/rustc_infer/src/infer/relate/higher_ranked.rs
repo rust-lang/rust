@@ -1,11 +1,13 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
+use rustc_middle::ty::fold::FnMutDelegate;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use tracing::{debug, instrument};
+
 use super::RelateResult;
 use crate::infer::snapshot::CombinedSnapshot;
 use crate::infer::InferCtxt;
-use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Replaces all bound variables (lifetimes, types, and constants) bound by

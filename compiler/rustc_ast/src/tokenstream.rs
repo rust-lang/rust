@@ -13,10 +13,8 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::ast::{AttrStyle, StmtKind};
-use crate::ast_traits::{HasAttrs, HasTokens};
-use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
-use crate::{AttrVec, Attribute};
+use std::borrow::Cow;
+use std::{cmp, fmt, iter};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
@@ -24,8 +22,10 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{sym, Span, SpanDecoder, SpanEncoder, Symbol, DUMMY_SP};
 
-use std::borrow::Cow;
-use std::{cmp, fmt, iter};
+use crate::ast::{AttrStyle, StmtKind};
+use crate::ast_traits::{HasAttrs, HasTokens};
+use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
+use crate::{AttrVec, Attribute};
 
 /// Part of a `TokenStream`.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
@@ -482,11 +482,11 @@ impl TokenStream {
             token::NtIdent(ident, is_raw) => {
                 TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
             }
-            token::NtLifetime(ident) => TokenTree::Delimited(
+            token::NtLifetime(ident, is_raw) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 DelimSpacing::new(Spacing::JointHidden, spacing),
                 Delimiter::Invisible,
-                TokenStream::token_alone(token::Lifetime(ident.name), ident.span),
+                TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span),
             ),
             token::Interpolated(ref nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
@@ -767,8 +767,9 @@ impl DelimSpacing {
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);

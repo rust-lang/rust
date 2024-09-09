@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{higher, SpanlessEq};
+use clippy_utils::{eq_expr_value, higher};
 use core::ops::ControlFlow;
 use rustc_errors::Diag;
 use rustc_hir::{Expr, ExprKind};
@@ -51,53 +51,45 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
             if_else: Some(if_else),
             ..
         }) = higher::IfLet::hir(cx, expr)
+            && let Some(op_mutex) = for_each_expr_without_closures(let_expr, |e| mutex_lock_call(cx, e, None))
+            && let Some(arm_mutex) =
+                for_each_expr_without_closures((if_then, if_else), |e| mutex_lock_call(cx, e, Some(op_mutex)))
         {
-            let is_mutex_lock = |e: &'tcx Expr<'tcx>| {
-                if let Some(mutex) = is_mutex_lock_call(cx, e) {
-                    ControlFlow::Break(mutex)
-                } else {
-                    ControlFlow::Continue(())
-                }
+            let diag = |diag: &mut Diag<'_, ()>| {
+                diag.span_label(
+                    op_mutex.span,
+                    "this Mutex will remain locked for the entire `if let`-block...",
+                );
+                diag.span_label(
+                    arm_mutex.span,
+                    "... and is tried to lock again here, which will always deadlock.",
+                );
+                diag.help("move the lock call outside of the `if let ...` expression");
             };
-
-            let op_mutex = for_each_expr_without_closures(let_expr, is_mutex_lock);
-            if let Some(op_mutex) = op_mutex {
-                let arm_mutex = for_each_expr_without_closures((if_then, if_else), is_mutex_lock);
-                if let Some(arm_mutex) = arm_mutex
-                    && SpanlessEq::new(cx).eq_expr(op_mutex, arm_mutex)
-                {
-                    let diag = |diag: &mut Diag<'_, ()>| {
-                        diag.span_label(
-                            op_mutex.span,
-                            "this Mutex will remain locked for the entire `if let`-block...",
-                        );
-                        diag.span_label(
-                            arm_mutex.span,
-                            "... and is tried to lock again here, which will always deadlock.",
-                        );
-                        diag.help("move the lock call outside of the `if let ...` expression");
-                    };
-                    span_lint_and_then(
-                        cx,
-                        IF_LET_MUTEX,
-                        expr.span,
-                        "calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock",
-                        diag,
-                    );
-                }
-            }
+            span_lint_and_then(
+                cx,
+                IF_LET_MUTEX,
+                expr.span,
+                "calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock",
+                diag,
+            );
         }
     }
 }
 
-fn is_mutex_lock_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+fn mutex_lock_call<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    op_mutex: Option<&'tcx Expr<'_>>,
+) -> ControlFlow<&'tcx Expr<'tcx>> {
     if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind
         && path.ident.as_str() == "lock"
         && let ty = cx.typeck_results().expr_ty(self_arg).peel_refs()
         && is_type_diagnostic_item(cx, ty, sym::Mutex)
+        && op_mutex.map_or(true, |op| eq_expr_value(cx, self_arg, op))
     {
-        Some(self_arg)
+        ControlFlow::Break(self_arg)
     } else {
-        None
+        ControlFlow::Continue(())
     }
 }

@@ -145,7 +145,9 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 (
                     "this function's return value is unnecessary".to_string(),
                     "remove the return type...".to_string(),
-                    snippet(cx, fn_decl.output.span(), "..").to_string(),
+                    // FIXME: we should instead get the span including the `->` and suggest an
+                    // empty string for this case.
+                    "()".to_string(),
                     "...and then remove returned values",
                 )
             } else {

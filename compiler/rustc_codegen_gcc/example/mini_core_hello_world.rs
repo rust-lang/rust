@@ -2,7 +2,7 @@
 
 #![feature(
     no_core, unboxed_closures, start, lang_items, never_type, linkage,
-    extern_types, thread_local, raw_ref_op
+    extern_types, thread_local
 )]
 #![no_core]
 #![allow(dead_code, internal_features, non_camel_case_types)]
@@ -430,6 +430,7 @@ pub enum E2<X> {
     V4,
 }
 
+#[allow(unreachable_patterns)]
 fn check_niche_behavior () {
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
         intrinsics::abort();

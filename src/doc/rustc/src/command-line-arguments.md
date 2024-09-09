@@ -47,7 +47,7 @@ KIND=PATH` where `KIND` may be one of:
   directory.
 - `native` — Only search for native libraries in this directory.
 - `framework` — Only search for macOS frameworks in this directory.
-- `all` — Search for all library kinds in this directory. This is the default
+- `all` — Search for all library kinds in this directory, except frameworks. This is the default
   if `KIND` is not specified.
 
 <a id="option-l-link-lib"></a>
@@ -96,9 +96,7 @@ This modifier translates to `--whole-archive` for `ld`-like linkers,
 to `/WHOLEARCHIVE` for `link.exe`, and to `-force_load` for `ld64`.
 The modifier does nothing for linkers that don't support it.
 
-The default for this modifier is `-whole-archive`. \
-NOTE: The default may currently be different in some cases for backward compatibility,
-but it is not guaranteed. If you need whole archive semantics use `+whole-archive` explicitly.
+The default for this modifier is `-whole-archive`.
 
 ### Linking modifiers: `bundle`
 

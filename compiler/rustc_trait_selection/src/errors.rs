@@ -1,19 +1,18 @@
+use std::path::PathBuf;
+
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
+    Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
-use rustc_hir::FnRetTy;
-use rustc_hir::GenericParamKind;
+use rustc_hir::{FnRetTy, GenericParamKind};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::print::TraitRefPrintOnlyTraitPath;
-use rustc_middle::ty::{
-    self, print::PrintTraitRefExt as _, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty,
-    TyCtxt,
-};
+use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
+use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty, TyCtxt};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{BytePos, Span};
 
@@ -21,8 +20,6 @@ use crate::error_reporting::infer::need_type_info::UnderspecifiedArgKind;
 use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
 use crate::fluent_generated as fluent;
-
-use std::path::PathBuf;
 
 pub mod note_and_explain;
 
@@ -206,8 +203,10 @@ pub struct AnnotationRequired<'a> {
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
     #[note(trait_selection_full_type_written)]
-    pub was_written: Option<()>,
+    pub was_written: bool,
     pub path: PathBuf,
+    #[note(trait_selection_type_annotations_needed_error_time)]
+    pub time_version: bool,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -227,7 +226,7 @@ pub struct AmbiguousImpl<'a> {
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
     #[note(trait_selection_full_type_written)]
-    pub was_written: Option<()>,
+    pub was_written: bool,
     pub path: PathBuf,
 }
 
@@ -248,7 +247,7 @@ pub struct AmbiguousReturn<'a> {
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
     #[note(trait_selection_full_type_written)]
-    pub was_written: Option<()>,
+    pub was_written: bool,
     pub path: PathBuf,
 }
 
@@ -1585,10 +1584,7 @@ pub enum TypeErrorAdditionalDiags {
         span: Span,
         code: String,
     },
-    #[multipart_suggestion(
-        trait_selection_meant_str_literal,
-        applicability = "machine-applicable"
-    )]
+    #[multipart_suggestion(trait_selection_meant_str_literal, applicability = "machine-applicable")]
     MeantStrLiteral {
         #[suggestion_part(code = "\"")]
         start: Span,

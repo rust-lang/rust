@@ -2,18 +2,74 @@
 //! input and output) of macros. It closely mirrors `proc_macro` crate's
 //! `TokenTree`.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_lexer as rustc_lexer;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_lexer;
+
 pub mod buffer;
 pub mod iter;
 
 use std::fmt;
 
-use stdx::impl_from;
+use intern::Symbol;
+use stdx::{impl_from, itertools::Itertools as _};
 
-pub use smol_str::SmolStr;
 pub use text_size::{TextRange, TextSize};
 
+#[derive(Clone, PartialEq, Debug)]
+pub struct Lit {
+    pub kind: LitKind,
+    pub symbol: Symbol,
+    pub suffix: Option<Symbol>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum IdentIsRaw {
+    No,
+    Yes,
+}
+impl IdentIsRaw {
+    pub fn yes(self) -> bool {
+        matches!(self, IdentIsRaw::Yes)
+    }
+    pub fn no(&self) -> bool {
+        matches!(self, IdentIsRaw::No)
+    }
+    pub fn as_str(self) -> &'static str {
+        match self {
+            IdentIsRaw::No => "",
+            IdentIsRaw::Yes => "r#",
+        }
+    }
+    pub fn split_from_symbol(sym: &str) -> (Self, &str) {
+        if let Some(sym) = sym.strip_prefix("r#") {
+            (IdentIsRaw::Yes, sym)
+        } else {
+            (IdentIsRaw::No, sym)
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum LitKind {
+    Byte,
+    Char,
+    Integer, // e.g. `1`, `1u8`, `1f32`
+    Float,   // e.g. `1.`, `1.0`, `1e3f32`
+    Str,
+    StrRaw(u8), // raw string delimited by `n` hash symbols
+    ByteStr,
+    ByteStrRaw(u8), // raw byte string delimited by `n` hash symbols
+    CStr,
+    CStrRaw(u8),
+    Err(()),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TokenTree<S> {
+pub enum TokenTree<S = u32> {
     Leaf(Leaf<S>),
     Subtree(Subtree<S>),
 }
@@ -103,6 +159,15 @@ pub struct DelimSpan<S> {
     pub close: S,
 }
 
+impl<Span: Copy> DelimSpan<Span> {
+    pub fn from_single(sp: Span) -> Self {
+        DelimSpan { open: sp, close: sp }
+    }
+
+    pub fn from_pair(open: Span, close: Span) -> Self {
+        DelimSpan { open, close }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Delimiter<S> {
     pub open: S,
@@ -134,8 +199,66 @@ pub enum DelimiterKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Literal<S> {
-    pub text: SmolStr,
+    // escaped
+    pub symbol: Symbol,
     pub span: S,
+    pub kind: LitKind,
+    pub suffix: Option<Symbol>,
+}
+
+pub fn token_to_literal<S>(text: &str, span: S) -> Literal<S>
+where
+    S: Copy,
+{
+    use rustc_lexer::LiteralKind;
+
+    let token = rustc_lexer::tokenize(text).next_tuple();
+    let Some((rustc_lexer::Token {
+        kind: rustc_lexer::TokenKind::Literal { kind, suffix_start },
+        ..
+    },)) = token
+    else {
+        return Literal {
+            span,
+            symbol: Symbol::intern(text),
+            kind: LitKind::Err(()),
+            suffix: None,
+        };
+    };
+
+    let (kind, start_offset, end_offset) = match kind {
+        LiteralKind::Int { .. } => (LitKind::Integer, 0, 0),
+        LiteralKind::Float { .. } => (LitKind::Float, 0, 0),
+        LiteralKind::Char { terminated } => (LitKind::Char, 1, terminated as usize),
+        LiteralKind::Byte { terminated } => (LitKind::Byte, 2, terminated as usize),
+        LiteralKind::Str { terminated } => (LitKind::Str, 1, terminated as usize),
+        LiteralKind::ByteStr { terminated } => (LitKind::ByteStr, 2, terminated as usize),
+        LiteralKind::CStr { terminated } => (LitKind::CStr, 2, terminated as usize),
+        LiteralKind::RawStr { n_hashes } => (
+            LitKind::StrRaw(n_hashes.unwrap_or_default()),
+            2 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+        LiteralKind::RawByteStr { n_hashes } => (
+            LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
+            3 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+        LiteralKind::RawCStr { n_hashes } => (
+            LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+            3 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+    };
+
+    let (lit, suffix) = text.split_at(suffix_start as usize);
+    let lit = &lit[start_offset..lit.len() - end_offset];
+    let suffix = match suffix {
+        "" | "_" => None,
+        suffix => Some(Symbol::intern(suffix)),
+    };
+
+    Literal { span, symbol: Symbol::intern(lit), kind, suffix }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -145,23 +268,79 @@ pub struct Punct<S> {
     pub span: S,
 }
 
+/// Indicates whether a token can join with the following token to form a
+/// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
+/// guide pretty-printing, which is where the `JointHidden` value (which isn't
+/// part of `proc_macro::Spacing`) comes in useful.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Spacing {
+    /// The token cannot join with the following token to form a compound
+    /// token.
+    ///
+    /// In token streams parsed from source code, the compiler will use `Alone`
+    /// for any token immediately followed by whitespace, a non-doc comment, or
+    /// EOF.
+    ///
+    /// When constructing token streams within the compiler, use this for each
+    /// token that (a) should be pretty-printed with a space after it, or (b)
+    /// is the last token in the stream. (In the latter case the choice of
+    /// spacing doesn't matter because it is never used for the last token. We
+    /// arbitrarily use `Alone`.)
+    ///
+    /// Converts to `proc_macro::Spacing::Alone`, and
+    /// `proc_macro::Spacing::Alone` converts back to this.
     Alone,
-    /// Whether the following token is joint to this one.
+
+    /// The token can join with the following token to form a compound token.
+    ///
+    /// In token streams parsed from source code, the compiler will use `Joint`
+    /// for any token immediately followed by punctuation (as determined by
+    /// `Token::is_punct`).
+    ///
+    /// When constructing token streams within the compiler, use this for each
+    /// token that (a) should be pretty-printed without a space after it, and
+    /// (b) is followed by a punctuation token.
+    ///
+    /// Converts to `proc_macro::Spacing::Joint`, and
+    /// `proc_macro::Spacing::Joint` converts back to this.
     Joint,
+
+    /// The token can join with the following token to form a compound token,
+    /// but this will not be visible at the proc macro level. (This is what the
+    /// `Hidden` means; see below.)
+    ///
+    /// In token streams parsed from source code, the compiler will use
+    /// `JointHidden` for any token immediately followed by anything not
+    /// covered by the `Alone` and `Joint` cases: an identifier, lifetime,
+    /// literal, delimiter, doc comment.
+    ///
+    /// When constructing token streams, use this for each token that (a)
+    /// should be pretty-printed without a space after it, and (b) is followed
+    /// by a non-punctuation token.
+    ///
+    /// Converts to `proc_macro::Spacing::Alone`, but
+    /// `proc_macro::Spacing::Alone` converts back to `token::Spacing::Alone`.
+    /// Because of that, pretty-printing of `TokenStream`s produced by proc
+    /// macros is unavoidably uglier (with more whitespace between tokens) than
+    /// pretty-printing of `TokenStream`'s produced by other means (i.e. parsed
+    /// source code, internally constructed token streams, and token streams
+    /// produced by declarative macros).
+    JointHidden,
 }
 
+/// Identifier or keyword.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-/// Identifier or keyword. Unlike rustc, we keep "r#" prefix when it represents a raw identifier.
 pub struct Ident<S> {
-    pub text: SmolStr,
+    pub sym: Symbol,
     pub span: S,
+    pub is_raw: IdentIsRaw,
 }
 
 impl<S> Ident<S> {
-    pub fn new(text: impl Into<SmolStr>, span: S) -> Self {
-        Ident { text: text.into(), span }
+    pub fn new(text: &str, span: S) -> Self {
+        // let raw_stripped = IdentIsRaw::split_from_symbol(text.as_ref());
+        let (is_raw, text) = IdentIsRaw::split_from_symbol(text);
+        Ident { sym: Symbol::intern(text), span, is_raw }
     }
 }
 
@@ -207,22 +386,35 @@ fn print_debug_token<S: fmt::Debug>(
     match tkn {
         TokenTree::Leaf(leaf) => match leaf {
             Leaf::Literal(lit) => {
-                write!(f, "{}LITERAL {}", align, lit.text)?;
-                fmt::Debug::fmt(&lit.span, f)?;
+                write!(
+                    f,
+                    "{}LITERAL {:?} {}{} {:#?}",
+                    align,
+                    lit.kind,
+                    lit.symbol,
+                    lit.suffix.as_ref().map(|it| it.as_str()).unwrap_or(""),
+                    lit.span
+                )?;
             }
             Leaf::Punct(punct) => {
                 write!(
                     f,
-                    "{}PUNCH   {} [{}] ",
+                    "{}PUNCH   {} [{}] {:#?}",
                     align,
                     punct.char,
                     if punct.spacing == Spacing::Alone { "alone" } else { "joint" },
+                    punct.span
                 )?;
-                fmt::Debug::fmt(&punct.span, f)?;
             }
             Leaf::Ident(ident) => {
-                write!(f, "{}IDENT   {} ", align, ident.text)?;
-                fmt::Debug::fmt(&ident.span, f)?;
+                write!(
+                    f,
+                    "{}IDENT   {}{} {:#?}",
+                    align,
+                    ident.is_raw.as_str(),
+                    ident.sym,
+                    ident.span
+                )?;
             }
         },
         TokenTree::Subtree(subtree) => {
@@ -288,13 +480,52 @@ impl<S> fmt::Display for Leaf<S> {
 
 impl<S> fmt::Display for Ident<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.text, f)
+        fmt::Display::fmt(&self.is_raw.as_str(), f)?;
+        fmt::Display::fmt(&self.sym, f)
     }
 }
 
 impl<S> fmt::Display for Literal<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.text, f)
+        match self.kind {
+            LitKind::Byte => write!(f, "b'{}'", self.symbol),
+            LitKind::Char => write!(f, "'{}'", self.symbol),
+            LitKind::Integer | LitKind::Float | LitKind::Err(_) => write!(f, "{}", self.symbol),
+            LitKind::Str => write!(f, "\"{}\"", self.symbol),
+            LitKind::ByteStr => write!(f, "b\"{}\"", self.symbol),
+            LitKind::CStr => write!(f, "c\"{}\"", self.symbol),
+            LitKind::StrRaw(num_of_hashes) => {
+                let num_of_hashes = num_of_hashes as usize;
+                write!(
+                    f,
+                    r#"r{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#,
+                    "",
+                    text = self.symbol
+                )
+            }
+            LitKind::ByteStrRaw(num_of_hashes) => {
+                let num_of_hashes = num_of_hashes as usize;
+                write!(
+                    f,
+                    r#"br{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#,
+                    "",
+                    text = self.symbol
+                )
+            }
+            LitKind::CStrRaw(num_of_hashes) => {
+                let num_of_hashes = num_of_hashes as usize;
+                write!(
+                    f,
+                    r#"cr{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#,
+                    "",
+                    text = self.symbol
+                )
+            }
+        }?;
+        if let Some(suffix) = &self.suffix {
+            write!(f, "{}", suffix)?;
+        }
+        Ok(())
     }
 }
 
@@ -337,9 +568,9 @@ impl<S> Subtree<S> {
             let s = match child {
                 TokenTree::Leaf(it) => {
                     let s = match it {
-                        Leaf::Literal(it) => it.text.to_string(),
+                        Leaf::Literal(it) => it.symbol.to_string(),
                         Leaf::Punct(it) => it.char.to_string(),
-                        Leaf::Ident(it) => it.text.to_string(),
+                        Leaf::Ident(it) => format!("{}{}", it.is_raw.as_str(), it.sym),
                     };
                     match (it, last) {
                         (Leaf::Ident(_), Some(&TokenTree::Leaf(Leaf::Ident(_)))) => {
@@ -369,8 +600,10 @@ impl<S> Subtree<S> {
 pub fn pretty<S>(tkns: &[TokenTree<S>]) -> String {
     fn tokentree_to_text<S>(tkn: &TokenTree<S>) -> String {
         match tkn {
-            TokenTree::Leaf(Leaf::Ident(ident)) => ident.text.clone().into(),
-            TokenTree::Leaf(Leaf::Literal(literal)) => literal.text.clone().into(),
+            TokenTree::Leaf(Leaf::Ident(ident)) => {
+                format!("{}{}", ident.is_raw.as_str(), ident.sym)
+            }
+            TokenTree::Leaf(Leaf::Literal(literal)) => format!("{literal}"),
             TokenTree::Leaf(Leaf::Punct(punct)) => format!("{}", punct.char),
             TokenTree::Subtree(subtree) => {
                 let content = pretty(&subtree.token_trees);

@@ -1,6 +1,8 @@
 //! Inlining pass for MIR functions.
 
-use crate::deref_separator::deref_finder;
+use std::iter;
+use std::ops::{Range, RangeFrom};
+
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -10,20 +12,21 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags};
+use rustc_middle::ty::{
+    self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
+};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
+use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::CostChecker;
+use crate::deref_separator::deref_finder;
 use crate::simplify::simplify_cfg;
 use crate::util;
 use crate::validate::validate_types;
-use std::iter;
-use std::ops::{Range, RangeFrom};
 
 pub(crate) mod cycle;
 
@@ -39,7 +42,7 @@ struct CallSite<'tcx> {
     source_info: SourceInfo,
 }
 
-impl<'tcx> MirPass<'tcx> for Inline {
+impl<'tcx> crate::MirPass<'tcx> for Inline {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
         // MIR correctly when Modified Condition/Decision Coverage is enabled.
@@ -339,7 +342,6 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceKind::FnPtrShim(..)
             | InstanceKind::ClosureOnceShim { .. }
             | InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | InstanceKind::CoroutineKindShim { .. }
             | InstanceKind::DropGlue(..)
             | InstanceKind::CloneShim(..)
             | InstanceKind::ThreadLocalShim(..)
@@ -477,7 +479,9 @@ impl<'tcx> Inliner<'tcx> {
             return Err("incompatible instruction set");
         }
 
-        if callee_attrs.target_features != self.codegen_fn_attrs.target_features {
+        let callee_feature_names = callee_attrs.target_features.iter().map(|f| f.name);
+        let this_feature_names = self.codegen_fn_attrs.target_features.iter().map(|f| f.name);
+        if callee_feature_names.ne(this_feature_names) {
             // In general it is not correct to inline a callee with target features that are a
             // subset of the caller. This is because the callee might contain calls, and the ABI of
             // those calls depends on the target features of the surrounding function. By moving a
@@ -500,6 +504,10 @@ impl<'tcx> Inliner<'tcx> {
         cross_crate_inlinable: bool,
     ) -> Result<(), &'static str> {
         let tcx = self.tcx;
+
+        if let Some(_) = callee_body.tainted_by_errors {
+            return Err("Body is tainted");
+        }
 
         let mut threshold = if self.caller_is_inline_forwarder {
             self.tcx.sess.opts.unstable_opts.inline_mir_forwarder_threshold.unwrap_or(30)
@@ -718,7 +726,7 @@ impl<'tcx> Inliner<'tcx> {
 
         // Insert all of the (mapped) parts of the callee body into the caller.
         caller_body.local_decls.extend(callee_body.drain_vars_and_temps());
-        caller_body.source_scopes.extend(&mut callee_body.source_scopes.drain(..));
+        caller_body.source_scopes.append(&mut callee_body.source_scopes);
         if self
             .tcx
             .sess
@@ -732,7 +740,7 @@ impl<'tcx> Inliner<'tcx> {
             // still getting consistent results from the mir-opt tests.
             caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
         }
-        caller_body.basic_blocks_mut().extend(callee_body.basic_blocks_mut().drain(..));
+        caller_body.basic_blocks_mut().append(callee_body.basic_blocks_mut());
 
         caller_body[callsite.block].terminator = Some(Terminator {
             source_info: callsite.source_info,
@@ -742,8 +750,8 @@ impl<'tcx> Inliner<'tcx> {
         // Copy required constants from the callee_body into the caller_body. Although we are only
         // pushing unevaluated consts to `required_consts`, here they may have been evaluated
         // because we are calling `instantiate_and_normalize_erasing_regions` -- so we filter again.
-        caller_body.required_consts.extend(
-            callee_body.required_consts.into_iter().filter(|ct| ct.const_.is_required_const()),
+        caller_body.required_consts.as_mut().unwrap().extend(
+            callee_body.required_consts().into_iter().filter(|ct| ct.const_.is_required_const()),
         );
         // Now that we incorporated the callee's `required_consts`, we can remove the callee from
         // `mentioned_items` -- but we have to take their `mentioned_items` in return. This does
@@ -753,12 +761,11 @@ impl<'tcx> Inliner<'tcx> {
         // We need to reconstruct the `required_item` for the callee so that we can find and
         // remove it.
         let callee_item = MentionedItem::Fn(func.ty(caller_body, self.tcx));
-        if let Some(idx) =
-            caller_body.mentioned_items.iter().position(|item| item.node == callee_item)
-        {
+        let caller_mentioned_items = caller_body.mentioned_items.as_mut().unwrap();
+        if let Some(idx) = caller_mentioned_items.iter().position(|item| item.node == callee_item) {
             // We found the callee, so remove it and add its items instead.
-            caller_body.mentioned_items.remove(idx);
-            caller_body.mentioned_items.extend(callee_body.mentioned_items);
+            caller_mentioned_items.remove(idx);
+            caller_mentioned_items.extend(callee_body.mentioned_items());
         } else {
             // If we can't find the callee, there's no point in adding its items. Probably it
             // already got removed by being inlined elsewhere in the same function, so we already

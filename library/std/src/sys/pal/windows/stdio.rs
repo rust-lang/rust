@@ -1,16 +1,13 @@
 #![unstable(issue = "none", feature = "windows_stdio")]
 
+use core::str::utf8_char_width;
+
 use super::api::{self, WinError};
-use crate::cmp;
-use crate::io;
 use crate::mem::MaybeUninit;
 use crate::os::windows::io::{FromRawHandle, IntoRawHandle};
-use crate::ptr;
-use crate::str;
-use crate::sys::c;
-use crate::sys::cvt;
 use crate::sys::handle::Handle;
-use core::str::utf8_char_width;
+use crate::sys::{c, cvt};
+use crate::{cmp, io, ptr, str};
 
 #[cfg(test)]
 mod tests;
@@ -97,7 +94,7 @@ fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> i
         unsafe {
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
-            handle.into_raw_handle(); // Don't close the handle
+            let _ = handle.into_raw_handle(); // Don't close the handle
             return ret;
         }
     }
@@ -246,7 +243,7 @@ impl io::Read for Stdin {
             unsafe {
                 let handle = Handle::from_raw_handle(handle);
                 let ret = handle.read(buf);
-                handle.into_raw_handle(); // Don't close the handle
+                let _ = handle.into_raw_handle(); // Don't close the handle
                 return ret;
             }
         }

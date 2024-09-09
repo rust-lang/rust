@@ -11,6 +11,15 @@ LL |         x().await;
    |
 note: `async_call_once` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
+help: you could `clone` the value and consume it, if the `NoCopy: Clone` trait bound could be satisfied
+   |
+LL |         x.clone()().await;
+   |          ++++++++
+help: consider annotating `NoCopy` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NoCopy;
+   |
 
 error: aborting due to 1 previous error
 

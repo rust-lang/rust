@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests;
 
-use crate::io::prelude::*;
-
 use crate::alloc::Allocator;
 use crate::cmp;
+use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
@@ -210,55 +209,60 @@ impl<T> Cursor<T>
 where
     T: AsRef<[u8]>,
 {
-    /// Returns the remaining slice.
+    /// Splits the underlying slice at the cursor position and returns them.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(cursor_remaining)]
+    /// #![feature(cursor_split)]
     /// use std::io::Cursor;
     ///
     /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
     ///
-    /// assert_eq!(buff.remaining_slice(), &[1, 2, 3, 4, 5]);
+    /// assert_eq!(buff.split(), ([].as_slice(), [1, 2, 3, 4, 5].as_slice()));
     ///
     /// buff.set_position(2);
-    /// assert_eq!(buff.remaining_slice(), &[3, 4, 5]);
-    ///
-    /// buff.set_position(4);
-    /// assert_eq!(buff.remaining_slice(), &[5]);
+    /// assert_eq!(buff.split(), ([1, 2].as_slice(), [3, 4, 5].as_slice()));
     ///
     /// buff.set_position(6);
-    /// assert_eq!(buff.remaining_slice(), &[]);
+    /// assert_eq!(buff.split(), ([1, 2, 3, 4, 5].as_slice(), [].as_slice()));
     /// ```
-    #[unstable(feature = "cursor_remaining", issue = "86369")]
-    pub fn remaining_slice(&self) -> &[u8] {
-        let len = self.pos.min(self.inner.as_ref().len() as u64);
-        &self.inner.as_ref()[(len as usize)..]
+    #[unstable(feature = "cursor_split", issue = "86369")]
+    pub fn split(&self) -> (&[u8], &[u8]) {
+        let slice = self.inner.as_ref();
+        let pos = self.pos.min(slice.len() as u64);
+        slice.split_at(pos as usize)
     }
+}
 
-    /// Returns `true` if the remaining slice is empty.
+impl<T> Cursor<T>
+where
+    T: AsMut<[u8]>,
+{
+    /// Splits the underlying slice at the cursor position and returns them
+    /// mutably.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(cursor_remaining)]
+    /// #![feature(cursor_split)]
     /// use std::io::Cursor;
     ///
     /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
     ///
+    /// assert_eq!(buff.split_mut(), ([].as_mut_slice(), [1, 2, 3, 4, 5].as_mut_slice()));
+    ///
     /// buff.set_position(2);
-    /// assert!(!buff.is_empty());
+    /// assert_eq!(buff.split_mut(), ([1, 2].as_mut_slice(), [3, 4, 5].as_mut_slice()));
     ///
-    /// buff.set_position(5);
-    /// assert!(buff.is_empty());
-    ///
-    /// buff.set_position(10);
-    /// assert!(buff.is_empty());
+    /// buff.set_position(6);
+    /// assert_eq!(buff.split_mut(), ([1, 2, 3, 4, 5].as_mut_slice(), [].as_mut_slice()));
     /// ```
-    #[unstable(feature = "cursor_remaining", issue = "86369")]
-    pub fn is_empty(&self) -> bool {
-        self.pos >= self.inner.as_ref().len() as u64
+    #[unstable(feature = "cursor_split", issue = "86369")]
+    pub fn split_mut(&mut self) -> (&mut [u8], &mut [u8]) {
+        let slice = self.inner.as_mut();
+        let pos = self.pos.min(slice.len() as u64);
+        slice.split_at_mut(pos as usize)
     }
 }
 
@@ -320,7 +324,7 @@ where
     T: AsRef<[u8]>,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = Read::read(&mut self.remaining_slice(), buf)?;
+        let n = Read::read(&mut Cursor::split(self).1, buf)?;
         self.pos += n as u64;
         Ok(n)
     }
@@ -328,7 +332,7 @@ where
     fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let prev_written = cursor.written();
 
-        Read::read_buf(&mut self.remaining_slice(), cursor.reborrow())?;
+        Read::read_buf(&mut Cursor::split(self).1, cursor.reborrow())?;
 
         self.pos += (cursor.written() - prev_written) as u64;
 
@@ -352,7 +356,7 @@ where
     }
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
-        let result = Read::read_exact(&mut self.remaining_slice(), buf);
+        let result = Read::read_exact(&mut Cursor::split(self).1, buf);
 
         match result {
             Ok(_) => self.pos += buf.len() as u64,
@@ -366,14 +370,14 @@ where
     fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let prev_written = cursor.written();
 
-        let result = Read::read_buf_exact(&mut self.remaining_slice(), cursor.reborrow());
+        let result = Read::read_buf_exact(&mut Cursor::split(self).1, cursor.reborrow());
         self.pos += (cursor.written() - prev_written) as u64;
 
         result
     }
 
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        let content = self.remaining_slice();
+        let content = Cursor::split(self).1;
         let len = content.len();
         buf.try_reserve(len)?;
         buf.extend_from_slice(content);
@@ -384,7 +388,7 @@ where
 
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         let content =
-            crate::str::from_utf8(self.remaining_slice()).map_err(|_| io::Error::INVALID_UTF8)?;
+            crate::str::from_utf8(Cursor::split(self).1).map_err(|_| io::Error::INVALID_UTF8)?;
         let len = content.len();
         buf.try_reserve(len)?;
         buf.push_str(content);
@@ -400,7 +404,7 @@ where
     T: AsRef<[u8]>,
 {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        Ok(self.remaining_slice())
+        Ok(Cursor::split(self).1)
     }
     fn consume(&mut self, amt: usize) {
         self.pos += amt as u64;

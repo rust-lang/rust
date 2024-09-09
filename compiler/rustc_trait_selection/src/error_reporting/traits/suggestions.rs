@@ -1,34 +1,33 @@
 // ignore-tidy-filelength
 
-use super::{
-    DefIdOrName, FindExprBySpan, ImplCandidate, Obligation, ObligationCause, ObligationCauseCode,
-    PredicateObligation,
-};
+use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
+use std::iter;
 
-use crate::error_reporting::TypeErrCtxt;
-use crate::errors;
-use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
-
+use itertools::{EitherOrBoth, Itertools};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, EmissionGuarantee, MultiSpan,
-    Style, SuggestionStyle,
+    pluralize, struct_span_code_err, Applicability, Diag, EmissionGuarantee, MultiSpan, Style,
+    SuggestionStyle,
 };
 use rustc_hir as hir;
-use rustc_hir::def::CtorOf;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node};
-use rustc_infer::infer::InferCtxt;
-use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
+use rustc_hir::{
+    is_range_literal, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node,
+};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_middle::hir::map;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::print::PrintPolyTraitRefExt;
+use rustc_middle::ty::print::{
+    with_forced_trimmed_paths, with_no_trimmed_paths, PrintPolyTraitPredicateExt as _,
+    PrintPolyTraitRefExt, PrintTraitPredicateExt as _,
+};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
     InferTy, IsSuggestable, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
@@ -39,19 +38,17 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
-use std::assert_matches::debug_assert_matches;
-use std::borrow::Cow;
-use std::iter;
+use tracing::{debug, instrument};
 
+use super::{
+    DefIdOrName, FindExprBySpan, ImplCandidate, Obligation, ObligationCause, ObligationCauseCode,
+    PredicateObligation,
+};
+use crate::error_reporting::TypeErrCtxt;
+use crate::errors;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_middle::ty::print::{
-    with_forced_trimmed_paths, with_no_trimmed_paths, PrintPolyTraitPredicateExt as _,
-    PrintTraitPredicateExt as _,
-};
-
-use itertools::EitherOrBoth;
-use itertools::Itertools;
+use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
 
 #[derive(Debug)]
 pub enum CoroutineInteriorOrUpvar {
@@ -1081,10 +1078,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some((def_id_or_name, output, inputs)) =
             (self.autoderef_steps)(found).into_iter().find_map(|(found, _)| {
                 match *found.kind() {
-                    ty::FnPtr(fn_sig) => Some((
+                    ty::FnPtr(sig_tys, _) => Some((
                         DefIdOrName::Name("function pointer"),
-                        fn_sig.output(),
-                        fn_sig.inputs(),
+                        sig_tys.output(),
+                        sig_tys.inputs(),
                     )),
                     ty::FnDef(def_id, _) => {
                         let fn_sig = found.fn_sig(self.tcx);
@@ -1981,20 +1978,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = cause else {
             return;
         };
-        let ty::FnPtr(expected) = expected.kind() else {
+        let ty::FnPtr(sig_tys, hdr) = expected.kind() else {
             return;
         };
-        let ty::FnPtr(found) = found.kind() else {
+        let expected = sig_tys.with(*hdr);
+        let ty::FnPtr(sig_tys, hdr) = found.kind() else {
             return;
         };
+        let found = sig_tys.with(*hdr);
         let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id) else {
             return;
         };
         let hir::ExprKind::Path(path) = arg.kind else {
             return;
         };
-        let expected_inputs = self.tcx.instantiate_bound_regions_with_erased(*expected).inputs();
-        let found_inputs = self.tcx.instantiate_bound_regions_with_erased(*found).inputs();
+        let expected_inputs = self.tcx.instantiate_bound_regions_with_erased(expected).inputs();
+        let found_inputs = self.tcx.instantiate_bound_regions_with_erased(found).inputs();
         let both_tys = expected_inputs.iter().copied().zip(found_inputs.iter().copied());
 
         let arg_expr = |infcx: &InferCtxt<'tcx>, name, expected: Ty<'tcx>, found: Ty<'tcx>| {
@@ -2729,6 +2728,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         let predicate = predicate.upcast(tcx);
+        let suggest_remove_deref = |err: &mut Diag<'_, G>, expr: &hir::Expr<'_>| {
+            if let Some(pred) = predicate.as_trait_clause()
+                && tcx.is_lang_item(pred.def_id(), LangItem::Sized)
+                && let hir::ExprKind::Unary(hir::UnOp::Deref, inner) = expr.kind
+            {
+                err.span_suggestion_verbose(
+                    expr.span.until(inner.span),
+                    "references are always `Sized`, even if they point to unsized data; consider \
+                     not dereferencing the expression",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        };
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
@@ -2775,6 +2788,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::WhereClauseInExpr(item_def_id, span, ..)
                 if !span.is_dummy() =>
             {
+                if let ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, pos) = &cause_code {
+                    if let Node::Expr(expr) = tcx.parent_hir_node(*hir_id)
+                        && let hir::ExprKind::Call(_, args) = expr.kind
+                        && let Some(expr) = args.get(*pos)
+                    {
+                        suggest_remove_deref(err, &expr);
+                    } else if let Node::Expr(expr) = self.tcx.hir_node(*hir_id)
+                        && let hir::ExprKind::MethodCall(_, _, args, _) = expr.kind
+                        && let Some(expr) = args.get(*pos)
+                    {
+                        suggest_remove_deref(err, &expr);
+                    }
+                }
                 let item_name = tcx.def_path_str(item_def_id);
                 let short_item_name = with_forced_trimmed_paths!(tcx.def_path_str(item_def_id));
                 let mut multispan = MultiSpan::from(span);
@@ -2833,7 +2859,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     // Do not suggest relaxing if there is an explicit `Sized` obligation.
                                     && !bounds.iter()
                                         .filter_map(|bound| bound.trait_ref())
-                                        .any(|tr| tr.trait_def_id() == tcx.lang_items().sized_trait())
+                                        .any(|tr| tr.trait_def_id().is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Sized)))
                                 {
                                     let (span, separator) = if let [.., last] = bounds {
                                         (last.span().shrink_to_hi(), " +")
@@ -2972,6 +2998,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ));
                     err.downgrade_to_delayed_bug();
                 }
+                let mut local = true;
                 match tcx.parent_hir_node(hir_id) {
                     Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }) => {
                         err.span_suggestion_verbose(
@@ -2980,7 +3007,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             "&",
                             Applicability::MachineApplicable,
                         );
-                        err.note("all local variables must have a statically known size");
                     }
                     Node::LetStmt(hir::LetStmt {
                         init: Some(hir::Expr { kind: hir::ExprKind::Index(..), span, .. }),
@@ -2995,7 +3021,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             "&",
                             Applicability::MachineApplicable,
                         );
-                        err.note("all local variables must have a statically known size");
+                    }
+                    Node::LetStmt(hir::LetStmt { init: Some(expr), .. }) => {
+                        // When encountering an assignment of an unsized trait, like `let x = *"";`,
+                        // we check if the RHS is a deref operation, to suggest removing it.
+                        suggest_remove_deref(err, &expr);
                     }
                     Node::Param(param) => {
                         err.span_suggestion_verbose(
@@ -3005,10 +3035,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             "&",
                             Applicability::MachineApplicable,
                         );
+                        local = false;
                     }
-                    _ => {
-                        err.note("all local variables must have a statically known size");
-                    }
+                    _ => {}
+                }
+                if local {
+                    err.note("all local variables must have a statically known size");
                 }
                 if !tcx.features().unsized_locals {
                     err.help("unsized locals are gated as an unstable feature");
@@ -3040,11 +3072,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     match ty.kind {
                         hir::TyKind::TraitObject(traits, _, _) => {
                             let (span, kw) = match traits {
-                                [first, ..] if first.span.lo() == ty.span.lo() => {
+                                [(first, _), ..] if first.span.lo() == ty.span.lo() => {
                                     // Missing `dyn` in front of trait object.
                                     (ty.span.shrink_to_lo(), "dyn ")
                                 }
-                                [first, ..] => (ty.span.until(first.span), ""),
+                                [(first, _), ..] => (ty.span.until(first.span), ""),
                                 [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
                             };
                             let needs_parens = traits.len() != 1;
@@ -3531,14 +3563,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
-                if let Some((expr_ty, expr_span)) = expr_info {
+                if let Some((expr_ty, hir_id)) = expr_info {
                     let expr_ty = self.tcx.short_ty_string(expr_ty, &mut long_ty_file);
+                    let expr = self.infcx.tcx.hir().expect_expr(hir_id);
                     err.span_label(
-                        expr_span,
+                        expr.span,
                         with_forced_trimmed_paths!(format!(
                             "return type was inferred to be `{expr_ty}` here",
                         )),
                     );
+                    suggest_remove_deref(err, &expr);
                 }
             }
         }
@@ -4612,6 +4646,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
     }
 
+    // For E0277 when use `?` operator, suggest adding
+    // a suitable return type in `FnSig`, and a default
+    // return value at the end of the function's body.
     pub(super) fn suggest_add_result_as_return_type(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -4622,26 +4659,59 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return;
         }
 
+        // Only suggest for local function and associated method,
+        // because this suggest adding both return type in
+        // the `FnSig` and a default return value in the body, so it
+        // is not suitable for foreign function without a local body,
+        // and neither for trait method which may be also implemented
+        // in other place, so shouldn't change it's FnSig.
+        fn choose_suggest_items<'tcx, 'hir>(
+            tcx: TyCtxt<'tcx>,
+            node: hir::Node<'hir>,
+        ) -> Option<(&'hir hir::FnDecl<'hir>, hir::BodyId)> {
+            match node {
+                hir::Node::Item(item) if let hir::ItemKind::Fn(sig, _, body_id) = item.kind => {
+                    Some((sig.decl, body_id))
+                }
+                hir::Node::ImplItem(item)
+                    if let hir::ImplItemKind::Fn(sig, body_id) = item.kind =>
+                {
+                    let parent = tcx.parent_hir_node(item.hir_id());
+                    if let hir::Node::Item(item) = parent
+                        && let hir::ItemKind::Impl(imp) = item.kind
+                        && imp.of_trait.is_none()
+                    {
+                        return Some((sig.decl, body_id));
+                    }
+                    None
+                }
+                _ => None,
+            }
+        }
+
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
-        if let hir::Node::Item(item) = node
-            && let hir::ItemKind::Fn(sig, _, body_id) = item.kind
-            && let hir::FnRetTy::DefaultReturn(ret_span) = sig.decl.output
+        if let Some((fn_decl, body_id)) = choose_suggest_items(self.tcx, node)
+            && let hir::FnRetTy::DefaultReturn(ret_span) = fn_decl.output
             && self.tcx.is_diagnostic_item(sym::FromResidual, trait_pred.def_id())
             && trait_pred.skip_binder().trait_ref.args.type_at(0).is_unit()
             && let ty::Adt(def, _) = trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
             && self.tcx.is_diagnostic_item(sym::Result, def.did())
         {
-            let body = self.tcx.hir().body(body_id);
             let mut sugg_spans =
                 vec![(ret_span, " -> Result<(), Box<dyn std::error::Error>>".to_string())];
-
+            let body = self.tcx.hir().body(body_id);
             if let hir::ExprKind::Block(b, _) = body.value.kind
                 && b.expr.is_none()
             {
+                // The span of '}' in the end of block.
+                let span = self.tcx.sess.source_map().end_point(b.span);
                 sugg_spans.push((
-                    // The span will point to the closing curly brace `}` of the block.
-                    b.span.shrink_to_hi().with_lo(b.span.hi() - BytePos(1)),
-                    "\n    Ok(())\n}".to_string(),
+                    span.shrink_to_lo(),
+                    format!(
+                        "{}{}",
+                        "    Ok(())\n",
+                        self.tcx.sess.source_map().indentation_before(span).unwrap_or_default(),
+                    ),
                 ));
             }
             err.multipart_suggestion_verbose(
@@ -4794,13 +4864,13 @@ fn hint_missing_borrow<'tcx>(
     }
 
     let found_args = match found.kind() {
-        ty::FnPtr(f) => infcx.enter_forall(*f, |f| f.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
         kind => {
             span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
         }
     };
     let expected_args = match expected.kind() {
-        ty::FnPtr(f) => infcx.enter_forall(*f, |f| f.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
         kind => {
             span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
         }
@@ -4953,24 +5023,32 @@ impl<'v> Visitor<'v> for AwaitsVisitor {
     }
 }
 
+/// Suggest a new type parameter name for diagnostic purposes.
+///
+/// `name` is the preferred name you'd like to suggest if it's not in use already.
 pub trait NextTypeParamName {
     fn next_type_param_name(&self, name: Option<&str>) -> String;
 }
 
 impl NextTypeParamName for &[hir::GenericParam<'_>] {
     fn next_type_param_name(&self, name: Option<&str>) -> String {
-        // This is the list of possible parameter names that we might suggest.
+        // Type names are usually single letters in uppercase. So convert the first letter of input string to uppercase.
         let name = name.and_then(|n| n.chars().next()).map(|c| c.to_uppercase().to_string());
         let name = name.as_deref();
+
+        // This is the list of possible parameter names that we might suggest.
         let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];
-        let used_names = self
+
+        // Filter out used names based on `filter_fn`.
+        let used_names: Vec<Symbol> = self
             .iter()
-            .filter_map(|p| match p.name {
+            .filter_map(|param| match param.name {
                 hir::ParamName::Plain(ident) => Some(ident.name),
                 _ => None,
             })
-            .collect::<Vec<_>>();
+            .collect();
 
+        // Find a name from `possible_names` that is not in `used_names`.
         possible_names
             .iter()
             .find(|n| !used_names.contains(&Symbol::intern(n)))
@@ -5304,7 +5382,8 @@ impl<'v> Visitor<'v> for FindTypeParam {
         match ty.kind {
             hir::TyKind::Ptr(_) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
             hir::TyKind::Path(hir::QPath::Resolved(None, path))
-                if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
+                if let [segment] = path.segments
+                    && segment.ident.name == self.param =>
             {
                 if !self.nested {
                     debug!(?ty, "FindTypeParam::visit_ty");

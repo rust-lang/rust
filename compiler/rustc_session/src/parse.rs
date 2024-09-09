@@ -1,15 +1,9 @@
 //! Contains `ParseSess` which holds state living beyond what one `Parser` might.
 //! It also serves as an input to the parser itself.
 
-use crate::config::{Cfg, CheckCfg};
-use crate::errors::{
-    CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp,
-    FeatureDiagnosticSuggestion, FeatureGateError, SuggestUpgradeCompiler,
-};
-use crate::lint::{
-    builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiag, Lint, LintId,
-};
-use crate::Session;
+use std::str;
+
+use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
@@ -24,8 +18,14 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{Span, Symbol};
 
-use rustc_ast::attr::AttrIdGenerator;
-use std::str;
+use crate::config::{Cfg, CheckCfg};
+use crate::errors::{
+    CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp,
+    FeatureDiagnosticSuggestion, FeatureGateError, SuggestUpgradeCompiler,
+};
+use crate::lint::builtin::UNSTABLE_SYNTAX_PRE_EXPANSION;
+use crate::lint::{BufferedEarlyLint, BuiltinLintDiag, Lint, LintId};
+use crate::Session;
 
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
@@ -307,9 +307,19 @@ impl ParseSess {
         node_id: NodeId,
         diagnostic: BuiltinLintDiag,
     ) {
+        self.opt_span_buffer_lint(lint, Some(span.into()), node_id, diagnostic)
+    }
+
+    pub fn opt_span_buffer_lint(
+        &self,
+        lint: &'static Lint,
+        span: Option<MultiSpan>,
+        node_id: NodeId,
+        diagnostic: BuiltinLintDiag,
+    ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {
-                span: span.into(),
+                span,
                 node_id,
                 lint_id: LintId::of(lint),
                 diagnostic,

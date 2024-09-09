@@ -11,10 +11,8 @@
 //! # }
 //! ```
 
-use crate::{
-    io,
-    sys::anonymous_pipe::{pipe as pipe_inner, AnonPipe},
-};
+use crate::io;
+use crate::sys::anonymous_pipe::{pipe as pipe_inner, AnonPipe};
 
 /// Create anonymous pipe that is close-on-exec and blocking.
 #[unstable(feature = "anonymous_pipe", issue = "127154")]

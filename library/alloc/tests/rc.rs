@@ -205,3 +205,20 @@ fn weak_may_dangle() {
     // `val` dropped here while still borrowed
     // borrow might be used here, when `val` is dropped and runs the `Drop` code for type `std::rc::Weak`
 }
+
+#[allow(unused)]
+mod pin_coerce_unsized {
+    use alloc::rc::{Rc, UniqueRc};
+    use core::pin::Pin;
+
+    pub trait MyTrait {}
+    impl MyTrait for String {}
+
+    // Pin coercion should work for Rc
+    pub fn pin_rc(arg: Pin<Rc<String>>) -> Pin<Rc<dyn MyTrait>> {
+        arg
+    }
+    pub fn pin_unique_rc(arg: Pin<UniqueRc<String>>) -> Pin<UniqueRc<dyn MyTrait>> {
+        arg
+    }
+}

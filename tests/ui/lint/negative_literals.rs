@@ -1,5 +1,7 @@
 //@ check-fail
 
+#![deny(ambiguous_negative_literals)]
+
 fn main() {
     let _ = -1i32.abs();
     //~^ ERROR `-` has lower precedence than method calls

@@ -3,12 +3,11 @@
 pub(super) mod structural_traits;
 
 use derive_where::derive_where;
-use rustc_type_ir::elaborate;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
-use rustc_type_ir::{self as ty, Interner, Upcast as _};
+use rustc_type_ir::{self as ty, elaborate, Interner, Upcast as _};
 use tracing::{debug, instrument};
 
 use crate::delegate::SolverDelegate;
@@ -305,6 +304,11 @@ where
 
         let mut candidates = vec![];
 
+        if self.solver_mode() == SolverMode::Coherence {
+            if let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal) {
+                return vec![candidate];
+            }
+        }
         self.assemble_impl_candidates(goal, &mut candidates);
 
         self.assemble_builtin_impl_candidates(goal, &mut candidates);
@@ -315,11 +319,8 @@ where
 
         self.assemble_param_env_candidates(goal, &mut candidates);
 
-        match self.solver_mode() {
-            SolverMode::Normal => self.discard_impls_shadowed_by_env(goal, &mut candidates),
-            SolverMode::Coherence => {
-                self.assemble_coherence_unknowable_candidates(goal, &mut candidates)
-            }
+        if self.solver_mode() == SolverMode::Normal {
+            self.discard_impls_shadowed_by_env(goal, &mut candidates);
         }
 
         candidates
@@ -534,7 +535,7 @@ where
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -621,7 +622,7 @@ where
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Alias(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -683,26 +684,34 @@ where
     /// also consider impls which may get added in a downstream or sibling crate
     /// or which an upstream impl may add in a minor release.
     ///
-    /// To do so we add an ambiguous candidate in case such an unknown impl could
-    /// apply to the current goal.
+    /// To do so we return a single ambiguous candidate in case such an unknown
+    /// impl could apply to the current goal.
     #[instrument(level = "trace", skip_all)]
-    fn assemble_coherence_unknowable_candidates<G: GoalKind<D>>(
+    fn consider_coherence_unknowable_candidate<G: GoalKind<D>>(
         &mut self,
         goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
-    ) {
-        let cx = self.cx();
-
-        candidates.extend(self.probe_trait_candidate(CandidateSource::CoherenceUnknowable).enter(
-            |ecx| {
-                let trait_ref = goal.predicate.trait_ref(cx);
-                if ecx.trait_ref_is_knowable(goal.param_env, trait_ref)? {
-                    Err(NoSolution)
-                } else {
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                }
-            },
-        ))
+    ) -> Result<Candidate<I>, NoSolution> {
+        self.probe_trait_candidate(CandidateSource::CoherenceUnknowable).enter(|ecx| {
+            let cx = ecx.cx();
+            let trait_ref = goal.predicate.trait_ref(cx);
+            if ecx.trait_ref_is_knowable(goal.param_env, trait_ref)? {
+                Err(NoSolution)
+            } else {
+                // While the trait bound itself may be unknowable, we may be able to
+                // prove that a super trait is not implemented. For this, we recursively
+                // prove the super trait bounds of the current goal.
+                //
+                // We skip the goal itself as that one would cycle.
+                let predicate: I::Predicate = trait_ref.upcast(cx);
+                ecx.add_goals(
+                    GoalSource::Misc,
+                    elaborate::elaborate(cx, [predicate])
+                        .skip(1)
+                        .map(|predicate| goal.with(cx, predicate)),
+                );
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+        })
     }
 
     /// If there's a where-bound for the current goal, do not use any impl candidates

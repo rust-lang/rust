@@ -1,12 +1,15 @@
-use crate::region_infer::{ConstraintSccs, RegionDefinition, RegionTracker};
-use crate::type_check::Locations;
-use crate::universal_regions::UniversalRegions;
+use std::fmt;
+use std::ops::Index;
+
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
 use rustc_span::Span;
-use std::fmt;
-use std::ops::Index;
+use tracing::{debug, instrument};
+
+use crate::region_infer::{ConstraintSccs, RegionDefinition, RegionTracker};
+use crate::type_check::Locations;
+use crate::universal_regions::UniversalRegions;
 
 pub(crate) mod graph;
 

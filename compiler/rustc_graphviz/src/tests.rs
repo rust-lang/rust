@@ -1,8 +1,10 @@
-use super::LabelText::{self, EscStr, HtmlStr, LabelStr};
-use super::{render, Edges, GraphWalk, Id, Labeller, Nodes, Style};
 use std::io;
 use std::io::prelude::*;
+
 use NodeLabels::*;
+
+use super::LabelText::{self, EscStr, HtmlStr, LabelStr};
+use super::{render, Edges, GraphWalk, Id, Labeller, Nodes, Style};
 
 /// each node is an index in a vector in the graph.
 type Node = usize;

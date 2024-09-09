@@ -1,15 +1,14 @@
 //! Built-in attributes and `cfg` flag gating.
 
+use std::sync::LazyLock;
+
+use rustc_data_structures::fx::FxHashMap;
+use rustc_span::symbol::{sym, Symbol};
 use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
 
 use crate::{Features, Stability};
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::{sym, Symbol};
-
-use std::sync::LazyLock;
 
 type GateFn = fn(&Features) -> bool;
 
@@ -38,6 +37,8 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::relocation_model, sym::cfg_relocation_model, cfg_fn!(cfg_relocation_model)),
     (sym::sanitizer_cfi_generalize_pointers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
     (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
+    // this is consistent with naming of the compiler flag it's for
+    (sym::fmt_debug, sym::fmt_debug, cfg_fn!(fmt_debug)),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -579,12 +580,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, coroutines, experimental!(coroutines)
     ),
 
-    // `#[pointee]` attribute to designate the pointee type in SmartPointer derive-macro
-    gated!(
-        pointee, Normal, template!(Word), ErrorFollowing,
-        EncodeCrossCrate::No, derive_smart_pointer, experimental!(pointee)
-    ),
-
     // RFC 3543
     // `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
     gated!(
@@ -644,9 +639,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         through unstable paths"
     ),
     rustc_attr!(
-        rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes,
+        rustc_deprecated_safe_2024, Normal, template!(List: r#"audit_that = "...""#),
+        ErrorFollowing, EncodeCrossCrate::Yes,
         "rustc_deprecated_safe_2024 is supposed to be used in libstd only",
+    ),
+    rustc_attr!(
+        rustc_pub_transparent, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::Yes,
+        "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation",
     ),
 
 
@@ -704,21 +704,21 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, allocator_internals, experimental!(needs_allocator),
     ),
     gated!(
-        panic_runtime, Normal, template!(Word), WarnFollowing,
+        panic_runtime, CrateLevel, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, experimental!(panic_runtime)
     ),
     gated!(
-        needs_panic_runtime, Normal, template!(Word), WarnFollowing,
+        needs_panic_runtime, CrateLevel, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, experimental!(needs_panic_runtime)
     ),
     gated!(
-        compiler_builtins, Normal, template!(Word), WarnFollowing,
+        compiler_builtins, CrateLevel, template!(Word), WarnFollowing,
         EncodeCrossCrate::No,
         "the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate \
         which contains compiler-rt intrinsics and will never be stable",
     ),
     gated!(
-        profiler_runtime, Normal, template!(Word), WarnFollowing,
+        profiler_runtime, CrateLevel, template!(Word), WarnFollowing,
         EncodeCrossCrate::No,
         "the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate \
         which contains the profiler runtime and will never be stable",
@@ -791,6 +791,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // might not be stable during incremental compilation.
     rustc_attr!(
         rustc_lint_query_instability, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+    ),
+    // Used by the `rustc::untracked_query_information` lint to warn methods which
+    // might not be stable during incremental compilation.
+    rustc_attr!(
+        rustc_lint_untracked_query_information, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
     // Used by the `rustc::diagnostic_outside_of_impl` lints to assist in changes to diagnostic
@@ -1180,3 +1186,11 @@ pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>>
         }
         map
     });
+
+pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool {
+    match sym {
+        sym::on_unimplemented => true,
+        sym::do_not_recommend => features.do_not_recommend,
+        _ => false,
+    }
+}

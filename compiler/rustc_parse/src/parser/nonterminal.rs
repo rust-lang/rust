@@ -1,7 +1,8 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{
-    self, Delimiter, Nonterminal::*, NonterminalKind, NtExprKind::*, NtPatKind::*, Token,
-};
+use rustc_ast::token::Nonterminal::*;
+use rustc_ast::token::NtExprKind::*;
+use rustc_ast::token::NtPatKind::*;
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
@@ -38,6 +39,7 @@ impl<'a> Parser<'a> {
         }
 
         match kind {
+            // `expr_2021` and earlier
             NonterminalKind::Expr(Expr2021 { .. }) => {
                 token.can_begin_expr()
                 // This exception is here for backwards compatibility.
@@ -45,8 +47,16 @@ impl<'a> Parser<'a> {
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Const)
             }
+            // Current edition expressions
             NonterminalKind::Expr(Expr) => {
-                token.can_begin_expr()
+                // In Edition 2024, `_` is considered an expression, so we
+                // need to allow it here because `token.can_begin_expr()` does
+                // not consider `_` to be an expression.
+                //
+                // Because `can_begin_expr` is used elsewhere, we need to reduce
+                // the scope of where the `_` is considered an expression to
+                // just macro parsing code.
+                (token.can_begin_expr() || token.is_keyword(kw::Underscore))
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Let)
             }
@@ -76,27 +86,9 @@ impl<'a> Parser<'a> {
                 token::Interpolated(nt) => may_be_ident(nt),
                 _ => false,
             },
-            NonterminalKind::Pat(pat_kind) => match &token.kind {
-                // box, ref, mut, and other identifiers (can stricten)
-                token::Ident(..) | token::NtIdent(..) |
-                token::OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
-                token::OpenDelim(Delimiter::Bracket) |      // slice pattern
-                token::BinOp(token::And) |                  // reference
-                token::BinOp(token::Minus) |                // negative literal
-                token::AndAnd |                             // double reference
-                token::Literal(_) |                         // literal
-                token::DotDot |                             // range pattern (future compat)
-                token::DotDotDot |                          // range pattern (future compat)
-                token::PathSep |                             // path
-                token::Lt |                                 // path (UFCS constant)
-                token::BinOp(token::Shl) => true,           // path (double UFCS)
-                // leading vert `|` or-pattern
-                token::BinOp(token::Or) => matches!(pat_kind, PatWithOr),
-                token::Interpolated(nt) => may_be_ident(nt),
-                _ => false,
-            },
+            NonterminalKind::Pat(pat_kind) => token.can_begin_pattern(pat_kind),
             NonterminalKind::Lifetime => match &token.kind {
-                token::Lifetime(_) | token::NtLifetime(..) => true,
+                token::Lifetime(..) | token::NtLifetime(..) => true,
                 _ => false,
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
@@ -179,9 +171,9 @@ impl<'a> Parser<'a> {
             NonterminalKind::Lifetime => {
                 // We want to keep `'keyword` parsing, just like `keyword` is still
                 // an ident for nonterminal purposes.
-                return if let Some(ident) = self.token.lifetime() {
+                return if let Some((ident, is_raw)) = self.token.lifetime() {
                     self.bump();
-                    Ok(ParseNtResult::Lifetime(ident))
+                    Ok(ParseNtResult::Lifetime(ident, is_raw))
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,

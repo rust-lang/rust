@@ -1,20 +1,16 @@
-use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
+use std::collections::{HashMap, HashSet};
+use std::fs::read_to_string;
+use std::path::{Path, PathBuf};
+
+use annotate_snippets::{Renderer, Snippet};
 use fluent_bundle::{FluentBundle, FluentError, FluentResource};
-use fluent_syntax::{
-    ast::{
-        Attribute, Entry, Expression, Identifier, InlineExpression, Message, Pattern,
-        PatternElement,
-    },
-    parser::ParserError,
+use fluent_syntax::ast::{
+    Attribute, Entry, Expression, Identifier, InlineExpression, Message, Pattern, PatternElement,
 };
+use fluent_syntax::parser::ParserError;
 use proc_macro::{Diagnostic, Level, Span};
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::{
-    collections::{HashMap, HashSet},
-    fs::read_to_string,
-    path::{Path, PathBuf},
-};
 use syn::{parse_macro_input, Ident, LitStr};
 use unic_langid::langid;
 
@@ -158,27 +154,15 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                     .unwrap()
                     .0;
 
-                let snippet = Snippet {
-                    title: Some(Annotation {
-                        label: Some(&err),
-                        id: None,
-                        annotation_type: AnnotationType::Error,
-                    }),
-                    footer: vec![],
-                    slices: vec![Slice {
-                        source: this.source(),
-                        line_start,
-                        origin: Some(&relative_ftl_path),
-                        fold: true,
-                        annotations: vec![SourceAnnotation {
-                            label: "",
-                            annotation_type: AnnotationType::Error,
-                            range: (pos.start, pos.end - 1),
-                        }],
-                    }],
-                };
+                let message = annotate_snippets::Level::Error.title(&err).snippet(
+                    Snippet::source(this.source())
+                        .line_start(line_start)
+                        .origin(&relative_ftl_path)
+                        .fold(true)
+                        .annotation(annotate_snippets::Level::Error.span(pos.start..pos.end - 1)),
+                );
                 let renderer = Renderer::plain();
-                eprintln!("{}\n", renderer.render(snippet));
+                eprintln!("{}\n", renderer.render(message));
             }
 
             return failed(&crate_name);

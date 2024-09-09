@@ -1,6 +1,9 @@
-use super::map::MIN_LEN;
-use super::node::{marker, ForceResult::*, Handle, LeftOrRight::*, NodeRef, Root};
 use core::alloc::Allocator;
+
+use super::map::MIN_LEN;
+use super::node::ForceResult::*;
+use super::node::LeftOrRight::*;
+use super::node::{marker, Handle, NodeRef, Root};
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Stocks up a possibly underfull node by merging with or stealing from a

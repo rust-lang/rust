@@ -1,3 +1,5 @@
+use std::assert_matches::assert_matches;
+
 use super::*;
 
 #[allow(non_snake_case)]
@@ -16,7 +18,7 @@ fn lookup_cdecl() {
 #[test]
 fn lookup_baz() {
     let abi = lookup("baz");
-    assert!(matches!(abi, Err(AbiUnsupported::Unrecognized)))
+    assert_matches!(abi, Err(AbiUnsupported::Unrecognized));
 }
 
 #[test]

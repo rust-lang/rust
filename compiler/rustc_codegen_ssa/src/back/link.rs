@@ -1,3 +1,15 @@
+use std::collections::BTreeSet;
+use std::ffi::OsString;
+use std::fs::{read, File, OpenOptions};
+use std::io::{BufWriter, Write};
+use std::ops::{ControlFlow, Deref};
+use std::path::{Path, PathBuf};
+use std::process::{ExitStatus, Output, Stdio};
+use std::{env, fmt, fs, io, mem, str};
+
+use cc::windows_registry;
+use itertools::Itertools;
+use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -6,15 +18,16 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::find_native_static_library;
 use rustc_metadata::fs::{copy_to_stdout, emit_wrapper_file, METADATA_FILENAME};
+use rustc_metadata::{find_native_static_library, walk_native_lib_search_dirs};
 use rustc_middle::bug;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_session::config::LinkerFeaturesCli;
-use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, OutFileName, Strip};
-use rustc_session::config::{OutputFilenames, OutputType, PrintKind, SplitDwarfKind};
+use rustc_session::config::{
+    self, CFGuard, CrateType, DebugInfo, LinkerFeaturesCli, OutFileName, OutputFilenames,
+    OutputType, PrintKind, SplitDwarfKind, Strip,
+};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -24,11 +37,13 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
-use rustc_target::spec::LinkSelfContainedDefault;
-use rustc_target::spec::LinkerFlavorCli;
-use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
-use rustc_target::spec::{LinkSelfContainedComponents, LinkerFeatures};
-use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
+use rustc_target::spec::{
+    Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFeatures,
+    LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    SplitDebuginfo,
+};
+use tempfile::Builder as TempFileBuilder;
+use tracing::{debug, info, warn};
 
 use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use super::command::Command;
@@ -36,23 +51,9 @@ use super::linker::{self, Linker};
 use super::metadata::{create_wrapper_file, MetadataPosition};
 use super::rpath::{self, RPathConfig};
 use crate::{
-    errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
+    common, errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo,
+    NativeLib,
 };
-
-use cc::windows_registry;
-use regex::Regex;
-use tempfile::Builder as TempFileBuilder;
-
-use itertools::Itertools;
-use std::collections::BTreeSet;
-use std::ffi::OsString;
-use std::fs::{read, File, OpenOptions};
-use std::io::{BufWriter, Write};
-use std::ops::Deref;
-use std::path::{Path, PathBuf};
-use std::process::{ExitStatus, Output, Stdio};
-use std::{env, fmt, fs, io, mem, str};
-use tracing::{debug, info, warn};
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -390,17 +391,13 @@ fn link_rlib<'a>(
         }
     }
 
-    for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, codegen_results.crate_info.used_libraries.iter())?
-    {
-        let output_path = archive_builder_builder.create_dll_import_lib(
-            sess,
-            &raw_dylib_name,
-            &raw_dylib_imports,
-            tmpdir.as_ref(),
-            true,
-        );
-
+    for output_path in create_dll_import_libs(
+        sess,
+        archive_builder_builder,
+        codegen_results.crate_info.used_libraries.iter(),
+        tmpdir.as_ref(),
+        true,
+    )? {
         ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
             sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
         });
@@ -484,6 +481,47 @@ fn collate_raw_dylibs<'a>(
         .into_iter()
         .map(|(name, imports)| {
             (name, imports.into_iter().map(|(_, import)| import.clone()).collect())
+        })
+        .collect())
+}
+
+fn create_dll_import_libs<'a>(
+    sess: &Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    used_libraries: impl IntoIterator<Item = &'a NativeLib>,
+    tmpdir: &Path,
+    is_direct_dependency: bool,
+) -> Result<Vec<PathBuf>, ErrorGuaranteed> {
+    Ok(collate_raw_dylibs(sess, used_libraries)?
+        .into_iter()
+        .map(|(raw_dylib_name, raw_dylib_imports)| {
+            let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
+            let output_path = tmpdir.join(format!("{raw_dylib_name}{name_suffix}.lib"));
+
+            let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&sess.target);
+
+            let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = raw_dylib_imports
+                .iter()
+                .map(|import: &DllImport| {
+                    if sess.target.arch == "x86" {
+                        (
+                            common::i686_decorated_name(import, mingw_gnu_toolchain, false),
+                            import.ordinal(),
+                        )
+                    } else {
+                        (import.name.to_string(), import.ordinal())
+                    }
+                })
+                .collect();
+
+            archive_builder_builder.create_dll_import_lib(
+                sess,
+                &raw_dylib_name,
+                import_name_and_ordinal_vector,
+                &output_path,
+            );
+
+            output_path
         })
         .collect())
 }
@@ -700,7 +738,7 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
                 .truncate(true)
                 .open(dwp_out_filename)?,
         );
-        let mut output_stream = object::write::StreamingBuffer::new(output_stream);
+        let mut output_stream = thorin::object::write::StreamingBuffer::new(output_stream);
         package.finish()?.emit(&mut output_stream)?;
         output_stream.result()?;
         output_stream.into_inner().flush()?;
@@ -1169,7 +1207,7 @@ mod win {
 
     /// Get the Windows system OEM code page. This is most notably the code page
     /// used for link.exe's output.
-    pub fn oem_code_page() -> u32 {
+    pub(super) fn oem_code_page() -> u32 {
         unsafe {
             let mut cp: u32 = 0;
             // We're using the `LOCALE_RETURN_NUMBER` flag to return a u32.
@@ -1192,7 +1230,7 @@ mod win {
     ///
     /// It will fail if the multi-byte string is longer than `i32::MAX` or if it contains
     /// any invalid bytes for the expected encoding.
-    pub fn locale_byte_str_to_string(s: &[u8], code_page: u32) -> Option<String> {
+    pub(super) fn locale_byte_str_to_string(s: &[u8], code_page: u32) -> Option<String> {
         // `MultiByteToWideChar` requires a length to be a "positive integer".
         if s.len() > isize::MAX as usize {
             return None;
@@ -1279,11 +1317,9 @@ fn link_sanitizer_runtime(
     name: &str,
 ) {
     fn find_sanitizer_runtime(sess: &Session, filename: &str) -> PathBuf {
-        let session_tlib =
-            filesearch::make_target_lib_path(&sess.sysroot, sess.opts.target_triple.triple());
-        let path = session_tlib.join(filename);
+        let path = sess.target_tlib_path.dir.join(filename);
         if path.exists() {
-            return session_tlib;
+            return sess.target_tlib_path.dir.clone();
         } else {
             let default_sysroot =
                 filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
@@ -1574,19 +1610,18 @@ fn print_native_static_libs(
 }
 
 fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> PathBuf {
-    let fs = sess.target_filesearch(PathKind::Native);
-    let file_path = fs.get_lib_path().join(name);
+    let file_path = sess.target_tlib_path.dir.join(name);
     if file_path.exists() {
         return file_path;
     }
     // Special directory with objects used only in self-contained linkage mode
     if self_contained {
-        let file_path = fs.get_self_contained_lib_path().join(name);
+        let file_path = sess.target_tlib_path.dir.join("self-contained").join(name);
         if file_path.exists() {
             return file_path;
         }
     }
-    for search_path in fs.search_paths() {
+    for search_path in sess.target_filesearch(PathKind::Native).search_paths() {
         let file_path = search_path.dir.join(name);
         if file_path.exists() {
             return file_path;
@@ -2065,17 +2100,29 @@ fn add_local_crate_metadata_objects(
 }
 
 /// Add sysroot and other globally set directories to the directory search list.
-fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session, self_contained: bool) {
-    // The default library location, we need this to find the runtime.
-    // The location of crates will be determined as needed.
-    let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
-    cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
-
-    // Special directory with libraries used only in self-contained linkage mode
-    if self_contained {
-        let lib_path = sess.target_filesearch(PathKind::All).get_self_contained_lib_path();
-        cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
+fn add_library_search_dirs(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
+) {
+    if !sess.opts.unstable_opts.link_native_libraries {
+        return;
     }
+
+    walk_native_lib_search_dirs(
+        sess,
+        self_contained_components,
+        apple_sdk_root,
+        |dir, is_framework| {
+            if is_framework {
+                cmd.framework_path(dir);
+            } else {
+                cmd.include_path(&fix_windows_verbatim_for_gcc(dir));
+            }
+            ControlFlow::<()>::Continue(())
+        },
+    );
 }
 
 /// Add options making relocation sections in the produced ELF files read-only
@@ -2261,16 +2308,14 @@ fn linker_with_args(
     );
 
     // Link with the import library generated for any raw-dylib functions.
-    for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, codegen_results.crate_info.used_libraries.iter())?
-    {
-        cmd.add_object(&archive_builder_builder.create_dll_import_lib(
-            sess,
-            &raw_dylib_name,
-            &raw_dylib_imports,
-            tmpdir,
-            true,
-        ));
+    for output_path in create_dll_import_libs(
+        sess,
+        archive_builder_builder,
+        codegen_results.crate_info.used_libraries.iter(),
+        tmpdir,
+        true,
+    )? {
+        cmd.add_object(&output_path);
     }
     // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
     // they are used within inlined functions or instantiated generic functions. We do this *after*
@@ -2295,16 +2340,14 @@ fn linker_with_args(
         .flatten()
         .collect::<Vec<_>>();
     native_libraries_from_nonstatics.sort_unstable_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
-    for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, native_libraries_from_nonstatics)?
-    {
-        cmd.add_object(&archive_builder_builder.create_dll_import_lib(
-            sess,
-            &raw_dylib_name,
-            &raw_dylib_imports,
-            tmpdir,
-            false,
-        ));
+    for output_path in create_dll_import_libs(
+        sess,
+        archive_builder_builder,
+        native_libraries_from_nonstatics,
+        tmpdir,
+        false,
+    )? {
+        cmd.add_object(&output_path);
     }
 
     // Library linking above uses some global state for things like `-Bstatic`/`-Bdynamic` to make
@@ -2367,7 +2410,7 @@ fn add_order_independent_options(
     // Take care of the flavors and CLI options requesting the `lld` linker.
     add_lld_args(cmd, sess, flavor, self_contained_components);
 
-    add_apple_sdk(cmd, sess, flavor);
+    let apple_sdk_root = add_apple_sdk(cmd, sess, flavor);
 
     add_link_script(cmd, sess, tmpdir, crate_type);
 
@@ -2423,7 +2466,7 @@ fn add_order_independent_options(
 
     cmd.linker_plugin_lto();
 
-    add_library_search_dirs(cmd, sess, self_contained_components.are_any_components_enabled());
+    add_library_search_dirs(cmd, sess, self_contained_components, apple_sdk_root.as_deref());
 
     cmd.output_filename(out_filename);
 
@@ -2568,16 +2611,7 @@ fn add_native_libs_from_crate(
             NativeLibKind::Static { bundle, whole_archive } => {
                 if link_static {
                     let bundle = bundle.unwrap_or(true);
-                    let whole_archive = whole_archive == Some(true)
-                        // Backward compatibility case: this can be a rlib (so `+whole-archive`
-                        // cannot be added explicitly if necessary, see the error in `fn link_rlib`)
-                        // compiled as an executable due to `--test`. Use whole-archive implicitly,
-                        // like before the introduction of native lib modifiers.
-                        || (whole_archive == None
-                            && bundle
-                            && cnum == LOCAL_CRATE
-                            && sess.is_test_crate());
-
+                    let whole_archive = whole_archive == Some(true);
                     if bundle && cnum != LOCAL_CRATE {
                         if let Some(filename) = lib.filename {
                             // If rlib contains native libs as archives, they are unpacked to tmpdir.
@@ -2637,19 +2671,6 @@ fn add_local_native_libraries(
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
 ) {
-    if sess.opts.unstable_opts.link_native_libraries {
-        // User-supplied library search paths (-L on the command line). These are the same paths
-        // used to find Rust crates, so some of them may have been added already by the previous
-        // crate linking code. This only allows them to be found at compile time so it is still
-        // entirely up to outside forces to make sure that library can be found at runtime.
-        for search_path in sess.target_filesearch(PathKind::All).search_paths() {
-            match search_path.kind {
-                PathKind::Framework => cmd.framework_path(&search_path.dir),
-                _ => cmd.include_path(&fix_windows_verbatim_for_gcc(&search_path.dir)),
-            }
-        }
-    }
-
     // All static and dynamic native library dependencies are linked to the local crate.
     let link_static = true;
     let link_dynamic = true;
@@ -2803,15 +2824,14 @@ fn add_upstream_native_libraries(
 //
 // The returned path will always have `fix_windows_verbatim_for_gcc()` applied to it.
 fn rehome_sysroot_lib_dir(sess: &Session, lib_dir: &Path) -> PathBuf {
-    let sysroot_lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
+    let sysroot_lib_path = &sess.target_tlib_path.dir;
     let canonical_sysroot_lib_path =
-        { try_canonicalize(&sysroot_lib_path).unwrap_or_else(|_| sysroot_lib_path.clone()) };
+        { try_canonicalize(sysroot_lib_path).unwrap_or_else(|_| sysroot_lib_path.clone()) };
 
     let canonical_lib_dir = try_canonicalize(lib_dir).unwrap_or_else(|_| lib_dir.to_path_buf());
     if canonical_lib_dir == canonical_sysroot_lib_path {
-        // This path, returned by `target_filesearch().get_lib_path()`, has
-        // already had `fix_windows_verbatim_for_gcc()` applied if needed.
-        sysroot_lib_path
+        // This path already had `fix_windows_verbatim_for_gcc()` applied if needed.
+        sysroot_lib_path.clone()
     } else {
         fix_windows_verbatim_for_gcc(lib_dir)
     }
@@ -2911,7 +2931,8 @@ fn add_static_crate(
                 false
             }),
         ) {
-            sess.dcx().emit_fatal(errors::RlibArchiveBuildFailure { error });
+            sess.dcx()
+                .emit_fatal(errors::RlibArchiveBuildFailure { path: cratepath.clone(), error });
         }
         if archive.build(&dst) {
             link_upstream(&dst);
@@ -2943,7 +2964,7 @@ pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool
     }
 }
 
-fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> Option<PathBuf> {
     let arch = &sess.target.arch;
     let os = &sess.target.os;
     let llvm_target = &sess.target.llvm_target;
@@ -2951,11 +2972,11 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         || !matches!(os.as_ref(), "ios" | "tvos" | "watchos" | "visionos" | "macos")
         || !matches!(flavor, LinkerFlavor::Darwin(..))
     {
-        return;
+        return None;
     }
 
     if os == "macos" && !matches!(flavor, LinkerFlavor::Darwin(Cc::No, _)) {
-        return;
+        return None;
     }
 
     let sdk_name = match (arch.as_ref(), os.as_ref()) {
@@ -2979,14 +3000,14 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         (_, "macos") => "macosx",
         _ => {
             sess.dcx().emit_err(errors::UnsupportedArch { arch, os });
-            return;
+            return None;
         }
     };
     let sdk_root = match get_apple_sdk_root(sdk_name) {
         Ok(s) => s,
         Err(e) => {
             sess.dcx().emit_err(e);
-            return;
+            return None;
         }
     };
 
@@ -3006,16 +3027,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         _ => unreachable!(),
     }
 
-    if llvm_target.contains("macabi") {
-        // Mac Catalyst uses the macOS SDK, but to link to iOS-specific
-        // frameworks, we must have the support library stubs in the library
-        // search path.
-
-        // The flags are called `-L` and `-F` both in Clang, ld64 and ldd.
-        let sdk_root = Path::new(&sdk_root);
-        cmd.include_path(&sdk_root.join("System/iOSSupport/usr/lib"));
-        cmd.framework_path(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"));
-    }
+    Some(sdk_root.into())
 }
 
 fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootError<'_>> {

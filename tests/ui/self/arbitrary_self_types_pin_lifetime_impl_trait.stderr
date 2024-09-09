@@ -7,10 +7,10 @@ LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
    |                    |          opaque type defined here
    |                    hidden type `Pin<&Foo>` captures the anonymous lifetime defined here
    |
-help: to declare that `impl Clone` captures `'_`, you can add an explicit `'_` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'_`
    |
-LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
-   |                                          ++++
+LL |     fn f(self: Pin<&Self>) -> impl Clone + use<'_> { self }
+   |                                          +++++++++
 
 error: aborting due to 1 previous error
 

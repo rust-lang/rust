@@ -7,8 +7,7 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{bin_name, rfs, rustc};
-use std::path::Path;
+use run_make_support::{bin_name, path, rustc};
 
 fn compile(output_file: &str, emit: Option<&str>) {
     let mut rustc = rustc();
@@ -33,10 +32,10 @@ fn main() {
         // In the None case, bin_name is required for successful Windows compilation.
         let output_file = &bin_name(output_file);
         compile(output_file, emit);
-        assert!(Path::new(output_file).is_file());
+        assert!(path(output_file).is_file());
     }
 
     compile("multi-output", Some("asm,obj"));
-    assert!(Path::new("multi-output.s").is_file());
-    assert!(Path::new("multi-output.o").is_file());
+    assert!(path("multi-output.s").is_file());
+    assert!(path("multi-output.o").is_file());
 }

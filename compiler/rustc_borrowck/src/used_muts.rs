@@ -3,6 +3,7 @@ use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     Local, Location, Place, Statement, StatementKind, Terminator, TerminatorKind,
 };
+use tracing::debug;
 
 use crate::MirBorrowckCtxt;
 

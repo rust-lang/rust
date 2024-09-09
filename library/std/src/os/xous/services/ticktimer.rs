@@ -1,5 +1,6 @@
-use crate::os::xous::ffi::Connection;
 use core::sync::atomic::{AtomicU32, Ordering};
+
+use crate::os::xous::ffi::Connection;
 
 pub(crate) enum TicktimerScalar {
     ElapsedMs,
@@ -27,7 +28,7 @@ impl Into<[usize; 5]> for TicktimerScalar {
     }
 }
 
-/// Return a `Connection` to the ticktimer server. This server is used for synchronization
+/// Returns a `Connection` to the ticktimer server. This server is used for synchronization
 /// primitives such as sleep, Mutex, and Condvar.
 pub(crate) fn ticktimer_server() -> Connection {
     static TICKTIMER_SERVER_CONNECTION: AtomicU32 = AtomicU32::new(0);

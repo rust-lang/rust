@@ -1,5 +1,5 @@
 use crate::spec::{base, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     base::avr_gnu::target("atmega328", "-mmcu=atmega328")
 }

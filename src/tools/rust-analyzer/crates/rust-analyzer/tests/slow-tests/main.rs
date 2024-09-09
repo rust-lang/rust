@@ -27,8 +27,7 @@ use lsp_types::{
     InlayHint, InlayHintLabel, InlayHintParams, PartialResultParams, Position, Range,
     RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, WorkDoneProgressParams,
 };
-
-use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams, UnindexedProject};
+use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
 use stdx::format_to_acc;
 
@@ -751,7 +750,7 @@ fn test_missing_module_code_action_in_json_project() {
 
     let code = format!(
         r#"
-//- /rust-project.json
+//- /.rust-project.json
 {project}
 
 //- /src/lib.rs
@@ -810,66 +809,6 @@ fn main() {{}}
         },
         json!([]),
     );
-}
-
-#[test]
-fn test_opening_a_file_outside_of_indexed_workspace() {
-    if skip_slow_tests() {
-        return;
-    }
-
-    let tmp_dir = TestDir::new();
-    let path = tmp_dir.path();
-
-    let project = json!({
-        "roots": [path],
-        "crates": [ {
-            "root_module": path.join("src/crate_one/lib.rs"),
-            "deps": [],
-            "edition": "2015",
-            "cfg": [ "cfg_atom_1", "feature=\"cfg_1\""],
-        } ]
-    });
-
-    let code = format!(
-        r#"
-//- /rust-project.json
-{project}
-
-//- /src/crate_one/lib.rs
-mod bar;
-
-fn main() {{}}
-"#,
-    );
-
-    let server = Project::with_fixture(&code)
-        .tmp_dir(tmp_dir)
-        .with_config(serde_json::json!({
-            "notifications": {
-                "unindexedProject": true
-            },
-        }))
-        .server()
-        .wait_until_workspace_is_loaded();
-
-    let uri = server.doc_id("src/crate_two/lib.rs").uri;
-    server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
-        text_document: TextDocumentItem {
-            uri: uri.clone(),
-            language_id: "rust".to_owned(),
-            version: 0,
-            text: "/// Docs\nfn foo() {}".to_owned(),
-        },
-    });
-    let expected = json!({
-        "textDocuments": [
-            {
-                "uri": uri
-            }
-        ]
-    });
-    server.expect_notification::<UnindexedProject>(expected);
 }
 
 #[test]
@@ -1145,7 +1084,6 @@ fn resolve_proc_macro() {
     let sysroot = project_model::Sysroot::discover(
         &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
-        false,
     );
 
     let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();
@@ -1186,7 +1124,6 @@ edition = "2021"
 proc-macro = true
 
 //- /bar/src/lib.rs
-extern crate proc_macro;
 use proc_macro::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 macro_rules! t {
     ($n:literal) => {

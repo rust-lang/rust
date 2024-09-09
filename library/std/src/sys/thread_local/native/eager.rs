@@ -1,7 +1,6 @@
 use crate::cell::{Cell, UnsafeCell};
 use crate::ptr::{self, drop_in_place};
-use crate::sys::thread_local::abort_on_dtor_unwind;
-use crate::sys::thread_local::destructors;
+use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
 #[derive(Clone, Copy)]
 enum State {
@@ -21,7 +20,7 @@ impl<T> Storage<T> {
         Storage { state: Cell::new(State::Initial), val: UnsafeCell::new(val) }
     }
 
-    /// Get a pointer to the TLS value. If the TLS variable has been destroyed,
+    /// Gets a pointer to the TLS value. If the TLS variable has been destroyed,
     /// a null pointer is returned.
     ///
     /// The resulting pointer may not be used after thread destruction has

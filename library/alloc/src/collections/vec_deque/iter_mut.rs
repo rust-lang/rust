@@ -28,6 +28,20 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     }
 }
 
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
+impl<T> Default for IterMut<'_, T> {
+    /// Creates an empty `vec_deque::IterMut`.
+    ///
+    /// ```
+    /// # use std::collections::vec_deque;
+    /// let iter: vec_deque::IterMut<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        IterMut { i1: Default::default(), i2: Default::default() }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
@@ -50,7 +64,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         match self.i1.advance_by(n) {
-            Ok(()) => return Ok(()),
+            Ok(()) => Ok(()),
             Err(remaining) => {
                 mem::swap(&mut self.i1, &mut self.i2);
                 self.i1.advance_by(remaining.get())
@@ -121,7 +135,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         match self.i2.advance_back_by(n) {
-            Ok(()) => return Ok(()),
+            Ok(()) => Ok(()),
             Err(remaining) => {
                 mem::swap(&mut self.i1, &mut self.i2);
                 self.i2.advance_back_by(remaining.get())

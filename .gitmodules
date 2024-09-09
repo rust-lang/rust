@@ -33,7 +33,7 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/18.1-2024-05-19
+	branch = rustc/19.1-2024-07-30
 	shallow = true
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
@@ -46,4 +46,8 @@
 [submodule "src/tools/rustc-perf"]
 	path = src/tools/rustc-perf
 	url = https://github.com/rust-lang/rustc-perf.git
+	shallow = true
+[submodule "src/tools/enzyme"]
+	path = src/tools/enzyme
+	url = https://github.com/EnzymeAD/Enzyme.git
 	shallow = true

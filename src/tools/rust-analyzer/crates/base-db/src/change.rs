@@ -7,7 +7,7 @@ use salsa::Durability;
 use triomphe::Arc;
 use vfs::FileId;
 
-use crate::{CrateGraph, SourceDatabaseExt, SourceDatabaseExt2, SourceRoot, SourceRootId};
+use crate::{CrateGraph, SourceDatabaseFileInputExt, SourceRoot, SourceRootDatabase, SourceRootId};
 
 /// Encapsulate a bunch of raw `.set` calls on the database.
 #[derive(Default)]
@@ -50,7 +50,7 @@ impl FileChange {
         self.crate_graph = Some(graph);
     }
 
-    pub fn apply(self, db: &mut dyn SourceDatabaseExt) {
+    pub fn apply(self, db: &mut dyn SourceRootDatabase) {
         let _p = tracing::info_span!("FileChange::apply").entered();
         if let Some(roots) = self.roots {
             for (idx, root) in roots.into_iter().enumerate() {

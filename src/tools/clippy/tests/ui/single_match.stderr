@@ -198,5 +198,23 @@ LL +         }
 LL +     }
    |
 
-error: aborting due to 18 previous errors
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:343:5
+   |
+LL | /     match Ok::<_, u32>(Some(A)) {
+LL | |         Ok(Some(A)) => println!(),
+LL | |         Err(_) | Ok(None | Some(_)) => {},
+LL | |     }
+   | |_____^ help: try: `if let Ok(Some(A)) = Ok::<_, u32>(Some(A)) { println!() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:358:5
+   |
+LL | /     match &Some(A) {
+LL | |         Some(A | B) => println!(),
+LL | |         None | Some(_) => {},
+LL | |     }
+   | |_____^ help: try: `if let Some(A | B) = &Some(A) { println!() }`
+
+error: aborting due to 20 previous errors
 

@@ -1,0 +1,47 @@
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment.rs:9:20
+   |
+LL |     ( $( any_token $field_rust_type )* ) => {};
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = note: fragment specifiers must be specified in the 2024 edition
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+help: try adding a specifier here
+   |
+LL |     ( $( any_token $field_rust_type:spec )* ) => {};
+   |                                    +++++
+
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment.rs:19:7
+   |
+LL |     ( $name ) => {};
+   |       ^^^^^
+   |
+   = note: fragment specifiers must be specified in the 2024 edition
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+help: try adding a specifier here
+   |
+LL |     ( $name:spec ) => {};
+   |            +++++
+
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment.rs:26:7
+   |
+LL |     ( $name ) => {};
+   |       ^^^^^
+   |
+   = note: fragment specifiers must be specified in the 2024 edition
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`
+help: try adding a specifier here
+   |
+LL |     ( $name:spec ) => {};
+   |            +++++
+
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment.rs:9:20
+   |
+LL |     ( $( any_token $field_rust_type )* ) => {};
+   |                    ^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

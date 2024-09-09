@@ -6,7 +6,7 @@
 // See https://github.com/rust-lang/rust/pull/105601
 
 use run_make_support::{
-    build_native_static_lib, is_msvc, llvm_ar, regex, rfs, rust_lib_name, rustc, static_lib_name,
+    build_native_static_lib, llvm_ar, regex, rfs, rust_lib_name, rustc, static_lib_name,
 };
 
 //@ ignore-cross-compile

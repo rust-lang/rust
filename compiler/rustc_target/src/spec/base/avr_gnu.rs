@@ -1,11 +1,12 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
 use object::elf;
+
+use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
 
 /// A base target for AVR devices using the GNU toolchain.
 ///
 /// Requires GNU avr-gcc and avr-binutils on the host system.
 /// FIXME: Remove the second parameter when const string concatenation is possible.
-pub fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
+pub(crate) fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
     Target {
         arch: "avr".into(),
         metadata: crate::spec::TargetMetadata {

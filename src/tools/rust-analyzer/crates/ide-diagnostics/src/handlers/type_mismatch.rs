@@ -2,8 +2,12 @@ use either::Either;
 use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, HirFileIdExt, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
-    ast::{self, BlockExpr, ExprStmt},
-    AstNode, AstPtr,
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        BlockExpr, Expr, ExprStmt,
+    },
+    AstNode, AstPtr, TextSize,
 };
 use text_edit::TextEdit;
 
@@ -36,8 +40,12 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
         DiagnosticCode::RustcHardError("E0308"),
         format!(
             "expected {}, found {}",
-            d.expected.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),
-            d.actual.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),
+            d.expected
+                .display(ctx.sema.db, ctx.edition)
+                .with_closure_style(ClosureStyle::ClosureWithId),
+            d.actual
+                .display(ctx.sema.db, ctx.edition)
+                .with_closure_style(ClosureStyle::ClosureWithId),
         ),
         display_range,
     )
@@ -119,6 +127,38 @@ fn add_missing_ok_or_some(
         return None;
     }
 
+    if d.actual.is_unit() {
+        if let Expr::BlockExpr(block) = &expr {
+            if block.tail_expr().is_none() {
+                let mut builder = TextEdit::builder();
+                let block_indent = block.indent_level();
+
+                if block.statements().count() == 0 {
+                    // Empty block
+                    let indent = block_indent + 1;
+                    builder.insert(
+                        block.syntax().text_range().start() + TextSize::from(1),
+                        format!("\n{indent}{variant_name}(())\n{block_indent}"),
+                    );
+                } else {
+                    let indent = IndentLevel::from(1);
+                    builder.insert(
+                        block.syntax().text_range().end() - TextSize::from(1),
+                        format!("{indent}{variant_name}(())\n{block_indent}"),
+                    );
+                }
+
+                let source_change = SourceChange::from_text_edit(
+                    expr_ptr.file_id.original_file(ctx.sema.db),
+                    builder.finish(),
+                );
+                let name = format!("Insert {variant_name}(()) as the tail of this block");
+                acc.push(fix("insert_wrapped_unit", &name, source_change, expr_range));
+            }
+            return Some(());
+        }
+    }
+
     let mut builder = TextEdit::builder();
     builder.insert(expr.syntax().text_range().start(), format!("{variant_name}("));
     builder.insert(expr.syntax().text_range().end(), ")".to_owned());
@@ -163,8 +203,8 @@ fn str_ref_to_owned(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let expected = d.expected.display(ctx.sema.db);
-    let actual = d.actual.display(ctx.sema.db);
+    let expected = d.expected.display(ctx.sema.db, ctx.edition);
+    let actual = d.actual.display(ctx.sema.db, ctx.edition);
 
     // FIXME do this properly
     if expected.to_string() != "String" || actual.to_string() != "&str" {
@@ -534,6 +574,36 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     }
 
     #[test]
+    fn test_wrapped_unit_as_block_tail_expr() {
+        check_fix(
+            r#"
+//- minicore: result
+fn foo() -> Result<(), ()> {
+    foo();
+}$0
+            "#,
+            r#"
+fn foo() -> Result<(), ()> {
+    foo();
+    Ok(())
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+//- minicore: result
+fn foo() -> Result<(), ()> {}$0
+            "#,
+            r#"
+fn foo() -> Result<(), ()> {
+    Ok(())
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn test_in_const_and_static() {
         check_fix(
             r#"
@@ -744,6 +814,18 @@ fn f() {
      // ^^^^^^ error: expected i32, found ()
         0
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_17585() {
+        check_diagnostics(
+            r#"
+fn f() {
+    let (_, _, _, ..) = (true, 42);
+     // ^^^^^^^^^^^^^ error: expected (bool, i32), found (bool, i32, {unknown})
 }
 "#,
         );

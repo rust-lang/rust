@@ -1,11 +1,13 @@
 use hir::HirId;
-use rustc_errors::{codes::*, struct_span_code_err};
+use rustc_errors::codes::*;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_target::abi::{Pointer, VariantIdx};
+use tracing::trace;
 
 use super::FnCtxt;
 
@@ -37,7 +39,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn check_transmute(&self, from: Ty<'tcx>, to: Ty<'tcx>, hir_id: HirId) {
+    pub(crate) fn check_transmute(&self, from: Ty<'tcx>, to: Ty<'tcx>, hir_id: HirId) {
         let tcx = self.tcx;
         let dl = &tcx.data_layout;
         let span = tcx.hir().span(hir_id);

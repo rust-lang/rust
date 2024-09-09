@@ -313,6 +313,20 @@ impl fmt::Debug for VfsPathRepr {
     }
 }
 
+impl PartialEq<AbsPath> for VfsPath {
+    fn eq(&self, other: &AbsPath) -> bool {
+        match &self.0 {
+            VfsPathRepr::PathBuf(lhs) => lhs == other,
+            VfsPathRepr::VirtualPath(_) => false,
+        }
+    }
+}
+impl PartialEq<VfsPath> for AbsPath {
+    fn eq(&self, other: &VfsPath) -> bool {
+        other == self
+    }
+}
+
 /// `/`-separated virtual path.
 ///
 /// This is used to describe files that do not reside on the file system.

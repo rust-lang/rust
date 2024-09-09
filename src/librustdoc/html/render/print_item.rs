@@ -1,3 +1,10 @@
+use std::cell::{RefCell, RefMut};
+use std::cmp::Ordering;
+use std::fmt;
+use std::rc::Rc;
+
+use itertools::Itertools;
+use rinja::Template;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -8,10 +15,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::VariantIdx;
-use std::cell::{RefCell, RefMut};
-use std::cmp::Ordering;
-use std::fmt;
-use std::rc::Rc;
+use tracing::{debug, info};
 
 use super::type_layout::document_type_layout;
 use super::{
@@ -26,7 +30,7 @@ use crate::clean;
 use crate::config::ModuleSorting;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
     display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
     print_where_clause, visibility_print_with_space, Buffer, Ending, PrintWithSpace,
@@ -35,9 +39,6 @@ use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-
-use itertools::Itertools;
-use rinja::Template;
 
 /// Generates a Rinja template struct for rendering items with common methods.
 ///
@@ -202,7 +203,6 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         clean::ConstantItem(..) => "Constant ",
         clean::ForeignTypeItem => "Foreign Type ",
         clean::KeywordItem => "Keyword ",
-        clean::OpaqueTyItem(..) => "Opaque Type ",
         clean::TraitAliasItem(..) => "Trait Alias ",
         _ => {
             // We don't generate pages for any other type.
@@ -267,10 +267,9 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
         clean::StaticItem(ref i) => item_static(buf, cx, item, i, None),
         clean::ForeignStaticItem(ref i, safety) => item_static(buf, cx, item, i, Some(*safety)),
-        clean::ConstantItem(generics, ty, c) => item_constant(buf, cx, item, generics, ty, c),
+        clean::ConstantItem(ci) => item_constant(buf, cx, item, &ci.generics, &ci.type_, &ci.kind),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
         clean::KeywordItem => item_keyword(buf, cx, item),
-        clean::OpaqueTyItem(ref e) => item_opaque_ty(buf, cx, item, e),
         clean::TraitAliasItem(ref ta) => item_trait_alias(buf, cx, item, ta),
         _ => {
             // We don't generate pages for any other type.
@@ -423,7 +422,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         "<div class=\"item-name\"><code>{}extern crate {} as {};",
                         visibility_print_with_space(myitem, cx),
                         anchor(myitem.item_id.expect_def_id(), src, cx),
-                        myitem.name.unwrap(),
+                        EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     ),
                     None => write!(
                         w,
@@ -520,7 +519,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         {stab_tags}\
                      </div>\
                      {docs_before}{docs}{docs_after}",
-                    name = myitem.name.unwrap(),
+                    name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
                     visibility_and_hidden = visibility_and_hidden,
                     stab_tags = extra_info_tags(myitem, item, tcx),
                     class = myitem.type_(),
@@ -558,7 +557,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
             display_fn(move |f| {
                 write!(
                     f,
-                    r#"<span class="stab {class}" title="{title}">{contents}</span>"#,
+                    r#"<wbr><span class="stab {class}" title="{title}">{contents}</span>"#,
                     title = Escape(title),
                 )
             })
@@ -844,33 +843,6 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         }
     }
 
-    if !required_types.is_empty() {
-        write_section_heading(
-            w,
-            "Required Associated Types",
-            "required-associated-types",
-            None,
-            "<div class=\"methods\">",
-        );
-        for t in required_types {
-            trait_item(w, cx, t, it);
-        }
-        w.write_str("</div>");
-    }
-    if !provided_types.is_empty() {
-        write_section_heading(
-            w,
-            "Provided Associated Types",
-            "provided-associated-types",
-            None,
-            "<div class=\"methods\">",
-        );
-        for t in provided_types {
-            trait_item(w, cx, t, it);
-        }
-        w.write_str("</div>");
-    }
-
     if !required_consts.is_empty() {
         write_section_heading(
             w,
@@ -893,6 +865,33 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             "<div class=\"methods\">",
         );
         for t in provided_consts {
+            trait_item(w, cx, t, it);
+        }
+        w.write_str("</div>");
+    }
+
+    if !required_types.is_empty() {
+        write_section_heading(
+            w,
+            "Required Associated Types",
+            "required-associated-types",
+            None,
+            "<div class=\"methods\">",
+        );
+        for t in required_types {
+            trait_item(w, cx, t, it);
+        }
+        w.write_str("</div>");
+    }
+    if !provided_types.is_empty() {
+        write_section_heading(
+            w,
+            "Provided Associated Types",
+            "provided-associated-types",
+            None,
+            "<div class=\"methods\">",
+        );
+        for t in provided_types {
             trait_item(w, cx, t, it);
         }
         w.write_str("</div>");
@@ -1189,35 +1188,6 @@ fn item_trait_alias(
     });
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
-    // Render any items associated directly to this alias, as otherwise they
-    // won't be visible anywhere in the docs. It would be nice to also show
-    // associated items from the aliased type (see discussion in #32077), but
-    // we need #14072 to make sense of the generics.
-    write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
-        .unwrap();
-}
-
-fn item_opaque_ty(
-    w: &mut impl fmt::Write,
-    cx: &mut Context<'_>,
-    it: &clean::Item,
-    t: &clean::OpaqueTy,
-) {
-    wrap_item(w, |w| {
-        write!(
-            w,
-            "{attrs}type {name}{generics}{where_clause} = impl {bounds};",
-            attrs = render_attributes_in_pre(it, "", cx),
-            name = it.name.unwrap(),
-            generics = t.generics.print(cx),
-            where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
-            bounds = bounds(&t.bounds, false, cx),
-        )
-        .unwrap();
-    });
-
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
-
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
@@ -1841,7 +1811,7 @@ fn item_constant(
     it: &clean::Item,
     generics: &clean::Generics,
     ty: &clean::Type,
-    c: &clean::Constant,
+    c: &clean::ConstantKind,
 ) {
     wrap_item(w, |w| {
         let tcx = cx.tcx();
@@ -1911,7 +1881,7 @@ fn item_fields(
     w: &mut Buffer,
     cx: &mut Context<'_>,
     it: &clean::Item,
-    fields: &Vec<clean::Item>,
+    fields: &[clean::Item],
     ctor_kind: Option<CtorKind>,
 ) {
     let mut fields = fields

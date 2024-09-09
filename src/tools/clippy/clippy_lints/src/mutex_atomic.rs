@@ -1,7 +1,3 @@
-//! Checks for usage of mutex where an atomic value could be used
-//!
-//! This lint is **allow** by default
-
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_hir::Expr;

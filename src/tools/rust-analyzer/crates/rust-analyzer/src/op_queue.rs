@@ -3,6 +3,27 @@
 
 pub(crate) type Cause = String;
 
+/// A single-item queue that allows callers to request an operation to
+/// be performed later.
+///
+/// ```
+/// let queue = OpQueue::default();
+///
+/// // Request work to be done.
+/// queue.request_op("user pushed a button", ());
+///
+/// // In a later iteration of the server loop, we start the work.
+/// if let Some((_cause, ())) = queue.should_start_op() {
+///     dbg!("Some slow operation here");
+/// }
+///
+/// // In an even later iteration of the server loop, we can see that the work
+/// // was completed.
+/// if !queue.op_in_progress() {
+///     dbg!("Work has been done!");
+/// }
+/// ```
+#[derive(Debug)]
 pub(crate) struct OpQueue<Args = (), Output = ()> {
     op_requested: Option<(Cause, Args)>,
     op_in_progress: bool,

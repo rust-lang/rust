@@ -1,7 +1,9 @@
+use std::fmt::Debug;
+
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
-use std::fmt::Debug;
+use tracing::trace;
 
 use super::simplify::simplify_cfg;
 
@@ -90,7 +92,7 @@ use super::simplify::simplify_cfg;
 /// ```
 pub struct EarlyOtherwiseBranch;
 
-impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
+impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }
@@ -308,11 +310,11 @@ fn verify_candidate_branch<'tcx>(
 ) -> bool {
     // In order for the optimization to be correct, the branch must...
     // ...have exactly one statement
-    if branch.statements.len() != 1 {
+    let [statement] = branch.statements.as_slice() else {
         return false;
-    }
+    };
     // ...assign the discriminant of `place` in that statement
-    let StatementKind::Assign(boxed) = &branch.statements[0].kind else { return false };
+    let StatementKind::Assign(boxed) = &statement.kind else { return false };
     let (discr_place, Rvalue::Discriminant(from_place)) = &**boxed else { return false };
     if *from_place != place {
         return false;

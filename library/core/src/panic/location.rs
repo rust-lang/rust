@@ -44,7 +44,7 @@ impl<'a> Location<'a> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```standalone
     /// use std::panic::Location;
     ///
     /// /// Returns the [`Location`] at which it is called.
@@ -195,6 +195,7 @@ impl<'a> Location<'a> {
 
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
 impl fmt::Display for Location<'_> {
+    #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
     }

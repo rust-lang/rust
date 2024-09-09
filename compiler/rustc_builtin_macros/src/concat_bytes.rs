@@ -1,9 +1,12 @@
-use crate::errors;
-use crate::util::get_exprs_from_tts;
-use rustc_ast::{ptr::P, token, tokenstream::TokenStream, ExprKind, LitIntType, LitKind, UintTy};
+use rustc_ast::ptr::P;
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{token, ExprKind, LitIntType, LitKind, UintTy};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{ErrorGuaranteed, Span};
+
+use crate::errors;
+use crate::util::get_exprs_from_tts;
 
 /// Emits errors for literal expressions that are invalid inside and outside of an array.
 fn invalid_type_err(

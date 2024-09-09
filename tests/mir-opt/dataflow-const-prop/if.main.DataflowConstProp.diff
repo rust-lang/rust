@@ -37,7 +37,7 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
--         _4 = _1;
+-         _4 = copy _1;
 -         _3 = Eq(move _4, const 1_i32);
 -         switchInt(move _3) -> [0: bb2, otherwise: bb1];
 +         _4 = const 1_i32;
@@ -61,7 +61,7 @@
           StorageDead(_3);
           StorageLive(_5);
           StorageLive(_6);
--         _6 = _2;
+-         _6 = copy _2;
 -         _5 = Add(move _6, const 1_i32);
 +         _6 = const 2_i32;
 +         _5 = const 3_i32;
@@ -69,7 +69,7 @@
           StorageLive(_7);
           StorageLive(_8);
           StorageLive(_9);
--         _9 = _1;
+-         _9 = copy _1;
 -         _8 = Eq(move _9, const 1_i32);
 -         switchInt(move _8) -> [0: bb5, otherwise: bb4];
 +         _9 = const 1_i32;
@@ -79,7 +79,7 @@
   
       bb4: {
           StorageDead(_9);
--         _7 = _1;
+-         _7 = copy _1;
 +         _7 = const 1_i32;
           goto -> bb6;
       }
@@ -87,7 +87,7 @@
       bb5: {
           StorageDead(_9);
           StorageLive(_10);
-          _10 = _1;
+          _10 = copy _1;
           _7 = Add(move _10, const 1_i32);
           StorageDead(_10);
           goto -> bb6;
@@ -97,7 +97,7 @@
           StorageDead(_8);
           StorageLive(_11);
           StorageLive(_12);
--         _12 = _7;
+-         _12 = copy _7;
 -         _11 = Add(move _12, const 1_i32);
 +         _12 = const 1_i32;
 +         _11 = const 2_i32;

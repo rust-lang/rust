@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_lang_item_or_ctor, is_trait_method};
@@ -14,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     if let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir().get_parent_item(expr.hir_id))
         && let def_id = item.owner_id.to_def_id()
         && is_trait_method(cx, expr, sym::Iterator)
-        && let Some(Constant::Int(0)) = constant(cx, cx.typeck_results(), arg)
+        && let Some(Constant::Int(0)) = ConstEvalCtxt::new(cx).eval(arg)
         && !is_lang_item_or_ctor(cx, def_id, LangItem::IteratorNext)
     {
         let mut app = Applicability::MachineApplicable;

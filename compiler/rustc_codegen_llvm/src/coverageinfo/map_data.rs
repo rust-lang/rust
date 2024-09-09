@@ -1,20 +1,20 @@
-use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
-
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping,
-    MappingKind, Op,
+    CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping, MappingKind, Op,
+    SourceRegion,
 };
 use rustc_middle::ty::Instance;
 use rustc_span::Symbol;
 use tracing::{debug, instrument};
 
+use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
+
 /// Holds all of the coverage mapping data associated with a function instance,
 /// collected during traversal of `Coverage` statements in the function's MIR.
 #[derive(Debug)]
-pub struct FunctionCoverageCollector<'tcx> {
+pub(crate) struct FunctionCoverageCollector<'tcx> {
     /// Coverage info that was attached to this function by the instrumentor.
     function_coverage_info: &'tcx FunctionCoverageInfo,
     is_used: bool,
@@ -32,7 +32,7 @@ pub struct FunctionCoverageCollector<'tcx> {
 
 impl<'tcx> FunctionCoverageCollector<'tcx> {
     /// Creates a new set of coverage data for a used (called) function.
-    pub fn new(
+    pub(crate) fn new(
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
     ) -> Self {
@@ -40,7 +40,7 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
     }
 
     /// Creates a new set of coverage data for an unused (never called) function.
-    pub fn unused(
+    pub(crate) fn unused(
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
     ) -> Self {
@@ -195,13 +195,13 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
     /// or not the source code structure changed between different compilations.
-    pub fn source_hash(&self) -> u64 {
+    pub(crate) fn source_hash(&self) -> u64 {
         if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
     }
 
     /// Returns an iterator over all filenames used by this function's mappings.
     pub(crate) fn all_file_names(&self) -> impl Iterator<Item = Symbol> + Captures<'_> {
-        self.function_coverage_info.mappings.iter().map(|mapping| mapping.code_region.file_name)
+        self.function_coverage_info.mappings.iter().map(|mapping| mapping.source_region.file_name)
     }
 
     /// Convert this function's coverage expression data into a form that can be
@@ -230,12 +230,12 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// that will be used by `mapgen` when preparing for FFI.
     pub(crate) fn counter_regions(
         &self,
-    ) -> impl Iterator<Item = (MappingKind, &CodeRegion)> + ExactSizeIterator {
+    ) -> impl Iterator<Item = (MappingKind, &SourceRegion)> + ExactSizeIterator {
         self.function_coverage_info.mappings.iter().map(move |mapping| {
-            let Mapping { kind, code_region } = mapping;
+            let Mapping { kind, source_region } = mapping;
             let kind =
                 kind.map_terms(|term| if self.is_zero_term(term) { CovTerm::Zero } else { term });
-            (kind, code_region)
+            (kind, source_region)
         })
     }
 

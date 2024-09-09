@@ -1,13 +1,12 @@
 use crate::clippy_project_root;
 use aho_corasick::AhoCorasickBuilder;
-use indoc::writedoc;
 use itertools::Itertools;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt::{self, Write};
 use std::fs::{self, OpenOptions};
-use std::io::{self, Read, Seek, SeekFrom, Write as _};
+use std::io::{self, Read, Seek, Write as _};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
@@ -77,12 +76,8 @@ fn generate_lint_files(
             for lint in usable_lints
                 .iter()
                 .map(|l| &*l.name)
-                .chain(deprecated_lints.iter().map(|l| &*l.name))
-                .chain(
-                    renamed_lints
-                        .iter()
-                        .map(|l| l.old_name.strip_prefix("clippy::").unwrap_or(&l.old_name)),
-                )
+                .chain(deprecated_lints.iter().filter_map(|l| l.name.strip_prefix("clippy::")))
+                .chain(renamed_lints.iter().filter_map(|l| l.old_name.strip_prefix("clippy::")))
                 .sorted()
             {
                 writeln!(res, "[`{lint}`]: {DOCS_LINK}#{lint}").unwrap();
@@ -107,11 +102,6 @@ fn generate_lint_files(
         "clippy_lints/src/declared_lints.rs",
         update_mode,
         &gen_declared_lints(internal_lints.iter(), usable_lints.iter()),
-    );
-    process_file(
-        "clippy_lints/src/lib.deprecated.rs",
-        update_mode,
-        &gen_deprecated(deprecated_lints),
     );
 
     let content = gen_deprecated_lints_test(deprecated_lints);
@@ -205,13 +195,26 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
             let ext = f.path().extension();
             (ext == Some(OsStr::new("rs")) || ext == Some(OsStr::new("fixed")))
                 && name != Some(OsStr::new("rename.rs"))
-                && name != Some(OsStr::new("renamed_lints.rs"))
+                && name != Some(OsStr::new("deprecated_lints.rs"))
         })
     {
         rewrite_file(file.path(), |s| {
             replace_ident_like(s, &[(&lint.old_name, &lint.new_name)])
         });
     }
+
+    let version = crate::new_lint::get_stabilization_version();
+    rewrite_file(Path::new("clippy_lints/src/deprecated_lints.rs"), |s| {
+        insert_at_marker(
+            s,
+            "// end renamed lints. used by `cargo dev rename_lint`",
+            &format!(
+                "#[clippy::version = \"{version}\"]\n    \
+                (\"{}\", \"{}\"),\n    ",
+                lint.old_name, lint.new_name,
+            ),
+        )
+    });
 
     renamed_lints.push(lint);
     renamed_lints.sort_by(|lhs, rhs| {
@@ -221,11 +224,6 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
             .reverse()
             .then_with(|| lhs.old_name.cmp(&rhs.old_name))
     });
-
-    write_file(
-        Path::new("clippy_lints/src/renamed_lints.rs"),
-        &gen_renamed_lints_list(&renamed_lints),
-    );
 
     if uplift {
         write_file(Path::new("tests/ui/rename.rs"), &gen_renamed_lints_test(&renamed_lints));
@@ -293,7 +291,8 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
 
         // Don't change `clippy_utils/src/renamed_lints.rs` here as it would try to edit the lint being
         // renamed.
-        for (_, file) in clippy_lints_src_files().filter(|(rel_path, _)| rel_path != OsStr::new("renamed_lints.rs")) {
+        for (_, file) in clippy_lints_src_files().filter(|(rel_path, _)| rel_path != OsStr::new("deprecated_lints.rs"))
+        {
             rewrite_file(file.path(), |s| replace_ident_like(s, replacements));
         }
 
@@ -304,7 +303,6 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
     println!("note: `cargo uitest` still needs to be run to update the test results");
 }
 
-const DEFAULT_DEPRECATION_REASON: &str = "default deprecation note";
 /// Runs the `deprecate` command
 ///
 /// This does the following:
@@ -314,33 +312,16 @@ const DEFAULT_DEPRECATION_REASON: &str = "default deprecation note";
 /// # Panics
 ///
 /// If a file path could not read from or written to
-pub fn deprecate(name: &str, reason: Option<&str>) {
-    fn finish(
-        (lints, mut deprecated_lints, renamed_lints): (Vec<Lint>, Vec<DeprecatedLint>, Vec<RenamedLint>),
-        name: &str,
-        reason: &str,
-    ) {
-        deprecated_lints.push(DeprecatedLint {
-            name: name.to_string(),
-            reason: reason.to_string(),
-            declaration_range: Range::default(),
-        });
+pub fn deprecate(name: &str, reason: &str) {
+    let prefixed_name = if name.starts_with("clippy::") {
+        name.to_owned()
+    } else {
+        format!("clippy::{name}")
+    };
+    let stripped_name = &prefixed_name[8..];
 
-        generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
-        println!("info: `{name}` has successfully been deprecated");
-
-        if reason == DEFAULT_DEPRECATION_REASON {
-            println!("note: the deprecation reason must be updated in `clippy_lints/src/deprecated_lints.rs`");
-        }
-        println!("note: you must run `cargo uitest` to update the test results");
-    }
-
-    let reason = reason.unwrap_or(DEFAULT_DEPRECATION_REASON);
-    let name_lower = name.to_lowercase();
-    let name_upper = name.to_uppercase();
-
-    let (mut lints, deprecated_lints, renamed_lints) = gather_all();
-    let Some(lint) = lints.iter().find(|l| l.name == name_lower) else {
+    let (mut lints, mut deprecated_lints, renamed_lints) = gather_all();
+    let Some(lint) = lints.iter().find(|l| l.name == stripped_name) else {
         eprintln!("error: failed to find lint `{name}`");
         return;
     };
@@ -357,13 +338,27 @@ pub fn deprecate(name: &str, reason: Option<&str>) {
 
     let deprecated_lints_path = &*clippy_project_root().join("clippy_lints/src/deprecated_lints.rs");
 
-    if remove_lint_declaration(&name_lower, &mod_path, &mut lints).unwrap_or(false) {
-        declare_deprecated(&name_upper, deprecated_lints_path, reason).unwrap();
-        finish((lints, deprecated_lints, renamed_lints), name, reason);
-        return;
-    }
+    if remove_lint_declaration(stripped_name, &mod_path, &mut lints).unwrap_or(false) {
+        let version = crate::new_lint::get_stabilization_version();
+        rewrite_file(deprecated_lints_path, |s| {
+            insert_at_marker(
+                s,
+                "// end deprecated lints. used by `cargo dev deprecate_lint`",
+                &format!("#[clippy::version = \"{version}\"]\n    (\"{prefixed_name}\", \"{reason}\"),\n    ",),
+            )
+        });
 
-    eprintln!("error: lint not found");
+        deprecated_lints.push(DeprecatedLint {
+            name: prefixed_name,
+            reason: reason.into(),
+        });
+
+        generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
+        println!("info: `{name}` has successfully been deprecated");
+        println!("note: you must run `cargo uitest` to update the test results");
+    } else {
+        eprintln!("error: lint not found");
+    }
 }
 
 fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io::Result<bool> {
@@ -377,14 +372,14 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
 
         // Some lints have their own directories, delete them
         if path.is_dir() {
-            fs::remove_dir_all(path).ok();
+            let _ = fs::remove_dir_all(path);
             return;
         }
 
         // Remove all related test files
-        fs::remove_file(path.with_extension("rs")).ok();
-        fs::remove_file(path.with_extension("stderr")).ok();
-        fs::remove_file(path.with_extension("fixed")).ok();
+        let _ = fs::remove_file(path.with_extension("rs"));
+        let _ = fs::remove_file(path.with_extension("stderr"));
+        let _ = fs::remove_file(path.with_extension("fixed"));
     }
 
     fn remove_impl_lint_pass(lint_name_upper: &str, content: &mut String) {
@@ -427,7 +422,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
                     lint_mod_path.set_file_name(name);
                     lint_mod_path.set_extension("rs");
 
-                    fs::remove_file(lint_mod_path).ok();
+                    let _ = fs::remove_file(lint_mod_path);
                 }
 
                 let mut content =
@@ -463,37 +458,6 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
     }
 
     Ok(false)
-}
-
-fn declare_deprecated(name: &str, path: &Path, reason: &str) -> io::Result<()> {
-    let mut file = OpenOptions::new().write(true).open(path)?;
-
-    file.seek(SeekFrom::End(0))?;
-
-    let version = crate::new_lint::get_stabilization_version();
-    let deprecation_reason = if reason == DEFAULT_DEPRECATION_REASON {
-        "TODO"
-    } else {
-        reason
-    };
-
-    writedoc!(
-        file,
-        "
-
-        declare_deprecated_lint! {{
-            /// ### What it does
-            /// Nothing. This lint has been deprecated.
-            ///
-            /// ### Deprecation reason
-            /// {deprecation_reason}
-            #[clippy::version = \"{version}\"]
-            pub {name},
-            \"{reason}\"
-        }}
-
-        "
-    )
 }
 
 /// Replace substrings if they aren't bordered by identifier characters. Returns `None` if there
@@ -604,14 +568,12 @@ impl Lint {
 struct DeprecatedLint {
     name: String,
     reason: String,
-    declaration_range: Range<usize>,
 }
 impl DeprecatedLint {
-    fn new(name: &str, reason: &str, declaration_range: Range<usize>) -> Self {
+    fn new(name: &str, reason: &str) -> Self {
         Self {
-            name: name.to_lowercase(),
+            name: remove_line_splices(name),
             reason: remove_line_splices(reason),
-            declaration_range,
         }
     }
 }
@@ -629,28 +591,6 @@ impl RenamedLint {
     }
 }
 
-/// Generates the `register_removed` code
-#[must_use]
-fn gen_deprecated(lints: &[DeprecatedLint]) -> String {
-    let mut output = GENERATED_FILE_COMMENT.to_string();
-    output.push_str("{\n");
-    for lint in lints {
-        let _: fmt::Result = write!(
-            output,
-            concat!(
-                "    store.register_removed(\n",
-                "        \"clippy::{}\",\n",
-                "        \"{}\",\n",
-                "    );\n"
-            ),
-            lint.name, lint.reason,
-        );
-    }
-    output.push_str("}\n");
-
-    output
-}
-
 /// Generates the code for registering lints
 #[must_use]
 fn gen_declared_lints<'a>(
@@ -664,7 +604,7 @@ fn gen_declared_lints<'a>(
     details.sort_unstable();
 
     let mut output = GENERATED_FILE_COMMENT.to_string();
-    output.push_str("pub(crate) static LINTS: &[&crate::LintInfo] = &[\n");
+    output.push_str("pub static LINTS: &[&crate::LintInfo] = &[\n");
 
     for (is_public, module_name, lint_name) in details {
         if !is_public {
@@ -680,7 +620,7 @@ fn gen_declared_lints<'a>(
 fn gen_deprecated_lints_test(lints: &[DeprecatedLint]) -> String {
     let mut res: String = GENERATED_FILE_COMMENT.into();
     for lint in lints {
-        writeln!(res, "#![warn(clippy::{})]", lint.name).unwrap();
+        writeln!(res, "#![warn({})] //~ ERROR: lint `{}`", lint.name, lint.name).unwrap();
     }
     res.push_str("\nfn main() {}\n");
     res
@@ -699,24 +639,10 @@ fn gen_renamed_lints_test(lints: &[RenamedLint]) -> String {
     seen_lints.clear();
     for lint in lints {
         if seen_lints.insert(&lint.old_name) {
-            writeln!(res, "#![warn({})]", lint.old_name).unwrap();
+            writeln!(res, "#![warn({})] //~ ERROR: lint `{}`", lint.old_name, lint.old_name).unwrap();
         }
     }
     res.push_str("\nfn main() {}\n");
-    res
-}
-
-fn gen_renamed_lints_list(lints: &[RenamedLint]) -> String {
-    const HEADER: &str = "\
-        // This file is managed by `cargo dev rename_lint`. Prefer using that when possible.\n\n\
-        #[rustfmt::skip]\n\
-        pub static RENAMED_LINTS: &[(&str, &str)] = &[\n";
-
-    let mut res = String::from(HEADER);
-    for lint in lints {
-        writeln!(res, "    (\"{}\", \"{}\"),", lint.old_name, lint.new_name).unwrap();
-    }
-    res.push_str("];\n");
     res
 }
 
@@ -744,10 +670,10 @@ fn gather_all() -> (Vec<Lint>, Vec<DeprecatedLint>, Vec<RenamedLint>) {
             module.strip_suffix(".rs").unwrap_or(&module)
         };
 
-        match module {
-            "deprecated_lints" => parse_deprecated_contents(&contents, &mut deprecated_lints),
-            "renamed_lints" => parse_renamed_contents(&contents, &mut renamed_lints),
-            _ => parse_contents(&contents, module, &mut lints),
+        if module == "deprecated_lints" {
+            parse_deprecated_contents(&contents, &mut deprecated_lints, &mut renamed_lints);
+        } else {
+            parse_contents(&contents, module, &mut lints);
         }
     }
     (lints, deprecated_lints, renamed_lints)
@@ -848,54 +774,37 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
 }
 
 /// Parse a source file looking for `declare_deprecated_lint` macro invocations.
-fn parse_deprecated_contents(contents: &str, lints: &mut Vec<DeprecatedLint>) {
-    let mut offset = 0usize;
-    let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len as usize;
-        offset = range.end;
+fn parse_deprecated_contents(contents: &str, deprecated: &mut Vec<DeprecatedLint>, renamed: &mut Vec<RenamedLint>) {
+    let Some((_, contents)) = contents.split_once("\ndeclare_with_version! { DEPRECATED") else {
+        return;
+    };
+    let Some((deprecated_src, renamed_src)) = contents.split_once("\ndeclare_with_version! { RENAMED") else {
+        return;
+    };
 
-        LintDeclSearchResult {
-            token_kind: t.kind,
-            content: &contents[range.clone()],
-            range,
-        }
-    });
+    for line in deprecated_src.lines() {
+        let mut offset = 0usize;
+        let mut iter = tokenize(line).map(|t| {
+            let range = offset..offset + t.len as usize;
+            offset = range.end;
 
-    while let Some(LintDeclSearchResult { range, .. }) = iter.find(
-        |LintDeclSearchResult {
-             token_kind, content, ..
-         }| token_kind == &TokenKind::Ident && *content == "declare_deprecated_lint",
-    ) {
-        let start = range.start;
-
-        let mut iter = iter.by_ref().filter(|LintDeclSearchResult { ref token_kind, .. }| {
-            !matches!(token_kind, TokenKind::Whitespace | TokenKind::LineComment { .. })
+            LintDeclSearchResult {
+                token_kind: t.kind,
+                content: &line[range.clone()],
+                range,
+            }
         });
+
         let (name, reason) = match_tokens!(
             iter,
-            // !{
-            Bang OpenBrace
-            // #[clippy::version = "version"]
-            Pound OpenBracket Ident Colon Colon Ident Eq Literal{..} CloseBracket
-            // pub LINT_NAME,
-            Ident Ident(name) Comma
-            // "description"
-            Literal{kind: LiteralKind::Str{..},..}(reason)
+            // ("old_name",
+            Whitespace OpenParen Literal{kind: LiteralKind::Str{..},..}(name) Comma
+            // "new_name"),
+            Whitespace Literal{kind: LiteralKind::Str{..},..}(reason) CloseParen Comma
         );
-
-        if let Some(LintDeclSearchResult {
-            token_kind: TokenKind::CloseBrace,
-            range,
-            ..
-        }) = iter.next()
-        {
-            lints.push(DeprecatedLint::new(name, reason, start..range.end));
-        }
+        deprecated.push(DeprecatedLint::new(name, reason));
     }
-}
-
-fn parse_renamed_contents(contents: &str, lints: &mut Vec<RenamedLint>) {
-    for line in contents.lines() {
+    for line in renamed_src.lines() {
         let mut offset = 0usize;
         let mut iter = tokenize(line).map(|t| {
             let range = offset..offset + t.len as usize;
@@ -915,7 +824,7 @@ fn parse_renamed_contents(contents: &str, lints: &mut Vec<RenamedLint>) {
             // "new_name"),
             Whitespace Literal{kind: LiteralKind::Str{..},..}(new_name) CloseParen Comma
         );
-        lints.push(RenamedLint::new(old_name, new_name));
+        renamed.push(RenamedLint::new(old_name, new_name));
     }
 }
 
@@ -1015,6 +924,12 @@ fn panic_file(error: io::Error, name: &Path, action: &str) -> ! {
     panic!("failed to {action} file `{}`: {error}", name.display())
 }
 
+fn insert_at_marker(text: &str, marker: &str, new_text: &str) -> Option<String> {
+    let i = text.find(marker)?;
+    let (pre, post) = text.split_at(i);
+    Some([pre, new_text, post].into_iter().collect())
+}
+
 fn rewrite_file(path: &Path, f: impl FnOnce(&str) -> Option<String>) {
     let mut file = OpenOptions::new()
         .write(true)
@@ -1085,31 +1000,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_deprecated_contents() {
-        static DEPRECATED_CONTENTS: &str = r#"
-            /// some doc comment
-            declare_deprecated_lint! {
-                #[clippy::version = "I'm a version"]
-                pub SHOULD_ASSERT_EQ,
-                "`assert!()` will be more flexible with RFC 2011"
-            }
-        "#;
-
-        let mut result = Vec::new();
-        parse_deprecated_contents(DEPRECATED_CONTENTS, &mut result);
-        for r in &mut result {
-            r.declaration_range = Range::default();
-        }
-
-        let expected = vec![DeprecatedLint::new(
-            "should_assert_eq",
-            "\"`assert!()` will be more flexible with RFC 2011\"",
-            Range::default(),
-        )];
-        assert_eq!(expected, result);
-    }
-
-    #[test]
     fn test_usable_lints() {
         let lints = vec![
             Lint::new(
@@ -1176,35 +1066,5 @@ mod tests {
             )],
         );
         assert_eq!(expected, Lint::by_lint_group(lints.into_iter()));
-    }
-
-    #[test]
-    fn test_gen_deprecated() {
-        let lints = vec![
-            DeprecatedLint::new(
-                "should_assert_eq",
-                "\"has been superseded by should_assert_eq2\"",
-                Range::default(),
-            ),
-            DeprecatedLint::new("another_deprecated", "\"will be removed\"", Range::default()),
-        ];
-
-        let expected = GENERATED_FILE_COMMENT.to_string()
-            + &[
-                "{",
-                "    store.register_removed(",
-                "        \"clippy::should_assert_eq\",",
-                "        \"has been superseded by should_assert_eq2\",",
-                "    );",
-                "    store.register_removed(",
-                "        \"clippy::another_deprecated\",",
-                "        \"will be removed\",",
-                "    );",
-                "}",
-            ]
-            .join("\n")
-            + "\n";
-
-        assert_eq!(expected, gen_deprecated(&lints));
     }
 }

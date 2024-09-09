@@ -5,12 +5,13 @@
 /// descriptors.
 mod pal;
 
+mod alloc;
 mod personality;
 
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
 pub mod anonymous_pipe;
 pub mod backtrace;
 pub mod cmath;
+pub mod dbg;
 pub mod exit_guard;
 pub mod os_str;
 pub mod path;

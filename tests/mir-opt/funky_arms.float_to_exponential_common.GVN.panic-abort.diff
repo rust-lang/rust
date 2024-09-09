@@ -42,13 +42,13 @@
           StorageLive(_4);
           StorageLive(_20);
           StorageLive(_21);
-          _21 = ((*_1).0: u32);
+          _21 = copy ((*_1).0: u32);
           _20 = BitAnd(move _21, const 1_u32);
           StorageDead(_21);
           _4 = Ne(move _20, const 0_u32);
           StorageDead(_20);
           StorageLive(_5);
-          switchInt(_4) -> [0: bb2, otherwise: bb1];
+          switchInt(copy _4) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
@@ -65,7 +65,7 @@
   
       bb3: {
           StorageLive(_6);
-          _6 = ((*_1).4: std::option::Option<usize>);
+          _6 = copy ((*_1).4: std::option::Option<usize>);
           _7 = discriminant(_6);
           switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb9];
       }
@@ -73,26 +73,26 @@
       bb4: {
 -         StorageLive(_8);
 +         nop;
-          _8 = ((_6 as Some).0: usize);
+          _8 = copy ((_6 as Some).0: usize);
           StorageLive(_9);
-          _9 = _1;
+          _9 = copy _1;
           StorageLive(_10);
-          _10 = _2;
+          _10 = copy _2;
           StorageLive(_11);
-          _11 = _5;
+          _11 = copy _5;
           StorageLive(_12);
           StorageLive(_13);
           StorageLive(_14);
-          _14 = _8;
+          _14 = copy _8;
 -         _13 = move _14 as u32 (IntToInt);
-+         _13 = _8 as u32 (IntToInt);
++         _13 = copy _8 as u32 (IntToInt);
           StorageDead(_14);
           _12 = Add(move _13, const 1_u32);
           StorageDead(_13);
           StorageLive(_15);
-          _15 = _3;
+          _15 = copy _3;
 -         _0 = float_to_exponential_common_exact::<T>(move _9, move _10, move _11, move _12, move _15) -> [return: bb5, unwind unreachable];
-+         _0 = float_to_exponential_common_exact::<T>(_1, _2, move _11, move _12, _3) -> [return: bb5, unwind unreachable];
++         _0 = float_to_exponential_common_exact::<T>(copy _1, copy _2, move _11, move _12, copy _3) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {
@@ -108,15 +108,15 @@
   
       bb6: {
           StorageLive(_16);
-          _16 = _1;
+          _16 = copy _1;
           StorageLive(_17);
-          _17 = _2;
+          _17 = copy _2;
           StorageLive(_18);
-          _18 = _5;
+          _18 = copy _5;
           StorageLive(_19);
-          _19 = _3;
+          _19 = copy _3;
 -         _0 = float_to_exponential_common_shortest::<T>(move _16, move _17, move _18, move _19) -> [return: bb7, unwind unreachable];
-+         _0 = float_to_exponential_common_shortest::<T>(_1, _2, move _18, _3) -> [return: bb7, unwind unreachable];
++         _0 = float_to_exponential_common_shortest::<T>(copy _1, copy _2, move _18, copy _3) -> [return: bb7, unwind unreachable];
       }
   
       bb7: {

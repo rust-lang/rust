@@ -1,10 +1,7 @@
-use crate::error;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::print::{shrunk_instance_name, FmtPrinter, Printer};
-use crate::ty::{
-    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-};
+use std::assert_matches::assert_matches;
+use std::fmt;
+use std::path::PathBuf;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -18,9 +15,13 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use tracing::{debug, instrument};
 
-use std::assert_matches::assert_matches;
-use std::fmt;
-use std::path::PathBuf;
+use crate::error;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::ty::print::{shrunk_instance_name, FmtPrinter, Printer};
+use crate::ty::{
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
 ///
@@ -37,7 +38,7 @@ pub struct Instance<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
-/// Describes why a `ReifyShim` was created. This is needed to distingish a ReifyShim created to
+/// Describes why a `ReifyShim` was created. This is needed to distinguish a ReifyShim created to
 /// adjust for things like `#[track_caller]` in a vtable from a `ReifyShim` created to produce a
 /// function pointer from a vtable entry.
 /// Currently, this is only used when KCFI is enabled, as only KCFI needs to treat those two
@@ -140,14 +141,6 @@ pub enum InstanceKind<'tcx> {
         receiver_by_ref: bool,
     },
 
-    /// `<[coroutine] as Future>::poll`, but for coroutines produced when `AsyncFnOnce`
-    /// is called on a coroutine-closure whose closure kind greater than `FnOnce`, or
-    /// similarly for `AsyncFnMut`.
-    ///
-    /// This will select the body that is produced by the `ByMoveBody` transform, and thus
-    /// take and use all of its upvars by-move rather than by-ref.
-    CoroutineKindShim { coroutine_def_id: DefId },
-
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local
     /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
     /// native support.
@@ -247,7 +240,6 @@ impl<'tcx> InstanceKind<'tcx> {
                 coroutine_closure_def_id: def_id,
                 receiver_by_ref: _,
             }
-            | ty::InstanceKind::CoroutineKindShim { coroutine_def_id: def_id }
             | InstanceKind::DropGlue(def_id, _)
             | InstanceKind::CloneShim(def_id, _)
             | InstanceKind::FnPtrAddrShim(def_id, _)
@@ -269,7 +261,6 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::Intrinsic(..)
             | InstanceKind::ClosureOnceShim { .. }
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::CoroutineKindShim { .. }
             | InstanceKind::DropGlue(..)
             | InstanceKind::AsyncDropGlueCtorShim(..)
             | InstanceKind::CloneShim(..)
@@ -376,7 +367,6 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::AsyncDropGlueCtorShim(_, Some(_)) => false,
             InstanceKind::ClosureOnceShim { .. }
             | InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | InstanceKind::CoroutineKindShim { .. }
             | InstanceKind::DropGlue(..)
             | InstanceKind::AsyncDropGlueCtorShim(..)
             | InstanceKind::Item(_)
@@ -451,7 +441,6 @@ pub fn fmt_instance(
         InstanceKind::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceKind::ClosureOnceShim { .. } => write!(f, " - shim"),
         InstanceKind::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
-        InstanceKind::CoroutineKindShim { .. } => write!(f, " - shim"),
         InstanceKind::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceKind::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceKind::CloneShim(_, ty) => write!(f, " - shim({ty})"),
@@ -580,9 +569,9 @@ impl<'tcx> Instance<'tcx> {
                     let mut path = PathBuf::new();
                     let was_written = if let Some(path2) = written_to_path {
                         path = path2;
-                        Some(())
+                        true
                     } else {
-                        None
+                        false
                     };
                     tcx.dcx().emit_fatal(error::TypeLengthLimit {
                         // We don't use `def_span(def_id)` so that diagnostics point
@@ -837,7 +826,7 @@ impl<'tcx> Instance<'tcx> {
             return None;
         };
 
-        if tcx.lang_items().get(coroutine_callable_item) == Some(trait_item_id) {
+        if tcx.is_lang_item(trait_item_id, coroutine_callable_item) {
             let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
             else {
                 bug!()
@@ -849,7 +838,9 @@ impl<'tcx> Instance<'tcx> {
                 Some(Instance { def: ty::InstanceKind::Item(coroutine_def_id), args })
             } else {
                 Some(Instance {
-                    def: ty::InstanceKind::CoroutineKindShim { coroutine_def_id },
+                    def: ty::InstanceKind::Item(
+                        tcx.coroutine_by_move_body_def_id(coroutine_def_id),
+                    ),
                     args,
                 })
             }

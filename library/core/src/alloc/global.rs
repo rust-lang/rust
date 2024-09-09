@@ -1,6 +1,5 @@
 use crate::alloc::Layout;
-use crate::cmp;
-use crate::ptr;
+use crate::{cmp, ptr};
 
 /// A memory allocator that can be registered as the standard library’s default
 /// through the `#[global_allocator]` attribute.
@@ -118,7 +117,7 @@ use crate::ptr;
 ///   having side effects.
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
-    /// Allocate memory as described by the given `layout`.
+    /// Allocates memory as described by the given `layout`.
     ///
     /// Returns a pointer to newly-allocated memory,
     /// or null to indicate allocation failure.
@@ -153,7 +152,7 @@ pub unsafe trait GlobalAlloc {
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8;
 
-    /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
+    /// Deallocates the block of memory at the given `ptr` pointer with the given `layout`.
     ///
     /// # Safety
     ///
@@ -200,7 +199,7 @@ pub unsafe trait GlobalAlloc {
         ptr
     }
 
-    /// Shrink or grow a block of memory to the given `new_size` in bytes.
+    /// Shrinks or grows a block of memory to the given `new_size` in bytes.
     /// The block is described by the given `ptr` pointer and `layout`.
     ///
     /// If this returns a non-null pointer, then ownership of the memory block
@@ -232,7 +231,7 @@ pub unsafe trait GlobalAlloc {
     /// * `new_size` must be greater than zero.
     ///
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
-    ///   must not overflow isize (i.e., the rounded value must be less than or
+    ///   must not overflow `isize` (i.e., the rounded value must be less than or
     ///   equal to `isize::MAX`).
     ///
     /// (Extension subtraits might provide more specific bounds on

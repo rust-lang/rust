@@ -1,11 +1,12 @@
 use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, UnOp};
-use rustc_middle::ty::layout::LayoutOf as _;
-use rustc_middle::ty::{self, layout::TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout};
+use rustc_middle::ty::{self};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
-use crate::{lints::InvalidReferenceCastingDiag, LateContext, LateLintPass, LintContext};
+use crate::lints::InvalidReferenceCastingDiag;
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `invalid_reference_casting` lint checks for casts of `&T` to `&mut T`
@@ -53,8 +54,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
                 && let Some(ty_has_interior_mutability) =
                     is_cast_from_ref_to_mut_ptr(cx, init, &mut peel_casts)
             {
-                let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
-
                 cx.emit_span_lint(
                     INVALID_REFERENCE_CASTING,
                     expr.span,

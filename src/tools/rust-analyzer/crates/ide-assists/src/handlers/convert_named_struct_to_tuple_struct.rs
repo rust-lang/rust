@@ -2,8 +2,8 @@ use either::Either;
 use ide_db::{defs::Definition, search::FileReference};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, HasGenericParams, HasVisibility},
-    match_ast, SyntaxKind,
+    ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
+    match_ast, ted, SyntaxKind,
 };
 
 use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
@@ -87,9 +87,14 @@ fn edit_struct_def(
 ) {
     // Note that we don't need to consider macro files in this function because this is
     // currently not triggered for struct definitions inside macro calls.
-    let tuple_fields = record_fields
-        .fields()
-        .filter_map(|f| Some(ast::make::tuple_field(f.visibility(), f.ty()?)));
+    let tuple_fields = record_fields.fields().filter_map(|f| {
+        let field = ast::make::tuple_field(f.visibility(), f.ty()?).clone_for_update();
+        ted::insert_all(
+            ted::Position::first_child_of(field.syntax()),
+            f.attrs().map(|attr| attr.syntax().clone_subtree().clone_for_update().into()).collect(),
+        );
+        Some(field)
+    });
     let tuple_fields = ast::make::tuple_field_list(tuple_fields);
     let record_fields_text_range = record_fields.syntax().text_range();
 
@@ -143,7 +148,7 @@ fn edit_struct_references(
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
     for (file_id, refs) in usages {
-        edit.edit_file(file_id);
+        edit.edit_file(file_id.file_id());
         for r in refs {
             process_struct_name_reference(ctx, r, edit);
         }
@@ -221,7 +226,7 @@ fn edit_field_references(
         let def = Definition::Field(field);
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
-            edit.edit_file(file_id);
+            edit.edit_file(file_id.file_id());
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref() {
                     // Only edit the field reference if it's part of a `.field` access
@@ -975,6 +980,22 @@ impl HasAssoc for Struct {
         let Self::Assoc { value } = a;
     }
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn fields_with_attrs() {
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+pub struct $0Foo {
+    #[my_custom_attr]
+    value: u32,
+}
+"#,
+            r#"
+pub struct Foo(#[my_custom_attr] u32);
 "#,
         );
     }

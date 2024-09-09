@@ -2,7 +2,7 @@
 name = "rust-analyzer"
 version = "0.0.0"
 homepage = "https://rust-analyzer.github.io/"
-repository = "https://github.com/rust-analyzer/rust-analyzer"
+repository.workspace = true
 description = "A language server for the Rust programming language"
 documentation = "https://rust-analyzer.github.io/manual.html"
 autobins = false
@@ -21,7 +21,7 @@ path = "src/bin/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-crossbeam-channel = "0.5.5"
+crossbeam-channel.workspace = true
 dirs = "5.0.1"
 dissimilar.workspace = true
 itertools.workspace = true
@@ -47,13 +47,15 @@ always-assert = "0.2.0"
 walkdir = "2.3.2"
 semver.workspace = true
 memchr = "2.7.1"
+cargo_metadata.workspace = true
+process-wrap.workspace = true
 
 cfg.workspace = true
-flycheck.workspace = true
 hir-def.workspace = true
 hir-ty.workspace = true
 hir.workspace = true
 ide-db.workspace = true
+intern.workspace = true
 # This should only be used in CLI
 ide-ssr.workspace = true
 ide.workspace = true
@@ -81,20 +83,20 @@ xshell.workspace = true
 
 test-utils.workspace = true
 test-fixture.workspace = true
-mbe.workspace = true
+syntax-bridge.workspace = true
 
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
 sysroot-abi = []
 in-rust-tree = [
-    "sysroot-abi",
-    "syntax/in-rust-tree",
-    "parser/in-rust-tree",
-    "hir/in-rust-tree",
-    "hir-def/in-rust-tree",
-    "hir-ty/in-rust-tree",
-    "load-cargo/in-rust-tree",
+  "sysroot-abi",
+  "syntax/in-rust-tree",
+  "parser/in-rust-tree",
+  "hir/in-rust-tree",
+  "hir-def/in-rust-tree",
+  "hir-ty/in-rust-tree",
+  "load-cargo/in-rust-tree",
 ]
 
 [lints]

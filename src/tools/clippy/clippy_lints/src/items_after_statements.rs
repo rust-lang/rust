@@ -1,5 +1,3 @@
-//! lint when items are used after statements
-
 use clippy_utils::diagnostics::span_lint_hir;
 use rustc_hir::{Block, ItemKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};

@@ -11,13 +11,13 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = transmute::<usize, Box<Never>>(const 1_usize) -> [return: bb1, unwind unreachable];
+-         _1 = std::intrinsics::transmute::<usize, Box<Never>>(const 1_usize) -> [return: bb1, unwind unreachable];
 +         _1 = const 1_usize as std::boxed::Box<Never> (Transmute);
 +         goto -> bb1;
       }
   
       bb1: {
-          _2 = (((_1.0: std::ptr::Unique<Never>).0: std::ptr::NonNull<Never>).0: *const Never);
+          _2 = copy (((_1.0: std::ptr::Unique<Never>).0: std::ptr::NonNull<Never>).0: *const Never);
           PlaceMention((*_2));
           unreachable;
       }

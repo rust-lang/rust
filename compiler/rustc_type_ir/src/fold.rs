@@ -45,9 +45,10 @@
 //! - u.fold_with(folder)
 //! ```
 
-use rustc_index::{Idx, IndexVec};
 use std::mem;
-use tracing::debug;
+
+use rustc_index::{Idx, IndexVec};
+use tracing::instrument;
 
 use crate::data_structures::Lrc;
 use crate::inherent::*;
@@ -90,7 +91,6 @@ pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
     fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         match self.try_fold_with(folder) {
             Ok(t) => t,
-            Err(e) => match e {},
         }
     }
 }
@@ -114,7 +114,6 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
     fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         match self.try_super_fold_with(folder) {
             Ok(t) => t,
-            Err(e) => match e {},
         }
     }
 }
@@ -351,7 +350,7 @@ struct Shifter<I: Interner> {
 }
 
 impl<I: Interner> Shifter<I> {
-    pub fn new(cx: I, amount: u32) -> Self {
+    fn new(cx: I, amount: u32) -> Self {
         Shifter { cx, current_index: ty::INNERMOST, amount }
     }
 }
@@ -414,15 +413,14 @@ pub fn shift_region<I: Interner>(cx: I, region: I::Region, amount: u32) -> I::Re
     }
 }
 
+#[instrument(level = "trace", skip(cx), ret)]
 pub fn shift_vars<I: Interner, T>(cx: I, value: T, amount: u32) -> T
 where
     T: TypeFoldable<I>,
 {
-    debug!("shift_vars(value={:?}, amount={})", value, amount);
-
     if amount == 0 || !value.has_escaping_bound_vars() {
-        return value;
+        value
+    } else {
+        value.fold_with(&mut Shifter::new(cx, amount))
     }
-
-    value.fold_with(&mut Shifter::new(cx, amount))
 }

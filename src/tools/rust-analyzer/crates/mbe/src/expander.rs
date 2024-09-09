@@ -5,17 +5,16 @@
 mod matcher;
 mod transcriber;
 
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Edition, Span};
-use syntax::SmolStr;
 
-use crate::{parser::MetaVarKind, ExpandError, ExpandResult, MatchedArmIndex};
+use crate::{parser::MetaVarKind, ExpandError, ExpandErrorKind, ExpandResult, MatchedArmIndex};
 
 pub(crate) fn expand_rules(
     rules: &[crate::Rule],
     input: &tt::Subtree<Span>,
     marker: impl Fn(&mut Span) + Copy,
-    new_meta_vars: bool,
     call_site: Span,
     def_site_edition: Edition,
 ) -> ExpandResult<(tt::Subtree<Span>, MatchedArmIndex)> {
@@ -27,13 +26,8 @@ pub(crate) fn expand_rules(
             // If we find a rule that applies without errors, we're done.
             // Unconditionally returning the transcription here makes the
             // `test_repeat_bad_var` test fail.
-            let ExpandResult { value, err: transcribe_err } = transcriber::transcribe(
-                &rule.rhs,
-                &new_match.bindings,
-                marker,
-                new_meta_vars,
-                call_site,
-            );
+            let ExpandResult { value, err: transcribe_err } =
+                transcriber::transcribe(&rule.rhs, &new_match.bindings, marker, call_site);
             if transcribe_err.is_none() {
                 return ExpandResult::ok((value, Some(idx as u32)));
             }
@@ -52,7 +46,7 @@ pub(crate) fn expand_rules(
     if let Some((match_, rule, idx)) = match_ {
         // if we got here, there was no match without errors
         let ExpandResult { value, err: transcribe_err } =
-            transcriber::transcribe(&rule.rhs, &match_.bindings, marker, new_meta_vars, call_site);
+            transcriber::transcribe(&rule.rhs, &match_.bindings, marker, call_site);
         ExpandResult { value: (value, idx.try_into().ok()), err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(
@@ -63,7 +57,7 @@ pub(crate) fn expand_rules(
                 },
                 None,
             ),
-            ExpandError::NoMatchingRule,
+            ExpandError::new(call_site, ExpandErrorKind::NoMatchingRule),
         )
     }
 }
@@ -110,12 +104,12 @@ pub(crate) fn expand_rules(
 /// the `Bindings` we should take. We push to the stack when we enter a
 /// repetition.
 ///
-/// In other words, `Bindings` is a *multi* mapping from `SmolStr` to
+/// In other words, `Bindings` is a *multi* mapping from `Symbol` to
 /// `tt::TokenTree`, where the index to select a particular `TokenTree` among
 /// many is not a plain `usize`, but a `&[usize]`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Bindings {
-    inner: FxHashMap<SmolStr, Binding>,
+    inner: FxHashMap<Symbol, Binding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

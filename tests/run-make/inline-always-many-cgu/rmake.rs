@@ -1,8 +1,7 @@
-use run_make_support::regex::Regex;
-use run_make_support::rfs;
-use run_make_support::rustc;
-
 use std::ffi::OsStr;
+
+use run_make_support::regex::Regex;
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").emit("llvm-ir").codegen_units(2).run();

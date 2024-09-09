@@ -1,11 +1,12 @@
 mod buffer;
 
+use buffer::Buffer;
+
 use crate::fmt;
 use crate::io::{
     self, uninlined_slow_read_byte, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom,
     SizeHint, SpecReadByte, DEFAULT_BUF_SIZE,
 };
-use buffer::Buffer;
 
 /// The `BufReader<R>` struct adds buffering to any reader.
 ///
@@ -92,6 +93,42 @@ impl<R: Read> BufReader<R> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: R) -> BufReader<R> {
         BufReader { inner, buf: Buffer::with_capacity(capacity) }
+    }
+}
+
+impl<R: Read + ?Sized> BufReader<R> {
+    /// Attempt to look ahead `n` bytes.
+    ///
+    /// `n` must be less than `capacity`.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// #![feature(bufreader_peek)]
+    /// use std::io::{Read, BufReader};
+    ///
+    /// let mut bytes = &b"oh, hello"[..];
+    /// let mut rdr = BufReader::with_capacity(6, &mut bytes);
+    /// assert_eq!(rdr.peek(2).unwrap(), b"oh");
+    /// let mut buf = [0; 4];
+    /// rdr.read(&mut buf[..]).unwrap();
+    /// assert_eq!(&buf, b"oh, ");
+    /// assert_eq!(rdr.peek(2).unwrap(), b"he");
+    /// let mut s = String::new();
+    /// rdr.read_to_string(&mut s).unwrap();
+    /// assert_eq!(&s, "hello");
+    /// ```
+    #[unstable(feature = "bufreader_peek", issue = "128405")]
+    pub fn peek(&mut self, n: usize) -> io::Result<&[u8]> {
+        assert!(n <= self.capacity());
+        while n > self.buf.buffer().len() {
+            if self.buf.pos() > 0 {
+                self.buf.backshift();
+            }
+            self.buf.read_more(&mut self.inner)?;
+            debug_assert_eq!(self.buf.pos(), 0);
+        }
+        Ok(&self.buf.buffer()[..n])
     }
 }
 

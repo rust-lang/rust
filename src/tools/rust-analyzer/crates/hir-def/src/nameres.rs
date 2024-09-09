@@ -59,14 +59,15 @@ mod tests;
 
 use std::ops::Deref;
 
-use base_db::{CrateId, FileId};
+use base_db::CrateId;
 use hir_expand::{
     name::Name, proc_macro::ProcMacroKind, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId,
 };
+use intern::Symbol;
 use itertools::Itertools;
 use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, FileAstId, ROOT_ERASED_FILE_AST_ID};
+use span::{Edition, EditionedFileId, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
@@ -144,15 +145,13 @@ struct DefMapCrateData {
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
-    /// The error that occurred when failing to load the proc-macro dll.
-    proc_macro_loading_error: Option<Box<str>>,
 
     /// Custom attributes registered with `#![register_attr]`.
-    registered_attrs: Vec<SmolStr>,
+    registered_attrs: Vec<Symbol>,
     /// Custom tool modules registered with `#![register_tool]`.
-    registered_tools: Vec<SmolStr>,
+    registered_tools: Vec<Symbol>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
-    unstable_features: FxHashSet<SmolStr>,
+    unstable_features: FxHashSet<Symbol>,
     /// #[rustc_coherence_is_core]
     rustc_coherence_is_core: bool,
     no_core: bool,
@@ -168,9 +167,8 @@ impl DefMapCrateData {
             extern_prelude: FxIndexMap::default(),
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
-            proc_macro_loading_error: None,
             registered_attrs: Vec::new(),
-            registered_tools: PREDEFINED_TOOLS.into(),
+            registered_tools: PREDEFINED_TOOLS.iter().map(|it| Symbol::intern(it)).collect(),
             unstable_features: FxHashSet::default(),
             rustc_coherence_is_core: false,
             no_core: false,
@@ -188,7 +186,6 @@ impl DefMapCrateData {
             registered_attrs,
             registered_tools,
             unstable_features,
-            proc_macro_loading_error: _,
             rustc_coherence_is_core: _,
             no_core: _,
             no_std: _,
@@ -243,14 +240,14 @@ impl std::ops::Index<LocalModuleId> for DefMap {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ModuleOrigin {
     CrateRoot {
-        definition: FileId,
+        definition: EditionedFileId,
     },
     /// Note that non-inline modules, by definition, live inside non-macro file.
     File {
         is_mod_rs: bool,
         declaration: FileAstId<ast::Module>,
         declaration_tree_id: ItemTreeId<Mod>,
-        definition: FileId,
+        definition: EditionedFileId,
     },
     Inline {
         definition_tree_id: ItemTreeId<Mod>,
@@ -276,7 +273,7 @@ impl ModuleOrigin {
         }
     }
 
-    pub fn file_id(&self) -> Option<FileId> {
+    pub fn file_id(&self) -> Option<EditionedFileId> {
         match self {
             ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
                 Some(*definition)
@@ -323,13 +320,17 @@ pub struct ModuleData {
     ///
     /// [`None`] for block modules because they are always its `DefMap`'s root.
     pub parent: Option<LocalModuleId>,
-    pub children: FxHashMap<Name, LocalModuleId>,
+    pub children: FxIndexMap<Name, LocalModuleId>,
     pub scope: ItemScope,
 }
 
 impl DefMap {
     /// The module id of a crate or block root.
     pub const ROOT: LocalModuleId = LocalModuleId::from_raw(la_arena::RawIdx::from_u32(0));
+
+    pub fn edition(&self) -> Edition {
+        self.data.edition
+    }
 
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, crate_id: CrateId) -> Arc<DefMap> {
         let crate_graph = db.crate_graph();
@@ -338,7 +339,7 @@ impl DefMap {
         let _p = tracing::info_span!("crate_def_map_query", ?name).entered();
 
         let module_data = ModuleData::new(
-            ModuleOrigin::CrateRoot { definition: krate.root_file_id },
+            ModuleOrigin::CrateRoot { definition: krate.root_file_id() },
             Visibility::Public,
         );
 
@@ -349,7 +350,7 @@ impl DefMap {
             None,
         );
         let def_map =
-            collector::collect_defs(db, def_map, TreeId::new(krate.root_file_id.into(), None));
+            collector::collect_defs(db, def_map, TreeId::new(krate.root_file_id().into(), None));
 
         Arc::new(def_map)
     }
@@ -432,7 +433,9 @@ impl DefMap {
     pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = LocalModuleId> + '_ {
         self.modules
             .iter()
-            .filter(move |(_id, data)| data.origin.file_id() == Some(file_id))
+            .filter(move |(_id, data)| {
+                data.origin.file_id().map(EditionedFileId::file_id) == Some(file_id)
+            })
             .map(|(id, _data)| id)
     }
 
@@ -447,15 +450,15 @@ impl DefMap {
         self.derive_helpers_in_scope.get(&id.map(|it| it.upcast())).map(Deref::deref)
     }
 
-    pub fn registered_tools(&self) -> &[SmolStr] {
+    pub fn registered_tools(&self) -> &[Symbol] {
         &self.data.registered_tools
     }
 
-    pub fn registered_attrs(&self) -> &[SmolStr] {
+    pub fn registered_attrs(&self) -> &[Symbol] {
         &self.data.registered_attrs
     }
 
-    pub fn is_unstable_feature_enabled(&self, feature: &str) -> bool {
+    pub fn is_unstable_feature_enabled(&self, feature: &Symbol) -> bool {
         self.data.unstable_features.contains(feature)
     }
 
@@ -469,10 +472,6 @@ impl DefMap {
 
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
         self.data.fn_proc_macro_mapping.get(&id).copied()
-    }
-
-    pub fn proc_macro_loading_error(&self) -> Option<&str> {
-        self.data.proc_macro_loading_error.as_deref()
     }
 
     pub fn krate(&self) -> CrateId {
@@ -555,7 +554,7 @@ impl DefMap {
             for (name, child) in
                 map.modules[module].children.iter().sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
             {
-                let path = format!("{path}::{}", name.display(db.upcast()));
+                let path = format!("{path}::{}", name.display(db.upcast(), Edition::LATEST));
                 buf.push('\n');
                 go(buf, db, map, &path, *child);
             }
@@ -593,10 +592,8 @@ impl DefMap {
         self.data.extern_prelude.iter().map(|(name, &def)| (name, def))
     }
 
-    pub(crate) fn macro_use_prelude(
-        &self,
-    ) -> impl Iterator<Item = (&Name, (MacroId, Option<ExternCrateId>))> + '_ {
-        self.macro_use_prelude.iter().map(|(name, &def)| (name, def))
+    pub(crate) fn macro_use_prelude(&self) -> &FxHashMap<Name, (MacroId, Option<ExternCrateId>)> {
+        &self.macro_use_prelude
     }
 
     pub(crate) fn resolve_path(
@@ -668,7 +665,7 @@ impl ModuleData {
             origin,
             visibility,
             parent: None,
-            children: FxHashMap::default(),
+            children: Default::default(),
             scope: ItemScope::default(),
         }
     }

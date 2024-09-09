@@ -1,13 +1,10 @@
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_middle::mir::{Body, TerminatorKind};
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
-use rustc_mir_dataflow::{move_path_children_matching, Analysis, MaybeReachable, MoveDataParamEnv};
+use rustc_mir_dataflow::{move_path_children_matching, Analysis, MaybeReachable};
 use rustc_target::abi::FieldIdx;
-
-use crate::MirPass;
 
 /// Removes `Drop` terminators whose target is known to be uninitialized at
 /// that point.
@@ -19,14 +16,13 @@ use crate::MirPass;
 /// [#90770]: https://github.com/rust-lang/rust/issues/90770
 pub struct RemoveUninitDrops;
 
-impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
+impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
         let move_data =
             MoveData::gather_moves(body, tcx, param_env, |ty| ty.needs_drop(tcx, param_env));
 
-        let mdpe = MoveDataParamEnv { move_data, param_env };
-        let mut maybe_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
+        let mut maybe_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
             .into_engine(tcx, body)
             .pass_name("remove_uninit_drops")
             .iterate_to_fixpoint()
@@ -41,7 +37,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
             let MaybeReachable::Reachable(maybe_inits) = maybe_inits.get() else { continue };
 
             // If there's no move path for the dropped place, it's probably a `Deref`. Let it alone.
-            let LookupResult::Exact(mpi) = mdpe.move_data.rev_lookup.find(place.as_ref()) else {
+            let LookupResult::Exact(mpi) = move_data.rev_lookup.find(place.as_ref()) else {
                 continue;
             };
 
@@ -49,7 +45,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
                 tcx,
                 param_env,
                 maybe_inits,
-                &mdpe.move_data,
+                &move_data,
                 place.ty(body, tcx).ty,
                 mpi,
             );

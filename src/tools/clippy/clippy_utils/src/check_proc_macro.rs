@@ -123,16 +123,14 @@ fn qpath_search_pat(path: &QPath<'_>) -> (Pat, Pat) {
 
 fn path_search_pat(path: &Path<'_>) -> (Pat, Pat) {
     let (head, tail) = match path.segments {
-        [head, .., tail] => (head, tail),
-        [p] => (p, p),
         [] => return (Pat::Str(""), Pat::Str("")),
+        [p] => (Pat::Sym(p.ident.name), p),
+        // QPath::Resolved can have a path that looks like `<Foo as Bar>::baz` where
+        // the path (`Bar::baz`) has it's span covering the whole QPath.
+        [.., tail] => (Pat::Str(""), tail),
     };
     (
-        if head.ident.name == kw::PathRoot {
-            Pat::Str("::")
-        } else {
-            Pat::Sym(head.ident.name)
-        },
+        head,
         if tail.args.is_some() {
             Pat::Str(">")
         } else {

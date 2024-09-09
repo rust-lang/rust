@@ -349,7 +349,6 @@ macro_rules! make_mir_visitor {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
                         } |
-                        ty::InstanceKind::CoroutineKindShim { coroutine_def_id: _def_id } |
                         ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, None) |
                         ty::InstanceKind::DropGlue(_def_id, None) => {}
 
@@ -682,13 +681,13 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    Rvalue::AddressOf(m, path) => {
+                    Rvalue::RawPtr(m, path) => {
                         let ctx = match m {
                             Mutability::Mut => PlaceContext::MutatingUse(
-                                MutatingUseContext::AddressOf
+                                MutatingUseContext::RawBorrow
                             ),
                             Mutability::Not => PlaceContext::NonMutatingUse(
-                                NonMutatingUseContext::AddressOf
+                                NonMutatingUseContext::RawBorrow
                             ),
                         };
                         self.visit_place(path, ctx, location);
@@ -1066,9 +1065,11 @@ macro_rules! super_body {
 
         $self.visit_span($(& $mutability)? $body.span);
 
-        for const_ in &$($mutability)? $body.required_consts {
-            let location = Location::START;
-            $self.visit_const_operand(const_, location);
+        if let Some(required_consts) = &$($mutability)? $body.required_consts {
+            for const_ in required_consts {
+                let location = Location::START;
+                $self.visit_const_operand(const_, location);
+            }
         }
     }
 }
@@ -1297,8 +1298,8 @@ pub enum NonMutatingUseContext {
     /// FIXME: do we need to distinguish shallow and deep fake borrows? In fact, do we need to
     /// distinguish fake and normal deep borrows?
     FakeBorrow,
-    /// AddressOf for *const pointer.
-    AddressOf,
+    /// `&raw const`.
+    RawBorrow,
     /// PlaceMention statement.
     ///
     /// This statement is executed as a check that the `Place` is live without reading from it,
@@ -1331,8 +1332,8 @@ pub enum MutatingUseContext {
     Drop,
     /// Mutable borrow.
     Borrow,
-    /// AddressOf for *mut pointer.
-    AddressOf,
+    /// `&raw mut`.
+    RawBorrow,
     /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
     /// ```ignore (illustrative)
@@ -1384,8 +1385,8 @@ impl PlaceContext {
     pub fn is_address_of(&self) -> bool {
         matches!(
             self,
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
-                | PlaceContext::MutatingUse(MutatingUseContext::AddressOf)
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow)
+                | PlaceContext::MutatingUse(MutatingUseContext::RawBorrow)
         )
     }
 

@@ -30,16 +30,15 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
-use super::FnCtxt;
+use std::iter;
 
-use crate::expr_use_visitor as euv;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
-use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
@@ -49,14 +48,13 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::sym;
-use rustc_span::{BytePos, Pos, Span, Symbol};
-use rustc_trait_selection::infer::InferCtxtExt;
-
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_span::{sym, BytePos, Pos, Span, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
+use rustc_trait_selection::infer::InferCtxtExt;
+use tracing::{debug, instrument};
 
-use std::iter;
+use super::FnCtxt;
+use crate::expr_use_visitor as euv;
 
 /// Describe the relationship between the paths of two places
 /// eg:
@@ -76,7 +74,7 @@ enum PlaceAncestryRelation {
 type InferredCaptureInformation<'tcx> = Vec<(Place<'tcx>, ty::CaptureInfo)>;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {
+    pub(crate) fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {
         InferBorrowKindVisitor { fcx: self }.visit_body(body);
 
         // it's our job to process these.
@@ -221,19 +219,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `async-await/async-closures/force-move-due-to-inferred-kind.rs`.
         //
         // 2. If the coroutine-closure is forced to be `FnOnce` due to the way it
-        // uses its upvars, but not *all* upvars would force the closure to `FnOnce`.
+        // uses its upvars (e.g. it consumes a non-copy value), but not *all* upvars
+        // would force the closure to `FnOnce`.
         // See the test: `async-await/async-closures/force-move-due-to-actually-fnonce.rs`.
         //
         // This would lead to an impossible to satisfy situation, since `AsyncFnOnce`
         // coroutine bodies can't borrow from their parent closure. To fix this,
         // we force the inner coroutine to also be `move`. This only matters for
         // coroutine-closures that are `move` since otherwise they themselves will
-        // be borrowing from the outer environment, so there's no self-borrows occuring.
-        //
-        // One *important* note is that we do a call to `process_collected_capture_information`
-        // to eagerly test whether the coroutine would end up `FnOnce`, but we do this
-        // *before* capturing all the closure args by-value below, since that would always
-        // cause the analysis to return `FnOnce`.
+        // be borrowing from the outer environment, so there's no self-borrows occurring.
         if let UpvarArgs::Coroutine(..) = args
             && let hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) =
                 self.tcx.coroutine_kind(closure_def_id).expect("coroutine should have kind")
@@ -248,19 +242,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 capture_clause = hir::CaptureBy::Value { move_kw };
             }
             // (2.) The way that the closure uses its upvars means it's `FnOnce`.
-            else if let (_, ty::ClosureKind::FnOnce, _) = self
-                .process_collected_capture_information(
-                    capture_clause,
-                    &delegate.capture_information,
-                )
-            {
+            else if self.coroutine_body_consumes_upvars(closure_def_id, body) {
                 capture_clause = hir::CaptureBy::Value { move_kw };
             }
         }
 
         // As noted in `lower_coroutine_body_with_moved_arguments`, we default the capture mode
         // to `ByRef` for the `async {}` block internal to async fns/closure. This means
-        // that we would *not* be moving all of the parameters into the async block by default.
+        // that we would *not* be moving all of the parameters into the async block in all cases.
+        // For example, when one of the arguments is `Copy`, we turn a consuming use into a copy of
+        // a reference, so for `async fn x(t: i32) {}`, we'd only take a reference to `t`.
         //
         // We force all of these arguments to be captured by move before we do expr use analysis.
         //
@@ -433,7 +424,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx,
                             upvar_ty,
                             capture,
-                            if needs_ref { Some(closure_env_region) } else { child_capture.region },
+                            if needs_ref {
+                                closure_env_region
+                            } else {
+                                self.tcx.lifetimes.re_erased
+                            },
                         );
                     },
                 ),
@@ -537,6 +532,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Determines whether the body of the coroutine uses its upvars in a way that
+    /// consumes (i.e. moves) the value, which would force the coroutine to `FnOnce`.
+    /// In a more detailed comment above, we care whether this happens, since if
+    /// this happens, we want to force the coroutine to move all of the upvars it
+    /// would've borrowed from the parent coroutine-closure.
+    ///
+    /// This only really makes sense to be called on the child coroutine of a
+    /// coroutine-closure.
+    fn coroutine_body_consumes_upvars(
+        &self,
+        coroutine_def_id: LocalDefId,
+        body: &'tcx hir::Body<'tcx>,
+    ) -> bool {
+        // This block contains argument capturing details. Since arguments
+        // aren't upvars, we do not care about them for determining if the
+        // coroutine body actually consumes its upvars.
+        let hir::ExprKind::Block(&hir::Block { expr: Some(body), .. }, None) = body.value.kind
+        else {
+            bug!();
+        };
+        // Specifically, we only care about the *real* body of the coroutine.
+        // We skip out into the drop-temps within the block of the body in order
+        // to skip over the args of the desugaring.
+        let hir::ExprKind::DropTemps(body) = body.kind else {
+            bug!();
+        };
+
+        let mut delegate = InferBorrowKind {
+            closure_def_id: coroutine_def_id,
+            capture_information: Default::default(),
+            fake_reads: Default::default(),
+        };
+
+        let _ = euv::ExprUseVisitor::new(
+            &FnCtxt::new(self, self.tcx.param_env(coroutine_def_id), coroutine_def_id),
+            &mut delegate,
+        )
+        .consume_expr(body);
+
+        let (_, kind, _) = self.process_collected_capture_information(
+            hir::CaptureBy::Ref,
+            &delegate.capture_information,
+        );
+
+        matches!(kind, ty::ClosureKind::FnOnce)
+    }
+
     // Returns a list of `Ty`s for each upvar.
     fn final_upvar_tys(&self, closure_id: LocalDefId) -> Vec<Ty<'tcx>> {
         self.typeck_results
@@ -548,7 +590,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 debug!(?captured_place.place, ?upvar_ty, ?capture, ?captured_place.mutability);
 
-                apply_capture_kind_on_capture_ty(self.tcx, upvar_ty, capture, captured_place.region)
+                apply_capture_kind_on_capture_ty(
+                    self.tcx,
+                    upvar_ty,
+                    capture,
+                    self.tcx.lifetimes.re_erased,
+                )
             })
             .collect()
     }
@@ -736,13 +783,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let Some(min_cap_list) = root_var_min_capture_list.get_mut(&var_hir_id) else {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
-                let min_cap_list = vec![ty::CapturedPlace {
-                    var_ident,
-                    place,
-                    info: capture_info,
-                    mutability,
-                    region: None,
-                }];
+                let min_cap_list =
+                    vec![ty::CapturedPlace { var_ident, place, info: capture_info, mutability }];
                 root_var_min_capture_list.insert(var_hir_id, min_cap_list);
                 continue;
             };
@@ -835,31 +877,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Only need to insert when we don't have an ancestor in the existing min capture list
             if !ancestor_found {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
-                let captured_place = ty::CapturedPlace {
-                    var_ident,
-                    place,
-                    info: updated_capture_info,
-                    mutability,
-                    region: None,
-                };
+                let captured_place =
+                    ty::CapturedPlace { var_ident, place, info: updated_capture_info, mutability };
                 min_cap_list.push(captured_place);
-            }
-        }
-
-        // For each capture that is determined to be captured by ref, add region info.
-        for (_, captures) in &mut root_var_min_capture_list {
-            for capture in captures {
-                match capture.info.capture_kind {
-                    ty::UpvarCapture::ByRef(_) => {
-                        let PlaceBase::Upvar(upvar_id) = capture.place.base else {
-                            bug!("expected upvar")
-                        };
-                        let origin = UpvarRegion(upvar_id, closure_span);
-                        let upvar_region = self.next_region_var(origin);
-                        capture.region = Some(upvar_region);
-                    }
-                    _ => (),
-                }
             }
         }
 
@@ -1156,7 +1176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx,
                     ty,
                     max_capture_info.capture_kind,
-                    Some(self.tcx.lifetimes.re_erased),
+                    self.tcx.lifetimes.re_erased,
                 )
             }
         };
@@ -1178,7 +1198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 capture.place.ty(),
                 capture.info.capture_kind,
-                Some(self.tcx.lifetimes.re_erased),
+                self.tcx.lifetimes.re_erased,
             );
 
             // Checks if a capture implements any of the auto traits
@@ -1896,13 +1916,11 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     capture_kind: UpvarCapture,
-    region: Option<ty::Region<'tcx>>,
+    region: ty::Region<'tcx>,
 ) -> Ty<'tcx> {
     match capture_kind {
         ty::UpvarCapture::ByValue => ty,
-        ty::UpvarCapture::ByRef(kind) => {
-            Ty::new_ref(tcx, region.unwrap(), ty, kind.to_mutbl_lossy())
-        }
+        ty::UpvarCapture::ByRef(kind) => Ty::new_ref(tcx, region, ty, kind.to_mutbl_lossy()),
     }
 }
 

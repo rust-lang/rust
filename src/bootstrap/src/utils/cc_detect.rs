@@ -87,15 +87,28 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
 }
 
 pub fn find(build: &Build) {
-    // For all targets we're going to need a C compiler for building some shims
-    // and such as well as for being a linker for Rust code.
-    let targets = build
-        .targets
-        .iter()
-        .chain(&build.hosts)
-        .cloned()
-        .chain(iter::once(build.build))
-        .collect::<HashSet<_>>();
+    let targets: HashSet<_> = match build.config.cmd {
+        // We don't need to check cross targets for these commands.
+        crate::Subcommand::Clean { .. }
+        | crate::Subcommand::Suggest { .. }
+        | crate::Subcommand::Format { .. }
+        | crate::Subcommand::Setup { .. } => {
+            build.hosts.iter().cloned().chain(iter::once(build.build)).collect()
+        }
+
+        _ => {
+            // For all targets we're going to need a C compiler for building some shims
+            // and such as well as for being a linker for Rust code.
+            build
+                .targets
+                .iter()
+                .chain(&build.hosts)
+                .cloned()
+                .chain(iter::once(build.build))
+                .collect()
+        }
+    };
+
     for target in targets.into_iter() {
         find_target(build, target);
     }
@@ -182,15 +195,15 @@ fn default_compiler(
                 return None;
             }
 
-            let cmd = BootstrapCommand::from(c.to_command());
-            let output = cmd.capture_stdout().arg("--version").run(build).stdout();
+            let mut cmd = BootstrapCommand::from(c.to_command());
+            let output = cmd.arg("--version").run_capture_stdout(build).stdout();
             let i = output.find(" 4.")?;
             match output[i + 3..].chars().next().unwrap() {
                 '0'..='6' => {}
                 _ => return None,
             }
             let alternative = format!("e{gnu_compiler}");
-            if command(&alternative).capture().run(build).is_success() {
+            if command(&alternative).run_capture(build).is_success() {
                 Some(PathBuf::from(alternative))
             } else {
                 None

@@ -1,8 +1,8 @@
 use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
-    ast::{self, AstNode, HasGenericParams, HasVisibility},
-    match_ast, SyntaxNode,
+    ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
+    match_ast, ted, SyntaxKind, SyntaxNode,
 };
 
 use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
@@ -83,10 +83,14 @@ fn edit_struct_def(
     tuple_fields: ast::TupleFieldList,
     names: Vec<ast::Name>,
 ) {
-    let record_fields = tuple_fields
-        .fields()
-        .zip(names)
-        .filter_map(|(f, name)| Some(ast::make::record_field(f.visibility(), name, f.ty()?)));
+    let record_fields = tuple_fields.fields().zip(names).filter_map(|(f, name)| {
+        let field = ast::make::record_field(f.visibility(), name, f.ty()?).clone_for_update();
+        ted::insert_all(
+            ted::Position::first_child_of(field.syntax()),
+            f.attrs().map(|attr| attr.syntax().clone_subtree().clone_for_update().into()).collect(),
+        );
+        Some(field)
+    });
     let record_fields = ast::make::record_field_list(record_fields);
     let tuple_fields_text_range = tuple_fields.syntax().text_range();
 
@@ -100,7 +104,9 @@ fn edit_struct_def(
                 ast::make::tokens::single_newline().text(),
             );
             edit.insert(tuple_fields_text_range.start(), w.syntax().text());
-            edit.insert(tuple_fields_text_range.start(), ",");
+            if !w.syntax().last_token().is_some_and(|t| t.kind() == SyntaxKind::COMMA) {
+                edit.insert(tuple_fields_text_range.start(), ",");
+            }
             edit.insert(
                 tuple_fields_text_range.start(),
                 ast::make::tokens::single_newline().text(),
@@ -188,7 +194,7 @@ fn edit_struct_references(
     };
 
     for (file_id, refs) in usages {
-        edit.edit_file(file_id);
+        edit.edit_file(file_id.file_id());
         for r in refs {
             for node in r.name.syntax().ancestors() {
                 if edit_node(edit, node).is_some() {
@@ -213,7 +219,7 @@ fn edit_field_references(
         let def = Definition::Field(field);
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
-            edit.edit_file(file_id);
+            edit.edit_file(file_id.file_id());
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref() {
                     edit.replace(ctx.sema.original_range(name_ref.syntax()).range, name.text());
@@ -879,6 +885,42 @@ use crate::{A::Variant, Inner};
 fn f() {
     let a = Variant { field1: Inner };
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn where_clause_with_trailing_comma() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+trait Foo {}
+
+struct Bar$0<T>(pub T)
+where
+    T: Foo,;
+"#,
+            r#"
+trait Foo {}
+
+struct Bar<T>
+where
+    T: Foo,
+{ pub field1: T }
+
+"#,
+        );
+    }
+
+    #[test]
+    fn fields_with_attrs() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+pub struct $0Foo(#[my_custom_attr] u32);
+"#,
+            r#"
+pub struct Foo { #[my_custom_attr] field1: u32 }
 "#,
         );
     }

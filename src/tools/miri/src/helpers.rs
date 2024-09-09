@@ -12,13 +12,14 @@ use rustc_apfloat::Float;
 use rustc_hir::{
     def::{DefKind, Namespace},
     def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE},
+    Safety,
 };
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::MaybeResult;
+use rustc_middle::ty::layout::{FnAbiOf, MaybeResult};
 use rustc_middle::ty::{
     self,
     layout::{LayoutOf, TyAndLayout},
@@ -370,6 +371,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         path_ty_layout(this, &["std", "sys", "pal", "windows", "c", name])
     }
 
+    /// Helper function to get `TyAndLayout` of an array that consists of `libc` type.
+    fn libc_array_ty_layout(&self, name: &str, size: u64) -> TyAndLayout<'tcx> {
+        let this = self.eval_context_ref();
+        let elem_ty_layout = this.libc_ty_layout(name);
+        let array_ty = Ty::new_array(*this.tcx, elem_ty_layout.ty, size);
+        this.layout_of(array_ty).unwrap()
+    }
+
     /// Project to the given *named* field (which must be a struct or union type).
     fn project_field_named<P: Projectable<'tcx, Provenance>>(
         &self,
@@ -492,48 +501,38 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         f: ty::Instance<'tcx>,
         caller_abi: Abi,
-        args: &[Immediate<Provenance>],
+        args: &[ImmTy<'tcx>],
         dest: Option<&MPlaceTy<'tcx>>,
         stack_pop: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let param_env = ty::ParamEnv::reveal_all(); // in Miri this is always the param_env we use... and this.param_env is private.
-        let callee_abi = f.ty(*this.tcx, param_env).fn_sig(*this.tcx).abi();
-        if callee_abi != caller_abi {
-            throw_ub_format!(
-                "calling a function with ABI {} using caller ABI {}",
-                callee_abi.name(),
-                caller_abi.name()
-            )
-        }
 
-        // Push frame.
+        // Get MIR.
         let mir = this.load_mir(f.def, None)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
             None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?),
         };
-        this.push_stack_frame(f, mir, &dest, stack_pop)?;
 
-        // Initialize arguments.
-        let mut callee_args = this.frame().body.args_iter();
-        for arg in args {
-            let local = callee_args
-                .next()
-                .ok_or_else(|| err_ub_format!("callee has fewer arguments than expected"))?;
-            // Make the local live, and insert the initial value.
-            this.storage_live(local)?;
-            let callee_arg = this.local_to_place(local)?;
-            this.write_immediate(*arg, &callee_arg)?;
-        }
-        if callee_args.next().is_some() {
-            throw_ub_format!("callee has more arguments than expected");
-        }
+        // Construct a function pointer type representing the caller perspective.
+        let sig = this.tcx.mk_fn_sig(
+            args.iter().map(|a| a.layout.ty),
+            dest.layout.ty,
+            /*c_variadic*/ false,
+            Safety::Safe,
+            caller_abi,
+        );
+        let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
 
-        // Initialize remaining locals.
-        this.storage_live_for_always_live_locals()?;
-
-        Ok(())
+        this.init_stack_frame(
+            f,
+            mir,
+            caller_fn_abi,
+            &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
+            /*with_caller_location*/ false,
+            &dest,
+            stack_pop,
+        )
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 2nd parameter
@@ -606,7 +605,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         // The part between the end_ptr and the end of the place is also frozen.
         // So pretend there is a 0-sized `UnsafeCell` at the end.
-        unsafe_cell_action(&place.ptr().offset(size, this)?, Size::ZERO)?;
+        unsafe_cell_action(&place.ptr().wrapping_offset(size, this), Size::ZERO)?;
         // Done!
         return Ok(());
 
@@ -631,14 +630,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 self.ecx
             }
 
-            fn aggregate_field_order(memory_index: &IndexVec<FieldIdx, u32>, idx: usize) -> usize {
-                // We need to do an *inverse* lookup: find the field that has position `idx` in memory order.
-                for (src_field, &mem_pos) in memory_index.iter_enumerated() {
-                    if mem_pos as usize == idx {
-                        return src_field.as_usize();
-                    }
-                }
-                panic!("invalid `memory_index`, could not find {}-th field in memory order", idx);
+            fn aggregate_field_iter(
+                memory_index: &IndexVec<FieldIdx, u32>,
+            ) -> impl Iterator<Item = FieldIdx> + 'static {
+                let inverse_memory_index = memory_index.invert_bijective_mapping();
+                inverse_memory_index.into_iter()
             }
 
             // Hook to detect `UnsafeCell`.
@@ -975,7 +971,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = this.get_ptr_alloc(ptr.offset(len, this)?, size1)?.unwrap(); // not a ZST, so we will get a result
+            let alloc = this.get_ptr_alloc(ptr.wrapping_offset(len, this), size1)?.unwrap(); // not a ZST, so we will get a result
             let byte = alloc.read_integer(alloc_range(Size::ZERO, size1))?.to_u8()?;
             if byte == 0 {
                 break;
@@ -1039,7 +1035,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 break;
             } else {
                 wchars.push(wchar_int.try_into().unwrap());
-                ptr = ptr.offset(size, this)?;
+                ptr = ptr.wrapping_offset(size, this);
             }
         }
 
@@ -1114,12 +1110,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Make an attempt to get at the instance of the function this is inlined from.
         let instance: Option<_> = try {
             let scope = frame.current_source_info()?.scope;
-            let inlined_parent = frame.body.source_scopes[scope].inlined_parent_scope?;
-            let source = &frame.body.source_scopes[inlined_parent];
+            let inlined_parent = frame.body().source_scopes[scope].inlined_parent_scope?;
+            let source = &frame.body().source_scopes[inlined_parent];
             source.inlined.expect("inlined_parent_scope points to scope without inline info").0
         };
         // Fall back to the instance of the function itself.
-        let instance = instance.unwrap_or(frame.instance);
+        let instance = instance.unwrap_or(frame.instance());
         // Now check the crate it is in. We could try to be clever here and e.g. check if this is
         // the same crate as `start_fn`, but that would not work for running std tests in Miri, so
         // we'd need some more hacks anyway. So we just check the name of the crate. If someone
@@ -1359,9 +1355,9 @@ impl<'tcx> MiriMachine<'tcx> {
 
     /// This is the source of truth for the `is_user_relevant` flag in our `FrameExtra`.
     pub fn is_user_relevant(&self, frame: &Frame<'tcx, Provenance>) -> bool {
-        let def_id = frame.instance.def_id();
+        let def_id = frame.instance().def_id();
         (def_id.is_local() || self.local_crates.contains(&def_id.krate))
-            && !frame.instance.def.requires_caller_location(self.tcx)
+            && !frame.instance().def.requires_caller_location(self.tcx)
     }
 }
 

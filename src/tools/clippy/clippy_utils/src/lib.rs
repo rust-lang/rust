@@ -5,13 +5,11 @@
 #![feature(f16)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
@@ -127,7 +125,7 @@ use rustc_span::{sym, Span};
 use rustc_target::abi::Integer;
 use visitors::Visitable;
 
-use crate::consts::{constant, mir_to_const, Constant};
+use crate::consts::{mir_to_const, ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
@@ -151,6 +149,7 @@ macro_rules! extract_msrv_attr {
 
 /// If the given expression is a local binding, find the initializer expression.
 /// If that initializer expression is another local binding, find its initializer again.
+///
 /// This process repeats as long as possible (but usually no more than once). Initializer
 /// expressions with adjustments are ignored. If this is not desired, use [`find_binding_init`]
 /// instead.
@@ -181,6 +180,7 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 }
 
 /// Finds the initializer expression for a local binding. Returns `None` if the binding is mutable.
+///
 /// By only considering immutable bindings, we guarantee that the returned expression represents the
 /// value of the binding wherever it is referenced.
 ///
@@ -212,20 +212,24 @@ pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
     false
 }
 
-/// Returns `true` if the given `HirId` is inside a constant context.
+/// Checks if we are currently in a const context (e.g. `const fn`, `static`/`const` initializer).
 ///
-/// This is the same as `is_inside_always_const_context`, but also includes
-/// `const fn`.
+/// The current context is determined based on the current body which is set before calling a lint's
+/// entry point (any function on `LateLintPass`). If you need to check in a different context use
+/// `tcx.hir().is_inside_const_context(_)`.
 ///
-/// # Example
-///
-/// ```rust,ignore
-/// if in_constant(cx, expr.hir_id) {
-///     // Do something
-/// }
-/// ```
-pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
-    cx.tcx.hir().is_inside_const_context(id)
+/// Do not call this unless the `LateContext` has an enclosing body. For release build this case
+/// will safely return `false`, but debug builds will ICE. Note that `check_expr`, `check_block`,
+/// `check_pat` and a few other entry points will always have an enclosing body. Some entry points
+/// like `check_path` or `check_ty` may or may not have one.
+pub fn is_in_const_context(cx: &LateContext<'_>) -> bool {
+    debug_assert!(cx.enclosing_body.is_some(), "`LateContext` has no enclosing body");
+    cx.enclosing_body.is_some_and(|id| {
+        cx.tcx
+            .hir()
+            .body_const_context(cx.tcx.hir().body_owner_def_id(id))
+            .is_some()
+    })
 }
 
 /// Returns `true` if the given `HirId` is inside an always constant context.
@@ -429,11 +433,11 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         })
 }
 
-/// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
+/// THIS METHOD IS DEPRECATED. Matches a `QPath` against a slice of segment string literals.
+///
+/// This method is deprecated and will eventually be removed since it does not match against the
 /// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
 /// `QPath::Resolved.1.res.opt_def_id()`.
-///
-/// Matches a `QPath` against a slice of segment string literals.
 ///
 /// There is also `match_path` if you are dealing with a `rustc_hir::Path` instead of a
 /// `rustc_hir::QPath`.
@@ -483,11 +487,11 @@ pub fn is_path_diagnostic_item<'tcx>(
     path_def_id(cx, maybe_path).map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
-/// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
+/// THIS METHOD IS DEPRECATED. Matches a `Path` against a slice of segment string literals.
+///
+/// This method is deprecated and will eventually be removed since it does not match against the
 /// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
 /// `QPath::Resolved.1.res.opt_def_id()`.
-///
-/// Matches a `Path` against a slice of segment string literals.
 ///
 /// There is also `match_qpath` if you are dealing with a `rustc_hir::QPath` instead of a
 /// `rustc_hir::Path`.
@@ -590,9 +594,8 @@ fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<It
         "u128" => SimplifiedType::Uint(UintTy::U128),
         "f32" => SimplifiedType::Float(FloatTy::F32),
         "f64" => SimplifiedType::Float(FloatTy::F64),
-        #[allow(trivial_casts)]
         _ => {
-            return Result::<_, rustc_errors::ErrorGuaranteed>::Ok(&[] as &[_])
+            return Result::<&[_], rustc_errors::ErrorGuaranteed>::Ok(&[])
                 .into_iter()
                 .flatten()
                 .copied();
@@ -904,6 +907,7 @@ pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) ->
 }
 
 /// Returns true if the expr is equal to `Default::default()` of it's type when evaluated.
+///
 /// It doesn't cover all cases, for example indirect function calls (some of std
 /// functions are supported) but it is the best we have.
 pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
@@ -1060,6 +1064,7 @@ impl std::ops::BitOrAssign for CaptureKind {
 }
 
 /// Given an expression referencing a local, determines how it would be captured in a closure.
+///
 /// Note as this will walk up to parent expressions until the capture can be determined it should
 /// only be used while making a closure somewhere a value is consumed. e.g. a block, match arm, or
 /// function argument (other than a receiver).
@@ -1580,8 +1585,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
                 && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
-                && let Some(min_const) = mir_to_const(cx, Const::from_ty_const(min_val, bnd_ty, cx.tcx))
-                && let Some(start_const) = constant(cx, cx.typeck_results(), start)
+                && let Some(min_const) = mir_to_const(cx.tcx, Const::from_ty_const(min_val, bnd_ty, cx.tcx))
+                && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
             {
                 start_const == min_const
             } else {
@@ -1593,8 +1598,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                 if let rustc_ty::Adt(_, subst) = ty.kind()
                     && let bnd_ty = subst.type_at(0)
                     && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
-                    && let Some(max_const) = mir_to_const(cx, Const::from_ty_const(max_val, bnd_ty, cx.tcx))
-                    && let Some(end_const) = constant(cx, cx.typeck_results(), end)
+                    && let Some(max_const) = mir_to_const(cx.tcx, Const::from_ty_const(max_val, bnd_ty, cx.tcx))
+                    && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
                 {
                     end_const == max_const
                 } else {
@@ -1625,7 +1630,9 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
         return true;
     }
     let enclosing_body = cx.tcx.hir().enclosing_body_owner(e.hir_id);
-    if let Some(Constant::Int(v)) = constant(cx, cx.tcx.typeck(enclosing_body), e) {
+    if let Some(Constant::Int(v)) =
+        ConstEvalCtxt::with_env(cx.tcx, cx.tcx.param_env(enclosing_body), cx.tcx.typeck(enclosing_body)).eval(e)
+    {
         return value == v;
     }
     false
@@ -2362,8 +2369,9 @@ pub fn fn_def_id_with_node_args<'tcx>(
 }
 
 /// Returns `Option<String>` where String is a textual representation of the type encapsulated in
-/// the slice iff the given expression is a slice of primitives (as defined in the
-/// `is_recursively_primitive_type` function) and `None` otherwise.
+/// the slice iff the given expression is a slice of primitives.
+///
+/// (As defined in the `is_recursively_primitive_type` function.) Returns `None` otherwise.
 pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
     let expr_kind = expr_type.kind();
@@ -2928,6 +2936,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprU
             moved_before_use,
             same_ctxt,
         },
+        #[allow(unreachable_patterns)]
         Some(ControlFlow::Break(_)) => unreachable!("type of node is ControlFlow<!>"),
         None => ExprUseCtxt {
             node: Node::Crate(cx.tcx.hir().root_module()),

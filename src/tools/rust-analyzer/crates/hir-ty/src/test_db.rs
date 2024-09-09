@@ -4,17 +4,18 @@ use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
     salsa::{self, Durability},
-    AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
+    AnchoredPath, CrateId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
 use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::db::ExpandDatabase;
-use nohash_hasher::IntMap;
+use rustc_hash::FxHashMap;
+use span::{EditionedFileId, FileId};
 use syntax::TextRange;
 use test_utils::extract_annotations;
 use triomphe::Arc;
 
 #[salsa::database(
-    base_db::SourceDatabaseExtStorage,
+    base_db::SourceRootDatabaseStorage,
     base_db::SourceDatabaseStorage,
     hir_expand::db::ExpandDatabaseStorage,
     hir_def::db::InternDatabaseStorage,
@@ -74,9 +75,6 @@ impl salsa::ParallelDatabase for TestDB {
 impl panic::RefUnwindSafe for TestDB {}
 
 impl FileLoader for TestDB {
-    fn file_text(&self, file_id: FileId) -> Arc<str> {
-        FileLoaderDelegate(self).file_text(file_id)
-    }
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
@@ -86,11 +84,12 @@ impl FileLoader for TestDB {
 }
 
 impl TestDB {
-    pub(crate) fn module_for_file_opt(&self, file_id: FileId) -> Option<ModuleId> {
+    pub(crate) fn module_for_file_opt(&self, file_id: impl Into<FileId>) -> Option<ModuleId> {
+        let file_id = file_id.into();
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (local_id, data) in crate_def_map.modules() {
-                if data.origin.file_id() == Some(file_id) {
+                if data.origin.file_id().map(EditionedFileId::file_id) == Some(file_id) {
                     return Some(crate_def_map.module_id(local_id));
                 }
             }
@@ -98,11 +97,13 @@ impl TestDB {
         None
     }
 
-    pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
-        self.module_for_file_opt(file_id).unwrap()
+    pub(crate) fn module_for_file(&self, file_id: impl Into<FileId>) -> ModuleId {
+        self.module_for_file_opt(file_id.into()).unwrap()
     }
 
-    pub(crate) fn extract_annotations(&self) -> IntMap<FileId, Vec<(TextRange, String)>> {
+    pub(crate) fn extract_annotations(
+        &self,
+    ) -> FxHashMap<EditionedFileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {
@@ -115,7 +116,7 @@ impl TestDB {
         files
             .into_iter()
             .filter_map(|file_id| {
-                let text = self.file_text(file_id);
+                let text = self.file_text(file_id.file_id());
                 let annotations = extract_annotations(&text);
                 if annotations.is_empty() {
                     return None;

@@ -158,7 +158,9 @@ fn wait_wake() {
         );
     }
 
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    // When running this in stress-gc mode, things can take quite long.
+    // So the timeout is 3000 ms.
+    assert!((200..3000).contains(&start.elapsed().as_millis()));
     t.join().unwrap();
 }
 

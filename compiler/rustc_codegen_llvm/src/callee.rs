@@ -4,15 +4,14 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
-use crate::attributes;
-use crate::common;
-use crate::context::CodegenCx;
-use crate::llvm;
-use crate::value::Value;
-
+use rustc_codegen_ssa::common;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use tracing::debug;
+
+use crate::context::CodegenCx;
+use crate::llvm;
+use crate::value::Value;
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -21,7 +20,7 @@ use tracing::debug;
 ///
 /// - `cx`: the crate context
 /// - `instance`: the instance to be instantiated
-pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value {
+pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value {
     let tcx = cx.tcx();
 
     debug!("get_fn(instance={:?})", instance);
@@ -48,7 +47,7 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
     } else {
         let instance_def_id = instance.def_id();
         let llfn = if tcx.sess.target.arch == "x86"
-            && let Some(dllimport) = common::get_dllimport(tcx, instance_def_id, sym)
+            && let Some(dllimport) = crate::common::get_dllimport(tcx, instance_def_id, sym)
         {
             // Fix for https://github.com/rust-lang/rust/issues/104453
             // On x86 Windows, LLVM uses 'L' as the prefix for any private
@@ -78,8 +77,6 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
             cx.declare_fn(sym, fn_abi, Some(instance))
         };
         debug!("get_fn: not casting pointer!");
-
-        attributes::from_fn_attrs(cx, llfn, instance);
 
         // Apply an appropriate linkage/visibility value to our item that we
         // just declared.

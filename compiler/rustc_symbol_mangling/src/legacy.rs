@@ -1,12 +1,14 @@
+use std::fmt::{self, Write};
+use std::mem::{self, discriminant};
+
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::bug;
 use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
-use rustc_middle::ty::{self, Instance, ReifyReason, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{GenericArg, GenericArgKind};
-use std::fmt::{self, Write};
-use std::mem::{self, discriminant};
+use rustc_middle::ty::{
+    self, GenericArg, GenericArgKind, Instance, ReifyReason, Ty, TyCtxt, TypeVisitableExt,
+};
 use tracing::debug;
 
 pub(super) fn mangle<'tcx>(
@@ -89,9 +91,6 @@ pub(super) fn mangle<'tcx>(
             printer
                 .write_str(if receiver_by_ref { "{{by-move-shim}}" } else { "{{by-ref-shim}}" })
                 .unwrap();
-        }
-        ty::InstanceKind::CoroutineKindShim { .. } => {
-            printer.write_str("{{by-move-body-shim}}").unwrap();
         }
         _ => {}
     }

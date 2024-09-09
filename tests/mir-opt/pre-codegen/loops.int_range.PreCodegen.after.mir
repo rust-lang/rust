@@ -41,9 +41,9 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb0: {
-        _3 = std::ops::Range::<usize> { start: _1, end: _2 };
+        _3 = std::ops::Range::<usize> { start: copy _1, end: copy _2 };
         StorageLive(_4);
-        _4 = _3;
+        _4 = copy _3;
         goto -> bb1;
     }
 
@@ -57,9 +57,9 @@ fn int_range(_1: usize, _2: usize) -> () {
         StorageLive(_7);
         _7 = &(_4.1: usize);
         StorageLive(_8);
-        _8 = (_4.0: usize);
+        _8 = copy (_4.0: usize);
         StorageLive(_9);
-        _9 = (_4.1: usize);
+        _9 = copy (_4.1: usize);
         _10 = Lt(move _8, move _9);
         StorageDead(_9);
         StorageDead(_8);
@@ -79,18 +79,18 @@ fn int_range(_1: usize, _2: usize) -> () {
     bb3: {
         StorageDead(_7);
         StorageDead(_6);
-        _11 = (_4.0: usize);
+        _11 = copy (_4.0: usize);
         StorageLive(_12);
-        _12 = <usize as Step>::forward_unchecked(_11, const 1_usize) -> [return: bb4, unwind continue];
+        _12 = <usize as Step>::forward_unchecked(copy _11, const 1_usize) -> [return: bb4, unwind continue];
     }
 
     bb4: {
         (_4.0: usize) = move _12;
         StorageDead(_12);
-        _13 = Option::<usize>::Some(_11);
+        _13 = Option::<usize>::Some(copy _11);
         StorageDead(_10);
         StorageDead(_11);
-        _14 = ((_13 as Some).0: usize);
+        _14 = copy ((_13 as Some).0: usize);
         _15 = opaque::<usize>(move _14) -> [return: bb5, unwind continue];
     }
 

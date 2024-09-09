@@ -1,24 +1,24 @@
-use super::potentially_plural_count;
-use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 use core::ops::ControlFlow;
+use std::borrow::Cow;
+use std::iter;
+
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
+use rustc_errors::codes::*;
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit;
-use rustc_hir::{GenericParamKind, ImplItemKind};
+use rustc_hir::{intravisit, GenericParamKind, ImplItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::util::ExplicitSelf;
-use rustc_middle::ty::Upcast;
 use rustc_middle::ty::{
-    self, GenericArgs, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt, Upcast,
 };
-use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -28,8 +28,10 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
 };
-use std::borrow::Cow;
-use std::iter;
+use tracing::{debug, instrument};
+
+use super::potentially_plural_count;
+use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 
 mod refine;
 
@@ -1116,7 +1118,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             .dcx()
             .create_err(LifetimesOrBoundsMismatchOnTrait {
                 span,
-                item_kind: assoc_item_kind_str(&impl_m),
+                item_kind: impl_m.descr(),
                 ident: impl_m.ident(tcx),
                 generics_span,
                 bounds_span,
@@ -1293,7 +1295,7 @@ fn compare_number_of_generics<'tcx>(
         ("const", trait_own_counts.consts, impl_own_counts.consts),
     ];
 
-    let item_kind = assoc_item_kind_str(&impl_);
+    let item_kind = impl_.descr();
 
     let mut err_occurred = None;
     for (kind, trait_count, impl_count) in matchings {
@@ -1675,7 +1677,7 @@ fn compare_generic_param_kinds<'tcx>(
                 param_impl_span,
                 E0053,
                 "{} `{}` has an incompatible generic parameter for trait `{}`",
-                assoc_item_kind_str(&impl_item),
+                impl_item.descr(),
                 trait_item.name,
                 &tcx.def_path_str(tcx.parent(trait_item.def_id))
             );
@@ -2246,14 +2248,6 @@ fn param_env_with_gat_bounds<'tcx>(
     }
 
     ty::ParamEnv::new(tcx.mk_clauses(&predicates), Reveal::UserFacing)
-}
-
-fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
-    match impl_item.kind {
-        ty::AssocKind::Const => "const",
-        ty::AssocKind::Fn => "method",
-        ty::AssocKind::Type => "type",
-    }
 }
 
 /// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,

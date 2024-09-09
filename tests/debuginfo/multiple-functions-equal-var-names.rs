@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -23,18 +21,15 @@
 // lldb-command:run
 
 // lldb-command:v abc
-// lldbg-check:[...] 10101
-// lldbr-check:(i32) abc = 10101
+// lldb-check:[...] 10101
 // lldb-command:continue
 
 // lldb-command:v abc
-// lldbg-check:[...] 20202
-// lldbr-check:(i32) abc = 20202
+// lldb-check:[...] 20202
 // lldb-command:continue
 
 // lldb-command:v abc
-// lldbg-check:[...] 30303
-// lldbr-check:(i32) abc = 30303
+// lldb-check:[...] 30303
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

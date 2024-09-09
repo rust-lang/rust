@@ -1,5 +1,6 @@
-use crate::hash;
 use std::collections::BTreeSet;
+
+use crate::hash;
 
 #[test]
 fn test_hash() {

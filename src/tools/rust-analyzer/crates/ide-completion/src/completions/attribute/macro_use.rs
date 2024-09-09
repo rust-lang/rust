@@ -18,7 +18,7 @@ pub(super) fn complete_macro_use(
     for mod_def in krate.root_module().declarations(ctx.db) {
         if let ModuleDef::Macro(mac) = mod_def {
             let mac_name = mac.name(ctx.db);
-            let Some(mac_name) = mac_name.as_str() else { continue };
+            let mac_name = mac_name.as_str();
 
             let existing_import = existing_imports
                 .iter()
@@ -28,7 +28,8 @@ pub(super) fn complete_macro_use(
                 continue;
             }
 
-            let item = CompletionItem::new(SymbolKind::Macro, ctx.source_range(), mac_name);
+            let item =
+                CompletionItem::new(SymbolKind::Macro, ctx.source_range(), mac_name, ctx.edition);
             item.add_to(acc, ctx.db);
         }
     }

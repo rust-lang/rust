@@ -5830,6 +5830,7 @@ Released 2018-09-13
 [`result_unit_err`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_unit_err
 [`result_unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_unwrap_used
 [`return_self_not_must_use`]: https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+[`reverse_range_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#reverse_range_loop
 [`reversed_empty_ranges`]: https://rust-lang.github.io/rust-clippy/master/index.html#reversed_empty_ranges
 [`same_functions_in_if_condition`]: https://rust-lang.github.io/rust-clippy/master/index.html#same_functions_in_if_condition
 [`same_item_push`]: https://rust-lang.github.io/rust-clippy/master/index.html#same_item_push
@@ -5913,6 +5914,7 @@ Released 2018-09-13
 [`to_string_in_format_args`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_in_format_args
 [`to_string_trait_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_trait_impl
 [`todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
+[`too_long_first_doc_paragraph`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_long_first_doc_paragraph
 [`too_many_arguments`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
 [`too_many_lines`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines
 [`toplevel_ref_arg`]: https://rust-lang.github.io/rust-clippy/master/index.html#toplevel_ref_arg
@@ -5998,6 +6000,7 @@ Released 2018-09-13
 [`unused_io_amount`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_io_amount
 [`unused_label`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_label
 [`unused_peekable`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_peekable
+[`unused_result_ok`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_result_ok
 [`unused_rounding`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_rounding
 [`unused_self`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
 [`unused_unit`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_unit

@@ -43,7 +43,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
 
     bb1: {
         StorageLive(_4);
-        _4 = _3;
+        _4 = copy _3;
         goto -> bb2;
     }
 
@@ -84,7 +84,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
         _10 = move ((_7 as Some).0: T);
         StorageLive(_12);
         StorageLive(_11);
-        _11 = (_10,);
+        _11 = (copy _10,);
         _12 = <&mut impl Fn(T) -> U as FnOnce<(T,)>>::call_once(move _8, move _11) -> [return: bb7, unwind: bb10];
     }
 

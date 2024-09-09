@@ -2,7 +2,6 @@
 //! <https://github.com/matthieu-m/rfc2580/blob/b58d1d3cba0d4b5e859d3617ea2d0943aaa31329/examples/thin.rs>
 //! by matthieu-m
 
-use crate::alloc::{self, Layout, LayoutError};
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 #[cfg(not(no_global_oom_handling))]
@@ -14,8 +13,9 @@ use core::mem;
 #[cfg(not(no_global_oom_handling))]
 use core::mem::SizedTypeProperties;
 use core::ops::{Deref, DerefMut};
-use core::ptr::Pointee;
-use core::ptr::{self, NonNull};
+use core::ptr::{self, NonNull, Pointee};
+
+use crate::alloc::{self, Layout, LayoutError};
 
 /// ThinBox.
 ///

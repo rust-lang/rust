@@ -1,5 +1,3 @@
-//@revisions: stack tree
-//@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-permissive-provenance
 #![feature(ptr_metadata, const_raw_ptr_comparison)]
 #![allow(ambiguous_wide_pointer_comparisons)]

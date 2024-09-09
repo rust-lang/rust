@@ -1,10 +1,12 @@
-use super::FnCtxt;
 use hir::def_id::DefId;
 use hir::Node;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::middle::region::{RvalueCandidateType, Scope, ScopeTree};
 use rustc_middle::ty::RvalueScopes;
+use tracing::debug;
+
+use super::FnCtxt;
 
 /// Applied to an expression `expr` if `expr` -- or something owned or partially owned by
 /// `expr` -- is going to be indirectly referenced by a variable in a let statement. In that
@@ -64,7 +66,7 @@ fn record_rvalue_scope(
     }
 }
 
-pub fn resolve_rvalue_scopes<'a, 'tcx>(
+pub(crate) fn resolve_rvalue_scopes<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     scope_tree: &'a ScopeTree,
     def_id: DefId,

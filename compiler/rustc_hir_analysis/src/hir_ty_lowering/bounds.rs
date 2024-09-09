@@ -1,22 +1,25 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{codes::*, struct_span_code_err};
+use rustc_errors::codes::*;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{sym, ErrorGuaranteed, Span, Symbol};
 use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
 use crate::bounds::Bounds;
 use crate::errors;
-use crate::hir_ty_lowering::HirTyLowerer;
-use crate::hir_ty_lowering::{AssocItemQSelf, OnlySelfBounds, PredicateFilter, RegionInferReason};
+use crate::hir_ty_lowering::{
+    AssocItemQSelf, HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason,
+};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `Sized` bound to the `bounds` if appropriate.
@@ -73,10 +76,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
+        let mut unique_bounds = FxIndexSet::default();
+        let mut seen_repeat = false;
+        for unbound in &unbounds {
+            if let Res::Def(DefKind::Trait, unbound_def_id) = unbound.trait_ref.path.res {
+                seen_repeat |= !unique_bounds.insert(unbound_def_id);
+            }
+        }
         if unbounds.len() > 1 {
-            self.dcx().emit_err(errors::MultipleRelaxedDefaultBounds {
+            let err = errors::MultipleRelaxedDefaultBounds {
                 spans: unbounds.iter().map(|ptr| ptr.span).collect(),
-            });
+            };
+            if seen_repeat {
+                self.dcx().emit_err(err);
+            } else if !tcx.features().more_maybe_bounds {
+                self.tcx().sess.create_feature_err(err, sym::more_maybe_bounds).emit();
+            };
         }
 
         let mut seen_sized_unbound = false;
@@ -514,7 +529,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
 /// Detect and reject early-bound & escaping late-bound generic params in the type of assoc const bindings.
 ///
-/// FIXME(const_generics): This is a temporary and semi-artifical restriction until the
+/// FIXME(const_generics): This is a temporary and semi-artificial restriction until the
 /// arrival of *generic const generics*[^1].
 ///
 /// It might actually be possible that we can already support early-bound generic params

@@ -6,8 +6,6 @@ pub mod map;
 pub mod nested_filter;
 pub mod place;
 
-use crate::query::Providers;
-use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -17,6 +15,9 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId};
+
+use crate::query::Providers;
+use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
@@ -201,7 +202,7 @@ pub fn provide(providers: &mut Providers) {
             ..
         })
         | Node::ForeignItem(&ForeignItem {
-            kind: ForeignItemKind::Fn(_, idents, _, _),
+            kind: ForeignItemKind::Fn(_, idents, _),
             ..
         }) = tcx.hir_node(tcx.local_def_id_to_hir_id(def_id))
         {

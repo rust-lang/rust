@@ -55,6 +55,7 @@
 //!     size_of: sized
 //!     sized:
 //!     slice:
+//!     str:
 //!     sync: sized
 //!     transmute:
 //!     try: infallible
@@ -62,6 +63,7 @@
 //!     unsize: sized
 //!     todo: panic
 //!     unimplemented: panic
+//!     column:
 
 #![rustc_coherence_is_core]
 
@@ -1194,6 +1196,7 @@ pub mod future {
     #[doc(notable_trait)]
     #[lang = "future_trait"]
     pub trait Future {
+        #[lang = "future_output"]
         type Output;
         #[lang = "poll"]
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
@@ -1291,6 +1294,7 @@ pub mod iter {
     mod traits {
         mod iterator {
             #[doc(notable_trait)]
+            #[lang = "iterator"]
             pub trait Iterator {
                 type Item;
                 #[lang = "next"]
@@ -1367,6 +1371,14 @@ pub mod iter {
     pub use self::traits::{IntoIterator, Iterator};
 }
 // endregion:iterator
+
+// region:str
+pub mod str {
+    pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
+        ""
+    }
+}
+// endregion:str
 
 // region:panic
 mod panic {
@@ -1605,6 +1617,14 @@ pub mod error {
     }
 }
 // endregion:error
+
+// region:column
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! column {
+    () => {};
+}
+// endregion:column
 
 pub mod prelude {
     pub mod v1 {

@@ -69,9 +69,6 @@ passes_break_non_loop =
     .suggestion = use `break` on its own without a value inside this `{$kind}` loop
     .break_expr_suggestion = alternatively, you might have meant to use the available loop label
 
-passes_cannot_inline_naked_function =
-    naked functions cannot be inlined
-
 passes_cannot_stabilize_deprecated =
     an API can't be stabilized after it is deprecated
     .label = invalid version
@@ -102,6 +99,10 @@ passes_continue_labeled_block =
     `continue` pointing to a labeled block
     .label = labeled blocks cannot be `continue`'d
     .block_label = labeled block the `continue` points to
+
+passes_coroutine_on_non_closure =
+    attribute should be applied to closures
+    .label = not a closure
 
 passes_coverage_not_fn_or_closure =
     attribute should be applied to a function definition or closure
@@ -221,6 +222,9 @@ passes_doc_masked_only_extern_crate =
     .label = only applicable on `extern crate` items
     .not_an_extern_crate_label = not an `extern crate` item
     .note = read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
+
+passes_doc_rust_logo =
+    the `#[doc(rust_logo)]` attribute is used for Rust branding
 
 passes_doc_test_literal = `#![doc(test(...)]` does not take a literal
 
@@ -426,6 +430,10 @@ passes_link_section =
     .warn = {-passes_previously_accepted}
     .label = not a function or static
 
+passes_linkage =
+    attribute should be applied to a function or static
+    .label = not a function definition or static
+
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions
 
@@ -435,6 +443,9 @@ passes_macro_export_on_decl_macro =
 
 passes_macro_use =
     `#[{$name}]` only has an effect on `extern crate` and modules
+
+passes_may_dangle =
+    `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
 
 passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
 passes_missing_const_err =
@@ -467,12 +478,8 @@ passes_multiple_start_functions =
     .previous = previous `#[start]` function here
 
 passes_must_not_suspend =
-    `must_not_suspend` attribute should be applied to a struct, enum, or trait
-    .label = is not a struct, enum, or trait
-
-passes_must_use_async =
-    `must_use` attribute on `async` functions applies to the anonymous `Future` returned by the function, not the value within
-    .label = this attribute does nothing, the `Future`s returned by async functions are already `must_use`
+    `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
+    .label = is not a struct, enum, union, or trait
 
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
@@ -485,15 +492,17 @@ passes_naked_functions_asm_block =
 passes_naked_functions_asm_options =
     asm options unsupported in naked functions: {$unsupported_options}
 
+passes_naked_functions_incompatible_attribute =
+    attribute incompatible with `#[naked]`
+    .label = the `{$attr}` attribute is incompatible with `#[naked]`
+    .naked_attribute = function marked with `#[naked]` here
+
 passes_naked_functions_must_use_noreturn =
     asm in naked functions must use `noreturn` option
     .suggestion = consider specifying that the asm block is responsible for returning from the function
 
 passes_naked_functions_operands =
     only `const` and `sym` operands are supported in naked functions
-
-passes_naked_tracked_caller =
-    cannot use `#[track_caller]` with `#[naked]`
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
@@ -543,6 +552,10 @@ passes_only_has_effect_on =
         *[unspecified] (unspecified--this is a compiler bug)
     }
 
+passes_optimize_not_fn_or_closure =
+    attribute should be applied to function or closure
+    .label = not a function or closure
+
 passes_outer_crate_level_attr =
     crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
 
@@ -587,6 +600,9 @@ passes_remove_fields =
       [one] field
      *[other] fields
     }
+
+passes_repr_align_function =
+    `repr(align)` attributes on functions are unstable
 
 passes_repr_conflicting =
     conflicting representation hints
@@ -636,6 +652,10 @@ passes_rustc_lint_opt_deny_field_access =
 passes_rustc_lint_opt_ty =
     `#[rustc_lint_opt_ty]` should be applied to a struct
     .label = not a struct
+
+passes_rustc_pub_transparent =
+    attribute should be applied to `#[repr(transparent)]` types
+    .label = not a `#[repr(transparent)]` type
 
 passes_rustc_safe_intrinsic =
     attribute should be applied to intrinsic functions

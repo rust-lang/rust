@@ -3,6 +3,7 @@ use rustc_index::IndexSlice;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use tracing::{debug, instrument};
 
 use crate::ssa::SsaLocals;
 
@@ -18,7 +19,7 @@ use crate::ssa::SsaLocals;
 /// We want to replace all those locals by `_a`, either copied or moved.
 pub struct CopyProp;
 
-impl<'tcx> MirPass<'tcx> for CopyProp {
+impl<'tcx> crate::MirPass<'tcx> for CopyProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 1
     }

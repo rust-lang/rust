@@ -44,7 +44,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [dirfd, pathname, flags, mask, statxbuf] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             // epoll, eventfd
@@ -62,8 +62,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "epoll_wait" => {
                 let [epfd, events, maxevents, timeout] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.epoll_wait(epfd, events, maxevents, timeout)?;
-                this.write_scalar(result, dest)?;
+                this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
             }
             "eventfd" => {
                 let [val, flag] =
@@ -93,6 +92,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.read_scalar(len)?,
                 )?;
                 this.write_scalar(res, dest)?;
+            }
+            "gettid" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.linux_gettid()?;
+                this.write_scalar(result, dest)?;
             }
 
             // Dynamically invoked syscalls
@@ -171,12 +175,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "__libc_current_sigrtmin" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                this.write_scalar(Scalar::from_i32(SIGRTMIN), dest)?;
+                this.write_int(SIGRTMIN, dest)?;
             }
             "__libc_current_sigrtmax" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                this.write_scalar(Scalar::from_i32(SIGRTMAX), dest)?;
+                this.write_int(SIGRTMAX, dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.

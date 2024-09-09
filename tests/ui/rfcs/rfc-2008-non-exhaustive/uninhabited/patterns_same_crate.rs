@@ -1,5 +1,4 @@
 #![deny(unreachable_patterns)]
-#![feature(min_exhaustive_patterns)]
 #![feature(never_type)]
 
 #[non_exhaustive]
@@ -7,11 +6,12 @@ pub enum UninhabitedEnum {
 }
 
 #[non_exhaustive]
-pub struct UninhabitedTupleStruct(!);
+pub struct UninhabitedTupleStruct(pub !);
 
 #[non_exhaustive]
 pub struct UninhabitedStruct {
-    _priv: !,
+    pub never: !,
+    _priv: (),
 }
 
 pub enum UninhabitedVariants {

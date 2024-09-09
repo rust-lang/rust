@@ -1,6 +1,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ test-mir-pass: DataflowConstProp
-//@ compile-flags: -Zmir-enable-passes=+InstSimplify
+//@ compile-flags: -Zmir-enable-passes=+InstSimplify-after-simplifycfg
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 // EMIT_MIR slice_len.main.DataflowConstProp.diff
@@ -17,7 +17,7 @@ fn main() {
     // CHECK: {{_.*}} = const true;
     // CHECK: assert(const true,
 
-    // CHECK: [[local]] = (*{{_.*}})[1 of 2];
+    // CHECK: [[local]] = copy (*{{_.*}})[1 of 2];
     let local = (&[1u32, 2, 3] as &[u32])[1];
 
     // CHECK-NOT: {{_.*}} = Len(
@@ -28,7 +28,7 @@ fn main() {
     // CHECK: {{_.*}} = const true;
     // CHECK: assert(const true,
 
-    // CHECK-NOT: [[constant]] = (*{{_.*}})[_
-    // CHECK: [[constant]] = (*{{_.*}})[1 of 2];
+    // CHECK-NOT: [[constant]] = {{copy|move}} (*{{_.*}})[_
+    // CHECK: [[constant]] = copy (*{{_.*}})[1 of 2];
     let constant = SLICE[1];
 }

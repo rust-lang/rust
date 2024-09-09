@@ -3,9 +3,12 @@
 //! reference to a type with the field `bar`. This is an approximation of the
 //! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
 
+use std::mem;
+
 use chalk_ir::cast::Cast;
 use hir_def::lang_item::LangItem;
-use hir_expand::name::name;
+use hir_expand::name::Name;
+use intern::sym;
 use limit::Limit;
 use triomphe::Arc;
 
@@ -36,7 +39,7 @@ pub fn autoderef(
 ) -> impl Iterator<Item = Ty> {
     let mut table = InferenceTable::new(db, env);
     let ty = table.instantiate_canonical(ty);
-    let mut autoderef = Autoderef::new(&mut table, ty, false);
+    let mut autoderef = Autoderef::new_no_tracking(&mut table, ty, false);
     let mut v = Vec::new();
     while let Some((ty, _steps)) = autoderef.next() {
         // `ty` may contain unresolved inference variables. Since there's no chance they would be
@@ -57,27 +60,63 @@ pub fn autoderef(
     v.into_iter()
 }
 
+trait TrackAutoderefSteps {
+    fn len(&self) -> usize;
+    fn push(&mut self, kind: AutoderefKind, ty: &Ty);
+}
+
+impl TrackAutoderefSteps for usize {
+    fn len(&self) -> usize {
+        *self
+    }
+    fn push(&mut self, _: AutoderefKind, _: &Ty) {
+        *self += 1;
+    }
+}
+impl TrackAutoderefSteps for Vec<(AutoderefKind, Ty)> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+    fn push(&mut self, kind: AutoderefKind, ty: &Ty) {
+        self.push((kind, ty.clone()));
+    }
+}
+
 #[derive(Debug)]
-pub(crate) struct Autoderef<'a, 'db> {
-    pub(crate) table: &'a mut InferenceTable<'db>,
+pub(crate) struct Autoderef<'table, 'db, T = Vec<(AutoderefKind, Ty)>> {
+    pub(crate) table: &'table mut InferenceTable<'db>,
     ty: Ty,
     at_start: bool,
-    steps: Vec<(AutoderefKind, Ty)>,
+    steps: T,
     explicit: bool,
 }
 
-impl<'a, 'db> Autoderef<'a, 'db> {
-    pub(crate) fn new(table: &'a mut InferenceTable<'db>, ty: Ty, explicit: bool) -> Self {
+impl<'table, 'db> Autoderef<'table, 'db> {
+    pub(crate) fn new(table: &'table mut InferenceTable<'db>, ty: Ty, explicit: bool) -> Self {
         let ty = table.resolve_ty_shallow(&ty);
         Autoderef { table, ty, at_start: true, steps: Vec::new(), explicit }
     }
 
-    pub(crate) fn step_count(&self) -> usize {
-        self.steps.len()
-    }
-
     pub(crate) fn steps(&self) -> &[(AutoderefKind, Ty)] {
         &self.steps
+    }
+}
+
+impl<'table, 'db> Autoderef<'table, 'db, usize> {
+    pub(crate) fn new_no_tracking(
+        table: &'table mut InferenceTable<'db>,
+        ty: Ty,
+        explicit: bool,
+    ) -> Self {
+        let ty = table.resolve_ty_shallow(&ty);
+        Autoderef { table, ty, at_start: true, steps: 0, explicit }
+    }
+}
+
+#[allow(private_bounds)]
+impl<'table, 'db, T: TrackAutoderefSteps> Autoderef<'table, 'db, T> {
+    pub(crate) fn step_count(&self) -> usize {
+        self.steps.len()
     }
 
     pub(crate) fn final_ty(&self) -> Ty {
@@ -85,13 +124,12 @@ impl<'a, 'db> Autoderef<'a, 'db> {
     }
 }
 
-impl Iterator for Autoderef<'_, '_> {
+impl<T: TrackAutoderefSteps> Iterator for Autoderef<'_, '_, T> {
     type Item = (Ty, usize);
 
     #[tracing::instrument(skip_all)]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.at_start {
-            self.at_start = false;
+        if mem::take(&mut self.at_start) {
             return Some((self.ty.clone(), 0));
         }
 
@@ -101,7 +139,7 @@ impl Iterator for Autoderef<'_, '_> {
 
         let (kind, new_ty) = autoderef_step(self.table, self.ty.clone(), self.explicit)?;
 
-        self.steps.push((kind, self.ty.clone()));
+        self.steps.push(kind, &self.ty);
         self.ty = new_ty;
 
         Some((self.ty.clone(), self.step_count()))
@@ -128,12 +166,8 @@ pub(crate) fn builtin_deref<'ty>(
     match ty.kind(Interner) {
         TyKind::Ref(.., ty) => Some(ty),
         TyKind::Raw(.., ty) if explicit => Some(ty),
-        &TyKind::Adt(chalk_ir::AdtId(adt), ref substs) => {
-            if crate::lang_items::is_box(db, adt) {
-                substs.at(Interner, 0).ty(Interner)
-            } else {
-                None
-            }
+        &TyKind::Adt(chalk_ir::AdtId(adt), ref substs) if crate::lang_items::is_box(db, adt) => {
+            substs.at(Interner, 0).ty(Interner)
         }
         _ => None,
     }
@@ -151,7 +185,9 @@ pub(crate) fn deref_by_trait(
 
     let deref_trait =
         db.lang_item(table.trait_env.krate, LangItem::Deref).and_then(|l| l.as_trait())?;
-    let target = db.trait_data(deref_trait).associated_type_by_name(&name![Target])?;
+    let target = db
+        .trait_data(deref_trait)
+        .associated_type_by_name(&Name::new_symbol_root(sym::Target.clone()))?;
 
     let projection = {
         let b = TyBuilder::subst_for_def(db, deref_trait, None);

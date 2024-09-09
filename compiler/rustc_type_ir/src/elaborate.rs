@@ -3,9 +3,9 @@ use std::marker::PhantomData;
 use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
+use crate::inherent::*;
 use crate::outlives::{push_outlives_components, Component};
-use crate::{self as ty, Interner};
-use crate::{inherent::*, Upcast as _};
+use crate::{self as ty, Interner, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently, this basically means
@@ -237,7 +237,7 @@ pub fn supertrait_def_ids<I: Interner>(
     cx: I,
     trait_def_id: I::DefId,
 ) -> impl Iterator<Item = I::DefId> {
-    let mut set = HashSet::default();
+    let mut set: HashSet<I::DefId> = HashSet::default();
     let mut stack = vec![trait_def_id];
 
     set.insert(trait_def_id);
@@ -262,15 +262,6 @@ pub fn supertraits<I: Interner>(
     trait_ref: ty::Binder<I, ty::TraitRef<I>>,
 ) -> FilterToTraits<I, Elaborator<I, I::Clause>> {
     elaborate(cx, [trait_ref.upcast(cx)]).filter_only_self().filter_to_traits()
-}
-
-pub fn transitive_bounds<I: Interner>(
-    cx: I,
-    trait_refs: impl Iterator<Item = ty::Binder<I, ty::TraitRef<I>>>,
-) -> FilterToTraits<I, Elaborator<I, I::Clause>> {
-    elaborate(cx, trait_refs.map(|trait_ref| trait_ref.upcast(cx)))
-        .filter_only_self()
-        .filter_to_traits()
 }
 
 impl<I: Interner> Elaborator<I, I::Clause> {

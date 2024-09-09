@@ -2,7 +2,8 @@
 
 use hir::def_id::LocalDefId;
 use hir::{ConstContext, LangItem};
-use rustc_errors::{codes::*, Diag};
+use rustc_errors::codes::*;
+use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -22,7 +23,7 @@ use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
 
 use super::ConstCx;
-use crate::errors;
+use crate::{errors, fluent_generated};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
@@ -54,31 +55,9 @@ pub trait NonConstOp<'tcx>: std::fmt::Debug {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx>;
 }
 
-#[derive(Debug)]
-pub struct FloatingPointOp;
-impl<'tcx> NonConstOp<'tcx> for FloatingPointOp {
-    fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-        if ccx.const_kind() == hir::ConstContext::ConstFn {
-            Status::Unstable(sym::const_fn_floating_point_arithmetic)
-        } else {
-            Status::Allowed
-        }
-    }
-
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        feature_err(
-            &ccx.tcx.sess,
-            sym::const_fn_floating_point_arithmetic,
-            span,
-            format!("floating point arithmetic is not allowed in {}s", ccx.const_kind()),
-        )
-    }
-}
-
 /// A function call where the callee is a pointer.
 #[derive(Debug)]
-pub struct FnCallIndirect;
+pub(crate) struct FnCallIndirect;
 impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.dcx().create_err(errors::UnallowedFnPointerCall { span, kind: ccx.const_kind() })
@@ -87,7 +66,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
 
 /// A function call where the callee is not marked as `const`.
 #[derive(Debug, Clone, Copy)]
-pub struct FnCallNonConst<'tcx> {
+pub(crate) struct FnCallNonConst<'tcx> {
     pub caller: LocalDefId,
     pub callee: DefId,
     pub args: GenericArgsRef<'tcx>,
@@ -309,7 +288,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         }
 
         if let ConstContext::Static(_) = ccx.const_kind() {
-            err.note("consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`");
+            err.note(fluent_generated::const_eval_lazy_lock);
         }
 
         err
@@ -320,7 +299,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 ///
 /// Contains the name of the feature that would allow the use of this function.
 #[derive(Debug)]
-pub struct FnCallUnstable(pub DefId, pub Option<Symbol>);
+pub(crate) struct FnCallUnstable(pub DefId, pub Option<Symbol>);
 
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
@@ -333,7 +312,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
         // FIXME: make this translatable
         #[allow(rustc::untranslatable_diagnostic)]
         if ccx.is_const_stable_const_fn() {
-            err.help("const-stable functions can only call other const-stable functions");
+            err.help(fluent_generated::const_eval_const_stable);
         } else if ccx.tcx.sess.is_nightly_build() {
             if let Some(feature) = feature {
                 err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));
@@ -345,7 +324,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
 }
 
 #[derive(Debug)]
-pub struct Coroutine(pub hir::CoroutineKind);
+pub(crate) struct Coroutine(pub hir::CoroutineKind);
 impl<'tcx> NonConstOp<'tcx> for Coroutine {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
         if let hir::CoroutineKind::Desugared(
@@ -377,19 +356,19 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
 }
 
 #[derive(Debug)]
-pub struct HeapAllocation;
+pub(crate) struct HeapAllocation;
 impl<'tcx> NonConstOp<'tcx> for HeapAllocation {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.dcx().create_err(errors::UnallowedHeapAllocations {
             span,
             kind: ccx.const_kind(),
-            teach: ccx.tcx.sess.teach(E0010).then_some(()),
+            teach: ccx.tcx.sess.teach(E0010),
         })
     }
 }
 
 #[derive(Debug)]
-pub struct InlineAsm;
+pub(crate) struct InlineAsm;
 impl<'tcx> NonConstOp<'tcx> for InlineAsm {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.dcx().create_err(errors::UnallowedInlineAsm { span, kind: ccx.const_kind() })
@@ -397,7 +376,7 @@ impl<'tcx> NonConstOp<'tcx> for InlineAsm {
 }
 
 #[derive(Debug)]
-pub struct LiveDrop<'tcx> {
+pub(crate) struct LiveDrop<'tcx> {
     pub dropped_at: Option<Span>,
     pub dropped_ty: Ty<'tcx>,
 }
@@ -415,7 +394,7 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop<'tcx> {
 #[derive(Debug)]
 /// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow never escapes to
 /// the final value of the constant.
-pub struct TransientCellBorrow;
+pub(crate) struct TransientCellBorrow;
 impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable(sym::const_refs_to_cell)
@@ -431,7 +410,7 @@ impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
 /// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow might escape to
 /// the final value of the constant, and thus we cannot allow this (for now). We may allow
 /// it in the future for static items.
-pub struct CellBorrow;
+pub(crate) struct CellBorrow;
 impl<'tcx> NonConstOp<'tcx> for CellBorrow {
     fn importance(&self) -> DiagImportance {
         // Most likely the code will try to do mutation with these borrows, which
@@ -439,22 +418,12 @@ impl<'tcx> NonConstOp<'tcx> for CellBorrow {
         DiagImportance::Secondary
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        // FIXME: Maybe a more elegant solution to this if else case
-        if let hir::ConstContext::Static(_) = ccx.const_kind() {
-            ccx.dcx().create_err(errors::InteriorMutableDataRefer {
-                span,
-                opt_help: Some(()),
-                kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0492).then_some(()),
-            })
-        } else {
-            ccx.dcx().create_err(errors::InteriorMutableDataRefer {
-                span,
-                opt_help: None,
-                kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0492).then_some(()),
-            })
-        }
+        ccx.dcx().create_err(errors::InteriorMutableDataRefer {
+            span,
+            opt_help: matches!(ccx.const_kind(), hir::ConstContext::Static(_)),
+            kind: ccx.const_kind(),
+            teach: ccx.tcx.sess.teach(E0492),
+        })
     }
 }
 
@@ -462,7 +431,7 @@ impl<'tcx> NonConstOp<'tcx> for CellBorrow {
 /// This op is for `&mut` borrows in the trailing expression of a constant
 /// which uses the "enclosing scopes rule" to leak its locals into anonymous
 /// static or const items.
-pub struct MutBorrow(pub hir::BorrowKind);
+pub(crate) struct MutBorrow(pub hir::BorrowKind);
 
 impl<'tcx> NonConstOp<'tcx> for MutBorrow {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
@@ -480,19 +449,19 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
             hir::BorrowKind::Raw => ccx.tcx.dcx().create_err(errors::UnallowedMutableRaw {
                 span,
                 kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0764).then_some(()),
+                teach: ccx.tcx.sess.teach(E0764),
             }),
             hir::BorrowKind::Ref => ccx.dcx().create_err(errors::UnallowedMutableRefs {
                 span,
                 kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0764).then_some(()),
+                teach: ccx.tcx.sess.teach(E0764),
             }),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct TransientMutBorrow(pub hir::BorrowKind);
+pub(crate) struct TransientMutBorrow(pub hir::BorrowKind);
 
 impl<'tcx> NonConstOp<'tcx> for TransientMutBorrow {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
@@ -515,7 +484,7 @@ impl<'tcx> NonConstOp<'tcx> for TransientMutBorrow {
 }
 
 #[derive(Debug)]
-pub struct MutDeref;
+pub(crate) struct MutDeref;
 impl<'tcx> NonConstOp<'tcx> for MutDeref {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable(sym::const_mut_refs)
@@ -536,7 +505,7 @@ impl<'tcx> NonConstOp<'tcx> for MutDeref {
 
 /// A call to a `panic()` lang item where the first argument is _not_ a `&str`.
 #[derive(Debug)]
-pub struct PanicNonStr;
+pub(crate) struct PanicNonStr;
 impl<'tcx> NonConstOp<'tcx> for PanicNonStr {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.dcx().create_err(errors::PanicNonStrErr { span })
@@ -547,7 +516,7 @@ impl<'tcx> NonConstOp<'tcx> for PanicNonStr {
 /// Not currently intended to ever be allowed, even behind a feature gate: operation depends on
 /// allocation base addresses that are not known at compile-time.
 #[derive(Debug)]
-pub struct RawPtrComparison;
+pub(crate) struct RawPtrComparison;
 impl<'tcx> NonConstOp<'tcx> for RawPtrComparison {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         // FIXME(const_trait_impl): revert to span_bug?
@@ -556,7 +525,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrComparison {
 }
 
 #[derive(Debug)]
-pub struct RawMutPtrDeref;
+pub(crate) struct RawMutPtrDeref;
 impl<'tcx> NonConstOp<'tcx> for RawMutPtrDeref {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
         Status::Unstable(sym::const_mut_refs)
@@ -577,7 +546,7 @@ impl<'tcx> NonConstOp<'tcx> for RawMutPtrDeref {
 /// Not currently intended to ever be allowed, even behind a feature gate: operation depends on
 /// allocation base addresses that are not known at compile-time.
 #[derive(Debug)]
-pub struct RawPtrToIntCast;
+pub(crate) struct RawPtrToIntCast;
 impl<'tcx> NonConstOp<'tcx> for RawPtrToIntCast {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.dcx().create_err(errors::RawPtrToIntErr { span })
@@ -586,7 +555,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrToIntCast {
 
 /// An access to a (non-thread-local) `static`.
 #[derive(Debug)]
-pub struct StaticAccess;
+pub(crate) struct StaticAccess;
 impl<'tcx> NonConstOp<'tcx> for StaticAccess {
     fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
         if let hir::ConstContext::Static(_) = ccx.const_kind() {
@@ -604,8 +573,6 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
             span,
             format!("referencing statics in {}s is unstable", ccx.const_kind(),),
         );
-        // FIXME: make this translatable
-        #[allow(rustc::untranslatable_diagnostic)]
         err
             .note("`static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.")
             .help("to fix this, the value can be extracted to a `const` and then used.");
@@ -615,7 +582,7 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
 
 /// An access to a thread-local `static`.
 #[derive(Debug)]
-pub struct ThreadLocalAccess;
+pub(crate) struct ThreadLocalAccess;
 impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.dcx().create_err(errors::ThreadLocalAccessErr { span })
@@ -623,11 +590,11 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
 }
 
 /// Types that cannot appear in the signature or locals of a `const fn`.
-pub mod mut_ref {
+pub(crate) mod mut_ref {
     use super::*;
 
     #[derive(Debug)]
-    pub struct MutRef(pub mir::LocalKind);
+    pub(crate) struct MutRef(pub mir::LocalKind);
     impl<'tcx> NonConstOp<'tcx> for MutRef {
         fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
             Status::Unstable(sym::const_mut_refs)

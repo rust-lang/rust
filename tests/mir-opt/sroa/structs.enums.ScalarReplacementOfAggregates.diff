@@ -15,7 +15,7 @@
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
           _2 = Option::<usize>::Some(move _3);
           StorageDead(_3);
           _4 = discriminant(_2);
@@ -24,8 +24,8 @@
   
       bb1: {
           StorageLive(_5);
-          _5 = ((_2 as Some).0: usize);
-          _0 = _5;
+          _5 = copy ((_2 as Some).0: usize);
+          _0 = copy _5;
           StorageDead(_5);
           goto -> bb3;
       }

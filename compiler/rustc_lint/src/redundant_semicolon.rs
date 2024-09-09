@@ -1,7 +1,9 @@
-use crate::{lints::RedundantSemicolonsDiag, EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast::{Block, StmtKind};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
+
+use crate::lints::RedundantSemicolonsDiag;
+use crate::{EarlyContext, EarlyLintPass, LintContext};
 
 declare_lint! {
     /// The `redundant_semicolons` lint detects unnecessary trailing

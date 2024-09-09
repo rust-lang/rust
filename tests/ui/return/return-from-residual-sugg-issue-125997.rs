@@ -27,6 +27,21 @@ macro_rules! mac {
     };
 }
 
+struct A;
+
+impl A {
+    fn test4(&self) {
+        let mut _file = File::create("foo.txt")?;
+        //~^ ERROR the `?` operator can only be used in a method
+    }
+
+    fn test5(&self) {
+        let mut _file = File::create("foo.txt")?;
+        //~^ ERROR the `?` operator can only be used in a method
+        println!();
+    }
+}
+
 fn main() {
     let mut _file = File::create("foo.txt")?;
     //~^ ERROR the `?` operator can only be used in a function

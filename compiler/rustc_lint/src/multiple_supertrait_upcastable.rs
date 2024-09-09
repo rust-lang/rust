@@ -1,7 +1,7 @@
-use crate::{LateContext, LateLintPass, LintContext};
-
 use rustc_hir as hir;
 use rustc_session::{declare_lint, declare_lint_pass};
+
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `multiple_supertrait_upcastable` lint detects when an object-safe trait has multiple
@@ -45,8 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
             let direct_super_traits_iter = cx
                 .tcx
                 .explicit_super_predicates_of(def_id)
-                .predicates
-                .into_iter()
+                .iter_identity_copied()
                 .filter_map(|(pred, _)| pred.as_trait_clause());
             if direct_super_traits_iter.count() > 1 {
                 cx.emit_span_lint(

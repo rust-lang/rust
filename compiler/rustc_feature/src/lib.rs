@@ -15,6 +15,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod accepted;
@@ -25,8 +26,9 @@ mod unstable;
 #[cfg(test)]
 mod tests;
 
-use rustc_span::symbol::Symbol;
 use std::num::NonZero;
+
+use rustc_span::symbol::Symbol;
 
 #[derive(Debug, Clone)]
 pub struct Feature {
@@ -126,11 +128,11 @@ pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZero<u
 }
 
 pub use accepted::ACCEPTED_FEATURES;
-pub use builtin_attrs::AttributeDuplicates;
 pub use builtin_attrs::{
     deprecated_attributes, encode_cross_crate, find_gated_cfg, is_builtin_attr_name,
-    is_valid_for_get_attr, AttributeGate, AttributeSafety, AttributeTemplate, AttributeType,
-    BuiltinAttribute, GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
+    is_stable_diagnostic_attribute, is_valid_for_get_attr, AttributeDuplicates, AttributeGate,
+    AttributeSafety, AttributeTemplate, AttributeType, BuiltinAttribute, GatedCfg,
+    BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
 };
 pub use removed::REMOVED_FEATURES;
 pub use unstable::{Features, INCOMPATIBLE_FEATURES, UNSTABLE_FEATURES};

@@ -1,10 +1,13 @@
+use std::assert_matches::assert_matches;
+
+use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
+use rustc_type_ir::outlives::{compute_alias_components_recursive, Component};
+use smallvec::smallvec;
+use tracing::{debug, instrument, trace};
+
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::{GenericKind, VerifyBound};
-use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
-use rustc_type_ir::outlives::{compute_alias_components_recursive, Component};
-
-use smallvec::smallvec;
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
 /// obligation into a series of `'a: 'b` constraints and "verifys", as
@@ -181,7 +184,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         &self,
         generic_ty: Ty<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
-        assert!(matches!(generic_ty.kind(), ty::Param(_) | ty::Placeholder(_)));
+        assert_matches!(generic_ty.kind(), ty::Param(_) | ty::Placeholder(_));
         self.declared_generic_bounds_from_env_for_erased_ty(generic_ty)
     }
 

@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![feature(offset_of_nested)]
 #![deny(dead_code)]
 
 // This struct contains a projection that can only be normalized after getting the field type.

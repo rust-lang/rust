@@ -4,20 +4,19 @@ use std::borrow::Cow;
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{into_diag_arg_using_display, Applicability, Diag, DiagArgValue, IntoDiagArg};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem, PredicateOrigin, WherePredicate};
+use rustc_span::{BytePos, Span};
+use rustc_type_ir::TyKind::*;
+
 use crate::ty::{
     self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Opaque,
     PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{into_diag_arg_using_display, Applicability, Diag, DiagArgValue, IntoDiagArg};
-use rustc_hir as hir;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{PredicateOrigin, WherePredicate};
-use rustc_span::{BytePos, Span};
-use rustc_type_ir::TyKind::*;
 
 into_diag_arg_using_display! {
     Ty<'_>,
@@ -290,8 +289,9 @@ pub fn suggest_constraining_type_params<'a>(
         let Some(param) = param else { return false };
 
         {
-            let mut sized_constraints =
-                constraints.extract_if(|(_, def_id)| *def_id == tcx.lang_items().sized_trait());
+            let mut sized_constraints = constraints.extract_if(|(_, def_id)| {
+                def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Sized))
+            });
             if let Some((_, def_id)) = sized_constraints.next() {
                 applicability = Applicability::MaybeIncorrect;
 

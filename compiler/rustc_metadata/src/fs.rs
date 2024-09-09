@@ -1,8 +1,5 @@
-use crate::errors::{
-    BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
-    FailedCreateTempdir, FailedWriteError,
-};
-use crate::{encode_metadata, EncodedMetadata};
+use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_middle::ty::TyCtxt;
@@ -11,8 +8,11 @@ use rustc_session::output::filename_for_metadata;
 use rustc_session::{MetadataKind, Session};
 use tempfile::Builder as TempFileBuilder;
 
-use std::path::{Path, PathBuf};
-use std::{fs, io};
+use crate::errors::{
+    BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
+    FailedCreateTempdir, FailedWriteError,
+};
+use crate::{encode_metadata, EncodedMetadata};
 
 // FIXME(eddyb) maybe include the crate name in this?
 pub const METADATA_FILENAME: &str = "lib.rmeta";

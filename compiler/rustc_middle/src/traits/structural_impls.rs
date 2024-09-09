@@ -1,6 +1,6 @@
-use crate::traits;
-
 use std::fmt;
+
+use crate::traits;
 
 // Structural impls for the structs in `traits`.
 

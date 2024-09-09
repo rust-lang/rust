@@ -1,10 +1,11 @@
-use base_db::FileId;
+use base_db::SourceDatabase;
 use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
 use rustc_apfloat::{
     ieee::{Half as f16, Quad as f128},
     Float,
 };
+use span::EditionedFileId;
 use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
@@ -94,23 +95,26 @@ fn check_answer(ra_fixture: &str, check: impl FnOnce(&[u8], &MemoryMap)) {
 fn pretty_print_err(e: ConstEvalError, db: TestDB) -> String {
     let mut err = String::new();
     let span_formatter = |file, range| format!("{file:?} {range:?}");
+    let edition = db.crate_graph()[db.test_crate()].edition;
     match e {
-        ConstEvalError::MirLowerError(e) => e.pretty_print(&mut err, &db, span_formatter),
-        ConstEvalError::MirEvalError(e) => e.pretty_print(&mut err, &db, span_formatter),
+        ConstEvalError::MirLowerError(e) => e.pretty_print(&mut err, &db, span_formatter, edition),
+        ConstEvalError::MirEvalError(e) => e.pretty_print(&mut err, &db, span_formatter, edition),
     }
     .unwrap();
     err
 }
 
-fn eval_goal(db: &TestDB, file_id: FileId) -> Result<Const, ConstEvalError> {
-    let module_id = db.module_for_file(file_id);
+fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const, ConstEvalError> {
+    let module_id = db.module_for_file(file_id.file_id());
     let def_map = module_id.def_map(db);
     let scope = &def_map[module_id.local_id].scope;
     let const_id = scope
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::ConstId(x) => {
-                if db.const_data(x).name.as_ref()?.display(db).to_string() == "GOAL" {
+                if db.const_data(x).name.as_ref()?.display(db, file_id.edition()).to_string()
+                    == "GOAL"
+                {
                     Some(x)
                 } else {
                     None
@@ -241,6 +245,17 @@ fn casts() {
         4,
     );
     check_number(r#"const GOAL: i32 = -12i8 as i32"#, -12);
+}
+
+#[test]
+fn floating_point_casts() {
+    check_number(r#"const GOAL: usize = 12i32 as f32 as usize"#, 12);
+    check_number(r#"const GOAL: i8 = -12i32 as f64 as i8"#, -12);
+    check_number(r#"const GOAL: i32 = (-1ui8 as f32 + 2u64 as f32) as i32"#, 1);
+    check_number(r#"const GOAL: i8 = (0./0.) as i8"#, 0);
+    check_number(r#"const GOAL: i8 = (1./0.) as i8"#, 127);
+    check_number(r#"const GOAL: i8 = (-1./0.) as i8"#, -128);
+    check_number(r#"const GOAL: i64 = 1e18f64 as f32 as i64"#, 999999984306749440);
 }
 
 #[test]

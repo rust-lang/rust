@@ -1,6 +1,3 @@
-use crate::errors::OpaqueHiddenTypeDiag;
-use crate::infer::{InferCtxt, InferOk};
-use crate::traits::{self, Obligation};
 use hir::def_id::{DefId, LocalDefId};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
@@ -9,12 +6,16 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, GenericArgKind, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::Span;
+use tracing::{debug, instrument};
+
+use crate::errors::OpaqueHiddenTypeDiag;
+use crate::infer::{InferCtxt, InferOk};
+use crate::traits::{self, Obligation};
 
 mod table;
 
@@ -212,7 +213,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// ```
     ///
     /// As indicating in the comments above, each of those references
-    /// is (in the compiler) basically generic paramters (`args`)
+    /// is (in the compiler) basically generic parameters (`args`)
     /// applied to the type of a suitable `def_id` (which identifies
     /// `Foo1` or `Foo2`).
     ///

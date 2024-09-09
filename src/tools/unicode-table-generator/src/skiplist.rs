@@ -1,7 +1,8 @@
-use crate::fmt_list;
-use crate::raw_emitter::RawEmitter;
 use std::fmt::Write as _;
 use std::ops::Range;
+
+use crate::fmt_list;
+use crate::raw_emitter::RawEmitter;
 
 /// This will get packed into a single u32 before inserting into the data set.
 #[derive(Debug, PartialEq)]

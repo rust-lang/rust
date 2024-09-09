@@ -93,17 +93,25 @@ fn try_merge_trees_mut(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehav
         let rhs_path = rhs.path()?;
 
         let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
-        if !(lhs.is_simple_path()
+        if lhs.is_simple_path()
             && rhs.is_simple_path()
             && lhs_path == lhs_prefix
-            && rhs_path == rhs_prefix)
+            && rhs_path == rhs_prefix
         {
-            lhs.split_prefix(&lhs_prefix);
-            rhs.split_prefix(&rhs_prefix);
-        } else {
+            // we can't merge if the renames are different (`A as a` and `A as b`),
+            // and we can safely return here
+            let lhs_name = lhs.rename().and_then(|lhs_name| lhs_name.name());
+            let rhs_name = rhs.rename().and_then(|rhs_name| rhs_name.name());
+            if lhs_name != rhs_name {
+                return None;
+            }
+
             ted::replace(lhs.syntax(), rhs.syntax());
             // we can safely return here, in this case `recursive_merge` doesn't do anything
             return Some(());
+        } else {
+            lhs.split_prefix(&lhs_prefix);
+            rhs.split_prefix(&rhs_prefix);
         }
     }
     recursive_merge(lhs, rhs, merge)

@@ -135,11 +135,11 @@
 mod convenience;
 mod ring;
 
-use ring::RingBuffer;
 use std::borrow::Cow;
-use std::cmp;
 use std::collections::VecDeque;
-use std::iter;
+use std::{cmp, iter};
+
+use ring::RingBuffer;
 
 /// How to break. Described in more detail in the module docs.
 #[derive(Clone, Copy, PartialEq)]

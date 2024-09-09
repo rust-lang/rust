@@ -2,16 +2,12 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::DepGraphData;
-use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
-use crate::ich::StableHashingContext;
-use crate::query::caches::QueryCache;
-#[cfg(parallel_compiler)]
-use crate::query::job::QueryLatch;
-use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
-use crate::query::SerializedDepNodeIndex;
-use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
-use crate::HandleCycleError;
+use std::cell::Cell;
+use std::collections::hash_map::Entry;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::mem;
+
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
@@ -21,15 +17,20 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_span::{Span, DUMMY_SP};
-use std::cell::Cell;
-use std::collections::hash_map::Entry;
-use std::fmt::Debug;
-use std::hash::Hash;
-use std::mem;
 use thin_vec::ThinVec;
 use tracing::instrument;
 
 use super::QueryConfig;
+use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams};
+use crate::ich::StableHashingContext;
+use crate::query::caches::QueryCache;
+#[cfg(parallel_compiler)]
+use crate::query::job::QueryLatch;
+use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
+use crate::query::{
+    QueryContext, QueryMap, QuerySideEffects, QueryStackFrame, SerializedDepNodeIndex,
+};
+use crate::HandleCycleError;
 
 pub struct QueryState<K> {
     active: Sharded<FxHashMap<K, QueryResult>>,
@@ -180,8 +181,15 @@ where
         cache.complete(key, result, dep_node_index);
 
         let job = {
-            let mut lock = state.active.lock_shard_by_value(&key);
-            lock.remove(&key).unwrap().expect_job()
+            let val = {
+                // don't keep the lock during the `unwrap()` of the retrieved value, or we taint the
+                // underlying shard.
+                // since unwinding also wants to look at this map, this can also prevent a double
+                // panic.
+                let mut lock = state.active.lock_shard_by_value(&key);
+                lock.remove(&key)
+            };
+            val.unwrap().expect_job()
         };
 
         job.signal_complete();

@@ -21,15 +21,15 @@
           StorageLive(_4);
           _4 = const 2_usize;
 -         _5 = Len(_3);
--         _6 = Lt(_4, _5);
--         assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> [success: bb1, unwind continue];
+-         _6 = Lt(copy _4, copy _5);
+-         assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, copy _4) -> [success: bb1, unwind continue];
 +         _5 = const 8_usize;
 +         _6 = const true;
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 8_usize, const 2_usize) -> [success: bb1, unwind continue];
       }
   
       bb1: {
--         _2 = _3[_4];
+-         _2 = copy _3[_4];
 -         _1 = Add(move _2, const 0_u32);
 +         _2 = const 42_u32;
 +         _1 = const 42_u32;

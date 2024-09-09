@@ -1,4 +1,4 @@
-error[E0049]: method `bar` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `bar` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/issue-95187-same-trait-bound-different-constness.rs:18:1
    |
 LL | #[const_trait]
@@ -7,7 +7,7 @@ LL | trait Bar {
 LL |     fn bar();
    |           - expected 0 const parameters
 
-error[E0049]: method `bar` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `bar` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/issue-95187-same-trait-bound-different-constness.rs:18:1
    |
 LL | #[const_trait]
@@ -18,7 +18,7 @@ LL |     fn bar();
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0049]: method `baz` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `baz` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/issue-95187-same-trait-bound-different-constness.rs:38:1
    |
 LL | #[const_trait]
@@ -27,7 +27,7 @@ LL | trait Baz {
 LL |     fn baz();
    |           - expected 0 const parameters
 
-error[E0049]: method `baz` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `baz` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/issue-95187-same-trait-bound-different-constness.rs:38:1
    |
 LL | #[const_trait]

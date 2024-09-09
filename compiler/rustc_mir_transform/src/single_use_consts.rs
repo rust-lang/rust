@@ -1,4 +1,5 @@
-use rustc_index::{bit_set::BitSet, IndexVec};
+use rustc_index::bit_set::BitSet;
+use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -20,7 +21,7 @@ use rustc_middle::ty::TyCtxt;
 /// needed to do that too, including updating the debug info.
 pub struct SingleUseConsts;
 
-impl<'tcx> MirPass<'tcx> for SingleUseConsts {
+impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

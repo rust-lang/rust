@@ -1,24 +1,23 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::expr::category::Category;
-use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
-use crate::build::{BlockAnd, BlockAndExtension, Builder, Capture, CaptureMap};
+use std::assert_matches::assert_matches;
+use std::iter;
+
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::hir::place::Projection as HirProjection;
-use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
+use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as HirProjectionKind};
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::AdtDef;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, Variance};
+use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use tracing::{debug, instrument, trace};
 
-use std::assert_matches::assert_matches;
-use std::iter;
+use crate::build::expr::category::Category;
+use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
+use crate::build::{BlockAnd, BlockAndExtension, Builder, Capture, CaptureMap};
 
 /// The "outermost" place that holds this value.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -543,7 +542,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
-            | ExprKind::AddressOf { .. }
+            | ExprKind::RawBorrow { .. }
             | ExprKind::Match { .. }
             | ExprKind::If { .. }
             | ExprKind::Loop { .. }

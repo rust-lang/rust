@@ -2,11 +2,9 @@ use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveErrorKind::*;
-use std::ops::Bound;
 use std::ops::Bound::*;
-use std::ops::RangeBounds;
-use std::panic;
-use std::str;
+use std::ops::{Bound, RangeBounds};
+use std::{panic, str};
 
 pub trait IntoCow<'a, B: ?Sized>
 where
@@ -725,7 +723,6 @@ fn test_reserve_exact() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
-#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_with_capacity() {
     let string = String::try_with_capacity(1000).unwrap();
     assert_eq!(0, string.len());
@@ -736,7 +733,6 @@ fn test_try_with_capacity() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
-#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve() {
     // These are the interesting cases:
     // * exactly isize::MAX should never trigger a CapacityOverflow (can be OOM)
@@ -805,7 +801,6 @@ fn test_try_reserve() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
-#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve_exact() {
     // This is exactly the same as test_try_reserve with the method changed.
     // See that test for comments.

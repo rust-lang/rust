@@ -33,6 +33,7 @@
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
+#![feature(box_as_ptr)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]
 #![feature(const_option)]
@@ -48,11 +49,9 @@
 #![feature(iter_from_coroutine)]
 #![feature(let_chains)]
 #![feature(macro_metavar_expr)]
-#![feature(min_exhaustive_patterns)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(new_uninit)]
 #![feature(ptr_alignment_type)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
@@ -62,6 +61,7 @@
 #![feature(try_blocks)]
 #![feature(type_alias_impl_trait)]
 #![feature(yeet_expr)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 #[cfg(test)]

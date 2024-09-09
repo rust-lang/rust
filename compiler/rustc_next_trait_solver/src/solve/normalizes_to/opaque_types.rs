@@ -97,7 +97,7 @@ where
 /// Checks whether each generic argument is simply a unique generic placeholder.
 ///
 /// FIXME: Interner argument is needed to constrain the `I` parameter.
-pub fn uses_unique_placeholders_ignoring_regions<I: Interner>(
+fn uses_unique_placeholders_ignoring_regions<I: Interner>(
     _cx: I,
     args: I::GenericArgs,
 ) -> Result<(), NotUniqueParam<I>> {
@@ -130,7 +130,7 @@ pub fn uses_unique_placeholders_ignoring_regions<I: Interner>(
 }
 
 // FIXME: This should check for dupes and non-params first, then infer vars.
-pub enum NotUniqueParam<I: Interner> {
+enum NotUniqueParam<I: Interner> {
     DuplicateParam(I::GenericArg),
     NotParam(I::GenericArg),
 }

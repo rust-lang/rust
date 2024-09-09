@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::is_in_test;
 use clippy_utils::macros::{format_arg_removal_span, root_macro_call_first_node, FormatArgsStorage, MacroCall};
-use clippy_utils::source::{expand_past_previous_comma, snippet_opt};
+use clippy_utils::source::{expand_past_previous_comma, SpanRangeExt};
 use rustc_ast::token::LitKind;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgs, FormatArgsPiece, FormatOptions, FormatPlaceholder,
@@ -397,7 +397,7 @@ fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: &Ma
             format!("using `{name}!()` with a format string that ends in a single newline"),
             |diag| {
                 let name_span = cx.sess().source_map().span_until_char(macro_call.span, '!');
-                let Some(format_snippet) = snippet_opt(cx, format_string_span) else {
+                let Some(format_snippet) = format_string_span.get_source_text(cx) else {
                     return;
                 };
 
@@ -492,7 +492,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
             && let Some(arg) = format_args.arguments.by_index(index)
             && let rustc_ast::ExprKind::Lit(lit) = &arg.expr.kind
             && !arg.expr.span.from_expansion()
-            && let Some(value_string) = snippet_opt(cx, arg.expr.span)
+            && let Some(value_string) = arg.expr.span.get_source_text(cx)
         {
             let (replacement, replace_raw) = match lit.kind {
                 LitKind::Str | LitKind::StrRaw(_) => match extract_str_literal(&value_string) {
@@ -515,7 +515,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
                 _ => continue,
             };
 
-            let Some(format_string_snippet) = snippet_opt(cx, format_args.span) else {
+            let Some(format_string_snippet) = format_args.span.get_source_text(cx) else {
                 continue;
             };
             let format_string_is_raw = format_string_snippet.starts_with('r');

@@ -17,12 +17,14 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use mir::{mono::Instance, TerminatorKind::*};
+use std::io::Write;
+use std::ops::ControlFlow;
+
+use mir::mono::Instance;
+use mir::TerminatorKind::*;
 use rustc_smir::rustc_internal;
 use stable_mir::ty::{RigidTy, TyKind};
 use stable_mir::*;
-use std::io::Write;
-use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
@@ -33,7 +35,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     // Get all items and split generic vs monomorphic items.
     let (generic, mono): (Vec<_>, Vec<_>) =
         items.into_iter().partition(|item| item.requires_monomorphization());
-    assert_eq!(mono.len(), 3, "Expected 3 mono functions");
+    assert_eq!(mono.len(), 4, "Expected 3 mono functions");
     assert_eq!(generic.len(), 2, "Expected 2 generic functions");
 
     // For all monomorphic items, get the correspondent instances.

@@ -3,15 +3,19 @@
 #![allow(unused_parens)]
 #![allow(non_camel_case_types)]
 
-use std::sync::mpsc::channel;
 use std::cmp;
+use std::sync::mpsc::channel;
 
 // Tests of ports and channels on various types
 fn test_rec() {
-    struct R {val0: isize, val1: u8, val2: char}
+    struct R {
+        val0: isize,
+        val1: u8,
+        val2: char,
+    }
 
     let (tx, rx) = channel();
-    let r0: R = R {val0: 0, val1: 1, val2: '2'};
+    let r0: R = R { val0: 0, val1: 1, val2: '2' };
     tx.send(r0).unwrap();
     let mut r1: R;
     r1 = rx.recv().unwrap();
@@ -45,34 +49,29 @@ fn test_str() {
 enum t {
     tag1,
     tag2(isize),
-    tag3(isize, u8, char)
+    tag3(isize, u8, char),
 }
 
 impl cmp::PartialEq for t {
     fn eq(&self, other: &t) -> bool {
         match *self {
-            t::tag1 => {
-                match (*other) {
-                    t::tag1 => true,
-                    _ => false
-                }
-            }
-            t::tag2(e0a) => {
-                match (*other) {
-                    t::tag2(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            t::tag3(e0a, e1a, e2a) => {
-                match (*other) {
-                    t::tag3(e0b, e1b, e2b) =>
-                        e0a == e0b && e1a == e1b && e2a == e2b,
-                    _ => false
-                }
-            }
+            t::tag1 => match (*other) {
+                t::tag1 => true,
+                _ => false,
+            },
+            t::tag2(e0a) => match (*other) {
+                t::tag2(e0b) => e0a == e0b,
+                _ => false,
+            },
+            t::tag3(e0a, e1a, e2a) => match (*other) {
+                t::tag3(e0b, e1b, e2b) => e0a == e0b && e1a == e1b && e2a == e2b,
+                _ => false,
+            },
         }
     }
-    fn ne(&self, other: &t) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &t) -> bool {
+        !(*self).eq(other)
+    }
 }
 
 fn test_tag() {

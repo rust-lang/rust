@@ -33,7 +33,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // See if the core engine can handle this intrinsic.
-        if this.emulate_intrinsic(instance, args, dest, ret)? {
+        if this.eval_intrinsic(instance, args, dest, ret)? {
             return Ok(None);
         }
         let intrinsic_name = this.tcx.item_name(instance.def_id());
@@ -153,7 +153,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Would not be considered UB, or the other way around (`is_val_statically_known(0)`).
             "is_val_statically_known" => {
                 let [arg] = check_arg_count(args)?;
-                this.validate_operand(arg)?;
+                this.validate_operand(arg, /*recursive*/ false)?;
                 let branch: bool = this.machine.rng.get_mut().gen();
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
             }

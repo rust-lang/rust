@@ -6,16 +6,10 @@
 //! The functionality in here is shared between persisting to crate metadata and
 //! persisting to incr. comp. caches.
 
-use crate::arena::ArenaAllocatable;
-use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
-use crate::mir::interpret::CtfeProvenance;
-use crate::mir::{
-    self,
-    interpret::{AllocId, ConstAllocation},
-};
-use crate::traits;
-use crate::ty::GenericArgsRef;
-use crate::ty::{self, AdtDef, Ty};
+use std::hash::Hash;
+use std::intrinsics;
+use std::marker::DiscriminantKind;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
@@ -23,9 +17,13 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 pub use rustc_type_ir::{TyDecoder, TyEncoder};
-use std::hash::Hash;
-use std::intrinsics;
-use std::marker::DiscriminantKind;
+
+use crate::arena::ArenaAllocatable;
+use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
+use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
+use crate::mir::{self};
+use crate::traits;
+use crate::ty::{self, AdtDef, GenericArgsRef, Ty};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -464,7 +462,6 @@ impl_decodable_via_ref! {
     &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::BorrowCheckResult<'tcx>,
-    &'tcx mir::coverage::CodeRegion,
     &'tcx ty::List<ty::BoundVariableKind>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
     &'tcx ty::List<FieldIdx>,

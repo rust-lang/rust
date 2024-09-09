@@ -8,20 +8,18 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::HashMap;
-use std::env;
+use std::collections::{HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
-use std::fs;
 use std::path::PathBuf;
+use std::{env, fs};
+
+use build_helper::git::warn_old_master_branch;
 
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::builder::Builder;
+use crate::builder::Kind;
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::core::build_steps::tool;
-#[cfg(not(feature = "bootstrap-self-test"))]
-use std::collections::HashSet;
-
-use crate::builder::Kind;
 use crate::core::config::Target;
 use crate::utils::exec::command;
 use crate::Build;
@@ -36,9 +34,9 @@ pub struct Finder {
 // it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
 //
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
-#[cfg(not(feature = "bootstrap-self-test"))]
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
+    "armv7-rtems-eabihf",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -207,7 +205,6 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
     let stage0_supported_target_list: HashSet<String> = crate::utils::helpers::output(
         command(&build.config.initial_rustc).args(["--print", "target-list"]).as_command_mut(),
     )
@@ -236,8 +233,7 @@ than building it.
         }
 
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        #[cfg(not(feature = "bootstrap-self-test"))]
-        {
+        if cfg!(not(feature = "bootstrap-self-test")) && !skip_target_sanity {
             let mut has_target = false;
             let target_str = target.to_string();
 
@@ -262,7 +258,9 @@ than building it.
 
             if !has_target {
                 // This might also be a custom target, so check the target file that could have been specified by the user.
-                if let Some(custom_target_path) = env::var_os("RUST_TARGET_PATH") {
+                if target.filepath().is_some_and(|p| p.exists()) {
+                    has_target = true;
+                } else if let Some(custom_target_path) = env::var_os("RUST_TARGET_PATH") {
                     let mut target_filename = OsString::from(&target_str);
                     // Target filename ends with `.json`.
                     target_filename.push(".json");
@@ -277,8 +275,12 @@ than building it.
 
             if !has_target {
                 panic!(
-                    "No such target exists in the target list,
-                specify a correct location of the JSON specification file for custom targets!"
+                    "No such target exists in the target list,\n\
+                     make sure to correctly specify the location \
+                     of the JSON specification file \
+                     for custom targets!\n\
+                     Use BOOTSTRAP_SKIP_TARGET_SANITY=1 to \
+                     bypass this check."
                 );
             }
         }
@@ -352,7 +354,7 @@ than building it.
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
-            let out = command("cmake").capture_stdout().arg("--help").run(build).stdout();
+            let out = command("cmake").arg("--help").run_capture_stdout(build).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "
@@ -374,5 +376,15 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
 
     if let Some(ref s) = build.config.ccache {
         cmd_finder.must_have(s);
+    }
+
+    // this warning is useless in CI,
+    // and CI probably won't have the right branches anyway.
+    if !build_helper::ci::CiEnv::is_ci() {
+        if let Err(e) = warn_old_master_branch(&build.config.git_config(), &build.config.src)
+            .map_err(|e| e.to_string())
+        {
+            eprintln!("unable to check if upstream branch is old: {e}");
+        }
     }
 }

@@ -21,9 +21,8 @@ use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
 use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::NestedGoals;
-use crate::solve::inspect;
 use crate::solve::{
-    response_no_constraints_raw, CanonicalInput, CanonicalResponse, Certainty, EvalCtxt,
+    inspect, response_no_constraints_raw, CanonicalInput, CanonicalResponse, Certainty, EvalCtxt,
     ExternalConstraintsData, Goal, MaybeCause, NestedNormalizationGoals, NoSolution,
     PredefinedOpaquesData, QueryInput, QueryResult, Response,
 };
@@ -239,7 +238,7 @@ where
         (normalization_nested_goals.clone(), certainty)
     }
 
-    /// This returns the canoncial variable values to instantiate the bound variables of
+    /// This returns the canonical variable values to instantiate the bound variables of
     /// the canonical response. This depends on the `original_values` for the
     /// bound variables.
     fn compute_query_response_instantiation_values<T: ResponseT<I>>(

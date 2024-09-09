@@ -100,14 +100,14 @@ declare_clippy_lint! {
 
 pub struct WildcardImports {
     warn_on_all: bool,
-    allowed_segments: &'static FxHashSet<String>,
+    allowed_segments: FxHashSet<String>,
 }
 
 impl WildcardImports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             warn_on_all: conf.warn_on_all_wildcard_imports,
-            allowed_segments: &conf.allowed_wildcard_imports,
+            allowed_segments: conf.allowed_wildcard_imports.iter().cloned().collect(),
         }
     }
 }
@@ -181,7 +181,7 @@ impl WildcardImports {
     fn check_exceptions(&self, cx: &LateContext<'_>, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
         item.span.from_expansion()
             || is_prelude_import(segments)
-            || is_allowed_via_config(segments, self.allowed_segments)
+            || is_allowed_via_config(segments, &self.allowed_segments)
             || (is_super_only_import(segments) && is_in_test(cx.tcx, item.hir_id()))
     }
 }

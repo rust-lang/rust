@@ -100,7 +100,7 @@ error: type `types::Priv` is more private than the item `types::ef1`
   --> $DIR/private-in-public-warn.rs:28:9
    |
 LL |         pub fn ef1(arg: Priv);
-   |         ^^^^^^^^^^^^^^^^^^^^^ function `types::ef1` is reachable at visibility `pub(crate)`
+   |         ^^^^^^^^^^^^^^^^^^^^^^ function `types::ef1` is reachable at visibility `pub(crate)`
    |
 note: but type `types::Priv` is only usable at visibility `pub(self)`
   --> $DIR/private-in-public-warn.rs:9:5
@@ -112,7 +112,7 @@ error: type `types::Priv` is more private than the item `types::ef2`
   --> $DIR/private-in-public-warn.rs:29:9
    |
 LL |         pub fn ef2() -> Priv;
-   |         ^^^^^^^^^^^^^^^^^^^^ function `types::ef2` is reachable at visibility `pub(crate)`
+   |         ^^^^^^^^^^^^^^^^^^^^^ function `types::ef2` is reachable at visibility `pub(crate)`
    |
 note: but type `types::Priv` is only usable at visibility `pub(self)`
   --> $DIR/private-in-public-warn.rs:9:5

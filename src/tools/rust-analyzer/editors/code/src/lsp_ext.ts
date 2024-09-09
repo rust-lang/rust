@@ -45,7 +45,6 @@ export const rebuildProcMacros = new lc.RequestType0<null, void>("rust-analyzer/
 export const runFlycheck = new lc.NotificationType<{
     textDocument: lc.TextDocumentIdentifier | null;
 }>("rust-analyzer/runFlycheck");
-export const shuffleCrateGraph = new lc.RequestType0<null, void>("rust-analyzer/shuffleCrateGraph");
 export const syntaxTree = new lc.RequestType<SyntaxTreeParams, string, void>(
     "rust-analyzer/syntaxTree",
 );
@@ -303,9 +302,3 @@ export type RecursiveMemoryLayoutNode = {
 export type RecursiveMemoryLayout = {
     nodes: RecursiveMemoryLayoutNode[];
 };
-
-export const unindexedProject = new lc.NotificationType<UnindexedProjectParams>(
-    "rust-analyzer/unindexedProject",
-);
-
-export type UnindexedProjectParams = { textDocuments: lc.TextDocumentIdentifier[] };

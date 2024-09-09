@@ -45,7 +45,7 @@
 //!
 //! # Handling of references
 //!
-//! We handle references by assigning a different "provenance" index to each Ref/AddressOf rvalue.
+//! We handle references by assigning a different "provenance" index to each Ref/RawPtr rvalue.
 //! This ensure that we do not spuriously merge borrows that should not be merged. Meanwhile, we
 //! consider all the derefs of an immutable reference to a freeze type to give the same value:
 //! ```ignore (MIR)
@@ -82,15 +82,19 @@
 //! Second, when writing constants in MIR, we do not write `Const::Slice` or `Const`
 //! that contain `AllocId`s.
 
+use std::borrow::Cow;
+
+use either::Either;
 use rustc_const_eval::const_eval::DummyMachine;
-use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemPlaceMeta, MemoryKind};
-use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable, Scalar};
+use rustc_const_eval::interpret::{
+    intern_const_alloc_for_constprop, ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy,
+    Projectable, Scalar,
+};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
-use rustc_index::newtype_index;
-use rustc_index::IndexVec;
+use rustc_index::{newtype_index, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
@@ -101,14 +105,13 @@ use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
-use std::borrow::Cow;
+use tracing::{debug, instrument, trace};
 
 use crate::ssa::{AssignedValue, SsaLocals};
-use either::Either;
 
 pub struct GVN;
 
-impl<'tcx> MirPass<'tcx> for GVN {
+impl<'tcx> crate::MirPass<'tcx> for GVN {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }
@@ -126,7 +129,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // Clone dominators as we need them while mutating the body.
     let dominators = body.basic_blocks.dominators().clone();
 
-    let mut state = VnState::new(tcx, param_env, &ssa, &dominators, &body.local_decls);
+    let mut state = VnState::new(tcx, body, param_env, &ssa, &dominators, &body.local_decls);
     ssa.for_each_assignment_mut(
         body.basic_blocks.as_mut_preserves_cfg(),
         |local, value, location| {
@@ -202,6 +205,7 @@ enum Value<'tcx> {
         value: Const<'tcx>,
         /// Some constants do not have a deterministic value. To avoid merging two instances of the
         /// same `Const`, we assign them an additional integer index.
+        // `disambiguator` is 0 iff the constant is deterministic.
         disambiguator: usize,
     },
     /// An aggregate value, either tuple/closure/struct/enum.
@@ -264,21 +268,29 @@ struct VnState<'body, 'tcx> {
 impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         ssa: &'body SsaLocals,
         dominators: &'body Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
     ) -> Self {
+        // Compute a rough estimate of the number of values in the body from the number of
+        // statements. This is meant to reduce the number of allocations, but it's all right if
+        // we miss the exact amount. We estimate based on 2 values per statement (one in LHS and
+        // one in RHS) and 4 values per terminator (for call operands).
+        let num_values =
+            2 * body.basic_blocks.iter().map(|bbdata| bbdata.statements.len()).sum::<usize>()
+                + 4 * body.basic_blocks.len();
         VnState {
             tcx,
             ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
             param_env,
             local_decls,
             locals: IndexVec::from_elem(None, local_decls),
-            rev_locals: IndexVec::default(),
-            values: FxIndexSet::default(),
-            evaluated: IndexVec::new(),
-            next_opaque: Some(0),
+            rev_locals: IndexVec::with_capacity(num_values),
+            values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
+            evaluated: IndexVec::with_capacity(num_values),
+            next_opaque: Some(1),
             feature_unsized_locals: tcx.features().unsized_locals,
             ssa,
             dominators,
@@ -291,9 +303,15 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let (index, new) = self.values.insert_full(value);
         let index = VnIndex::from_usize(index);
         if new {
+            // Grow `evaluated` and `rev_locals` here to amortize the allocations.
             let evaluated = self.eval_to_const(index);
             let _index = self.evaluated.push(evaluated);
             debug_assert_eq!(index, _index);
+            // No need to push to `rev_locals` if we finished listing assignments.
+            if self.next_opaque.is_some() {
+                let _index = self.rev_locals.push(SmallVec::new());
+                debug_assert_eq!(index, _index);
+            }
         }
         index
     }
@@ -330,7 +348,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let is_sized = !self.feature_unsized_locals
             || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
         if is_sized {
-            self.rev_locals.ensure_contains_elem(value, SmallVec::new).push(local);
+            self.rev_locals[value].push(local);
         }
     }
 
@@ -344,6 +362,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             let next_opaque = self.next_opaque.as_mut()?;
             let disambiguator = *next_opaque;
             *next_opaque += 1;
+            // `disambiguator: 0` means deterministic.
+            debug_assert_ne!(disambiguator, 0);
             disambiguator
         };
         Some(self.insert(Value::Constant { value, disambiguator }))
@@ -351,12 +371,16 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
         // Booleans are deterministic.
-        self.insert(Value::Constant { value: Const::from_bool(self.tcx, flag), disambiguator: 0 })
+        let value = Const::from_bool(self.tcx, flag);
+        debug_assert!(value.is_deterministic());
+        self.insert(Value::Constant { value, disambiguator: 0 })
     }
 
     fn insert_scalar(&mut self, scalar: Scalar, ty: Ty<'tcx>) -> VnIndex {
-        self.insert_constant(Const::from_scalar(self.tcx, scalar, ty))
-            .expect("scalars are deterministic")
+        // Scalars are deterministic.
+        let value = Const::from_scalar(self.tcx, scalar, ty);
+        debug_assert!(value.is_deterministic());
+        self.insert(Value::Constant { value, disambiguator: 0 })
     }
 
     fn insert_tuple(&mut self, values: Vec<VnIndex>) -> VnIndex {
@@ -669,7 +693,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn simplify_place_projection(&mut self, place: &mut Place<'tcx>, location: Location) {
         // If the projection is indirect, we treat the local as a value, so can replace it with
         // another local.
-        if place.is_indirect()
+        if place.is_indirect_first_projection()
             && let Some(base) = self.locals[place.local]
             && let Some(new_local) = self.try_as_local(base, location)
             && place.local != new_local
@@ -771,10 +795,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         location: Location,
     ) -> Option<VnIndex> {
         match *operand {
-            Operand::Constant(ref mut constant) => {
-                let const_ = constant.const_.normalize(self.tcx, self.param_env);
-                self.insert_constant(const_)
-            }
+            Operand::Constant(ref constant) => self.insert_constant(constant.const_),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
                 if let Some(const_) = self.try_as_constant(value) {
@@ -812,7 +833,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
             }
-            Rvalue::AddressOf(mutbl, ref mut place) => {
+            Rvalue::RawPtr(mutbl, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
             }
@@ -1369,8 +1390,13 @@ fn op_to_prop_const<'tcx>(
     // If this constant has scalar ABI, return it as a `ConstValue::Scalar`.
     if let Abi::Scalar(abi::Scalar::Initialized { .. }) = op.layout.abi
         && let Ok(scalar) = ecx.read_scalar(op)
-        && scalar.try_to_scalar_int().is_ok()
     {
+        if !scalar.try_to_scalar_int().is_ok() {
+            // Check that we do not leak a pointer.
+            // Those pointers may lose part of their identity in codegen.
+            // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+            return None;
+        }
         return Some(ConstValue::Scalar(scalar));
     }
 
@@ -1434,12 +1460,11 @@ impl<'tcx> VnState<'_, 'tcx> {
 
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
-        // This was already constant in MIR, do not change it.
-        if let Value::Constant { value, disambiguator: _ } = *self.get(index)
-            // If the constant is not deterministic, adding an additional mention of it in MIR will
-            // not give the same value as the former mention.
-            && value.is_deterministic()
-        {
+        // This was already constant in MIR, do not change it. If the constant is not
+        // deterministic, adding an additional mention of it in MIR will not give the same value as
+        // the former mention.
+        if let Value::Constant { value, disambiguator: 0 } = *self.get(index) {
+            debug_assert!(value.is_deterministic());
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 

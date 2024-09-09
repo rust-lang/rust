@@ -13,7 +13,7 @@
           StorageLive(_1);
 -         _1 = const 1_usize as std::boxed::Box<Never> (Transmute);
 +         _1 = const Box::<Never>(Unique::<Never> {{ pointer: NonNull::<Never> {{ pointer: {0x1 as *const Never} }}, _marker: PhantomData::<Never> }}, std::alloc::Global);
-          _2 = (((_1.0: std::ptr::Unique<Never>).0: std::ptr::NonNull<Never>).0: *const Never);
+          _2 = copy (((_1.0: std::ptr::Unique<Never>).0: std::ptr::NonNull<Never>).0: *const Never);
           unreachable;
       }
   }

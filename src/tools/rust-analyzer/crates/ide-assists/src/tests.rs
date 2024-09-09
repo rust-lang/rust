@@ -1,12 +1,12 @@
 mod generated;
 
 use expect_test::expect;
-use hir::Semantics;
+use hir::{FileRange, Semantics};
 use ide_db::{
-    base_db::{FileId, FileRange, SourceDatabaseExt},
+    base_db::{SourceDatabase, SourceRootDatabase},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
-    RootDatabase, SnippetCap,
+    EditionedFileId, RootDatabase, SnippetCap,
 };
 use stdx::{format_to, trim_indent};
 use syntax::TextRange;
@@ -72,7 +72,7 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     term_search_borrowck: true,
 };
 
-pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
+pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {
     RootDatabase::with_single_file(text)
 }
 
@@ -165,17 +165,17 @@ pub(crate) fn check_assist_unresolved(assist: Handler, ra_fixture: &str) {
 fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let after = trim_indent(after);
     let (db, file_id, selection) = RootDatabase::with_range_or_offset(before);
-    let before = db.file_text(file_id).to_string();
+    let before = db.file_text(file_id.file_id()).to_string();
     let frange = FileRange { file_id, range: selection.into() };
 
-    let assist = assists(&db, &TEST_CONFIG, AssistResolveStrategy::All, frange)
+    let assist = assists(&db, &TEST_CONFIG, AssistResolveStrategy::All, frange.into())
         .into_iter()
         .find(|assist| assist.id.0 == assist_id)
         .unwrap_or_else(|| {
             panic!(
                 "\n\nAssist is not applicable: {}\nAvailable assists: {}",
                 assist_id,
-                assists(&db, &TEST_CONFIG, AssistResolveStrategy::None, frange)
+                assists(&db, &TEST_CONFIG, AssistResolveStrategy::None, frange.into())
                     .into_iter()
                     .map(|assist| assist.id.0)
                     .collect::<Vec<_>>()
@@ -190,7 +190,7 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
             .expect("Assist did not contain any source changes");
         let mut actual = before;
         if let Some((source_file_edit, snippet_edit)) =
-            source_change.get_source_and_snippet_edit(file_id)
+            source_change.get_source_and_snippet_edit(file_id.file_id())
         {
             source_file_edit.apply(&mut actual);
             if let Some(snippet_edit) = snippet_edit {
@@ -224,7 +224,7 @@ fn check_with_config(
 ) {
     let (mut db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
     db.enable_proc_attr_macros();
-    let text_without_caret = db.file_text(file_with_caret_id).to_string();
+    let text_without_caret = db.file_text(file_with_caret_id.into()).to_string();
 
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
 
@@ -331,7 +331,7 @@ fn assist_order_field_struct() {
     let (before_cursor_pos, before) = extract_offset(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
-    let assists = assists(&db, &TEST_CONFIG, AssistResolveStrategy::None, frange);
+    let assists = assists(&db, &TEST_CONFIG, AssistResolveStrategy::None, frange.into());
     let mut assists = assists.iter();
 
     assert_eq!(assists.next().expect("expected assist").label, "Change visibility to pub(crate)");
@@ -357,7 +357,7 @@ pub fn test_some_range(a: int) -> bool {
 "#,
     );
 
-    let assists = assists(&db, &TEST_CONFIG, AssistResolveStrategy::None, frange);
+    let assists = assists(&db, &TEST_CONFIG, AssistResolveStrategy::None, frange.into());
     let expected = labels(&assists);
 
     expect![[r#"
@@ -386,7 +386,7 @@ pub fn test_some_range(a: int) -> bool {
         let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::Refactor]);
 
-        let assists = assists(&db, &cfg, AssistResolveStrategy::None, frange);
+        let assists = assists(&db, &cfg, AssistResolveStrategy::None, frange.into());
         let expected = labels(&assists);
 
         expect![[r#"
@@ -401,7 +401,7 @@ pub fn test_some_range(a: int) -> bool {
     {
         let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::RefactorExtract]);
-        let assists = assists(&db, &cfg, AssistResolveStrategy::None, frange);
+        let assists = assists(&db, &cfg, AssistResolveStrategy::None, frange.into());
         let expected = labels(&assists);
 
         expect![[r#"
@@ -414,7 +414,7 @@ pub fn test_some_range(a: int) -> bool {
     {
         let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::QuickFix]);
-        let assists = assists(&db, &cfg, AssistResolveStrategy::None, frange);
+        let assists = assists(&db, &cfg, AssistResolveStrategy::None, frange.into());
         let expected = labels(&assists);
 
         expect![[r#""#]].assert_eq(&expected);
@@ -439,7 +439,7 @@ pub fn test_some_range(a: int) -> bool {
     cfg.allowed = Some(vec![AssistKind::RefactorExtract]);
 
     {
-        let assists = assists(&db, &cfg, AssistResolveStrategy::None, frange);
+        let assists = assists(&db, &cfg, AssistResolveStrategy::None, frange.into());
         assert_eq!(2, assists.len());
         let mut assists = assists.into_iter();
 
@@ -454,7 +454,7 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_variable_assist);
@@ -470,7 +470,7 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_function_assist);
@@ -484,7 +484,7 @@ pub fn test_some_range(a: int) -> bool {
                 assist_id: "SOMETHING_MISMATCHING".to_owned(),
                 assist_kind: AssistKind::RefactorExtract,
             }),
-            frange,
+            frange.into(),
         );
         assert_eq!(2, assists.len());
         let mut assists = assists.into_iter();
@@ -500,7 +500,7 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_variable_assist);
@@ -516,7 +516,7 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_function_assist);
@@ -530,7 +530,7 @@ pub fn test_some_range(a: int) -> bool {
                 assist_id: "extract_variable".to_owned(),
                 assist_kind: AssistKind::RefactorExtract,
             }),
-            frange,
+            frange.into(),
         );
         assert_eq!(2, assists.len());
         let mut assists = assists.into_iter();
@@ -587,7 +587,9 @@ pub fn test_some_range(a: int) -> bool {
                         is_snippet: true,
                     },
                 ),
-                trigger_signature_help: false,
+                command: Some(
+                    Rename,
+                ),
             }
         "#]]
         .assert_debug_eq(&extract_into_variable_assist);
@@ -603,14 +605,14 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_function_assist);
     }
 
     {
-        let assists = assists(&db, &cfg, AssistResolveStrategy::All, frange);
+        let assists = assists(&db, &cfg, AssistResolveStrategy::All, frange.into());
         assert_eq!(2, assists.len());
         let mut assists = assists.into_iter();
 
@@ -666,7 +668,9 @@ pub fn test_some_range(a: int) -> bool {
                         is_snippet: true,
                     },
                 ),
-                trigger_signature_help: false,
+                command: Some(
+                    Rename,
+                ),
             }
         "#]]
         .assert_debug_eq(&extract_into_variable_assist);
@@ -715,7 +719,7 @@ pub fn test_some_range(a: int) -> bool {
                         is_snippet: true,
                     },
                 ),
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_function_assist);

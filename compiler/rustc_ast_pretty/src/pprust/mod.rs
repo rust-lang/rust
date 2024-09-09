@@ -2,13 +2,12 @@
 mod tests;
 
 pub mod state;
-pub use state::{print_crate, AnnNode, Comments, PpAnn, PrintState, State};
+use std::borrow::Cow;
 
 use rustc_ast as ast;
 use rustc_ast::token::{Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-
-use std::borrow::Cow;
+pub use state::{print_crate, AnnNode, Comments, PpAnn, PrintState, State};
 
 pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
     State::new().nonterminal_to_string(nt)

@@ -2,7 +2,7 @@
 
 use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 
-use base_db::{CrateId, FileId};
+use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
@@ -14,8 +14,8 @@ use hir_def::{
     AdtId, ConstId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
     StaticId, VariantId,
 };
-use hir_expand::{mod_path::ModPath, HirFileIdExt, InFile};
-use intern::Interned;
+use hir_expand::{mod_path::path, name::Name, HirFileIdExt, InFile};
+use intern::sym;
 use la_arena::ArenaMap;
 use rustc_abi::TargetDataLayout;
 use rustc_apfloat::{
@@ -23,6 +23,7 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::{Edition, FileId};
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
@@ -35,7 +36,7 @@ use crate::{
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     mapping::from_chalk,
     method_resolution::{is_dyn_method, lookup_impl_const},
-    name, static_lifetime,
+    static_lifetime,
     traits::FnTrait,
     utils::{detect_variant_from_bytes, ClosureSubst},
     CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstScalar, FnDefId, Interner, MemoryMap,
@@ -357,6 +358,7 @@ impl MirEvalError {
         f: &mut String,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
+        edition: Edition,
     ) -> std::result::Result<(), std::fmt::Error> {
         writeln!(f, "Mir eval error:")?;
         let mut err = self;
@@ -369,7 +371,7 @@ impl MirEvalError {
                         writeln!(
                             f,
                             "In function {} ({:?})",
-                            function_name.name.display(db.upcast()),
+                            function_name.name.display(db.upcast(), edition),
                             func
                         )?;
                     }
@@ -387,6 +389,16 @@ impl MirEvalError {
                         Ok(s) => s.map(|it| it.syntax_node_ptr()),
                         Err(_) => continue,
                     },
+                    MirSpan::BindingId(b) => {
+                        match source_map
+                            .patterns_for_binding(*b)
+                            .iter()
+                            .find_map(|p| source_map.pat_syntax(*p).ok())
+                        {
+                            Some(s) => s.map(|it| it.syntax_node_ptr()),
+                            None => continue,
+                        }
+                    }
                     MirSpan::SelfParam => match source_map.self_param_syntax() {
                         Some(s) => s.map(|it| it.syntax_node_ptr()),
                         None => continue,
@@ -395,7 +407,7 @@ impl MirEvalError {
                 };
                 let file_id = span.file_id.original_file(db.upcast());
                 let text_range = span.value.text_range();
-                writeln!(f, "{}", span_formatter(file_id, text_range))?;
+                writeln!(f, "{}", span_formatter(file_id.file_id(), text_range))?;
             }
         }
         match err {
@@ -404,7 +416,7 @@ impl MirEvalError {
                 write!(
                     f,
                     "Layout for type `{}` is not available due {err:?}",
-                    ty.display(db).with_closure_style(ClosureStyle::ClosureWithId)
+                    ty.display(db, edition).with_closure_style(ClosureStyle::ClosureWithId)
                 )?;
             }
             MirEvalError::MirLowerError(func, err) => {
@@ -412,16 +424,17 @@ impl MirEvalError {
                 writeln!(
                     f,
                     "MIR lowering for function `{}` ({:?}) failed due:",
-                    function_name.name.display(db.upcast()),
+                    function_name.name.display(db.upcast(), edition),
                     func
                 )?;
-                err.pretty_print(f, db, span_formatter)?;
+                err.pretty_print(f, db, span_formatter, edition)?;
             }
             MirEvalError::ConstEvalError(name, err) => {
                 MirLowerError::ConstEvalError((**name).into(), err.clone()).pretty_print(
                     f,
                     db,
                     span_formatter,
+                    edition,
                 )?;
             }
             MirEvalError::UndefinedBehavior(_)
@@ -631,15 +644,21 @@ impl Evaluator<'_> {
             cached_fn_trait_func: db
                 .lang_item(crate_id, LangItem::Fn)
                 .and_then(|x| x.as_trait())
-                .and_then(|x| db.trait_data(x).method_by_name(&name![call])),
+                .and_then(|x| {
+                    db.trait_data(x).method_by_name(&Name::new_symbol_root(sym::call.clone()))
+                }),
             cached_fn_mut_trait_func: db
                 .lang_item(crate_id, LangItem::FnMut)
                 .and_then(|x| x.as_trait())
-                .and_then(|x| db.trait_data(x).method_by_name(&name![call_mut])),
+                .and_then(|x| {
+                    db.trait_data(x).method_by_name(&Name::new_symbol_root(sym::call_mut.clone()))
+                }),
             cached_fn_once_trait_func: db
                 .lang_item(crate_id, LangItem::FnOnce)
                 .and_then(|x| x.as_trait())
-                .and_then(|x| db.trait_data(x).method_by_name(&name![call_once])),
+                .and_then(|x| {
+                    db.trait_data(x).method_by_name(&Name::new_symbol_root(sym::call_once.clone()))
+                }),
         })
     }
 
@@ -1499,9 +1518,97 @@ impl Evaluator<'_> {
                         self.size_of_sized(target_ty, locals, "destination of int to int cast")?;
                     Owned(current[0..dest_size].to_vec())
                 }
-                CastKind::FloatToInt => not_supported!("float to int cast"),
-                CastKind::FloatToFloat => not_supported!("float to float cast"),
-                CastKind::IntToFloat => not_supported!("float to int cast"),
+                CastKind::FloatToInt => {
+                    let ty = self.operand_ty(operand, locals)?;
+                    let TyKind::Scalar(chalk_ir::Scalar::Float(ty)) = ty.kind(Interner) else {
+                        not_supported!("invalid float to int cast");
+                    };
+                    let value = self.eval_operand(operand, locals)?.get(self)?;
+                    let value = match ty {
+                        chalk_ir::FloatTy::F32 => {
+                            let value = value.try_into().unwrap();
+                            f32::from_le_bytes(value) as f64
+                        }
+                        chalk_ir::FloatTy::F64 => {
+                            let value = value.try_into().unwrap();
+                            f64::from_le_bytes(value)
+                        }
+                        chalk_ir::FloatTy::F16 | chalk_ir::FloatTy::F128 => {
+                            not_supported!("unstable floating point type f16 and f128");
+                        }
+                    };
+                    let is_signed = matches!(
+                        target_ty.kind(Interner),
+                        TyKind::Scalar(chalk_ir::Scalar::Int(_))
+                    );
+                    let dest_size =
+                        self.size_of_sized(target_ty, locals, "destination of float to int cast")?;
+                    let dest_bits = dest_size * 8;
+                    let (max, min) = if dest_bits == 128 {
+                        (i128::MAX, i128::MIN)
+                    } else if is_signed {
+                        let max = 1i128 << (dest_bits - 1);
+                        (max - 1, -max)
+                    } else {
+                        (1i128 << dest_bits, 0)
+                    };
+                    let value = (value as i128).min(max).max(min);
+                    let result = value.to_le_bytes();
+                    Owned(result[0..dest_size].to_vec())
+                }
+                CastKind::FloatToFloat => {
+                    let ty = self.operand_ty(operand, locals)?;
+                    let TyKind::Scalar(chalk_ir::Scalar::Float(ty)) = ty.kind(Interner) else {
+                        not_supported!("invalid float to int cast");
+                    };
+                    let value = self.eval_operand(operand, locals)?.get(self)?;
+                    let value = match ty {
+                        chalk_ir::FloatTy::F32 => {
+                            let value = value.try_into().unwrap();
+                            f32::from_le_bytes(value) as f64
+                        }
+                        chalk_ir::FloatTy::F64 => {
+                            let value = value.try_into().unwrap();
+                            f64::from_le_bytes(value)
+                        }
+                        chalk_ir::FloatTy::F16 | chalk_ir::FloatTy::F128 => {
+                            not_supported!("unstable floating point type f16 and f128");
+                        }
+                    };
+                    let TyKind::Scalar(chalk_ir::Scalar::Float(target_ty)) =
+                        target_ty.kind(Interner)
+                    else {
+                        not_supported!("invalid float to float cast");
+                    };
+                    match target_ty {
+                        chalk_ir::FloatTy::F32 => Owned((value as f32).to_le_bytes().to_vec()),
+                        chalk_ir::FloatTy::F64 => Owned((value as f64).to_le_bytes().to_vec()),
+                        chalk_ir::FloatTy::F16 | chalk_ir::FloatTy::F128 => {
+                            not_supported!("unstable floating point type f16 and f128");
+                        }
+                    }
+                }
+                CastKind::IntToFloat => {
+                    let current_ty = self.operand_ty(operand, locals)?;
+                    let is_signed = matches!(
+                        current_ty.kind(Interner),
+                        TyKind::Scalar(chalk_ir::Scalar::Int(_))
+                    );
+                    let value = pad16(self.eval_operand(operand, locals)?.get(self)?, is_signed);
+                    let value = i128::from_le_bytes(value);
+                    let TyKind::Scalar(chalk_ir::Scalar::Float(target_ty)) =
+                        target_ty.kind(Interner)
+                    else {
+                        not_supported!("invalid int to float cast");
+                    };
+                    match target_ty {
+                        chalk_ir::FloatTy::F32 => Owned((value as f32).to_le_bytes().to_vec()),
+                        chalk_ir::FloatTy::F64 => Owned((value as f64).to_le_bytes().to_vec()),
+                        chalk_ir::FloatTy::F16 | chalk_ir::FloatTy::F128 => {
+                            not_supported!("unstable floating point type f16 and f128");
+                        }
+                    }
+                }
                 CastKind::FnPtrToPtr => not_supported!("fn ptr to ptr cast"),
             },
         })
@@ -2633,10 +2740,7 @@ impl Evaluator<'_> {
         let static_data = self.db.static_data(st);
         let result = if !static_data.is_extern {
             let konst = self.db.const_eval_static(st).map_err(|e| {
-                MirEvalError::ConstEvalError(
-                    static_data.name.as_str().unwrap_or("_").to_owned(),
-                    Box::new(e),
-                )
+                MirEvalError::ConstEvalError(static_data.name.as_str().to_owned(), Box::new(e))
             })?;
             self.allocate_const_in_heap(locals, &konst)?
         } else {
@@ -2661,10 +2765,11 @@ impl Evaluator<'_> {
                 let db = self.db.upcast();
                 let loc = variant.lookup(db);
                 let enum_loc = loc.parent.lookup(db);
+                let edition = self.db.crate_graph()[self.crate_id].edition;
                 let name = format!(
                     "{}::{}",
-                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast()),
-                    loc.id.item_tree(db)[loc.id.value].name.display(db.upcast()),
+                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast(), edition),
+                    loc.id.item_tree(db)[loc.id.value].name.display(db.upcast(), edition),
                 );
                 Err(MirEvalError::ConstEvalError(name, Box::new(e)))
             }
@@ -2693,7 +2798,7 @@ impl Evaluator<'_> {
     ) -> Result<()> {
         let Some(drop_fn) = (|| {
             let drop_trait = self.db.lang_item(self.crate_id, LangItem::Drop)?.as_trait()?;
-            self.db.trait_data(drop_trait).method_by_name(&name![drop])
+            self.db.trait_data(drop_trait).method_by_name(&Name::new_symbol_root(sym::drop.clone()))
         })() else {
             // in some tests we don't have drop trait in minicore, and
             // we can ignore drop in them.
@@ -2797,14 +2902,13 @@ pub fn render_const_using_debug_impl(
     let resolver = owner.resolver(db.upcast());
     let Some(TypeNs::TraitId(debug_trait)) = resolver.resolve_path_in_type_ns_fully(
         db.upcast(),
-        &hir_def::path::Path::from_known_path_with_no_generic(ModPath::from_segments(
-            hir_expand::mod_path::PathKind::Abs,
-            [name![core], name![fmt], name![Debug]],
-        )),
+        &hir_def::path::Path::from_known_path_with_no_generic(path![core::fmt::Debug]),
     ) else {
         not_supported!("core::fmt::Debug not found");
     };
-    let Some(debug_fmt_fn) = db.trait_data(debug_trait).method_by_name(&name![fmt]) else {
+    let Some(debug_fmt_fn) =
+        db.trait_data(debug_trait).method_by_name(&Name::new_symbol_root(sym::fmt.clone()))
+    else {
         not_supported!("core::fmt::Debug::fmt not found");
     };
     // a1 = &[""]
@@ -2829,10 +2933,7 @@ pub fn render_const_using_debug_impl(
     evaluator.write_memory(a3.offset(5 * evaluator.ptr_size()), &[1])?;
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
         db.upcast(),
-        &hir_def::path::Path::from_known_path_with_no_generic(ModPath::from_segments(
-            hir_expand::mod_path::PathKind::Abs,
-            [name![std], name![fmt], name![format]],
-        )),
+        &hir_def::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),
     ) else {
         not_supported!("std::fmt::format not found");
     };

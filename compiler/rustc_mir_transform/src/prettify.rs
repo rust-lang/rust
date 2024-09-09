@@ -4,7 +4,8 @@
 //! (`-Zmir-enable-passes=+ReorderBasicBlocks,+ReorderLocals`)
 //! to make the MIR easier to read for humans.
 
-use rustc_index::{bit_set::BitSet, IndexSlice, IndexVec};
+use rustc_index::bit_set::BitSet;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -16,7 +17,7 @@ use rustc_session::Session;
 /// `IndexVec`, unless that successor is a back-edge (such as from a loop).
 pub struct ReorderBasicBlocks;
 
-impl<'tcx> MirPass<'tcx> for ReorderBasicBlocks {
+impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
     fn is_enabled(&self, _session: &Session) -> bool {
         false
     }
@@ -44,7 +45,7 @@ impl<'tcx> MirPass<'tcx> for ReorderBasicBlocks {
 /// (Does not reorder arguments nor the [`RETURN_PLACE`].)
 pub struct ReorderLocals;
 
-impl<'tcx> MirPass<'tcx> for ReorderLocals {
+impl<'tcx> crate::MirPass<'tcx> for ReorderLocals {
     fn is_enabled(&self, _session: &Session) -> bool {
         false
     }

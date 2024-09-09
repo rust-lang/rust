@@ -66,14 +66,13 @@ use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
 
+#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+pub use self::extract_if::ExtractIf;
 use crate::alloc::{Allocator, Global};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
-
-#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-pub use self::extract_if::ExtractIf;
 
 mod extract_if;
 
@@ -879,6 +878,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// };
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
+    #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
     pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
         let mut me = ManuallyDrop::new(self);
@@ -922,6 +922,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// };
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
+    #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
     pub fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
@@ -1277,7 +1278,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// valid for zero sized reads if the vector didn't allocate.
     ///
     /// The caller must ensure that the vector outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     /// Modifying the vector may cause its buffer to be reallocated,
     /// which would also make any pointers to it invalid.
     ///
@@ -1333,11 +1334,11 @@ impl<T, A: Allocator> Vec<T, A> {
         self.buf.ptr()
     }
 
-    /// Returns an unsafe mutable pointer to the vector's buffer, or a dangling
+    /// Returns a raw mutable pointer to the vector's buffer, or a dangling
     /// raw pointer valid for zero sized reads if the vector didn't allocate.
     ///
     /// The caller must ensure that the vector outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     /// Modifying the vector may cause its buffer to be reallocated,
     /// which would also make any pointers to it invalid.
     ///
@@ -1348,7 +1349,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// or references to specific elements you are planning on accessing through this pointer,
     /// may still invalidate this pointer.
     /// See the second example below for how this guarantee can be used.
-    ///
     ///
     /// # Examples
     ///
@@ -1519,6 +1519,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("swap_remove index (is {index}) should be < len (is {len})");
         }
@@ -1567,6 +1568,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("insertion index (is {index}) should be <= len (is {len})");
         }
@@ -1629,6 +1631,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("removal index (is {index}) should be < len (is {len})");
         }
@@ -1711,6 +1714,12 @@ impl<T, A: Allocator> Vec<T, A> {
         F: FnMut(&mut T) -> bool,
     {
         let original_len = self.len();
+
+        if original_len == 0 {
+            // Empty case: explicit return allows better optimization, vs letting compiler infer it
+            return;
+        }
+
         // Avoid double drop if the drop guard is not executed,
         // since we may make some holes during the process.
         unsafe { self.set_len(0) };
@@ -2311,6 +2320,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(at: usize, len: usize) -> ! {
             panic!("`at` split index (is {at}) should be <= len (is {len})");
         }
@@ -2373,9 +2383,11 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 
     /// Consumes and leaks the `Vec`, returning a mutable reference to the contents,
-    /// `&'a mut [T]`. Note that the type `T` must outlive the chosen lifetime
-    /// `'a`. If the type has only static references, or none at all, then this
-    /// may be chosen to be `'static`.
+    /// `&'a mut [T]`.
+    ///
+    /// Note that the type `T` must outlive the chosen lifetime `'a`. If the type
+    /// has only static references, or none at all, then this may be chosen to be
+    /// `'static`.
     ///
     /// As of Rust 1.57, this method does not reallocate or shrink the `Vec`,
     /// so the leaked allocation may include unused capacity that is not part
@@ -3359,7 +3371,7 @@ impl<T, A: Allocator> AsMut<[T]> for Vec<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> From<&[T]> for Vec<T> {
-    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    /// Allocates a `Vec<T>` and fills it by cloning `s`'s items.
     ///
     /// # Examples
     ///
@@ -3379,7 +3391,7 @@ impl<T: Clone> From<&[T]> for Vec<T> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
 impl<T: Clone> From<&mut [T]> for Vec<T> {
-    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    /// Allocates a `Vec<T>` and fills it by cloning `s`'s items.
     ///
     /// # Examples
     ///
@@ -3399,7 +3411,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array_ref", since = "1.74.0")]
 impl<T: Clone, const N: usize> From<&[T; N]> for Vec<T> {
-    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    /// Allocates a `Vec<T>` and fills it by cloning `s`'s items.
     ///
     /// # Examples
     ///
@@ -3414,7 +3426,7 @@ impl<T: Clone, const N: usize> From<&[T; N]> for Vec<T> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array_ref", since = "1.74.0")]
 impl<T: Clone, const N: usize> From<&mut [T; N]> for Vec<T> {
-    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    /// Allocates a `Vec<T>` and fills it by cloning `s`'s items.
     ///
     /// # Examples
     ///
@@ -3429,7 +3441,7 @@ impl<T: Clone, const N: usize> From<&mut [T; N]> for Vec<T> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array", since = "1.44.0")]
 impl<T, const N: usize> From<[T; N]> for Vec<T> {
-    /// Allocate a `Vec<T>` and move `s`'s items into it.
+    /// Allocates a `Vec<T>` and moves `s`'s items into it.
     ///
     /// # Examples
     ///
@@ -3452,7 +3464,7 @@ impl<'a, T> From<Cow<'a, [T]>> for Vec<T>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
-    /// Convert a clone-on-write slice into a vector.
+    /// Converts a clone-on-write slice into a vector.
     ///
     /// If `s` already owns a `Vec<T>`, it will be returned directly.
     /// If `s` is borrowing a slice, a new `Vec<T>` will be allocated and
@@ -3475,7 +3487,7 @@ where
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
-    /// Convert a boxed slice into a vector by transferring ownership of
+    /// Converts a boxed slice into a vector by transferring ownership of
     /// the existing heap allocation.
     ///
     /// # Examples
@@ -3494,7 +3506,7 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
-    /// Convert a vector into a boxed slice.
+    /// Converts a vector into a boxed slice.
     ///
     /// Before doing the conversion, this method discards excess capacity like [`Vec::shrink_to_fit`].
     ///
@@ -3522,7 +3534,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<&str> for Vec<u8> {
-    /// Allocate a `Vec<u8>` and fill it with a UTF-8 string.
+    /// Allocates a `Vec<u8>` and fills it with a UTF-8 string.
     ///
     /// # Examples
     ///

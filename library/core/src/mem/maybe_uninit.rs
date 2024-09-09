@@ -1,9 +1,6 @@
 use crate::any::type_name;
-use crate::fmt;
-use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
-use crate::ptr;
-use crate::slice;
+use crate::{fmt, intrinsics, ptr, slice};
 
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
@@ -240,6 +237,7 @@ use crate::slice;
 #[lang = "maybe_uninit"]
 #[derive(Copy)]
 #[repr(transparent)]
+#[rustc_pub_transparent]
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
@@ -310,7 +308,7 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
-    /// Create a new array of `MaybeUninit<T>` items, in an uninitialized state.
+    /// Creates a new array of `MaybeUninit<T>` items, in an uninitialized state.
     ///
     /// Note: in a future Rust version this method may become unnecessary
     /// when Rust allows

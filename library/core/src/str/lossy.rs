@@ -1,10 +1,8 @@
-use crate::fmt;
-use crate::fmt::Formatter;
-use crate::fmt::Write;
-use crate::iter::FusedIterator;
-
 use super::from_utf8_unchecked;
 use super::validations::utf8_char_width;
+use crate::fmt;
+use crate::fmt::{Formatter, Write};
+use crate::iter::FusedIterator;
 
 impl [u8] {
     /// Creates an iterator over the contiguous valid UTF-8 ranges of this

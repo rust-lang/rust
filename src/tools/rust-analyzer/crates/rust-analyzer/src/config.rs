@@ -3,11 +3,14 @@
 //! Of particular interest is the `feature_flags` hash map: while other fields
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
-use std::{fmt, iter, ops::Not, sync::OnceLock};
+use std::{
+    env, fmt, iter,
+    ops::Not,
+    sync::{LazyLock, OnceLock},
+};
 
 use cfg::{CfgAtom, CfgDiff};
-use dirs::config_dir;
-use flycheck::{CargoOptions, FlycheckConfig};
+use hir::Symbol;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
     GenericParameterHints, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
@@ -34,8 +37,9 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, VfsPath};
 
 use crate::{
-    capabilities::ClientCapabilities,
     diagnostics::DiagnosticsMapConfig,
+    flycheck::{CargoOptions, FlycheckConfig},
+    lsp::capabilities::ClientCapabilities,
     lsp_ext::{WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
@@ -79,16 +83,11 @@ config_data! {
         pub(crate) cargo_autoreload: bool           = true,
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = true,
-        /// Specifies the working directory for running build scripts.
-        /// - "workspace": run build scripts for a workspace in the workspace's root directory.
-        ///   This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.
-        /// - "root": run build scripts in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-        /// is set.
-        cargo_buildScripts_invocationLocation: InvocationLocation = InvocationLocation::Workspace,
         /// Specifies the invocation strategy to use when running the build scripts command.
-        /// If `per_workspace` is set, the command will be executed for each workspace.
-        /// If `once` is set, the command will be executed once.
+        /// If `per_workspace` is set, the command will be executed for each Rust workspace with the
+        /// workspace as the working directory.
+        /// If `once` is set, the command will be executed once with the opened project as the
+        /// working directory.
         /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
         /// is set.
         cargo_buildScripts_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
@@ -100,14 +99,13 @@ config_data! {
         /// If there are multiple linked projects/workspaces, this command is invoked for
         /// each of them, with the working directory being the workspace root
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#` and
-        /// `#rust-analyzer.cargo.buildScripts.invocationLocation#`.
+        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#`.
         ///
         /// By default, a cargo invocation will be constructed for the configured
         /// targets and features, with the following base command line:
         ///
         /// ```bash
-        /// cargo check --quiet --workspace --message-format=json --all-targets
+        /// cargo check --quiet --workspace --message-format=json --all-targets --keep-going
         /// ```
         /// .
         cargo_buildScripts_overrideCommand: Option<Vec<String>> = None,
@@ -142,13 +140,6 @@ config_data! {
         ///
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysroot: Option<String>    = Some("discover".to_owned()),
-        /// Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze
-        /// third-party dependencies of the standard libraries.
-        ///
-        /// This will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer
-        /// will attempt to clean up afterwards, but nevertheless requires the location to be
-        /// writable to.
-        cargo_sysrootQueryMetadata: bool     = false,
         /// Relative path to the sysroot library sources. If left unset, this will default to
         /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
         ///
@@ -188,14 +179,6 @@ config_data! {
         ///
         /// For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
         check_ignore: FxHashSet<String> = FxHashSet::default(),
-        /// Specifies the working directory for running checks.
-        /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
-        // FIXME: Ideally we would support this in some way
-        ///   This falls back to "root" if `#rust-analyzer.check.invocationStrategy#` is set to `once`.
-        /// - "root": run checks in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
-        /// is set.
-        check_invocationLocation | checkOnSave_invocationLocation: InvocationLocation = InvocationLocation::Workspace,
         /// Specifies the invocation strategy to use when running the check command.
         /// If `per_workspace` is set, the command will be executed for each workspace.
         /// If `once` is set, the command will be executed once.
@@ -218,8 +201,7 @@ config_data! {
         /// If there are multiple linked projects/workspaces, this command is invoked for
         /// each of them, with the working directory being the workspace root
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.check.invocationStrategy#` and
-        /// `#rust-analyzer.check.invocationLocation#`.
+        /// by changing `#rust-analyzer.check.invocationStrategy#`.
         ///
         /// If `$saved_file` is part of the command, rust-analyzer will pass
         /// the absolute path of the saved file to the provided command. This is
@@ -282,9 +264,9 @@ config_data! {
         linkedProjects: Vec<ManifestOrProjectJson> = vec![],
 
         /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
-        lru_capacity: Option<usize>                 = None,
+        lru_capacity: Option<u16>                 = None,
         /// Sets the LRU capacity of the specified queries.
-        lru_query_capacities: FxHashMap<Box<str>, usize> = FxHashMap::default(),
+        lru_query_capacities: FxHashMap<Box<str>, u16> = FxHashMap::default(),
 
         /// These proc-macros will be ignored when trying to expand them.
         ///
@@ -315,18 +297,101 @@ config_data! {
         /// This option does not take effect until rust-analyzer is restarted.
         rustc_source: Option<String> = None,
 
-        /// Additional arguments to `rustfmt`.
-        rustfmt_extraArgs: Vec<String>               = vec![],
-        /// Advanced option, fully override the command rust-analyzer uses for
-        /// formatting. This should be the equivalent of `rustfmt` here, and
-        /// not that of `cargo fmt`. The file contents will be passed on the
-        /// standard input and the formatted result will be read from the
-        /// standard output.
-        rustfmt_overrideCommand: Option<Vec<String>> = None,
-        /// Enables the use of rustfmt's unstable range formatting command for the
-        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
-        /// available on a nightly build.
-        rustfmt_rangeFormatting_enable: bool = false,
+
+        /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
+        ///
+        /// [`DiscoverWorkspaceConfig`] also requires setting `progress_label` and `files_to_watch`.
+        /// `progress_label` is used for the title in progress indicators, whereas `files_to_watch`
+        /// is used to determine which build system-specific files should be watched in order to
+        /// reload rust-analyzer.
+        ///
+        /// Below is an example of a valid configuration:
+        /// ```json
+        /// "rust-analyzer.workspace.discoverConfig": {
+        ///     "command": [
+        ///         "rust-project",
+        ///         "develop-json"
+        ///     ],
+        ///     "progressLabel": "rust-analyzer",
+        ///     "filesToWatch": [
+        ///         "BUCK"
+        ///     ]
+        /// }
+        /// ```
+        ///
+        /// ## On `DiscoverWorkspaceConfig::command`
+        ///
+        /// **Warning**: This format is provisional and subject to change.
+        ///
+        /// [`DiscoverWorkspaceConfig::command`] *must* return a JSON object
+        /// corresponding to `DiscoverProjectData::Finished`:
+        ///
+        /// ```norun
+        /// #[derive(Debug, Clone, Deserialize, Serialize)]
+        /// #[serde(tag = "kind")]
+        /// #[serde(rename_all = "snake_case")]
+        /// enum DiscoverProjectData {
+        ///     Finished { buildfile: Utf8PathBuf, project: ProjectJsonData },
+        ///     Error { error: String, source: Option<String> },
+        ///     Progress { message: String },
+        /// }
+        /// ```
+        ///
+        /// As JSON, `DiscoverProjectData::Finished` is:
+        ///
+        /// ```json
+        /// {
+        ///     // the internally-tagged representation of the enum.
+        ///     "kind": "finished",
+        ///     // the file used by a non-Cargo build system to define
+        ///     // a package or target.
+        ///     "buildfile": "rust-analyzer/BUILD",
+        ///     // the contents of a rust-project.json, elided for brevity
+        ///     "project": {
+        ///         "sysroot": "foo",
+        ///         "crates": []
+        ///     }
+        /// }
+        /// ```
+        ///
+        /// It is encouraged, but not required, to use the other variants on
+        /// `DiscoverProjectData` to provide a more polished end-user experience.
+        ///
+        /// `DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`,
+        /// which will be substituted with the JSON-serialized form of the following
+        /// enum:
+        ///
+        /// ```norun
+        /// #[derive(PartialEq, Clone, Debug, Serialize)]
+        /// #[serde(rename_all = "camelCase")]
+        /// pub enum DiscoverArgument {
+        ///    Path(AbsPathBuf),
+        ///    Buildfile(AbsPathBuf),
+        /// }
+        /// ```
+        ///
+        /// The JSON representation of `DiscoverArgument::Path` is:
+        ///
+        /// ```json
+        /// {
+        ///     "path": "src/main.rs"
+        /// }
+        /// ```
+        ///
+        /// Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
+        ///
+        /// ```
+        /// {
+        ///     "buildfile": "BUILD"
+        /// }
+        /// ```
+        ///
+        /// `DiscoverArgument::Path` is used to find and generate a `rust-project.json`,
+        /// and therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to
+        /// to update an existing workspace. As a reference for implementors,
+        /// buck2's `rust-project` will likely be useful:
+        /// https://github.com/facebook/buck2/tree/main/integrations/rust-project.
+        workspace_discoverConfig: Option<DiscoverWorkspaceConfig> = None,
     }
 }
 
@@ -359,6 +424,25 @@ config_data! {
         imports_prefix: ImportPrefixDef               = ImportPrefixDef::Plain,
         /// Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
         imports_prefixExternPrelude: bool = false,
+    }
+}
+
+config_data! {
+    workspace: struct WorkspaceDefaultConfigData <- WorkspaceConfigInput -> {
+
+        /// Additional arguments to `rustfmt`.
+        rustfmt_extraArgs: Vec<String>               = vec![],
+        /// Advanced option, fully override the command rust-analyzer uses for
+        /// formatting. This should be the equivalent of `rustfmt` here, and
+        /// not that of `cargo fmt`. The file contents will be passed on the
+        /// standard input and the formatted result will be read from the
+        /// standard output.
+        rustfmt_overrideCommand: Option<Vec<String>> = None,
+        /// Enables the use of rustfmt's unstable range formatting command for the
+        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
+        /// available on a nightly build.
+        rustfmt_rangeFormatting_enable: bool = false,
+
     }
 }
 
@@ -510,9 +594,9 @@ config_data! {
         /// Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
         inlayHints_expressionAdjustmentHints_mode: AdjustmentHintsModeDef = AdjustmentHintsModeDef::Prefix,
         /// Whether to show const generic parameter name inlay hints.
-        inlayHints_genericParameterHints_const_enable: bool= false,
+        inlayHints_genericParameterHints_const_enable: bool= true,
         /// Whether to show generic lifetime parameter name inlay hints.
-        inlayHints_genericParameterHints_lifetime_enable: bool = true,
+        inlayHints_genericParameterHints_lifetime_enable: bool = false,
         /// Whether to show generic type parameter name inlay hints.
         inlayHints_genericParameterHints_type_enable: bool = false,
         /// Whether to show implicit drop hints.
@@ -558,9 +642,6 @@ config_data! {
         lens_debug_enable: bool            = true,
         /// Whether to show CodeLens in Rust files.
         lens_enable: bool           = true,
-        /// Internal config: use custom client-side commands even when the
-        /// client doesn't set the corresponding capability.
-        lens_forceCustomCommands: bool = true,
         /// Whether to show `Implementations` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_implementations_enable: bool  = true,
@@ -584,9 +665,6 @@ config_data! {
 
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = true,
-
-        /// Whether to send an UnindexedProject notification to the client.
-        notifications_unindexedProject: bool      = false,
 
         /// How many worker threads in the main loop. The default `null` means to pick automatically.
         numThreads: Option<NumThreads> = None,
@@ -660,6 +738,19 @@ config_data! {
     }
 }
 
+#[derive(Debug)]
+pub enum RatomlFileKind {
+    Workspace,
+    Crate,
+}
+
+#[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
+enum RatomlFile {
+    Workspace(WorkspaceLocalConfigInput),
+    Crate(LocalConfigInput),
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     discovered_projects: Vec<ProjectManifest>,
@@ -675,31 +766,19 @@ pub struct Config {
     /// by receiving a `lsp_types::notification::DidChangeConfiguration`.
     client_config: (FullConfigInput, ConfigErrors),
 
-    /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
-    /// If not specified by init of a `Config` object this value defaults to :
-    ///
-    /// |Platform | Value                                 | Example                                  |
-    /// | ------- | ------------------------------------- | ---------------------------------------- |
-    /// | Linux   | `$XDG_CONFIG_HOME` or `$HOME`/.config | /home/alice/.config                      |
-    /// | macOS   | `$HOME`/Library/Application Support   | /Users/Alice/Library/Application Support |
-    /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
-    user_config_path: VfsPath,
-
-    /// FIXME @alibektas : Change this to sth better.
     /// Config node whose values apply to **every** Rust project.
-    user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
+    user_config: Option<(GlobalWorkspaceLocalConfigInput, ConfigErrors)>,
 
-    /// A special file for this session whose path is set to `self.root_path.join("rust-analyzer.toml")`
-    root_ratoml_path: VfsPath,
-
-    /// This file can be used to make global changes while having only a workspace-wide scope.
-    root_ratoml: Option<(GlobalLocalConfigInput, ConfigErrors)>,
-
-    /// For every `SourceRoot` there can be at most one RATOML file.
-    ratoml_files: FxHashMap<SourceRootId, (LocalConfigInput, ConfigErrors)>,
+    ratoml_file: FxHashMap<SourceRootId, (RatomlFile, ConfigErrors)>,
 
     /// Clone of the value that is stored inside a `GlobalState`.
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
+
+    /// Use case : It is an error to have an empty value for `check_command`.
+    /// Since it is a `global` command at the moment, its final value can only be determined by
+    /// traversing through `global` configs and the `client` config. However the non-null value constraint
+    /// is config level agnostic, so this requires an independent error storage
+    validation_errors: ConfigErrors,
 
     detached_files: Vec<AbsPathBuf>,
 }
@@ -714,8 +793,25 @@ impl std::ops::Deref for Config {
 }
 
 impl Config {
-    pub fn user_config_path(&self) -> &VfsPath {
-        &self.user_config_path
+    /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
+    /// This path is equal to:
+    ///
+    /// |Platform | Value                                 | Example                                  |
+    /// | ------- | ------------------------------------- | ---------------------------------------- |
+    /// | Linux   | `$XDG_CONFIG_HOME` or `$HOME`/.config | /home/alice/.config                      |
+    /// | macOS   | `$HOME`/Library/Application Support   | /Users/Alice/Library/Application Support |
+    /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
+    pub fn user_config_path() -> Option<&'static AbsPath> {
+        static USER_CONFIG_PATH: LazyLock<Option<AbsPathBuf>> = LazyLock::new(|| {
+            let user_config_path = if let Some(path) = env::var_os("__TEST_RA_USER_CONFIG_DIR") {
+                std::path::PathBuf::from(path)
+            } else {
+                dirs::config_dir()?.join("rust-analyzer")
+            }
+            .join("rust-analyzer.toml");
+            Some(AbsPathBuf::assert_utf8(user_config_path))
+        });
+        USER_CONFIG_PATH.as_deref()
     }
 
     pub fn same_source_root_parent_map(
@@ -730,6 +826,7 @@ impl Config {
     /// The return tuple's bool component signals whether the `GlobalState` should call its `update_configuration()` method.
     fn apply_change_with_sink(&self, change: ConfigChange) -> (Config, bool) {
         let mut config = self.clone();
+        config.validation_errors = ConfigErrors::default();
 
         let mut should_update = false;
 
@@ -737,13 +834,13 @@ impl Config {
             if let Ok(table) = toml::from_str(&change) {
                 let mut toml_errors = vec![];
                 validate_toml_table(
-                    GlobalLocalConfigInput::FIELDS,
+                    GlobalWorkspaceLocalConfigInput::FIELDS,
                     &table,
                     &mut String::new(),
                     &mut toml_errors,
                 );
                 config.user_config = Some((
-                    GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
+                    GlobalWorkspaceLocalConfigInput::from_toml(table, &mut toml_errors),
                     ConfigErrors(
                         toml_errors
                             .into_iter()
@@ -758,9 +855,10 @@ impl Config {
 
         if let Some(mut json) = change.client_config_change {
             tracing::info!("updating config from JSON: {:#}", json);
+
             if !(json.is_null() || json.as_object().map_or(false, |it| it.is_empty())) {
                 let mut json_errors = vec![];
-                let detached_files = get_field::<Vec<Utf8PathBuf>>(
+                let detached_files = get_field_json::<Vec<Utf8PathBuf>>(
                     &mut json,
                     &mut json_errors,
                     "detachedFiles",
@@ -773,6 +871,37 @@ impl Config {
 
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
+                // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
+                config.snippets.clear();
+
+                let snips = self.completion_snippets_custom().to_owned();
+
+                for (name, def) in snips.iter() {
+                    if def.prefix.is_empty() && def.postfix.is_empty() {
+                        continue;
+                    }
+                    let scope = match def.scope {
+                        SnippetScopeDef::Expr => SnippetScope::Expr,
+                        SnippetScopeDef::Type => SnippetScope::Type,
+                        SnippetScopeDef::Item => SnippetScope::Item,
+                    };
+                    match Snippet::new(
+                        &def.prefix,
+                        &def.postfix,
+                        &def.body,
+                        def.description.as_ref().unwrap_or(name),
+                        &def.requires,
+                        scope,
+                    ) {
+                        Some(snippet) => config.snippets.push(snippet),
+                        None => json_errors.push((
+                            name.to_owned(),
+                            <serde_json::Error as serde::de::Error>::custom(format!(
+                                "snippet {name} is invalid or triggers are missing",
+                            )),
+                        )),
+                    }
+                }
                 config.client_config = (
                     FullConfigInput::from_json(json, &mut json_errors),
                     ConfigErrors(
@@ -788,68 +917,96 @@ impl Config {
             should_update = true;
         }
 
-        if let Some(change) = change.root_ratoml_change {
-            tracing::info!("updating root ra-toml config: {:#}", change);
-            #[allow(clippy::single_match)]
-            match toml::from_str(&change) {
-                Ok(table) => {
-                    let mut toml_errors = vec![];
-                    validate_toml_table(
-                        GlobalLocalConfigInput::FIELDS,
-                        &table,
-                        &mut String::new(),
-                        &mut toml_errors,
-                    );
-                    config.root_ratoml = Some((
-                        GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
-                        ConfigErrors(
-                            toml_errors
-                                .into_iter()
-                                .map(|(a, b)| ConfigErrorInner::Toml { config_key: a, error: b })
-                                .map(Arc::new)
-                                .collect(),
-                        ),
-                    ));
-                    should_update = true;
-                }
-                // FIXME
-                Err(_) => (),
-            }
-        }
-
         if let Some(change) = change.ratoml_file_change {
-            for (source_root_id, (_, text)) in change {
-                if let Some(text) = text {
-                    let mut toml_errors = vec![];
-                    tracing::info!("updating ra-toml config: {:#}", text);
-                    #[allow(clippy::single_match)]
-                    match toml::from_str(&text) {
-                        Ok(table) => {
-                            validate_toml_table(
-                                &[LocalConfigInput::FIELDS],
-                                &table,
-                                &mut String::new(),
-                                &mut toml_errors,
-                            );
-                            config.ratoml_files.insert(
-                                source_root_id,
-                                (
-                                    LocalConfigInput::from_toml(&table, &mut toml_errors),
-                                    ConfigErrors(
-                                        toml_errors
-                                            .into_iter()
-                                            .map(|(a, b)| ConfigErrorInner::Toml {
-                                                config_key: a,
-                                                error: b,
-                                            })
-                                            .map(Arc::new)
-                                            .collect(),
-                                    ),
-                                ),
-                            );
+            for (source_root_id, (kind, _, text)) in change {
+                match kind {
+                    RatomlFileKind::Crate => {
+                        if let Some(text) = text {
+                            let mut toml_errors = vec![];
+                            tracing::info!("updating ra-toml config: {:#}", text);
+                            match toml::from_str(&text) {
+                                Ok(table) => {
+                                    validate_toml_table(
+                                        &[LocalConfigInput::FIELDS],
+                                        &table,
+                                        &mut String::new(),
+                                        &mut toml_errors,
+                                    );
+                                    config.ratoml_file.insert(
+                                        source_root_id,
+                                        (
+                                            RatomlFile::Crate(LocalConfigInput::from_toml(
+                                                &table,
+                                                &mut toml_errors,
+                                            )),
+                                            ConfigErrors(
+                                                toml_errors
+                                                    .into_iter()
+                                                    .map(|(a, b)| ConfigErrorInner::Toml {
+                                                        config_key: a,
+                                                        error: b,
+                                                    })
+                                                    .map(Arc::new)
+                                                    .collect(),
+                                            ),
+                                        ),
+                                    );
+                                }
+                                Err(e) => {
+                                    config.validation_errors.0.push(
+                                        ConfigErrorInner::ParseError {
+                                            reason: e.message().to_owned(),
+                                        }
+                                        .into(),
+                                    );
+                                }
+                            }
                         }
-                        // FIXME
-                        Err(_) => (),
+                    }
+                    RatomlFileKind::Workspace => {
+                        if let Some(text) = text {
+                            let mut toml_errors = vec![];
+                            match toml::from_str(&text) {
+                                Ok(table) => {
+                                    validate_toml_table(
+                                        WorkspaceLocalConfigInput::FIELDS,
+                                        &table,
+                                        &mut String::new(),
+                                        &mut toml_errors,
+                                    );
+                                    config.ratoml_file.insert(
+                                        source_root_id,
+                                        (
+                                            RatomlFile::Workspace(
+                                                WorkspaceLocalConfigInput::from_toml(
+                                                    table,
+                                                    &mut toml_errors,
+                                                ),
+                                            ),
+                                            ConfigErrors(
+                                                toml_errors
+                                                    .into_iter()
+                                                    .map(|(a, b)| ConfigErrorInner::Toml {
+                                                        config_key: a,
+                                                        error: b,
+                                                    })
+                                                    .map(Arc::new)
+                                                    .collect(),
+                                            ),
+                                        ),
+                                    );
+                                    should_update = true;
+                                }
+                                Err(e) => {
+                                    config.validation_errors.0.push(
+                                        ConfigErrorInner::ParseError {
+                                            reason: e.message().to_owned(),
+                                        }
+                                        .into(),
+                                    );
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -859,48 +1016,13 @@ impl Config {
             config.source_root_parent_map = source_root_map;
         }
 
-        // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
-        config.snippets.clear();
-
-        let snips = self.completion_snippets_custom().to_owned();
-
-        for (name, def) in snips.iter() {
-            if def.prefix.is_empty() && def.postfix.is_empty() {
-                continue;
-            }
-            let scope = match def.scope {
-                SnippetScopeDef::Expr => SnippetScope::Expr,
-                SnippetScopeDef::Type => SnippetScope::Type,
-                SnippetScopeDef::Item => SnippetScope::Item,
-            };
-            #[allow(clippy::single_match)]
-            match Snippet::new(
-                &def.prefix,
-                &def.postfix,
-                &def.body,
-                def.description.as_ref().unwrap_or(name),
-                &def.requires,
-                scope,
-            ) {
-                Some(snippet) => config.snippets.push(snippet),
-                // FIXME
-                // None => error_sink.0.push(ConfigErrorInner::Json {
-                //     config_key: "".to_owned(),
-                //     error: <serde_json::Error as serde::de::Error>::custom(format!(
-                //         "snippet {name} is invalid or triggers are missing",
-                //     )),
-                // }),
-                None => (),
-            }
+        if config.check_command().is_empty() {
+            config.validation_errors.0.push(Arc::new(ConfigErrorInner::Json {
+                config_key: "/check/command".to_owned(),
+                error: serde_json::Error::custom("expected a non-empty string"),
+            }));
         }
 
-        // FIXME: bring this back
-        // if config.check_command().is_empty() {
-        //     error_sink.0.push(ConfigErrorInner::Json {
-        //         config_key: "/check/command".to_owned(),
-        //         error: serde_json::Error::custom("expected a non-empty string"),
-        //     });
-        // }
         (config, should_update)
     }
 
@@ -915,22 +1037,37 @@ impl Config {
                 .1
                  .0
                 .iter()
-                .chain(config.root_ratoml.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
                 .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
-                .chain(config.ratoml_files.values().flat_map(|it| it.1 .0.iter()))
+                .chain(config.ratoml_file.values().flat_map(|it| it.1 .0.iter()))
+                .chain(config.validation_errors.0.iter())
                 .cloned()
                 .collect(),
         );
         (config, e, should_update)
+    }
+
+    pub fn add_linked_projects(&mut self, data: ProjectJsonData, buildfile: AbsPathBuf) {
+        let linked_projects = &mut self.client_config.0.global.linkedProjects;
+
+        let new_project = ManifestOrProjectJson::DiscoveredProjectJson { data, buildfile };
+        match linked_projects {
+            Some(projects) => {
+                match projects.iter_mut().find(|p| p.manifest() == new_project.manifest()) {
+                    Some(p) => *p = new_project,
+                    None => projects.push(new_project),
+                }
+            }
+            None => *linked_projects = Some(vec![new_project]),
+        }
     }
 }
 
 #[derive(Default, Debug)]
 pub struct ConfigChange {
     user_config_change: Option<Arc<str>>,
-    root_ratoml_change: Option<Arc<str>>,
     client_config_change: Option<serde_json::Value>,
-    ratoml_file_change: Option<FxHashMap<SourceRootId, (VfsPath, Option<Arc<str>>)>>,
+    ratoml_file_change:
+        Option<FxHashMap<SourceRootId, (RatomlFileKind, VfsPath, Option<Arc<str>>)>>,
     source_map_change: Option<Arc<FxHashMap<SourceRootId, SourceRootId>>>,
 }
 
@@ -940,10 +1077,10 @@ impl ConfigChange {
         source_root: SourceRootId,
         vfs_path: VfsPath,
         content: Option<Arc<str>>,
-    ) -> Option<(VfsPath, Option<Arc<str>>)> {
+    ) -> Option<(RatomlFileKind, VfsPath, Option<Arc<str>>)> {
         self.ratoml_file_change
             .get_or_insert_with(Default::default)
-            .insert(source_root, (vfs_path, content))
+            .insert(source_root, (RatomlFileKind::Crate, vfs_path, content))
     }
 
     pub fn change_user_config(&mut self, content: Option<Arc<str>>) {
@@ -951,9 +1088,15 @@ impl ConfigChange {
         self.user_config_change = content;
     }
 
-    pub fn change_root_ratoml(&mut self, content: Option<Arc<str>>) {
-        assert!(self.root_ratoml_change.is_none()); // Otherwise it is a double write.
-        self.root_ratoml_change = content;
+    pub fn change_workspace_ratoml(
+        &mut self,
+        source_root: SourceRootId,
+        vfs_path: VfsPath,
+        content: Option<Arc<str>>,
+    ) -> Option<(RatomlFileKind, VfsPath, Option<Arc<str>>)> {
+        self.ratoml_file_change
+            .get_or_insert_with(Default::default)
+            .insert(source_root, (RatomlFileKind::Workspace, vfs_path, content))
     }
 
     pub fn change_client_config(&mut self, change: serde_json::Value) {
@@ -985,6 +1128,14 @@ impl From<ProjectJson> for LinkedProject {
     fn from(v: ProjectJson) -> Self {
         LinkedProject::InlineJsonProject(v)
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoverWorkspaceConfig {
+    pub command: Vec<String>,
+    pub progress_label: String,
+    pub files_to_watch: Vec<String>,
 }
 
 pub struct CallInfoConfig {
@@ -1098,7 +1249,6 @@ pub enum FilesWatcher {
 #[derive(Debug, Clone)]
 pub struct NotificationsConfig {
     pub cargo_toml_not_found: bool,
-    pub unindexed_project: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1128,22 +1278,24 @@ pub struct WorkspaceSymbolConfig {
     /// How many items are returned at most.
     pub search_limit: usize,
 }
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientCommandsConfig {
     pub run_single: bool,
     pub debug_single: bool,
     pub show_reference: bool,
     pub goto_location: bool,
     pub trigger_parameter_hints: bool,
+    pub rename: bool,
 }
 
 #[derive(Debug)]
 pub enum ConfigErrorInner {
     Json { config_key: String, error: serde_json::Error },
     Toml { config_key: String, error: toml::de::Error },
+    ParseError { reason: String },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ConfigErrors(Vec<Arc<ConfigErrorInner>>);
 
 impl ConfigErrors {
@@ -1165,6 +1317,7 @@ impl fmt::Display for ConfigErrors {
                 f(&": ")?;
                 f(e)
             }
+            ConfigErrorInner::ParseError { reason } => f(reason),
         });
         write!(f, "invalid config value{}:\n{}", if self.0.len() == 1 { "" } else { "s" }, errors)
     }
@@ -1178,29 +1331,8 @@ impl Config {
         caps: lsp_types::ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
         visual_studio_code_version: Option<Version>,
-        user_config_path: Option<Utf8PathBuf>,
     ) -> Self {
         static DEFAULT_CONFIG_DATA: OnceLock<&'static DefaultConfigData> = OnceLock::new();
-        let user_config_path = if let Some(user_config_path) = user_config_path {
-            user_config_path.join("rust-analyzer").join("rust-analyzer.toml")
-        } else {
-            let p = config_dir()
-                .expect("A config dir is expected to existed on all platforms ra supports.")
-                .join("rust-analyzer")
-                .join("rust-analyzer.toml");
-            Utf8PathBuf::from_path_buf(p).expect("Config dir expected to be abs.")
-        };
-
-        // A user config cannot be a virtual path as rust-analyzer cannot support watching changes in virtual paths.
-        // See `GlobalState::process_changes` to get more info.
-        // FIXME @alibektas : Temporary solution. I don't think this is right as at some point we may allow users to specify
-        // custom USER_CONFIG_PATHs which may also be relative.
-        let user_config_path = VfsPath::from(AbsPathBuf::assert(user_config_path));
-        let root_ratoml_path = {
-            let mut p = root_path.clone();
-            p.push("rust-analyzer.toml");
-            VfsPath::new_real_path(p.to_string())
-        };
 
         Config {
             caps: ClientCapabilities::new(caps),
@@ -1210,14 +1342,12 @@ impl Config {
             workspace_roots,
             visual_studio_code_version,
             client_config: (FullConfigInput::default(), ConfigErrors(vec![])),
-            ratoml_files: FxHashMap::default(),
             default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
             user_config: None,
-            user_config_path,
-            root_ratoml: None,
-            root_ratoml_path,
             detached_files: Default::default(),
+            validation_errors: Default::default(),
+            ratoml_file: Default::default(),
         }
     }
 
@@ -1258,10 +1388,6 @@ impl Config {
 
     pub fn root_path(&self) -> &AbsPathBuf {
         &self.root_path
-    }
-
-    pub fn root_ratoml_path(&self) -> &VfsPath {
-        &self.root_ratoml_path
     }
 
     pub fn caps(&self) -> &ClientCapabilities {
@@ -1526,15 +1652,27 @@ impl Config {
     pub fn has_linked_projects(&self) -> bool {
         !self.linkedProjects().is_empty()
     }
+
     pub fn linked_manifests(&self) -> impl Iterator<Item = &Utf8Path> + '_ {
         self.linkedProjects().iter().filter_map(|it| match it {
             ManifestOrProjectJson::Manifest(p) => Some(&**p),
-            ManifestOrProjectJson::ProjectJson(_) => None,
+            // despite having a buildfile, using this variant as a manifest
+            // will fail.
+            ManifestOrProjectJson::DiscoveredProjectJson { .. } => None,
+            ManifestOrProjectJson::ProjectJson { .. } => None,
         })
     }
+
     pub fn has_linked_project_jsons(&self) -> bool {
-        self.linkedProjects().iter().any(|it| matches!(it, ManifestOrProjectJson::ProjectJson(_)))
+        self.linkedProjects()
+            .iter()
+            .any(|it| matches!(it, ManifestOrProjectJson::ProjectJson { .. }))
     }
+
+    pub fn discover_workspace_config(&self) -> Option<&DiscoverWorkspaceConfig> {
+        self.workspace_discoverConfig().as_ref()
+    }
+
     pub fn linked_or_discovered_projects(&self) -> Vec<LinkedProject> {
         match self.linkedProjects().as_slice() {
             [] => {
@@ -1558,6 +1696,12 @@ impl Config {
                             .map_err(|e| tracing::error!("failed to load linked project: {}", e))
                             .ok()
                             .map(Into::into)
+                    }
+                    ManifestOrProjectJson::DiscoveredProjectJson { data, buildfile } => {
+                        let root_path =
+                            buildfile.parent().expect("Unable to get parent of buildfile");
+
+                        Some(ProjectJson::new(None, root_path, data.clone()).into())
                     }
                     ManifestOrProjectJson::ProjectJson(it) => {
                         Some(ProjectJson::new(None, &self.root_path, it.clone()).into())
@@ -1604,11 +1748,11 @@ impl Config {
         extra_env
     }
 
-    pub fn lru_parse_query_capacity(&self) -> Option<usize> {
+    pub fn lru_parse_query_capacity(&self) -> Option<u16> {
         self.lru_capacity().to_owned()
     }
 
-    pub fn lru_query_capacities_config(&self) -> Option<&FxHashMap<Box<str>, usize>> {
+    pub fn lru_query_capacities_config(&self) -> Option<&FxHashMap<Box<str>, u16>> {
         self.lru_query_capacities().is_empty().not().then(|| self.lru_query_capacities())
     }
 
@@ -1640,7 +1784,6 @@ impl Config {
     pub fn notifications(&self) -> NotificationsConfig {
         NotificationsConfig {
             cargo_toml_not_found: self.notifications_cargoTomlNotFound().to_owned(),
-            unindexed_project: self.notifications_unindexedProject().to_owned(),
         }
     }
 
@@ -1669,7 +1812,6 @@ impl Config {
         });
         let sysroot_src =
             self.cargo_sysrootSrc().as_ref().map(|sysroot| self.root_path.join(sysroot));
-        let sysroot_query_metadata = self.cargo_sysrootQueryMetadata();
 
         CargoConfig {
             all_targets: *self.cargo_allTargets(),
@@ -1682,7 +1824,6 @@ impl Config {
             },
             target: self.cargo_target().clone(),
             sysroot,
-            sysroot_query_metadata: *sysroot_query_metadata,
             sysroot_src,
             rustc_source,
             cfg_overrides: project_model::CfgOverrides {
@@ -1690,8 +1831,11 @@ impl Config {
                     self.cargo_cfgs()
                         .iter()
                         .map(|(key, val)| match val {
-                            Some(val) => CfgAtom::KeyValue { key: key.into(), value: val.into() },
-                            None => CfgAtom::Flag(key.into()),
+                            Some(val) => CfgAtom::KeyValue {
+                                key: Symbol::intern(key),
+                                value: Symbol::intern(val),
+                            },
+                            None => CfgAtom::Flag(Symbol::intern(key)),
                         })
                         .collect(),
                     vec![],
@@ -1704,12 +1848,6 @@ impl Config {
                 InvocationStrategy::Once => project_model::InvocationStrategy::Once,
                 InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
             },
-            invocation_location: match self.cargo_buildScripts_invocationLocation() {
-                InvocationLocation::Root => {
-                    project_model::InvocationLocation::Root(self.root_path.clone())
-                }
-                InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
-            },
             run_build_script_command: self.cargo_buildScripts_overrideCommand().clone(),
             extra_args: self.cargo_extraArgs().clone(),
             extra_env: self.cargo_extraEnv().clone(),
@@ -1717,16 +1855,16 @@ impl Config {
         }
     }
 
-    pub fn rustfmt(&self) -> RustfmtConfig {
-        match &self.rustfmt_overrideCommand() {
+    pub fn rustfmt(&self, source_root_id: Option<SourceRootId>) -> RustfmtConfig {
+        match &self.rustfmt_overrideCommand(source_root_id) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
                 RustfmtConfig::CustomCommand { command, args }
             }
             Some(_) | None => RustfmtConfig::Rustfmt {
-                extra_args: self.rustfmt_extraArgs().clone(),
-                enable_range_formatting: *self.rustfmt_rangeFormatting_enable(),
+                extra_args: self.rustfmt_extraArgs(source_root_id).clone(),
+                enable_range_formatting: *self.rustfmt_rangeFormatting_enable(source_root_id),
             },
         }
     }
@@ -1735,7 +1873,7 @@ impl Config {
         *self.check_workspace()
     }
 
-    pub fn cargo_test_options(&self) -> CargoOptions {
+    pub(crate) fn cargo_test_options(&self) -> CargoOptions {
         CargoOptions {
             target_triples: self.cargo_target().clone().into_iter().collect(),
             all_targets: false,
@@ -1746,12 +1884,13 @@ impl Config {
                 CargoFeaturesDef::Selected(it) => it,
             },
             extra_args: self.extra_args().clone(),
+            extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
             extra_env: self.extra_env().clone(),
             target_dir: self.target_dir_from_config(),
         }
     }
 
-    pub fn flycheck(&self) -> FlycheckConfig {
+    pub(crate) fn flycheck(&self) -> FlycheckConfig {
         match &self.check_overrideCommand() {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
@@ -1761,16 +1900,10 @@ impl Config {
                     args,
                     extra_env: self.check_extra_env(),
                     invocation_strategy: match self.check_invocationStrategy() {
-                        InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
+                        InvocationStrategy::Once => crate::flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
-                            flycheck::InvocationStrategy::PerWorkspace
+                            crate::flycheck::InvocationStrategy::PerWorkspace
                         }
-                    },
-                    invocation_location: match self.check_invocationLocation() {
-                        InvocationLocation::Root => {
-                            flycheck::InvocationLocation::Root(self.root_path.clone())
-                        }
-                        InvocationLocation::Workspace => flycheck::InvocationLocation::Workspace,
                     },
                 }
             }
@@ -1802,6 +1935,7 @@ impl Config {
                         CargoFeaturesDef::Selected(it) => it,
                     },
                     extra_args: self.check_extra_args(),
+                    extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
                     extra_env: self.check_extra_env(),
                     target_dir: self.target_dir_from_config(),
                 },
@@ -1889,18 +2023,17 @@ impl Config {
     }
 
     pub fn client_commands(&self) -> ClientCommandsConfig {
-        let commands = self.commands();
-        let force = commands.is_none() && *self.lens_forceCustomCommands();
-        let commands = commands.map(|it| it.commands).unwrap_or_default();
+        let commands = self.commands().map(|it| it.commands).unwrap_or_default();
 
-        let get = |name: &str| commands.iter().any(|it| it == name) || force;
+        let get = |name: &str| commands.iter().any(|it| it == name);
 
         ClientCommandsConfig {
             run_single: get("rust-analyzer.runSingle"),
             debug_single: get("rust-analyzer.debugSingle"),
             show_reference: get("rust-analyzer.showReferences"),
             goto_location: get("rust-analyzer.gotoLocation"),
-            trigger_parameter_hints: get("editor.action.triggerParameterHints"),
+            trigger_parameter_hints: get("rust-analyzer.triggerParameterHints"),
+            rename: get("rust-analyzer.rename"),
         }
     }
 
@@ -2095,11 +2228,47 @@ mod single_or_array {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(untagged)]
 enum ManifestOrProjectJson {
     Manifest(Utf8PathBuf),
     ProjectJson(ProjectJsonData),
+    DiscoveredProjectJson {
+        data: ProjectJsonData,
+        #[serde(serialize_with = "serialize_abs_pathbuf")]
+        #[serde(deserialize_with = "deserialize_abs_pathbuf")]
+        buildfile: AbsPathBuf,
+    },
+}
+
+fn deserialize_abs_pathbuf<'de, D>(de: D) -> std::result::Result<AbsPathBuf, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    let path = String::deserialize(de)?;
+
+    AbsPathBuf::try_from(path.as_ref())
+        .map_err(|err| serde::de::Error::custom(format!("invalid path name: {err:?}")))
+}
+
+fn serialize_abs_pathbuf<S>(path: &AbsPathBuf, se: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let path: &Utf8Path = path.as_ref();
+    se.serialize_str(path.as_str())
+}
+
+impl ManifestOrProjectJson {
+    fn manifest(&self) -> Option<&Utf8Path> {
+        match self {
+            ManifestOrProjectJson::Manifest(manifest) => Some(manifest),
+            ManifestOrProjectJson::DiscoveredProjectJson { buildfile, .. } => {
+                Some(buildfile.as_ref())
+            }
+            ManifestOrProjectJson::ProjectJson(_) => None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -2144,13 +2313,6 @@ pub(crate) enum InvocationStrategy {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct CheckOnSaveTargets(#[serde(with = "single_or_array")] Vec<String>);
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
-enum InvocationLocation {
-    Root,
-    Workspace,
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -2341,20 +2503,23 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
-                    let mut par: Option<SourceRootId> = source_root;
-                    while let Some(source_root_id) = par {
-                        par = self.source_root_parent_map.get(&source_root_id).copied();
-                        if let Some((config, _)) = self.ratoml_files.get(&source_root_id) {
-                            if let Some(value) = config.$field.as_ref() {
-                                return value;
+                    let mut source_root = source_root.as_ref();
+                    while let Some(sr) = source_root {
+                        if let Some((file, _)) = self.ratoml_file.get(&sr) {
+                            match file {
+                                RatomlFile::Workspace(config) => {
+                                    if let Some(v) = config.local.$field.as_ref() {
+                                        return &v;
+                                    }
+                                },
+                                RatomlFile::Crate(config) => {
+                                    if let Some(value) = config.$field.as_ref() {
+                                        return value;
+                                    }
+                                }
                             }
                         }
-                    }
-
-                    if let Some((root_path_ratoml, _)) = self.root_ratoml.as_ref() {
-                        if let Some(v) = root_path_ratoml.local.$field.as_ref() {
-                            return &v;
-                        }
+                        source_root = self.source_root_parent_map.get(&sr);
                     }
 
                     if let Some(v) = self.client_config.0.local.$field.as_ref() {
@@ -2372,6 +2537,41 @@ macro_rules! _impl_for_config_data {
             )*
         }
     };
+    (workspace, $(
+            $(#[doc=$doc:literal])*
+            $vis:vis $field:ident : $ty:ty = $default:expr,
+        )*
+    ) => {
+        impl Config {
+            $(
+                $($doc)*
+                #[allow(non_snake_case)]
+                $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
+                    let mut source_root = source_root.as_ref();
+                    while let Some(sr) = source_root {
+                        if let Some((RatomlFile::Workspace(config), _)) = self.ratoml_file.get(&sr) {
+                            if let Some(v) = config.workspace.$field.as_ref() {
+                                return &v;
+                            }
+                        }
+                        source_root = self.source_root_parent_map.get(&sr);
+                    }
+
+                    if let Some(v) = self.client_config.0.workspace.$field.as_ref() {
+                        return &v;
+                    }
+
+                    if let Some((user_config, _)) = self.user_config.as_ref() {
+                        if let Some(v) = user_config.workspace.$field.as_ref() {
+                            return &v;
+                        }
+                    }
+
+                    &self.default_config.workspace.$field
+                }
+            )*
+        }
+    };
     (global, $(
             $(#[doc=$doc:literal])*
             $vis:vis $field:ident : $ty:ty = $default:expr,
@@ -2382,13 +2582,6 @@ macro_rules! _impl_for_config_data {
                 $($doc)*
                 #[allow(non_snake_case)]
                 $vis fn $field(&self) -> &$ty {
-
-                    if let Some((root_path_ratoml, _)) = self.root_ratoml.as_ref() {
-                        if let Some(v) = root_path_ratoml.global.$field.as_ref() {
-                            return &v;
-                        }
-                    }
-
                     if let Some(v) = self.client_config.0.global.$field.as_ref() {
                         return &v;
                     }
@@ -2398,6 +2591,7 @@ macro_rules! _impl_for_config_data {
                             return &v;
                         }
                     }
+
 
                     &self.default_config.global.$field
                 }
@@ -2479,7 +2673,7 @@ macro_rules! _config_data {
 
             fn from_json(json: &mut serde_json::Value, error_sink: &mut Vec<(String, serde_json::Error)>) -> Self {
                 Self {$(
-                    $field: get_field(
+                    $field: get_field_json(
                         json,
                         error_sink,
                         stringify!($field),
@@ -2525,6 +2719,7 @@ use _config_data as config_data;
 #[derive(Default, Debug, Clone)]
 struct DefaultConfigData {
     global: GlobalDefaultConfigData,
+    workspace: WorkspaceDefaultConfigData,
     local: LocalDefaultConfigData,
     client: ClientDefaultConfigData,
 }
@@ -2535,6 +2730,7 @@ struct DefaultConfigData {
 #[derive(Debug, Clone, Default)]
 struct FullConfigInput {
     global: GlobalConfigInput,
+    workspace: WorkspaceConfigInput,
     local: LocalConfigInput,
     client: ClientConfigInput,
 }
@@ -2548,6 +2744,7 @@ impl FullConfigInput {
             global: GlobalConfigInput::from_json(&mut json, error_sink),
             local: LocalConfigInput::from_json(&mut json, error_sink),
             client: ClientConfigInput::from_json(&mut json, error_sink),
+            workspace: WorkspaceConfigInput::from_json(&mut json, error_sink),
         }
     }
 
@@ -2556,6 +2753,7 @@ impl FullConfigInput {
         GlobalConfigInput::schema_fields(&mut fields);
         LocalConfigInput::schema_fields(&mut fields);
         ClientConfigInput::schema_fields(&mut fields);
+        WorkspaceConfigInput::schema_fields(&mut fields);
         fields.sort_by_key(|&(x, ..)| x);
         fields
             .iter()
@@ -2578,26 +2776,50 @@ impl FullConfigInput {
 /// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
 /// all fields being None.
 #[derive(Debug, Clone, Default)]
-struct GlobalLocalConfigInput {
+struct GlobalWorkspaceLocalConfigInput {
     global: GlobalConfigInput,
     local: LocalConfigInput,
+    workspace: WorkspaceConfigInput,
 }
 
-impl GlobalLocalConfigInput {
+impl GlobalWorkspaceLocalConfigInput {
     const FIELDS: &'static [&'static [&'static str]] =
         &[GlobalConfigInput::FIELDS, LocalConfigInput::FIELDS];
     fn from_toml(
         toml: toml::Table,
         error_sink: &mut Vec<(String, toml::de::Error)>,
-    ) -> GlobalLocalConfigInput {
-        GlobalLocalConfigInput {
+    ) -> GlobalWorkspaceLocalConfigInput {
+        GlobalWorkspaceLocalConfigInput {
             global: GlobalConfigInput::from_toml(&toml, error_sink),
+            local: LocalConfigInput::from_toml(&toml, error_sink),
+            workspace: WorkspaceConfigInput::from_toml(&toml, error_sink),
+        }
+    }
+}
+
+/// Workspace and local config levels, all fields `Option<T>`, to describe fields that are actually set by
+/// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
+/// all fields being None.
+#[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
+struct WorkspaceLocalConfigInput {
+    workspace: WorkspaceConfigInput,
+    local: LocalConfigInput,
+}
+
+impl WorkspaceLocalConfigInput {
+    #[allow(dead_code)]
+    const FIELDS: &'static [&'static [&'static str]] =
+        &[WorkspaceConfigInput::FIELDS, LocalConfigInput::FIELDS];
+    fn from_toml(toml: toml::Table, error_sink: &mut Vec<(String, toml::de::Error)>) -> Self {
+        Self {
+            workspace: WorkspaceConfigInput::from_toml(&toml, error_sink),
             local: LocalConfigInput::from_toml(&toml, error_sink),
         }
     }
 }
 
-fn get_field<T: DeserializeOwned>(
+fn get_field_json<T: DeserializeOwned>(
     json: &mut serde_json::Value,
     error_sink: &mut Vec<(String, serde_json::Error)>,
     field: &'static str,
@@ -2745,7 +2967,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "FxHashMap<String, String>" => set! {
             "type": "object",
         },
-        "FxHashMap<Box<str>, usize>" => set! {
+        "FxHashMap<Box<str>, u16>" => set! {
             "type": "object",
         },
         "FxHashMap<String, Option<String>>" => set! {
@@ -2754,6 +2976,11 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "Option<usize>" => set! {
             "type": ["null", "integer"],
             "minimum": 0,
+        },
+        "Option<u16>" => set! {
+            "type": ["null", "integer"],
+            "minimum": 0,
+            "maximum": 65535,
         },
         "Option<String>" => set! {
             "type": ["null", "string"],
@@ -2976,16 +3203,8 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "string",
             "enum": ["per_workspace", "once"],
             "enumDescriptions": [
-                "The command will be executed for each workspace.",
-                "The command will be executed once."
-            ],
-        },
-        "InvocationLocation" => set! {
-            "type": "string",
-            "enum": ["workspace", "root"],
-            "enumDescriptions": [
-                "The command will be executed in the corresponding workspace root.",
-                "The command will be executed in the project root."
+                "The command will be executed for each Rust workspace with the workspace as the working directory.",
+                "The command will be executed once with the opened project as the working directory."
             ],
         },
         "Option<CheckOnSaveTargets>" => set! {
@@ -3078,6 +3297,29 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 },
             ],
         },
+        "Option<DiscoverWorkspaceConfig>" => set! {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                        },
+                        "progressLabel": {
+                            "type": "string"
+                        },
+                        "filesToWatch": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                        },
+                    }
+                }
+            ]
+        },
         _ => panic!("missing entry for {ty}: {default} (field {field})"),
     }
 
@@ -3100,7 +3342,7 @@ fn validate_toml_table(
         ptr.push_str(k);
 
         match v {
-            // This is a table config, any entry in it is therefor valid
+            // This is a table config, any entry in it is therefore valid
             toml::Value::Table(_) if verify(ptr) => (),
             toml::Value::Table(table) => validate_toml_table(known_ptrs, table, ptr, error_sink),
             _ if !verify(ptr) => error_sink
@@ -3204,7 +3446,7 @@ mod tests {
         let s = remove_ws(&schema);
         if !p.contains(&s) {
             package_json.replace_range(start..end, &schema);
-            ensure_file_contents(&package_json_path, &package_json)
+            ensure_file_contents(package_json_path.as_std_path(), &package_json)
         }
     }
 
@@ -3212,7 +3454,7 @@ mod tests {
     fn generate_config_documentation() {
         let docs_path = project_root().join("docs/user/generated_config.adoc");
         let expected = FullConfigInput::manual();
-        ensure_file_contents(&docs_path, &expected);
+        ensure_file_contents(docs_path.as_std_path(), &expected);
     }
 
     fn remove_ws(text: &str) -> String {
@@ -3221,13 +3463,8 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_null() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3241,32 +3478,22 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_abs() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
         "procMacro" : {
-            "server": project_root().display().to_string(),
+            "server": project_root().to_string(),
         }}));
 
         (config, _, _) = config.apply_change(change);
-        assert_eq!(config.proc_macro_srv(), Some(AbsPathBuf::try_from(project_root()).unwrap()));
+        assert_eq!(config.proc_macro_srv(), Some(AbsPathBuf::assert(project_root())));
     }
 
     #[test]
     fn proc_macro_srv_rel() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
 
@@ -3285,13 +3512,8 @@ mod tests {
 
     #[test]
     fn cargo_target_dir_unset() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
 
@@ -3308,13 +3530,8 @@ mod tests {
 
     #[test]
     fn cargo_target_dir_subdir() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3331,13 +3548,8 @@ mod tests {
 
     #[test]
     fn cargo_target_dir_relative_dir() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3357,17 +3569,12 @@ mod tests {
 
     #[test]
     fn toml_unknown_key() {
-        let config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
 
-        change.change_root_ratoml(Some(
+        change.change_user_config(Some(
             toml::toml! {
                 [cargo.cfgs]
                 these = "these"
@@ -3426,21 +3633,7 @@ mod tests {
         let (_, e, _) = config.apply_change(change);
         expect_test::expect![[r#"
             ConfigErrors(
-                [
-                    Toml {
-                        config_key: "invalid/config/err",
-                        error: Error {
-                            inner: Error {
-                                inner: TomlError {
-                                    message: "unexpected field",
-                                    raw: None,
-                                    keys: [],
-                                    span: None,
-                                },
-                            },
-                        },
-                    },
-                ],
+                [],
             )
         "#]]
         .assert_debug_eq(&e);

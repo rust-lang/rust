@@ -6,6 +6,7 @@ use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
+use tracing::{debug, debug_span, instrument};
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverageGraphWithLoops};
 

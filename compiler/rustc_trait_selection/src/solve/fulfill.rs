@@ -13,13 +13,12 @@ use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
-use rustc_span::symbol::sym;
-
-use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
+use tracing::instrument;
 
 use super::delegate::SolverDelegate;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use super::Certainty;
+use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
 
 /// A trait engine using the new trait solver.
 ///
@@ -441,10 +440,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             source: CandidateSource::Impl(impl_def_id),
             result: _,
         } = candidate.kind()
-            && goal
-                .infcx()
-                .tcx
-                .has_attrs_with_path(impl_def_id, &[sym::diagnostic, sym::do_not_recommend])
+            && goal.infcx().tcx.do_not_recommend_impl(impl_def_id)
         {
             return ControlFlow::Break(self.obligation.clone());
         }

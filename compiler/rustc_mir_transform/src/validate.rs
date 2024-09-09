@@ -1,6 +1,7 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -17,9 +18,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{Size, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
-use crate::util::is_within_packed;
-
-use crate::util::relate_types;
+use crate::util::{is_within_packed, relate_types};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
@@ -38,7 +37,7 @@ pub struct Validator {
     pub mir_phase: MirPhase,
 }
 
-impl<'tcx> MirPass<'tcx> for Validator {
+impl<'tcx> crate::MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // FIXME(JakobDegen): These bodies never instantiated in codegend anyway, so it's not
         // terribly important that they pass the validator. However, I think other passes might
@@ -102,25 +101,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
                         format!("Free regions in optimized {} MIR", body.phase.name()),
                     );
                 }
-            }
-        }
-
-        // Enforce that coroutine-closure layouts are identical.
-        if let Some(layout) = body.coroutine_layout_raw()
-            && let Some(by_move_body) = body.coroutine_by_move_body()
-            && let Some(by_move_layout) = by_move_body.coroutine_layout_raw()
-        {
-            // FIXME(async_closures): We could do other validation here?
-            if layout.variant_fields.len() != by_move_layout.variant_fields.len() {
-                cfg_checker.fail(
-                    Location::START,
-                    format!(
-                        "Coroutine layout has different number of variant fields from \
-                        by-move coroutine layout:\n\
-                        layout: {layout:#?}\n\
-                        by_move_layout: {by_move_layout:#?}",
-                    ),
-                );
             }
         }
     }
@@ -735,7 +715,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             // since we may be in the process of computing this MIR in the
                             // first place.
                             let layout = if def_id == self.caller_body.source.def_id() {
-                                // FIXME: This is not right for async closures.
+                                self.caller_body.coroutine_layout_raw()
+                            } else if let Some(hir::CoroutineKind::Desugared(
+                                _,
+                                hir::CoroutineSource::Closure,
+                            )) = self.tcx.coroutine_kind(def_id)
+                                && let ty::ClosureKind::FnOnce =
+                                    args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap()
+                                && self.caller_body.source.def_id()
+                                    == self.tcx.coroutine_by_move_body_def_id(def_id)
+                            {
+                                // Same if this is the by-move body of a coroutine-closure.
                                 self.caller_body.coroutine_layout_raw()
                             } else {
                                 self.tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty())
@@ -900,8 +890,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.param_env,
                         adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
                     );
-                    if fields.len() == 1 {
-                        let src_ty = fields.raw[0].ty(self.body, self.tcx);
+                    if let [field] = fields.raw.as_slice() {
+                        let src_ty = field.ty(self.body, self.tcx);
                         if !self.mir_assign_valid_types(src_ty, dest_ty) {
                             self.fail(location, "union field has the wrong type");
                         }
@@ -969,11 +959,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.fail(location, "RawPtr should be in runtime MIR only");
                     }
 
-                    if fields.len() != 2 {
-                        self.fail(location, "raw pointer aggregate must have 2 fields");
-                    } else {
-                        let data_ptr_ty = fields.raw[0].ty(self.body, self.tcx);
-                        let metadata_ty = fields.raw[1].ty(self.body, self.tcx);
+                    if let [data_ptr, metadata] = fields.raw.as_slice() {
+                        let data_ptr_ty = data_ptr.ty(self.body, self.tcx);
+                        let metadata_ty = metadata.ty(self.body, self.tcx);
                         if let ty::RawPtr(in_pointee, in_mut) = data_ptr_ty.kind() {
                             if *in_mut != mutability {
                                 self.fail(location, "input and output mutability must match");
@@ -1000,6 +988,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 self.fail(location, "metadata for pointer-to-thin must be unit");
                             }
                         }
+                    } else {
+                        self.fail(location, "raw pointer aggregate must have 2 fields");
                     }
                 }
             },
@@ -1347,7 +1337,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
-            | Rvalue::AddressOf(_, _)
+            | Rvalue::RawPtr(_, _)
             | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::UbChecks, _)
             | Rvalue::Discriminant(_) => {}
         }

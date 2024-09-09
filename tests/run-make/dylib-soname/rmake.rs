@@ -4,7 +4,6 @@
 //@ only-linux
 //@ ignore-cross-compile
 
-use run_make_support::regex::Regex;
 use run_make_support::{cmd, run_in_tmpdir, rustc};
 
 fn main() {

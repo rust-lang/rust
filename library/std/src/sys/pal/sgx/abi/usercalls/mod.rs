@@ -171,10 +171,12 @@ pub fn wait(event_mask: u64, mut timeout: u64) -> IoResult<u64> {
     unsafe { raw::wait(event_mask, timeout).from_sgx_result() }
 }
 
-/// This function makes an effort to wait for a non-spurious event at least as
-/// long as `duration`. Note that in general there is no guarantee about accuracy
-/// of time and timeouts in SGX model. The enclave runner serving usercalls may
-/// lie about current time and/or ignore timeout values.
+/// Makes an effort to wait for a non-spurious event at least as long as
+/// `duration`.
+///
+/// Note that in general there is no guarantee about accuracy of time and
+/// timeouts in SGX model. The enclave runner serving usercalls may lie about
+/// current time and/or ignore timeout values.
 ///
 /// Once the event is observed, `should_wake_up` will be used to determine
 /// whether or not the event was spurious.

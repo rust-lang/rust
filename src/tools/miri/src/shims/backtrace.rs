@@ -46,8 +46,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {
             // Match behavior of debuginfo (`FunctionCx::adjusted_span_and_dbg_scope`).
-            let span = hygiene::walk_chain_collapsed(frame.current_span(), frame.body.span);
-            data.push((frame.instance, span.lo()));
+            let span = hygiene::walk_chain_collapsed(frame.current_span(), frame.body().span);
+            data.push((frame.instance(), span.lo()));
         }
 
         let ptrs: Vec<_> = data
@@ -116,7 +116,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let ptr = this.read_pointer(ptr)?;
         // Take apart the pointer, we need its pieces. The offset encodes the span.
-        let (alloc_id, offset, _prov) = this.ptr_get_alloc_id(ptr)?;
+        let (alloc_id, offset, _prov) = this.ptr_get_alloc_id(ptr, 0)?;
 
         // This has to be an actual global fn ptr, not a dlsym function.
         let fn_instance = if let Some(GlobalAlloc::Function { instance, .. }) =

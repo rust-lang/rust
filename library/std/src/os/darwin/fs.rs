@@ -1,12 +1,11 @@
 #![allow(dead_code)]
 
+#[allow(deprecated)]
+use super::raw;
 use crate::fs::{self, Metadata};
 use crate::sealed::Sealed;
 use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
-
-#[allow(deprecated)]
-use super::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///

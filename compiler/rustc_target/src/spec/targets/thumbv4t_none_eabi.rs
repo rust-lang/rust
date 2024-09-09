@@ -9,10 +9,9 @@
 //! The default link script is very likely wrong, so you should use
 //! `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
-use crate::spec::{base, PanicStrategy, RelocModel, Target, TargetOptions};
-use crate::spec::{cvs, FramePointer};
+use crate::spec::{base, cvs, FramePointer, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv4t-none-eabi".into(),
         metadata: crate::spec::TargetMetadata {

@@ -1,13 +1,12 @@
 use std::num::IntErrorKind;
 
 use rustc_ast as ast;
-use rustc_errors::DiagCtxtHandle;
-use rustc_errors::{codes::*, Applicability, Diag, Diagnostic, EmissionGuarantee, Level};
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
-use crate::fluent_generated as fluent;
-use crate::UnsupportedLiteralReason;
+use crate::{fluent_generated as fluent, UnsupportedLiteralReason};
 
 #[derive(Diagnostic)]
 #[diag(attr_expected_one_cfg_pattern, code = E0536)]
@@ -128,7 +127,7 @@ pub(crate) enum InvalidIssueStringCause {
 }
 
 impl InvalidIssueStringCause {
-    pub fn from_int_error_kind(span: Span, kind: &IntErrorKind) -> Option<Self> {
+    pub(crate) fn from_int_error_kind(span: Span, kind: &IntErrorKind) -> Option<Self> {
         match kind {
             IntErrorKind::Empty => Some(Self::Empty { span }),
             IntErrorKind::InvalidDigit => Some(Self::InvalidDigit { span }),
@@ -304,7 +303,7 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
 }
 
 impl<'a> IncorrectReprFormatGenericCause<'a> {
-    pub fn from_lit_kind(span: Span, kind: &ast::LitKind, name: &'a str) -> Option<Self> {
+    pub(crate) fn from_lit_kind(span: Span, kind: &ast::LitKind, name: &'a str) -> Option<Self> {
         match kind {
             ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
                 Some(Self::Int { span, name, int: int.get() })
@@ -343,7 +342,7 @@ pub(crate) struct DeprecatedItemSuggestion {
     pub span: Span,
 
     #[help]
-    pub is_nightly: Option<()>,
+    pub is_nightly: bool,
 
     #[note]
     pub details: (),

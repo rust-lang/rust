@@ -266,9 +266,9 @@ For targets: `loongarch64-unknown-linux-gnu`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 5.19.16
-- Binary utilities > Version of binutils = 2.40
+- Binary utilities > Version of binutils = 2.42
 - C-library > glibc version = 2.36
-- C compiler > gcc version = 13.2.0
+- C compiler > gcc version = 14.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `loongarch64-linux-musl.defconfig`
@@ -282,9 +282,9 @@ For targets: `loongarch64-unknown-linux-musl`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 5.19.16
-- Binary utilities > Version of binutils = 2.41
+- Binary utilities > Version of binutils = 2.42
 - C-library > musl version = 1.2.5
-- C compiler > gcc version = 13.2.0
+- C compiler > gcc version = 14.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `mips-linux-gnu.defconfig`

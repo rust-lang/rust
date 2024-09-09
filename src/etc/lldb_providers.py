@@ -389,11 +389,11 @@ class StdVecSyntheticProvider:
     def update(self):
         # type: () -> None
         self.length = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
-        self.buf = self.valobj.GetChildMemberWithName("buf")
+        self.buf = self.valobj.GetChildMemberWithName("buf").GetChildMemberWithName("inner")
 
         self.data_ptr = unwrap_unique_or_non_null(self.buf.GetChildMemberWithName("ptr"))
 
-        self.element_type = self.data_ptr.GetType().GetPointeeType()
+        self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
         self.element_type_size = self.element_type.GetByteSize()
 
     def has_children(self):
@@ -474,7 +474,7 @@ class StdVecDequeSyntheticProvider:
         # type: () -> None
         self.head = self.valobj.GetChildMemberWithName("head").GetValueAsUnsigned()
         self.size = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
-        self.buf = self.valobj.GetChildMemberWithName("buf")
+        self.buf = self.valobj.GetChildMemberWithName("buf").GetChildMemberWithName("inner")
         cap = self.buf.GetChildMemberWithName("cap")
         if cap.GetType().num_fields == 1:
             cap = cap.GetChildAtIndex(0)
@@ -482,7 +482,7 @@ class StdVecDequeSyntheticProvider:
 
         self.data_ptr = unwrap_unique_or_non_null(self.buf.GetChildMemberWithName("ptr"))
 
-        self.element_type = self.data_ptr.GetType().GetPointeeType()
+        self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
         self.element_type_size = self.element_type.GetByteSize()
 
     def has_children(self):

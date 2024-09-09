@@ -14,7 +14,6 @@
 #![feature(let_chains)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
-#![feature(raw_ref_op)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(type_ascription)]
@@ -33,8 +32,6 @@ macro_rules! stmt { ($stmt:stmt) => { stringify!($stmt) }; }
 macro_rules! ty { ($ty:ty) => { stringify!($ty) }; }
 macro_rules! vis { ($vis:vis) => { stringify!($vis) }; }
 
-// Use this when AST pretty-printing and TokenStream pretty-printing give
-// the same result (which is preferable.)
 macro_rules! c1 {
     ($frag:ident, [$($tt:tt)*], $s:literal) => {
         // Prior to #125174:
@@ -66,6 +63,8 @@ fn test_block() {
         } ],
         "{ let _; true }"
     );
+
+    // Attributes are not allowed on vanilla blocks.
 }
 
 #[test]
@@ -332,6 +331,20 @@ fn test_expr() {
     // ExprKind::FormatArgs: untestable because this test works pre-expansion.
 
     // ExprKind::Err: untestable.
+
+    // Ones involving attributes.
+    c1!(expr, [ #[aa] 1 ], "#[aa] 1");
+    c1!(expr, [ #[aa] #[bb] x ], "#[aa] #[bb] x");
+    c1!(expr, [ #[aa] 1 + 2 ], "#[aa] 1 + 2");
+    c1!(expr, [ #[aa] x + 2 ], "#[aa] x + 2");
+    c1!(expr, [ #[aa] 1 / #[bb] 2 ], "#[aa] 1 / #[bb] 2");
+    c1!(expr, [ #[aa] x / #[bb] 2 ], "#[aa] x / #[bb] 2");
+    c1!(expr, [ 1 << #[bb] 2 ], "1 << #[bb] 2");
+    c1!(expr, [ x << #[bb] 2 ], "x << #[bb] 2");
+    c1!(expr, [ #[aa] (1 + 2) ], "#[aa] (1 + 2)");
+    c1!(expr, [ #[aa] #[bb] (x + 2) ], "#[aa] #[bb] (x + 2)");
+    c1!(expr, [ #[aa] x[0].p ], "#[aa] x[0].p");
+    c1!(expr, [ #[aa] { #![bb] 0 } ], "#[aa] { #![bb] 0 }");
 }
 
 #[test]
@@ -484,6 +497,11 @@ fn test_item() {
         "macro_rules! stringify { () => {}; }"
     );
     c1!(item, [ pub macro stringify() {} ], "pub macro stringify() {}");
+
+    // Ones involving attributes.
+    c1!(item, [ #[aa] mod m; ], "#[aa] mod m;");
+    c1!(item, [ mod m { #![bb] } ], "mod m { #![bb] }");
+    c1!(item, [ #[aa] mod m { #![bb] } ], "#[aa] mod m { #![bb] }");
 }
 
 #[test]
@@ -492,6 +510,8 @@ fn test_meta() {
     c1!(meta, [ k = "v" ], "k = \"v\"");
     c1!(meta, [ list(k1, k2 = "v") ], "list(k1, k2 = \"v\")");
     c1!(meta, [ serde::k ], "serde::k");
+
+    // Attributes are not allowed on metas.
 }
 
 #[test]
@@ -580,6 +600,8 @@ fn test_pat() {
     c1!(pat, [ mac!(...) ], "mac!(...)");
     c1!(pat, [ mac![...] ], "mac![...]");
     c1!(pat, [ mac! { ... } ], "mac! { ... }");
+
+    // Attributes are not allowed on patterns.
 }
 
 #[test]
@@ -593,6 +615,8 @@ fn test_path() {
     c1!(path, [ Self::<'static> ], "Self::<'static>");
     c1!(path, [ Self() ], "Self()");
     c1!(path, [ Self() -> () ], "Self() -> ()");
+
+    // Attributes are not allowed on paths.
 }
 
 #[test]
@@ -622,6 +646,20 @@ fn test_stmt() {
     c1!(stmt, [ mac!(...) ], "mac!(...)");
     c1!(stmt, [ mac![...] ], "mac![...]");
     c1!(stmt, [ mac! { ... } ], "mac! { ... }");
+
+    // Ones involving attributes.
+    c1!(stmt, [ #[aa] 1 ], "#[aa] 1");
+    c1!(stmt, [ #[aa] #[bb] x ], "#[aa] #[bb] x");
+    c1!(stmt, [ #[aa] 1 as u32 ], "#[aa] 1 as u32");
+    c1!(stmt, [ #[aa] x as u32 ], "#[aa] x as u32");
+    c1!(stmt, [ #[aa] 1 .. #[bb] 2 ], "#[aa] 1 .. #[bb] 2");
+    c1!(stmt, [ #[aa] x .. #[bb] 2 ], "#[aa] x .. #[bb] 2");
+    c1!(stmt, [ 1 || #[bb] 2 ], "1 || #[bb] 2");
+    c1!(stmt, [ x || #[bb] 2 ], "x || #[bb] 2");
+    c1!(stmt, [ #[aa] (1 + 2) ], "#[aa] (1 + 2)");
+    c1!(stmt, [ #[aa] #[bb] (x + 2) ], "#[aa] #[bb] (x + 2)");
+    c1!(stmt, [ #[aa] x[0].p ], "#[aa] x[0].p");
+    c1!(stmt, [ #[aa] { #![bb] 0 } ], "#[aa] { #![bb] 0 }");
 }
 
 #[test]
@@ -708,6 +746,8 @@ fn test_ty() {
 
     // TyKind::CVarArgs
     // FIXME: todo
+
+    // Attributes are not allowed on types.
 }
 
 #[test]
@@ -732,6 +772,8 @@ fn test_vis() {
     macro_rules! inherited_vis { ($vis:vis struct) => { vis!($vis) }; }
     assert_eq!(inherited_vis!(struct), "");
     assert_eq!(stringify!(), "");
+
+    // Attributes are not allowed on visibilities.
 }
 
 macro_rules! p {

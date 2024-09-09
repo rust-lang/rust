@@ -1,15 +1,14 @@
 use either::Either;
-
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::mir::NullOp;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, FloatTy, ScalarInt};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_span::symbol::sym;
 use tracing::trace;
 
-use super::{err_ub, throw_ub, ImmTy, InterpCx, Machine, MemPlaceMeta};
+use super::{throw_ub, ImmTy, InterpCx, Machine, MemPlaceMeta};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn three_way_compare<T: Ord>(&self, lhs: T, rhs: T) -> ImmTy<'tcx, M::Provenance> {
@@ -300,17 +299,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Pointer ops that are always supported.
             Offset => {
                 let ptr = left.to_scalar().to_pointer(self)?;
-                let offset_count = right.to_scalar().to_target_isize(self)?;
                 let pointee_ty = left.layout.ty.builtin_deref(true).unwrap();
+                let pointee_layout = self.layout_of(pointee_ty)?;
+                assert!(pointee_layout.abi.is_sized());
 
                 // We cannot overflow i64 as a type's size must be <= isize::MAX.
-                let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
-                // The computed offset, in bytes, must not overflow an isize.
-                // `checked_mul` enforces a too small bound, but no actual allocation can be big enough for
-                // the difference to be noticeable.
-                let offset_bytes =
-                    offset_count.checked_mul(pointee_size).ok_or(err_ub!(PointerArithOverflow))?;
+                let pointee_size = i64::try_from(pointee_layout.size.bytes()).unwrap();
+                let pointee_size = ImmTy::from_int(pointee_size, right.layout);
+                // Multiply element size and element count.
+                let (val, overflowed) = self
+                    .binary_op(mir::BinOp::MulWithOverflow, right, &pointee_size)?
+                    .to_scalar_pair();
+                // This must not overflow.
+                if overflowed.to_bool()? {
+                    throw_ub!(PointerArithOverflow)
+                }
 
+                let offset_bytes = val.to_target_isize(self)?;
                 let offset_ptr = self.ptr_offset_inbounds(ptr, offset_bytes)?;
                 Ok(ImmTy::from_scalar(Scalar::from_maybe_pointer(offset_ptr, self), left.layout))
             }
@@ -331,11 +336,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         trace!(
             "Running binary op {:?}: {:?} ({}), {:?} ({})",
-            bin_op,
-            *left,
-            left.layout.ty,
-            *right,
-            right.layout.ty
+            bin_op, *left, left.layout.ty, *right, right.layout.ty
         );
 
         match left.layout.ty.kind() {
@@ -479,5 +480,39 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 bug!("Unexpected unary op argument {val:?}")
             }
         }
+    }
+
+    pub fn nullary_op(
+        &self,
+        null_op: NullOp<'tcx>,
+        arg_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
+        use rustc_middle::mir::NullOp::*;
+
+        let layout = self.layout_of(arg_ty)?;
+        let usize_layout = || self.layout_of(self.tcx.types.usize).unwrap();
+
+        Ok(match null_op {
+            SizeOf => {
+                if !layout.abi.is_sized() {
+                    span_bug!(self.cur_span(), "unsized type for `NullaryOp::SizeOf`");
+                }
+                let val = layout.size.bytes();
+                ImmTy::from_uint(val, usize_layout())
+            }
+            AlignOf => {
+                if !layout.abi.is_sized() {
+                    span_bug!(self.cur_span(), "unsized type for `NullaryOp::AlignOf`");
+                }
+                let val = layout.align.abi.bytes();
+                ImmTy::from_uint(val, usize_layout())
+            }
+            OffsetOf(fields) => {
+                let val =
+                    self.tcx.offset_of_subfield(self.param_env, layout, fields.iter()).bytes();
+                ImmTy::from_uint(val, usize_layout())
+            }
+            UbChecks => ImmTy::from_bool(M::ub_checks(self)?, *self.tcx),
+        })
     }
 }

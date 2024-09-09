@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast::{BindingMode, Pat, PatKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;
@@ -33,14 +33,10 @@ impl EarlyLintPass for RefPatterns {
         if let PatKind::Ident(BindingMode::REF, _, _) = pat.kind
             && !pat.span.from_expansion()
         {
-            span_lint_and_help(
-                cx,
-                REF_PATTERNS,
-                pat.span,
-                "usage of ref pattern",
-                None,
-                "consider using `&` for clarity instead",
-            );
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(cx, REF_PATTERNS, pat.span, "usage of ref pattern", |diag| {
+                diag.help("consider using `&` for clarity instead");
+            });
         }
     }
 }

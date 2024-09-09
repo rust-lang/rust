@@ -1,36 +1,34 @@
-use crate::base::{DummyResult, ExtCtxt, MacResult};
-use crate::expand::{parse_ast_fragment, AstFragmentKind};
-use crate::mbe::{
-    macro_parser::{MatcherLoc, NamedParseResult, ParseResult::*, TtParser},
-    macro_rules::{try_match_macro, Tracker},
-};
+use std::borrow::Cow;
+
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, Diag, DiagMessage};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery};
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
-use std::borrow::Cow;
 use tracing::debug;
 
 use super::macro_rules::{parser_from_cx, NoopTracker};
+use crate::expand::{parse_ast_fragment, AstFragmentKind};
+use crate::mbe::macro_parser::ParseResult::*;
+use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
+use crate::mbe::macro_rules::{try_match_macro, Tracker};
 
-pub(super) fn failed_to_match_macro<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+pub(super) fn failed_to_match_macro(
+    psess: &ParseSess,
     sp: Span,
     def_span: Span,
     name: Ident,
     arg: TokenStream,
     lhses: &[Vec<MatcherLoc>],
-) -> Box<dyn MacResult + 'cx> {
-    let psess = &cx.sess.psess;
-
+) -> (Span, ErrorGuaranteed) {
     // An error occurred, try the expansion again, tracking the expansion closely for better
     // diagnostics.
-    let mut tracker = CollectTrackerAndEmitter::new(cx, sp);
+    let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
 
     let try_success_result = try_match_macro(psess, name, &arg, lhses, &mut tracker);
 
@@ -38,7 +36,7 @@ pub(super) fn failed_to_match_macro<'cx>(
         // Nonterminal parser recovery might turn failed matches into successful ones,
         // but for that it must have emitted an error already
         assert!(
-            tracker.cx.dcx().has_errors().is_some(),
+            tracker.dcx.has_errors().is_some(),
             "Macro matching returned a success on the second try"
         );
     }
@@ -50,15 +48,15 @@ pub(super) fn failed_to_match_macro<'cx>(
 
     let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
     else {
-        return DummyResult::any(sp, cx.dcx().span_delayed_bug(sp, "failed to match a macro"));
+        return (sp, psess.dcx().span_delayed_bug(sp, "failed to match a macro"));
     };
 
     let span = token.span.substitute_dummy(sp);
 
-    let mut err = cx.dcx().struct_span_err(span, parse_failure_msg(&token, None));
+    let mut err = psess.dcx().struct_span_err(span, parse_failure_msg(&token, None));
     err.span_label(span, label);
-    if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
-        err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
+    if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
+        err.span_label(psess.source_map().guess_head_span(def_span), "when calling this macro");
     }
 
     annotate_doc_comment(&mut err, psess.source_map(), span);
@@ -76,7 +74,7 @@ pub(super) fn failed_to_match_macro<'cx>(
         err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");
         err.note("see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information");
 
-        if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
+        if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
             err.help("try using `:tt` instead in the macro definition");
         }
     }
@@ -104,18 +102,17 @@ pub(super) fn failed_to_match_macro<'cx>(
         }
     }
     let guar = err.emit();
-    cx.trace_macros_diag();
-    DummyResult::any(sp, guar)
+    (sp, guar)
 }
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.
-struct CollectTrackerAndEmitter<'a, 'cx, 'matcher> {
-    cx: &'a mut ExtCtxt<'cx>,
+struct CollectTrackerAndEmitter<'dcx, 'matcher> {
+    dcx: DiagCtxtHandle<'dcx>,
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
     best_failure: Option<BestFailure>,
     root_span: Span,
-    result: Option<Box<dyn MacResult + 'cx>>,
+    result: Option<(Span, ErrorGuaranteed)>,
 }
 
 struct BestFailure {
@@ -131,7 +128,7 @@ impl BestFailure {
     }
 }
 
-impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 'matcher> {
+impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'matcher> {
     type Failure = (Token, u32, &'static str);
 
     fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
@@ -151,7 +148,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
                 // but for that it must have emitted an error already
-                self.cx.dcx().span_delayed_bug(
+                self.dcx.span_delayed_bug(
                     self.root_span,
                     "should not collect detailed info for successful macro match",
                 );
@@ -177,10 +174,10 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             }
             Error(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
-                let guar = self.cx.dcx().span_err(span, msg.clone());
-                self.result = Some(DummyResult::any(span, guar));
+                let guar = self.dcx.span_err(span, msg.clone());
+                self.result = Some((span, guar));
             }
-            ErrorReported(guar) => self.result = Some(DummyResult::any(self.root_span, *guar)),
+            ErrorReported(guar) => self.result = Some((self.root_span, *guar)),
         }
     }
 
@@ -193,19 +190,20 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
     }
 }
 
-impl<'a, 'cx> CollectTrackerAndEmitter<'a, 'cx, '_> {
-    fn new(cx: &'a mut ExtCtxt<'cx>, root_span: Span) -> Self {
-        Self { cx, remaining_matcher: None, best_failure: None, root_span, result: None }
+impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
+    fn new(dcx: DiagCtxtHandle<'dcx>, root_span: Span) -> Self {
+        Self { dcx, remaining_matcher: None, best_failure: None, root_span, result: None }
     }
 }
 
-/// Currently used by macro_rules! compilation to extract a little information from the `Failure` case.
-pub struct FailureForwarder<'matcher> {
+/// Currently used by macro_rules! compilation to extract a little information from the `Failure`
+/// case.
+pub(crate) struct FailureForwarder<'matcher> {
     expected_token: Option<&'matcher Token>,
 }
 
 impl<'matcher> FailureForwarder<'matcher> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { expected_token: None }
     }
 }

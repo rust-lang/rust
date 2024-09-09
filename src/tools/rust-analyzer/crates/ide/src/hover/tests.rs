@@ -1,5 +1,5 @@
 use expect_test::{expect, Expect};
-use ide_db::base_db::{FileLoader, FileRange};
+use ide_db::{base_db::SourceDatabase, FileRange};
 use syntax::TextRange;
 
 use crate::{
@@ -2358,17 +2358,17 @@ fn test_hover_trait_show_qualifiers() {
     check_actions(
         r"unsafe trait foo$0() {}",
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 13,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 13,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2925,17 +2925,17 @@ fn test_hover_trait_has_impl_action() {
     check_actions(
         r#"trait foo$0() {}"#,
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 6,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 6,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2944,17 +2944,17 @@ fn test_hover_struct_has_impl_action() {
     check_actions(
         r"struct foo$0() {}",
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 7,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 7,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2963,17 +2963,17 @@ fn test_hover_union_has_impl_action() {
     check_actions(
         r#"union foo$0() {}"#,
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 6,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 6,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2982,17 +2982,17 @@ fn test_hover_enum_has_impl_action() {
     check_actions(
         r"enum foo$0() { A, B }",
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 5,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 5,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3001,17 +3001,17 @@ fn test_hover_self_has_impl_action() {
     check_actions(
         r#"struct foo where Self$0:;"#,
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 7,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 7,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3025,7 +3025,7 @@ fn foo_$0test() {}
         expect![[r#"
             [
                 Reference(
-                    FilePosition {
+                    FilePositionWrapper {
                         file_id: FileId(
                             0,
                         ),
@@ -8450,7 +8450,7 @@ impl Iterator for S {
         expect![[r#"
             [
                 Implementation(
-                    FilePosition {
+                    FilePositionWrapper {
                         file_id: FileId(
                             0,
                         ),
@@ -8465,7 +8465,7 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 7800..8008,
+                                full_range: 7800..8042,
                                 focus_range: 7865..7871,
                                 name: "Future",
                                 kind: Trait,
@@ -8479,8 +8479,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 8638..9104,
-                                focus_range: 8682..8690,
+                                full_range: 8672..9171,
+                                focus_range: 8749..8757,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",
@@ -8575,6 +8575,129 @@ fn main(a$0: T) {}
             ```rust
             // size = 0, align = 1
             a: T
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_fn_with_impl_trait_arg() {
+    check(
+        r#"
+trait Foo {}
+impl Foo for bool {}
+fn bar<const WIDTH: u8>(_: impl Foo) {}
+fn test() {
+    let f = bar::<3>;
+    f$0(true);
+}
+"#,
+        expect![[r#"
+            *f*
+
+            ```rust
+            // size = 0, align = 1
+            let f: fn bar<3>(bool)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn issue_17871() {
+    check(
+        r#"
+trait T {
+    fn f<A>();
+}
+
+struct S {}
+impl T for S {
+    fn f<A>() {}
+}
+
+fn main() {
+    let x$0 = S::f::<i32>;
+}
+"#,
+        expect![[r#"
+            *x*
+
+            ```rust
+            // size = 0, align = 1
+            let x: fn f<S, i32>()
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn raw_keyword_different_editions() {
+    check(
+        r#"
+//- /lib1.rs crate:with_edition_2015 edition:2015
+pub fn dyn() {}
+
+//- /lib2.rs crate:with_edition_2018 edition:2018 deps:with_edition_2015 new_source_root:local
+fn foo() {
+    with_edition_2015::r#dyn$0();
+}
+    "#,
+        expect![[r#"
+            *r#dyn*
+
+            ```rust
+            with_edition_2015
+            ```
+
+            ```rust
+            pub fn r#dyn()
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+//- /lib1.rs crate:with_edition_2018 edition:2018
+pub fn r#dyn() {}
+
+//- /lib2.rs crate:with_edition_2015 edition:2015 deps:with_edition_2018 new_source_root:local
+fn foo() {
+    with_edition_2018::dyn$0();
+}
+    "#,
+        expect![[r#"
+            *dyn*
+
+            ```rust
+            with_edition_2018
+            ```
+
+            ```rust
+            pub fn dyn()
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+//- /lib1.rs crate:escaping_needlessly edition:2015
+pub fn r#dyn() {}
+
+//- /lib2.rs crate:dependent edition:2015 deps:escaping_needlessly new_source_root:local
+fn foo() {
+    escaping_needlessly::dyn$0();
+}
+    "#,
+        expect![[r#"
+            *dyn*
+
+            ```rust
+            escaping_needlessly
+            ```
+
+            ```rust
+            pub fn dyn()
             ```
         "#]],
     );

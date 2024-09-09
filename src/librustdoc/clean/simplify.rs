@@ -14,12 +14,10 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty;
 use thin_vec::ThinVec;
 
 use crate::clean;
-use crate::clean::GenericArgs as PP;
-use crate::clean::WherePredicate as WP;
+use crate::clean::{GenericArgs as PP, WherePredicate as WP};
 use crate::core::DocContext;
 
 pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVec<WP> {
@@ -71,7 +69,7 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVe
 
 pub(crate) fn merge_bounds(
     cx: &clean::DocContext<'_>,
-    bounds: &mut Vec<clean::GenericBound>,
+    bounds: &mut [clean::GenericBound],
     trait_did: DefId,
     assoc: clean::PathSegment,
     rhs: &clean::Term,
@@ -114,18 +112,9 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
         return true;
     }
     let predicates = cx.tcx.explicit_super_predicates_of(child);
-    debug_assert!(cx.tcx.generics_of(child).has_self);
-    let self_ty = cx.tcx.types.self_param;
     predicates
-        .predicates
-        .iter()
-        .filter_map(|(pred, _)| {
-            if let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder() {
-                if pred.trait_ref.self_ty() == self_ty { Some(pred.def_id()) } else { None }
-            } else {
-                None
-            }
-        })
+        .iter_identity_copied()
+        .filter_map(|(pred, _)| Some(pred.as_trait_clause()?.def_id()))
         .any(|did| trait_is_same_or_supertrait(cx, did, trait_))
 }
 
@@ -146,7 +135,6 @@ pub(crate) fn sized_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generi
     // should be handled when cleaning associated types.
     generics.where_predicates.retain(|pred| {
         if let WP::BoundPredicate { ty: clean::Generic(param), bounds, .. } = pred
-            && *param != rustc_span::symbol::kw::SelfUpper
             && bounds.iter().any(|b| b.is_sized_bound(cx))
         {
             sized_params.insert(*param);

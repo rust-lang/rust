@@ -14,6 +14,7 @@ use hir::{
     ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, ToolModule, Trait,
     TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
+use span::Edition;
 use stdx::{format_to, impl_from};
 use syntax::{
     ast::{self, AstNode},
@@ -144,7 +145,7 @@ impl Definition {
             Definition::Local(it) => it.name(db),
             Definition::GenericParam(it) => it.name(db),
             Definition::Label(it) => it.name(db),
-            Definition::BuiltinLifetime(StaticLifetime) => hir::known::STATIC_LIFETIME,
+            Definition::BuiltinLifetime(it) => it.name(),
             Definition::BuiltinAttr(_) => return None, // FIXME
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),
@@ -157,6 +158,7 @@ impl Definition {
         &self,
         db: &RootDatabase,
         famous_defs: Option<&FamousDefs<'_, '_>>,
+        edition: Edition,
     ) -> Option<Documentation> {
         let docs = match self {
             Definition::Macro(it) => it.docs(db),
@@ -173,8 +175,8 @@ impl Definition {
             Definition::BuiltinType(it) => {
                 famous_defs.and_then(|fd| {
                     // std exposes prim_{} modules with docstrings on the root to document the builtins
-                    let primitive_mod = format!("prim_{}", it.name().display(fd.0.db));
-                    let doc_owner = find_std_module(fd, &primitive_mod)?;
+                    let primitive_mod = format!("prim_{}", it.name().display(fd.0.db, edition));
+                    let doc_owner = find_std_module(fd, &primitive_mod, edition)?;
                     doc_owner.docs(fd.0.db)
                 })
             }
@@ -192,13 +194,18 @@ impl Definition {
                 let AttributeTemplate { word, list, name_value_str } = it.template(db)?;
                 let mut docs = "Valid forms are:".to_owned();
                 if word {
-                    format_to!(docs, "\n - #\\[{}]", name);
+                    format_to!(docs, "\n - #\\[{}]", name.display(db, edition));
                 }
                 if let Some(list) = list {
-                    format_to!(docs, "\n - #\\[{}({})]", name, list);
+                    format_to!(docs, "\n - #\\[{}({})]", name.display(db, edition), list);
                 }
                 if let Some(name_value_str) = name_value_str {
-                    format_to!(docs, "\n - #\\[{} = {}]", name, name_value_str);
+                    format_to!(
+                        docs,
+                        "\n - #\\[{} = {}]",
+                        name.display(db, edition),
+                        name_value_str
+                    );
                 }
                 Some(Documentation::new(docs.replace('*', "\\*")))
             }
@@ -218,57 +225,63 @@ impl Definition {
         })
     }
 
-    pub fn label(&self, db: &RootDatabase) -> String {
+    pub fn label(&self, db: &RootDatabase, edition: Edition) -> String {
         match *self {
-            Definition::Macro(it) => it.display(db).to_string(),
-            Definition::Field(it) => it.display(db).to_string(),
-            Definition::TupleField(it) => it.display(db).to_string(),
-            Definition::Module(it) => it.display(db).to_string(),
-            Definition::Function(it) => it.display(db).to_string(),
-            Definition::Adt(it) => it.display(db).to_string(),
-            Definition::Variant(it) => it.display(db).to_string(),
-            Definition::Const(it) => it.display(db).to_string(),
-            Definition::Static(it) => it.display(db).to_string(),
-            Definition::Trait(it) => it.display(db).to_string(),
-            Definition::TraitAlias(it) => it.display(db).to_string(),
-            Definition::TypeAlias(it) => it.display(db).to_string(),
-            Definition::BuiltinType(it) => it.name().display(db).to_string(),
-            Definition::BuiltinLifetime(it) => it.name().display(db).to_string(),
+            Definition::Macro(it) => it.display(db, edition).to_string(),
+            Definition::Field(it) => it.display(db, edition).to_string(),
+            Definition::TupleField(it) => it.display(db, edition).to_string(),
+            Definition::Module(it) => it.display(db, edition).to_string(),
+            Definition::Function(it) => it.display(db, edition).to_string(),
+            Definition::Adt(it) => it.display(db, edition).to_string(),
+            Definition::Variant(it) => it.display(db, edition).to_string(),
+            Definition::Const(it) => it.display(db, edition).to_string(),
+            Definition::Static(it) => it.display(db, edition).to_string(),
+            Definition::Trait(it) => it.display(db, edition).to_string(),
+            Definition::TraitAlias(it) => it.display(db, edition).to_string(),
+            Definition::TypeAlias(it) => it.display(db, edition).to_string(),
+            Definition::BuiltinType(it) => it.name().display(db, edition).to_string(),
+            Definition::BuiltinLifetime(it) => it.name().display(db, edition).to_string(),
             Definition::Local(it) => {
                 let ty = it.ty(db);
-                let ty_display = ty.display_truncated(db, None);
+                let ty_display = ty.display_truncated(db, None, edition);
                 let is_mut = if it.is_mut(db) { "mut " } else { "" };
                 if it.is_self(db) {
                     format!("{is_mut}self: {ty_display}")
                 } else {
                     let name = it.name(db);
                     let let_kw = if it.is_param(db) { "" } else { "let " };
-                    format!("{let_kw}{is_mut}{}: {ty_display}", name.display(db))
+                    format!("{let_kw}{is_mut}{}: {ty_display}", name.display(db, edition))
                 }
             }
             Definition::SelfType(impl_def) => {
                 let self_ty = &impl_def.self_ty(db);
                 match self_ty.as_adt() {
-                    Some(it) => it.display(db).to_string(),
-                    None => self_ty.display(db).to_string(),
+                    Some(it) => it.display(db, edition).to_string(),
+                    None => self_ty.display(db, edition).to_string(),
                 }
             }
-            Definition::GenericParam(it) => it.display(db).to_string(),
-            Definition::Label(it) => it.name(db).display(db).to_string(),
-            Definition::ExternCrateDecl(it) => it.display(db).to_string(),
-            Definition::BuiltinAttr(it) => format!("#[{}]", it.name(db)),
-            Definition::ToolModule(it) => it.name(db).to_string(),
-            Definition::DeriveHelper(it) => format!("derive_helper {}", it.name(db).display(db)),
+            Definition::GenericParam(it) => it.display(db, edition).to_string(),
+            Definition::Label(it) => it.name(db).display(db, edition).to_string(),
+            Definition::ExternCrateDecl(it) => it.display(db, edition).to_string(),
+            Definition::BuiltinAttr(it) => format!("#[{}]", it.name(db).display(db, edition)),
+            Definition::ToolModule(it) => it.name(db).display(db, edition).to_string(),
+            Definition::DeriveHelper(it) => {
+                format!("derive_helper {}", it.name(db).display(db, edition))
+            }
         }
     }
 }
 
-fn find_std_module(famous_defs: &FamousDefs<'_, '_>, name: &str) -> Option<hir::Module> {
+fn find_std_module(
+    famous_defs: &FamousDefs<'_, '_>,
+    name: &str,
+    edition: Edition,
+) -> Option<hir::Module> {
     let db = famous_defs.0.db;
     let std_crate = famous_defs.std()?;
     let std_root_module = std_crate.root_module();
     std_root_module.children(db).find(|module| {
-        module.name(db).map_or(false, |module| module.display(db).to_string() == name)
+        module.name(db).map_or(false, |module| module.display(db, edition).to_string() == name)
     })
 }
 
@@ -670,7 +683,7 @@ impl NameRefClass {
                                 hir::AssocItem::TypeAlias(it) => Some(it),
                                 _ => None,
                             })
-                            .find(|alias| alias.name(sema.db).to_smol_str() == name_ref.text().as_str())
+                            .find(|alias| alias.name(sema.db).eq_ident(name_ref.text().as_str()))
                         {
                             return Some(NameRefClass::Definition(Definition::TypeAlias(ty)));
                         }

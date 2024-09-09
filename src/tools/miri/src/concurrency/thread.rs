@@ -172,6 +172,8 @@ pub enum BlockReason {
     Futex { addr: u64 },
     /// Blocked on an InitOnce.
     InitOnce(InitOnceId),
+    /// Blocked on epoll.
+    Epoll,
 }
 
 /// The state of a thread.
@@ -256,7 +258,7 @@ pub struct Thread<'tcx> {
     /// which then forwards it to 'Resume'. However this argument is implicit in MIR,
     /// so we have to store it out-of-band. When there are multiple active unwinds,
     /// the innermost one is always caught first, so we can store them as a stack.
-    pub(crate) panic_payloads: Vec<Scalar>,
+    pub(crate) panic_payloads: Vec<ImmTy<'tcx>>,
 
     /// Last OS error location in memory. It is a 32-bit integer.
     pub(crate) last_error: Option<MPlaceTy<'tcx>>,
@@ -377,10 +379,6 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
             return_place,
             locals,
             extra,
-            body: _,
-            instance: _,
-            return_to_block: _,
-            loc: _,
             // There are some private fields we cannot access; they contain no tags.
             ..
         } = self;
@@ -890,8 +888,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let alloc = this.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
             // We make a full copy of this allocation.
-            let mut alloc =
-                alloc.inner().adjust_from_tcx(&this.tcx, |ptr| this.global_root_pointer(ptr))?;
+            let mut alloc = alloc.inner().adjust_from_tcx(
+                &this.tcx,
+                |bytes, align| {
+                    Ok(MiriAllocBytes::from_bytes(std::borrow::Cow::Borrowed(bytes), align))
+                },
+                |ptr| this.global_root_pointer(ptr),
+            )?;
             // This allocation will be deallocated when the thread dies, so it is not in read-only memory.
             alloc.mutability = Mutability::Mut;
             // Create a fresh allocation with this content.
@@ -952,7 +955,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.call_function(
             instance,
             start_abi,
-            &[*func_arg],
+            &[func_arg],
             Some(&ret_place),
             StackPopCleanup::Root { cleanup: true },
         )?;
@@ -1161,7 +1164,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     #[inline]
-    fn get_thread_name<'c>(&'c self, thread: ThreadId) -> Option<&[u8]>
+    fn get_thread_name<'c>(&'c self, thread: ThreadId) -> Option<&'c [u8]>
     where
         'tcx: 'c,
     {

@@ -12,9 +12,9 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
 
+use core::{mem, ptr};
+
 use super::DwarfReader;
-use core::mem;
-use core::ptr;
 
 pub const DW_EH_PE_omit: u8 = 0xFF;
 pub const DW_EH_PE_absptr: u8 = 0x00;
@@ -70,45 +70,51 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
 
     let func_start = context.func_start;
     let mut reader = DwarfReader::new(lsda);
-
-    let start_encoding = reader.read::<u8>();
-    // base address for landing pad offsets
-    let lpad_base = if start_encoding != DW_EH_PE_omit {
-        read_encoded_pointer(&mut reader, context, start_encoding)?
-    } else {
-        func_start
+    let lpad_base = unsafe {
+        let start_encoding = reader.read::<u8>();
+        // base address for landing pad offsets
+        if start_encoding != DW_EH_PE_omit {
+            read_encoded_pointer(&mut reader, context, start_encoding)?
+        } else {
+            func_start
+        }
     };
+    let call_site_encoding = unsafe {
+        let ttype_encoding = reader.read::<u8>();
+        if ttype_encoding != DW_EH_PE_omit {
+            // Rust doesn't analyze exception types, so we don't care about the type table
+            reader.read_uleb128();
+        }
 
-    let ttype_encoding = reader.read::<u8>();
-    if ttype_encoding != DW_EH_PE_omit {
-        // Rust doesn't analyze exception types, so we don't care about the type table
-        reader.read_uleb128();
-    }
-
-    let call_site_encoding = reader.read::<u8>();
-    let call_site_table_length = reader.read_uleb128();
-    let action_table = reader.ptr.add(call_site_table_length as usize);
+        reader.read::<u8>()
+    };
+    let action_table = unsafe {
+        let call_site_table_length = reader.read_uleb128();
+        reader.ptr.add(call_site_table_length as usize)
+    };
     let ip = context.ip;
 
     if !USING_SJLJ_EXCEPTIONS {
         // read the callsite table
         while reader.ptr < action_table {
-            // these are offsets rather than pointers;
-            let cs_start = read_encoded_offset(&mut reader, call_site_encoding)?;
-            let cs_len = read_encoded_offset(&mut reader, call_site_encoding)?;
-            let cs_lpad = read_encoded_offset(&mut reader, call_site_encoding)?;
-            let cs_action_entry = reader.read_uleb128();
-            // Callsite table is sorted by cs_start, so if we've passed the ip, we
-            // may stop searching.
-            if ip < func_start.wrapping_add(cs_start) {
-                break;
-            }
-            if ip < func_start.wrapping_add(cs_start + cs_len) {
-                if cs_lpad == 0 {
-                    return Ok(EHAction::None);
-                } else {
-                    let lpad = lpad_base.wrapping_add(cs_lpad);
-                    return Ok(interpret_cs_action(action_table, cs_action_entry, lpad));
+            unsafe {
+                // these are offsets rather than pointers;
+                let cs_start = read_encoded_offset(&mut reader, call_site_encoding)?;
+                let cs_len = read_encoded_offset(&mut reader, call_site_encoding)?;
+                let cs_lpad = read_encoded_offset(&mut reader, call_site_encoding)?;
+                let cs_action_entry = reader.read_uleb128();
+                // Callsite table is sorted by cs_start, so if we've passed the ip, we
+                // may stop searching.
+                if ip < func_start.wrapping_add(cs_start) {
+                    break;
+                }
+                if ip < func_start.wrapping_add(cs_start + cs_len) {
+                    if cs_lpad == 0 {
+                        return Ok(EHAction::None);
+                    } else {
+                        let lpad = lpad_base.wrapping_add(cs_lpad);
+                        return Ok(interpret_cs_action(action_table, cs_action_entry, lpad));
+                    }
                 }
             }
         }
@@ -125,15 +131,15 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
         }
         let mut idx = ip.addr();
         loop {
-            let cs_lpad = reader.read_uleb128();
-            let cs_action_entry = reader.read_uleb128();
+            let cs_lpad = unsafe { reader.read_uleb128() };
+            let cs_action_entry = unsafe { reader.read_uleb128() };
             idx -= 1;
             if idx == 0 {
                 // Can never have null landing pad for sjlj -- that would have
                 // been indicated by a -1 call site index.
                 // FIXME(strict provenance)
                 let lpad = ptr::with_exposed_provenance((cs_lpad + 1) as usize);
-                return Ok(interpret_cs_action(action_table, cs_action_entry, lpad));
+                return Ok(unsafe { interpret_cs_action(action_table, cs_action_entry, lpad) });
             }
         }
     }
@@ -151,9 +157,9 @@ unsafe fn interpret_cs_action(
     } else {
         // If lpad != 0 and cs_action_entry != 0, we have to check ttype_index.
         // If ttype_index == 0 under the condition, we take cleanup action.
-        let action_record = action_table.offset(cs_action_entry as isize - 1);
+        let action_record = unsafe { action_table.offset(cs_action_entry as isize - 1) };
         let mut action_reader = DwarfReader::new(action_record);
-        let ttype_index = action_reader.read_sleb128();
+        let ttype_index = unsafe { action_reader.read_sleb128() };
         if ttype_index == 0 {
             EHAction::Cleanup(lpad)
         } else if ttype_index > 0 {
@@ -170,7 +176,7 @@ fn round_up(unrounded: usize, align: usize) -> Result<usize, ()> {
     if align.is_power_of_two() { Ok((unrounded + align - 1) & !(align - 1)) } else { Err(()) }
 }
 
-/// Read a offset (`usize`) from `reader` whose encoding is described by `encoding`.
+/// Reads an offset (`usize`) from `reader` whose encoding is described by `encoding`.
 ///
 /// `encoding` must be a [DWARF Exception Header Encoding as described by the LSB spec][LSB-dwarf-ext].
 /// In addition the upper ("application") part must be zero.
@@ -186,23 +192,25 @@ unsafe fn read_encoded_offset(reader: &mut DwarfReader, encoding: u8) -> Result<
     if encoding == DW_EH_PE_omit || encoding & 0xF0 != 0 {
         return Err(());
     }
-    let result = match encoding & 0x0F {
-        // despite the name, LLVM also uses absptr for offsets instead of pointers
-        DW_EH_PE_absptr => reader.read::<usize>(),
-        DW_EH_PE_uleb128 => reader.read_uleb128() as usize,
-        DW_EH_PE_udata2 => reader.read::<u16>() as usize,
-        DW_EH_PE_udata4 => reader.read::<u32>() as usize,
-        DW_EH_PE_udata8 => reader.read::<u64>() as usize,
-        DW_EH_PE_sleb128 => reader.read_sleb128() as usize,
-        DW_EH_PE_sdata2 => reader.read::<i16>() as usize,
-        DW_EH_PE_sdata4 => reader.read::<i32>() as usize,
-        DW_EH_PE_sdata8 => reader.read::<i64>() as usize,
-        _ => return Err(()),
+    let result = unsafe {
+        match encoding & 0x0F {
+            // despite the name, LLVM also uses absptr for offsets instead of pointers
+            DW_EH_PE_absptr => reader.read::<usize>(),
+            DW_EH_PE_uleb128 => reader.read_uleb128() as usize,
+            DW_EH_PE_udata2 => reader.read::<u16>() as usize,
+            DW_EH_PE_udata4 => reader.read::<u32>() as usize,
+            DW_EH_PE_udata8 => reader.read::<u64>() as usize,
+            DW_EH_PE_sleb128 => reader.read_sleb128() as usize,
+            DW_EH_PE_sdata2 => reader.read::<i16>() as usize,
+            DW_EH_PE_sdata4 => reader.read::<i32>() as usize,
+            DW_EH_PE_sdata8 => reader.read::<i64>() as usize,
+            _ => return Err(()),
+        }
     };
     Ok(result)
 }
 
-/// Read a pointer from `reader` whose encoding is described by `encoding`.
+/// Reads a pointer from `reader` whose encoding is described by `encoding`.
 ///
 /// `encoding` must be a [DWARF Exception Header Encoding as described by the LSB spec][LSB-dwarf-ext].
 ///
@@ -250,14 +258,14 @@ unsafe fn read_encoded_pointer(
         if encoding & 0x0F != DW_EH_PE_absptr {
             return Err(());
         }
-        reader.read::<*const u8>()
+        unsafe { reader.read::<*const u8>() }
     } else {
-        let offset = read_encoded_offset(reader, encoding & 0x0F)?;
+        let offset = unsafe { read_encoded_offset(reader, encoding & 0x0F)? };
         base_ptr.wrapping_add(offset)
     };
 
     if encoding & DW_EH_PE_indirect != 0 {
-        ptr = *(ptr.cast::<*const u8>());
+        ptr = unsafe { *(ptr.cast::<*const u8>()) };
     }
 
     Ok(ptr)

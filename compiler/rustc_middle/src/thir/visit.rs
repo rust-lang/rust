@@ -92,7 +92,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         }
         VarRef { id: _ } | UpvarRef { closure_def_id: _, var_hir_id: _ } => {}
         Borrow { arg, borrow_kind: _ } => visitor.visit_expr(&visitor.thir()[arg]),
-        AddressOf { arg, mutability: _ } => visitor.visit_expr(&visitor.thir()[arg]),
+        RawBorrow { arg, mutability: _ } => visitor.visit_expr(&visitor.thir()[arg]),
         Break { value, label: _ } => {
             if let Some(value) = value {
                 visitor.visit_expr(&visitor.thir()[value])

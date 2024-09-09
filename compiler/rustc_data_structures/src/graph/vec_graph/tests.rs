@@ -1,6 +1,5 @@
-use crate::graph;
-
 use super::*;
+use crate::graph;
 
 fn create_graph() -> VecGraph<usize> {
     // Create a simple graph

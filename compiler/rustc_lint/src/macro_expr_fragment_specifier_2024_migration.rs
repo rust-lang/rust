@@ -1,16 +1,12 @@
-//! Migration code for the `expr_fragment_specifier_2024`
-//! rule.
-use tracing::debug;
+//! Migration code for the `expr_fragment_specifier_2024` rule.
 
-use rustc_ast::token::Token;
-use rustc_ast::token::TokenKind;
-use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::tokenstream::TokenTree;
-use rustc_session::declare_lint;
-use rustc_session::declare_lint_pass;
+use rustc_ast::token::{Token, TokenKind};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::sym;
+use tracing::debug;
 
 use crate::lints::MacroExprFragment2024;
 use crate::EarlyLintPass;

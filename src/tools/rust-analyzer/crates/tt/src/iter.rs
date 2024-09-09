@@ -2,6 +2,7 @@
 //! macro definition into a list of patterns and templates.
 
 use arrayvec::ArrayVec;
+use intern::sym;
 
 use crate::{Ident, Leaf, Punct, Spacing, Subtree, TokenTree};
 
@@ -58,7 +59,7 @@ impl<'a, S: Copy> TtIter<'a, S> {
 
     pub fn expect_ident(&mut self) -> Result<&'a Ident<S>, ()> {
         match self.expect_leaf()? {
-            Leaf::Ident(it) if it.text != "_" => Ok(it),
+            Leaf::Ident(it) if it.sym != sym::underscore => Ok(it),
             _ => Err(()),
         }
     }
@@ -74,7 +75,7 @@ impl<'a, S: Copy> TtIter<'a, S> {
         let it = self.expect_leaf()?;
         match it {
             Leaf::Literal(_) => Ok(it),
-            Leaf::Ident(ident) if ident.text == "true" || ident.text == "false" => Ok(it),
+            Leaf::Ident(ident) if ident.sym == sym::true_ || ident.sym == sym::false_ => Ok(it),
             _ => Err(()),
         }
     }
@@ -140,6 +141,10 @@ impl<'a, S: Copy> TtIter<'a, S> {
     }
     pub fn peek_n(&self, n: usize) -> Option<&'a TokenTree<S>> {
         self.inner.as_slice().get(n)
+    }
+
+    pub fn next_span(&self) -> Option<S> {
+        Some(self.inner.as_slice().first()?.first_span())
     }
 
     pub fn as_slice(&self) -> &'a [TokenTree<S>] {

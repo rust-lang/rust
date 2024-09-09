@@ -823,13 +823,13 @@ fn classify_name_ref(
                                             for item in trait_.items_with_supertraits(sema.db) {
                                                 match item {
                                                     hir::AssocItem::TypeAlias(assoc_ty) => {
-                                                        if assoc_ty.name(sema.db).as_str()? == arg_name {
+                                                        if assoc_ty.name(sema.db).as_str() == arg_name {
                                                             override_location = Some(TypeLocation::AssocTypeEq);
                                                             return None;
                                                         }
                                                     },
                                                     hir::AssocItem::Const(const_) => {
-                                                        if const_.name(sema.db)?.as_str()? == arg_name {
+                                                        if const_.name(sema.db)?.as_str() == arg_name {
                                                             override_location =  Some(TypeLocation::AssocConstEq);
                                                             return None;
                                                         }
@@ -867,7 +867,7 @@ fn classify_name_ref(
                                         let trait_items = trait_.items_with_supertraits(sema.db);
                                         let assoc_ty = trait_items.iter().find_map(|item| match item {
                                             hir::AssocItem::TypeAlias(assoc_ty) => {
-                                                (assoc_ty.name(sema.db).as_str()? == arg_name)
+                                                (assoc_ty.name(sema.db).as_str() == arg_name)
                                                     .then_some(assoc_ty)
                                             },
                                             _ => None,
@@ -1385,7 +1385,7 @@ fn pattern_context_for(
                                         }).map(|enum_| enum_.variants(sema.db))
                                     })
                                 }).map(|variants| variants.iter().filter_map(|variant| {
-                                        let variant_name = variant.name(sema.db).display(sema.db).to_string();
+                                        let variant_name = variant.name(sema.db).unescaped().display(sema.db).to_string();
 
                                         let variant_already_present = match_arm_list.arms().any(|arm| {
                                             arm.pat().and_then(|pat| {

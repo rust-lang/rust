@@ -18,10 +18,9 @@ pub mod type_ref;
 use std::fmt;
 
 use hir_expand::name::Name;
-use intern::Interned;
+use intern::{Interned, Symbol};
 use la_arena::{Idx, RawIdx};
 use rustc_apfloat::ieee::{Half as f16, Quad as f128};
-use smallvec::SmallVec;
 use syntax::ast;
 
 use crate::{
@@ -60,41 +59,41 @@ pub type LabelId = Idx<Label>;
 // We leave float values as a string to avoid double rounding.
 // For PartialEq, string comparison should work, as ordering is not important
 // https://github.com/rust-lang/rust-analyzer/issues/12380#issuecomment-1137284360
-#[derive(Default, Debug, Clone, Eq, PartialEq)]
-pub struct FloatTypeWrapper(Box<str>);
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct FloatTypeWrapper(Symbol);
 
 // FIXME(#17451): Use builtin types once stabilised.
 impl FloatTypeWrapper {
-    pub fn new(value: String) -> Self {
-        Self(value.into())
+    pub fn new(sym: Symbol) -> Self {
+        Self(sym)
     }
 
     pub fn to_f128(&self) -> f128 {
-        self.0.parse().unwrap_or_default()
+        self.0.as_str().parse().unwrap_or_default()
     }
 
     pub fn to_f64(&self) -> f64 {
-        self.0.parse().unwrap_or_default()
+        self.0.as_str().parse().unwrap_or_default()
     }
 
     pub fn to_f32(&self) -> f32 {
-        self.0.parse().unwrap_or_default()
+        self.0.as_str().parse().unwrap_or_default()
     }
 
     pub fn to_f16(&self) -> f16 {
-        self.0.parse().unwrap_or_default()
+        self.0.as_str().parse().unwrap_or_default()
     }
 }
 
 impl fmt::Display for FloatTypeWrapper {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(self.0.as_str())
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Literal {
-    String(Box<str>),
+    String(Symbol),
     ByteString(Box<[u8]>),
     CString(Box<[u8]>),
     Char(char),
@@ -130,7 +129,10 @@ impl From<ast::LiteralKind> for Literal {
         match ast_lit_kind {
             LiteralKind::IntNumber(lit) => {
                 if let builtin @ Some(_) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
-                    Literal::Float(FloatTypeWrapper::new(lit.value_string()), builtin)
+                    Literal::Float(
+                        FloatTypeWrapper::new(Symbol::intern(&lit.value_string())),
+                        builtin,
+                    )
                 } else if let builtin @ Some(_) = lit.suffix().and_then(BuiltinUint::from_suffix) {
                     Literal::Uint(lit.value().unwrap_or(0), builtin)
                 } else {
@@ -140,14 +142,14 @@ impl From<ast::LiteralKind> for Literal {
             }
             LiteralKind::FloatNumber(lit) => {
                 let ty = lit.suffix().and_then(BuiltinFloat::from_suffix);
-                Literal::Float(FloatTypeWrapper::new(lit.value_string()), ty)
+                Literal::Float(FloatTypeWrapper::new(Symbol::intern(&lit.value_string())), ty)
             }
             LiteralKind::ByteString(bs) => {
                 let text = bs.value().map_or_else(|_| Default::default(), Box::from);
                 Literal::ByteString(text)
             }
             LiteralKind::String(s) => {
-                let text = s.value().map_or_else(|_| Default::default(), Box::from);
+                let text = s.value().map_or_else(|_| Symbol::empty(), |it| Symbol::intern(&it));
                 Literal::String(text)
             }
             LiteralKind::CString(s) => {
@@ -522,7 +524,6 @@ pub enum BindingProblems {
 pub struct Binding {
     pub name: Name,
     pub mode: BindingAnnotation,
-    pub definitions: SmallVec<[PatId; 1]>,
     pub problems: Option<BindingProblems>,
 }
 
@@ -537,7 +538,7 @@ pub struct RecordFieldPat {
 pub enum Pat {
     Missing,
     Wild,
-    Tuple { args: Box<[PatId]>, ellipsis: Option<usize> },
+    Tuple { args: Box<[PatId]>, ellipsis: Option<u32> },
     Or(Box<[PatId]>),
     Record { path: Option<Box<Path>>, args: Box<[RecordFieldPat]>, ellipsis: bool },
     Range { start: Option<Box<LiteralOrConst>>, end: Option<Box<LiteralOrConst>> },
@@ -545,7 +546,7 @@ pub enum Pat {
     Path(Box<Path>),
     Lit(ExprId),
     Bind { id: BindingId, subpat: Option<PatId> },
-    TupleStruct { path: Option<Box<Path>>, args: Box<[PatId]>, ellipsis: Option<usize> },
+    TupleStruct { path: Option<Box<Path>>, args: Box<[PatId]>, ellipsis: Option<u32> },
     Ref { pat: PatId, mutability: Mutability },
     Box { inner: PatId },
     ConstBlock(ExprId),

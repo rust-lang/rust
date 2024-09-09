@@ -5,17 +5,14 @@
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
-#![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
@@ -66,13 +63,11 @@ extern crate clippy_utils;
 #[macro_use]
 extern crate declare_clippy_lint;
 
-#[cfg(feature = "internal")]
-pub mod deprecated_lints;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
-mod declared_lints;
-mod renamed_lints;
+pub mod declared_lints;
+pub mod deprecated_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 mod absolute_paths;
@@ -374,6 +369,7 @@ mod unsafe_removed_from_name;
 mod unused_async;
 mod unused_io_amount;
 mod unused_peekable;
+mod unused_result_ok;
 mod unused_rounding;
 mod unused_self;
 mod unused_unit;
@@ -444,7 +440,7 @@ impl RegistrationGroups {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum LintCategory {
     Cargo,
     Complexity,
@@ -483,11 +479,39 @@ impl LintCategory {
     }
 }
 
-pub(crate) struct LintInfo {
+pub struct LintInfo {
     /// Double reference to maintain pointer equality
-    lint: &'static &'static Lint,
+    pub lint: &'static &'static Lint,
     category: LintCategory,
-    explanation: &'static str,
+    pub explanation: &'static str,
+    /// e.g. `clippy_lints/src/absolute_paths.rs#43`
+    pub location: &'static str,
+    pub version: Option<&'static str>,
+}
+
+impl LintInfo {
+    /// Returns the lint name in lowercase without the `clippy::` prefix
+    #[allow(clippy::missing_panics_doc)]
+    pub fn name_lower(&self) -> String {
+        self.lint.name.strip_prefix("clippy::").unwrap().to_ascii_lowercase()
+    }
+
+    /// Returns the name of the lint's category in lowercase (`style`, `pedantic`)
+    pub fn category_str(&self) -> &'static str {
+        match self.category {
+            Cargo => "cargo",
+            Complexity => "complexity",
+            Correctness => "correctness",
+            Nursery => "nursery",
+            Pedantic => "pedantic",
+            Perf => "perf",
+            Restriction => "restriction",
+            Style => "style",
+            Suspicious => "suspicious",
+            #[cfg(feature = "internal")]
+            Internal => "internal",
+        }
+    }
 }
 
 pub fn explain(name: &str) -> i32 {
@@ -497,7 +521,7 @@ pub fn explain(name: &str) -> i32 {
         // Check if the lint has configuration
         let mut mdconf = get_configuration_metadata();
         let name = name.to_ascii_lowercase();
-        mdconf.retain(|cconf| cconf.lints.contains(&name));
+        mdconf.retain(|cconf| cconf.lints.contains(&&*name));
         if !mdconf.is_empty() {
             println!("### Configuration for {}:\n", info.lint.name_lower());
             for conf in mdconf {
@@ -533,17 +557,13 @@ fn register_categories(store: &mut rustc_lint::LintStore) {
 /// Used in `./src/driver.rs`.
 #[expect(clippy::too_many_lines)]
 pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
-    register_removed_non_tool_lints(store);
     register_categories(store);
 
-    include!("lib.deprecated.rs");
-
-    #[cfg(feature = "internal")]
-    {
-        if std::env::var("ENABLE_METADATA_COLLECTION").eq(&Ok("1".to_string())) {
-            store.register_late_pass(|_| Box::new(utils::internal_lints::metadata_collector::MetadataCollector::new()));
-            return;
-        }
+    for (old_name, new_name) in deprecated_lints::RENAMED {
+        store.register_renamed(old_name, new_name);
+    }
+    for (name, reason) in deprecated_lints::DEPRECATED {
+        store.register_removed(name, reason);
     }
 
     let format_args_storage = FormatArgsStorage::default();
@@ -671,6 +691,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(missing_doc::MissingDoc::new(conf)));
     store.register_late_pass(|_| Box::new(missing_inline::MissingInline));
     store.register_late_pass(move |_| Box::new(exhaustive_items::ExhaustiveItems));
+    store.register_late_pass(|_| Box::new(unused_result_ok::UnusedResultOk));
     store.register_late_pass(|_| Box::new(match_result_ok::MatchResultOk));
     store.register_late_pass(|_| Box::new(partialeq_ne_impl::PartialEqNeImpl));
     store.register_late_pass(|_| Box::new(unused_io_amount::UnusedIoAmount));
@@ -820,7 +841,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(manual_retain::ManualRetain::new(conf)));
     store.register_late_pass(move |_| Box::new(manual_rotate::ManualRotate));
     store.register_late_pass(move |_| Box::new(operators::Operators::new(conf)));
-    store.register_late_pass(|_| Box::<std_instead_of_core::StdReexports>::default());
+    store.register_late_pass(move |_| Box::new(std_instead_of_core::StdReexports::new(conf)));
     store.register_late_pass(move |_| Box::new(instant_subtraction::InstantSubtraction::new(conf)));
     store.register_late_pass(|_| Box::new(partialeq_to_none::PartialeqToNone));
     store.register_late_pass(move |_| Box::new(manual_clamp::ManualClamp::new(conf)));
@@ -909,68 +930,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(macro_metavars_in_unsafe::ExprMetavarsInUnsafe::new(conf)));
     store.register_late_pass(move |_| Box::new(string_patterns::StringPatterns::new(conf)));
     store.register_early_pass(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers));
-    store.register_late_pass(|_| Box::new(set_contains_or_insert::HashsetInsertAfterContains));
+    store.register_late_pass(|_| Box::new(set_contains_or_insert::SetContainsOrInsert));
     store.register_early_pass(|| Box::new(byte_char_slices::ByteCharSlice));
     store.register_early_pass(|| Box::new(cfg_not_test::CfgNotTest));
     // add lints here, do not remove this comment, it's used in `new_lint`
-}
-
-#[rustfmt::skip]
-fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
-    store.register_removed(
-        "should_assert_eq",
-        "`assert!()` will be more flexible with RFC 2011",
-    );
-    store.register_removed(
-        "extend_from_slice",
-        "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice",
-    );
-    store.register_removed(
-        "range_step_by_zero",
-        "`iterator.step_by(0)` panics nowadays",
-    );
-    store.register_removed(
-        "unstable_as_slice",
-        "`Vec::as_slice` has been stabilized in 1.7",
-    );
-    store.register_removed(
-        "unstable_as_mut_slice",
-        "`Vec::as_mut_slice` has been stabilized in 1.7",
-    );
-    store.register_removed(
-        "misaligned_transmute",
-        "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr",
-    );
-    store.register_removed(
-        "assign_ops",
-        "using compound assignment operators (e.g., `+=`) is harmless",
-    );
-    store.register_removed(
-        "if_let_redundant_pattern_matching",
-        "this lint has been changed to redundant_pattern_matching",
-    );
-    store.register_removed(
-        "unsafe_vector_initialization",
-        "the replacement suggested by this lint had substantially different behavior",
-    );
-    store.register_removed(
-        "reverse_range_loop",
-        "this lint is now included in reversed_empty_ranges",
-    );
-}
-
-/// Register renamed lints.
-///
-/// Used in `./src/driver.rs`.
-pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
-    for (old_name, new_name) in renamed_lints::RENAMED_LINTS {
-        ls.register_renamed(old_name, new_name);
-    }
-}
-
-// only exists to let the dogfood integration test works.
-// Don't run clippy as an executable directly
-#[allow(dead_code)]
-fn main() {
-    panic!("Please use the cargo-clippy executable");
 }

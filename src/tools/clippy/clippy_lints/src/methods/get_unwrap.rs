@@ -1,5 +1,5 @@
 use super::utils::derefs_to_slice;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -19,9 +19,7 @@ pub(super) fn check<'tcx>(
 ) {
     // Note: we don't want to lint `get_mut().unwrap` for `HashMap` or `BTreeMap`,
     // because they do not implement `IndexMut`
-    let mut applicability = Applicability::MachineApplicable;
     let expr_ty = cx.typeck_results().expr_ty(recv);
-    let get_args_str = snippet_with_applicability(cx, get_arg.span, "..", &mut applicability);
     let caller_type = if derefs_to_slice(cx, recv, expr_ty).is_some() {
         "slice"
     } else if is_type_diagnostic_item(cx, expr_ty, sym::Vec) {
@@ -58,24 +56,33 @@ pub(super) fn check<'tcx>(
     };
 
     let mut_str = if is_mut { "_mut" } else { "" };
-    let borrow_str = if !needs_ref {
-        ""
-    } else if is_mut {
-        "&mut "
-    } else {
-        "&"
-    };
 
-    span_lint_and_sugg(
+    span_lint_and_then(
         cx,
         GET_UNWRAP,
         span,
-        format!("called `.get{mut_str}().unwrap()` on a {caller_type}. Using `[]` is more clear and more concise"),
-        "try",
-        format!(
-            "{borrow_str}{}[{get_args_str}]",
-            snippet_with_applicability(cx, recv.span, "..", &mut applicability)
-        ),
-        applicability,
+        format!("called `.get{mut_str}().unwrap()` on a {caller_type}"),
+        |diag| {
+            let mut applicability = Applicability::MachineApplicable;
+            let get_args_str = snippet_with_applicability(cx, get_arg.span, "..", &mut applicability);
+
+            let borrow_str = if !needs_ref {
+                ""
+            } else if is_mut {
+                "&mut "
+            } else {
+                "&"
+            };
+
+            diag.span_suggestion_verbose(
+                span,
+                "using `[]` is clearer and more concise",
+                format!(
+                    "{borrow_str}{}[{get_args_str}]",
+                    snippet_with_applicability(cx, recv.span, "..", &mut applicability)
+                ),
+                applicability,
+            );
+        },
     );
 }

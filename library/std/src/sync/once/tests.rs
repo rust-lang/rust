@@ -1,7 +1,9 @@
 use super::Once;
-use crate::panic;
+use crate::sync::atomic::AtomicBool;
+use crate::sync::atomic::Ordering::Relaxed;
 use crate::sync::mpsc::channel;
-use crate::thread;
+use crate::time::Duration;
+use crate::{panic, thread};
 
 #[test]
 fn smoke_once() {
@@ -113,4 +115,48 @@ fn wait_for_force_to_finish() {
 
     assert!(t1.join().is_ok());
     assert!(t2.join().is_ok());
+}
+
+#[test]
+fn wait() {
+    for _ in 0..50 {
+        let val = AtomicBool::new(false);
+        let once = Once::new();
+
+        thread::scope(|s| {
+            for _ in 0..4 {
+                s.spawn(|| {
+                    once.wait();
+                    assert!(val.load(Relaxed));
+                });
+            }
+
+            once.call_once(|| val.store(true, Relaxed));
+        });
+    }
+}
+
+#[test]
+fn wait_on_poisoned() {
+    let once = Once::new();
+
+    panic::catch_unwind(|| once.call_once(|| panic!())).unwrap_err();
+    panic::catch_unwind(|| once.wait()).unwrap_err();
+}
+
+#[test]
+fn wait_force_on_poisoned() {
+    let once = Once::new();
+
+    thread::scope(|s| {
+        panic::catch_unwind(|| once.call_once(|| panic!())).unwrap_err();
+
+        s.spawn(|| {
+            thread::sleep(Duration::from_millis(100));
+
+            once.call_once_force(|_| {});
+        });
+
+        once.wait_force();
+    })
 }

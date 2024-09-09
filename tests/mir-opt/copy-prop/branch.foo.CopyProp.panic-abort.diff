@@ -30,7 +30,7 @@
       }
   
       bb3: {
-          _2 = _1;
+          _2 = copy _1;
           goto -> bb6;
       }
   
@@ -41,13 +41,13 @@
   
       bb5: {
           StorageDead(_4);
-          _2 = _1;
+          _2 = copy _1;
           goto -> bb6;
       }
   
       bb6: {
           StorageDead(_3);
-          _0 = _2;
+          _0 = copy _2;
           StorageDead(_2);
           StorageDead(_1);
           return;

@@ -8,15 +8,18 @@
 //! specialization errors. These things can (and probably should) be
 //! fixed, but for the moment it's easier to do these checks early.
 
-use crate::{constrained_generic_params as cgp, errors::UnconstrainedGenericParameter};
-use min_specialization::check_min_specialization;
+use std::assert_matches::debug_assert_matches;
 
+use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::ErrorGuaranteed;
+
+use crate::constrained_generic_params as cgp;
+use crate::errors::UnconstrainedGenericParameter;
 
 mod min_specialization;
 
@@ -50,10 +53,13 @@ mod min_specialization;
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
 /// //   ^ 'a is unused and appears in assoc type, error
 /// ```
-pub fn check_impl_wf(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn check_impl_wf(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     let min_specialization = tcx.features().min_specialization;
     let mut res = Ok(());
-    debug_assert!(matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. }));
+    debug_assert_matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. });
     res = res.and(enforce_impl_params_are_constrained(tcx, impl_def_id));
     if min_specialization {
         res = res.and(check_min_specialization(tcx, impl_def_id));
@@ -134,8 +140,7 @@ fn enforce_impl_params_are_constrained(
             }
         };
         if err {
-            let const_param_note =
-                matches!(param.kind, ty::GenericParamDefKind::Const { .. }).then_some(());
+            let const_param_note = matches!(param.kind, ty::GenericParamDefKind::Const { .. });
             let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
                 span: tcx.def_span(param.def_id),
                 param_name: param.name,

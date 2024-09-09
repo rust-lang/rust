@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_path_diagnostic_item, sugg};
 use rustc_errors::Applicability;
@@ -39,7 +39,7 @@ fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'_>) -> 
     }
 
     let call_site = expr.span.source_callsite();
-    if let Some(snippet) = snippet_opt(cx, call_site)
+    if let Some(snippet) = call_site.get_source_text(cx)
         && let snippet_split = snippet.split("::").collect::<Vec<_>>()
         && let Some((_, elements)) = snippet_split.split_last()
     {

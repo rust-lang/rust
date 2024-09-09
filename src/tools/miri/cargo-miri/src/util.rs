@@ -93,12 +93,9 @@ pub fn find_miri() -> PathBuf {
     if let Some(path) = env::var_os("MIRI") {
         return path.into();
     }
+    // Assume it is in the same directory as ourselves.
     let mut path = std::env::current_exe().expect("current executable path invalid");
-    if cfg!(windows) {
-        path.set_file_name("miri.exe");
-    } else {
-        path.set_file_name("miri");
-    }
+    path.set_file_name(format!("miri{}", env::consts::EXE_SUFFIX));
     path
 }
 

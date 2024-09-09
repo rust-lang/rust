@@ -25,7 +25,7 @@ fn main() -> () {
         StorageLive(_3);
         _3 = const true;
         PlaceMention(_3);
-        switchInt(_3) -> [0: bb4, otherwise: bb6];
+        switchInt(copy _3) -> [0: bb4, otherwise: bb6];
     }
 
     bb3: {

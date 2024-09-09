@@ -1,9 +1,6 @@
-//@ check-pass
-//@ known-bug: #98117
-
-// Should fail. Functions are responsible for checking the well-formedness of
-// their own where clauses, so this should fail and require an explicit bound
-// `T: 'static`.
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 use std::fmt::Display;
 
@@ -19,5 +16,6 @@ where
 
 fn main() {
     let s = foo(&String::from("blah blah blah"));
+    //~^ ERROR temporary value dropped while borrowed
     println!("{}", s);
 }

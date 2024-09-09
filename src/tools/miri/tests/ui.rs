@@ -13,7 +13,7 @@ use ui_test::{
 };
 
 fn miri_path() -> PathBuf {
-    PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
+    PathBuf::from(env::var("MIRI").unwrap_or_else(|_| env!("CARGO_BIN_EXE_miri").into()))
 }
 
 fn get_host() -> String {
@@ -29,25 +29,33 @@ pub fn flagsplit(flags: &str) -> Vec<String> {
 
 // Build the shared object file for testing native function calls.
 fn build_native_lib() -> PathBuf {
-    let cc = option_env!("CC").unwrap_or("cc");
+    let cc = env::var("CC").unwrap_or_else(|_| "cc".into());
     // Target directory that we can write to.
     let so_target_dir =
         Path::new(&env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri-native-lib");
     // Create the directory if it does not already exist.
     std::fs::create_dir_all(&so_target_dir)
         .expect("Failed to create directory for shared object file");
-    let so_file_path = so_target_dir.join("libtestlib.so");
+    // We use a platform-neutral file extension to avoid having to hard-code alternatives.
+    let native_lib_path = so_target_dir.join("native-lib.module");
     let cc_output = Command::new(cc)
         .args([
             "-shared",
-            "-o",
-            so_file_path.to_str().unwrap(),
-            "tests/native-lib/test.c",
-            // Only add the functions specified in libcode.version to the shared object file.
-            // This is to avoid automatically adding `malloc`, etc.
-            // Source: https://anadoxin.org/blog/control-over-symbol-exports-in-gcc.html/
             "-fPIC",
-            "-Wl,--version-script=tests/native-lib/libtest.map",
+            // We hide all symbols by default and export just the ones we need
+            // This is to future-proof against a more complex shared object which eg defines its own malloc
+            // (but we wouldn't want miri to call that, as it would if it was exported).
+            "-fvisibility=hidden",
+            "-o",
+            native_lib_path.to_str().unwrap(),
+            // FIXME: Automate gathering of all relevant C source files in the directory.
+            "tests/native-lib/scalar_arguments.c",
+            "tests/native-lib/ptr_read_access.c",
+            // Ensure we notice serious problems in the C code.
+            "-Wall",
+            "-Wextra",
+            "-Wpedantic",
+            "-Werror",
         ])
         .output()
         .expect("failed to generate shared object file for testing native function calls");
@@ -57,7 +65,7 @@ fn build_native_lib() -> PathBuf {
             String::from_utf8_lossy(&cc_output.stderr),
         );
     }
-    so_file_path
+    native_lib_path
 }
 
 /// Does *not* set any args or env vars, since it is shared between the test runner and
@@ -73,7 +81,7 @@ fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         stdout_filters: stdout_filters().into(),
         mode,
         program,
-        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("ui"),
+        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri_ui"),
         edition: Some("2021".into()), // keep in sync with `./miri run`
         threads: std::env::var("MIRI_TEST_THREADS")
             .ok()
@@ -84,9 +92,11 @@ fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     if with_dependencies {
         // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
         // (It's a separate crate, so we don't get an env var from cargo.)
-        let mut prog = miri_path();
-        prog.set_file_name("cargo-miri");
-        config.dependency_builder.program = prog;
+        config.dependency_builder.program = {
+            let mut prog = miri_path();
+            prog.set_file_name(format!("cargo-miri{}", env::consts::EXE_SUFFIX));
+            prog
+        };
         let builder_args = ["miri", "run"]; // There is no `cargo miri build` so we just use `cargo miri run`.
         config.dependency_builder.args = builder_args.into_iter().map(Into::into).collect();
         config.dependencies_crate_manifest_path =
@@ -291,7 +301,7 @@ fn main() -> Result<()> {
         WithDependencies,
         tmpdir.path(),
     )?;
-    if cfg!(target_os = "linux") {
+    if cfg!(unix) {
         ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(
             Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },

@@ -1,5 +1,5 @@
-use crate::definitions::DefPathData;
-use crate::hir;
+use std::array::IntoIter;
+use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
@@ -11,8 +11,8 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::kw;
 use rustc_span::Symbol;
 
-use std::array::IntoIter;
-use std::fmt::Debug;
+use crate::definitions::DefPathData;
+use crate::hir;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
@@ -133,6 +133,9 @@ pub enum DefKind {
     /// we treat them all the same, and code which needs to distinguish them can match
     /// or `hir::ClosureKind` or `type_of`.
     Closure,
+    /// The definition of a synthetic coroutine body created by the lowering of a
+    /// coroutine-closure, such as an async closure.
+    SyntheticCoroutineBody,
 }
 
 impl DefKind {
@@ -177,6 +180,7 @@ impl DefKind {
             DefKind::Closure => "closure",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
+            DefKind::SyntheticCoroutineBody => "synthetic mir body",
         }
     }
 
@@ -236,7 +240,8 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::OpaqueTy => None,
+            | DefKind::OpaqueTy
+            | DefKind::SyntheticCoroutineBody => None,
         }
     }
 
@@ -276,6 +281,7 @@ impl DefKind {
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
             DefKind::Closure => DefPathData::Closure,
+            DefKind::SyntheticCoroutineBody => DefPathData::Closure,
         }
     }
 
@@ -291,7 +297,8 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Ctor(..)
             | DefKind::Closure
-            | DefKind::Static { .. } => true,
+            | DefKind::Static { .. }
+            | DefKind::SyntheticCoroutineBody => true,
             DefKind::Mod
             | DefKind::Struct
             | DefKind::Union
@@ -821,8 +828,13 @@ pub enum LifetimeRes {
     /// This variant is used for anonymous lifetimes that we did not resolve during
     /// late resolution. Those lifetimes will be inferred by typechecking.
     Infer,
-    /// Explicit `'static` lifetime.
-    Static,
+    /// `'static` lifetime.
+    Static {
+        /// We do not want to emit `elided_named_lifetimes`
+        /// when we are inside of a const item or a static,
+        /// because it would get too annoying.
+        suppress_elision_warning: bool,
+    },
     /// Resolution failure.
     Error,
     /// HACK: This is used to recover the NodeId of an elided lifetime.

@@ -5,10 +5,10 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-ar_archive_writer = "0.3.0"
+ar_archive_writer = "0.4.2"
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
-cc = "1.0.90"
+cc = "=1.0.105" # FIXME(cc): pinned to keep support for VS2013
 either = "1.5.0"
 itertools = "0.12"
 jobserver = "0.1.28"
@@ -41,7 +41,7 @@ tempfile = "3.2"
 thin-vec = "0.2.12"
 thorin-dwp = "0.7"
 tracing = "0.1"
-wasm-encoder = "0.200.0"
+wasm-encoder = "0.216.0"
 # tidy-alphabetical-end
 
 [target.'cfg(unix)'.dependencies]
@@ -50,7 +50,7 @@ libc = "0.2.50"
 # tidy-alphabetical-end
 
 [dependencies.object]
-version = "0.32.1"
+version = "0.36.2"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
 

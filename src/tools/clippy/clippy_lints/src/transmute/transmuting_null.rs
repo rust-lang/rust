@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{is_integer_literal, is_path_diagnostic_item};
 use rustc_hir::{Expr, ExprKind};
@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
 
     // Catching transmute over constants that resolve to `null`.
     if let ExprKind::Path(ref _qpath) = arg.kind
-        && let Some(Constant::RawPtr(0)) = constant(cx, cx.typeck_results(), arg)
+        && let Some(Constant::RawPtr(0)) = ConstEvalCtxt::new(cx).eval(arg)
     {
         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG);
         return true;

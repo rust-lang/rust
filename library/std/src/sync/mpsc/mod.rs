@@ -148,10 +148,9 @@ mod sync_tests;
 // not exposed publicly, but if you are curious about the implementation,
 // that's where everything is.
 
-use crate::error;
-use crate::fmt;
 use crate::sync::mpmc;
 use crate::time::{Duration, Instant};
+use crate::{error, fmt};
 
 /// The receiving half of Rust's [`channel`] (or [`sync_channel`]) type.
 /// This half can only be owned by one thread.

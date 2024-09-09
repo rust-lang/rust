@@ -12,14 +12,14 @@
 use std::any::Any;
 
 #[cfg(windows)]
-pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
+pub(crate) fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     use std::ffi::CString;
     use std::io;
 
-    use windows::{
-        core::PCSTR,
-        Win32::Foundation::{CloseHandle, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0},
-        Win32::System::Threading::{CreateMutexA, ReleaseMutex, WaitForSingleObject, INFINITE},
+    use windows::core::PCSTR;
+    use windows::Win32::Foundation::{CloseHandle, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0};
+    use windows::Win32::System::Threading::{
+        CreateMutexA, ReleaseMutex, WaitForSingleObject, INFINITE,
     };
 
     struct Handle(HANDLE);
@@ -80,6 +80,6 @@ pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
 }
 
 #[cfg(not(windows))]
-pub fn acquire_global_lock(_name: &str) -> Box<dyn Any> {
+pub(crate) fn acquire_global_lock(_name: &str) -> Box<dyn Any> {
     Box::new(())
 }

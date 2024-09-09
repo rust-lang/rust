@@ -1,10 +1,9 @@
 use std::cell::OnceCell;
 
-use crate::{errors, FnCtxt, TypeckRootCtxt};
-use rustc_data_structures::{
-    graph::{self, iterate::DepthFirstSearch, vec_graph::VecGraph},
-    unord::{UnordBag, UnordMap, UnordSet},
-};
+use rustc_data_structures::graph::iterate::DepthFirstSearch;
+use rustc_data_structures::graph::vec_graph::VecGraph;
+use rustc_data_structures::graph::{self};
+use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::HirId;
@@ -12,12 +11,15 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
-use rustc_span::DUMMY_SP;
-use rustc_span::{def_id::LocalDefId, Span};
+use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
+use tracing::debug;
+
+use crate::{errors, FnCtxt, TypeckRootCtxt};
 
 #[derive(Copy, Clone)]
-pub enum DivergingFallbackBehavior {
+pub(crate) enum DivergingFallbackBehavior {
     /// Always fallback to `()` (aka "always spontaneous decay")
     ToUnit,
     /// Sometimes fallback to `!`, but mainly fallback to `()` so that most of the crates are not broken.

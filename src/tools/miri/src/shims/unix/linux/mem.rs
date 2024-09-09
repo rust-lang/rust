@@ -53,7 +53,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We just allocated this, the access is definitely in-bounds and fits into our address space.
             // mmap guarantees new mappings are zero-init.
             this.write_bytes_ptr(
-                ptr.offset(Size::from_bytes(old_size), this).unwrap().into(),
+                ptr.wrapping_offset(Size::from_bytes(old_size), this).into(),
                 std::iter::repeat(0u8).take(usize::try_from(increase).unwrap()),
             )
             .unwrap();

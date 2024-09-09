@@ -1,6 +1,4 @@
-use core::intrinsics;
-use core::mem;
-use core::ptr;
+use core::{intrinsics, mem, ptr};
 
 /// This replaces the value behind the `v` unique reference by calling the
 /// relevant function.

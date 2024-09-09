@@ -2,16 +2,14 @@ use std::fs::{File, OpenOptions};
 use std::io;
 use std::os::windows::prelude::*;
 use std::path::Path;
-use tracing::debug;
 
-use windows::{
-    Win32::Foundation::{ERROR_INVALID_FUNCTION, HANDLE},
-    Win32::Storage::FileSystem::{
-        LockFileEx, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, LOCKFILE_EXCLUSIVE_LOCK,
-        LOCKFILE_FAIL_IMMEDIATELY, LOCK_FILE_FLAGS,
-    },
-    Win32::System::IO::OVERLAPPED,
+use tracing::debug;
+use windows::Win32::Foundation::{ERROR_INVALID_FUNCTION, HANDLE};
+use windows::Win32::Storage::FileSystem::{
+    LockFileEx, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, LOCKFILE_EXCLUSIVE_LOCK,
+    LOCKFILE_FAIL_IMMEDIATELY, LOCK_FILE_FLAGS,
 };
+use windows::Win32::System::IO::OVERLAPPED;
 
 #[derive(Debug)]
 pub struct Lock {

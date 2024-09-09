@@ -26,13 +26,13 @@ use rustc_span::Span;
 /// Our representation is a bit mixed here -- in some cases, we
 /// include the self type (e.g., `trait_bounds`) but in others we do not
 #[derive(Default, PartialEq, Eq, Clone, Debug)]
-pub struct Bounds<'tcx> {
+pub(crate) struct Bounds<'tcx> {
     clauses: Vec<(ty::Clause<'tcx>, Span)>,
     effects_min_tys: FxIndexMap<Ty<'tcx>, Span>,
 }
 
 impl<'tcx> Bounds<'tcx> {
-    pub fn push_region_bound(
+    pub(crate) fn push_region_bound(
         &mut self,
         tcx: TyCtxt<'tcx>,
         region: ty::PolyTypeOutlivesPredicate<'tcx>,
@@ -42,7 +42,7 @@ impl<'tcx> Bounds<'tcx> {
             .push((region.map_bound(|p| ty::ClauseKind::TypeOutlives(p)).upcast(tcx), span));
     }
 
-    pub fn push_trait_bound(
+    pub(crate) fn push_trait_bound(
         &mut self,
         tcx: TyCtxt<'tcx>,
         defining_def_id: DefId,
@@ -154,7 +154,7 @@ impl<'tcx> Bounds<'tcx> {
         self.clauses.push((bound_trait_ref.rebind(new_trait_ref).upcast(tcx), span));
     }
 
-    pub fn push_projection_bound(
+    pub(crate) fn push_projection_bound(
         &mut self,
         tcx: TyCtxt<'tcx>,
         projection: ty::PolyProjectionPredicate<'tcx>,
@@ -166,14 +166,14 @@ impl<'tcx> Bounds<'tcx> {
         ));
     }
 
-    pub fn push_sized(&mut self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) {
+    pub(crate) fn push_sized(&mut self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) {
         let sized_def_id = tcx.require_lang_item(LangItem::Sized, Some(span));
         let trait_ref = ty::TraitRef::new(tcx, sized_def_id, [ty]);
         // Preferable to put this obligation first, since we report better errors for sized ambiguity.
         self.clauses.insert(0, (trait_ref.upcast(tcx), span));
     }
 
-    pub fn clauses(
+    pub(crate) fn clauses(
         &self,
         // FIXME(effects): remove tcx
         _tcx: TyCtxt<'tcx>,
@@ -181,7 +181,7 @@ impl<'tcx> Bounds<'tcx> {
         self.clauses.iter().cloned()
     }
 
-    pub fn effects_min_tys(&self) -> impl Iterator<Item = Ty<'tcx>> + '_ {
+    pub(crate) fn effects_min_tys(&self) -> impl Iterator<Item = Ty<'tcx>> + '_ {
         self.effects_min_tys.keys().copied()
     }
 }

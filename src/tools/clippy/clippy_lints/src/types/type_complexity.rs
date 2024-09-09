@@ -55,6 +55,7 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             TyKind::TraitObject(param_bounds, _, _) => {
                 let has_lifetime_parameters = param_bounds.iter().any(|bound| {
                     bound
+                        .0
                         .bound_generic_params
                         .iter()
                         .any(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))

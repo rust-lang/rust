@@ -3,11 +3,9 @@
 use rustc_ast::Attribute;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
-use rustc_middle::{
-    middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType},
-    query::{LocalCrate, Providers},
-    ty::TyCtxt,
-};
+use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
+use rustc_middle::query::{LocalCrate, Providers};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::sym;
 
@@ -21,9 +19,7 @@ impl DebuggerVisualizerCollector<'_> {
                 return;
             };
 
-            let hint = if hints.len() == 1 {
-                &hints[0]
-            } else {
+            let [hint] = hints.as_slice() else {
                 self.sess.dcx().emit_err(DebugVisualizerInvalid { span: attr.span });
                 return;
             };
@@ -99,6 +95,6 @@ fn debugger_visualizers(tcx: TyCtxt<'_>, _: LocalCrate) -> Vec<DebuggerVisualize
     visitor.visualizers
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.debugger_visualizers = debugger_visualizers;
 }

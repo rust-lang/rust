@@ -1,15 +1,15 @@
 //! Computing the size and alignment of a value.
 
-use crate::common;
-use crate::common::IntPredicate;
-use crate::meth;
-use crate::traits::*;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::WrappingRange;
 use tracing::{debug, trace};
+
+use crate::common::IntPredicate;
+use crate::traits::*;
+use crate::{common, meth};
 
 pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,

@@ -8,7 +8,7 @@ use derive_where::derive_where;
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 #[cfg(feature = "nightly")]
 use rustc_serialize::Decodable;
-use tracing::debug;
+use tracing::instrument;
 
 use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -86,6 +86,7 @@ macro_rules! impl_binder_encode_decode {
 #[cfg(feature = "nightly")]
 impl_binder_encode_decode! {
     ty::FnSig<I>,
+    ty::FnSigTys<I>,
     ty::TraitPredicate<I>,
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,
@@ -246,21 +247,6 @@ impl<I: Interner, T> Binder<I, T> {
     {
         // `self.value` is equivalent to `self.skip_binder()`
         if self.value.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
-    }
-
-    /// Splits the contents into two things that share the same binder
-    /// level as the original, returning two distinct binders.
-    ///
-    /// `f` should consider bound regions at depth 1 to be free, and
-    /// anything it produces with bound regions at depth 1 will be
-    /// bound in the resulting return values.
-    pub fn split<U, V, F>(self, f: F) -> (Binder<I, U>, Binder<I, V>)
-    where
-        F: FnOnce(T) -> (U, V),
-    {
-        let Binder { value, bound_vars } = self;
-        let (u, v) = f(value);
-        (Binder { value: u, bound_vars }, Binder { value: v, bound_vars })
     }
 }
 
@@ -790,7 +776,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     }
 
     /// It is sometimes necessary to adjust the De Bruijn indices during instantiation. This occurs
-    /// when we are instantating a type with escaping bound vars into a context where we have
+    /// when we are instantiating a type with escaping bound vars into a context where we have
     /// passed through binders. That's quite a mouthful. Let's see an example:
     ///
     /// ```
@@ -831,28 +817,20 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     /// As indicated in the diagram, here the same type `&'a i32` is instantiated once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
+    #[instrument(level = "trace", skip(self), fields(binders_passed = self.binders_passed), ret)]
     fn shift_vars_through_binders<T: TypeFoldable<I>>(&self, val: T) -> T {
-        debug!(
-            "shift_vars(val={:?}, binders_passed={:?}, has_escaping_bound_vars={:?})",
-            val,
-            self.binders_passed,
-            val.has_escaping_bound_vars()
-        );
-
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
-            return val;
+            val
+        } else {
+            ty::fold::shift_vars(self.cx, val, self.binders_passed)
         }
-
-        let result = ty::fold::shift_vars(TypeFolder::cx(self), val, self.binders_passed);
-        debug!("shift_vars: shifted result = {:?}", result);
-
-        result
     }
 
     fn shift_region_through_binders(&self, region: I::Region) -> I::Region {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
-            return region;
+            region
+        } else {
+            ty::fold::shift_region(self.cx, region, self.binders_passed)
         }
-        ty::fold::shift_region(self.cx, region, self.binders_passed)
     }
 }

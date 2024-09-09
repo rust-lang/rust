@@ -1,11 +1,12 @@
-use crate::deriving::generic::ty::*;
-use crate::deriving::generic::*;
-use crate::deriving::{path_std, pathvec_std};
 use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use thin_vec::thin_vec;
+
+use crate::deriving::generic::ty::*;
+use crate::deriving::generic::*;
+use crate::deriving::{path_std, pathvec_std};
 
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,

@@ -1,6 +1,6 @@
-use rustc_data_structures::fx::IndexEntry;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::{codes::*, struct_span_code_err};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
+use rustc_errors::codes::*;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -10,8 +10,12 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{ErrorGuaranteed, Symbol};
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
 use smallvec::SmallVec;
+use tracing::debug;
 
-pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn crate_inherent_impls_overlap_check(
+    tcx: TyCtxt<'_>,
+    (): (),
+) -> Result<(), ErrorGuaranteed> {
     let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
     let mut res = Ok(());
     for id in tcx.hir().items() {

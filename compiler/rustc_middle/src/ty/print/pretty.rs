@@ -1,11 +1,8 @@
-use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
-use crate::query::IntoQueryParam;
-use crate::query::Providers;
-use crate::ty::GenericArgKind;
-use crate::ty::{
-    ConstInt, Expr, ParamConst, ScalarInt, Term, TermKind, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-};
+use std::cell::Cell;
+use std::fmt::{self, Write as _};
+use std::iter;
+use std::ops::{Deref, DerefMut};
+
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -25,13 +22,14 @@ use rustc_target::spec::abi::Abi;
 use rustc_type_ir::{elaborate, Upcast as _};
 use smallvec::SmallVec;
 
-use std::cell::Cell;
-use std::fmt::{self, Write as _};
-use std::iter;
-use std::ops::{Deref, DerefMut};
-
 // `pretty` is a separate module only for organization.
 use super::*;
+use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
+use crate::query::{IntoQueryParam, Providers};
+use crate::ty::{
+    ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TypeFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+};
 
 macro_rules! p {
     (@$lit:literal) => {
@@ -453,7 +451,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             // 2. For an extern inferred from a path or an indirect crate,
             //    where there is no explicit `extern crate`, we just prepend
             //    the crate name.
-            match self.tcx().extern_crate(def_id) {
+            match self.tcx().extern_crate(cnum) {
                 Some(&ExternCrate { src, dependency_of, span, .. }) => match (src, dependency_of) {
                     (ExternCrateSource::Extern(def_id), LOCAL_CRATE) => {
                         // NOTE(eddyb) the only reason `span` might be dummy,
@@ -698,7 +696,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     p!(print(sig), " {{", print_value_path(def_id, args), "}}");
                 }
             }
-            ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
+            ty::FnPtr(ref sig_tys, hdr) => p!(print(sig_tys.with(hdr))),
             ty::Infer(infer_ty) => {
                 if self.should_print_verbose() {
                     p!(write("{:?}", ty.kind()));
@@ -1147,7 +1145,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         let term = if let Some(ty) = term.skip_binder().as_type()
                             && let ty::Alias(ty::Projection, proj) = ty.kind()
                             && let Some(assoc) = tcx.opt_associated_item(proj.def_id)
-                            && assoc.trait_container(tcx) == tcx.lang_items().coroutine_trait()
+                            && assoc
+                                .trait_container(tcx)
+                                .is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Coroutine))
                             && assoc.name == rustc_span::sym::Return
                         {
                             if let ty::Coroutine(_, args) = args.type_at(0).kind() {
@@ -1680,7 +1680,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                 }
             }
-            ty::FnPtr(_) => {
+            ty::FnPtr(..) => {
                 // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
                 if let Some(GlobalAlloc::Function { instance, .. }) =
@@ -1743,7 +1743,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Pointer types
-            ty::Ref(..) | ty::RawPtr(_, _) | ty::FnPtr(_) => {
+            ty::Ref(..) | ty::RawPtr(_, _) | ty::FnPtr(..) => {
                 let data = int.to_bits(self.tcx().data_layout.pointer_size);
                 self.typed_value(
                     |this| {
@@ -3119,7 +3119,10 @@ define_print! {
 
     ty::ExistentialProjection<'tcx> {
         let name = cx.tcx().associated_item(self.def_id).name;
-        p!(write("{} = ", name), print(self.term))
+        // The args don't contain the self ty (as it has been erased) but the corresp.
+        // generics do as the trait always has a self ty param. We need to offset.
+        let args = &self.args[cx.tcx().generics_of(self.def_id).parent_count - 1..];
+        p!(path_generic_args(|cx| write!(cx, "{name}"), args), " = ", print(self.term))
     }
 
     ty::ProjectionPredicate<'tcx> {
@@ -3247,10 +3250,8 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
     let mut seen_defs: DefIdSet = Default::default();
 
     for &cnum in tcx.crates(()).iter() {
-        let def_id = cnum.as_def_id();
-
         // Ignore crates that are not direct dependencies.
-        match tcx.extern_crate(def_id) {
+        match tcx.extern_crate(cnum) {
             None => continue,
             Some(extern_crate) => {
                 if !extern_crate.is_direct() {
@@ -3259,7 +3260,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
             }
         }
 
-        queue.push(def_id);
+        queue.push(cnum.as_def_id());
     }
 
     // Iterate external crate defs but be mindful about visibility

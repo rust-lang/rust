@@ -3,11 +3,10 @@ mod inherent;
 mod opaque_types;
 mod weak_types;
 
-use rustc_type_ir::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::Upcast as _;
-use rustc_type_ir::{self as ty, Interner, NormalizesTo};
+use rustc_type_ir::{self as ty, Interner, NormalizesTo, Upcast as _};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -107,6 +106,12 @@ where
         if let Some(projection_pred) = assumption.as_projection_clause() {
             if projection_pred.projection_def_id() == goal.predicate.def_id() {
                 let cx = ecx.cx();
+                if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                    goal.predicate.alias.args,
+                    projection_pred.skip_binder().projection_term.args,
+                ) {
+                    return Err(NoSolution);
+                }
                 ecx.probe_trait_candidate(source).enter(|ecx| {
                     let assumption_projection_pred =
                         ecx.instantiate_binder_with_infer(projection_pred);
@@ -145,7 +150,7 @@ where
 
         let goal_trait_ref = goal.predicate.alias.trait_ref(cx);
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::new(ecx.cx(), TreatParams::ForLookup).args_may_unify(
+        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx()).args_may_unify(
             goal.predicate.alias.trait_ref(cx).args,
             impl_trait_ref.skip_binder().args,
         ) {
@@ -863,7 +868,7 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        panic!("`BikeshedIntrinsicFrom` does not have an associated type: {:?}", goal)
+        panic!("`TransmuteFrom` does not have an associated type: {:?}", goal)
     }
 
     fn consider_builtin_effects_intersection_candidate(

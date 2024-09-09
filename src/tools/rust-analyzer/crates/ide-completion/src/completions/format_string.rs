@@ -3,7 +3,7 @@
 use hir::{ModuleDef, ScopeDef};
 use ide_db::{syntax_helpers::format_string::is_format_string, SymbolKind};
 use itertools::Itertools;
-use syntax::{ast, AstToken, TextRange, TextSize};
+use syntax::{ast, AstToken, TextRange, TextSize, ToSmolStr};
 
 use crate::{context::CompletionContext, CompletionItem, CompletionItemKind, Completions};
 
@@ -31,9 +31,14 @@ pub(crate) fn format_string(
     };
 
     let source_range = TextRange::new(brace_offset, cursor);
-    ctx.locals.iter().for_each(|(name, _)| {
-        CompletionItem::new(CompletionItemKind::Binding, source_range, name.to_smol_str())
-            .add_to(acc, ctx.db);
+    ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()).for_each(|(name, _)| {
+        CompletionItem::new(
+            CompletionItemKind::Binding,
+            source_range,
+            name.display_no_db(ctx.edition).to_smolstr(),
+            ctx.edition,
+        )
+        .add_to(acc, ctx.db);
     });
     ctx.scope.process_all_names(&mut |name, scope| {
         if let ScopeDef::ModuleDef(module_def) = scope {
@@ -46,7 +51,8 @@ pub(crate) fn format_string(
             CompletionItem::new(
                 CompletionItemKind::SymbolKind(symbol_kind),
                 source_range,
-                name.to_smol_str(),
+                name.display_no_db(ctx.edition).to_smolstr(),
+                ctx.edition,
             )
             .add_to(acc, ctx.db);
         }

@@ -1,5 +1,6 @@
-use super::*;
 use ParseOpt as PO;
+
+use super::*;
 
 #[test]
 fn test_parse_simple() {

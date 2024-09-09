@@ -3,23 +3,23 @@ use std::fmt;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    db::HirDatabase, AsAssocItem, AttrsWithOwner, HasAttrs, HasSource, HirFileIdExt, Semantics,
+    db::HirDatabase, sym, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, HirFileIdExt,
+    Semantics,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
-    base_db::{FilePosition, FileRange},
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
-    FxHashMap, FxHashSet, RootDatabase, SymbolKind,
+    FilePosition, FxHashMap, FxHashSet, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
-use span::TextSize;
+use span::{Edition, TextSize};
 use stdx::{always, format_to};
 use syntax::{
     ast::{self, AstNode},
-    SmolStr, SyntaxNode,
+    SmolStr, SyntaxNode, ToSmolStr,
 };
 
 use crate::{references, FileId, NavigationTarget, ToNav, TryToNav};
@@ -229,7 +229,7 @@ pub(crate) fn related_tests(
 ) -> Vec<Runnable> {
     let sema = Semantics::new(db);
     let mut res: FxHashSet<Runnable> = FxHashSet::default();
-    let syntax = sema.parse(position.file_id).syntax().clone();
+    let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
 
     find_related_tests(&sema, &syntax, position, search_scope, &mut res);
 
@@ -290,8 +290,9 @@ fn find_related_tests_in_module(
     let mod_source = parent_module.definition_source_range(sema.db);
 
     let file_id = mod_source.file_id.original_file(sema.db);
-    let mod_scope = SearchScope::file_range(FileRange { file_id, range: mod_source.value });
-    let fn_pos = FilePosition { file_id, offset: fn_name.syntax().text_range().start() };
+    let mod_scope = SearchScope::file_range(hir::FileRange { file_id, range: mod_source.value });
+    let fn_pos =
+        FilePosition { file_id: file_id.into(), offset: fn_name.syntax().text_range().start() };
     find_related_tests(sema, syntax, fn_pos, Some(mod_scope), tests)
 }
 
@@ -321,6 +322,7 @@ pub(crate) fn runnable_fn(
     sema: &Semantics<'_, RootDatabase>,
     def: hir::Function,
 ) -> Option<Runnable> {
+    let edition = def.krate(sema.db).edition(sema.db);
     let under_cfg_test = has_cfg_test(def.module(sema.db).attrs(sema.db));
     let kind = if !under_cfg_test && def.is_main(sema.db) {
         RunnableKind::Bin
@@ -328,11 +330,11 @@ pub(crate) fn runnable_fn(
         let test_id = || {
             let canonical_path = {
                 let def: hir::ModuleDef = def.into();
-                def.canonical_path(sema.db)
+                def.canonical_path(sema.db, edition)
             };
             canonical_path
                 .map(TestId::Path)
-                .unwrap_or(TestId::Name(def.name(sema.db).to_smol_str()))
+                .unwrap_or(TestId::Name(def.name(sema.db).display_no_db(edition).to_smolstr()))
         };
 
         if def.is_test(sema.db) {
@@ -367,8 +369,11 @@ pub(crate) fn runnable_mod(
         .path_to_root(sema.db)
         .into_iter()
         .rev()
-        .filter_map(|it| it.name(sema.db))
-        .map(|it| it.display(sema.db).to_string())
+        .filter_map(|module| {
+            module.name(sema.db).map(|mod_name| {
+                mod_name.display(sema.db, module.krate().edition(sema.db)).to_string()
+            })
+        })
         .join("::");
 
     let attrs = def.attrs(sema.db);
@@ -381,6 +386,7 @@ pub(crate) fn runnable_impl(
     sema: &Semantics<'_, RootDatabase>,
     def: &hir::Impl,
 ) -> Option<Runnable> {
+    let edition = def.module(sema.db).krate().edition(sema.db);
     let attrs = def.attrs(sema.db);
     if !has_runnable_doc_test(&attrs) {
         return None;
@@ -389,13 +395,13 @@ pub(crate) fn runnable_impl(
     let nav = def.try_to_nav(sema.db)?.call_site();
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
-    let mut ty_args = ty.generic_parameters(sema.db).peekable();
+    let mut ty_args = ty.generic_parameters(sema.db, edition).peekable();
     let params = if ty_args.peek().is_some() {
         format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)))
     } else {
         String::new()
     };
-    let mut test_id = format!("{}{params}", adt_name.display(sema.db));
+    let mut test_id = format!("{}{params}", adt_name.display(sema.db, edition));
     test_id.retain(|c| c != ' ');
     let test_id = TestId::Path(test_id);
 
@@ -403,7 +409,7 @@ pub(crate) fn runnable_impl(
 }
 
 fn has_cfg_test(attrs: AttrsWithOwner) -> bool {
-    attrs.cfgs().any(|cfg| matches!(cfg, CfgExpr::Atom(CfgAtom::Flag(s)) if s == "test"))
+    attrs.cfgs().any(|cfg| matches!(&cfg, CfgExpr::Atom(CfgAtom::Flag(s)) if *s == sym::test))
 }
 
 /// Creates a test mod runnable for outline modules at the top of their definition.
@@ -419,8 +425,11 @@ fn runnable_mod_outline_definition(
         .path_to_root(sema.db)
         .into_iter()
         .rev()
-        .filter_map(|it| it.name(sema.db))
-        .map(|it| it.display(sema.db).to_string())
+        .filter_map(|module| {
+            module.name(sema.db).map(|mod_name| {
+                mod_name.display(sema.db, module.krate().edition(sema.db)).to_string()
+            })
+        })
         .join("::");
 
     let attrs = def.attrs(sema.db);
@@ -452,6 +461,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
         Definition::SelfType(it) => it.attrs(db),
         _ => return None,
     };
+    let edition = def.krate(db).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
     if !has_runnable_doc_test(&attrs) {
         return None;
     }
@@ -460,28 +470,29 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
         let mut path = String::new();
         def.canonical_module_path(db)?
             .flat_map(|it| it.name(db))
-            .for_each(|name| format_to!(path, "{}::", name.display(db)));
+            .for_each(|name| format_to!(path, "{}::", name.display(db, edition)));
         // This probably belongs to canonical_path?
         if let Some(assoc_item) = def.as_assoc_item(db) {
             if let Some(ty) = assoc_item.implementing_ty(db) {
                 if let Some(adt) = ty.as_adt() {
                     let name = adt.name(db);
-                    let mut ty_args = ty.generic_parameters(db).peekable();
-                    format_to!(path, "{}", name.display(db));
+                    let mut ty_args = ty.generic_parameters(db, edition).peekable();
+                    format_to!(path, "{}", name.display(db, edition));
                     if ty_args.peek().is_some() {
                         format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
                     }
-                    format_to!(path, "::{}", def_name.display(db));
+                    format_to!(path, "::{}", def_name.display(db, edition));
                     path.retain(|c| c != ' ');
                     return Some(path);
                 }
             }
         }
-        format_to!(path, "{}", def_name.display(db));
+        format_to!(path, "{}", def_name.display(db, edition));
         Some(path)
     })();
 
-    let test_id = path.map_or_else(|| TestId::Name(def_name.to_smol_str()), TestId::Path);
+    let test_id = path
+        .map_or_else(|| TestId::Name(def_name.display_no_db(edition).to_smolstr()), TestId::Path);
 
     let mut nav = match def {
         Definition::Module(def) => NavigationTarget::from_module_to_decl(db, def),

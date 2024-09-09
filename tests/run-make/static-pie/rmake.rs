@@ -7,10 +7,8 @@
 
 use std::process::Command;
 
-use run_make_support::llvm_readobj;
 use run_make_support::regex::Regex;
-use run_make_support::rustc;
-use run_make_support::{cmd, run_with_args, target};
+use run_make_support::{cmd, llvm_readobj, run_with_args, rustc, target};
 
 // Minimum major versions supporting -static-pie
 const GCC_VERSION: u32 = 8;
@@ -30,7 +28,7 @@ fn ok_compiler_version(compiler: &str) -> bool {
     }
 
     let compiler_output =
-        cmd(compiler).stdin(trigger).arg("-").arg("-E").arg("-x").arg("c").run().stdout_utf8();
+        cmd(compiler).stdin_buf(trigger).arg("-").arg("-E").arg("-x").arg("c").run().stdout_utf8();
     let re = Regex::new(r"(?m)^(\d+)").unwrap();
     let version: u32 =
         re.captures(&compiler_output).unwrap().get(1).unwrap().as_str().parse().unwrap();

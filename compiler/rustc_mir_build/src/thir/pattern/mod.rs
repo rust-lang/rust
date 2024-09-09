@@ -3,10 +3,7 @@
 mod check_match;
 mod const_to_pat;
 
-pub(crate) use self::check_match::check_match;
-
-use crate::errors::*;
-use crate::thir::util::UserAnnotatedTyHelpers;
+use std::cmp::Ordering;
 
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -26,7 +23,9 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, Integer};
 use tracing::{debug, instrument};
 
-use std::cmp::Ordering;
+pub(crate) use self::check_match::check_match;
+use crate::errors::*;
+use crate::thir::util::UserAnnotatedTyHelpers;
 
 struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -257,7 +256,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     RangeEnd::Included => {
                         self.tcx.dcx().emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
                             span,
-                            teach: self.tcx.sess.teach(E0030).then_some(()),
+                            teach: self.tcx.sess.teach(E0030),
                         })
                     }
                     RangeEnd::Excluded => {

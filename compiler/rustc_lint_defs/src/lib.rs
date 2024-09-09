@@ -1,4 +1,7 @@
-pub use self::Level::*;
+// tidy-alphabetical-start
+#![warn(unreachable_pub)]
+// tidy-alphabetical-end
+
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -7,15 +10,15 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
-use rustc_hir::HashStableContext;
-use rustc_hir::HirId;
+use rustc_hir::{HashStableContext, HirId, MissingLifetimeKind};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
-use rustc_span::symbol::MacroRulesNormalizedIdent;
-use rustc_span::{sym, symbol::Ident, Span, Symbol};
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::abi::Abi;
-
 use serde::{Deserialize, Serialize};
+
+pub use self::Level::*;
 
 pub mod builtin;
 
@@ -95,7 +98,7 @@ pub enum LintExpectationId {
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16>, attr_id: Option<AttrId> },
+    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
 }
 
 impl LintExpectationId {
@@ -119,31 +122,13 @@ impl LintExpectationId {
 
         *lint_index = new_lint_index
     }
-
-    /// Prepares the id for hashing. Removes references to the ast.
-    /// Should only be called when the id is stable.
-    pub fn normalize(self) -> Self {
-        match self {
-            Self::Stable { hir_id, attr_index, lint_index, .. } => {
-                Self::Stable { hir_id, attr_index, lint_index, attr_id: None }
-            }
-            Self::Unstable { .. } => {
-                unreachable!("`normalize` called when `ExpectationId` is unstable")
-            }
-        }
-    }
 }
 
 impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         match self {
-            LintExpectationId::Stable {
-                hir_id,
-                attr_index,
-                lint_index: Some(lint_index),
-                attr_id: _,
-            } => {
+            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 hir_id.hash_stable(hcx, hasher);
                 attr_index.hash_stable(hcx, hasher);
                 lint_index.hash_stable(hcx, hasher);
@@ -163,12 +148,9 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
     #[inline]
     fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
         match self {
-            LintExpectationId::Stable {
-                hir_id,
-                attr_index,
-                lint_index: Some(lint_index),
-                attr_id: _,
-            } => (*hir_id, *attr_index, *lint_index),
+            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
+                (*hir_id, *attr_index, *lint_index)
+            }
             _ => {
                 unreachable!("HashStable should only be called for a filled `LintExpectationId`")
             }
@@ -574,6 +556,12 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
+#[derive(Debug)]
+pub enum ElidedLifetimeResolution {
+    Static,
+    Param(Symbol, Span),
+}
+
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
@@ -586,6 +574,10 @@ pub enum BuiltinLintDiag {
     },
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
+    ElidedNamedLifetimes {
+        elided: (Span, MissingLifetimeKind),
+        resolution: ElidedLifetimeResolution,
+    },
     UnknownCrateTypes {
         span: Span,
         candidate: Option<Symbol>,
@@ -620,6 +612,8 @@ pub enum BuiltinLintDiag {
     LegacyDeriveHelpers(Span),
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
+    /// `'r#` in edition < 2021.
+    RawPrefix(Span),
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
@@ -747,6 +741,11 @@ pub enum BuiltinLintDiag {
     OutOfScopeMacroCalls {
         path: String,
     },
+    UnexpectedBuiltinCfg {
+        cfg: String,
+        cfg_name: Symbol,
+        controlled_by: &'static str,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -754,7 +753,7 @@ pub enum BuiltinLintDiag {
 #[derive(Debug)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
-    pub span: MultiSpan,
+    pub span: Option<MultiSpan>,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -792,7 +791,7 @@ impl LintBuffer {
         self.add_early_lint(BufferedEarlyLint {
             lint_id: LintId::of(lint),
             node_id,
-            span: span.into(),
+            span: Some(span.into()),
             diagnostic,
         });
     }

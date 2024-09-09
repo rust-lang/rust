@@ -13,6 +13,6 @@ fn main() {
     // CHECK: {{_.*}} = const 5000_usize;
     // CHECK: {{_.*}} = const true;
     // CHECK: assert(const true
-    // CHECK: [[x]] = [[array_lit]][2 of 3];
+    // CHECK: [[x]] = copy [[array_lit]][2 of 3];
     let x: u8 = [0_u8; 5000][2];
 }

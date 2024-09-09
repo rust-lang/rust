@@ -1,3 +1,11 @@
+use std::assert_matches::assert_matches;
+use std::collections::hash_map::Entry;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::marker::PhantomData;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
@@ -8,14 +16,9 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-use std::assert_matches::assert_matches;
-use std::collections::hash_map::Entry;
-use std::fmt::Debug;
-use std::hash::Hash;
-use std::marker::PhantomData;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
 use tracing::{debug, instrument};
+#[cfg(debug_assertions)]
+use {super::debug::EdgeFilter, std::env};
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
@@ -23,9 +26,6 @@ use super::{DepContext, DepKind, DepNode, Deps, HasDepContext, WorkProductId};
 use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
 use crate::query::{QueryContext, QuerySideEffects};
-
-#[cfg(debug_assertions)]
-use {super::debug::EdgeFilter, std::env};
 
 #[derive(Clone)]
 pub struct DepGraph<D: Deps> {
@@ -1405,7 +1405,7 @@ fn panic_on_forbidden_read<D: Deps>(data: &DepGraphData<D>, dep_node_index: DepN
         "Error: trying to record dependency on DepNode {dep_node} in a \
          context that does not allow it (e.g. during query deserialization). \
          The most common case of recording a dependency on a DepNode `foo` is \
-         when the correspondng query `foo` is invoked. Invoking queries is not \
+         when the corresponding query `foo` is invoked. Invoking queries is not \
          allowed as part of loading something from the incremental on-disk cache. \
          See <https://github.com/rust-lang/rust/pull/91919>."
     )

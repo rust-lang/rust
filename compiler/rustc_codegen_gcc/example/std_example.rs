@@ -1,5 +1,5 @@
 #![allow(internal_features)]
-#![feature(core_intrinsics, coroutines, coroutine_trait, is_sorted, stmt_expr_attributes)]
+#![feature(core_intrinsics, coroutines, coroutine_trait, stmt_expr_attributes)]
 
 #[cfg(feature="master")]
 #[cfg(target_arch="x86_64")]

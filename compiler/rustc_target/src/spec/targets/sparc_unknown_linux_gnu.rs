@@ -1,7 +1,7 @@
 use crate::abi::Endian;
 use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "sparc-unknown-linux-gnu".into(),
         metadata: crate::spec::TargetMetadata {

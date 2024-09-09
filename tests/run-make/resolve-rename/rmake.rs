@@ -5,8 +5,7 @@
 // the renamed library.
 // See https://github.com/rust-lang/rust/pull/49253
 
-use run_make_support::rfs;
-use run_make_support::rustc;
+use run_make_support::{rfs, rustc};
 
 fn main() {
     rustc().extra_filename("-hash").input("foo.rs").run();

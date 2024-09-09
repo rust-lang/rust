@@ -1,11 +1,9 @@
-use crate::errors::*;
-use crate::fluent_generated as fluent;
-
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
@@ -26,6 +24,9 @@ use rustc_session::lint::builtin::{
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{sym, Span};
 use tracing::instrument;
+
+use crate::errors::*;
+use crate::fluent_generated as fluent;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let typeck_results = tcx.typeck(def_id);
@@ -324,7 +325,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             Assign { .. } | AssignOp { .. } | InlineAsm { .. } | Let { .. } => true,
 
             // These evaluate to a value.
-            AddressOf { .. }
+            RawBorrow { .. }
             | Adt { .. }
             | Array { .. }
             | Binary { .. }
@@ -482,9 +483,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         // Check if the match is exhaustive.
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
-            if source == hir::MatchSource::ForLoopDesugar && arms.len() == 2 {
+            if source == hir::MatchSource::ForLoopDesugar
+                && let [_, snd_arm] = *arms
+            {
                 // the for loop pattern is not irrefutable
-                let pat = &self.thir[arms[1]].pattern;
+                let pat = &self.thir[snd_arm].pattern;
                 // `pat` should be `Some(<pat_field>)` from a desugared for loop.
                 debug_assert_eq!(pat.span.desugaring_kind(), Some(DesugaringKind::ForLoop));
                 let PatKind::Variant { ref subpatterns, .. } = pat.kind else { bug!() };
@@ -694,17 +697,17 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
         // Emit an extra note if the first uncovered witness would be uninhabited
         // if we disregard visibility.
-        let witness_1_is_privately_uninhabited = if (self.tcx.features().exhaustive_patterns
-            || self.tcx.features().min_exhaustive_patterns)
-            && let Some(witness_1) = witnesses.get(0)
+        let witness_1_is_privately_uninhabited = if let Some(witness_1) = witnesses.get(0)
             && let ty::Adt(adt, args) = witness_1.ty().kind()
             && adt.is_enum()
             && let Constructor::Variant(variant_index) = witness_1.ctor()
         {
-            let variant = adt.variant(*variant_index);
-            let inhabited = variant.inhabited_predicate(self.tcx, *adt).instantiate(self.tcx, args);
-            assert!(inhabited.apply(self.tcx, cx.param_env, cx.module));
-            !inhabited.apply_ignore_module(self.tcx, cx.param_env)
+            let variant_inhabited = adt
+                .variant(*variant_index)
+                .inhabited_predicate(self.tcx, *adt)
+                .instantiate(self.tcx, args);
+            variant_inhabited.apply(self.tcx, cx.param_env, cx.module)
+                && !variant_inhabited.apply_ignore_module(self.tcx, cx.param_env)
         } else {
             false
         };
@@ -715,7 +718,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             uncovered: Uncovered::new(pat.span, &cx, witnesses),
             inform,
             interpreted_as_const,
-            witness_1_is_privately_uninhabited: witness_1_is_privately_uninhabited.then_some(()),
+            witness_1_is_privately_uninhabited,
             _p: (),
             pattern_ty,
             let_suggestion,
@@ -914,22 +917,28 @@ fn report_unreachable_pattern<'p, 'tcx>(
     pat: &DeconstructedPat<'p, 'tcx>,
     explanation: &RedundancyExplanation<'p, 'tcx>,
 ) {
+    static CAP_COVERED_BY_MANY: usize = 4;
     let pat_span = pat.data().span;
     let mut lint = UnreachablePattern {
         span: Some(pat_span),
         matches_no_values: None,
+        matches_no_values_ty: **pat.ty(),
+        uninhabited_note: None,
         covered_by_catchall: None,
         covered_by_one: None,
         covered_by_many: None,
+        covered_by_many_n_more_count: 0,
     };
     match explanation.covered_by.as_slice() {
         [] => {
             // Empty pattern; we report the uninhabited type that caused the emptiness.
             lint.span = None; // Don't label the pattern itself
+            lint.uninhabited_note = Some(()); // Give a link about empty types
+            lint.matches_no_values = Some(pat_span);
             pat.walk(&mut |subpat| {
                 let ty = **subpat.ty();
                 if cx.is_uninhabited(ty) {
-                    lint.matches_no_values = Some(UnreachableMatchesNoValues { ty });
+                    lint.matches_no_values_ty = ty;
                     false // No need to dig further.
                 } else if matches!(subpat.ctor(), Constructor::Ref | Constructor::UnionField) {
                     false // Don't explore further since they are not by-value.
@@ -945,15 +954,27 @@ fn report_unreachable_pattern<'p, 'tcx>(
             lint.covered_by_one = Some(covering_pat.data().span);
         }
         covering_pats => {
+            let mut iter = covering_pats.iter();
             let mut multispan = MultiSpan::from_span(pat_span);
-            for p in covering_pats {
+            for p in iter.by_ref().take(CAP_COVERED_BY_MANY) {
                 multispan.push_span_label(
                     p.data().span,
                     fluent::mir_build_unreachable_matches_same_values,
                 );
             }
-            multispan
-                .push_span_label(pat_span, fluent::mir_build_unreachable_making_this_unreachable);
+            let remain = iter.count();
+            if remain == 0 {
+                multispan.push_span_label(
+                    pat_span,
+                    fluent::mir_build_unreachable_making_this_unreachable,
+                );
+            } else {
+                lint.covered_by_many_n_more_count = remain;
+                multispan.push_span_label(
+                    pat_span,
+                    fluent::mir_build_unreachable_making_this_unreachable_n_more,
+                );
+            }
             lint.covered_by_many = Some(multispan);
         }
     }
@@ -1058,7 +1079,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 err.note("`&str` cannot be matched exhaustively, so a wildcard `_` is necessary");
             } else if cx.is_foreign_non_exhaustive_enum(ty) {
                 err.note(format!("`{ty}` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively"));
-            } else if cx.is_uninhabited(ty.inner()) && cx.tcx.features().min_exhaustive_patterns {
+            } else if cx.is_uninhabited(ty.inner()) {
                 // The type is uninhabited yet there is a witness: we must be in the `MaybeInvalid`
                 // case.
                 err.note(format!("`{ty}` is uninhabited but is not being matched by value, so a wildcard `_` is required"));
@@ -1077,7 +1098,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     let suggested_arm = if suggest_the_witnesses {
         let pattern = witnesses
             .iter()
-            .map(|witness| cx.hoist_witness_pat(witness).to_string())
+            .map(|witness| cx.print_witness_pat(witness))
             .collect::<Vec<String>>()
             .join(" | ");
         if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns {
@@ -1195,13 +1216,13 @@ fn joined_uncovered_patterns<'p, 'tcx>(
     witnesses: &[WitnessPat<'p, 'tcx>],
 ) -> String {
     const LIMIT: usize = 3;
-    let pat_to_str = |pat: &WitnessPat<'p, 'tcx>| cx.hoist_witness_pat(pat).to_string();
+    let pat_to_str = |pat: &WitnessPat<'p, 'tcx>| cx.print_witness_pat(pat);
     match witnesses {
         [] => bug!(),
-        [witness] => format!("`{}`", cx.hoist_witness_pat(witness)),
+        [witness] => format!("`{}`", cx.print_witness_pat(witness)),
         [head @ .., tail] if head.len() < LIMIT => {
             let head: Vec<_> = head.iter().map(pat_to_str).collect();
-            format!("`{}` and `{}`", head.join("`, `"), cx.hoist_witness_pat(tail))
+            format!("`{}` and `{}`", head.join("`, `"), cx.print_witness_pat(tail))
         }
         _ => {
             let (head, tail) = witnesses.split_at(LIMIT);

@@ -3,7 +3,7 @@ use crate::spec::{base, Target, TargetOptions};
 // This target is for uclibc Linux on ARMv7 without NEON or
 // thumb-mode. See the thumbv7neon variant for enabling both.
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let base = base::linux_uclibc::opts();
     Target {
         llvm_target: "armv7-unknown-linux-gnueabihf".into(),

@@ -6,7 +6,7 @@ use crate::spec::{base, Target, TargetOptions};
 // registers enabled as well. See section A2.6.2 on page A2-56 in
 // https://web.archive.org/web/20210307234416/https://static.docs.arm.com/ddi0406/cd/DDI0406C_d_armv7ar_arm.pdf
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-gnueabihf".into(),
         metadata: crate::spec::TargetMetadata {

@@ -7,7 +7,7 @@ use hir_expand::{
     MacroCallId, MacroCallKind, MacroDefId,
 };
 use span::SyntaxContextId;
-use syntax::{ast, SmolStr};
+use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
@@ -79,20 +79,20 @@ impl DefMap {
         let segments = path.segments();
 
         if let Some(name) = segments.first() {
-            let name = name.to_smol_str();
-            let pred = |n: &_| *n == name;
+            let name = name.symbol();
+            let pred = |n: &_| *n == *name;
 
-            let is_tool = self.data.registered_tools.iter().map(SmolStr::as_str).any(pred);
+            let is_tool = self.data.registered_tools.iter().any(pred);
             // FIXME: tool modules can be shadowed by actual modules
             if is_tool {
                 return true;
             }
 
             if segments.len() == 1 {
-                if find_builtin_attr_idx(&name).is_some() {
+                if find_builtin_attr_idx(name).is_some() {
                     return true;
                 }
-                if self.data.registered_attrs.iter().map(SmolStr::as_str).any(pred) {
+                if self.data.registered_attrs.iter().any(pred) {
                     return true;
                 }
             }

@@ -7,7 +7,6 @@ use super::error::*;
 use super::select::{Operation, Selected, Token};
 use super::utils::Backoff;
 use super::waker::Waker;
-
 use crate::cell::UnsafeCell;
 use crate::marker::PhantomData;
 use crate::sync::atomic::{AtomicBool, Ordering};

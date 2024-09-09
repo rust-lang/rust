@@ -16,6 +16,9 @@
 //! constructions produced by proc macros. This pass is only intended for simple checks that do not
 //! require name resolution or type checking, or other kinds of complex analysis.
 
+use std::mem;
+use std::ops::{Deref, DerefMut};
+
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
@@ -34,8 +37,6 @@ use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use std::mem;
-use std::ops::{Deref, DerefMut};
 use thin_vec::thin_vec;
 
 use crate::errors::{self, TildeConstReason};
@@ -452,11 +453,6 @@ impl<'a> AstValidator<'a> {
                             item_span: span,
                             block: Some(self.current_extern_span().shrink_to_lo()),
                         });
-                    } else if !self.features.unsafe_extern_blocks {
-                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
-                            item_span: span,
-                            block: None,
-                        });
                     }
                 }
             }
@@ -566,10 +562,8 @@ impl<'a> AstValidator<'a> {
         FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
     ) {
         let report_err = |span| {
-            self.dcx().emit_err(errors::FnQualifierInExtern {
-                span: span,
-                block: self.current_extern_span(),
-            });
+            self.dcx()
+                .emit_err(errors::FnQualifierInExtern { span, block: self.current_extern_span() });
         };
         match coroutine_kind {
             Some(knd) => report_err(knd.span()),
@@ -891,7 +885,7 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.features, &self.session.psess, attr);
+        validate_attr::check_attr(&self.session.psess, attr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -967,14 +961,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self_ty,
                 items,
             }) => {
-                let error =
-                    |annotation_span, annotation, only_trait: bool| errors::InherentImplCannot {
-                        span: self_ty.span,
-                        annotation_span,
-                        annotation,
-                        self_ty: self_ty.span,
-                        only_trait: only_trait.then_some(()),
-                    };
+                let error = |annotation_span, annotation, only_trait| errors::InherentImplCannot {
+                    span: self_ty.span,
+                    annotation_span,
+                    annotation,
+                    self_ty: self_ty.span,
+                    only_trait,
+                };
 
                 self.with_in_trait_impl(None, |this| {
                     this.visibility_not_permitted(
@@ -1053,32 +1046,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         errors::VisibilityNotPermittedNote::IndividualForeignItems,
                     );
 
-                    if this.features.unsafe_extern_blocks {
-                        if &Safety::Default == safety {
-                            if item.span.at_least_rust_2024() {
-                                this.dcx()
-                                    .emit_err(errors::MissingUnsafeOnExtern { span: item.span });
-                            } else {
-                                this.lint_buffer.buffer_lint(
-                                    MISSING_UNSAFE_ON_EXTERN,
-                                    item.id,
-                                    item.span,
-                                    BuiltinLintDiag::MissingUnsafeOnExtern {
-                                        suggestion: item.span.shrink_to_lo(),
-                                    },
-                                );
-                            }
+                    if &Safety::Default == safety {
+                        if item.span.at_least_rust_2024() {
+                            this.dcx().emit_err(errors::MissingUnsafeOnExtern { span: item.span });
+                        } else {
+                            this.lint_buffer.buffer_lint(
+                                MISSING_UNSAFE_ON_EXTERN,
+                                item.id,
+                                item.span,
+                                BuiltinLintDiag::MissingUnsafeOnExtern {
+                                    suggestion: item.span.shrink_to_lo(),
+                                },
+                            );
                         }
-                    } else if let &Safety::Unsafe(span) = safety {
-                        let mut diag = this
-                            .dcx()
-                            .create_err(errors::UnsafeItem { span, kind: "extern block" });
-                        rustc_session::parse::add_feature_diagnostics(
-                            &mut diag,
-                            self.session,
-                            sym::unsafe_extern_blocks,
-                        );
-                        diag.emit();
                     }
 
                     if abi.is_none() {
@@ -1212,7 +1192,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 } else if where_clauses.after.has_where_token {
                     self.dcx().emit_err(errors::WhereClauseAfterTypeAlias {
                         span: where_clauses.after.span,
-                        help: self.session.is_nightly_build().then_some(()),
+                        help: self.session.is_nightly_build(),
                     });
                 }
             }
@@ -1345,14 +1325,28 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match bound {
             GenericBound::Trait(trait_ref, modifiers) => {
                 match (ctxt, modifiers.constness, modifiers.polarity) {
-                    (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
-                        self.dcx().emit_err(errors::OptionalTraitSupertrait {
-                            span: trait_ref.span,
-                            path_str: pprust::path_to_string(&trait_ref.trait_ref.path),
-                        });
+                    (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
+                        if !self.features.more_maybe_bounds =>
+                    {
+                        self.session
+                            .create_feature_err(
+                                errors::OptionalTraitSupertrait {
+                                    span: trait_ref.span,
+                                    path_str: pprust::path_to_string(&trait_ref.trait_ref.path),
+                                },
+                                sym::more_maybe_bounds,
+                            )
+                            .emit();
                     }
-                    (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
-                        self.dcx().emit_err(errors::OptionalTraitObject { span: trait_ref.span });
+                    (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_))
+                        if !self.features.more_maybe_bounds =>
+                    {
+                        self.session
+                            .create_feature_err(
+                                errors::OptionalTraitObject { span: trait_ref.span },
+                                sym::more_maybe_bounds,
+                            )
+                            .emit();
                     }
                     (
                         BoundKind::TraitObject,
@@ -1491,7 +1485,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         let disallowed = (!tilde_const_allowed).then(|| match fk {
             FnKind::Fn(_, ident, _, _, _, _) => TildeConstReason::Function { ident: ident.span },
-            FnKind::Closure(_, _, _) => TildeConstReason::Closure,
+            FnKind::Closure(..) => TildeConstReason::Closure,
         });
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
     }

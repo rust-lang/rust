@@ -1,14 +1,15 @@
 //! Compiles the profiler part of the `compiler-rt` library.
 //!
-//! See the build.rs for libcompiler_builtins crate for details.
+//! Loosely based on:
+//! - LLVM's `compiler-rt/lib/profile/CMakeLists.txt`
+//! - <https://github.com/rust-lang/compiler-builtins/blob/master/build.rs>.
 
 use std::env;
-use std::path::Path;
+use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rerun-if-env-changed=LLVM_PROFILER_RT_LIB");
-    if let Ok(rt) = env::var("LLVM_PROFILER_RT_LIB") {
-        println!("cargo:rustc-link-lib=static:+verbatim={rt}");
+    if let Ok(rt) = tracked_env_var("LLVM_PROFILER_RT_LIB") {
+        println!("cargo::rustc-link-lib=static:+verbatim={rt}");
         return;
     }
 
@@ -16,13 +17,13 @@ fn main() {
     let target_env = env::var("CARGO_CFG_TARGET_ENV").expect("CARGO_CFG_TARGET_ENV was not set");
     let cfg = &mut cc::Build::new();
 
-    // FIXME: `rerun-if-changed` directives are not currently emitted and the build script
-    // will not rerun on changes in these source files or headers included into them.
-    let mut profile_sources = vec![
+    let profile_sources = vec![
+        // tidy-alphabetical-start
         "GCDAProfiling.c",
         "InstrProfiling.c",
         "InstrProfilingBuffer.c",
         "InstrProfilingFile.c",
+        "InstrProfilingInternal.c",
         "InstrProfilingMerge.c",
         "InstrProfilingMergeFile.c",
         "InstrProfilingNameVar.c",
@@ -37,15 +38,13 @@ fn main() {
         "InstrProfilingValue.c",
         "InstrProfilingVersionVar.c",
         "InstrProfilingWriter.c",
-        // These files were added in LLVM 11.
-        "InstrProfilingInternal.c",
-        "InstrProfilingBiasVar.c",
+        "WindowsMMap.c",
+        // tidy-alphabetical-end
     ];
 
     if target_env == "msvc" {
         // Don't pull in extra libraries on MSVC
         cfg.flag("/Zl");
-        profile_sources.push("WindowsMMap.c");
         cfg.define("strdup", Some("_strdup"));
         cfg.define("open", Some("_open"));
         cfg.define("fdopen", Some("_fdopen"));
@@ -60,8 +59,6 @@ fn main() {
         if target_os != "windows" {
             cfg.flag("-fvisibility=hidden");
             cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
-        } else {
-            profile_sources.push("WindowsMMap.c");
         }
     }
 
@@ -79,19 +76,34 @@ fn main() {
         cfg.define("COMPILER_RT_HAS_ATOMICS", Some("1"));
     }
 
-    // Note that this should exist if we're going to run (otherwise we just
-    // don't build profiler builtins at all).
-    let root = Path::new("../../src/llvm-project/compiler-rt");
+    // Get the LLVM `compiler-rt` directory from bootstrap.
+    let root = PathBuf::from(tracked_env_var_or_fallback(
+        "RUST_COMPILER_RT_FOR_PROFILER",
+        "../../src/llvm-project/compiler-rt",
+    ));
 
     let src_root = root.join("lib").join("profile");
-    for src in profile_sources {
-        let path = src_root.join(src);
-        if path.exists() {
-            cfg.file(path);
-        }
+    assert!(src_root.exists(), "profiler runtime source directory not found: {src_root:?}");
+    println!("cargo::rerun-if-changed={}", src_root.display());
+    for file in profile_sources {
+        cfg.file(src_root.join(file));
     }
 
-    cfg.include(root.join("include"));
+    let include = root.join("include");
+    println!("cargo::rerun-if-changed={}", include.display());
+    cfg.include(include);
+
     cfg.warnings(false);
     cfg.compile("profiler-rt");
+}
+
+fn tracked_env_var(key: &str) -> Result<String, env::VarError> {
+    println!("cargo::rerun-if-env-changed={key}");
+    env::var(key)
+}
+fn tracked_env_var_or_fallback(key: &str, fallback: &str) -> String {
+    tracked_env_var(key).unwrap_or_else(|_| {
+        println!("cargo::warning={key} was not set; falling back to {fallback:?}");
+        fallback.to_owned()
+    })
 }

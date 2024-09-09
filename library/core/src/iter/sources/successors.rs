@@ -1,4 +1,5 @@
-use crate::{fmt, iter::FusedIterator};
+use crate::fmt;
+use crate::iter::FusedIterator;
 
 /// Creates a new iterator where each successive item is computed based on the preceding one.
 ///

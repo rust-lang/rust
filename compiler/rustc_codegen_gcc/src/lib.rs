@@ -24,6 +24,14 @@
 #![deny(clippy::pattern_type_mismatch)]
 #![allow(clippy::needless_lifetimes)]
 
+// Some "regular" crates we want to share with rustc
+extern crate object;
+extern crate smallvec;
+extern crate tempfile;
+#[macro_use]
+extern crate tracing;
+
+// The rustc crates we need
 extern crate rustc_apfloat;
 extern crate rustc_ast;
 extern crate rustc_attr;
@@ -42,8 +50,6 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-#[macro_use]
-extern crate tracing;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
@@ -79,14 +85,11 @@ use std::ops::Deref;
 use std::sync::atomic::AtomicBool;
 #[cfg(not(feature = "master"))]
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
-use back::lto::ThinBuffer;
-use back::lto::ThinData;
+use back::lto::{ThinBuffer, ThinData};
 use errors::LTONotSupported;
-use gccjit::CType;
-use gccjit::{Context, OptimizationLevel};
+use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -489,7 +492,7 @@ pub fn target_features(
     sess.target
         .supported_target_features()
         .iter()
-        .filter_map(|&(feature, gate)| {
+        .filter_map(|&(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)
             } else {

@@ -1,4 +1,3 @@
-use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::error::Error;
@@ -10,20 +9,21 @@ use core::mem::{self, ManuallyDrop};
 use core::ops::{Bound, Index, RangeBounds};
 use core::ptr;
 
-use crate::alloc::{Allocator, Global};
-
 use super::borrow::DormantMutRef;
 use super::dedup_sorted_iter::DedupSortedIter;
 use super::navigate::{LazyLeafRange, LeafRange};
-use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
-use super::search::{SearchBound, SearchResult::*};
+use super::node::ForceResult::*;
+use super::node::{self, marker, Handle, NodeRef, Root};
+use super::search::SearchBound;
+use super::search::SearchResult::*;
 use super::set_val::SetValZST;
+use crate::alloc::{Allocator, Global};
+use crate::vec::Vec;
 
 mod entry;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use entry::{Entry, OccupiedEntry, OccupiedError, VacantEntry};
-
 use Entry::*;
 
 /// Minimum number of elements in a node that is not a root.
@@ -2016,6 +2016,20 @@ impl<K, V> Default for Range<'_, K, V> {
     }
 }
 
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
+impl<K, V> Default for RangeMut<'_, K, V> {
+    /// Creates an empty `btree_map::RangeMut`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::RangeMut<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        RangeMut { inner: Default::default(), _marker: PhantomData }
+    }
+}
+
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     type Item = &'a mut V;
@@ -2049,6 +2063,20 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
+
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
+impl<K, V> Default for ValuesMut<'_, K, V> {
+    /// Creates an empty `btree_map::ValuesMut`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::ValuesMut<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        ValuesMut { inner: Default::default() }
+    }
+}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> Iterator for IntoKeys<K, V, A> {
@@ -2921,7 +2949,7 @@ impl<'a, K, V> Cursor<'a, K, V> {
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
-    /// If the cursor is at the end of the map then `None` is returned
+    /// If the cursor is at the end of the map then `None` is returned.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&self) -> Option<(&'a K, &'a V)> {
         self.clone().next()
@@ -2963,7 +2991,7 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
-    /// If the cursor is at the end of the map then `None` is returned
+    /// If the cursor is at the end of the map then `None` is returned.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&mut self) -> Option<(&K, &mut V)> {
         let (k, v) = self.inner.peek_next()?;
@@ -3061,7 +3089,7 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
-    /// If the cursor is at the end of the map then `None` is returned
+    /// If the cursor is at the end of the map then `None` is returned.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn peek_next(&mut self) -> Option<(&mut K, &mut V)> {
         let current = self.current.as_mut()?;
@@ -3274,7 +3302,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
         Some(kv)
     }
 
-    /// Removes the precending element from the `BTreeMap`.
+    /// Removes the preceding element from the `BTreeMap`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).
@@ -3380,7 +3408,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
         self.inner.remove_next()
     }
 
-    /// Removes the precending element from the `BTreeMap`.
+    /// Removes the preceding element from the `BTreeMap`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).

@@ -8,7 +8,6 @@ import { makeDebugConfig } from "./debug";
 import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
 import type { LanguageClient } from "vscode-languageclient/node";
 import { unwrapUndefinable, type RustEditor } from "./util";
-import * as toolchain from "./toolchain";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -66,9 +65,14 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
-export function prepareBaseEnv(base?: Record<string, string>): Record<string, string> {
+export function prepareBaseEnv(
+    inheritEnv: boolean,
+    base?: Record<string, string>,
+): Record<string, string> {
     const env: Record<string, string> = { RUST_BACKTRACE: "short" };
-    Object.assign(env, process.env);
+    if (inheritEnv) {
+        Object.assign(env, process.env);
+    }
     if (base) {
         Object.assign(env, base);
     }
@@ -76,11 +80,12 @@ export function prepareBaseEnv(base?: Record<string, string>): Record<string, st
 }
 
 export function prepareEnv(
+    inheritEnv: boolean,
     label: string,
     runnableArgs: ra.CargoRunnableArgs,
     runnableEnvCfg?: RunnableEnvCfg,
 ): Record<string, string> {
-    const env = prepareBaseEnv(runnableArgs.environment);
+    const env = prepareBaseEnv(inheritEnv, runnableArgs.environment);
     const platform = process.platform;
 
     const checkPlatform = (it: RunnableEnvCfgItem) => {
@@ -115,7 +120,7 @@ export async function createTaskFromRunnable(
 
     let definition: tasks.TaskDefinition;
     let options;
-    let cargo;
+    let cargo = "cargo";
     if (runnable.kind === "cargo") {
         const runnableArgs = runnable.args;
         let args = createCargoArgs(runnableArgs);
@@ -126,8 +131,6 @@ export async function createTaskFromRunnable(
 
             cargo = unwrapUndefinable(cargoParts[0]);
             args = [...cargoParts.slice(1), ...args];
-        } else {
-            cargo = await toolchain.cargoPath();
         }
 
         definition = {
@@ -137,7 +140,7 @@ export async function createTaskFromRunnable(
         };
         options = {
             cwd: runnableArgs.workspaceRoot || ".",
-            env: prepareEnv(runnable.label, runnableArgs, config.runnablesExtraEnv),
+            env: prepareEnv(true, runnable.label, runnableArgs, config.runnablesExtraEnv),
         };
     } else {
         const runnableArgs = runnable.args;
@@ -148,7 +151,7 @@ export async function createTaskFromRunnable(
         };
         options = {
             cwd: runnableArgs.cwd,
-            env: prepareBaseEnv(),
+            env: prepareBaseEnv(true),
         };
     }
 
@@ -200,7 +203,7 @@ async function getRunnables(
             continue;
         }
 
-        if (debuggeeOnly && (r.label.startsWith("doctest") || r.label.startsWith("cargo"))) {
+        if (debuggeeOnly && r.label.startsWith("doctest")) {
             continue;
         }
         items.push(new RunnableQuickPick(r));

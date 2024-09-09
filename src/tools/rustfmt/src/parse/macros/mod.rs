@@ -84,9 +84,7 @@ pub(crate) struct ParsedMacroArgs {
 fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
     for &keyword in RUST_KW.iter() {
         if parser.token.is_keyword(keyword)
-            && parser.look_ahead(1, |t| {
-                t.kind == TokenKind::Eof || t.kind == TokenKind::Comma
-            })
+            && parser.look_ahead(1, |t| *t == TokenKind::Eof || *t == TokenKind::Comma)
         {
             parser.bump();
             return Some(MacroArg::Keyword(
@@ -131,7 +129,7 @@ pub(crate) fn parse_macro_args(
                                 Some(arg) => {
                                     args.push(arg);
                                     parser.bump();
-                                    if parser.token.kind == TokenKind::Eof && args.len() == 2 {
+                                    if parser.token == TokenKind::Eof && args.len() == 2 {
                                         vec_with_semi = true;
                                         break;
                                     }
@@ -150,7 +148,7 @@ pub(crate) fn parse_macro_args(
 
             parser.bump();
 
-            if parser.token.kind == TokenKind::Eof {
+            if parser.token == TokenKind::Eof {
                 trailing_comma = true;
                 break;
             }

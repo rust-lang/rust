@@ -1,8 +1,6 @@
 use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
-use tracing::{debug, instrument, trace};
-
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
@@ -16,17 +14,16 @@ use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, Abi};
+use tracing::{debug, instrument, trace};
 
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
 use crate::const_eval::CheckAlignment;
-use crate::errors::ConstEvalError;
-use crate::errors::{self, DanglingPtrInFinal};
+use crate::errors::{self, ConstEvalError, DanglingPtrInFinal};
 use crate::interpret::{
-    create_static_alloc, intern_const_alloc_recursive, CtfeValidationMode, GlobalId, Immediate,
-    InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
-    StackPopCleanup,
+    create_static_alloc, eval_nullary_intrinsic, intern_const_alloc_recursive, throw_exhaust,
+    CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpError,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup,
 };
-use crate::interpret::{eval_nullary_intrinsic, throw_exhaust, InternResult};
 use crate::CTRL_C_RECEIVED;
 
 // Returns a pointer to where the result lives
@@ -76,7 +73,9 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
         cid.promoted.map_or_else(String::new, |p| format!("::{p:?}"))
     );
 
-    ecx.push_stack_frame(
+    // This can't use `init_stack_frame` since `body` is not a function,
+    // so computing its ABI would fail. It's also not worth it since there are no arguments to pass.
+    ecx.push_stack_frame_raw(
         cid.instance,
         body,
         &ret.clone().into(),
@@ -227,7 +226,7 @@ pub(super) fn op_to_const<'tcx>(
                 let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap(); // `false` = no raw ptrs
                 debug_assert!(
                     matches!(
-                        ecx.tcx.struct_tail_without_normalization(pointee_ty).kind(),
+                        ecx.tcx.struct_tail_for_codegen(pointee_ty, ecx.param_env).kind(),
                         ty::Str | ty::Slice(..),
                     ),
                     "`ConstValue::Slice` is for slice-tailed types only, but got {}",
@@ -399,7 +398,7 @@ fn const_validate_mplace<'tcx>(
     let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
     let mut ref_tracking = RefTracking::new(mplace.clone());
     let mut inner = false;
-    while let Some((mplace, path)) = ref_tracking.todo.pop() {
+    while let Some((mplace, path)) = ref_tracking.next() {
         let mode = match ecx.tcx.static_mutability(cid.instance.def_id()) {
             _ if cid.promoted.is_some() => CtfeValidationMode::Promoted,
             Some(mutbl) => CtfeValidationMode::Static { mutbl }, // a `static`

@@ -2041,3 +2041,190 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn issue_17734() {
+    check_types(
+        r#"
+fn test() {
+    let x = S::foo::<'static, &()>(&S);
+     // ^ Wrap<'?, ()>
+    let x = S::foo::<&()>(&S);
+     // ^ Wrap<'?, ()>
+    let x = S.foo::<'static, &()>();
+     // ^ Wrap<'?, ()>
+    let x = S.foo::<&()>();
+     // ^ Wrap<'?, ()>
+}
+
+struct S;
+
+impl S {
+    pub fn foo<'a, T: Trait<'a>>(&'a self) -> T::Proj {
+        loop {}
+    }
+}
+
+struct Wrap<'a, T>(T);
+trait Trait<'a> {
+    type Proj;
+}
+impl<'a, T> Trait<'a> for &'a T {
+    type Proj = Wrap<'a, T>;
+}
+"#,
+    )
+}
+
+#[test]
+fn issue_17738() {
+    check_types(
+        r#"
+//- minicore: index
+use core::ops::{Index, IndexMut};
+
+struct Foo<K, V>(K, V);
+
+struct Bar;
+
+impl Bar {
+    fn bar(&mut self) {}
+}
+
+impl<K, V> Foo<K, V> {
+    fn new(_v: V) -> Self {
+        loop {}
+    }
+}
+
+impl<K, B, V> Index<B> for Foo<K, V> {
+    type Output = V;
+    fn index(&self, _index: B) -> &Self::Output {
+        loop {}
+    }
+}
+
+impl<K, V> IndexMut<K> for Foo<K, V> {
+    fn index_mut(&mut self, _index: K) -> &mut Self::Output {
+        loop {}
+    }
+}
+
+fn test() {
+    let mut t1 = Foo::new(Bar);
+     // ^^^^^^ Foo<&'? (), Bar>
+    t1[&()] = Bar;
+
+    let mut t2 = Foo::new(Bar);
+     // ^^^^^^ Foo<&'? (), Bar>
+    t2[&()].bar();
+}
+"#,
+    )
+}
+
+#[test]
+fn issue_17191() {
+    check_types(
+        r#"
+trait A {
+    type Item;
+}
+
+trait B<T> {}
+
+fn foo<T: B<impl A>>() {}
+
+fn test() {
+    let f = foo;
+      //^ fn foo<{unknown}>()
+}"#,
+    );
+}
+
+#[test]
+fn issue_17866() {
+    check_infer(
+        r#"
+trait T {
+    type A;
+}
+
+type Foo = <S as T>::A;
+
+fn main() {
+    Foo {};
+}
+"#,
+        expect![[r#"
+            60..75 '{     Foo {}; }': ()
+            66..72 'Foo {}': {unknown}
+        "#]],
+    );
+}
+
+#[test]
+fn issue_17711() {
+    check_infer(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+struct Struct<'a, T>(&'a T);
+
+trait Trait {}
+
+impl<'a, T: Deref<Target = impl Trait>> Struct<'a, T> {
+    fn foo(&self) -> &Self { self }
+
+    fn bar(&self) {
+        let _ = self.foo();
+    }
+
+}
+"#,
+        expect![[r#"
+            137..141 'self': &'? Struct<'a, T>
+            152..160 '{ self }': &'? Struct<'a, T>
+            154..158 'self': &'? Struct<'a, T>
+            174..178 'self': &'? Struct<'a, T>
+            180..215 '{     ...     }': ()
+            194..195 '_': &'? Struct<'?, T>
+            198..202 'self': &'? Struct<'a, T>
+            198..208 'self.foo()': &'? Struct<'?, T>
+        "#]],
+    );
+}
+
+#[test]
+fn issue_17767() {
+    check_infer(
+        r#"
+extern "C" {
+    type Foo<T>;
+}
+
+fn f() -> Foo {}
+"#,
+        expect![[r#"
+            47..49 '{}': Foo
+        "#]],
+    );
+}
+
+#[test]
+fn issue_17921() {
+    check_infer(
+        r#"
+//- minicore: future
+trait Foo {}
+type Bar = impl Foo;
+
+async fn f<A, B, C>() -> Bar {}
+"#,
+        expect![[r#"
+            64..66 '{}': ()
+            64..66 '{}': impl Future<Output = ()>
+        "#]],
+    );
+}

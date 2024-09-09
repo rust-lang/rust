@@ -1,20 +1,12 @@
-use super::FnCtxt;
-
-use crate::errors;
-use crate::fluent_generated as fluent;
-use crate::fn_ctxt::rustc_span::BytePos;
-use crate::hir::is_range_literal;
-use crate::method::probe;
-use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use core::cmp::min;
 use core::iter;
+
 use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_UNAMBIGUOUS};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId,
@@ -26,8 +18,10 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, suggest_constraining_type_params, Article, Binder};
-use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Upcast};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_params, Article, Binder, IsSuggestable, Ty, TyCtxt,
+    TypeVisitableExt, Upcast,
+};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
@@ -37,6 +31,14 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use tracing::{debug, instrument};
+
+use super::FnCtxt;
+use crate::fn_ctxt::rustc_span::BytePos;
+use crate::hir::is_range_literal;
+use crate::method::probe;
+use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
+use crate::{errors, fluent_generated as fluent};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
@@ -63,7 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - Points out the method's return type as the reason for the expected type.
     /// - Possible missing semicolon.
     /// - Possible missing return type if the return type is the default, and not `fn main()`.
-    pub fn suggest_mismatched_types_on_tail(
+    pub(crate) fn suggest_mismatched_types_on_tail(
         &self,
         err: &mut Diag<'_>,
         expr: &'tcx hir::Expr<'tcx>,
@@ -176,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.err_ctxt().extract_callable_info(self.body_id, self.param_env, ty)
     }
 
-    pub fn suggest_two_fn_call(
+    pub(crate) fn suggest_two_fn_call(
         &self,
         err: &mut Diag<'_>,
         lhs_expr: &'tcx hir::Expr<'tcx>,
@@ -250,7 +252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn suggest_remove_last_method_call(
+    pub(crate) fn suggest_remove_last_method_call(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -279,7 +281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    pub fn suggest_deref_ref_or_into(
+    pub(crate) fn suggest_deref_ref_or_into(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -603,7 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        if let (ty::FnPtr(_), ty::Closure(def_id, _)) = (expected.kind(), found.kind()) {
+        if let (ty::FnPtr(..), ty::Closure(def_id, _)) = (expected.kind(), found.kind()) {
             if let Some(upvars) = self.tcx.upvars_mentioned(*def_id) {
                 // Report upto four upvars being captured to reduce the amount error messages
                 // reported back to the user.
@@ -746,7 +748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// If the expression is the expression of a closure without block (`|| expr`), a
     /// block is needed to be added too (`|| { expr; }`). This is denoted by `needs_block`.
-    pub fn suggest_missing_semicolon(
+    pub(crate) fn suggest_missing_semicolon(
         &self,
         err: &mut Diag<'_>,
         expression: &'tcx hir::Expr<'tcx>,
@@ -2076,7 +2078,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // If the expr is a while or for loop and is the tail expr of its
     // enclosing body suggest returning a value right after it
-    pub fn suggest_returning_value_after_loop(
+    pub(crate) fn suggest_returning_value_after_loop(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -2974,7 +2976,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut suffix_suggestion = sugg.clone();
         suffix_suggestion.push((
             if matches!(
-                (&expected_ty.kind(), &checked_ty.kind()),
+                (expected_ty.kind(), checked_ty.kind()),
                 (ty::Int(_) | ty::Uint(_), ty::Float(_))
             ) {
                 // Remove fractional part from literal, for example `42.0f32` into `42`
@@ -3076,7 +3078,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
             };
 
-        match (&expected_ty.kind(), &checked_ty.kind()) {
+        match (expected_ty.kind(), checked_ty.kind()) {
             (ty::Int(exp), ty::Int(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {

@@ -9,16 +9,20 @@ use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, WorkDoneProgressCancelParams,
 };
+use paths::Utf8PathBuf;
+use stdx::TupleExt;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
     config::{Config, ConfigChange},
-    global_state::GlobalState,
+    flycheck::Target,
+    global_state::{FetchWorkspaceRequest, GlobalState},
     lsp::{from_proto, utils::apply_document_changes},
     lsp_ext::{self, RunFlycheckParams},
     mem_docs::DocumentData,
     reload,
+    target_spec::TargetSpec,
 };
 
 pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> anyhow::Result<()> {
@@ -73,7 +77,7 @@ pub(crate) fn handle_did_open_text_document(
 
         tracing::info!("New file content set {:?}", params.text_document.text);
         state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
-        if state.config.notifications().unindexed_project {
+        if state.config.discover_workspace_config().is_some() {
             tracing::debug!("queuing task");
             let _ = state
                 .deferred_task_queue
@@ -150,15 +154,31 @@ pub(crate) fn handle_did_save_text_document(
 
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
         // Re-fetch workspaces if a workspace related file has changed
-        if let Some(abs_path) = vfs_path.as_path() {
-            if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
-                state
-                    .fetch_workspaces_queue
-                    .request_op(format!("workspace vfs file change saved {abs_path}"), false);
-            } else if state.detached_files.contains(abs_path) {
-                state
-                    .fetch_workspaces_queue
-                    .request_op(format!("detached file saved {abs_path}"), false);
+        if let Some(path) = vfs_path.as_path() {
+            let additional_files = &state
+                .config
+                .discover_workspace_config()
+                .map(|cfg| cfg.files_to_watch.iter().map(String::as_str).collect::<Vec<&str>>())
+                .unwrap_or_default();
+
+            // FIXME: We should move this check into a QueuedTask and do semantic resolution of
+            // the files. There is only so much we can tell syntactically from the path.
+            if reload::should_refresh_for_change(path, ChangeKind::Modify, additional_files) {
+                state.fetch_workspaces_queue.request_op(
+                    format!("workspace vfs file change saved {path}"),
+                    FetchWorkspaceRequest {
+                        path: Some(path.to_owned()),
+                        force_crate_graph_reload: false,
+                    },
+                );
+            } else if state.detached_files.contains(path) {
+                state.fetch_workspaces_queue.request_op(
+                    format!("detached file saved {path}"),
+                    FetchWorkspaceRequest {
+                        path: Some(path.to_owned()),
+                        force_crate_graph_reload: false,
+                    },
+                );
             }
         }
 
@@ -226,6 +246,7 @@ pub(crate) fn handle_did_change_workspace_folders(
 
     for workspace in params.event.removed {
         let Ok(path) = workspace.uri.to_file_path() else { continue };
+        let Ok(path) = Utf8PathBuf::from_path_buf(path) else { continue };
         let Ok(path) = AbsPathBuf::try_from(path) else { continue };
         config.remove_workspace(&path);
     }
@@ -235,12 +256,15 @@ pub(crate) fn handle_did_change_workspace_folders(
         .added
         .into_iter()
         .filter_map(|it| it.uri.to_file_path().ok())
+        .filter_map(|it| Utf8PathBuf::from_path_buf(it).ok())
         .filter_map(|it| AbsPathBuf::try_from(it).ok());
     config.add_workspaces(added);
 
     if !config.has_linked_projects() && config.detached_files().is_empty() {
         config.rediscover_workspaces();
-        state.fetch_workspaces_queue.request_op("client workspaces changed".to_owned(), false)
+
+        let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
+        state.fetch_workspaces_queue.request_op("client workspaces changed".to_owned(), req);
     }
 
     Ok(())
@@ -266,18 +290,41 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
         let world = state.snapshot();
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
-            // Trigger flychecks for all workspaces that depend on the saved file
-            // Crates containing or depending on the saved file
-            let crate_ids: Vec<_> = world
-                .analysis
-                .crates_for(file_id)?
-                .into_iter()
-                .flat_map(|id| world.analysis.transitive_rev_deps(id))
-                .flatten()
-                .sorted()
-                .unique()
-                .collect();
+            // Is the target binary? If so we let flycheck run only for the workspace that contains the crate.
+            let target = TargetSpec::for_file(&world, file_id)?.and_then(|it| {
+                let tgt_kind = it.target_kind();
+                let (tgt_name, crate_id) = match it {
+                    TargetSpec::Cargo(c) => (c.target, c.crate_id),
+                    TargetSpec::ProjectJson(p) => (p.label, p.crate_id),
+                };
 
+                let tgt = match tgt_kind {
+                    project_model::TargetKind::Bin => Target::Bin(tgt_name),
+                    project_model::TargetKind::Example => Target::Example(tgt_name),
+                    project_model::TargetKind::Test => Target::Test(tgt_name),
+                    project_model::TargetKind::Bench => Target::Benchmark(tgt_name),
+                    _ => return None,
+                };
+
+                Some((tgt, crate_id))
+            });
+
+            let crate_ids = match target {
+                // Trigger flychecks for the only crate which the target belongs to
+                Some((_, krate)) => vec![krate],
+                None => {
+                    // Trigger flychecks for all workspaces that depend on the saved file
+                    // Crates containing or depending on the saved file
+                    world
+                        .analysis
+                        .crates_for(file_id)?
+                        .into_iter()
+                        .flat_map(|id| world.analysis.transitive_rev_deps(id))
+                        .flatten()
+                        .unique()
+                        .collect::<Vec<_>>()
+                }
+            };
             let crate_root_paths: Vec<_> = crate_ids
                 .iter()
                 .filter_map(|&crate_id| {
@@ -297,7 +344,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 let package = match &ws.kind {
                     project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
                     | project_model::ProjectWorkspaceKind::DetachedFile {
-                        cargo: Some((cargo, _)),
+                        cargo: Some((cargo, _, _)),
                         ..
                     } => cargo.packages().find_map(|pkg| {
                         let has_target_with_root = cargo[pkg]
@@ -326,8 +373,11 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 for (id, package) in workspace_ids.clone() {
                     if id == flycheck.id() {
                         updated = true;
-                        match package.filter(|_| !world.config.flycheck_workspace()) {
-                            Some(package) => flycheck.restart_for_package(package),
+                        match package
+                            .filter(|_| !world.config.flycheck_workspace() || target.is_some())
+                        {
+                            Some(package) => flycheck
+                                .restart_for_package(package, target.clone().map(TupleExt::head)),
                             None => flycheck.restart_workspace(saved_file.clone()),
                         }
                         continue;

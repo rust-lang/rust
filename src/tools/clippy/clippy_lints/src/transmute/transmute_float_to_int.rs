@@ -15,10 +15,9 @@ pub(super) fn check<'tcx>(
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
     mut arg: &'tcx Expr<'_>,
-    const_context: bool,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        (ty::Float(float_ty), ty::Int(_) | ty::Uint(_)) if !const_context => {
+        (ty::Float(float_ty), ty::Int(_) | ty::Uint(_)) => {
             span_lint_and_then(
                 cx,
                 TRANSMUTE_FLOAT_TO_INT,

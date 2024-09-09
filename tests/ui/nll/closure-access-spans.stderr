@@ -60,9 +60,8 @@ LL |     r.use_ref();
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     let r = &x;
-LL +     let r = x.clone();
-   |
+LL |     let r = &x.clone();
+   |               ++++++++
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:35:5
@@ -109,11 +108,6 @@ LL |     || *x = String::new();
    |     ^^ -- borrow occurs due to use in closure
    |     |
    |     value borrowed here after move
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     let r = x.clone();
-   |              ++++++++
 
 error[E0382]: use of moved value: `x`
   --> $DIR/closure-access-spans.rs:50:5
@@ -126,11 +120,6 @@ LL |     || x;
    |     ^^ - use occurs due to use in closure
    |     |
    |     value used here after move
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     let r = x.clone();
-   |              ++++++++
 
 error: aborting due to 9 previous errors
 

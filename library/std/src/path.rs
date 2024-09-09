@@ -70,23 +70,20 @@
 #[cfg(test)]
 mod tests;
 
+use core::clone::CloneToUninit;
+
 use crate::borrow::{Borrow, Cow};
-use crate::cmp;
 use crate::collections::TryReserveError;
 use crate::error::Error;
-use crate::fmt;
-use crate::fs;
+use crate::ffi::{os_str, OsStr, OsString};
 use crate::hash::{Hash, Hasher};
-use crate::io;
 use crate::iter::FusedIterator;
 use crate::ops::{self, Deref};
 use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
-
-use crate::ffi::{os_str, OsStr, OsString};
-use crate::sys;
 use crate::sys::path::{is_sep_byte, is_verbatim_sep, parse_prefix, MAIN_SEP_STR};
+use crate::{cmp, fmt, fs, io, sys};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -1797,7 +1794,7 @@ impl<T: ?Sized + AsRef<OsStr>> From<&T> for PathBuf {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<OsString> for PathBuf {
-    /// Converts an [`OsString`] into a [`PathBuf`]
+    /// Converts an [`OsString`] into a [`PathBuf`].
     ///
     /// This conversion does not allocate or copy memory.
     #[inline]
@@ -2203,7 +2200,7 @@ impl Path {
 
     /// Converts a `Path` to a [`Cow<str>`].
     ///
-    /// Any non-Unicode sequences are replaced with
+    /// Any non-UTF-8 sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
     /// [U+FFFD]: super::char::REPLACEMENT_CHARACTER
@@ -3111,6 +3108,16 @@ impl Path {
         let rw = Box::into_raw(self) as *mut OsStr;
         let inner = unsafe { Box::from_raw(rw) };
         PathBuf { inner: OsString::from(inner) }
+    }
+}
+
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for Path {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
+        // SAFETY: Path is just a wrapper around OsStr
+        unsafe { self.inner.clone_to_uninit(core::ptr::addr_of_mut!((*dst).inner)) }
     }
 }
 

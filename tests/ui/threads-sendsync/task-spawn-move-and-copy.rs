@@ -2,8 +2,8 @@
 #![allow(unused_must_use)]
 //@ needs-threads
 
-use std::thread;
 use std::sync::mpsc::channel;
+use std::thread;
 
 pub fn main() {
     let (tx, rx) = channel::<usize>();

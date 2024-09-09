@@ -7,6 +7,18 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
+use std::fmt::Debug;
+use std::iter;
+
+use rustc_data_structures::captures::Captures;
+use rustc_index::{Idx, IndexVec};
+use rustc_middle::arena::ArenaAllocatable;
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
+use tracing::{debug, instrument};
+
 use crate::infer::canonical::instantiate::{instantiate_value, CanonicalExt};
 use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
@@ -15,19 +27,9 @@ use crate::infer::canonical::{
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult};
 use crate::traits::query::NoSolution;
-use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use crate::traits::{ScrubbedTraitError, TraitEngine};
-use rustc_data_structures::captures::Captures;
-use rustc_index::Idx;
-use rustc_index::IndexVec;
-use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, BoundVar, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArg, GenericArgKind};
-use rustc_middle::{bug, span_bug};
-use std::fmt::Debug;
-use std::iter;
+use crate::traits::{
+    Obligation, ObligationCause, PredicateObligation, ScrubbedTraitError, TraitEngine,
+};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query

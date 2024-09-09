@@ -1,14 +1,4 @@
-use super::operand::OperandRef;
-use super::operand::OperandValue::{Immediate, Pair, Ref, ZeroSized};
-use super::place::{PlaceRef, PlaceValue};
-use super::{CachedLlbb, FunctionCx, LocalRef};
-
-use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
-use crate::common::{self, IntPredicate};
-use crate::errors::CompilerBuiltinsCannotCall;
-use crate::meth;
-use crate::traits::*;
-use crate::MemFlags;
+use std::cmp;
 
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -19,13 +9,22 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{source_map::Spanned, sym, Span};
+use rustc_span::source_map::Spanned;
+use rustc_span::{sym, Span};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
 use tracing::{debug, info};
 
-use std::cmp;
+use super::operand::OperandRef;
+use super::operand::OperandValue::{Immediate, Pair, Ref, ZeroSized};
+use super::place::{PlaceRef, PlaceValue};
+use super::{CachedLlbb, FunctionCx, LocalRef};
+use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
+use crate::common::{self, IntPredicate};
+use crate::errors::CompilerBuiltinsCannotCall;
+use crate::traits::*;
+use crate::{meth, MemFlags};
 
 // Indicates if we are in the middle of merging a BB's successor into it. This
 // can happen when BB jumps directly to its successor and the successor has no
@@ -847,7 +846,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ),
                 None,
             ),
-            ty::FnPtr(_) => (None, Some(callee.immediate())),
+            ty::FnPtr(..) => (None, Some(callee.immediate())),
             _ => bug!("{} is not callable", callee.layout.ty),
         };
 
@@ -924,8 +923,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // third argument must be constant. This is
                         // checked by the type-checker.
                         if i == 2 && intrinsic.name == sym::simd_shuffle {
+                            // FIXME: the simd_shuffle argument is actually an array,
+                            // not a vector, so we need this special hack to make sure
+                            // it is passed as an immediate. We should pass the
+                            // shuffle indices as a vector instead to avoid this hack.
                             if let mir::Operand::Constant(constant) = &arg.node {
-                                let (llval, ty) = self.simd_shuffle_indices(bx, constant);
+                                let (llval, ty) = self.immediate_const_vector(bx, constant);
                                 return OperandRef {
                                     val: Immediate(llval),
                                     layout: bx.layout_of(ty),

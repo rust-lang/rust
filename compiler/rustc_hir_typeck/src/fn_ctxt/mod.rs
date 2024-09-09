@@ -5,13 +5,11 @@ mod checks;
 mod inspect_obligations;
 mod suggestions;
 
-use rustc_errors::DiagCtxtHandle;
+use std::cell::{Cell, RefCell};
+use std::ops::Deref;
 
-use crate::coercion::DynamicCoerceMany;
-use crate::fallback::DivergingFallbackBehavior;
-use crate::fn_ctxt::checks::DivergingBlockBehavior;
-use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 use hir::def_id::CRATE_DEF_ID;
+use rustc_errors::DiagCtxtHandle;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
@@ -24,8 +22,10 @@ use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
-use std::cell::{Cell, RefCell};
-use std::ops::Deref;
+use crate::coercion::DynamicCoerceMany;
+use crate::fallback::DivergingFallbackBehavior;
+use crate::fn_ctxt::checks::DivergingBlockBehavior;
+use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 
 /// The `FnCtxt` stores type-checking context needed to type-check bodies of
 /// functions, closures, and `const`s, including performing type inference
@@ -117,7 +117,7 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         root_ctxt: &'a TypeckRootCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
@@ -148,15 +148,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.root_ctxt.infcx.dcx()
     }
 
-    pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
+    pub(crate) fn cause(
+        &self,
+        span: Span,
+        code: ObligationCauseCode<'tcx>,
+    ) -> ObligationCause<'tcx> {
         ObligationCause::new(span, self.body_id, code)
     }
 
-    pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
+    pub(crate) fn misc(&self, span: Span) -> ObligationCause<'tcx> {
         self.cause(span, ObligationCauseCode::Misc)
     }
 
-    pub fn sess(&self) -> &Session {
+    pub(crate) fn sess(&self) -> &Session {
         self.tcx.sess
     }
 
@@ -165,7 +169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Use [`InferCtxtErrorExt::err_ctxt`] to start one without a `TypeckResults`.
     ///
     /// [`InferCtxtErrorExt::err_ctxt`]: rustc_trait_selection::error_reporting::InferCtxtErrorExt::err_ctxt
-    pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
+    pub(crate) fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
         let mut sub_relations = SubRelations::default();
         sub_relations.add_constraints(
             self,
@@ -259,27 +263,24 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         _: Span,
         def_id: LocalDefId,
         _: Ident,
-    ) -> ty::GenericPredicates<'tcx> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         let tcx = self.tcx;
         let item_def_id = tcx.hir().ty_param_owner(def_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id.to_def_id()];
         // HACK(eddyb) should get the original `Span`.
         let span = tcx.def_span(def_id);
-        ty::GenericPredicates {
-            parent: None,
-            predicates: tcx.arena.alloc_from_iter(
-                self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                    match predicate.kind().skip_binder() {
-                        ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                            Some((predicate, span))
-                        }
-                        _ => None,
+
+        ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(
+            self.param_env.caller_bounds().iter().filter_map(|predicate| {
+                match predicate.kind().skip_binder() {
+                    ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
+                        Some((predicate, span))
                     }
-                }),
-            ),
-            effects_min_tys: ty::List::empty(),
-        }
+                    _ => None,
+                }
+            }),
+        ))
     }
 
     fn lower_assoc_ty(
@@ -365,7 +366,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 /// This is a bridge between the interface of HIR ty lowering, which outputs a raw
 /// `Ty`, and the API in this module, which expect `Ty` to be fully normalized.
 #[derive(Clone, Copy, Debug)]
-pub struct LoweredTy<'tcx> {
+pub(crate) struct LoweredTy<'tcx> {
     /// The unnormalized type provided by the user.
     pub raw: Ty<'tcx>,
 
@@ -374,7 +375,7 @@ pub struct LoweredTy<'tcx> {
 }
 
 impl<'tcx> LoweredTy<'tcx> {
-    pub fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
+    fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
         // FIXME(-Znext-solver): We're still figuring out how to best handle
         // normalization and this doesn't feel too great. We should look at this
         // code again before stabilizing it.

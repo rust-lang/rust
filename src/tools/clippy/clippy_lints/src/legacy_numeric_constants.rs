@@ -3,7 +3,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::{get_parent_expr, is_from_proc_macro};
 use hir::def_id::DefId;
-use rustc_errors::{Applicability, SuggestionStyle};
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{ExprKind, Item, ItemKind, QPath, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -143,12 +143,11 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             && !is_from_proc_macro(cx, expr)
         {
             span_lint_hir_and_then(cx, LEGACY_NUMERIC_CONSTANTS, expr.hir_id, span, msg, |diag| {
-                diag.span_suggestion_with_style(
+                diag.span_suggestion_verbose(
                     span,
                     "use the associated constant instead",
                     sugg,
                     Applicability::MaybeIncorrect,
-                    SuggestionStyle::ShowAlways,
                 );
             });
         }

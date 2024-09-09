@@ -39,9 +39,9 @@ pub(crate) fn move_to_mod_rs(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     }
 
     let target = source_file.syntax().text_range();
-    let module_name = module.name(ctx.db())?.display(ctx.db()).to_string();
+    let module_name = module.name(ctx.db())?.unescaped().display(ctx.db()).to_string();
     let path = format!("./{module_name}/mod.rs");
-    let dst = AnchoredPathBuf { anchor: ctx.file_id(), path };
+    let dst = AnchoredPathBuf { anchor: ctx.file_id().into(), path };
     acc.add(
         AssistId("move_to_mod_rs", AssistKind::Refactor),
         format!("Convert {module_name}.rs to {module_name}/mod.rs"),

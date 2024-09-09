@@ -1,15 +1,18 @@
-use crate::errors;
-use crate::fluent_generated as fluent;
-use crate::maybe_whole;
-
-use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter};
-use rustc_errors::{codes::*, Diag, PResult};
-use rustc_span::{sym, symbol::kw, BytePos, Span};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, PResult};
+use rustc_span::symbol::kw;
+use rustc_span::{BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
+
+use super::{
+    AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, ParserRange, PathStyle, Trailing,
+    UsePreAttrPos,
+};
+use crate::{errors, fluent_generated as fluent, maybe_whole};
 
 // Public for rustfmt usage
 #[derive(Debug)]
@@ -29,6 +32,12 @@ enum OuterAttributeType {
     DocComment,
     DocBlockComment,
     Attribute,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum AllowLeadingUnsafe {
+    Yes,
+    No,
 }
 
 impl<'a> Parser<'a> {
@@ -67,6 +76,7 @@ impl<'a> Parser<'a> {
                             token::CommentKind::Line => OuterAttributeType::DocComment,
                             token::CommentKind::Block => OuterAttributeType::DocBlockComment,
                         },
+                        true,
                     ) {
                         err.note(fluent::parse_note);
                         err.span_suggestion_verbose(
@@ -130,7 +140,11 @@ impl<'a> Parser<'a> {
 
             // Emit error if inner attribute is encountered and forbidden.
             if style == ast::AttrStyle::Inner {
-                this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
+                this.error_on_forbidden_inner_attr(
+                    attr_sp,
+                    inner_parse_policy,
+                    item.is_valid_for_outer_style(),
+                );
             }
 
             Ok(attr::mk_attr_from_item(&self.psess.attr_id_generator, item, None, style, attr_sp))
@@ -142,6 +156,7 @@ impl<'a> Parser<'a> {
         err: &mut Diag<'_>,
         span: Span,
         attr_type: OuterAttributeType,
+        suggest_to_outer: bool,
     ) -> Option<Span> {
         let mut snapshot = self.create_snapshot_for_diagnostic();
         let lo = span.lo()
@@ -156,7 +171,7 @@ impl<'a> Parser<'a> {
         }
         loop {
             // skip any other attributes, we want the item
-            if snapshot.token.kind == token::Pound {
+            if snapshot.token == token::Pound {
                 if let Err(err) = snapshot.parse_attribute(InnerAttrPolicy::Permitted) {
                     err.cancel();
                     return Some(replacement_span);
@@ -176,16 +191,18 @@ impl<'a> Parser<'a> {
                 // FIXME(#100717)
                 err.arg("item", item.kind.descr());
                 err.span_label(item.span, fluent::parse_label_does_not_annotate_this);
-                err.span_suggestion_verbose(
-                    replacement_span,
-                    fluent::parse_sugg_change_inner_to_outer,
-                    match attr_type {
-                        OuterAttributeType::Attribute => "",
-                        OuterAttributeType::DocBlockComment => "*",
-                        OuterAttributeType::DocComment => "/",
-                    },
-                    rustc_errors::Applicability::MachineApplicable,
-                );
+                if suggest_to_outer {
+                    err.span_suggestion_verbose(
+                        replacement_span,
+                        fluent::parse_sugg_change_inner_to_outer,
+                        match attr_type {
+                            OuterAttributeType::Attribute => "",
+                            OuterAttributeType::DocBlockComment => "*",
+                            OuterAttributeType::DocComment => "/",
+                        },
+                        rustc_errors::Applicability::MachineApplicable,
+                    );
+                }
                 return None;
             }
             Err(item_err) => {
@@ -196,7 +213,12 @@ impl<'a> Parser<'a> {
         Some(replacement_span)
     }
 
-    pub(super) fn error_on_forbidden_inner_attr(&self, attr_sp: Span, policy: InnerAttrPolicy) {
+    pub(super) fn error_on_forbidden_inner_attr(
+        &self,
+        attr_sp: Span,
+        policy: InnerAttrPolicy,
+        suggest_to_outer: bool,
+    ) {
         if let InnerAttrPolicy::Forbidden(reason) = policy {
             let mut diag = match reason.as_ref().copied() {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
@@ -230,6 +252,7 @@ impl<'a> Parser<'a> {
                     &mut diag,
                     attr_sp,
                     OuterAttributeType::Attribute,
+                    suggest_to_outer,
                 )
                 .is_some()
             {
@@ -251,11 +274,11 @@ impl<'a> Parser<'a> {
     pub fn parse_attr_item(&mut self, force_collect: ForceCollect) -> PResult<'a, ast::AttrItem> {
         maybe_whole!(self, NtMeta, |attr| attr.into_inner());
 
-        let do_parse = |this: &mut Self, _empty_attrs| {
+        // Attr items don't have attributes.
+        self.collect_tokens(None, AttrWrapper::empty(), force_collect, |this, _empty_attrs| {
             let is_unsafe = this.eat_keyword(kw::Unsafe);
             let unsafety = if is_unsafe {
                 let unsafe_span = this.prev_token.span;
-                this.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
                 this.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
                 ast::Safety::Unsafe(unsafe_span)
             } else {
@@ -267,10 +290,12 @@ impl<'a> Parser<'a> {
             if is_unsafe {
                 this.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
             }
-            Ok((ast::AttrItem { unsafety, path, args, tokens: None }, false))
-        };
-        // Attr items don't have attributes.
-        self.collect_tokens_trailing_token(AttrWrapper::empty(), force_collect, do_parse)
+            Ok((
+                ast::AttrItem { unsafety, path, args, tokens: None },
+                Trailing::No,
+                UsePreAttrPos::No,
+            ))
+        })
     }
 
     /// Parses attributes that appear after the opening of an item. These should
@@ -303,12 +328,12 @@ impl<'a> Parser<'a> {
             };
             if let Some(attr) = attr {
                 // If we are currently capturing tokens (i.e. we are within a call to
-                // `Parser::collect_tokens_trailing_tokens`) record the token positions of this
-                // inner attribute, for possible later processing in a `LazyAttrTokenStream`.
+                // `Parser::collect_tokens`) record the token positions of this inner attribute,
+                // for possible later processing in a `LazyAttrTokenStream`.
                 if let Capturing::Yes = self.capture_state.capturing {
                     let end_pos = self.num_bump_calls;
-                    let range = start_pos..end_pos;
-                    self.capture_state.inner_attr_ranges.insert(attr.id, range);
+                    let parser_range = ParserRange(start_pos..end_pos);
+                    self.capture_state.inner_attr_parser_ranges.insert(attr.id, parser_range);
                 }
                 attrs.push(attr);
             } else {
@@ -332,12 +357,12 @@ impl<'a> Parser<'a> {
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
     pub fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
-        let cfg_predicate = self.parse_meta_item()?;
+        let cfg_predicate = self.parse_meta_item(AllowLeadingUnsafe::No)?;
         self.expect(&token::Comma)?;
 
         // Presumably, the majority of the time there will only be one attr.
         let mut expanded_attrs = Vec::with_capacity(1);
-        while self.token.kind != token::Eof {
+        while self.token != token::Eof {
             let lo = self.token.span;
             let item = self.parse_attr_item(ForceCollect::Yes)?;
             expanded_attrs.push((item, lo.to(self.prev_token.span)));
@@ -353,7 +378,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_meta_seq_top(&mut self) -> PResult<'a, ThinVec<ast::NestedMetaItem>> {
         // Presumably, the majority of the time there will only be one attr.
         let mut nmis = ThinVec::with_capacity(1);
-        while self.token.kind != token::Eof {
+        while self.token != token::Eof {
             nmis.push(self.parse_meta_item_inner()?);
             if !self.eat(&token::Comma) {
                 break;
@@ -368,7 +393,10 @@ impl<'a> Parser<'a> {
     /// MetaItem = SimplePath ( '=' UNSUFFIXED_LIT | '(' MetaSeq? ')' )? ;
     /// MetaSeq = MetaItemInner (',' MetaItemInner)* ','? ;
     /// ```
-    pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
+    pub fn parse_meta_item(
+        &mut self,
+        unsafe_allowed: AllowLeadingUnsafe,
+    ) -> PResult<'a, ast::MetaItem> {
         // We can't use `maybe_whole` here because it would bump in the `None`
         // case, which we don't want.
         if let token::Interpolated(nt) = &self.token.kind
@@ -384,10 +412,13 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.token.span;
-        let is_unsafe = self.eat_keyword(kw::Unsafe);
+        let is_unsafe = if unsafe_allowed == AllowLeadingUnsafe::Yes {
+            self.eat_keyword(kw::Unsafe)
+        } else {
+            false
+        };
         let unsafety = if is_unsafe {
             let unsafe_span = self.prev_token.span;
-            self.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
             self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
             ast::Safety::Unsafe(unsafe_span)
@@ -427,7 +458,7 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(), // we provide a better error below
         }
 
-        match self.parse_meta_item() {
+        match self.parse_meta_item(AllowLeadingUnsafe::No) {
             Ok(mi) => return Ok(ast::NestedMetaItem::MetaItem(mi)),
             Err(err) => err.cancel(), // we provide a better error below
         }
@@ -456,15 +487,4 @@ impl<'a> Parser<'a> {
 
         Err(self.dcx().create_err(err))
     }
-}
-
-/// The attributes are complete if all attributes are either a doc comment or a
-/// builtin attribute other than `cfg_attr`.
-pub fn is_complete(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().all(|attr| {
-        attr.is_doc_comment()
-            || attr.ident().is_some_and(|ident| {
-                ident.name != sym::cfg_attr && rustc_feature::is_builtin_attr_name(ident.name)
-            })
-    })
 }

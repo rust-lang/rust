@@ -1,8 +1,9 @@
+use std::fmt::{self, Write};
+
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
 use rustc_span::def_id::LocalDefId;
-use std::fmt::{self, Write};
 
 pub(crate) fn thir_tree(tcx: TyCtxtAt<'_>, owner_def: LocalDefId) -> String {
     match super::cx::thir_body(*tcx, owner_def) {
@@ -378,8 +379,8 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*arg, depth_lvl + 2);
                 print_indented!(self, ")", depth_lvl);
             }
-            AddressOf { mutability, arg } => {
-                print_indented!(self, "AddressOf {", depth_lvl);
+            RawBorrow { mutability, arg } => {
+                print_indented!(self, "RawBorrow {", depth_lvl);
                 print_indented!(self, format!("mutability: {:?}", mutability), depth_lvl + 1);
                 print_indented!(self, "arg:", depth_lvl + 1);
                 self.print_expr(*arg, depth_lvl + 2);

@@ -33,26 +33,26 @@
 //! HIR ty lowering.
 //!
 //! Similarly generics, predicates and header are set to the "default" values.
-//! In case of discrepancy with callee function the `NotSupportedDelegation` error will
+//! In case of discrepancy with callee function the `UnsupportedDelegation` error will
 //! also be emitted during HIR ty lowering.
 
-use crate::{ImplTraitPosition, ResolverAstLoweringExt};
-
-use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
+use std::iter;
 
 use ast::visit::Visitor;
 use hir::def::{DefKind, PartialRes, Res};
 use hir::{BodyId, HirId};
-use rustc_ast as ast;
 use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, ResolverAstLowering};
-use rustc_span::{symbol::Ident, Span};
+use rustc_span::symbol::Ident;
+use rustc_span::Span;
 use rustc_target::spec::abi;
-use std::iter;
+use {rustc_ast as ast, rustc_hir as hir};
+
+use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
+use crate::{ImplTraitPosition, ResolverAstLoweringExt};
 
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
@@ -72,7 +72,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn has_self(&self, def_id: DefId, span: Span) -> bool {
         if let Some(local_sig_id) = def_id.as_local() {
             // The value may be missing due to recursive delegation.
-            // Error will be emmited later during HIR ty lowering.
+            // Error will be emitted later during HIR ty lowering.
             self.resolver.delegation_fn_sigs.get(&local_sig_id).map_or(false, |sig| sig.has_self)
         } else {
             match self.tcx.def_kind(def_id) {
@@ -139,7 +139,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn param_count(&self, sig_id: DefId) -> (usize, bool /*c_variadic*/) {
         if let Some(local_sig_id) = sig_id.as_local() {
             // Map may be filled incorrectly due to recursive delegation.
-            // Error will be emmited later during HIR ty lowering.
+            // Error will be emitted later during HIR ty lowering.
             match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
                 Some(sig) => (sig.param_count, sig.c_variadic),
                 None => (0, false),
@@ -189,7 +189,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::FnSig<'hir> {
         let header = if let Some(local_sig_id) = sig_id.as_local() {
             match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
-                Some(sig) => self.lower_fn_header(sig.header),
+                Some(sig) => self.lower_fn_header(sig.header, hir::Safety::Safe),
                 None => self.generate_header_error(),
             }
         } else {
@@ -275,8 +275,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // FIXME(fn_delegation): Alternatives for target expression lowering:
     // https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600.
     fn lower_target_expr(&mut self, block: &Block) -> hir::Expr<'hir> {
-        if block.stmts.len() == 1
-            && let StmtKind::Expr(expr) = &block.stmts[0].kind
+        if let [stmt] = block.stmts.as_slice()
+            && let StmtKind::Expr(expr) = &stmt.kind
         {
             return self.lower_expr_mut(expr);
         }
@@ -323,7 +323,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 delegation.path.span,
                 ast_segment,
                 ParamMode::Optional,
-                ParenthesizedGenericArgs::Err,
+                GenericArgsMode::Err,
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );

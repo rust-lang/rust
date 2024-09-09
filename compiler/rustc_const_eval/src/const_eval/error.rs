@@ -4,14 +4,15 @@ use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, Diagnostic, IntoDiagA
 use rustc_middle::mir::interpret::{Provenance, ReportedErrorInfo};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::{layout::LayoutError, ConstInt};
+use rustc_middle::ty::layout::LayoutError;
+use rustc_middle::ty::{ConstInt, TyCtxt};
 use rustc_span::{Span, Symbol};
 
 use super::CompileTimeMachine;
 use crate::errors::{self, FrameNote, ReportErrorExt};
-use crate::interpret::{err_inval, err_machine_stop};
-use crate::interpret::{ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType};
+use crate::interpret::{
+    err_inval, err_machine_stop, ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType,
+};
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
@@ -21,24 +22,30 @@ pub enum ConstEvalErrKind {
     RecursiveStatic,
     AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
+    WriteThroughImmutablePointer,
 }
 
 impl MachineStopType for ConstEvalErrKind {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         use ConstEvalErrKind::*;
+
+        use crate::fluent_generated::*;
         match self {
             ConstAccessesMutGlobal => const_eval_const_accesses_mut_global,
             ModifiedGlobal => const_eval_modified_global,
             Panic { .. } => const_eval_panic,
             RecursiveStatic => const_eval_recursive_static,
             AssertFailure(x) => x.diagnostic_message(),
+            WriteThroughImmutablePointer => const_eval_write_through_immutable_pointer,
         }
     }
     fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagArgName, DiagArgValue)) {
         use ConstEvalErrKind::*;
         match *self {
-            RecursiveStatic | ConstAccessesMutGlobal | ModifiedGlobal => {}
+            RecursiveStatic
+            | ConstAccessesMutGlobal
+            | ModifiedGlobal
+            | WriteThroughImmutablePointer => {}
             AssertFailure(kind) => kind.add_args(adder),
             Panic { msg, line, col, file } => {
                 adder("msg".into(), msg.into_diag_arg());
@@ -157,6 +164,7 @@ where
 
 /// Emit a lint from a const-eval situation, with a backtrace.
 // Even if this is unused, please don't remove it -- chances are we will need to emit a lint during const-eval again in the future!
+#[allow(unused)]
 pub(super) fn lint<'tcx, L>(
     tcx: TyCtxtAt<'tcx>,
     machine: &CompileTimeMachine<'tcx>,

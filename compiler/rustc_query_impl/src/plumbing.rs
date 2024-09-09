@@ -2,19 +2,21 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::QueryConfigRestored;
+use std::num::NonZero;
+
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
 use rustc_index::Idx;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::{
-    self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
+    self, dep_kinds, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex,
+    SerializedDepNodeIndex,
 };
-use rustc_middle::query::on_disk_cache::AbsoluteBytePos;
-use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
+use rustc_middle::query::on_disk_cache::{
+    AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
+};
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
@@ -26,12 +28,12 @@ use rustc_query_system::query::{
     QueryStackFrame,
 };
 use rustc_query_system::{LayoutOfDepth, QueryOverflow};
-use rustc_serialize::Decodable;
-use rustc_serialize::Encodable;
+use rustc_serialize::{Decodable, Encodable};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
-use std::num::NonZero;
 use thin_vec::ThinVec;
+
+use crate::QueryConfigRestored;
 
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {
@@ -539,7 +541,7 @@ macro_rules! expand_if_cached {
 /// Don't show the backtrace for query system by default
 /// use `RUST_BACKTRACE=full` to show all the backtraces
 #[inline(never)]
-pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
+pub(crate) fn __rust_begin_short_backtrace<F, T>(f: F) -> T
 where
     F: FnOnce() -> T,
 {
@@ -555,17 +557,17 @@ macro_rules! define_queries {
      $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
 
-        pub(crate) mod query_impl { $(pub mod $name {
+        pub(crate) mod query_impl { $(pub(crate) mod $name {
             use super::super::*;
             use std::marker::PhantomData;
 
-            pub mod get_query_incr {
+            pub(crate) mod get_query_incr {
                 use super::*;
 
                 // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
                 // when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow duplicate naming
                 #[inline(never)]
-                pub fn __rust_end_short_backtrace<'tcx>(
+                pub(crate) fn __rust_end_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     span: Span,
                     key: queries::$name::Key<'tcx>,
@@ -583,11 +585,11 @@ macro_rules! define_queries {
                 }
             }
 
-            pub mod get_query_non_incr {
+            pub(crate) mod get_query_non_incr {
                 use super::*;
 
                 #[inline(never)]
-                pub fn __rust_end_short_backtrace<'tcx>(
+                pub(crate) fn __rust_end_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     span: Span,
                     key: queries::$name::Key<'tcx>,
@@ -602,7 +604,9 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn dynamic_query<'tcx>() -> DynamicQuery<'tcx, queries::$name::Storage<'tcx>> {
+            pub(crate) fn dynamic_query<'tcx>()
+                -> DynamicQuery<'tcx, queries::$name::Storage<'tcx>>
+            {
                 DynamicQuery {
                     name: stringify!($name),
                     eval_always: is_eval_always!([$($modifiers)*]),
@@ -665,7 +669,7 @@ macro_rules! define_queries {
             }
 
             #[derive(Copy, Clone, Default)]
-            pub struct QueryType<'tcx> {
+            pub(crate) struct QueryType<'tcx> {
                 data: PhantomData<&'tcx ()>
             }
 
@@ -694,20 +698,32 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn try_collect_active_jobs<'tcx>(tcx: TyCtxt<'tcx>, qmap: &mut QueryMap) {
+            pub(crate) fn try_collect_active_jobs<'tcx>(tcx: TyCtxt<'tcx>, qmap: &mut QueryMap) {
                 let make_query = |tcx, key| {
                     let kind = rustc_middle::dep_graph::dep_kinds::$name;
                     let name = stringify!($name);
                     $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                 };
-                tcx.query_system.states.$name.try_collect_active_jobs(
+                let res = tcx.query_system.states.$name.try_collect_active_jobs(
                     tcx,
                     make_query,
                     qmap,
-                ).unwrap();
+                );
+                // this can be called during unwinding, and the function has a `try_`-prefix, so
+                // don't `unwrap()` here, just manually check for `None` and do best-effort error
+                // reporting.
+                if res.is_none() {
+                    tracing::warn!(
+                        "Failed to collect active jobs for query with name `{}`!",
+                        stringify!($name)
+                    );
+                }
             }
 
-            pub fn alloc_self_profile_query_strings<'tcx>(tcx: TyCtxt<'tcx>, string_cache: &mut QueryKeyStringCache) {
+            pub(crate) fn alloc_self_profile_query_strings<'tcx>(
+                tcx: TyCtxt<'tcx>,
+                string_cache: &mut QueryKeyStringCache
+            ) {
                 $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
                     tcx,
                     stringify!($name),
@@ -717,7 +733,7 @@ macro_rules! define_queries {
             }
 
             item_if_cached! { [$($modifiers)*] {
-                pub fn encode_query_results<'tcx>(
+                pub(crate) fn encode_query_results<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     encoder: &mut CacheEncoder<'_, 'tcx>,
                     query_result_index: &mut EncodedDepNodeIndex
@@ -731,7 +747,7 @@ macro_rules! define_queries {
                 }
             }}
 
-            pub fn query_key_hash_verify<'tcx>(tcx: TyCtxt<'tcx>) {
+            pub(crate) fn query_key_hash_verify<'tcx>(tcx: TyCtxt<'tcx>) {
                 $crate::plumbing::query_key_hash_verify(
                     query_impl::$name::QueryType::config(tcx),
                     QueryCtxt::new(tcx),
@@ -787,7 +803,7 @@ macro_rules! define_queries {
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
-            pub fn Null<'tcx>() -> DepKindStruct<'tcx> {
+            pub(crate) fn Null<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,
@@ -799,7 +815,7 @@ macro_rules! define_queries {
             }
 
             // We use this for the forever-red node.
-            pub fn Red<'tcx>() -> DepKindStruct<'tcx> {
+            pub(crate) fn Red<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,
@@ -810,7 +826,7 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn TraitSelect<'tcx>() -> DepKindStruct<'tcx> {
+            pub(crate) fn TraitSelect<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: true,
                     is_eval_always: false,
@@ -821,7 +837,7 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn CompileCodegenUnit<'tcx>() -> DepKindStruct<'tcx> {
+            pub(crate) fn CompileCodegenUnit<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,
@@ -832,7 +848,7 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn CompileMonoItem<'tcx>() -> DepKindStruct<'tcx> {
+            pub(crate) fn CompileMonoItem<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,

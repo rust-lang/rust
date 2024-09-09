@@ -3,7 +3,7 @@ use syntax::{
     ast::{self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasName},
     ted, NodeOrToken,
     SyntaxKind::{BLOCK_EXPR, BREAK_EXPR, COMMENT, LOOP_EXPR, MATCH_GUARD, PATH_EXPR, RETURN_EXPR},
-    SyntaxNode,
+    SyntaxNode, T,
 };
 
 use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
@@ -20,14 +20,14 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 // ->
 // ```
 // fn main() {
-//     let $0var_name = (1 + 2);
+//     let $0var_name = 1 + 2;
 //     var_name * 4;
 // }
 // ```
 pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let node = if ctx.has_empty_selection() {
-        if let Some(expr_stmt) = ctx.find_node_at_offset::<ast::ExprStmt>() {
-            expr_stmt.syntax().clone()
+        if let Some(t) = ctx.token_at_offset().find(|it| it.kind() == T![;]) {
+            t.parent().and_then(ast::ExprStmt::cast)?.syntax().clone()
         } else if let Some(expr) = ctx.find_node_at_offset::<ast::Expr>() {
             expr.syntax().ancestors().find_map(valid_target_expr)?.syntax().clone()
         } else {
@@ -58,9 +58,30 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     }
 
     let parent = to_extract.syntax().parent().and_then(ast::Expr::cast);
-    let needs_adjust = parent
-        .as_ref()
-        .map_or(false, |it| matches!(it, ast::Expr::FieldExpr(_) | ast::Expr::MethodCallExpr(_)));
+    // Any expression that autoderefs may need adjustment.
+    let mut needs_adjust = parent.as_ref().map_or(false, |it| match it {
+        ast::Expr::FieldExpr(_)
+        | ast::Expr::MethodCallExpr(_)
+        | ast::Expr::CallExpr(_)
+        | ast::Expr::AwaitExpr(_) => true,
+        ast::Expr::IndexExpr(index) if index.base().as_ref() == Some(&to_extract) => true,
+        _ => false,
+    });
+    let mut to_extract_no_ref = peel_parens(to_extract.clone());
+    let needs_ref = needs_adjust
+        && match &to_extract_no_ref {
+            ast::Expr::FieldExpr(_)
+            | ast::Expr::IndexExpr(_)
+            | ast::Expr::MacroExpr(_)
+            | ast::Expr::ParenExpr(_)
+            | ast::Expr::PathExpr(_) => true,
+            ast::Expr::PrefixExpr(prefix) if prefix.op_kind() == Some(ast::UnaryOp::Deref) => {
+                to_extract_no_ref = prefix.expr()?;
+                needs_adjust = false;
+                false
+            }
+            _ => false,
+        };
 
     let anchor = Anchor::from(&to_extract)?;
     let target = to_extract.syntax().text_range();
@@ -87,22 +108,28 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 Some(ast::Expr::RefExpr(expr)) if expr.mut_token().is_some() => {
                     make::ident_pat(false, true, make::name(&var_name))
                 }
+                _ if needs_adjust
+                    && !needs_ref
+                    && ty.as_ref().is_some_and(|ty| ty.is_mutable_reference()) =>
+                {
+                    make::ident_pat(false, true, make::name(&var_name))
+                }
                 _ => make::ident_pat(false, false, make::name(&var_name)),
             };
 
-            let to_extract = match ty.as_ref().filter(|_| needs_adjust) {
+            let to_extract_no_ref = match ty.as_ref().filter(|_| needs_ref) {
                 Some(receiver_type) if receiver_type.is_mutable_reference() => {
-                    make::expr_ref(to_extract, true)
+                    make::expr_ref(to_extract_no_ref, true)
                 }
                 Some(receiver_type) if receiver_type.is_reference() => {
-                    make::expr_ref(to_extract, false)
+                    make::expr_ref(to_extract_no_ref, false)
                 }
-                _ => to_extract,
+                _ => to_extract_no_ref,
             };
 
             let expr_replace = edit.make_syntax_mut(expr_replace);
             let let_stmt =
-                make::let_stmt(ident_pat.into(), None, Some(to_extract)).clone_for_update();
+                make::let_stmt(ident_pat.into(), None, Some(to_extract_no_ref)).clone_for_update();
             let name_expr = make::expr_path(make::ext::ident_path(&var_name)).clone_for_update();
 
             match anchor {
@@ -197,8 +224,17 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     block.indent(indent_to);
                 }
             }
+            edit.rename();
         },
     )
+}
+
+fn peel_parens(mut expr: ast::Expr) -> ast::Expr {
+    while let ast::Expr::ParenExpr(parens) = &expr {
+        let Some(expr_inside) = parens.expr() else { break };
+        expr = expr_inside;
+    }
+    expr
 }
 
 /// Check whether the node is a valid expression which can be extracted to a variable.
@@ -1220,6 +1256,45 @@ fn foo(s: &S) {
     }
 
     #[test]
+    fn test_extract_var_index_deref() {
+        check_assist(
+            extract_variable,
+            r#"
+//- minicore: index
+struct X;
+
+impl std::ops::Index<usize> for X {
+    type Output = i32;
+    fn index(&self) -> &Self::Output { 0 }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    $0s.sub$0[0];
+}"#,
+            r#"
+struct X;
+
+impl std::ops::Index<usize> for X {
+    type Output = i32;
+    fn index(&self) -> &Self::Output { 0 }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    let $0sub = &s.sub;
+    sub[0];
+}"#,
+        );
+    }
+
+    #[test]
     fn test_extract_var_reference_parameter_deep_nesting() {
         check_assist(
             extract_variable,
@@ -1458,6 +1533,62 @@ fn foo() {
     let mut $0var_name = 0;
     let v = &mut var_name;
 }"#,
+        );
+    }
+
+    #[test]
+    fn generates_no_ref_on_calls() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn do_work(&mut self) {}
+}
+fn bar() -> S { S }
+fn foo() {
+    $0bar()$0.do_work();
+}"#,
+            r#"
+struct S;
+impl S {
+    fn do_work(&mut self) {}
+}
+fn bar() -> S { S }
+fn foo() {
+    let mut $0bar = bar();
+    bar.do_work();
+}"#,
+        );
+    }
+
+    #[test]
+    fn generates_no_ref_for_deref() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn do_work(&mut self) {}
+}
+fn bar() -> S { S }
+fn foo() {
+    let v = &mut &mut bar();
+    $0(**v)$0.do_work();
+}
+"#,
+            r#"
+struct S;
+impl S {
+    fn do_work(&mut self) {}
+}
+fn bar() -> S { S }
+fn foo() {
+    let v = &mut &mut bar();
+    let $0s = *v;
+    s.do_work();
+}
+"#,
         );
     }
 }

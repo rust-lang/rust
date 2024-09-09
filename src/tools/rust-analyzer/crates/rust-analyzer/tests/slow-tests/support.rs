@@ -8,6 +8,7 @@ use std::{
 use crossbeam_channel::{after, select, Receiver};
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
+use parking_lot::{Mutex, MutexGuard};
 use paths::{Utf8Path, Utf8PathBuf};
 use rust_analyzer::{
     config::{Config, ConfigChange, ConfigErrors},
@@ -27,7 +28,6 @@ pub(crate) struct Project<'a> {
     roots: Vec<Utf8PathBuf>,
     config: serde_json::Value,
     root_dir_contains_symlink: bool,
-    user_config_path: Option<Utf8PathBuf>,
 }
 
 impl Project<'_> {
@@ -51,13 +51,7 @@ impl Project<'_> {
                 }
             }),
             root_dir_contains_symlink: false,
-            user_config_path: None,
         }
-    }
-
-    pub(crate) fn user_config_dir(mut self, config_path_dir: TestDir) -> Self {
-        self.user_config_path = Some(config_path_dir.path().to_owned());
-        self
     }
 
     pub(crate) fn tmp_dir(mut self, tmp_dir: TestDir) -> Self {
@@ -91,6 +85,7 @@ impl Project<'_> {
     }
 
     pub(crate) fn server(self) -> Server {
+        static CONFIG_DIR_LOCK: Mutex<()> = Mutex::new(());
         let tmp_dir = self.tmp_dir.unwrap_or_else(|| {
             if self.root_dir_contains_symlink {
                 TestDir::new_symlink()
@@ -122,9 +117,13 @@ impl Project<'_> {
         assert!(mini_core.is_none());
         assert!(toolchain.is_none());
 
+        let mut config_dir_guard = None;
         for entry in fixture {
             if let Some(pth) = entry.path.strip_prefix("/$$CONFIG_DIR$$") {
-                let path = self.user_config_path.clone().unwrap().join(&pth['/'.len_utf8()..]);
+                if config_dir_guard.is_none() {
+                    config_dir_guard = Some(CONFIG_DIR_LOCK.lock());
+                }
+                let path = Config::user_config_path().unwrap().join(&pth['/'.len_utf8()..]);
                 fs::create_dir_all(path.parent().unwrap()).unwrap();
                 fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
             } else {
@@ -201,7 +200,6 @@ impl Project<'_> {
             },
             roots,
             None,
-            self.user_config_path,
         );
         let mut change = ConfigChange::default();
 
@@ -213,7 +211,7 @@ impl Project<'_> {
 
         config.rediscover_workspaces();
 
-        Server::new(tmp_dir.keep(), config)
+        Server::new(config_dir_guard, tmp_dir.keep(), config)
     }
 }
 
@@ -228,10 +226,15 @@ pub(crate) struct Server {
     client: Connection,
     /// XXX: remove the tempdir last
     dir: TestDir,
+    _config_dir_guard: Option<MutexGuard<'static, ()>>,
 }
 
 impl Server {
-    fn new(dir: TestDir, config: Config) -> Server {
+    fn new(
+        config_dir_guard: Option<MutexGuard<'static, ()>>,
+        dir: TestDir,
+        config: Config,
+    ) -> Server {
         let (connection, client) = Connection::memory();
 
         let _thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
@@ -239,7 +242,14 @@ impl Server {
             .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");
 
-        Server { req_id: Cell::new(1), dir, messages: Default::default(), client, _thread }
+        Server {
+            req_id: Cell::new(1),
+            dir,
+            messages: Default::default(),
+            client,
+            _thread,
+            _config_dir_guard: config_dir_guard,
+        }
     }
 
     pub(crate) fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
@@ -254,40 +264,6 @@ impl Server {
     {
         let r = Notification::new(N::METHOD.to_owned(), params);
         self.send_notification(r)
-    }
-
-    pub(crate) fn expect_notification<N>(&self, expected: Value)
-    where
-        N: lsp_types::notification::Notification,
-        N::Params: Serialize,
-    {
-        while let Some(Message::Notification(actual)) =
-            recv_timeout(&self.client.receiver).unwrap_or_else(|_| panic!("timed out"))
-        {
-            if actual.method == N::METHOD {
-                let actual = actual
-                    .clone()
-                    .extract::<Value>(N::METHOD)
-                    .expect("was not able to extract notification");
-
-                tracing::debug!(?actual, "got notification");
-                if let Some((expected_part, actual_part)) = find_mismatch(&expected, &actual) {
-                    panic!(
-                            "JSON mismatch\nExpected:\n{}\nWas:\n{}\nExpected part:\n{}\nActual part:\n{}\n",
-                            to_string_pretty(&expected).unwrap(),
-                            to_string_pretty(&actual).unwrap(),
-                            to_string_pretty(expected_part).unwrap(),
-                            to_string_pretty(actual_part).unwrap(),
-                        );
-                } else {
-                    tracing::debug!("successfully matched notification");
-                    return;
-                }
-            } else {
-                continue;
-            }
-        }
-        panic!("never got expected notification");
     }
 
     #[track_caller]

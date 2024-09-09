@@ -69,7 +69,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
             FloatTy::F64 => types::F64,
             FloatTy::F128 => unimplemented!("f16_f128"),
         },
-        ty::FnPtr(_) => pointer_ty(tcx),
+        ty::FnPtr(..) => pointer_ty(tcx),
         ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, *pointee_ty) {
                 return None;
@@ -107,7 +107,7 @@ pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         return false;
     }
 
-    let tail = tcx.struct_tail_erasing_lifetimes(ty, ParamEnv::reveal_all());
+    let tail = tcx.struct_tail_for_codegen(ty, ParamEnv::reveal_all());
     match tail.kind() {
         ty::Foreign(..) => false,
         ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,

@@ -29,7 +29,6 @@ jobs:
     - name: Avoid installing rustc-dev
       run: |
         sed -i 's/components.*/components = ["rustfmt"]/' rust-toolchain
-        echo 'profile = "minimal"' >> rust-toolchain
         rustfmt -v
 
     - name: Rustfmt

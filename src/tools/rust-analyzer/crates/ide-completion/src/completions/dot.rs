@@ -1,5 +1,6 @@
 //! Completes references after dot (fields and method calls).
 
+use hir::{sym, Name};
 use ide_db::FxHashSet;
 use syntax::SmolStr;
 
@@ -28,6 +29,7 @@ pub(crate) fn complete_dot(
             CompletionItemKind::Keyword,
             ctx.source_range(),
             SmolStr::new_static("await"),
+            ctx.edition,
         );
         item.detail("expr.await");
         item.add_to(acc, ctx.db);
@@ -90,12 +92,14 @@ pub(crate) fn complete_undotted_self(
                         in_breakable: expr_ctx.in_breakable,
                     },
                 },
-                Some(hir::known::SELF_PARAM),
+                Some(Name::new_symbol_root(sym::self_.clone())),
                 field,
                 &ty,
             )
         },
-        |acc, field, ty| acc.add_tuple_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
+        |acc, field, ty| {
+            acc.add_tuple_field(ctx, Some(Name::new_symbol_root(sym::self_.clone())), field, &ty)
+        },
         true,
         false,
     );
@@ -112,7 +116,7 @@ pub(crate) fn complete_undotted_self(
                 },
             },
             func,
-            Some(hir::known::SELF_PARAM),
+            Some(Name::new_symbol_root(sym::self_.clone())),
             None,
         )
     });

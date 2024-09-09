@@ -1,10 +1,9 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::macros::span_is_local;
-use rustc_hir::def_id::DefIdMap;
+use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::AssocItem;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -68,33 +67,26 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
             }) = item.kind
             && let Some(trait_id) = trait_ref.trait_def_id()
         {
-            let mut provided: DefIdMap<&AssocItem> = cx
-                .tcx
-                .provided_trait_methods(trait_id)
-                .map(|assoc| (assoc.def_id, assoc))
+            let trait_item_ids: DefIdSet = items
+                .iter()
+                .filter_map(|impl_item| impl_item.trait_item_def_id)
                 .collect();
 
-            for impl_item in *items {
-                if let Some(def_id) = impl_item.trait_item_def_id {
-                    provided.remove(&def_id);
-                }
+            for assoc in cx
+                .tcx
+                .provided_trait_methods(trait_id)
+                .filter(|assoc| !trait_item_ids.contains(&assoc.def_id))
+            {
+                span_lint_and_then(
+                    cx,
+                    MISSING_TRAIT_METHODS,
+                    cx.tcx.def_span(item.owner_id),
+                    format!("missing trait method provided by default: `{}`", assoc.name),
+                    |diag| {
+                        diag.span_help(cx.tcx.def_span(assoc.def_id), "implement the method");
+                    },
+                );
             }
-
-            cx.tcx.with_stable_hashing_context(|hcx| {
-                for assoc in provided.values_sorted(&hcx, true) {
-                    let source_map = cx.tcx.sess.source_map();
-                    let definition_span = source_map.guess_head_span(cx.tcx.def_span(assoc.def_id));
-
-                    span_lint_and_help(
-                        cx,
-                        MISSING_TRAIT_METHODS,
-                        source_map.guess_head_span(item.span),
-                        format!("missing trait method provided by default: `{}`", assoc.name),
-                        Some(definition_span),
-                        "implement the method",
-                    );
-                }
-            });
         }
     }
 }

@@ -29,7 +29,7 @@ pub(crate) fn lit_to_const<'tcx>(
             .unwrap_or_else(|| bug!("expected to create ScalarInt from uint {:?}", result)))
     };
 
-    let valtree = match (lit, &ty.kind()) {
+    let valtree = match (lit, ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
             let str_bytes = s.as_str().as_bytes();
             ty::ValTree::from_raw_bytes(tcx, str_bytes)

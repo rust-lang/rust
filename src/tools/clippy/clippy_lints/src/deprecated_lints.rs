@@ -1,243 +1,181 @@
-// NOTE: Entries should be created with `cargo dev deprecate`
+// This file is managed by `cargo dev rename_lint` and `cargo dev deprecate_lint`.
+// Prefer to use those when possible.
 
-/// This struct fakes the `Lint` declaration that is usually created by `declare_lint!`. This
-/// enables the simple extraction of the metadata without changing the current deprecation
-/// declaration.
-pub struct ClippyDeprecatedLint {
-    #[allow(dead_code)]
-    pub desc: &'static str,
+macro_rules! declare_with_version {
+    ($name:ident($name_version:ident): &[$ty:ty] = &[$(
+        #[clippy::version = $version:literal]
+        $e:expr,
+    )*]) => {
+        pub static $name: &[$ty] = &[$($e),*];
+        #[allow(unused)]
+        pub static $name_version: &[&str] = &[$($version),*];
+    };
 }
 
-#[macro_export]
-macro_rules! declare_deprecated_lint {
-    { $(#[$attr:meta])* pub $name: ident, $reason: literal} => {
-        $(#[$attr])*
-        #[allow(dead_code)]
-        pub static $name: ClippyDeprecatedLint = ClippyDeprecatedLint {
-            desc: $reason
-        };
-    }
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This used to check for `assert!(a == b)` and recommend
-    /// replacement with `assert_eq!(a, b)`, but this is no longer needed after RFC 2011.
+#[rustfmt::skip]
+declare_with_version! { DEPRECATED(DEPRECATED_VERSION): &[(&str, &str)] = &[
     #[clippy::version = "pre 1.29.0"]
-    pub SHOULD_ASSERT_EQ,
-    "`assert!()` will be more flexible with RFC 2011"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This used to check for `Vec::extend`, which was slower than
-    /// `Vec::extend_from_slice`. Thanks to specialization, this is no longer true.
+    ("clippy::should_assert_eq", "`assert!(a == b)` can now print the values the same way `assert_eq!(a, b) can"),
     #[clippy::version = "pre 1.29.0"]
-    pub EXTEND_FROM_SLICE,
-    "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// `Range::step_by(0)` used to be linted since it's
-    /// an infinite iterator, which is better expressed by `iter::repeat`,
-    /// but the method has been removed for `Iterator::step_by` which panics
-    /// if given a zero
+    ("clippy::extend_from_slice", "`Vec::extend_from_slice` is no longer faster than `Vec::extend` due to specialization"),
     #[clippy::version = "pre 1.29.0"]
-    pub RANGE_STEP_BY_ZERO,
-    "`iterator.step_by(0)` panics nowadays"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This used to check for `Vec::as_slice`, which was unstable with good
-    /// stable alternatives. `Vec::as_slice` has now been stabilized.
+    ("clippy::range_step_by_zero", "`Iterator::step_by(0)` now panics and is no longer an infinite iterator"),
     #[clippy::version = "pre 1.29.0"]
-    pub UNSTABLE_AS_SLICE,
-    "`Vec::as_slice` has been stabilized in 1.7"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This used to check for `Vec::as_mut_slice`, which was unstable with good
-    /// stable alternatives. `Vec::as_mut_slice` has now been stabilized.
+    ("clippy::unstable_as_slice", "`Vec::as_slice` is now stable"),
     #[clippy::version = "pre 1.29.0"]
-    pub UNSTABLE_AS_MUT_SLICE,
-    "`Vec::as_mut_slice` has been stabilized in 1.7"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint should never have applied to non-pointer types, as transmuting
-    /// between non-pointer types of differing alignment is well-defined behavior (it's semantically
-    /// equivalent to a memcpy). This lint has thus been refactored into two separate lints:
-    /// cast_ptr_alignment and transmute_ptr_to_ptr.
+    ("clippy::unstable_as_mut_slice", "`Vec::as_mut_slice` is now stable"),
     #[clippy::version = "pre 1.29.0"]
-    pub MISALIGNED_TRANSMUTE,
-    "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint is too subjective, not having a good reason for being in clippy.
-    /// Additionally, compound assignment operators may be overloaded separately from their non-assigning
-    /// counterparts, so this lint may suggest a change in behavior or the code may not compile.
+    ("clippy::misaligned_transmute", "split into `clippy::cast_ptr_alignment` and `clippy::transmute_ptr_to_ptr`"),
     #[clippy::version = "1.30.0"]
-    pub ASSIGN_OPS,
-    "using compound assignment operators (e.g., `+=`) is harmless"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// The original rule will only lint for `if let`. After
-    /// making it support to lint `match`, naming as `if let` is not suitable for it.
-    /// So, this lint is deprecated.
+    ("clippy::assign_ops", "compound operators are harmless and linting on them is not in scope for clippy"),
     #[clippy::version = "pre 1.29.0"]
-    pub IF_LET_REDUNDANT_PATTERN_MATCHING,
-    "this lint has been changed to redundant_pattern_matching"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint used to suggest replacing `let mut vec =
-    /// Vec::with_capacity(n); vec.set_len(n);` with `let vec = vec![0; n];`. The
-    /// replacement has very different performance characteristics so the lint is
-    /// deprecated.
-    #[clippy::version = "pre 1.29.0"]
-    pub UNSAFE_VECTOR_INITIALIZATION,
-    "the replacement suggested by this lint had substantially different behavior"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint has been superseded by #[must_use] in rustc.
+    ("clippy::unsafe_vector_initialization", "the suggested alternative could be substantially slower"),
     #[clippy::version = "1.39.0"]
-    pub UNUSED_COLLECT,
-    "`collect` has been marked as #[must_use] in rustc and that covers all cases of this lint"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// Associated-constants are now preferred.
+    ("clippy::unused_collect", "`Iterator::collect` is now marked as `#[must_use]`"),
     #[clippy::version = "1.44.0"]
-    pub REPLACE_CONSTS,
-    "associated-constants `MIN`/`MAX` of integers are preferred to `{min,max}_value()` and module constants"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// The regex! macro does not exist anymore.
+    ("clippy::replace_consts", "`min_value` and `max_value` are now deprecated"),
     #[clippy::version = "1.47.0"]
-    pub REGEX_MACRO,
-    "the regex! macro has been removed from the regex crate in 2018"
-}
+    ("clippy::regex_macro", "the `regex!` macro was removed from the regex crate in 2018"),
+    #[clippy::version = "1.54.0"]
+    ("clippy::pub_enum_variant_names", "`clippy::enum_variant_names` now covers this case via the `avoid-breaking-exported-api` config"),
+    #[clippy::version = "1.54.0"]
+    ("clippy::wrong_pub_self_convention", "`clippy::wrong_self_convention` now covers this case via the `avoid-breaking-exported-api` config"),
+    // end deprecated lints. used by `cargo dev deprecate_lint`
+]}
 
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint has been replaced by `manual_find_map`, a
-    /// more specific lint.
+#[rustfmt::skip]
+declare_with_version! { RENAMED(RENAMED_VERSION): &[(&str, &str)] = &[
+    #[clippy::version = ""]
+    ("clippy::almost_complete_letter_range", "clippy::almost_complete_range"),
+    #[clippy::version = ""]
+    ("clippy::blacklisted_name", "clippy::disallowed_names"),
+    #[clippy::version = ""]
+    ("clippy::block_in_if_condition_expr", "clippy::blocks_in_conditions"),
+    #[clippy::version = ""]
+    ("clippy::block_in_if_condition_stmt", "clippy::blocks_in_conditions"),
+    #[clippy::version = ""]
+    ("clippy::blocks_in_if_conditions", "clippy::blocks_in_conditions"),
+    #[clippy::version = ""]
+    ("clippy::box_vec", "clippy::box_collection"),
+    #[clippy::version = ""]
+    ("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes"),
+    #[clippy::version = ""]
+    ("clippy::cyclomatic_complexity", "clippy::cognitive_complexity"),
+    #[clippy::version = ""]
+    ("clippy::derive_hash_xor_eq", "clippy::derived_hash_with_manual_eq"),
+    #[clippy::version = ""]
+    ("clippy::disallowed_method", "clippy::disallowed_methods"),
+    #[clippy::version = ""]
+    ("clippy::disallowed_type", "clippy::disallowed_types"),
+    #[clippy::version = ""]
+    ("clippy::eval_order_dependence", "clippy::mixed_read_write_in_expression"),
     #[clippy::version = "1.51.0"]
-    pub FIND_MAP,
-    "this lint has been replaced by `manual_find_map`, a more specific lint"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint has been replaced by `manual_filter_map`, a
-    /// more specific lint.
+    ("clippy::find_map", "clippy::manual_find_map"),
     #[clippy::version = "1.53.0"]
-    pub FILTER_MAP,
-    "this lint has been replaced by `manual_filter_map`, a more specific lint"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// The `avoid_breaking_exported_api` config option was added, which
-    /// enables the `enum_variant_names` lint for public items.
-    #[clippy::version = "1.54.0"]
-    pub PUB_ENUM_VARIANT_NAMES,
-    "set the `avoid-breaking-exported-api` config option to `false` to enable the `enum_variant_names` lint for public items"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// The `avoid_breaking_exported_api` config option was added, which
-    /// enables the `wrong_self_conversion` lint for public items.
-    #[clippy::version = "1.54.0"]
-    pub WRONG_PUB_SELF_CONVENTION,
-    "set the `avoid-breaking-exported-api` config option to `false` to enable the `wrong_self_convention` lint for public items"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint has been superseded by rustc's own [`unexpected_cfgs`] lint that is able to detect the `#[cfg(features)]` and `#[cfg(tests)]` typos.
-    ///
-    /// [`unexpected_cfgs`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unexpected-cfgs
+    ("clippy::filter_map", "clippy::manual_filter_map"),
+    #[clippy::version = ""]
+    ("clippy::identity_conversion", "clippy::useless_conversion"),
+    #[clippy::version = "pre 1.29.0"]
+    ("clippy::if_let_redundant_pattern_matching", "clippy::redundant_pattern_matching"),
+    #[clippy::version = ""]
+    ("clippy::if_let_some_result", "clippy::match_result_ok"),
+    #[clippy::version = ""]
+    ("clippy::incorrect_clone_impl_on_copy_type", "clippy::non_canonical_clone_impl"),
+    #[clippy::version = ""]
+    ("clippy::incorrect_partial_ord_impl_on_ord_type", "clippy::non_canonical_partial_ord_impl"),
+    #[clippy::version = ""]
+    ("clippy::integer_arithmetic", "clippy::arithmetic_side_effects"),
+    #[clippy::version = ""]
+    ("clippy::logic_bug", "clippy::overly_complex_bool_expr"),
+    #[clippy::version = ""]
+    ("clippy::new_without_default_derive", "clippy::new_without_default"),
+    #[clippy::version = ""]
+    ("clippy::option_and_then_some", "clippy::bind_instead_of_map"),
+    #[clippy::version = ""]
+    ("clippy::option_expect_used", "clippy::expect_used"),
+    #[clippy::version = ""]
+    ("clippy::option_map_unwrap_or", "clippy::map_unwrap_or"),
+    #[clippy::version = ""]
+    ("clippy::option_map_unwrap_or_else", "clippy::map_unwrap_or"),
+    #[clippy::version = ""]
+    ("clippy::option_unwrap_used", "clippy::unwrap_used"),
+    #[clippy::version = ""]
+    ("clippy::overflow_check_conditional", "clippy::panicking_overflow_checks"),
+    #[clippy::version = ""]
+    ("clippy::ref_in_deref", "clippy::needless_borrow"),
+    #[clippy::version = ""]
+    ("clippy::result_expect_used", "clippy::expect_used"),
+    #[clippy::version = ""]
+    ("clippy::result_map_unwrap_or_else", "clippy::map_unwrap_or"),
+    #[clippy::version = ""]
+    ("clippy::result_unwrap_used", "clippy::unwrap_used"),
+    #[clippy::version = ""]
+    ("clippy::single_char_push_str", "clippy::single_char_add_str"),
+    #[clippy::version = ""]
+    ("clippy::stutter", "clippy::module_name_repetitions"),
+    #[clippy::version = ""]
+    ("clippy::thread_local_initializer_can_be_made_const", "clippy::missing_const_for_thread_local"),
+    #[clippy::version = ""]
+    ("clippy::to_string_in_display", "clippy::recursive_format_impl"),
+    #[clippy::version = ""]
+    ("clippy::unwrap_or_else_default", "clippy::unwrap_or_default"),
+    #[clippy::version = ""]
+    ("clippy::zero_width_space", "clippy::invisible_characters"),
+    #[clippy::version = ""]
+    ("clippy::cast_ref_to_mut", "invalid_reference_casting"),
+    #[clippy::version = ""]
+    ("clippy::clone_double_ref", "suspicious_double_ref_op"),
+    #[clippy::version = ""]
+    ("clippy::cmp_nan", "invalid_nan_comparisons"),
+    #[clippy::version = ""]
+    ("clippy::drop_bounds", "drop_bounds"),
+    #[clippy::version = ""]
+    ("clippy::drop_copy", "dropping_copy_types"),
+    #[clippy::version = ""]
+    ("clippy::drop_ref", "dropping_references"),
+    #[clippy::version = ""]
+    ("clippy::fn_null_check", "useless_ptr_null_checks"),
+    #[clippy::version = ""]
+    ("clippy::for_loop_over_option", "for_loops_over_fallibles"),
+    #[clippy::version = ""]
+    ("clippy::for_loop_over_result", "for_loops_over_fallibles"),
+    #[clippy::version = ""]
+    ("clippy::for_loops_over_fallibles", "for_loops_over_fallibles"),
+    #[clippy::version = ""]
+    ("clippy::forget_copy", "forgetting_copy_types"),
+    #[clippy::version = ""]
+    ("clippy::forget_ref", "forgetting_references"),
+    #[clippy::version = ""]
+    ("clippy::into_iter_on_array", "array_into_iter"),
+    #[clippy::version = ""]
+    ("clippy::invalid_atomic_ordering", "invalid_atomic_ordering"),
+    #[clippy::version = ""]
+    ("clippy::invalid_ref", "invalid_value"),
+    #[clippy::version = ""]
+    ("clippy::invalid_utf8_in_unchecked", "invalid_from_utf8_unchecked"),
+    #[clippy::version = ""]
+    ("clippy::let_underscore_drop", "let_underscore_drop"),
     #[clippy::version = "1.80.0"]
-    pub MAYBE_MISUSED_CFG,
-    "this lint has been replaced by `unexpected_cfgs`"
-}
-
-declare_deprecated_lint! {
-    /// ### What it does
-    /// Nothing. This lint has been deprecated.
-    ///
-    /// ### Deprecation reason
-    /// This lint has been superseded by rustc's own [`unexpected_cfgs`] lint that is able to detect invalid `#[cfg(linux)]` attributes.
-    ///
-    /// [`unexpected_cfgs`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#unexpected-cfgs
+    ("clippy::maybe_misused_cfg", "unexpected_cfgs"),
+    #[clippy::version = ""]
+    ("clippy::mem_discriminant_non_enum", "enum_intrinsics_non_enums"),
     #[clippy::version = "1.80.0"]
-    pub MISMATCHED_TARGET_OS,
-    "this lint has been replaced by `unexpected_cfgs`"
-}
+    ("clippy::mismatched_target_os", "unexpected_cfgs"),
+    #[clippy::version = ""]
+    ("clippy::panic_params", "non_fmt_panics"),
+    #[clippy::version = ""]
+    ("clippy::positional_named_format_parameters", "named_arguments_used_positionally"),
+    #[clippy::version = ""]
+    ("clippy::temporary_cstring_as_ptr", "temporary_cstring_as_ptr"),
+    #[clippy::version = ""]
+    ("clippy::undropped_manually_drops", "undropped_manually_drops"),
+    #[clippy::version = ""]
+    ("clippy::unknown_clippy_lints", "unknown_lints"),
+    #[clippy::version = ""]
+    ("clippy::unused_label", "unused_labels"),
+    #[clippy::version = ""]
+    ("clippy::vtable_address_comparisons", "ambiguous_wide_pointer_comparisons"),
+    #[clippy::version = ""]
+    ("clippy::reverse_range_loop", "clippy::reversed_empty_ranges"),
+    // end renamed lints. used by `cargo dev rename_lint`
+]}

@@ -1,11 +1,10 @@
-use std::{io, io::prelude::Write};
+use std::io;
+use std::io::prelude::Write;
 
-use crate::{
-    console::{ConsoleTestDiscoveryState, ConsoleTestState},
-    test_result::TestResult,
-    time,
-    types::{TestDesc, TestName},
-};
+use crate::console::{ConsoleTestDiscoveryState, ConsoleTestState};
+use crate::test_result::TestResult;
+use crate::time;
+use crate::types::{TestDesc, TestName};
 
 mod json;
 mod junit;

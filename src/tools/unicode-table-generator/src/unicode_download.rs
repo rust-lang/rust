@@ -1,6 +1,7 @@
-use crate::UNICODE_DIRECTORY;
 use std::path::Path;
 use std::process::{Command, Output};
+
+use crate::UNICODE_DIRECTORY;
 
 static URL_PREFIX: &str = "https://www.unicode.org/Public/UCD/latest/ucd/";
 

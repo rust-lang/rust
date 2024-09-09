@@ -1,5 +1,8 @@
 use hir::HasSource;
-use syntax::ast::{self, make, AstNode};
+use syntax::{
+    ast::{self, make, AstNode},
+    Edition,
+};
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -150,14 +153,22 @@ fn add_missing_impl_members_inner(
             &missing_items,
             trait_,
             &new_impl_def,
-            target_scope,
+            &target_scope,
         );
 
         if let Some(cap) = ctx.config.snippet_cap {
             let mut placeholder = None;
             if let DefaultMethods::No = mode {
                 if let ast::AssocItem::Fn(func) = &first_new_item {
-                    if try_gen_trait_body(ctx, func, trait_ref, &impl_def).is_none() {
+                    if try_gen_trait_body(
+                        ctx,
+                        func,
+                        trait_ref,
+                        &impl_def,
+                        target_scope.krate().edition(ctx.sema.db),
+                    )
+                    .is_none()
+                    {
                         if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
                         {
                             if m.syntax().text() == "todo!()" {
@@ -182,9 +193,11 @@ fn try_gen_trait_body(
     func: &ast::Fn,
     trait_ref: hir::TraitRef,
     impl_def: &ast::Impl,
+    edition: Edition,
 ) -> Option<()> {
-    let trait_path =
-        make::ext::ident_path(&trait_ref.trait_().name(ctx.db()).display(ctx.db()).to_string());
+    let trait_path = make::ext::ident_path(
+        &trait_ref.trait_().name(ctx.db()).display(ctx.db(), edition).to_string(),
+    );
     let hir_ty = ctx.sema.resolve_type(&impl_def.self_ty()?)?;
     let adt = hir_ty.as_adt()?.source(ctx.db())?;
     gen_trait_fn_body(func, &trait_path, &adt.value, Some(trait_ref))
@@ -2279,5 +2292,30 @@ impl b::LocalTrait for B {
 }
             "#,
         )
+    }
+
+    #[test]
+    fn impl_with_type_param_with_former_param_as_default() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+pub trait Test<'a, T, U = T> {
+    fn test(item: &'a T) -> U;
+}
+impl<'a> Test<'a, i32> for bool {
+    $0
+}
+"#,
+            r#"
+pub trait Test<'a, T, U = T> {
+    fn test(item: &'a T) -> U;
+}
+impl<'a> Test<'a, i32> for bool {
+    fn test(item: &'a i32) -> i32 {
+        ${0:todo!()}
+    }
+}
+"#,
+        );
     }
 }

@@ -557,13 +557,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FusedIterator, TrustedLen};
+use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
-use crate::{
-    cmp, convert, hint, mem,
-    ops::{self, ControlFlow, Deref, DerefMut},
-    slice,
-};
+use crate::{cmp, convert, hint, mem, slice};
 
 /// The `Option` type. See [the module level documentation](self) for more.
 #[derive(Copy, Eq, Debug, Hash)]
@@ -659,8 +656,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_none_or)]
-    ///
     /// let x: Option<u32> = Some(2);
     /// assert_eq!(x.is_none_or(|x| x > 1), true);
     ///
@@ -672,7 +667,7 @@ impl<T> Option<T> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_none_or", issue = "126383")]
+    #[stable(feature = "is_none_or", since = "1.82.0")]
     pub fn is_none_or(self, f: impl FnOnce(T) -> bool) -> bool {
         match self {
             None => true,
@@ -1343,9 +1338,8 @@ impl<T> Option<T> {
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
-    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn iter(&self) -> Iter<'_, T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter { inner: Item { opt: self.as_ref() } }
     }
 
@@ -1899,7 +1893,7 @@ impl<T> Option<&T> {
     where
         T: Copy,
     {
-        // FIXME: this implementation, which sidesteps using `Option::map` since it's not const
+        // FIXME(const-hack): this implementation, which sidesteps using `Option::map` since it's not const
         // ready yet, should be reverted when possible to avoid code repetition
         match self {
             Some(&v) => Some(v),
@@ -1947,7 +1941,7 @@ impl<T> Option<&mut T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn copied(self) -> Option<T>
     where
         T: Copy,
@@ -2498,7 +2492,9 @@ impl<T> ops::Try for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T> ops::FromResidual for Option<T> {
+// Note: manually specifying the residual type instead of using the default to work around
+// https://github.com/rust-lang/rust/issues/99940
+impl<T> ops::FromResidual<Option<convert::Infallible>> for Option<T> {
     #[inline]
     fn from_residual(residual: Option<convert::Infallible>) -> Self {
         match residual {

@@ -4,11 +4,6 @@
 // about UTF-32 character encoding and will print a rust char as only
 // its numerical value.
 
-//@ min-lldb-version: 310
-
-// This fails on lldb 6.0.1 on x86-64 Fedora 28; so ignore Linux for now.
-//@ ignore-linux
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -19,8 +14,7 @@
 // gdb-command:print i
 // gdb-check:$2 = -1
 // gdb-command:print c
-// gdbg-check:$3 = 97
-// gdbr-check:$3 = 97 'a'
+// gdb-check:$3 = 97 'a'
 // gdb-command:print/d i8
 // gdb-check:$4 = 68
 // gdb-command:print i16
@@ -46,56 +40,38 @@
 // gdb-command:print f64
 // gdb-check:$15 = 3.5
 // gdb-command:print s
-// gdbg-check:$16 = {data_ptr = [...] "Hello, World!", length = 13}
-// gdbr-check:$16 = "Hello, World!"
+// gdb-check:$16 = "Hello, World!"
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
 // lldb-command:v b
-// lldbg-check:[...] false
-// lldbr-check:(bool) b = false
+// lldb-check:[...] false
 // lldb-command:v i
-// lldbg-check:[...] -1
-// lldbr-check:(isize) i = -1
-
-// NOTE: only rust-enabled lldb supports 32bit chars
-// lldbr-command:print c
-// lldbr-check:(char) c = 'a'
+// lldb-check:[...] -1
 
 // lldb-command:v i8
-// lldbg-check:[...] 'D'
-// lldbr-check:(i8) i8 = 68
+// lldb-check:[...] 'D'
 // lldb-command:v i16
-// lldbg-check:[...] -16
-// lldbr-check:(i16) i16 = -16
+// lldb-check:[...] -16
 // lldb-command:v i32
-// lldbg-check:[...] -32
-// lldbr-check:(i32) i32 = -32
+// lldb-check:[...] -32
 // lldb-command:v i64
-// lldbg-check:[...] -64
-// lldbr-check:(i64) i64 = -64
+// lldb-check:[...] -64
 // lldb-command:v u
-// lldbg-check:[...] 1
-// lldbr-check:(usize) u = 1
+// lldb-check:[...] 1
 // lldb-command:v u8
-// lldbg-check:[...] 'd'
-// lldbr-check:(u8) u8 = 100
+// lldb-check:[...] 'd'
 // lldb-command:v u16
-// lldbg-check:[...] 16
-// lldbr-check:(u16) u16 = 16
+// lldb-check:[...] 16
 // lldb-command:v u32
-// lldbg-check:[...] 32
-// lldbr-check:(u32) u32 = 32
+// lldb-check:[...] 32
 // lldb-command:v u64
-// lldbg-check:[...] 64
-// lldbr-check:(u64) u64 = 64
+// lldb-check:[...] 64
 // lldb-command:v f32
-// lldbg-check:[...] 2.5
-// lldbr-check:(f32) f32 = 2.5
+// lldb-check:[...] 2.5
 // lldb-command:v f64
-// lldbg-check:[...] 3.5
-// lldbr-check:(f64) f64 = 3.5
+// lldb-check:[...] 3.5
 
 // === CDB TESTS ===================================================================================
 

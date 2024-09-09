@@ -9,16 +9,14 @@
 use std::{fmt, mem, ops};
 
 use cfg::CfgOptions;
+use intern::Symbol;
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::Edition;
-use syntax::SmolStr;
+use span::{Edition, EditionedFileId};
 use triomphe::Arc;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 
-// Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
-// then the crate for the proc-macro hasn't been build yet as the build data is missing.
-pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>;
+pub type ProcMacroPaths = FxHashMap<CrateId, Result<(String, AbsPathBuf), String>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceRootId(pub u32);
@@ -99,8 +97,8 @@ impl fmt::Debug for CrateGraph {
 
 pub type CrateId = Idx<CrateData>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct CrateName(SmolStr);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CrateName(Symbol);
 
 impl CrateName {
     /// Creates a crate name, checking for dashes in the string provided.
@@ -110,16 +108,16 @@ impl CrateName {
         if name.contains('-') {
             Err(name)
         } else {
-            Ok(Self(SmolStr::new(name)))
+            Ok(Self(Symbol::intern(name)))
         }
     }
 
     /// Creates a crate name, unconditionally replacing the dashes with underscores.
     pub fn normalize_dashes(name: &str) -> CrateName {
-        Self(SmolStr::new(name.replace('-', "_")))
+        Self(Symbol::intern(&name.replace('-', "_")))
     }
 
-    pub fn as_smol_str(&self) -> &SmolStr {
+    pub fn symbol(&self) -> &Symbol {
         &self.0
     }
 }
@@ -133,7 +131,7 @@ impl fmt::Display for CrateName {
 impl ops::Deref for CrateName {
     type Target = str;
     fn deref(&self) -> &str {
-        &self.0
+        self.0.as_str()
     }
 }
 
@@ -141,11 +139,11 @@ impl ops::Deref for CrateName {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CrateOrigin {
     /// Crates that are from the rustc workspace.
-    Rustc { name: String },
+    Rustc { name: Symbol },
     /// Crates that are workspace members.
-    Local { repo: Option<String>, name: Option<String> },
+    Local { repo: Option<String>, name: Option<Symbol> },
     /// Crates that are non member libraries.
-    Library { repo: Option<String>, name: String },
+    Library { repo: Option<String>, name: Symbol },
     /// Crates that are provided by the language, like std, core, proc-macro, ...
     Lang(LangCrateOrigin),
 }
@@ -201,16 +199,16 @@ impl fmt::Display for LangCrateOrigin {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateDisplayName {
     // The name we use to display various paths (with `_`).
     crate_name: CrateName,
     // The name as specified in Cargo.toml (with `-`).
-    canonical_name: String,
+    canonical_name: Symbol,
 }
 
 impl CrateDisplayName {
-    pub fn canonical_name(&self) -> &str {
+    pub fn canonical_name(&self) -> &Symbol {
         &self.canonical_name
     }
     pub fn crate_name(&self) -> &CrateName {
@@ -220,7 +218,7 @@ impl CrateDisplayName {
 
 impl From<CrateName> for CrateDisplayName {
     fn from(crate_name: CrateName) -> CrateDisplayName {
-        let canonical_name = crate_name.to_string();
+        let canonical_name = crate_name.0.clone();
         CrateDisplayName { crate_name, canonical_name }
     }
 }
@@ -239,9 +237,9 @@ impl ops::Deref for CrateDisplayName {
 }
 
 impl CrateDisplayName {
-    pub fn from_canonical_name(canonical_name: String) -> CrateDisplayName {
-        let crate_name = CrateName::normalize_dashes(&canonical_name);
-        CrateDisplayName { crate_name, canonical_name }
+    pub fn from_canonical_name(canonical_name: &str) -> CrateDisplayName {
+        let crate_name = CrateName::normalize_dashes(canonical_name);
+        CrateDisplayName { crate_name, canonical_name: Symbol::intern(canonical_name) }
     }
 }
 
@@ -662,6 +660,10 @@ impl CrateData {
     fn add_dep(&mut self, dep: Dependency) {
         self.dependencies.push(dep)
     }
+
+    pub fn root_file_id(&self) -> EditionedFileId {
+        EditionedFileId::new(self.root_file_id, self.edition)
+    }
 }
 
 impl Extend<(String, String)> for Env {
@@ -688,6 +690,14 @@ impl Env {
     pub fn extend_from_other(&mut self, other: &Env) {
         self.entries.extend(other.entries.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    pub fn insert(&mut self, k: impl Into<String>, v: impl Into<String>) -> Option<String> {
+        self.entries.insert(k.into(), v.into())
+    }
 }
 
 impl From<Env> for Vec<(String, String)> {
@@ -695,6 +705,15 @@ impl From<Env> for Vec<(String, String)> {
         let mut entries: Vec<_> = env.entries.into_iter().collect();
         entries.sort();
         entries
+    }
+}
+
+impl<'a> IntoIterator for &'a Env {
+    type Item = (&'a String, &'a String);
+    type IntoIter = std::collections::hash_map::Iter<'a, String, String>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.iter()
     }
 }
 

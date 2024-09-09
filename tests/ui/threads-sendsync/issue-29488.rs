@@ -19,5 +19,7 @@ fn main() {
     thread::spawn(|| {
         FOO.with(|_| {});
         println!("test1");
-    }).join().unwrap();
+    })
+    .join()
+    .unwrap();
 }

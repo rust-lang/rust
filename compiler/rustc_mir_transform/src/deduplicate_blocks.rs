@@ -1,18 +1,21 @@
 //! This pass finds basic blocks that are completely equal,
 //! and replaces all uses with just one of them.
 
-use std::{collections::hash_map::Entry, hash::Hash, hash::Hasher, iter};
+use std::collections::hash_map::Entry;
+use std::hash::{Hash, Hasher};
+use std::iter;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use tracing::debug;
 
 use super::simplify::simplify_cfg;
 
 pub struct DeduplicateBlocks;
 
-impl<'tcx> MirPass<'tcx> for DeduplicateBlocks {
+impl<'tcx> crate::MirPass<'tcx> for DeduplicateBlocks {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 4
     }

@@ -1,15 +1,16 @@
 #![allow(non_camel_case_types)]
 
 use rustc_hir::LangItem;
-use rustc_middle::mir;
-use rustc_middle::ty::Instance;
-use rustc_middle::ty::{self, layout::TyAndLayout, TyCtxt};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_middle::{bug, mir, span_bug};
+use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
 use rustc_span::Span;
+use rustc_target::spec::Target;
 
 use crate::traits::*;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum IntPredicate {
     IntEQ,
     IntNE,
@@ -23,7 +24,7 @@ pub enum IntPredicate {
     IntSLE,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum RealPredicate {
     RealPredicateFalse,
     RealOEQ,
@@ -43,7 +44,7 @@ pub enum RealPredicate {
     RealPredicateTrue,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum AtomicRmwBinOp {
     AtomicXchg,
     AtomicAdd,
@@ -58,7 +59,7 @@ pub enum AtomicRmwBinOp {
     AtomicUMin,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum AtomicOrdering {
     Unordered,
     Relaxed,
@@ -68,7 +69,7 @@ pub enum AtomicOrdering {
     SequentiallyConsistent,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum SynchronizationScope {
     SingleThread,
     CrossThread,
@@ -106,8 +107,9 @@ pub enum TypeKind {
 //            for now we content ourselves with providing a no-op HashStable
 //            implementation for CGUs.
 mod temp_stable_hash_impls {
-    use crate::ModuleCodegen;
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+
+    use crate::ModuleCodegen;
 
     impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
         fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
@@ -175,4 +177,67 @@ pub fn asm_const_to_str<'tcx>(
         },
         _ => span_bug!(sp, "asm const has bad type {}", ty_and_layout.ty),
     }
+}
+
+pub fn is_mingw_gnu_toolchain(target: &Target) -> bool {
+    target.vendor == "pc" && target.os == "windows" && target.env == "gnu" && target.abi.is_empty()
+}
+
+pub fn i686_decorated_name(
+    dll_import: &DllImport,
+    mingw: bool,
+    disable_name_mangling: bool,
+) -> String {
+    let name = dll_import.name.as_str();
+
+    let (add_prefix, add_suffix) = match dll_import.import_name_type {
+        Some(PeImportNameType::NoPrefix) => (false, true),
+        Some(PeImportNameType::Undecorated) => (false, false),
+        _ => (true, true),
+    };
+
+    // Worst case: +1 for disable name mangling, +1 for prefix, +4 for suffix (@@__).
+    let mut decorated_name = String::with_capacity(name.len() + 6);
+
+    if disable_name_mangling {
+        // LLVM uses a binary 1 ('\x01') prefix to a name to indicate that mangling needs to be disabled.
+        decorated_name.push('\x01');
+    }
+
+    let prefix = if add_prefix && dll_import.is_fn {
+        match dll_import.calling_convention {
+            DllCallingConvention::C | DllCallingConvention::Vectorcall(_) => None,
+            DllCallingConvention::Stdcall(_) => (!mingw
+                || dll_import.import_name_type == Some(PeImportNameType::Decorated))
+            .then_some('_'),
+            DllCallingConvention::Fastcall(_) => Some('@'),
+        }
+    } else if !dll_import.is_fn && !mingw {
+        // For static variables, prefix with '_' on MSVC.
+        Some('_')
+    } else {
+        None
+    };
+    if let Some(prefix) = prefix {
+        decorated_name.push(prefix);
+    }
+
+    decorated_name.push_str(name);
+
+    if add_suffix && dll_import.is_fn {
+        use std::fmt::Write;
+
+        match dll_import.calling_convention {
+            DllCallingConvention::C => {}
+            DllCallingConvention::Stdcall(arg_list_size)
+            | DllCallingConvention::Fastcall(arg_list_size) => {
+                write!(&mut decorated_name, "@{arg_list_size}").unwrap();
+            }
+            DllCallingConvention::Vectorcall(arg_list_size) => {
+                write!(&mut decorated_name, "@@{arg_list_size}").unwrap();
+            }
+        }
+    }
+
+    decorated_name
 }

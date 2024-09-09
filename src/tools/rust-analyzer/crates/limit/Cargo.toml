@@ -1,7 +1,8 @@
 [package]
 name = "limit"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "A struct to enforce limits for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

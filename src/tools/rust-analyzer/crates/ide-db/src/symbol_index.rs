@@ -29,7 +29,7 @@ use std::{
 
 use base_db::{
     salsa::{self, ParallelDatabase},
-    SourceDatabaseExt, SourceRootId, Upcast,
+    SourceRootDatabase, SourceRootId, Upcast,
 };
 use fst::{raw::IndexedValue, Automaton, Streamer};
 use hir::{
@@ -100,7 +100,7 @@ impl Query {
 }
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
-pub trait SymbolsDatabase: HirDatabase + SourceDatabaseExt + Upcast<dyn HirDatabase> {
+pub trait SymbolsDatabase: HirDatabase + SourceRootDatabase + Upcast<dyn HirDatabase> {
     /// The symbol index for a given module. These modules should only be in source roots that
     /// are inside local_roots.
     fn module_symbols(&self, module: Module) -> Arc<SymbolIndex>;

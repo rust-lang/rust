@@ -38,7 +38,7 @@ pub trait Future {
     #[lang = "future_output"]
     type Output;
 
-    /// Attempt to resolve the future to a final value, registering
+    /// Attempts to resolve the future to a final value, registering
     /// the current task for wakeup if the value is not yet available.
     ///
     /// # Return value

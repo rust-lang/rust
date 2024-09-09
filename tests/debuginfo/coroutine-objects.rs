@@ -1,5 +1,3 @@
-// Require a gdb that can read DW_TAG_variant_part.
-//@ min-gdb-version: 8.2
 //@ min-lldb-version: 1800
 
 // LLDB (18.1+) now supports DW_TAG_variant_part, but there is some bug in either compiler or LLDB

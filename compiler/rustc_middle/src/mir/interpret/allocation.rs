@@ -4,14 +4,14 @@ mod init_mask;
 mod provenance_map;
 
 use std::borrow::Cow;
-use std::fmt;
-use std::hash;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut, Range};
-use std::ptr;
+use std::{fmt, hash, ptr};
 
 use either::{Left, Right};
-
+use init_mask::*;
+pub use init_mask::{InitChunk, InitChunkIter};
+use provenance_map::*;
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -23,10 +23,6 @@ use super::{
     ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 use crate::ty;
-use init_mask::*;
-use provenance_map::*;
-
-pub use init_mask::{InitChunk, InitChunkIter};
 
 /// Functionality required for the bytes of an `Allocation`.
 pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Target = [u8]> {
@@ -66,13 +62,11 @@ impl AllocBytes for Box<[u8]> {
     }
 
     fn as_mut_ptr(&mut self) -> *mut u8 {
-        // Carefully avoiding any intermediate references.
-        ptr::addr_of_mut!(**self).cast()
+        Box::as_mut_ptr(self).cast()
     }
 
     fn as_ptr(&self) -> *const u8 {
-        // Carefully avoiding any intermediate references.
-        ptr::addr_of!(**self).cast()
+        Box::as_ptr(self).cast()
     }
 }
 
@@ -364,10 +358,11 @@ impl Allocation {
     pub fn adjust_from_tcx<Prov: Provenance, Bytes: AllocBytes, Err>(
         &self,
         cx: &impl HasDataLayout,
+        mut alloc_bytes: impl FnMut(&[u8], Align) -> Result<Bytes, Err>,
         mut adjust_ptr: impl FnMut(Pointer<CtfeProvenance>) -> Result<Pointer<Prov>, Err>,
     ) -> Result<Allocation<Prov, (), Bytes>, Err> {
         // Copy the data.
-        let mut bytes = Bytes::from_bytes(Cow::Borrowed(&*self.bytes), self.align);
+        let mut bytes = alloc_bytes(&*self.bytes, self.align)?;
         // Adjust provenance of pointers stored in this allocation.
         let mut new_provenance = Vec::with_capacity(self.provenance.ptrs().len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();

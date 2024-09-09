@@ -1,5 +1,3 @@
-use crate::coercion::{AsCoercionSite, CoerceMany};
-use crate::{Diverges, Expectation, FnCtxt, Needs};
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -10,6 +8,10 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
+use tracing::{debug, instrument};
+
+use crate::coercion::{AsCoercionSite, CoerceMany};
+use crate::{Diverges, Expectation, FnCtxt, Needs};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug", ret)]
@@ -373,7 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn maybe_get_coercion_reason(
+    pub(crate) fn maybe_get_coercion_reason(
         &self,
         hir_id: hir::HirId,
         sp: Span,
@@ -583,7 +585,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // (e.g. we're in the tail of a function body)
     //
     // Returns the `LocalDefId` of the RPIT, which is always identity-substituted.
-    pub fn return_position_impl_trait_from_match_expectation(
+    pub(crate) fn return_position_impl_trait_from_match_expectation(
         &self,
         expectation: Expectation<'tcx>,
     ) -> Option<LocalDefId> {

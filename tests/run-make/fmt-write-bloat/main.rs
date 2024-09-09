@@ -5,7 +5,7 @@
 use core::fmt;
 use core::fmt::Write;
 
-#[link(name = "c")]
+#[cfg_attr(not(windows), link(name = "c"))]
 extern "C" {}
 
 struct Dummy;

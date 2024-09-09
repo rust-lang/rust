@@ -119,8 +119,7 @@ fn lifetime_bounds(p: &mut Parser<'_>) {
 // test type_param_bounds
 // struct S<T: 'a + ?Sized + (Copy) + ~const Drop>;
 pub(super) fn bounds(p: &mut Parser<'_>) {
-    assert!(p.at(T![:]));
-    p.bump(T![:]);
+    p.expect(T![:]);
     bounds_without_colon(p);
 }
 
@@ -144,6 +143,12 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
     match p.current() {
         LIFETIME_IDENT => lifetime(p),
         T![for] => types::for_type(p, false),
+        // test precise_capturing
+        // fn captures<'a: 'a, 'b: 'b, T>() -> impl Sized + use<'b, T> {}
+        T![use] => {
+            p.bump_any();
+            generic_param_list(p)
+        }
         T![?] if p.nth_at(1, T![for]) => {
             // test question_for_type_trait_bound
             // fn f<T>() where T: ?for<> Sized {}

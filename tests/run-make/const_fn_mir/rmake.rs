@@ -2,7 +2,7 @@
 
 //@ needs-unwind
 
-use run_make_support::{cwd, diff, rustc};
+use run_make_support::{diff, rustc};
 
 fn main() {
     rustc().input("main.rs").emit("mir").output("dump-actual.mir").run();

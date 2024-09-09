@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::source::{snippet_opt, snippet_with_context};
+use clippy_utils::source::{snippet_with_context, SpanRangeExt};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{for_each_expr, Descend};
 use clippy_utils::{
@@ -250,20 +250,25 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                 |err| {
                     err.span_label(local.span, "unnecessary `let` binding");
 
-                    if let Some(mut snippet) = snippet_opt(cx, initexpr.span) {
-                        if binary_expr_needs_parentheses(initexpr) {
-                            if !has_enclosing_paren(&snippet) {
-                                snippet = format!("({snippet})");
+                    if let Some(src) = initexpr.span.get_source_text(cx) {
+                        let sugg = if binary_expr_needs_parentheses(initexpr) {
+                            if has_enclosing_paren(&src) {
+                                src.to_owned()
+                            } else {
+                                format!("({src})")
                             }
                         } else if !cx.typeck_results().expr_adjustments(retexpr).is_empty() {
-                            if !has_enclosing_paren(&snippet) {
-                                snippet = format!("({snippet})");
+                            if has_enclosing_paren(&src) {
+                                format!("{src} as _")
+                            } else {
+                                format!("({src}) as _")
                             }
-                            snippet.push_str(" as _");
-                        }
+                        } else {
+                            src.to_owned()
+                        };
                         err.multipart_suggestion(
                             "return the expression directly",
-                            vec![(local.span, String::new()), (retexpr.span, snippet)],
+                            vec![(local.span, String::new()), (retexpr.span, sugg)],
                             Applicability::MachineApplicable,
                         );
                     } else {
@@ -394,8 +399,8 @@ fn check_final_expr<'tcx>(
 
             // Returns may be used to turn an expression into a statement in rustc's AST.
             // This allows the addition of attributes, like `#[allow]` (See: clippy#9361)
-            // `#[expect(clippy::needless_return)]` needs to be handled separatly to
-            // actually fullfil the expectation (clippy::#12998)
+            // `#[expect(clippy::needless_return)]` needs to be handled separately to
+            // actually fulfill the expectation (clippy::#12998)
             match cx.tcx.hir().attrs(expr.hir_id) {
                 [] => {},
                 [attr] => {

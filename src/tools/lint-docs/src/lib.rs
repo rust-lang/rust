@@ -3,6 +3,7 @@ use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
 use walkdir::WalkDir;
 
 mod groups;
@@ -55,6 +56,8 @@ pub struct LintExtractor<'a> {
     pub rustc_path: &'a Path,
     /// The target arch to build the docs for.
     pub rustc_target: &'a str,
+    /// The target linker overriding `rustc`'s default
+    pub rustc_linker: Option<&'a str>,
     /// Verbose output.
     pub verbose: bool,
     /// Validate the style and the code example.
@@ -443,6 +446,7 @@ impl<'a> LintExtractor<'a> {
         let mut cmd = Command::new(self.rustc_path);
         if options.contains(&"edition2024") {
             cmd.arg("--edition=2024");
+            cmd.arg("-Zunstable-options");
         } else if options.contains(&"edition2021") {
             cmd.arg("--edition=2021");
         } else if options.contains(&"edition2018") {
@@ -457,6 +461,9 @@ impl<'a> LintExtractor<'a> {
         }
         cmd.arg("--error-format=json");
         cmd.arg("--target").arg(self.rustc_target);
+        if let Some(target_linker) = self.rustc_linker {
+            cmd.arg(format!("-Clinker={target_linker}"));
+        }
         if options.contains(&"test") {
             cmd.arg("--test");
         }

@@ -2,16 +2,17 @@
 //! defines a struct that implements a trait, this pass will note that the
 //! struct implements that trait.
 
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
+use rustc_middle::ty;
+use rustc_span::symbol::sym;
+use tracing::debug;
+
 use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
-
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
-use rustc_middle::ty;
-use rustc_span::symbol::sym;
 
 pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",

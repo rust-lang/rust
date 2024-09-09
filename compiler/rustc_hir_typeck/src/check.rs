@@ -1,8 +1,5 @@
 use std::cell::RefCell;
 
-use crate::coercion::CoerceMany;
-use crate::gather_locals::GatherLocalsVisitor;
-use crate::{CoroutineTypes, Diverges, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -15,6 +12,11 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
+use tracing::{debug, instrument};
+
+use crate::coercion::CoerceMany;
+use crate::gather_locals::GatherLocalsVisitor;
+use crate::{CoroutineTypes, Diverges, FnCtxt};
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
 /// body and returns the function context used for that purpose, since in the case of a fn item
@@ -159,15 +161,11 @@ pub(super) fn check_fn<'a, 'tcx>(
     fcx.demand_suptype(span, ret_ty, actual_return_ty);
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
-    if let Some(panic_impl_did) = tcx.lang_items().panic_impl()
-        && panic_impl_did == fn_def_id.to_def_id()
-    {
-        check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig);
+    if tcx.is_lang_item(fn_def_id.to_def_id(), LangItem::PanicImpl) {
+        check_panic_info_fn(tcx, fn_def_id, fn_sig);
     }
 
-    if let Some(lang_start_defid) = tcx.lang_items().start_fn()
-        && lang_start_defid == fn_def_id.to_def_id()
-    {
+    if tcx.is_lang_item(fn_def_id.to_def_id(), LangItem::Start) {
         check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 

@@ -1,11 +1,3 @@
-use crate::lints::{
-    NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
-    NonUpperCaseGlobal, NonUpperCaseGlobalSub,
-};
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_ast as ast;
-use rustc_attr as attr;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{GenericParamKind, PatKind};
@@ -16,15 +8,22 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi::Abi;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+
+use crate::lints::{
+    NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
+    NonUpperCaseGlobal, NonUpperCaseGlobalSub,
+};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
 #[derive(PartialEq)]
-pub enum MethodLateContext {
+pub(crate) enum MethodLateContext {
     TraitAutoImpl,
     TraitImpl,
     PlainImpl,
 }
 
-pub fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLateContext {
+pub(crate) fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLateContext {
     let item = cx.tcx.associated_item(id);
     match item.container {
         ty::TraitContainer => MethodLateContext::TraitAutoImpl,
@@ -528,11 +527,11 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
         // Lint for constants that look like binding identifiers (#7526)
         if let PatKind::Path(hir::QPath::Resolved(None, path)) = p.kind {
             if let Res::Def(DefKind::Const, _) = path.res {
-                if path.segments.len() == 1 {
+                if let [segment] = path.segments {
                     NonUpperCaseGlobals::check_upper_case(
                         cx,
                         "constant in pattern",
-                        &path.segments[0].ident,
+                        &segment.ident,
                     );
                 }
             }

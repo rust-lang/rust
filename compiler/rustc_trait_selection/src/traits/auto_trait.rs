@@ -1,20 +1,20 @@
 //! Support code for rustdoc and external tools.
 //! You really don't want to be using this unless you need to.
 
-use super::*;
-
-use crate::errors::UnableToConstructConstantValue;
-use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::traits::project::ProjectAndUnifyResult;
+use std::collections::VecDeque;
+use std::iter;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{Region, RegionVid};
+use tracing::debug;
 
-use std::collections::VecDeque;
-use std::iter;
+use super::*;
+use crate::errors::UnableToConstructConstantValue;
+use crate::infer::region_constraints::{Constraint, RegionConstraintData};
+use crate::traits::project::ProjectAndUnifyResult;
 
 // FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
@@ -771,7 +771,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                     let reported =
                                         tcx.dcx().emit_err(UnableToConstructConstantValue {
                                             span: tcx.def_span(unevaluated.def),
-                                            unevaluated: unevaluated,
+                                            unevaluated,
                                         });
                                     Err(ErrorHandled::Reported(reported.into(), tcx.def_span(unevaluated.def)))
                                 }

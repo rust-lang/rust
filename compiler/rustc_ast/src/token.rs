@@ -1,3 +1,15 @@
+use std::borrow::Cow;
+use std::fmt;
+
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::Lrc;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::edition::Edition;
+use rustc_span::symbol::{kw, sym};
+#[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
+#[allow(hidden_glob_reexports)]
+use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 pub use BinOpToken::*;
 pub use LitKind::*;
 pub use Nonterminal::*;
@@ -8,17 +20,6 @@ pub use TokenKind::*;
 use crate::ast;
 use crate::ptr::P;
 use crate::util::case::Case;
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::symbol::{kw, sym};
-#[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
-#[allow(hidden_glob_reexports)]
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{edition::Edition, ErrorGuaranteed, Span, DUMMY_SP};
-use std::borrow::Cow;
-use std::fmt;
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum CommentKind {
@@ -330,11 +331,11 @@ pub enum TokenKind {
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
     /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated lifetime identifiers in the same way.
-    Lifetime(Symbol),
+    Lifetime(Symbol, IdentIsRaw),
     /// This identifier (and its span) is the lifetime passed to the
     /// declarative macro. The span in the surrounding `Token` is the span of
     /// the `lifetime` metavariable in the macro's RHS.
-    NtLifetime(Ident),
+    NtLifetime(Ident, IdentIsRaw),
 
     /// An embedded AST node, as produced by a macro. This only exists for
     /// historical reasons. We'd like to get rid of it, for multiple reasons.
@@ -457,7 +458,7 @@ impl Token {
     /// if they keep spans or perform edition checks.
     pub fn uninterpolated_span(&self) -> Span {
         match self.kind {
-            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
+            NtIdent(ident, _) | NtLifetime(ident, _) => ident.span,
             Interpolated(ref nt) => nt.use_span(),
             _ => self.span,
         }
@@ -485,6 +486,9 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of an expression.
+    ///
+    /// **NB**: Take care when modifying this function, since it will change
+    /// the stable set of tokens that are allowed to match an expr nonterminal.
     pub fn can_begin_expr(&self) -> bool {
         match self.uninterpolate().kind {
             Ident(name, is_raw)              =>
@@ -503,10 +507,13 @@ impl Token {
             PathSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => matches!(&**nt, NtLiteral(..) |
-                NtExpr(..)    |
-                NtBlock(..)   |
-                NtPath(..)),
+            Interpolated(ref nt) =>
+                matches!(&**nt,
+                    NtBlock(..)   |
+                    NtExpr(..)    |
+                    NtLiteral(..) |
+                    NtPath(..)
+                ),
             _ => false,
         }
     }
@@ -514,23 +521,32 @@ impl Token {
     /// Returns `true` if the token can appear at the start of a pattern.
     ///
     /// Shamelessly borrowed from `can_begin_expr`, only used for diagnostics right now.
-    pub fn can_begin_pattern(&self) -> bool {
-        match self.uninterpolate().kind {
-            Ident(name, is_raw)              =>
-                ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
-            | OpenDelim(Delimiter::Bracket | Delimiter::Parenthesis)  // tuple or array
-            | Literal(..)                        // literal
-            | BinOp(Minus)                       // unary minus
-            | BinOp(And)                         // reference
-            | AndAnd                             // double reference
-            // DotDotDot is no longer supported
-            | DotDot | DotDotDot | DotDotEq      // ranges
-            | Lt | BinOp(Shl)                    // associated path
-            | PathSep                    => true, // global path
-            Interpolated(ref nt) => matches!(&**nt, NtLiteral(..) |
-                NtPat(..)     |
-                NtBlock(..)   |
-                NtPath(..)),
+    pub fn can_begin_pattern(&self, pat_kind: NtPatKind) -> bool {
+        match &self.uninterpolate().kind {
+            // box, ref, mut, and other identifiers (can stricten)
+            Ident(..) | NtIdent(..) |
+            OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
+            OpenDelim(Delimiter::Bracket) |      // slice pattern
+            BinOp(And) |                  // reference
+            BinOp(Minus) |                // negative literal
+            AndAnd |                      // double reference
+            Literal(_) |                  // literal
+            DotDot |                      // range pattern (future compat)
+            DotDotDot |                   // range pattern (future compat)
+            PathSep |                     // path
+            Lt |                          // path (UFCS constant)
+            BinOp(Shl) => true,           // path (double UFCS)
+            // leading vert `|` or-pattern
+            BinOp(Or) => matches!(pat_kind, PatWithOr),
+            Interpolated(nt) =>
+                matches!(&**nt,
+                    | NtExpr(..)
+                    | NtLiteral(..)
+                    | NtMeta(..)
+                    | NtPat(..)
+                    | NtPath(..)
+                    | NtTy(..)
+                ),
             _ => false,
         }
     }
@@ -645,7 +661,9 @@ impl Token {
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
         match self.kind {
             NtIdent(ident, is_raw) => Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span)),
-            NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
+            NtLifetime(ident, is_raw) => {
+                Cow::Owned(Token::new(Lifetime(ident.name, is_raw), ident.span))
+            }
             _ => Cow::Borrowed(self),
         }
     }
@@ -663,11 +681,11 @@ impl Token {
 
     /// Returns a lifetime identifier if this token is a lifetime.
     #[inline]
-    pub fn lifetime(&self) -> Option<Ident> {
+    pub fn lifetime(&self) -> Option<(Ident, IdentIsRaw)> {
         // We avoid using `Token::uninterpolate` here because it's slow.
         match self.kind {
-            Lifetime(name) => Some(Ident::new(name, self.span)),
-            NtLifetime(ident) => Some(ident),
+            Lifetime(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
+            NtLifetime(ident, is_raw) => Some((ident, is_raw)),
             _ => None,
         }
     }
@@ -849,7 +867,7 @@ impl Token {
                 _ => return None,
             },
             SingleQuote => match joint.kind {
-                Ident(name, IdentIsRaw::No) => Lifetime(Symbol::intern(&format!("'{name}"))),
+                Ident(name, is_raw) => Lifetime(Symbol::intern(&format!("'{name}")), is_raw),
                 _ => return None,
             },
 
@@ -1062,8 +1080,9 @@ where
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Lit, 12);
     static_assert_size!(LitKind, 2);

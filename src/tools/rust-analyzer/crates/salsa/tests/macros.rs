@@ -5,6 +5,7 @@ trait MyDatabase: salsa::Database {
 }
 
 mod another_module {
+    #[allow(dead_code)]
     pub(crate) fn another_name(_: &dyn crate::MyDatabase, (): ()) {}
 }
 

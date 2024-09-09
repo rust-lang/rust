@@ -1,23 +1,20 @@
-#![deny(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 use super::fd::WasiFd;
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-use crate::iter;
 use crate::mem::{self, ManuallyDrop};
 use crate::os::raw::c_int;
 use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
-use crate::ptr;
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
-
 pub use crate::sys_common::fs::exists;
+use crate::sys_common::{ignore_notfound, AsInner, FromInner, IntoInner};
+use crate::{fmt, iter, ptr};
 
 pub struct File {
     fd: WasiFd,
@@ -268,7 +265,7 @@ impl OpenOptions {
     pub fn new() -> OpenOptions {
         let mut base = OpenOptions::default();
         base.dirflags = wasi::LOOKUPFLAGS_SYMLINK_FOLLOW;
-        return base;
+        base
     }
 
     pub fn read(&mut self, read: bool) {
@@ -385,7 +382,7 @@ impl OpenOptions {
         base |= wasi::RIGHTS_PATH_UNLINK_FILE;
         base |= wasi::RIGHTS_POLL_FD_READWRITE;
 
-        return base;
+        base
     }
 
     fn rights_inheriting(&self) -> wasi::Rights {
@@ -797,14 +794,22 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
             io::const_io_error!(io::ErrorKind::Uncategorized, "invalid utf-8 file name found")
         })?;
 
-        if entry.file_type()?.is_dir() {
-            remove_dir_all_recursive(&entry.inner.dir.fd, path.as_ref())?;
-        } else {
-            entry.inner.dir.fd.unlink_file(path)?;
+        let result: io::Result<()> = try {
+            if entry.file_type()?.is_dir() {
+                remove_dir_all_recursive(&entry.inner.dir.fd, path.as_ref())?;
+            } else {
+                entry.inner.dir.fd.unlink_file(path)?;
+            }
+        };
+        // ignore internal NotFound errors
+        if let Err(err) = &result
+            && err.kind() != io::ErrorKind::NotFound
+        {
+            return result;
         }
     }
 
     // Once all this directory's contents are deleted it should be safe to
     // delete the directory tiself.
-    parent.remove_directory(osstr2str(path.as_ref())?)
+    ignore_notfound(parent.remove_directory(osstr2str(path.as_ref())?))
 }

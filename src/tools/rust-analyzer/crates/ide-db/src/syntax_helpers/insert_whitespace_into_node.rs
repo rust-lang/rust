@@ -131,5 +131,6 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
 }
 
 fn is_text(k: SyntaxKind) -> bool {
-    k.is_keyword() || k.is_literal() || k == IDENT || k == UNDERSCORE
+    // Consider all keywords in all editions.
+    k.is_any_identifier() || k.is_literal() || k == UNDERSCORE
 }

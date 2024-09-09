@@ -20,25 +20,21 @@ mod pending;
 mod poll_fn;
 mod ready;
 
-#[stable(feature = "futures_api", since = "1.36.0")]
-pub use self::future::Future;
-
-#[unstable(feature = "future_join", issue = "91642")]
-pub use self::join::join;
-
+#[unstable(feature = "async_drop", issue = "126482")]
+pub use async_drop::{async_drop, async_drop_in_place, AsyncDrop, AsyncDropInPlace};
 #[stable(feature = "into_future", since = "1.64.0")]
 pub use into_future::IntoFuture;
-
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 pub use pending::{pending, Pending};
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
+pub use poll_fn::{poll_fn, PollFn};
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 pub use ready::{ready, Ready};
 
-#[stable(feature = "future_poll_fn", since = "1.64.0")]
-pub use poll_fn::{poll_fn, PollFn};
-
-#[unstable(feature = "async_drop", issue = "126482")]
-pub use async_drop::{async_drop, async_drop_in_place, AsyncDrop, AsyncDropInPlace};
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub use self::future::Future;
+#[unstable(feature = "future_join", issue = "91642")]
+pub use self::join::join;
 
 /// This type is needed because:
 ///

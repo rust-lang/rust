@@ -1,5 +1,6 @@
 use crate::fmt;
-use crate::io::{self, buffered::LineWriterShim, BufWriter, IntoInnerError, IoSlice, Write};
+use crate::io::buffered::LineWriterShim;
+use crate::io::{self, BufWriter, IntoInnerError, IoSlice, Write};
 
 /// Wraps a writer and buffers output to it, flushing whenever a newline
 /// (`0x0a`, `'\n'`) is detected.

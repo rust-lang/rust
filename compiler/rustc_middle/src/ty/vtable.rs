@@ -1,9 +1,10 @@
 use std::fmt;
 
-use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};
-use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
 use rustc_macros::HashStable;
+
+use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar, CTFE_ALLOC_SALT};
+use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 
 #[derive(Clone, Copy, PartialEq, HashStable)]
 pub enum VtblEntry<'tcx> {
@@ -72,6 +73,11 @@ pub(crate) fn vtable_min_entries<'tcx>(
 
 /// Retrieves an allocation that represents the contents of a vtable.
 /// Since this is a query, allocations are cached and not duplicated.
+///
+/// This is an "internal" `AllocId` that should never be used as a value in the interpreted program.
+/// The interpreter should use `AllocId` that refer to a `GlobalAlloc::VTable` instead.
+/// (This is similar to statics, which also have a similar "internal" `AllocId` storing their
+/// initial contents.)
 pub(super) fn vtable_allocation_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
@@ -113,7 +119,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
             VtblEntry::MetadataDropInPlace => {
                 if ty.needs_drop(tcx, ty::ParamEnv::reveal_all()) {
                     let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
-                    let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance);
+                    let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
                     let fn_ptr = Pointer::from(fn_alloc_id);
                     Scalar::from_pointer(fn_ptr, &tcx)
                 } else {
@@ -126,7 +132,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
             VtblEntry::Method(instance) => {
                 // Prepare the fn ptr we write into the vtable.
                 let instance = instance.polymorphize(tcx);
-                let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance);
+                let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
                 let fn_ptr = Pointer::from(fn_alloc_id);
                 Scalar::from_pointer(fn_ptr, &tcx)
             }

@@ -24,15 +24,14 @@
 //! globals is comparatively simpler. The easiest way is to wrap the test in a closure argument
 //! to: `rustc_span::create_default_session_globals_then(|| { test_here(); })`.
 
-use super::graph::{self, BasicCoverageBlock};
-
 use itertools::Itertools;
 use rustc_data_structures::graph::{DirectedGraph, Successors};
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::bug;
 use rustc_middle::mir::*;
-use rustc_middle::ty;
+use rustc_middle::{bug, ty};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+
+use super::graph::{self, BasicCoverageBlock};
 
 fn bcb(index: u32) -> BasicCoverageBlock {
     BasicCoverageBlock::from_u32(index)

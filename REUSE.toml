@@ -163,7 +163,7 @@ SPDX-License-Identifier = "MIT OR Apache-2.0"
 path = "src/llvm-project/**"
 precedence = "override"
 SPDX-FileCopyrightText = [
-    "2003-2019 by the contributors listed in [CREDITS.TXT](https://github.com/rust-lang/llvm-project/blob/7738295178045041669876bf32b0543ec8319a5c/llvm/CREDITS.TXT)",
+    "2003-2019 by the contributors listed in CREDITS.TXT (https://github.com/rust-lang/llvm-project/blob/7738295178045041669876bf32b0543ec8319a5c/llvm/CREDITS.TXT)",
     "2010 Apple Inc",
     "2003-2019 University of Illinois at Urbana-Champaign.",
 ]

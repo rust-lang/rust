@@ -14,9 +14,9 @@
 #![feature(assert_matches)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(min_exhaustive_patterns)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::path::{Path, PathBuf};

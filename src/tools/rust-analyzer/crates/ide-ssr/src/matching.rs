@@ -6,8 +6,9 @@ use crate::{
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
     SsrMatches,
 };
-use hir::{ImportPathConfig, Semantics};
-use ide_db::{base_db::FileRange, FxHashMap};
+use hir::{FileRange, ImportPathConfig, Semantics};
+use ide_db::FxHashMap;
+use parser::Edition;
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
     ast::{self, AstNode, AstToken, HasGenericArgs},
@@ -626,6 +627,11 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
             })?
             .original;
+        let edition = self
+            .sema
+            .scope(expr.syntax())
+            .map(|it| it.krate().edition(self.sema.db))
+            .unwrap_or(Edition::CURRENT);
         // Temporary needed to make the borrow checker happy.
         let res = code_type
             .autoderef(self.sema.db)
@@ -635,8 +641,8 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             .ok_or_else(|| {
                 match_error!(
                     "Pattern type `{}` didn't match code type `{}`",
-                    pattern_type.display(self.sema.db),
-                    code_type.display(self.sema.db)
+                    pattern_type.display(self.sema.db, edition),
+                    code_type.display(self.sema.db, edition)
                 )
             });
         res
@@ -801,7 +807,12 @@ mod tests {
         let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
         let (db, position, selections) = crate::tests::single_file(input);
-        let mut match_finder = MatchFinder::in_context(&db, position, selections).unwrap();
+        let mut match_finder = MatchFinder::in_context(
+            &db,
+            position.into(),
+            selections.into_iter().map(Into::into).collect(),
+        )
+        .unwrap();
         match_finder.add_rule(rule).unwrap();
         let matches = match_finder.matches();
         assert_eq!(matches.matches.len(), 1);
@@ -810,7 +821,7 @@ mod tests {
 
         let edits = match_finder.edits();
         assert_eq!(edits.len(), 1);
-        let edit = &edits[&position.file_id];
+        let edit = &edits[&position.file_id.into()];
         let mut after = input.to_owned();
         edit.apply(&mut after);
         assert_eq!(after, "fn foo() {} fn bar() {} fn main() { bar(1+2); }");

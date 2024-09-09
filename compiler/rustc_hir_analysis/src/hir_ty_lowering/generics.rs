@@ -1,13 +1,6 @@
-use super::{HirTyLowerer, IsMethodCall};
-use crate::errors::wrong_number_of_generic_args::{GenericArgsInfo, WrongNumberOfGenericArgs};
-use crate::hir_ty_lowering::{
-    errors::prohibit_assoc_item_constraint, ExplicitLateBound, GenericArgCountMismatch,
-    GenericArgCountResult, GenericArgPosition, GenericArgsLowerer,
-};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -18,6 +11,15 @@ use rustc_middle::ty::{
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::symbol::{kw, sym};
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
+
+use super::{HirTyLowerer, IsMethodCall};
+use crate::errors::wrong_number_of_generic_args::{GenericArgsInfo, WrongNumberOfGenericArgs};
+use crate::hir_ty_lowering::errors::prohibit_assoc_item_constraint;
+use crate::hir_ty_lowering::{
+    ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
+    GenericArgsLowerer,
+};
 
 /// Report an error that a generic argument did not match the generic parameter that was
 /// expected.
@@ -252,32 +254,6 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
             match (args_iter.peek(), params.peek()) {
                 (Some(&arg), Some(&param)) => {
                     match (arg, &param.kind, arg_count.explicit_late_bound) {
-                        (
-                            GenericArg::Const(hir::ConstArg {
-                                is_desugared_from_effects: true,
-                                ..
-                            }),
-                            GenericParamDefKind::Const { is_host_effect: false, .. }
-                            | GenericParamDefKind::Type { .. }
-                            | GenericParamDefKind::Lifetime,
-                            _,
-                        ) => {
-                            // FIXME(effects): this should be removed
-                            // SPECIAL CASE FOR DESUGARED EFFECT PARAMS
-                            // This comes from the following example:
-                            //
-                            // ```
-                            // #[const_trait]
-                            // pub trait PartialEq<Rhs: ?Sized = Self> {}
-                            // impl const PartialEq for () {}
-                            // ```
-                            //
-                            // Since this is a const impl, we need to insert a host arg at the end of
-                            // `PartialEq`'s generics, but this errors since `Rhs` isn't specified.
-                            // To work around this, we infer all arguments until we reach the host param.
-                            args.push(ctx.inferred_kind(&args, param, infer_args));
-                            params.next();
-                        }
                         (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
                         | (
                             GenericArg::Type(_) | GenericArg::Infer(_),
@@ -551,21 +527,34 @@ pub(crate) fn check_generic_arg_count(
                 synth_provided,
             }
         } else {
-            let num_missing_args = expected_max - provided;
+            // Check if associated type bounds are incorrectly written in impl block header like:
+            // ```
+            // trait Foo<T> {}
+            // impl Foo<T: Default> for u8 {}
+            // ```
+            let parent_is_impl_block = cx
+                .tcx()
+                .hir()
+                .parent_owner_iter(seg.hir_id)
+                .next()
+                .is_some_and(|(_, owner_node)| owner_node.is_impl_block());
+            if parent_is_impl_block {
+                let constraint_names: Vec<_> =
+                    gen_args.constraints.iter().map(|b| b.ident.name).collect();
+                let param_names: Vec<_> = gen_params
+                    .own_params
+                    .iter()
+                    .filter(|param| !has_self || param.index != 0) // Assumes `Self` will always be the first parameter
+                    .map(|param| param.name)
+                    .collect();
+                if constraint_names == param_names {
+                    // We set this to true and delay emitting `WrongNumberOfGenericArgs`
+                    // to provide a succinct error for cases like issue #113073
+                    all_params_are_binded = true;
+                };
+            }
 
-            let constraint_names: Vec<_> =
-                gen_args.constraints.iter().map(|b| b.ident.name).collect();
-            let param_names: Vec<_> = gen_params
-                .own_params
-                .iter()
-                .filter(|param| !has_self || param.index != 0) // Assumes `Self` will always be the first parameter
-                .map(|param| param.name)
-                .collect();
-            if constraint_names == param_names {
-                // We set this to true and delay emitting `WrongNumberOfGenericArgs`
-                // to provide a succinct error for cases like issue #113073
-                all_params_are_binded = true;
-            };
+            let num_missing_args = expected_max - provided;
 
             GenericArgsInfo::MissingTypesOrConsts {
                 num_missing_args,

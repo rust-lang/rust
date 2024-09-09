@@ -1,10 +1,10 @@
 //! Defines database & queries for name resolution.
-use base_db::{salsa, CrateId, FileId, SourceDatabase, Upcast};
+use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
 use hir_expand::{db::ExpandDatabase, HirFileId, MacroDefId};
-use intern::Interned;
+use intern::{sym, Interned};
 use la_arena::ArenaMap;
-use span::MacroCallId;
+use span::{EditionedFileId, MacroCallId};
 use syntax::{ast, AstPtr};
 use triomphe::Arc;
 
@@ -160,7 +160,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn const_data(&self, konst: ConstId) -> Arc<ConstData>;
 
     #[salsa::invoke(StaticData::static_data_query)]
-    fn static_data(&self, konst: StaticId) -> Arc<StaticData>;
+    fn static_data(&self, statik: StaticId) -> Arc<StaticData>;
 
     #[salsa::invoke(Macro2Data::macro2_data_query)]
     fn macro2_data(&self, makro: Macro2Id) -> Arc<Macro2Data>;
@@ -177,6 +177,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     // endregion:data
 
     #[salsa::invoke(Body::body_with_source_map_query)]
+    #[salsa::lru]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);
 
     #[salsa::invoke(Body::body_query)]
@@ -239,11 +240,14 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     fn crate_supports_no_std(&self, crate_id: CrateId) -> bool;
 
-    fn include_macro_invoc(&self, crate_id: CrateId) -> Vec<(MacroCallId, FileId)>;
+    fn include_macro_invoc(&self, crate_id: CrateId) -> Arc<[(MacroCallId, EditionedFileId)]>;
 }
 
 // return: macro call id and include file id
-fn include_macro_invoc(db: &dyn DefDatabase, krate: CrateId) -> Vec<(MacroCallId, FileId)> {
+fn include_macro_invoc(
+    db: &dyn DefDatabase,
+    krate: CrateId,
+) -> Arc<[(MacroCallId, EditionedFileId)]> {
     db.crate_def_map(krate)
         .modules
         .values()
@@ -257,13 +261,13 @@ fn include_macro_invoc(db: &dyn DefDatabase, krate: CrateId) -> Vec<(MacroCallId
 }
 
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
-    let file = db.crate_graph()[crate_id].root_file_id;
+    let file = db.crate_graph()[crate_id].root_file_id();
     let item_tree = db.file_item_tree(file.into());
     let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
     for attr in &**attrs {
-        match attr.path().as_ident().and_then(|id| id.as_text()) {
-            Some(ident) if ident == "no_std" => return true,
-            Some(ident) if ident == "cfg_attr" => {}
+        match attr.path().as_ident() {
+            Some(ident) if *ident == sym::no_std.clone() => return true,
+            Some(ident) if *ident == sym::cfg_attr.clone() => {}
             _ => continue,
         }
 
@@ -278,7 +282,7 @@ fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
             tt.split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ','));
         for output in segments.skip(1) {
             match output {
-                [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "no_std" => {
+                [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::no_std => {
                     return true
                 }
                 _ => {}

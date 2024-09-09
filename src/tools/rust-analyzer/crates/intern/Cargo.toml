@@ -1,7 +1,8 @@
 [package]
 name = "intern"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Global `Arc`-based object interning infrastructure for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -18,6 +19,7 @@ dashmap.workspace = true
 hashbrown.workspace = true
 rustc-hash.workspace = true
 triomphe.workspace = true
+sptr = "0.3.2"
 
 [lints]
 workspace = true

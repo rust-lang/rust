@@ -1,17 +1,19 @@
 //! This module contains `HashStable` implementations for various data types
 //! from `rustc_middle::ty` in no particular order.
 
-use crate::middle::region;
-use crate::mir;
-use crate::ty;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::HashingControls;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_query_system::ich::StableHashingContext;
 use std::cell::RefCell;
 use std::ptr;
+
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashingControls, StableHasher, ToStableHashKey,
+};
+use rustc_query_system::ich::StableHashingContext;
 use tracing::trace;
+
+use crate::middle::region;
+use crate::{mir, ty};
 
 impl<'a, 'tcx, H, T> HashStable<StableHashingContext<'a>> for &'tcx ty::list::RawList<H, T>
 where

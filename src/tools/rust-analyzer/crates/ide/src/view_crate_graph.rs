@@ -1,6 +1,6 @@
 use dot::{Id, LabelText};
 use ide_db::{
-    base_db::{CrateGraph, CrateId, Dependency, SourceDatabase, SourceDatabaseExt},
+    base_db::{CrateGraph, CrateId, Dependency, SourceDatabase, SourceRootDatabase},
     FxHashSet, RootDatabase,
 };
 use triomphe::Arc;

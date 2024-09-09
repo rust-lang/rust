@@ -145,8 +145,7 @@ macro_rules! define_bignum {
 
             /// Adds `other` to itself and returns its own mutable reference.
             pub fn add<'a>(&'a mut self, other: &$name) -> &'a mut $name {
-                use crate::cmp;
-                use crate::iter;
+                use crate::{cmp, iter};
 
                 let mut sz = cmp::max(self.size, other.size);
                 let mut carry = false;
@@ -181,8 +180,7 @@ macro_rules! define_bignum {
 
             /// Subtracts `other` from itself and returns its own mutable reference.
             pub fn sub<'a>(&'a mut self, other: &$name) -> &'a mut $name {
-                use crate::cmp;
-                use crate::iter;
+                use crate::{cmp, iter};
 
                 let sz = cmp::max(self.size, other.size);
                 let mut noborrow = true;

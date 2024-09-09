@@ -9,6 +9,7 @@ use either::Either;
 use hir_def::{body::Body, hir::BindingId};
 use hir_expand::{name::Name, Lookup};
 use la_arena::ArenaMap;
+use span::Edition;
 
 use crate::{
     db::HirDatabase,
@@ -44,18 +45,21 @@ impl MirBody {
         ctx.for_body(|this| match ctx.body.owner {
             hir_def::DefWithBodyId::FunctionId(id) => {
                 let data = db.function_data(id);
-                w!(this, "fn {}() ", data.name.display(db.upcast()));
+                w!(this, "fn {}() ", data.name.display(db.upcast(), Edition::LATEST));
             }
             hir_def::DefWithBodyId::StaticId(id) => {
                 let data = db.static_data(id);
-                w!(this, "static {}: _ = ", data.name.display(db.upcast()));
+                w!(this, "static {}: _ = ", data.name.display(db.upcast(), Edition::LATEST));
             }
             hir_def::DefWithBodyId::ConstId(id) => {
                 let data = db.const_data(id);
                 w!(
                     this,
                     "const {}: _ = ",
-                    data.name.as_ref().unwrap_or(&Name::missing()).display(db.upcast())
+                    data.name
+                        .as_ref()
+                        .unwrap_or(&Name::missing())
+                        .display(db.upcast(), Edition::LATEST)
                 );
             }
             hir_def::DefWithBodyId::VariantId(id) => {
@@ -64,8 +68,12 @@ impl MirBody {
                 w!(
                     this,
                     "enum {}::{} = ",
-                    enum_loc.id.item_tree(db.upcast())[enum_loc.id.value].name.display(db.upcast()),
-                    loc.id.item_tree(db.upcast())[loc.id.value].name.display(db.upcast()),
+                    enum_loc.id.item_tree(db.upcast())[enum_loc.id.value]
+                        .name
+                        .display(db.upcast(), Edition::LATEST),
+                    loc.id.item_tree(db.upcast())[loc.id.value]
+                        .name
+                        .display(db.upcast(), Edition::LATEST),
                 )
             }
             hir_def::DefWithBodyId::InTypeConstId(id) => {
@@ -122,7 +130,7 @@ impl HirDisplay for LocalName {
         match self {
             LocalName::Unknown(l) => write!(f, "_{}", u32::from(l.into_raw())),
             LocalName::Binding(n, l) => {
-                write!(f, "{}_{}", n.display(f.db.upcast()), u32::from(l.into_raw()))
+                write!(f, "{}_{}", n.display(f.db.upcast(), f.edition()), u32::from(l.into_raw()))
             }
         }
     }
@@ -200,7 +208,7 @@ impl<'a> MirPrettyCtx<'a> {
             wln!(
                 self,
                 "let {}: {};",
-                self.local_name(id).display(self.db),
+                self.local_name(id).display_test(self.db),
                 self.hir_display(&local.ty)
             );
         }
@@ -231,10 +239,18 @@ impl<'a> MirPrettyCtx<'a> {
                             wln!(this, ";");
                         }
                         StatementKind::StorageDead(p) => {
-                            wln!(this, "StorageDead({})", this.local_name(*p).display(self.db));
+                            wln!(
+                                this,
+                                "StorageDead({})",
+                                this.local_name(*p).display_test(self.db)
+                            );
                         }
                         StatementKind::StorageLive(p) => {
-                            wln!(this, "StorageLive({})", this.local_name(*p).display(self.db));
+                            wln!(
+                                this,
+                                "StorageLive({})",
+                                this.local_name(*p).display_test(self.db)
+                            );
                         }
                         StatementKind::Deinit(p) => {
                             w!(this, "Deinit(");
@@ -297,7 +313,7 @@ impl<'a> MirPrettyCtx<'a> {
         fn f(this: &mut MirPrettyCtx<'_>, local: LocalId, projections: &[PlaceElem]) {
             let Some((last, head)) = projections.split_last() else {
                 // no projection
-                w!(this, "{}", this.local_name(local).display(this.db));
+                w!(this, "{}", this.local_name(local).display_test(this.db));
                 return;
             };
             match last {
@@ -317,13 +333,13 @@ impl<'a> MirPrettyCtx<'a> {
                             w!(
                                 this,
                                 " as {}).{}",
-                                variant_name.display(this.db.upcast()),
-                                name.display(this.db.upcast())
+                                variant_name.display(this.db.upcast(), Edition::LATEST),
+                                name.display(this.db.upcast(), Edition::LATEST)
                             );
                         }
                         hir_def::VariantId::StructId(_) | hir_def::VariantId::UnionId(_) => {
                             f(this, local, head);
-                            w!(this, ".{}", name.display(this.db.upcast()));
+                            w!(this, ".{}", name.display(this.db.upcast(), Edition::LATEST));
                         }
                     }
                 }
@@ -337,7 +353,7 @@ impl<'a> MirPrettyCtx<'a> {
                 }
                 ProjectionElem::Index(l) => {
                     f(this, local, head);
-                    w!(this, "[{}]", this.local_name(*l).display(this.db));
+                    w!(this, "[{}]", this.local_name(*l).display_test(this.db));
                 }
                 it => {
                     f(this, local, head);
@@ -387,7 +403,7 @@ impl<'a> MirPrettyCtx<'a> {
             Rvalue::Repeat(op, len) => {
                 w!(self, "[");
                 self.operand(op);
-                w!(self, "; {}]", len.display(self.db));
+                w!(self, "; {}]", len.display_test(self.db));
             }
             Rvalue::Aggregate(AggregateKind::Adt(_, _), it) => {
                 w!(self, "Adt(");
@@ -458,6 +474,6 @@ impl<'a> MirPrettyCtx<'a> {
     }
 
     fn hir_display<T: HirDisplay>(&self, ty: &'a T) -> impl Display + 'a {
-        ty.display(self.db).with_closure_style(ClosureStyle::ClosureWithSubst)
+        ty.display_test(self.db).with_closure_style(ClosureStyle::ClosureWithSubst)
     }
 }

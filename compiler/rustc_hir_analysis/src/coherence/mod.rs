@@ -5,14 +5,17 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-use crate::errors;
-use rustc_errors::{codes::*, struct_span_code_err};
+use rustc_errors::codes::*;
+use rustc_errors::struct_span_code_err;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::LangItem;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, ErrorGuaranteed};
+use tracing::debug;
+
+use crate::errors;
 
 mod builtin;
 mod inherent_impls;
@@ -121,7 +124,7 @@ fn enforce_empty_impls_for_marker_traits(
     .emit())
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     use self::builtin::coerce_unsized_info;
     use self::inherent_impls::{crate_incoherent_impls, crate_inherent_impls, inherent_impls};
     use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;

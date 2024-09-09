@@ -187,7 +187,7 @@ where
         unsafe { &mut *(self as *mut Self as *mut [T; N]) }
     }
 
-    /// Load a vector from an array of `T`.
+    /// Loads a vector from an array of `T`.
     ///
     /// This function is necessary since `repr(simd)` has padding for non-power-of-2 vectors (at the time of writing).
     /// With padding, `read_unaligned` will read past the end of an array of N elements.
@@ -567,7 +567,7 @@ where
         unsafe { Self::gather_select_ptr(ptrs, enable, or) }
     }
 
-    /// Read elementwise from pointers into a SIMD vector.
+    /// Reads elementwise from pointers into a SIMD vector.
     ///
     /// # Safety
     ///
@@ -808,7 +808,7 @@ where
         }
     }
 
-    /// Write pointers elementwise into a SIMD vector.
+    /// Writes pointers elementwise into a SIMD vector.
     ///
     /// # Safety
     ///

@@ -1,6 +1,7 @@
-use super::super::*;
 use core::num::bignum::Big32x40 as Big;
 use core::num::flt2dec::strategy::dragon::*;
+
+use super::super::*;
 
 #[test]
 fn test_mul_pow10() {

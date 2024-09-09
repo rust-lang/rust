@@ -123,13 +123,13 @@ const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4u
 //~^ ERROR it is undefined behavior to use this value
 //~| vtable
 const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR it is undefined behavior to use this value
 //~| vtable
 const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &[0usize; 8])) };
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR it is undefined behavior to use this value
 //~| vtable
 const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR it is undefined behavior to use this value
 //~| vtable
 const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
 //~^ ERROR it is undefined behavior to use this value
@@ -142,10 +142,10 @@ const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool
 
 // # raw trait object
 const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR it is undefined behavior to use this value
 //~| null pointer
 const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR it is undefined behavior to use this value
 //~| vtable
 const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) } as *const dyn Trait; // ok because raw
 // Officially blessed way to get the vtable
@@ -154,12 +154,12 @@ const DYN_METADATA: ptr::DynMetadata<dyn Send> = ptr::metadata::<dyn Send>(ptr::
 
 static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
-    //~^ ERROR could not evaluate static initializer
+    //~^^ ERROR it is undefined behavior to use this value
     //~| null pointer
 };
 static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
-    //~^ ERROR could not evaluate static initializer
+    //~^^ ERROR it is undefined behavior to use this value
     //~| vtable
 };
 

@@ -20,6 +20,7 @@ use rustc_span::{
     symbol::{self, kw},
     BytePos, Span, Symbol, DUMMY_SP,
 };
+use tracing::debug;
 
 use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
@@ -1073,7 +1074,7 @@ fn force_space_before(tok: &TokenKind) -> bool {
 fn ident_like(tok: &Token) -> bool {
     matches!(
         tok.kind,
-        TokenKind::Ident(..) | TokenKind::Literal(..) | TokenKind::Lifetime(_)
+        TokenKind::Ident(..) | TokenKind::Literal(..) | TokenKind::Lifetime(..)
     )
 }
 
@@ -1098,7 +1099,9 @@ fn next_space(tok: &TokenKind) -> SpaceState {
         | TokenKind::OpenDelim(_)
         | TokenKind::CloseDelim(_) => SpaceState::Never,
 
-        TokenKind::Literal(..) | TokenKind::Ident(..) | TokenKind::Lifetime(_) => SpaceState::Ident,
+        TokenKind::Literal(..) | TokenKind::Ident(..) | TokenKind::Lifetime(..) => {
+            SpaceState::Ident
+        }
 
         _ => SpaceState::Always,
     }

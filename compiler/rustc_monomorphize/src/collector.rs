@@ -207,6 +207,9 @@
 
 mod move_check;
 
+use std::path::PathBuf;
+
+use move_check::MoveCheckState;
 use rustc_data_structures::sync::{par_for_each_in, LRef, MTLock};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
@@ -216,17 +219,15 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
-use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location, MentionedItem};
+use rustc_middle::mir::{self, traversal, Location, MentionedItem};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
-use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
-    self, AssocKind, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, VtblEntry,
+    self, AssocKind, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
@@ -236,19 +237,17 @@ use rustc_span::source_map::{dummy_spanned, respan, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Size;
-use std::path::PathBuf;
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit};
-use move_check::MoveCheckState;
 
 #[derive(PartialEq)]
-pub enum MonoItemCollectionStrategy {
+pub(crate) enum MonoItemCollectionStrategy {
     Eager,
     Lazy,
 }
 
-pub struct UsageMap<'tcx> {
+pub(crate) struct UsageMap<'tcx> {
     // Maps every mono item to the mono items used by it.
     used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 
@@ -307,13 +306,17 @@ impl<'tcx> UsageMap<'tcx> {
         assert!(self.used_map.insert(user_item, used_items).is_none());
     }
 
-    pub fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
+    pub(crate) fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
         self.user_map.get(&item).map(|items| items.as_slice()).unwrap_or(&[])
     }
 
     /// Internally iterate over all inlined items used by `item`.
-    pub fn for_each_inlined_used_item<F>(&self, tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>, mut f: F)
-    where
+    pub(crate) fn for_each_inlined_used_item<F>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        item: MonoItem<'tcx>,
+        mut f: F,
+    ) where
         F: FnMut(MonoItem<'tcx>),
     {
         let used_items = self.used_map.get(&item).unwrap();
@@ -394,7 +397,7 @@ fn collect_items_rec<'tcx>(
         MonoItem::Static(def_id) => {
             recursion_depth_reset = None;
 
-            // Statics always get evaluted (which is possible because they can't be generic), so for
+            // Statics always get evaluated (which is possible because they can't be generic), so for
             // `MentionedItems` collection there's nothing to do here.
             if mode == CollectionMode::UsedItems {
                 let instance = Instance::mono(tcx, def_id);
@@ -581,9 +584,9 @@ fn check_recursion_limit<'tcx>(
         let mut path = PathBuf::new();
         let was_written = if let Some(written_to_path) = written_to_path {
             path = written_to_path;
-            Some(())
+            true
         } else {
-            None
+            false
         };
         tcx.dcx().emit_fatal(RecursionLimit {
             span,
@@ -889,7 +892,9 @@ fn visit_instance_use<'tcx>(
             if tcx.should_codegen_locally(panic_instance) {
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
-        } else if tcx.has_attr(def_id, sym::rustc_intrinsic) {
+        } else if tcx.has_attr(def_id, sym::rustc_intrinsic)
+            && !tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden)
+        {
             // Codegen the fallback body of intrinsics with fallback bodies
             let instance = ty::Instance::new(def_id, instance.args);
             if tcx.should_codegen_locally(instance) {
@@ -919,7 +924,6 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceKind::ReifyShim(..)
         | ty::InstanceKind::ClosureOnceShim { .. }
         | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceKind::CoroutineKindShim { .. }
         | ty::InstanceKind::Item(..)
         | ty::InstanceKind::FnPtrShim(..)
         | ty::InstanceKind::CloneShim(..)
@@ -1020,7 +1024,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
             if ty.is_sized(tcx.tcx, param_env) {
                 return false;
             }
-            let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
+            let tail = tcx.struct_tail_for_codegen(ty, param_env);
             match tail.kind() {
                 ty::Foreign(..) => false,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -1030,15 +1034,18 @@ fn find_vtable_types_for_unsizing<'tcx>(
         if type_has_metadata(inner_source) {
             (inner_source, inner_target)
         } else {
-            tcx.struct_lockstep_tails_erasing_lifetimes(inner_source, inner_target, param_env)
+            tcx.struct_lockstep_tails_for_codegen(inner_source, inner_target, param_env)
         }
     };
 
-    match (&source_ty.kind(), &target_ty.kind()) {
+    match (source_ty.kind(), target_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
-        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(*a, *b),
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
-            ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
+        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(a, b),
+        (_, _)
+            if let Some(source_boxed) = source_ty.boxed_ty()
+                && let Some(target_boxed) = target_ty.boxed_ty() =>
+        {
+            ptr_vtable(source_boxed, target_boxed)
         }
 
         // T as dyn* Trait
@@ -1230,7 +1237,7 @@ fn collect_items_of_instance<'tcx>(
 
     // Always visit all `required_consts`, so that we evaluate them and abort compilation if any of
     // them errors.
-    for const_op in &body.required_consts {
+    for const_op in body.required_consts() {
         if let Some(val) = collector.eval_constant(const_op) {
             collect_const_value(tcx, val, mentioned_items);
         }
@@ -1238,7 +1245,7 @@ fn collect_items_of_instance<'tcx>(
 
     // Always gather mentioned items. We try to avoid processing items that we have already added to
     // `used_items` above.
-    for item in &body.mentioned_items {
+    for item in body.mentioned_items() {
         if !collector.used_mentioned_items.contains(&item.node) {
             let item_mono = collector.monomorphize(item.node);
             visit_mentioned_item(tcx, &item_mono, item.span, mentioned_items);
@@ -1615,6 +1622,6 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
     (mono_items, state.usage_map.into_inner())
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
 }

@@ -12,7 +12,6 @@ use stdx::TupleExt;
 
 use crate::{
     consteval::{try_const_usize, usize_const},
-    error_lifetime,
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
@@ -68,7 +67,7 @@ impl InferenceContext<'_> {
         expected: &Ty,
         default_bm: T::BindingMode,
         id: T,
-        ellipsis: Option<usize>,
+        ellipsis: Option<u32>,
         subs: &[T],
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path, true);
@@ -98,7 +97,7 @@ impl InferenceContext<'_> {
                 let visibilities = self.db.field_visibilities(def);
 
                 let (pre, post) = match ellipsis {
-                    Some(idx) => subs.split_at(idx),
+                    Some(idx) => subs.split_at(idx as usize),
                     None => (subs, &[][..]),
                 };
                 let post_idx_offset = field_types.iter().count().saturating_sub(post.len());
@@ -219,7 +218,7 @@ impl InferenceContext<'_> {
         &mut self,
         expected: &Ty,
         default_bm: T::BindingMode,
-        ellipsis: Option<usize>,
+        ellipsis: Option<u32>,
         subs: &[T],
     ) -> Ty {
         let expected = self.resolve_ty_shallow(expected);
@@ -229,7 +228,9 @@ impl InferenceContext<'_> {
         };
 
         let ((pre, post), n_uncovered_patterns) = match ellipsis {
-            Some(idx) => (subs.split_at(idx), expectations.len().saturating_sub(subs.len())),
+            Some(idx) => {
+                (subs.split_at(idx as usize), expectations.len().saturating_sub(subs.len()))
+            }
             None => ((subs, &[][..]), 0),
         };
         let mut expectations_iter = expectations
@@ -392,19 +393,20 @@ impl InferenceContext<'_> {
         expected: &Ty,
         default_bm: BindingMode,
     ) -> Ty {
-        let expectation = match expected.as_reference() {
-            Some((inner_ty, _lifetime, _exp_mut)) => inner_ty.clone(),
+        let (expectation_type, expectation_lt) = match expected.as_reference() {
+            Some((inner_ty, lifetime, _exp_mut)) => (inner_ty.clone(), lifetime.clone()),
             None => {
                 let inner_ty = self.table.new_type_var();
+                let inner_lt = self.table.new_lifetime_var();
                 let ref_ty =
-                    TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner);
+                    TyKind::Ref(mutability, inner_lt.clone(), inner_ty.clone()).intern(Interner);
                 // Unification failure will be reported by the caller.
                 self.unify(&ref_ty, expected);
-                inner_ty
+                (inner_ty, inner_lt)
             }
         };
-        let subty = self.infer_pat(inner_pat, &expectation, default_bm);
-        TyKind::Ref(mutability, error_lifetime(), subty).intern(Interner)
+        let subty = self.infer_pat(inner_pat, &expectation_type, default_bm);
+        TyKind::Ref(mutability, expectation_lt, subty).intern(Interner)
     }
 
     fn infer_bind_pat(
@@ -431,7 +433,8 @@ impl InferenceContext<'_> {
 
         let bound_ty = match mode {
             BindingMode::Ref(mutability) => {
-                TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner)
+                let inner_lt = self.table.new_lifetime_var();
+                TyKind::Ref(mutability, inner_lt, inner_ty.clone()).intern(Interner)
             }
             BindingMode::Move => inner_ty.clone(),
         };

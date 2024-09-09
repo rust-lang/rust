@@ -1,7 +1,8 @@
+use fortanix_sgx_abi::{EV_UNPARK, WAIT_INDEFINITE};
+
 use super::abi::usercalls;
 use crate::io::ErrorKind;
 use crate::time::Duration;
-use fortanix_sgx_abi::{EV_UNPARK, WAIT_INDEFINITE};
 
 pub type ThreadId = fortanix_sgx_abi::Tcs;
 

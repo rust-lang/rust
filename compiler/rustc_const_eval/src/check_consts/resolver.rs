@@ -2,17 +2,16 @@
 //!
 //! This contains the dataflow analysis used to track `Qualif`s on complex control-flow graphs.
 
+use std::fmt;
+use std::marker::PhantomData;
+
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
 };
 use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::JoinSemiLattice;
-use rustc_mir_dataflow::{Analysis, AnalysisDomain};
-
-use std::fmt;
-use std::marker::PhantomData;
+use rustc_mir_dataflow::{Analysis, AnalysisDomain, JoinSemiLattice};
 
 use super::{qualifs, ConstCx, Qualif};
 
@@ -97,7 +96,7 @@ where
     }
 
     fn address_of_allows_mutation(&self) -> bool {
-        // Exact set of permissions granted by AddressOf is undecided. Conservatively assume that
+        // Exact set of permissions granted by RawPtr is undecided. Conservatively assume that
         // it might allow mutation until resolution of #56604.
         true
     }
@@ -171,7 +170,7 @@ where
         self.super_rvalue(rvalue, location);
 
         match rvalue {
-            mir::Rvalue::AddressOf(_mt, borrowed_place) => {
+            mir::Rvalue::RawPtr(_mt, borrowed_place) => {
                 if !borrowed_place.is_indirect() && self.address_of_allows_mutation() {
                     let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
                     if Q::in_any_value_of_ty(self.ccx, place_ty) {

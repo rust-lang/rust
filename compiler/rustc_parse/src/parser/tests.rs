@@ -1,29 +1,27 @@
-use crate::parser::ForceCollect;
-use crate::{
-    new_parser_from_source_str, parser::Parser, source_str_to_stream, unwrap_or_emit_fatal,
-};
+use std::assert_matches::assert_matches;
+use std::io::prelude::*;
+use std::iter::Peekable;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::{io, str};
+
 use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::visit;
-use rustc_ast::{self as ast, PatKind};
+use rustc_ast::{self as ast, visit, PatKind};
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::HumanEmitter;
 use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
-use rustc_span::create_default_session_globals_then;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{BytePos, FileName, Pos, Span};
-use std::io;
-use std::io::prelude::*;
-use std::iter::Peekable;
-use std::path::{Path, PathBuf};
-use std::str;
-use std::sync::{Arc, Mutex};
+use rustc_span::{create_default_session_globals_then, BytePos, FileName, Pos, Span};
 use termcolor::WriteColor;
+
+use crate::parser::{ForceCollect, Parser};
+use crate::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 
 fn psess() -> ParseSess {
     ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE, crate::DEFAULT_LOCALE_RESOURCE])
@@ -1750,7 +1748,7 @@ fn out_of_line_mod() {
         .unwrap();
 
         let ast::ItemKind::Mod(_, mod_kind) = &item.kind else { panic!() };
-        assert!(matches!(mod_kind, ast::ModKind::Loaded(items, ..) if items.len() == 2));
+        assert_matches!(mod_kind, ast::ModKind::Loaded(items, ..) if items.len() == 2);
     });
 }
 

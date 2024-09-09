@@ -1,6 +1,3 @@
-use crate::manifest::{FileHash, Manifest};
-use rayon::prelude::*;
-use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fs::File;
@@ -8,6 +5,11 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Instant;
+
+use rayon::prelude::*;
+use sha2::{Digest, Sha256};
+
+use crate::manifest::{FileHash, Manifest};
 
 pub(crate) struct Checksums {
     cache_path: Option<PathBuf>,

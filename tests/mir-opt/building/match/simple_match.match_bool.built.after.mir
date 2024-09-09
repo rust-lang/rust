@@ -6,7 +6,7 @@ fn match_bool(_1: bool) -> usize {
 
     bb0: {
         PlaceMention(_1);
-        switchInt(_1) -> [0: bb1, otherwise: bb2];
+        switchInt(copy _1) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {

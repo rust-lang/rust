@@ -1,8 +1,7 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::matches::DeclareLetBindings;
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
+use std::iter;
+
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -12,8 +11,11 @@ use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_span::source_map::Spanned;
-use std::iter;
 use tracing::{debug, instrument};
+
+use crate::build::expr::category::{Category, RvalueFunc};
+use crate::build::matches::DeclareLetBindings;
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -301,12 +303,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, borrow);
                 block.unit()
             }
-            ExprKind::AddressOf { mutability, arg } => {
+            ExprKind::RawBorrow { mutability, arg } => {
                 let place = match mutability {
                     hir::Mutability::Not => this.as_read_only_place(block, arg),
                     hir::Mutability::Mut => this.as_place(block, arg),
                 };
-                let address_of = Rvalue::AddressOf(mutability, unpack!(block = place));
+                let address_of = Rvalue::RawPtr(mutability, unpack!(block = place));
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }

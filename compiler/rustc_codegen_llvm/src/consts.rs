@@ -1,13 +1,6 @@
-use crate::base;
-use crate::common::{self, CodegenCx};
-use crate::debuginfo;
-use crate::errors::{
-    InvalidMinimumAlignmentNotPowerOfTwo, InvalidMinimumAlignmentTooLarge, SymbolAlreadyDefined,
-};
-use crate::llvm::{self, True};
-use crate::type_::Type;
-use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
+use std::ops::Range;
+
+use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -24,10 +17,19 @@ use rustc_session::config::Lto;
 use rustc_target::abi::{
     Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
 };
-use std::ops::Range;
 use tracing::{debug, instrument, trace};
 
-pub fn const_alloc_to_llvm<'ll>(
+use crate::common::CodegenCx;
+use crate::errors::{
+    InvalidMinimumAlignmentNotPowerOfTwo, InvalidMinimumAlignmentTooLarge, SymbolAlreadyDefined,
+};
+use crate::llvm::{self, True};
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::value::Value;
+use crate::{base, debuginfo};
+
+pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
     alloc: ConstAllocation<'_>,
     is_static: bool,
@@ -194,7 +196,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             g2
         }
     } else if cx.tcx.sess.target.arch == "x86"
-        && let Some(dllimport) = common::get_dllimport(cx.tcx, def_id, sym)
+        && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
         cx.declare_global(
             &common::i686_decorated_name(
@@ -388,7 +390,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             let val_llty = self.val_ty(v);
 
             let g = self.get_static_inner(def_id, val_llty);
-            let llty = self.val_ty(g);
+            let llty = llvm::LLVMGlobalGetValueType(g);
 
             let g = if val_llty == llty {
                 g
@@ -523,7 +525,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                     let val = llvm::LLVMMetadataAsValue(self.llcx, meta);
                     llvm::LLVMAddNamedMetadataOperand(
                         self.llmod,
-                        c"wasm.custom_sections".as_ptr().cast(),
+                        c"wasm.custom_sections".as_ptr(),
                         val,
                     );
                 }

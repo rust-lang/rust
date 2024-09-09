@@ -1,45 +1,38 @@
 // ignore-tidy-filelength
 
-use crate::common::{
-    expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG,
-};
-use crate::common::{incremental_dir, output_base_dir, output_base_name, output_testname_unique};
-use crate::common::{Assembly, Crashes, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
-use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
-use crate::common::{CompareMode, FailMode, PassMode};
-use crate::common::{Config, TestPaths};
-use crate::common::{CoverageMap, CoverageRun, Pretty, RunPassValgrind};
-use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
-use crate::compute_diff::{write_diff, write_filtered_diff};
-use crate::errors::{self, Error, ErrorKind};
-use crate::header::TestProps;
-use crate::json;
-use crate::read2::{read2_abbreviated, Truncated};
-use crate::util::{add_dylib_path, copy_dir_all, dylib_env_var, logv, static_regex, PathBufExt};
-use crate::ColorConfig;
-use colored::Colorize;
-use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
-use regex::{Captures, Regex};
-use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, create_dir_all, File, OpenOptions};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
-use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::str;
 use std::sync::Arc;
+use std::{env, iter, str};
 
 use anyhow::Context;
+use colored::Colorize;
 use glob::glob;
+use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
+use regex::{Captures, Regex};
+use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 use tracing::*;
 
-use crate::extract_gdb_version;
-use crate::is_android_gdb_target;
+use crate::common::{
+    expected_output_path, incremental_dir, output_base_dir, output_base_name,
+    output_testname_unique, Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap,
+    CoverageRun, Crashes, DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode,
+    Pretty, RunMake, RunPassValgrind, Rustdoc, RustdocJson, TestPaths, Ui, UI_EXTENSIONS, UI_FIXED,
+    UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG,
+};
+use crate::compute_diff::{write_diff, write_filtered_diff};
+use crate::errors::{self, Error, ErrorKind};
+use crate::header::TestProps;
+use crate::read2::{read2_abbreviated, Truncated};
+use crate::util::{add_dylib_path, copy_dir_all, dylib_env_var, logv, static_regex, PathBufExt};
+use crate::{extract_gdb_version, is_android_gdb_target, json, ColorConfig};
 
 mod coverage;
 mod debugger;
@@ -731,7 +724,7 @@ impl<'test> TestCx<'test> {
         self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
         rustc.args(&self.props.compile_flags);
 
-        self.compose_and_run_compiler(rustc, Some(src))
+        self.compose_and_run_compiler(rustc, Some(src), self.testpaths)
     }
 
     fn run_debuginfo_test(&self) {
@@ -863,22 +856,10 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_gdb_test_no_opt(&self) {
-        let prefixes = if self.config.gdb_native_rust {
-            // GDB with Rust
-            static PREFIXES: &[&str] = &["gdb", "gdbr"];
-            println!("NOTE: compiletest thinks it is using GDB with native rust support");
-            PREFIXES
-        } else {
-            // Generic GDB
-            static PREFIXES: &[&str] = &["gdb", "gdbg"];
-            println!("NOTE: compiletest thinks it is using GDB without native rust support");
-            PREFIXES
-        };
-
         let dbg_cmds = DebuggerCommands::parse_from(
             &self.testpaths.file,
             self.config,
-            prefixes,
+            &["gdb"],
             self.revision,
         )
         .unwrap_or_else(|e| self.fatal(&e));
@@ -1060,9 +1041,7 @@ impl<'test> TestCx<'test> {
                 .push_str(&format!("file {}\n", exe_file.to_str().unwrap().replace(r"\", r"\\")));
 
             // Force GDB to print values in the Rust format.
-            if self.config.gdb_native_rust {
-                script_str.push_str("set language rust\n");
-            }
+            script_str.push_str("set language rust\n");
 
             // Add line breakpoints
             for line in &dbg_cmds.breakpoint_lines {
@@ -1147,21 +1126,11 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let prefixes = if self.config.lldb_native_rust {
-            static PREFIXES: &[&str] = &["lldb", "lldbr"];
-            println!("NOTE: compiletest thinks it is using LLDB with native rust support");
-            PREFIXES
-        } else {
-            static PREFIXES: &[&str] = &["lldb", "lldbg"];
-            println!("NOTE: compiletest thinks it is using LLDB without native rust support");
-            PREFIXES
-        };
-
         // Parse debugger commands etc from test files
         let dbg_cmds = DebuggerCommands::parse_from(
             &self.testpaths.file,
             self.config,
-            prefixes,
+            &["lldb"],
             self.revision,
         )
         .unwrap_or_else(|e| self.fatal(&e));
@@ -1587,13 +1556,15 @@ impl<'test> TestCx<'test> {
             passes,
         );
 
-        self.compose_and_run_compiler(rustc, None)
+        self.compose_and_run_compiler(rustc, None, self.testpaths)
     }
 
-    fn document(&self, out_dir: &Path) -> ProcRes {
+    /// `root_out_dir` and `root_testpaths` refer to the parameters of the actual test being run.
+    /// Auxiliaries, no matter how deep, have the same root_out_dir and root_testpaths.
+    fn document(&self, root_out_dir: &Path, root_testpaths: &TestPaths) -> ProcRes {
         if self.props.build_aux_docs {
             for rel_ab in &self.props.aux_builds {
-                let aux_testpaths = self.compute_aux_test_paths(&self.testpaths, rel_ab);
+                let aux_testpaths = self.compute_aux_test_paths(root_testpaths, rel_ab);
                 let aux_props =
                     self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
                 let aux_cx = TestCx {
@@ -1604,7 +1575,9 @@ impl<'test> TestCx<'test> {
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
-                let auxres = aux_cx.document(out_dir);
+                // use root_testpaths here, because aux-builds should have the
+                // same --out-dir and auxiliary directory.
+                let auxres = aux_cx.document(&root_out_dir, root_testpaths);
                 if !auxres.status.success() {
                     return auxres;
                 }
@@ -1614,21 +1587,40 @@ impl<'test> TestCx<'test> {
         let aux_dir = self.aux_output_dir_name();
 
         let rustdoc_path = self.config.rustdoc_path.as_ref().expect("--rustdoc-path not passed");
-        let mut rustdoc = Command::new(rustdoc_path);
 
+        // actual --out-dir given to the auxiliary or test, as opposed to the root out dir for the entire
+        // test
+        let out_dir: Cow<'_, Path> = if self.props.unique_doc_out_dir {
+            let file_name = self.testpaths.file.file_stem().expect("file name should not be empty");
+            let out_dir = PathBuf::from_iter([
+                root_out_dir,
+                Path::new("docs"),
+                Path::new(file_name),
+                Path::new("doc"),
+            ]);
+            create_dir_all(&out_dir).unwrap();
+            Cow::Owned(out_dir)
+        } else {
+            Cow::Borrowed(root_out_dir)
+        };
+
+        let mut rustdoc = Command::new(rustdoc_path);
+        let current_dir = output_base_dir(self.config, root_testpaths, self.safe_revision());
+        rustdoc.current_dir(current_dir);
         rustdoc
             .arg("-L")
             .arg(self.config.run_lib_path.to_str().unwrap())
             .arg("-L")
             .arg(aux_dir)
             .arg("-o")
-            .arg(out_dir)
+            .arg(out_dir.as_ref())
             .arg("--deny")
             .arg("warnings")
             .arg(&self.testpaths.file)
             .arg("-A")
             .arg("internal_features")
-            .args(&self.props.compile_flags);
+            .args(&self.props.compile_flags)
+            .args(&self.props.doc_flags);
 
         if self.config.mode == RustdocJson {
             rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
@@ -1638,7 +1630,7 @@ impl<'test> TestCx<'test> {
             rustdoc.arg(format!("-Clinker={}", linker));
         }
 
-        self.compose_and_run_compiler(rustdoc, None)
+        self.compose_and_run_compiler(rustdoc, None, root_testpaths)
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
@@ -1836,9 +1828,16 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
+    /// `root_testpaths` refers to the path of the original test.
+    /// the auxiliary and the test with an aux-build have the same `root_testpaths`.
+    fn compose_and_run_compiler(
+        &self,
+        mut rustc: Command,
+        input: Option<String>,
+        root_testpaths: &TestPaths,
+    ) -> ProcRes {
         let aux_dir = self.aux_output_dir();
-        self.build_all_auxiliary(&self.testpaths, &aux_dir, &mut rustc);
+        self.build_all_auxiliary(root_testpaths, &aux_dir, &mut rustc);
 
         rustc.envs(self.props.rustc_env.clone());
         self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
@@ -2176,6 +2175,7 @@ impl<'test> TestCx<'test> {
                     "-Zvalidate-mir",
                     "-Zlint-mir",
                     "-Zdump-mir-exclude-pass-number",
+                    "-Zmir-include-spans=false", // remove span comments from NLL MIR dumps
                     "--crate-type=rlib",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
@@ -2553,7 +2553,7 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
 
-        let proc_res = self.compose_and_run_compiler(rustc, None);
+        let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
         let output_path = self.get_filecheck_file("ll");
         (proc_res, output_path)
     }
@@ -2589,7 +2589,7 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
 
-        let proc_res = self.compose_and_run_compiler(rustc, None);
+        let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
         let output_path = self.get_filecheck_file("s");
         (proc_res, output_path)
     }
@@ -2672,7 +2672,7 @@ impl<'test> TestCx<'test> {
         let out_dir = self.output_base_dir();
         remove_and_create_dir_all(&out_dir);
 
-        let proc_res = self.document(&out_dir);
+        let proc_res = self.document(&out_dir, &self.testpaths);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
@@ -2731,7 +2731,7 @@ impl<'test> TestCx<'test> {
         let aux_dir = new_rustdoc.aux_output_dir();
         new_rustdoc.build_all_auxiliary(&new_rustdoc.testpaths, &aux_dir, &mut rustc);
 
-        let proc_res = new_rustdoc.document(&compare_dir);
+        let proc_res = new_rustdoc.document(&compare_dir, &new_rustdoc.testpaths);
         if !proc_res.status.success() {
             eprintln!("failed to run nightly rustdoc");
             return;
@@ -2739,6 +2739,7 @@ impl<'test> TestCx<'test> {
 
         #[rustfmt::skip]
         let tidy_args = [
+            "--new-blocklevel-tags", "rustdoc-search",
             "--indent", "yes",
             "--indent-spaces", "2",
             "--wrap", "0",
@@ -2854,7 +2855,7 @@ impl<'test> TestCx<'test> {
         let out_dir = self.output_base_dir();
         remove_and_create_dir_all(&out_dir);
 
-        let proc_res = self.document(&out_dir);
+        let proc_res = self.document(&out_dir, &self.testpaths);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
@@ -2930,31 +2931,24 @@ impl<'test> TestCx<'test> {
     fn check_rustdoc_test_option(&self, res: ProcRes) {
         let mut other_files = Vec::new();
         let mut files: HashMap<String, Vec<usize>> = HashMap::new();
-        let cwd = env::current_dir().unwrap();
-        files.insert(
-            self.testpaths
-                .file
-                .strip_prefix(&cwd)
-                .unwrap_or(&self.testpaths.file)
-                .to_str()
-                .unwrap()
-                .replace('\\', "/"),
-            self.get_lines(&self.testpaths.file, Some(&mut other_files)),
-        );
+        let normalized = fs::canonicalize(&self.testpaths.file).expect("failed to canonicalize");
+        let normalized = normalized.to_str().unwrap().replace('\\', "/");
+        files.insert(normalized, self.get_lines(&self.testpaths.file, Some(&mut other_files)));
         for other_file in other_files {
             let mut path = self.testpaths.file.clone();
             path.set_file_name(&format!("{}.rs", other_file));
-            files.insert(
-                path.strip_prefix(&cwd).unwrap_or(&path).to_str().unwrap().replace('\\', "/"),
-                self.get_lines(&path, None),
-            );
+            let path = fs::canonicalize(path).expect("failed to canonicalize");
+            let normalized = path.to_str().unwrap().replace('\\', "/");
+            files.insert(normalized, self.get_lines(&path, None));
         }
 
         let mut tested = 0;
         for _ in res.stdout.split('\n').filter(|s| s.starts_with("test ")).inspect(|s| {
             if let Some((left, right)) = s.split_once(" - ") {
                 let path = left.rsplit("test ").next().unwrap();
-                if let Some(ref mut v) = files.get_mut(&path.replace('\\', "/")) {
+                let path = fs::canonicalize(&path).expect("failed to canonicalize");
+                let path = path.to_str().unwrap().replace('\\', "/");
+                if let Some(ref mut v) = files.get_mut(&path) {
                     tested += 1;
                     let mut iter = right.split("(line ");
                     iter.next();
@@ -3010,11 +3004,17 @@ impl<'test> TestCx<'test> {
         const PREFIX: &str = "MONO_ITEM ";
         const CGU_MARKER: &str = "@@";
 
+        // Some MonoItems can contain {closure@/path/to/checkout/tests/codgen-units/test.rs}
+        // To prevent the current dir from leaking, we just replace the entire path to the test
+        // file with TEST_PATH.
         let actual: Vec<MonoItem> = proc_res
             .stdout
             .lines()
             .filter(|line| line.starts_with(PREFIX))
-            .map(|line| str_to_mono_item(line, true))
+            .map(|line| {
+                line.replace(&self.testpaths.file.display().to_string(), "TEST_PATH").to_string()
+            })
+            .map(|line| str_to_mono_item(&line, true))
             .collect();
 
         let expected: Vec<MonoItem> = errors::load_errors(&self.testpaths.file, None)
@@ -3712,15 +3712,14 @@ impl<'test> TestCx<'test> {
         }
 
         if self.config.bless {
-            cmd.env("RUSTC_BLESS_TEST", "--bless");
-            // Assume this option is active if the environment variable is "defined", with _any_ value.
-            // As an example, a `Makefile` can use this option by:
+            // If we're running in `--bless` mode, set an environment variable to tell
+            // `run_make_support` to bless snapshot files instead of checking them.
             //
-            //   ifdef RUSTC_BLESS_TEST
-            //       cp "$(TMPDIR)"/actual_something.ext expected_something.ext
-            //   else
-            //       $(DIFF) expected_something.ext "$(TMPDIR)"/actual_something.ext
-            //   endif
+            // The value is this test's source directory, because the support code
+            // will need that path in order to bless the _original_ snapshot files,
+            // not the copies in `rmake_out`.
+            // (See <https://github.com/rust-lang/rust/issues/129038>.)
+            cmd.env("RUSTC_BLESS_TEST", &self.testpaths.file);
         }
 
         if self.config.target.contains("msvc") && !self.config.cc.is_empty() {
@@ -3786,7 +3785,7 @@ impl<'test> TestCx<'test> {
         if let Some(nodejs) = &self.config.nodejs {
             let out_dir = self.output_base_dir();
 
-            self.document(&out_dir);
+            self.document(&out_dir, &self.testpaths);
 
             let root = self.config.find_rust_src_root().unwrap();
             let file_stem =
@@ -4102,7 +4101,7 @@ impl<'test> TestCx<'test> {
                 rustc.arg(crate_name);
             }
 
-            let res = self.compose_and_run_compiler(rustc, None);
+            let res = self.compose_and_run_compiler(rustc, None, self.testpaths);
             if !res.status.success() {
                 self.fatal_proc_rec("failed to compile fixed code", &res);
             }

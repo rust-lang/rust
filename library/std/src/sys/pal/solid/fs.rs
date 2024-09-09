@@ -1,18 +1,16 @@
 use super::{abi, error};
-use crate::{
-    ffi::{CStr, CString, OsStr, OsString},
-    fmt,
-    io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom},
-    mem::MaybeUninit,
-    os::raw::{c_int, c_short},
-    os::solid::ffi::OsStrExt,
-    path::{Path, PathBuf},
-    sync::Arc,
-    sys::time::SystemTime,
-    sys::unsupported,
-};
-
+use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::fmt;
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
+use crate::mem::MaybeUninit;
+use crate::os::raw::{c_int, c_short};
+use crate::os::solid::ffi::OsStrExt;
+use crate::path::{Path, PathBuf};
+use crate::sync::Arc;
+use crate::sys::time::SystemTime;
+use crate::sys::unsupported;
 pub use crate::sys_common::fs::exists;
+use crate::sys_common::ignore_notfound;
 
 /// A file descriptor.
 #[derive(Clone, Copy)]
@@ -530,15 +528,23 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     for child in readdir(path)? {
-        let child = child?;
-        let child_type = child.file_type()?;
-        if child_type.is_dir() {
-            remove_dir_all(&child.path())?;
-        } else {
-            unlink(&child.path())?;
+        let result: io::Result<()> = try {
+            let child = child?;
+            let child_type = child.file_type()?;
+            if child_type.is_dir() {
+                remove_dir_all(&child.path())?;
+            } else {
+                unlink(&child.path())?;
+            }
+        };
+        // ignore internal NotFound errors
+        if let Err(err) = &result
+            && err.kind() != io::ErrorKind::NotFound
+        {
+            return result;
         }
     }
-    rmdir(path)
+    ignore_notfound(rmdir(path))
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {

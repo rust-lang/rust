@@ -68,7 +68,7 @@ pub enum IsolatedOp {
     Allow,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BacktraceStyle {
     /// Prints a terser backtrace which ideally only contains relevant information.
     Short,
@@ -78,6 +78,16 @@ pub enum BacktraceStyle {
     Off,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ValidationMode {
+    /// Do not perform any kind of validation.
+    No,
+    /// Validate the interior of the value, but not things behind references.
+    Shallow,
+    /// Fully recursively validate references.
+    Deep,
+}
+
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
@@ -85,7 +95,7 @@ pub struct MiriConfig {
     /// (This is still subject to isolation as well as `forwarded_env_vars`.)
     pub env: Vec<(OsString, OsString)>,
     /// Determine if validity checking is enabled.
-    pub validate: bool,
+    pub validation: ValidationMode,
     /// Determines if Stacked Borrows or Tree Borrows is enabled.
     pub borrow_tracker: Option<BorrowTrackerMethod>,
     /// Whether `core::ptr::Unique` receives special treatment.
@@ -108,8 +118,6 @@ pub struct MiriConfig {
     pub seed: Option<u64>,
     /// The stacked borrows pointer ids to report about
     pub tracked_pointer_tags: FxHashSet<BorTag>,
-    /// The stacked borrows call IDs to report about
-    pub tracked_call_ids: FxHashSet<CallId>,
     /// The allocation ids to report about.
     pub tracked_alloc_ids: FxHashSet<AllocId>,
     /// For the tracked alloc ids, also report read/write accesses.
@@ -162,7 +170,7 @@ impl Default for MiriConfig {
     fn default() -> MiriConfig {
         MiriConfig {
             env: vec![],
-            validate: true,
+            validation: ValidationMode::Shallow,
             borrow_tracker: Some(BorrowTrackerMethod::StackedBorrows),
             unique_is_unique: false,
             check_alignment: AlignmentCheck::Int,
@@ -173,7 +181,6 @@ impl Default for MiriConfig {
             args: vec![],
             seed: None,
             tracked_pointer_tags: FxHashSet::default(),
-            tracked_call_ids: FxHashSet::default(),
             tracked_alloc_ids: FxHashSet::default(),
             track_alloc_accesses: false,
             data_race_detector: true,
@@ -297,7 +304,8 @@ pub fn create_ecx<'tcx>(
     // First argument is constructed later, because it's skipped if the entry function uses #[start].
 
     // Second argument (argc): length of `config.args`.
-    let argc = Scalar::from_target_usize(u64::try_from(config.args.len()).unwrap(), &ecx);
+    let argc =
+        ImmTy::from_int(i64::try_from(config.args.len()).unwrap(), ecx.machine.layouts.isize);
     // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
@@ -324,13 +332,11 @@ pub fn create_ecx<'tcx>(
             ecx.write_immediate(arg, &place)?;
         }
         ecx.mark_immutable(&argvs_place);
-        // A pointer to that place is the 3rd argument for main.
-        let argv = argvs_place.to_ref(&ecx);
         // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
         {
             let argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
-            ecx.write_scalar(argc, &argc_place)?;
+            ecx.write_immediate(*argc, &argc_place)?;
             ecx.mark_immutable(&argc_place);
             ecx.machine.argc = Some(argc_place.ptr());
 
@@ -338,7 +344,7 @@ pub fn create_ecx<'tcx>(
                 ecx.layout_of(Ty::new_imm_ptr(tcx, tcx.types.unit))?,
                 MiriMemoryKind::Machine.into(),
             )?;
-            ecx.write_immediate(argv, &argv_place)?;
+            ecx.write_pointer(argvs_place.ptr(), &argv_place)?;
             ecx.mark_immutable(&argv_place);
             ecx.machine.argv = Some(argv_place.ptr());
         }
@@ -359,7 +365,7 @@ pub fn create_ecx<'tcx>(
             }
             ecx.mark_immutable(&cmd_place);
         }
-        argv
+        ecx.mplace_to_ref(&argvs_place)?
     };
 
     // Return place (in static memory so that it does not count as leak).
@@ -395,10 +401,14 @@ pub fn create_ecx<'tcx>(
                 start_instance,
                 Abi::Rust,
                 &[
-                    Scalar::from_pointer(main_ptr, &ecx).into(),
-                    argc.into(),
+                    ImmTy::from_scalar(
+                        Scalar::from_pointer(main_ptr, &ecx),
+                        // FIXME use a proper fn ptr type
+                        ecx.machine.layouts.const_raw_ptr,
+                    ),
+                    argc,
                     argv,
-                    Scalar::from_u8(sigpipe).into(),
+                    ImmTy::from_uint(sigpipe, ecx.machine.layouts.u8),
                 ],
                 Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
@@ -408,7 +418,7 @@ pub fn create_ecx<'tcx>(
             ecx.call_function(
                 entry_instance,
                 Abi::Rust,
-                &[argc.into(), argv],
+                &[argc, argv],
                 Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
             )?;
@@ -447,11 +457,8 @@ pub fn eval_entry<'tcx>(
         ecx.handle_ice();
         panic::resume_unwind(panic_payload)
     });
-    let res = match res {
-        Err(res) => res,
-        // `Ok` can never happen
-        Ok(never) => match never {},
-    };
+    // `Ok` can never happen.
+    let Err(res) = res;
 
     // Machine cleanup. Only do this if all threads have terminated; threads that are still running
     // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).

@@ -34,6 +34,7 @@ fn foo() {
 
 #[target_feature(enable = "sse2")]
 fn bar() {
+    sse2();
     avx_bmi2();
     //~^ ERROR call to function `avx_bmi2` with `#[target_feature]` is unsafe
     Quux.avx_bmi2();
@@ -43,7 +44,6 @@ fn bar() {
 #[target_feature(enable = "avx")]
 fn baz() {
     sse2();
-    //~^ ERROR call to function `sse2` with `#[target_feature]` is unsafe
     avx_bmi2();
     //~^ ERROR call to function `avx_bmi2` with `#[target_feature]` is unsafe
     Quux.avx_bmi2();
@@ -54,7 +54,8 @@ fn baz() {
 #[target_feature(enable = "bmi2")]
 fn qux() {
     sse2();
-    //~^ ERROR call to function `sse2` with `#[target_feature]` is unsafe
+    avx_bmi2();
+    Quux.avx_bmi2();
 }
 
 const _: () = sse2();
@@ -64,8 +65,6 @@ const _: () = sse2_and_fxsr();
 //~^ ERROR call to function `sse2_and_fxsr` with `#[target_feature]` is unsafe
 
 #[deny(unsafe_op_in_unsafe_fn)]
-#[target_feature(enable = "avx")]
-#[target_feature(enable = "bmi2")]
 unsafe fn needs_unsafe_block() {
     sse2();
     //~^ ERROR call to function `sse2` with `#[target_feature]` is unsafe

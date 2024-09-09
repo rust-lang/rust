@@ -5,8 +5,8 @@ use project_model::{CargoConfig, RustLibSource};
 use rustc_hash::FxHashSet;
 
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module};
-use ide::{AnalysisHost, AssistResolveStrategy, DiagnosticsConfig, Severity};
-use ide_db::base_db::SourceDatabaseExt;
+use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};
+use ide_db::{base_db::SourceRootDatabase, LineIndexDatabase};
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 
 use crate::cli::flags;
@@ -48,7 +48,7 @@ impl flags::Diagnostics {
 
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id);
+            let source_root = db.file_source_root(file_id.into());
             let source_root = db.source_root(source_root);
             !source_root.is_library
         });
@@ -58,12 +58,15 @@ impl flags::Diagnostics {
             if !visited_files.contains(&file_id) {
                 let crate_name =
                     module.krate().display_name(db).as_deref().unwrap_or("unknown").to_owned();
-                println!("processing crate: {crate_name}, module: {}", _vfs.file_path(file_id));
+                println!(
+                    "processing crate: {crate_name}, module: {}",
+                    _vfs.file_path(file_id.into())
+                );
                 for diagnostic in analysis
-                    .diagnostics(
+                    .full_diagnostics(
                         &DiagnosticsConfig::test_sample(),
                         AssistResolveStrategy::None,
-                        file_id,
+                        file_id.into(),
                     )
                     .unwrap()
                 {
@@ -71,7 +74,11 @@ impl flags::Diagnostics {
                         found_error = true;
                     }
 
-                    println!("{diagnostic:?}");
+                    let Diagnostic { code, message, range, severity, .. } = diagnostic;
+                    let line_index = db.line_index(range.file_id);
+                    let start = line_index.line_col(range.range.start());
+                    let end = line_index.line_col(range.range.end());
+                    println!("{severity:?} {code:?} from {start:?} to {end:?}: {message}");
                 }
 
                 visited_files.insert(file_id);

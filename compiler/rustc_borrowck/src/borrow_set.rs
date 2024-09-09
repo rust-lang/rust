@@ -1,16 +1,18 @@
-use crate::path_utils::allow_two_phase_borrow;
-use crate::place_ext::PlaceExt;
-use crate::BorrowIndex;
+use std::fmt;
+use std::ops::Index;
+
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, Body, Local, Location};
+use rustc_middle::mir::{self, traversal, Body, Local, Location};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;
-use std::fmt;
-use std::ops::Index;
+use tracing::debug;
+
+use crate::path_utils::allow_two_phase_borrow;
+use crate::place_ext::PlaceExt;
+use crate::BorrowIndex;
 
 pub struct BorrowSet<'tcx> {
     /// The fundamental map relating bitvector indexes to the borrows

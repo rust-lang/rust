@@ -7,25 +7,6 @@
 //!
 //! The output types are defined in `rustc_session::config::ErrorOutputType`.
 
-use rustc_span::source_map::SourceMap;
-use rustc_span::{char_width, FileLines, FileName, SourceFile, Span};
-
-use crate::snippet::{
-    Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
-};
-use crate::styled_buffer::StyledBuffer;
-use crate::translation::{to_fluent_args, Translate};
-use crate::{
-    diagnostic::DiagLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode,
-    FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
-    SuggestionStyle, TerminalUrl,
-};
-use derive_setters::Setters;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
-use rustc_error_messages::{FluentArgs, SpanLabel};
-use rustc_lint_defs::pluralize;
-use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
 use std::error::Report;
@@ -33,9 +14,28 @@ use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
-use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
-use termcolor::{Color, WriteColor};
+
+use derive_setters::Setters;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
+use rustc_error_messages::{FluentArgs, SpanLabel};
+use rustc_lint_defs::pluralize;
+use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{char_width, FileLines, FileName, SourceFile, Span};
+use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing::{debug, instrument, trace, warn};
+
+use crate::diagnostic::DiagLocation;
+use crate::snippet::{
+    Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
+};
+use crate::styled_buffer::StyledBuffer;
+use crate::translation::{to_fluent_args, Translate};
+use crate::{
+    CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle,
+    Level, MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+};
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
 const DEFAULT_COLUMN_WIDTH: usize = 140;
@@ -43,19 +43,14 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
-    Default(ColorConfig),
-    AnnotateSnippet(ColorConfig),
-    Short(ColorConfig),
+    Default,
+    AnnotateSnippet,
+    Short,
 }
 
 impl HumanReadableErrorType {
-    /// Returns a (`short`, `color`) tuple
-    pub fn unzip(self) -> (bool, ColorConfig) {
-        match self {
-            HumanReadableErrorType::Default(cc) => (false, cc),
-            HumanReadableErrorType::Short(cc) => (true, cc),
-            HumanReadableErrorType::AnnotateSnippet(cc) => (false, cc),
-        }
+    pub fn short(&self) -> bool {
+        *self == HumanReadableErrorType::Short
     }
 }
 
@@ -231,17 +226,17 @@ pub trait Emitter: Translate {
     ) {
         if let Some((sugg, rest)) = suggestions.split_first() {
             let msg = self.translate_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
-            if rest.is_empty() &&
+            if rest.is_empty()
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
-               sugg.substitutions.len() == 1 &&
+               && let [substitution] = sugg.substitutions.as_slice()
                // don't display multipart suggestions as labels
-               sugg.substitutions[0].parts.len() == 1 &&
+               && let [part] = substitution.parts.as_slice()
                // don't display long messages as labels
-               msg.split_whitespace().count() < 10 &&
+               && msg.split_whitespace().count() < 10
                // don't display multiline suggestions as labels
-               !sugg.substitutions[0].parts[0].snippet.contains('\n') &&
-               ![
+               && !part.snippet.contains('\n')
+               && ![
                     // when this style is set we want the suggestion to be a message, not inline
                     SuggestionStyle::HideCodeAlways,
                     // trivial suggestion for tooling's sake, never shown
@@ -250,8 +245,8 @@ pub trait Emitter: Translate {
                     SuggestionStyle::ShowAlways,
                ].contains(&sugg.style)
             {
-                let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
-                let msg = if substitution.is_empty() || sugg.style.hide_inline() {
+                let snippet = part.snippet.trim();
+                let msg = if snippet.is_empty() || sugg.style.hide_inline() {
                     // This substitution is only removal OR we explicitly don't want to show the
                     // code inline (`hide_inline`). Therefore, we don't show the substitution.
                     format!("help: {msg}")
@@ -260,19 +255,18 @@ pub trait Emitter: Translate {
                     format!(
                         "help: {}{}: `{}`",
                         msg,
-                        if self.source_map().is_some_and(|sm| is_case_difference(
-                            sm,
-                            substitution,
-                            sugg.substitutions[0].parts[0].span,
-                        )) {
+                        if self
+                            .source_map()
+                            .is_some_and(|sm| is_case_difference(sm, snippet, part.span,))
+                        {
                             " (notice the capitalization)"
                         } else {
                             ""
                         },
-                        substitution,
+                        snippet,
                     )
                 };
-                primary_span.push_span_label(sugg.substitutions[0].parts[0].span, msg);
+                primary_span.push_span_label(part.span, msg);
 
                 // We return only the modified primary_span
                 suggestions.clear();
@@ -1346,10 +1340,11 @@ impl HumanEmitter {
                 buffer.append(0, ": ", header_style);
                 label_width += 2;
             }
-            for (text, _) in msgs.iter() {
+            let mut line = 0;
+            for (text, style) in msgs.iter() {
                 let text = self.translate_message(text, args).map_err(Report::new).unwrap();
                 // Account for newlines to align output to its label.
-                for (line, text) in normalize_whitespace(&text).lines().enumerate() {
+                for text in normalize_whitespace(&text).lines() {
                     buffer.append(
                         line,
                         &format!(
@@ -1357,8 +1352,38 @@ impl HumanEmitter {
                             if line == 0 { String::new() } else { " ".repeat(label_width) },
                             text
                         ),
-                        header_style,
+                        match style {
+                            Style::Highlight => *style,
+                            _ => header_style,
+                        },
                     );
+                    line += 1;
+                }
+                // We add lines above, but if the last line has no explicit newline (which would
+                // yield an empty line), then we revert one line up to continue with the next
+                // styled text chunk on the same line as the last one from the prior one. Otherwise
+                // every `text` would appear on their own line (because even though they didn't end
+                // in '\n', they advanced `line` by one).
+                if line > 0 {
+                    line -= 1;
+                }
+            }
+            if self.short_message {
+                let labels = msp
+                    .span_labels()
+                    .into_iter()
+                    .filter_map(|label| match label.label {
+                        Some(msg) if label.is_primary => {
+                            let text = self.translate_message(&msg, args).ok()?;
+                            if !text.trim().is_empty() { Some(text.to_string()) } else { None }
+                        }
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                if !labels.is_empty() {
+                    buffer.append(line, ": ", Style::NoStyle);
+                    buffer.append(line, &labels, Style::NoStyle);
                 }
             }
         }
@@ -1767,7 +1792,10 @@ impl HumanEmitter {
         debug!(?suggestions);
 
         if suggestions.is_empty() {
-            // Suggestions coming from macros can have malformed spans. This is a heavy handed
+            // Here we check if there are suggestions that have actual code changes. We sometimes
+            // suggest the same code that is already there, instead of changing how we produce the
+            // suggestions and filtering there, we just don't emit the suggestion.
+            // Suggestions coming from macros can also have malformed spans. This is a heavy handed
             // approach to avoid ICEs by ignoring the suggestion outright.
             return Ok(());
         }
@@ -2046,7 +2074,9 @@ impl HumanEmitter {
                     assert!(underline_start >= 0 && underline_end >= 0);
                     let padding: usize = max_line_num_len + 3;
                     for p in underline_start..underline_end {
-                        if let DisplaySuggestion::Underline = show_code_change {
+                        if let DisplaySuggestion::Underline = show_code_change
+                            && is_different(sm, &part.snippet, part.span)
+                        {
                             // If this is a replacement, underline with `~`, if this is an addition
                             // underline with `+`.
                             buffer.putc(
@@ -2270,7 +2300,7 @@ impl HumanEmitter {
                     // For example, for the following:
                     //   |
                     // 2 -     .await
-                    // 2 +     (note the left over whitepsace)
+                    // 2 +     (note the left over whitespace)
                     //   |
                     // We really want
                     //   |
@@ -2357,7 +2387,7 @@ enum DisplaySuggestion {
 impl FileWithAnnotatedLines {
     /// Preprocess all the annotations so that they are grouped by file and by line number
     /// This helps us quickly iterate over the whole message (including secondary file spans)
-    pub fn collect_annotations(
+    pub(crate) fn collect_annotations(
         emitter: &dyn Emitter,
         args: &FluentArgs<'_>,
         msp: &MultiSpan,
@@ -2560,21 +2590,10 @@ fn num_decimal_digits(num: usize) -> usize {
 // We replace some characters so the CLI output is always consistent and underlines aligned.
 // Keep the following list in sync with `rustc_span::char_width`.
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
-    ('\t', "    "),    // We do our own tab replacement
-    ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
-    ('\u{202A}', "�"), // The following unicode text flow control characters are inconsistently
-    ('\u{202B}', "�"), // supported across CLIs and can cause confusion due to the bytes on disk
-    ('\u{202D}', "�"), // not corresponding to the visible source code, so we replace them always.
-    ('\u{202E}', "�"),
-    ('\u{2066}', "�"),
-    ('\u{2067}', "�"),
-    ('\u{2068}', "�"),
-    ('\u{202C}', "�"),
-    ('\u{2069}', "�"),
     // In terminals without Unicode support the following will be garbled, but in *all* terminals
     // the underlying codepoint will be as well. We could gate this replacement behind a "unicode
     // support" gate.
-    ('\u{0000}', "␀"),
+    ('\0', "␀"),
     ('\u{0001}', "␁"),
     ('\u{0002}', "␂"),
     ('\u{0003}', "␃"),
@@ -2583,11 +2602,12 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\u{0006}', "␆"),
     ('\u{0007}', "␇"),
     ('\u{0008}', "␈"),
-    ('\u{000B}', "␋"),
-    ('\u{000C}', "␌"),
-    ('\u{000D}', "␍"),
-    ('\u{000E}', "␎"),
-    ('\u{000F}', "␏"),
+    ('\t', "    "), // We do our own tab replacement
+    ('\u{000b}', "␋"),
+    ('\u{000c}', "␌"),
+    ('\u{000d}', "␍"),
+    ('\u{000e}', "␎"),
+    ('\u{000f}', "␏"),
     ('\u{0010}', "␐"),
     ('\u{0011}', "␑"),
     ('\u{0012}', "␒"),
@@ -2598,21 +2618,47 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\u{0017}', "␗"),
     ('\u{0018}', "␘"),
     ('\u{0019}', "␙"),
-    ('\u{001A}', "␚"),
-    ('\u{001B}', "␛"),
-    ('\u{001C}', "␜"),
-    ('\u{001D}', "␝"),
-    ('\u{001E}', "␞"),
-    ('\u{001F}', "␟"),
-    ('\u{007F}', "␡"),
+    ('\u{001a}', "␚"),
+    ('\u{001b}', "␛"),
+    ('\u{001c}', "␜"),
+    ('\u{001d}', "␝"),
+    ('\u{001e}', "␞"),
+    ('\u{001f}', "␟"),
+    ('\u{007f}', "␡"),
+    ('\u{200d}', ""), // Replace ZWJ for consistent terminal output of grapheme clusters.
+    ('\u{202a}', "�"), // The following unicode text flow control characters are inconsistently
+    ('\u{202b}', "�"), // supported across CLIs and can cause confusion due to the bytes on disk
+    ('\u{202c}', "�"), // not corresponding to the visible source code, so we replace them always.
+    ('\u{202d}', "�"),
+    ('\u{202e}', "�"),
+    ('\u{2066}', "�"),
+    ('\u{2067}', "�"),
+    ('\u{2068}', "�"),
+    ('\u{2069}', "�"),
 ];
 
-fn normalize_whitespace(str: &str) -> String {
-    let mut s = str.to_string();
-    for (c, replacement) in OUTPUT_REPLACEMENTS {
-        s = s.replace(*c, replacement);
+fn normalize_whitespace(s: &str) -> String {
+    const {
+        let mut i = 1;
+        while i < OUTPUT_REPLACEMENTS.len() {
+            assert!(
+                OUTPUT_REPLACEMENTS[i - 1].0 < OUTPUT_REPLACEMENTS[i].0,
+                "The OUTPUT_REPLACEMENTS array must be sorted (for binary search to work) \
+                and must contain no duplicate entries"
+            );
+            i += 1;
+        }
     }
-    s
+    // Scan the input string for a character in the ordered table above.
+    // If it's present, replace it with its alternative string (it can be more than 1 char!).
+    // Otherwise, retain the input char.
+    s.chars().fold(String::with_capacity(s.len()), |mut s, c| {
+        match OUTPUT_REPLACEMENTS.binary_search_by_key(&c, |(k, _)| *k) {
+            Ok(i) => s.push_str(OUTPUT_REPLACEMENTS[i].1),
+            _ => s.push(c),
+        }
+        s
+    })
 }
 
 fn draw_col_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {
@@ -2822,6 +2868,18 @@ impl Style {
         }
         spec
     }
+}
+
+/// Whether the original and suggested code are the same.
+pub fn is_different(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
+    let found = match sm.span_to_snippet(sp) {
+        Ok(snippet) => snippet,
+        Err(e) => {
+            warn!(error = ?e, "Invalid span {:?}", sp);
+            return true;
+        }
+    };
+    found != suggested
 }
 
 /// Whether the original and suggested code are visually similar enough to warrant extra wording.

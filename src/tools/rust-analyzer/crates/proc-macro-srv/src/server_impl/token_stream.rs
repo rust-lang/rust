@@ -126,8 +126,12 @@ pub(super) mod token_stream {
     /// change these errors into `LexError`s later.
     impl<S: Copy + fmt::Debug> TokenStream<S> {
         pub(crate) fn from_str(src: &str, call_site: S) -> Result<TokenStream<S>, String> {
-            let subtree =
-                mbe::parse_to_token_tree_static_span(call_site, src).ok_or("lexing error")?;
+            let subtree = syntax_bridge::parse_to_token_tree_static_span(
+                span::Edition::CURRENT_FIXME,
+                call_site,
+                src,
+            )
+            .ok_or_else(|| format!("lexing error: {src}"))?;
 
             Ok(TokenStream::with_subtree(subtree))
         }

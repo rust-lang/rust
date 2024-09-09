@@ -1,7 +1,7 @@
-use crate::utils::{get_sysroot_dir, remove_file, run_command};
-
 use std::fs::remove_dir_all;
 use std::path::Path;
+
+use crate::utils::{get_sysroot_dir, remove_file, run_command};
 
 #[derive(Default)]
 enum CleanArg {

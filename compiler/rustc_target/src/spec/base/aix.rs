@@ -1,7 +1,7 @@
 use crate::abi::Endian;
 use crate::spec::{crt_objects, cvs, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         abi: "vec-extabi".into(),
         code_model: Some(CodeModel::Small),

@@ -2,7 +2,6 @@
 // when trying to handle a Vec<> or anything else that contains zero-sized
 // fields.
 
-//@ min-lldb-version: 310
 //@ ignore-gdb
 
 //@ compile-flags:-g
@@ -11,12 +10,9 @@
 // lldb-command:run
 
 // lldb-command:v v
-// lldbg-check:[...] size=3 { [0] = 1 [1] = 2 [2] = 3 }
-// lldbr-check:(alloc::vec::Vec<i32>) v = size=3 { [0] = 1 [1] = 2 [2] = 3 }
+// lldb-check:[...] size=3 { [0] = 1 [1] = 2 [2] = 3 }
 // lldb-command:v zs
-// lldbg-check:[...] { x = y = 123 z = w = 456 }
-// lldbr-check:(issue_22656::StructWithZeroSizedField) zs = { x = y = 123 z = w = 456 }
-// lldbr-command:continue
+// lldb-check:[...] { x = y = 123 z = w = 456 }
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

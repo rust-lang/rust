@@ -1,28 +1,34 @@
+use std::fmt;
+
+use rustc_ast as ast;
+use rustc_ast::util::parser::ExprPrecedence;
+use rustc_ast::{
+    Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitKind,
+    TraitObjectSyntax, UintTy,
+};
+pub use rustc_ast::{
+    BinOp, BinOpKind, BindingMode, BorrowKind, ByRef, CaptureBy, ImplPolarity, IsAuto, Movability,
+    Mutability, UnOp,
+};
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::sorted_map::SortedMap;
+use rustc_index::IndexVec;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::def_id::LocalDefId;
+use rustc_span::hygiene::MacroKind;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::{BytePos, ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_target::asm::InlineAsmRegOrRegClass;
+use rustc_target::spec::abi::Abi;
+use smallvec::SmallVec;
+use tracing::debug;
+
 use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::FnKind;
 use crate::LangItem;
-use rustc_ast as ast;
-use rustc_ast::util::parser::ExprPrecedence;
-use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
-pub use rustc_ast::{BinOp, BinOpKind, BindingMode, BorrowKind, ByRef, CaptureBy};
-pub use rustc_ast::{ImplPolarity, IsAuto, Movability, Mutability, UnOp};
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::sorted_map::SortedMap;
-use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::ErrorGuaranteed;
-use rustc_span::{def_id::LocalDefId, BytePos, Span, DUMMY_SP};
-use rustc_target::asm::InlineAsmRegOrRegClass;
-use rustc_target::spec::abi::Abi;
-use smallvec::SmallVec;
-use std::fmt;
-use tracing::debug;
 
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
@@ -1389,7 +1395,7 @@ pub struct LetExpr<'hir> {
     pub pat: &'hir Pat<'hir>,
     pub ty: Option<&'hir Ty<'hir>>,
     pub init: &'hir Expr<'hir>,
-    /// `Recovered::Yes` when this let expressions is not in a syntanctically valid location.
+    /// `Recovered::Yes` when this let expressions is not in a syntactically valid location.
     /// Used to prevent building MIR in such situations.
     pub recovered: ast::Recovered,
 }
@@ -2767,7 +2773,6 @@ impl PreciseCapturingArg<'_> {
 /// resolution to. Lifetimes don't have this problem, and for them, it's actually
 /// kind of detrimental to use a custom node type versus just using [`Lifetime`],
 /// since resolve_bound_vars operates on `Lifetime`s.
-// FIXME(precise_capturing): Investigate storing this as a path instead?
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct PreciseCapturingNonLifetimeArg {
     pub hir_id: HirId,
@@ -2832,7 +2837,11 @@ pub enum TyKind<'hir> {
     OpaqueDef(ItemId, &'hir [GenericArg<'hir>], bool),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
+    TraitObject(
+        &'hir [(PolyTraitRef<'hir>, TraitBoundModifier)],
+        &'hir Lifetime,
+        TraitObjectSyntax,
+    ),
     /// Unused for now.
     Typeof(&'hir AnonConst),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
@@ -2940,6 +2949,17 @@ pub struct FnDecl<'hir> {
     pub implicit_self: ImplicitSelfKind,
     /// Is lifetime elision allowed.
     pub lifetime_elision_allowed: bool,
+}
+
+impl<'hir> FnDecl<'hir> {
+    pub fn opt_delegation_sig_id(&self) -> Option<DefId> {
+        if let FnRetTy::Return(ty) = self.output
+            && let TyKind::InferDelegation(sig_id, _) = ty.kind
+        {
+            return Some(sig_id);
+        }
+        None
+    }
 }
 
 /// Represents what type of implicit self a function has, if any.
@@ -3565,7 +3585,7 @@ impl ForeignItem<'_> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ForeignItemKind<'hir> {
     /// A foreign function.
-    Fn(&'hir FnDecl<'hir>, &'hir [Ident], &'hir Generics<'hir>, Safety),
+    Fn(FnSig<'hir>, &'hir [Ident], &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
     Static(&'hir Ty<'hir>, Mutability, Safety),
     /// A foreign type.
@@ -3624,7 +3644,10 @@ impl<'hir> OwnerNode<'hir> {
         match self {
             OwnerNode::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
-            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig),
+            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. })
+            | OwnerNode::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(fn_sig, _, _), ..
+            }) => Some(fn_sig),
             _ => None,
         }
     }
@@ -3633,11 +3656,10 @@ impl<'hir> OwnerNode<'hir> {
         match self {
             OwnerNode::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
-            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
-            OwnerNode::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(fn_decl, _, _, _),
-                ..
-            }) => Some(fn_decl),
+            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. })
+            | OwnerNode::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(fn_sig, _, _), ..
+            }) => Some(fn_sig.decl),
             _ => None,
         }
     }
@@ -3677,6 +3699,11 @@ impl<'hir> OwnerNode<'hir> {
             OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
             OwnerNode::Synthetic => unreachable!(),
         }
+    }
+
+    /// Check if node is an impl block.
+    pub fn is_impl_block(&self) -> bool {
+        matches!(self, OwnerNode::Item(Item { kind: ItemKind::Impl(_), .. }))
     }
 
     expect_methods_self! {
@@ -3820,11 +3847,13 @@ impl<'hir> Node<'hir> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
-            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
-            Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. })
-            | Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(fn_decl, _, _, _), ..
-            }) => Some(fn_decl),
+            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. })
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _, _), .. }) => {
+                Some(fn_sig.decl)
+            }
+            Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. }) => {
+                Some(fn_decl)
+            }
             _ => None,
         }
     }
@@ -3848,7 +3877,10 @@ impl<'hir> Node<'hir> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
-            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig),
+            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. })
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _, _), .. }) => {
+                Some(fn_sig)
+            }
             _ => None,
         }
     }
@@ -3923,7 +3955,7 @@ impl<'hir> Node<'hir> {
     pub fn generics(self) -> Option<&'hir Generics<'hir>> {
         match self {
             Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(_, _, generics, _), ..
+                kind: ForeignItemKind::Fn(_, _, generics), ..
             })
             | Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
@@ -4004,16 +4036,17 @@ impl<'hir> Node<'hir> {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 24);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
-    static_assert_size!(ForeignItem<'_>, 72);
-    static_assert_size!(ForeignItemKind<'_>, 40);
+    static_assert_size!(ForeignItem<'_>, 88);
+    static_assert_size!(ForeignItemKind<'_>, 56);
     static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);

@@ -2,7 +2,8 @@
 // unresolved type variables and replaces "ty_var" types with their
 // generic parameters.
 
-use crate::FnCtxt;
+use std::mem;
+
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
@@ -13,14 +14,14 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::TypeSuperFoldable;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperFoldable};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::solve;
+use tracing::{debug, instrument};
 
-use std::mem;
+use crate::FnCtxt;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
@@ -35,7 +36,7 @@ use std::mem;
 // resolve_type_vars_in_body, which creates a new TypeTables which
 // doesn't contain any inference types.
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn resolve_type_vars_in_body(
+    pub(crate) fn resolve_type_vars_in_body(
         &self,
         body: &'tcx hir::Body<'tcx>,
     ) -> &'tcx ty::TypeckResults<'tcx> {

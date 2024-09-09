@@ -1,10 +1,12 @@
 //! Custom formatting traits used when outputting Graphviz diagrams with the results of a dataflow
 //! analysis.
 
-use super::lattice::MaybeReachable;
+use std::fmt;
+
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::Idx;
-use std::fmt;
+
+use super::lattice::MaybeReachable;
 
 /// An extension to `fmt::Debug` for data that can be better printed with some auxiliary data `C`.
 pub trait DebugWithContext<C>: Eq + fmt::Debug {

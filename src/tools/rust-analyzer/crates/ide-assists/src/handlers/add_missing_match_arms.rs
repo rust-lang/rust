@@ -1,7 +1,7 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, Crate, HasAttrs, HasSource, ImportPathConfig, ModuleDef, Semantics};
+use hir::{sym, Adt, Crate, HasAttrs, HasSource, ImportPathConfig, ModuleDef, Semantics};
 use ide_db::RootDatabase;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
@@ -71,11 +71,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
         .collect();
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     let module = ctx.sema.scope(expr.syntax())?.module();
     let (mut missing_pats, is_non_exhaustive, has_hidden_variants): (
@@ -381,7 +377,7 @@ impl ExtendedEnum {
     fn is_non_exhaustive(self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
             ExtendedEnum::Enum(e) => {
-                e.attrs(db).by_key("non_exhaustive").exists() && e.module(db).krate() != krate
+                e.attrs(db).by_key(&sym::non_exhaustive).exists() && e.module(db).krate() != krate
             }
             _ => false,
         }
@@ -449,7 +445,8 @@ fn build_pat(
 ) -> Option<ast::Pat> {
     match var {
         ExtendedVariant::Variant(var) => {
-            let path = mod_path_to_ast(&module.find_path(db, ModuleDef::from(var), cfg)?);
+            let edition = module.krate().edition(db);
+            let path = mod_path_to_ast(&module.find_path(db, ModuleDef::from(var), cfg)?, edition);
             // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
             Some(match var.source(db)?.value.kind() {
                 ast::StructKind::Tuple(field_list) => {

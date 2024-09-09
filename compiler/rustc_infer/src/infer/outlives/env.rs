@@ -1,12 +1,13 @@
-use crate::infer::free_regions::FreeRegionMap;
-use crate::infer::GenericKind;
-use crate::traits::query::OutlivesBound;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Region};
+use tracing::{debug, instrument};
 
 use super::explicit_outlives_bounds;
+use crate::infer::free_regions::FreeRegionMap;
+use crate::infer::GenericKind;
+use crate::traits::query::OutlivesBound;
 
 /// The `OutlivesEnvironment` collects information about what outlives
 /// what in a given type-checking setting. For example, if we have a

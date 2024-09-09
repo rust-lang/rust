@@ -1,18 +1,17 @@
-use crate::base;
-use crate::traits::*;
+use std::iter;
+
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir;
-use rustc_middle::mir::traversal;
-use rustc_middle::mir::UnwindTerminateReason;
+use rustc_middle::mir::{traversal, UnwindTerminateReason};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_target::abi::call::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
-use std::iter;
+use crate::base;
+use crate::traits::*;
 
 mod analyze;
 mod block;
@@ -107,7 +106,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     locals: locals::Locals<'tcx, Bx::Value>,
 
     /// All `VarDebugInfo` from the MIR body, partitioned by `Local`.
-    /// This is `None` if no var`#[non_exhaustive]`iable debuginfo/names are needed.
+    /// This is `None` if no variable debuginfo/names are needed.
     per_local_var_debug_info:
         Option<IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, Bx::DIVariable>>>>,
 

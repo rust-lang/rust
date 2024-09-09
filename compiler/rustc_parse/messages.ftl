@@ -66,7 +66,7 @@ parse_box_not_pat = expected pattern, found {$descr}
     .suggestion = escape `box` to use it as an identifier
 
 parse_box_syntax_removed = `box_syntax` has been removed
-    .suggestion = use `Box::new()` instead
+parse_box_syntax_removed_suggestion = use `Box::new()` instead
 
 parse_cannot_be_raw_ident = `{$ident}` cannot be a raw identifier
 
@@ -365,6 +365,7 @@ parse_inner_doc_comment_not_permitted = expected outer doc comment
     .sugg_change_inner_to_outer = to annotate the {$item}, change the doc comment from inner to outer style
 
 parse_invalid_attr_unsafe = `{$name}` is not an unsafe attribute
+    .label = this is not an unsafe attribute
     .suggestion = remove the `unsafe(...)`
     .note = extraneous unsafe is not allowed in attributes
 
@@ -379,6 +380,7 @@ parse_invalid_char_in_escape_msg = invalid character in {$is_hex ->
     [true] numeric character
     *[false] unicode
     } escape
+
 
 parse_invalid_comparison_operator = invalid comparison operator `{$invalid}`
     .use_instead = `{$invalid}` is not a valid comparison operator, use `{$correct}`
@@ -579,6 +581,11 @@ parse_missing_struct_for_struct_definition = missing `struct` for struct definit
 parse_missing_trait_in_trait_impl = missing trait in a trait impl
     .suggestion_add_trait = add a trait here
     .suggestion_remove_for = for an inherent impl, drop this `for`
+
+parse_misspelled_kw = {$is_incorrect_case ->
+                    [true] write keyword `{$similar_kw}` in lowercase
+                    *[false] there is a keyword `{$similar_kw}` with a similar name
+}
 
 parse_modifier_lifetime = `{$modifier}` may only modify trait bounds, not lifetime bounds
     .suggestion = remove the `{$modifier}`

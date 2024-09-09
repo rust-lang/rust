@@ -1,14 +1,14 @@
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::fx::FxIndexSet;
+use std::fmt::Debug;
+use std::rc::Rc;
+
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_index::bit_set::SparseBitMatrix;
-use rustc_index::interval::IntervalSet;
-use rustc_index::interval::SparseIntervalMatrix;
+use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
 use rustc_index::Idx;
 use rustc_middle::mir::{BasicBlock, Location};
 use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
-use std::fmt::Debug;
-use std::rc::Rc;
+use tracing::debug;
 
 use crate::BorrowIndex;
 

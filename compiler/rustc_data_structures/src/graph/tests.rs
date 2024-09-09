@@ -1,7 +1,7 @@
-use crate::fx::FxHashMap;
 use std::cmp::max;
 
 use super::*;
+use crate::fx::FxHashMap;
 
 pub struct TestGraph {
     num_nodes: usize,

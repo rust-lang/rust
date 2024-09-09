@@ -1,7 +1,7 @@
 use super::utils::{extract_clippy_lint, is_lint_level, is_word};
 use super::{Attribute, USELESS_ATTRIBUTE};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{first_line_of_span, snippet_opt};
+use clippy_utils::source::{first_line_of_span, SpanRangeExt};
 use rustc_ast::NestedMetaItem;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
@@ -69,14 +69,14 @@ pub(super) fn check(cx: &LateContext<'_>, item: &Item<'_>, attrs: &[Attribute]) 
                 }
                 let line_span = first_line_of_span(cx, attr.span);
 
-                if let Some(mut sugg) = snippet_opt(cx, line_span) {
-                    if sugg.contains("#[") {
+                if let Some(src) = line_span.get_source_text(cx) {
+                    if src.contains("#[") {
+                        #[expect(clippy::collapsible_span_lint_calls)]
                         span_lint_and_then(cx, USELESS_ATTRIBUTE, line_span, "useless lint attribute", |diag| {
-                            sugg = sugg.replacen("#[", "#![", 1);
                             diag.span_suggestion(
                                 line_span,
                                 "if you just forgot a `!`, use",
-                                sugg,
+                                src.replacen("#[", "#![", 1),
                                 Applicability::MaybeIncorrect,
                             );
                         });

@@ -1,7 +1,7 @@
 use quote::quote;
 use syn::parse_quote;
 
-pub fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+pub(super) fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     s.add_bounds(synstructure::AddBounds::Generics);
     s.bind_with(|_| synstructure::BindStyle::Move);
     s.underscore_const(true);

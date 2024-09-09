@@ -1,8 +1,9 @@
+use anyhow::Context;
+use camino::{Utf8Path, Utf8PathBuf};
+
 use crate::environment::{executable_extension, Environment};
 use crate::exec::cmd;
 use crate::utils::io::{copy_directory, find_file_in_dir, unpack_archive};
-use anyhow::Context;
-use camino::{Utf8Path, Utf8PathBuf};
 
 /// Run tests on optimized dist artifacts.
 pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
@@ -59,17 +60,26 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
         .join(format!("llvm-config{}", executable_extension()));
     assert!(llvm_config.is_file());
 
-    let rustc = format!("build.rustc={}", rustc_path.to_string().replace('\\', "/"));
-    let cargo = format!("build.cargo={}", cargo_path.to_string().replace('\\', "/"));
-    let llvm_config =
-        format!("target.{host_triple}.llvm-config={}", llvm_config.to_string().replace('\\', "/"));
+    let config_content = format!(
+        r#"profile = "user"
+change-id = 115898
 
-    log::info!("Set the following configurations for running tests:");
-    log::info!("\t{rustc}");
-    log::info!("\t{cargo}");
-    log::info!("\t{llvm_config}");
+[build]
+rustc = "{rustc}"
+cargo = "{cargo}"
+
+[target.{host_triple}]
+llvm-config = "{llvm_config}"
+"#,
+        rustc = rustc_path.to_string().replace('\\', "/"),
+        cargo = cargo_path.to_string().replace('\\', "/"),
+        llvm_config = llvm_config.to_string().replace('\\', "/")
+    );
+    log::info!("Using following `config.toml` for running tests:\n{config_content}");
 
     // Simulate a stage 0 compiler with the extracted optimized dist artifacts.
+    std::fs::write("config.toml", config_content)?;
+
     let x_py = env.checkout_path().join("x.py");
     let mut args = vec![
         env.python_binary(),
@@ -88,17 +98,17 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
         "tests/run-pass-valgrind",
         "tests/ui",
         "tests/crashes",
-        "--set",
-        &rustc,
-        "--set",
-        &cargo,
-        "--set",
-        &llvm_config,
     ];
     for test_path in env.skipped_tests() {
         args.extend(["--skip", test_path]);
     }
-    cmd(&args).env("COMPILETEST_FORCE_STAGE0", "1").run().context("Cannot execute tests")
+    cmd(&args)
+        .env("COMPILETEST_FORCE_STAGE0", "1")
+        // Above we override the stage 0 compiler with previously compiled compiler,
+        // which can cause confusion in bootstrap's target sanity checks.
+        .env("BOOTSTRAP_SKIP_TARGET_SANITY", "1")
+        .run()
+        .context("Cannot execute tests")
 }
 
 /// Tries to find the version of the dist artifacts (either nightly, beta, or 1.XY.Z).

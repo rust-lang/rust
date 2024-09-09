@@ -1,6 +1,6 @@
 use super::{EMPTY_LINE_AFTER_DOC_COMMENTS, EMPTY_LINE_AFTER_OUTER_ATTR};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::source::{is_present_in_source, snippet_opt, without_block_comments};
+use clippy_utils::source::{is_present_in_source, without_block_comments, SpanRangeExt};
 use rustc_ast::{AttrKind, AttrStyle};
 use rustc_lint::EarlyContext;
 use rustc_span::Span;
@@ -26,7 +26,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
                 item.span.parent(),
             );
 
-            if let Some(snippet) = snippet_opt(cx, end_of_attr_to_next_attr_or_item) {
+            if let Some(snippet) = end_of_attr_to_next_attr_or_item.get_source_text(cx) {
                 let lines = snippet.split('\n').collect::<Vec<_>>();
                 let lines = without_block_comments(lines);
 

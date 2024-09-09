@@ -227,46 +227,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 bin_op_simd_float_all::<Double>(this, which, left, right, dest)?;
             }
-            // Used to implement _mm_sqrt_sd functions.
-            // Performs the operations on the first component of `op` and
-            // copies the remaining components from `op`.
-            "sqrt.sd" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(dest_len, op_len);
-
-                let op0 = this.read_scalar(&this.project_index(&op, 0)?)?.to_u64()?;
-                // FIXME using host floats
-                let res0 = Scalar::from_u64(f64::from_bits(op0).sqrt().to_bits());
-                this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
-
-                for i in 1..dest_len {
-                    this.copy_op(&this.project_index(&op, i)?, &this.project_index(&dest, i)?)?;
-                }
-            }
-            // Used to implement _mm_sqrt_pd functions.
-            // Performs the operations on all components of `op`.
-            "sqrt.pd" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                assert_eq!(dest_len, op_len);
-
-                for i in 0..dest_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?.to_u64()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    // FIXME using host floats
-                    let res = Scalar::from_u64(f64::from_bits(op).sqrt().to_bits());
-
-                    this.write_scalar(res, &dest)?;
-                }
-            }
             // Used to implement the _mm_cmp*_sd functions.
             // Performs a comparison operation on the first component of `left`
             // and `right`, returning 0 if false or `u64::MAX` if true. The remaining

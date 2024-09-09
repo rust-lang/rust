@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {target_feature}: AsyncFn<()>` is not satisfied
+  --> $DIR/fn-exception-target-features.rs:16:10
+   |
+LL |     test(target_feature);
+   |     ---- ^^^^^^^^^^^^^^ the trait `AsyncFn<()>` is not implemented for fn item `fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {target_feature}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `test`
+  --> $DIR/fn-exception-target-features.rs:13:17
+   |
+LL | fn test(f: impl async Fn()) {}
+   |                 ^^^^^^^^^^ required by this bound in `test`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

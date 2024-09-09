@@ -1,8 +1,10 @@
-use measureme::{event_id::SEPARATOR_BYTE, EventId, StringComponent, StringId};
-use rustc_data_structures::profiling::{SelfProfiler, TimingGuard};
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
 use std::sync::Arc;
+
+use measureme::event_id::SEPARATOR_BYTE;
+use measureme::{EventId, StringComponent, StringId};
+use rustc_data_structures::profiling::{SelfProfiler, TimingGuard};
 
 fn llvm_args_to_string_id(profiler: &SelfProfiler, pass_name: &str, ir_name: &str) -> EventId {
     let pass_name = profiler.get_or_alloc_cached_string(pass_name);
@@ -19,14 +21,14 @@ fn llvm_args_to_string_id(profiler: &SelfProfiler, pass_name: &str, ir_name: &st
     EventId::from_label(profiler.alloc_string(components.as_slice()))
 }
 
-pub struct LlvmSelfProfiler<'a> {
+pub(crate) struct LlvmSelfProfiler<'a> {
     profiler: Arc<SelfProfiler>,
     stack: Vec<TimingGuard<'a>>,
     llvm_pass_event_kind: StringId,
 }
 
 impl<'a> LlvmSelfProfiler<'a> {
-    pub fn new(profiler: Arc<SelfProfiler>) -> Self {
+    pub(crate) fn new(profiler: Arc<SelfProfiler>) -> Self {
         let llvm_pass_event_kind = profiler.alloc_string("LLVM Pass");
         Self { profiler, stack: Vec::default(), llvm_pass_event_kind }
     }
@@ -41,7 +43,7 @@ impl<'a> LlvmSelfProfiler<'a> {
     }
 }
 
-pub unsafe extern "C" fn selfprofile_before_pass_callback(
+pub(crate) unsafe extern "C" fn selfprofile_before_pass_callback(
     llvm_self_profiler: *mut c_void,
     pass_name: *const c_char,
     ir_name: *const c_char,
@@ -54,7 +56,7 @@ pub unsafe extern "C" fn selfprofile_before_pass_callback(
     }
 }
 
-pub unsafe extern "C" fn selfprofile_after_pass_callback(llvm_self_profiler: *mut c_void) {
+pub(crate) unsafe extern "C" fn selfprofile_after_pass_callback(llvm_self_profiler: *mut c_void) {
     let llvm_self_profiler = unsafe { &mut *(llvm_self_profiler as *mut LlvmSelfProfiler<'_>) };
     llvm_self_profiler.after_pass_callback();
 }

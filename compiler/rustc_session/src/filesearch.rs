@@ -1,23 +1,26 @@
 //! A module for searching for libraries
 
-use crate::search_paths::{PathKind, SearchPath};
+use std::path::{Path, PathBuf};
+use std::{env, fs};
+
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use smallvec::{smallvec, SmallVec};
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
-use tracing::debug;
+
+use crate::search_paths::{PathKind, SearchPath};
 
 #[derive(Clone)]
 pub struct FileSearch<'a> {
-    sysroot: &'a Path,
-    triple: &'a str,
     cli_search_paths: &'a [SearchPath],
     tlib_path: &'a SearchPath,
     kind: PathKind,
 }
 
 impl<'a> FileSearch<'a> {
+    pub fn cli_search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
+        let kind = self.kind;
+        self.cli_search_paths.iter().filter(move |sp| sp.kind.matches(kind))
+    }
+
     pub fn search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
         let kind = self.kind;
         self.cli_search_paths
@@ -26,23 +29,12 @@ impl<'a> FileSearch<'a> {
             .chain(std::iter::once(self.tlib_path))
     }
 
-    pub fn get_lib_path(&self) -> PathBuf {
-        make_target_lib_path(self.sysroot, self.triple)
-    }
-
-    pub fn get_self_contained_lib_path(&self) -> PathBuf {
-        self.get_lib_path().join("self-contained")
-    }
-
     pub fn new(
-        sysroot: &'a Path,
-        triple: &'a str,
         cli_search_paths: &'a [SearchPath],
         tlib_path: &'a SearchPath,
         kind: PathKind,
     ) -> FileSearch<'a> {
-        debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
-        FileSearch { sysroot, triple, cli_search_paths, tlib_path, kind }
+        FileSearch { cli_search_paths, tlib_path, kind }
     }
 }
 
@@ -129,12 +121,10 @@ fn current_dll_path() -> Result<PathBuf, String> {
     use std::io;
     use std::os::windows::prelude::*;
 
-    use windows::{
-        core::PCWSTR,
-        Win32::Foundation::HMODULE,
-        Win32::System::LibraryLoader::{
-            GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-        },
+    use windows::core::PCWSTR;
+    use windows::Win32::Foundation::HMODULE;
+    use windows::Win32::System::LibraryLoader::{
+        GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
     };
 
     let mut module = HMODULE::default();

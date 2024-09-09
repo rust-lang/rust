@@ -1,18 +1,12 @@
-use crate::dep_graph::DepContext;
-use crate::error::CycleStack;
-use crate::query::plumbing::CycleError;
-use crate::query::DepKind;
-use crate::query::{QueryContext, QueryStackFrame};
+use std::hash::Hash;
+use std::io::Write;
+use std::num::NonZero;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::Span;
-
-use std::hash::Hash;
-use std::io::Write;
-use std::num::NonZero;
-
 #[cfg(parallel_compiler)]
 use {
     parking_lot::{Condvar, Mutex},
@@ -22,6 +16,11 @@ use {
     std::iter,
     std::sync::Arc,
 };
+
+use crate::dep_graph::DepContext;
+use crate::error::CycleStack;
+use crate::query::plumbing::CycleError;
+use crate::query::{DepKind, QueryContext, QueryStackFrame};
 
 /// Represents a span and a query key.
 #[derive(Clone, Debug)]
@@ -589,7 +588,7 @@ pub fn report_cycle<'a>(
         cycle_stack,
         stack_bottom: stack[0].query.description.to_owned(),
         alias,
-        cycle_usage: cycle_usage,
+        cycle_usage,
         stack_count,
         note_span: (),
     };

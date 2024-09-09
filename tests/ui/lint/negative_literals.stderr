@@ -1,11 +1,15 @@
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:4:13
+  --> $DIR/negative_literals.rs:6:13
    |
 LL |     let _ = -1i32.abs();
    |             ^^^^^^^^^^^
    |
    = note: e.g. `-4.abs()` equals `-4`; while `(-4).abs()` equals `4`
-   = note: `#[deny(ambiguous_negative_literals)]` on by default
+note: the lint level is defined here
+  --> $DIR/negative_literals.rs:3:9
+   |
+LL | #![deny(ambiguous_negative_literals)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: add parentheses around the `-` and the literal to call the method on a negative literal
    |
 LL |     let _ = (-1i32).abs();
@@ -16,7 +20,7 @@ LL |     let _ = -(1i32.abs());
    |              +          +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:6:13
+  --> $DIR/negative_literals.rs:8:13
    |
 LL |     let _ = -1f32.abs();
    |             ^^^^^^^^^^^
@@ -32,7 +36,7 @@ LL |     let _ = -(1f32.abs());
    |              +          +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:8:13
+  --> $DIR/negative_literals.rs:10:13
    |
 LL |     let _ = -1f64.asin();
    |             ^^^^^^^^^^^^
@@ -48,7 +52,7 @@ LL |     let _ = -(1f64.asin());
    |              +           +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:10:13
+  --> $DIR/negative_literals.rs:12:13
    |
 LL |     let _ = -1f64.asinh();
    |             ^^^^^^^^^^^^^
@@ -64,7 +68,7 @@ LL |     let _ = -(1f64.asinh());
    |              +            +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:12:13
+  --> $DIR/negative_literals.rs:14:13
    |
 LL |     let _ = -1f64.tan();
    |             ^^^^^^^^^^^
@@ -80,7 +84,7 @@ LL |     let _ = -(1f64.tan());
    |              +          +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:14:13
+  --> $DIR/negative_literals.rs:16:13
    |
 LL |     let _ = -1f64.tanh();
    |             ^^^^^^^^^^^^
@@ -96,7 +100,7 @@ LL |     let _ = -(1f64.tanh());
    |              +           +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:16:13
+  --> $DIR/negative_literals.rs:18:13
    |
 LL |     let _ = -1.0_f64.cos().cos();
    |             ^^^^^^^^^^^^^^^^^^^^
@@ -112,7 +116,7 @@ LL |     let _ = -(1.0_f64.cos().cos());
    |              +                   +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:18:13
+  --> $DIR/negative_literals.rs:20:13
    |
 LL |     let _ = -1.0_f64.cos().sin();
    |             ^^^^^^^^^^^^^^^^^^^^
@@ -128,7 +132,7 @@ LL |     let _ = -(1.0_f64.cos().sin());
    |              +                   +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:20:13
+  --> $DIR/negative_literals.rs:22:13
    |
 LL |     let _ = -1.0_f64.sin().cos();
    |             ^^^^^^^^^^^^^^^^^^^^
@@ -144,7 +148,7 @@ LL |     let _ = -(1.0_f64.sin().cos());
    |              +                   +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:22:13
+  --> $DIR/negative_literals.rs:24:13
    |
 LL |     let _ = -1f64.sin().sin();
    |             ^^^^^^^^^^^^^^^^^
@@ -160,7 +164,7 @@ LL |     let _ = -(1f64.sin().sin());
    |              +                +
 
 error: `-` has lower precedence than method calls, which might be unexpected
-  --> $DIR/negative_literals.rs:25:11
+  --> $DIR/negative_literals.rs:27:11
    |
 LL |     dbg!( -1.0_f32.cos() );
    |           ^^^^^^^^^^^^^^

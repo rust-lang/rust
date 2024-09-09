@@ -6,56 +6,57 @@
 
 use crate::cmp::Ordering;
 use crate::mem::MaybeUninit;
-
-use crate::num::bignum::Big32x40 as Big;
-use crate::num::bignum::Digit32 as Digit;
+use crate::num::bignum::{Big32x40 as Big, Digit32 as Digit};
 use crate::num::flt2dec::estimator::estimate_scaling_factor;
 use crate::num::flt2dec::{round_up, Decoded, MAX_SIG_DIGITS};
 
 static POW10: [Digit; 10] =
     [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000];
-static TWOPOW10: [Digit; 10] =
-    [2, 20, 200, 2000, 20000, 200000, 2000000, 20000000, 200000000, 2000000000];
-
-// precalculated arrays of `Digit`s for 10^(2^n)
-static POW10TO16: [Digit; 2] = [0x6fc10000, 0x2386f2];
-static POW10TO32: [Digit; 4] = [0, 0x85acef81, 0x2d6d415b, 0x4ee];
-static POW10TO64: [Digit; 7] = [0, 0, 0xbf6a1f01, 0x6e38ed64, 0xdaa797ed, 0xe93ff9f4, 0x184f03];
-static POW10TO128: [Digit; 14] = [
-    0, 0, 0, 0, 0x2e953e01, 0x3df9909, 0xf1538fd, 0x2374e42f, 0xd3cff5ec, 0xc404dc08, 0xbccdb0da,
-    0xa6337f19, 0xe91f2603, 0x24e,
+// precalculated arrays of `Digit`s for 5^(2^n).
+static POW5TO16: [Digit; 2] = [0x86f26fc1, 0x23];
+static POW5TO32: [Digit; 3] = [0x85acef81, 0x2d6d415b, 0x4ee];
+static POW5TO64: [Digit; 5] = [0xbf6a1f01, 0x6e38ed64, 0xdaa797ed, 0xe93ff9f4, 0x184f03];
+static POW5TO128: [Digit; 10] = [
+    0x2e953e01, 0x3df9909, 0xf1538fd, 0x2374e42f, 0xd3cff5ec, 0xc404dc08, 0xbccdb0da, 0xa6337f19,
+    0xe91f2603, 0x24e,
 ];
-static POW10TO256: [Digit; 27] = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0x982e7c01, 0xbed3875b, 0xd8d99f72, 0x12152f87, 0x6bde50c6, 0xcf4a6e70,
-    0xd595d80f, 0x26b2716e, 0xadc666b0, 0x1d153624, 0x3c42d35a, 0x63ff540e, 0xcc5573c0, 0x65f9ef17,
-    0x55bc28f2, 0x80dcc7f7, 0xf46eeddc, 0x5fdcefce, 0x553f7,
+static POW5TO256: [Digit; 19] = [
+    0x982e7c01, 0xbed3875b, 0xd8d99f72, 0x12152f87, 0x6bde50c6, 0xcf4a6e70, 0xd595d80f, 0x26b2716e,
+    0xadc666b0, 0x1d153624, 0x3c42d35a, 0x63ff540e, 0xcc5573c0, 0x65f9ef17, 0x55bc28f2, 0x80dcc7f7,
+    0xf46eeddc, 0x5fdcefce, 0x553f7,
 ];
 
 #[doc(hidden)]
 pub fn mul_pow10(x: &mut Big, n: usize) -> &mut Big {
     debug_assert!(n < 512);
+    // Save ourself the left shift for the smallest cases.
+    if n < 8 {
+        return x.mul_small(POW10[n & 7]);
+    }
+    // Multiply by the powers of 5 and shift the 2s in at the end.
+    // This keeps the intermediate products smaller and faster.
     if n & 7 != 0 {
-        x.mul_small(POW10[n & 7]);
+        x.mul_small(POW10[n & 7] >> (n & 7));
     }
     if n & 8 != 0 {
-        x.mul_small(POW10[8]);
+        x.mul_small(POW10[8] >> 8);
     }
     if n & 16 != 0 {
-        x.mul_digits(&POW10TO16);
+        x.mul_digits(&POW5TO16);
     }
     if n & 32 != 0 {
-        x.mul_digits(&POW10TO32);
+        x.mul_digits(&POW5TO32);
     }
     if n & 64 != 0 {
-        x.mul_digits(&POW10TO64);
+        x.mul_digits(&POW5TO64);
     }
     if n & 128 != 0 {
-        x.mul_digits(&POW10TO128);
+        x.mul_digits(&POW5TO128);
     }
     if n & 256 != 0 {
-        x.mul_digits(&POW10TO256);
+        x.mul_digits(&POW5TO256);
     }
-    x
+    x.mul_pow2(n)
 }
 
 fn div_2pow10(x: &mut Big, mut n: usize) -> &mut Big {
@@ -64,7 +65,7 @@ fn div_2pow10(x: &mut Big, mut n: usize) -> &mut Big {
         x.div_rem_small(POW10[largest]);
         n -= largest;
     }
-    x.div_rem_small(TWOPOW10[n]);
+    x.div_rem_small(POW10[n] << 1);
     x
 }
 

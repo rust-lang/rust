@@ -2,14 +2,11 @@
 
 use core::marker::PhantomData;
 
+use super::unsupported;
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
-use crate::path;
 use crate::path::PathBuf;
-
-use super::unsupported;
+use crate::{fmt, io, path};
 
 pub fn errno() -> i32 {
     unsafe { (*libc::__errno_location()) as i32 }

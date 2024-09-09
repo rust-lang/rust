@@ -11,7 +11,7 @@
 
 use crate::spec::{cvs, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv4t-none-eabi".into(),
         metadata: crate::spec::TargetMetadata {

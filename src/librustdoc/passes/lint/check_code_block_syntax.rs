@@ -1,11 +1,9 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
 
 use rustc_data_structures::sync::{Lock, Lrc};
-use rustc_errors::{
-    emitter::Emitter,
-    translation::{to_fluent_args, Translate},
-    Applicability, DiagCtxt, DiagInner, LazyFallbackBundle,
-};
+use rustc_errors::emitter::Emitter;
+use rustc_errors::translation::{to_fluent_args, Translate};
+use rustc_errors::{Applicability, DiagCtxt, DiagInner, LazyFallbackBundle};
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_session::parse::ParseSess;
@@ -18,9 +16,11 @@ use crate::core::DocContext;
 use crate::html::markdown::{self, RustCodeBlock};
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item) {
-    if let Some(dox) = &item.opt_doc_value() {
+    if let Some(def_id) = item.item_id.as_local_def_id()
+        && let Some(dox) = &item.opt_doc_value()
+    {
         let sp = item.attr_span(cx.tcx);
-        let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, item.item_id.expect_def_id(), sp);
+        let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, def_id, sp);
         for code_block in markdown::rust_code_blocks(dox, &extra) {
             check_rust_syntax(cx, item, dox, code_block);
         }

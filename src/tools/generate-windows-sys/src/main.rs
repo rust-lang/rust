@@ -1,8 +1,7 @@
-use std::env;
 use std::error::Error;
-use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
+use std::{env, fs};
 
 /// 32-bit ARM is not supported by Microsoft so ARM types are not generated.
 /// Therefore we need to inject a few types to make the bindings work.
@@ -36,7 +35,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut f = std::fs::File::options().append(true).open("windows_sys.rs")?;
     f.write_all(ARM32_SHIM.as_bytes())?;
     writeln!(&mut f, "// ignore-tidy-filelength")?;
-    writeln!(&mut f, "use super::windows_targets;")?;
 
     Ok(())
 }

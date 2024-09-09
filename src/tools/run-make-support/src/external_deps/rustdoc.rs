@@ -71,14 +71,8 @@ impl Rustdoc {
         self
     }
 
-    /// Specify path to the output folder.
-    pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
-        self.cmd.arg("-o");
-        self.cmd.arg(path.as_ref());
-        self
-    }
-
     /// Specify output directory.
+    #[doc(alias = "output")]
     pub fn out_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("--out-dir").arg(path.as_ref());
         self
@@ -91,9 +85,9 @@ impl Rustdoc {
         self
     }
 
-    /// Specify a stdin input
-    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.stdin(input);
+    /// Specify a stdin input buffer.
+    pub fn stdin_buf<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.cmd.stdin_buf(input);
         self
     }
 

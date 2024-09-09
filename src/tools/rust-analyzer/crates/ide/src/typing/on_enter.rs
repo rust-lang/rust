@@ -1,8 +1,9 @@
 //! Handles the `Enter` key press. At the momently, this only continues
 //! comments, but should handle indent some time in the future as well.
 
-use ide_db::base_db::{FilePosition, SourceDatabase};
 use ide_db::RootDatabase;
+use ide_db::{base_db::SourceDatabase, FilePosition};
+use span::EditionedFileId;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, edit::IndentLevel, AstToken},
@@ -52,7 +53,7 @@ use text_edit::TextEdit;
 //
 // image::https://user-images.githubusercontent.com/48062697/113065578-04c21800-91b1-11eb-82b8-22b8c481e645.gif[]
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<TextEdit> {
-    let parse = db.parse(position.file_id);
+    let parse = db.parse(EditionedFileId::current_edition(position.file_id));
     let file = parse.tree();
     let token = file.syntax().token_at_offset(position.offset).left_biased()?;
 

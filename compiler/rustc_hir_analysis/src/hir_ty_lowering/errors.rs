@@ -1,15 +1,9 @@
-use crate::errors::{
-    self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
-    ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
-};
-use crate::fluent_generated as fluent;
-use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::MultiSpan;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed,
+    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -17,20 +11,25 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
-use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, suggest_constraining_type_param};
-use rustc_middle::ty::{AdtDef, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{Binder, TraitRef};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_param, AdtDef, Binder, GenericParamDefKind, TraitRef, Ty,
+    TyCtxt, TypeVisitableExt,
+};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::BytePos;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::traits::report_object_safety_error;
-use rustc_trait_selection::traits::FulfillmentError;
 use rustc_trait_selection::traits::{
-    object_safety_violations_for_assoc_item, TraitAliasExpansionInfo,
+    object_safety_violations_for_assoc_item, FulfillmentError, TraitAliasExpansionInfo,
 };
+
+use crate::errors::{
+    self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
+    ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
+};
+use crate::fluent_generated as fluent;
+use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
@@ -609,7 +608,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
             let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
-            match &self_ty.kind() {
+            match self_ty.kind() {
                 // Point at the type that couldn't satisfy the bound.
                 ty::Adt(def, _) => {
                     bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
@@ -719,7 +718,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         associated_types: FxIndexMap<Span, FxIndexSet<DefId>>,
         potential_assoc_types: Vec<usize>,
-        trait_bounds: &[hir::PolyTraitRef<'_>],
+        trait_bounds: &[(hir::PolyTraitRef<'_>, hir::TraitBoundModifier)],
     ) {
         if associated_types.values().all(|v| v.is_empty()) {
             return;
@@ -765,12 +764,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // related to issue #91997, turbofishes added only when in an expr or pat
         let mut in_expr_or_pat = false;
         if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
-            let grandparent = tcx.parent_hir_node(tcx.parent_hir_id(bound.trait_ref.hir_ref_id));
+            let grandparent = tcx.parent_hir_node(tcx.parent_hir_id(bound.0.trait_ref.hir_ref_id));
             in_expr_or_pat = match grandparent {
                 hir::Node::Expr(_) | hir::Node::Pat(_) => true,
                 _ => false,
             };
-            match bound.trait_ref.path.segments {
+            match bound.0.trait_ref.path.segments {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
@@ -811,7 +810,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // and we can then use their span to indicate this to the user.
         let bound_names = trait_bounds
             .iter()
-            .filter_map(|poly_trait_ref| {
+            .filter_map(|(poly_trait_ref, _)| {
                 let path = poly_trait_ref.trait_ref.path.segments.last()?;
                 let args = path.args?;
 

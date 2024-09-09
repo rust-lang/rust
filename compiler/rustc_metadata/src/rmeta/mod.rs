@@ -1,35 +1,35 @@
-use crate::creader::CrateMetadataRef;
+use std::marker::PhantomData;
+use std::num::NonZero;
+
 pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
 use decoder::{DecodeContext, Metadata};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{encode_metadata, rendered_const, EncodedMetadata};
-use rustc_ast as ast;
 use rustc_ast::expand::StrippedCfgItem;
-use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable, TyDecodable, TyEncodable};
-use rustc_macros::{MetadataDecodable, MetadataEncodable};
+use rustc_macros::{
+    Decodable, Encodable, MetadataDecodable, MetadataEncodable, TyDecodable, TyEncodable,
+};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
-use rustc_middle::mir;
-use rustc_middle::trivially_parameterized_over_tcx;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, ReprOptions, Ty, UnusedGenericParams};
-use rustc_middle::ty::{DeducedParamAttrs, ParameterizedOverTcx, TyCtxt};
+use rustc_middle::ty::{
+    self, DeducedParamAttrs, ParameterizedOverTcx, ReprOptions, Ty, TyCtxt, UnusedGenericParams,
+};
 use rustc_middle::util::Providers;
+use rustc_middle::{mir, trivially_parameterized_over_tcx};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
@@ -39,9 +39,10 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
-use std::marker::PhantomData;
-use std::num::NonZero;
 use table::TableBuilder;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+
+use crate::creader::CrateMetadataRef;
 
 mod decoder;
 mod def_path_hash_map;
@@ -389,6 +390,8 @@ define_tables! {
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_item_super_predicates: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    explicit_super_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
     associated_type_for_effects: Table<DefIndex, Option<LazyValue<DefId>>>,
@@ -418,10 +421,6 @@ define_tables! {
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
-    explicit_super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
-    // As an optimization, we only store this for trait aliases,
-    // since it's identical to explicit_super_predicates_of for traits.
-    explicit_implied_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
     fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::PolyFnSig<'static>>>>,

@@ -1,4 +1,4 @@
-error[E0049]: method `foo` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/default-keyword.rs:7:1
    |
 LL | #[const_trait]

@@ -81,10 +81,9 @@
 //! We generate various special nodes for various, well, special purposes.
 //! These are described in the `Liveness` struct.
 
-use crate::errors;
-
-use self::LiveNodeKind::*;
-use self::VarKind::*;
+use std::io;
+use std::io::prelude::*;
+use std::rc::Rc;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
@@ -99,10 +98,11 @@ use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
-use std::io;
-use std::io::prelude::*;
-use std::rc::Rc;
 use tracing::{debug, instrument};
+
+use self::LiveNodeKind::*;
+use self::VarKind::*;
+use crate::errors;
 
 mod rwu_table;
 
@@ -178,7 +178,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     lsets.warn_about_unused_args(&body, entry_ln);
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_liveness, ..*providers };
 }
 

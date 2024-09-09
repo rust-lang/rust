@@ -3,18 +3,20 @@
 //! or 16 bytes of the hash.
 //!
 //! The types in this module represent 64-bit or 128-bit hashes produced by a `StableHasher`.
-//! `Hash64` and `Hash128` expose some utilty functions to encourage users to not extract the inner
+//! `Hash64` and `Hash128` expose some utility functions to encourage users to not extract the inner
 //! hash value as an integer type and accidentally apply varint encoding to it.
 //!
 //! In contrast with `Fingerprint`, users of these types cannot and should not attempt to construct
-//! and decompose these types into constitutent pieces. The point of these types is only to
+//! and decompose these types into constituent pieces. The point of these types is only to
 //! connect the fact that they can only be produced by a `StableHasher` to their
 //! `Encode`/`Decode` impls.
 
-use crate::stable_hasher::{FromStableHash, StableHasherHash};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::ops::BitXorAssign;
+
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+
+use crate::stable_hasher::{FromStableHash, StableHasherHash};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Hash64 {

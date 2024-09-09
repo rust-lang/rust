@@ -35,11 +35,11 @@
 //! If the number of edges in this node does not fit in the bits available in the header, we
 //! store it directly after the header with leb128.
 
-use super::query::DepGraphQuery;
-use super::{DepKind, DepNode, DepNodeIndex, Deps};
-use crate::dep_graph::edges::EdgesVec;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fingerprint::PackedFingerprint;
+use std::iter;
+use std::marker::PhantomData;
+use std::sync::Arc;
+
+use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -48,10 +48,11 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::iter;
-use std::marker::PhantomData;
-use std::sync::Arc;
 use tracing::{debug, instrument};
+
+use super::query::DepGraphQuery;
+use super::{DepKind, DepNode, DepNodeIndex, Deps};
+use crate::dep_graph::edges::EdgesVec;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
@@ -546,7 +547,7 @@ impl<D: Deps> EncoderState<D> {
     /// Encodes a node that was promoted from the previous graph. It reads the information directly from
     /// the previous dep graph for performance reasons.
     ///
-    /// This differs from `encode_node` where you have to explictly provide the relevant `NodeInfo`.
+    /// This differs from `encode_node` where you have to explicitly provide the relevant `NodeInfo`.
     ///
     /// It expects all edges to already have a new dep node index assigned.
     #[inline]
@@ -616,14 +617,14 @@ impl<D: Deps> EncoderState<D> {
     }
 }
 
-pub struct GraphEncoder<D: Deps> {
+pub(crate) struct GraphEncoder<D: Deps> {
     profiler: SelfProfilerRef,
     status: Lock<Option<EncoderState<D>>>,
     record_graph: Option<Lock<DepGraphQuery>>,
 }
 
 impl<D: Deps> GraphEncoder<D> {
-    pub fn new(
+    pub(crate) fn new(
         encoder: FileEncoder,
         prev_node_count: usize,
         record_graph: bool,
@@ -722,7 +723,7 @@ impl<D: Deps> GraphEncoder<D> {
         )
     }
 
-    pub fn finish(&self) -> FileEncodeResult {
+    pub(crate) fn finish(&self) -> FileEncodeResult {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph_finish");
 
         self.status.lock().take().unwrap().finish(&self.profiler)

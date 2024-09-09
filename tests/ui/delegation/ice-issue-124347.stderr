@@ -1,14 +1,31 @@
-error: recursive delegation is not supported yet
-  --> $DIR/ice-issue-124347.rs:5:18
+error[E0391]: cycle detected when computing generics of `Trait::foo`
+  --> $DIR/ice-issue-124347.rs:6:18
    |
 LL |     reuse Trait::foo { &self.0 }
-   |                  ^^^ callee defined here
+   |                  ^^^
+   |
+   = note: ...which immediately requires computing generics of `Trait::foo` again
+note: cycle used when inheriting delegation signature
+  --> $DIR/ice-issue-124347.rs:6:18
+   |
+LL |     reuse Trait::foo { &self.0 }
+   |                  ^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: recursive delegation is not supported yet
-  --> $DIR/ice-issue-124347.rs:9:7
+error[E0391]: cycle detected when computing generics of `foo`
+  --> $DIR/ice-issue-124347.rs:10:7
    |
 LL | reuse foo;
-   |       ^^^ callee defined here
+   |       ^^^
+   |
+   = note: ...which immediately requires computing generics of `foo` again
+note: cycle used when checking that `foo` is well-formed
+  --> $DIR/ice-issue-124347.rs:10:7
+   |
+LL | reuse foo;
+   |       ^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0391`.

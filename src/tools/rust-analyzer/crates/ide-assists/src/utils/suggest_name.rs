@@ -6,7 +6,7 @@ use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, HasName},
-    match_ast, AstNode, SmolStr,
+    match_ast, AstNode, Edition, SmolStr,
 };
 
 /// Trait names, that will be ignored when in `impl Trait` and `dyn Trait`
@@ -184,7 +184,7 @@ fn normalize(name: &str) -> Option<String> {
 
 fn is_valid_name(name: &str) -> bool {
     matches!(
-        ide_db::syntax_helpers::LexedStr::single_token(name),
+        ide_db::syntax_helpers::LexedStr::single_token(syntax::Edition::CURRENT_FIXME, name),
         Some((syntax::SyntaxKind::IDENT, _error))
     )
 }
@@ -271,24 +271,25 @@ fn var_name_from_pat(pat: &ast::Pat) -> Option<ast::Name> {
 fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<String> {
     let ty = sema.type_of_expr(expr)?.adjusted();
     let ty = ty.remove_ref().unwrap_or(ty);
+    let edition = sema.scope(expr.syntax())?.krate().edition(sema.db);
 
-    name_of_type(&ty, sema.db)
+    name_of_type(&ty, sema.db, edition)
 }
 
-fn name_of_type(ty: &hir::Type, db: &RootDatabase) -> Option<String> {
+fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<String> {
     let name = if let Some(adt) = ty.as_adt() {
-        let name = adt.name(db).display(db).to_string();
+        let name = adt.name(db).display(db, edition).to_string();
 
         if WRAPPER_TYPES.contains(&name.as_str()) {
             let inner_ty = ty.type_arguments().next()?;
-            return name_of_type(&inner_ty, db);
+            return name_of_type(&inner_ty, db, edition);
         }
 
         name
     } else if let Some(trait_) = ty.as_dyn_trait() {
-        trait_name(&trait_, db)?
+        trait_name(&trait_, db, edition)?
     } else if let Some(traits) = ty.as_impl_traits(db) {
-        let mut iter = traits.filter_map(|t| trait_name(&t, db));
+        let mut iter = traits.filter_map(|t| trait_name(&t, db, edition));
         let name = iter.next()?;
         if iter.next().is_some() {
             return None;
@@ -300,8 +301,8 @@ fn name_of_type(ty: &hir::Type, db: &RootDatabase) -> Option<String> {
     normalize(&name)
 }
 
-fn trait_name(trait_: &hir::Trait, db: &RootDatabase) -> Option<String> {
-    let name = trait_.name(db).display(db).to_string();
+fn trait_name(trait_: &hir::Trait, db: &RootDatabase, edition: Edition) -> Option<String> {
+    let name = trait_.name(db).display(db, edition).to_string();
     if USELESS_TRAITS.contains(&name.as_str()) {
         return None;
     }
@@ -319,7 +320,7 @@ fn from_field_name(expr: &ast::Expr) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::FileRange;
+    use hir::FileRange;
     use test_fixture::WithFixture;
 
     use super::*;

@@ -1,7 +1,8 @@
 [package]
 name = "ide-db"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Core data structure representing IDE state for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -13,12 +14,11 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
-crossbeam-channel = "0.5.5"
+crossbeam-channel.workspace = true
 tracing.workspace = true
 rayon.workspace = true
 fst = { version = "0.4.7", default-features = false }
 rustc-hash.workspace = true
-once_cell = "1.17.0"
 either.workspace = true
 itertools.workspace = true
 arrayvec.workspace = true

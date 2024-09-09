@@ -1,7 +1,8 @@
 [package]
 name = "test-utils"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Assorted testing utilities for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -18,6 +19,7 @@ text-size.workspace = true
 tracing.workspace = true
 rustc-hash.workspace = true
 
+paths.workspace = true
 stdx.workspace = true
 profile.workspace = true
 

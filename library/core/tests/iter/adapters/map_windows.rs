@@ -1,10 +1,12 @@
-use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::SeqCst;
 
 #[cfg(not(panic = "abort"))]
 mod drop_checks {
     //! These tests mainly make sure the elements are correctly dropped.
 
-    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst};
+    use std::sync::atomic::Ordering::SeqCst;
+    use std::sync::atomic::{AtomicBool, AtomicUsize};
 
     #[derive(Debug)]
     struct DropInfo {

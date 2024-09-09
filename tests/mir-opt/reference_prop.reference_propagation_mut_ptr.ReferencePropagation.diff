@@ -189,8 +189,8 @@
           StorageLive(_5);
           _5 = &raw mut _4;
           StorageLive(_6);
--         _6 = (*_5);
-+         _6 = _4;
+-         _6 = copy (*_5);
++         _6 = copy _4;
           StorageLive(_7);
           StorageLive(_8);
           _8 = ();
@@ -217,7 +217,7 @@
           _12 = move _13;
           StorageDead(_13);
           StorageLive(_14);
-          _14 = (*_12);
+          _14 = copy (*_12);
           StorageLive(_15);
           StorageLive(_16);
           _16 = ();
@@ -241,10 +241,10 @@
           StorageLive(_20);
           _20 = &_19;
           StorageLive(_21);
-          _21 = (*_19);
+          _21 = copy (*_19);
           StorageLive(_22);
           StorageLive(_23);
-          _23 = _20;
+          _23 = copy _20;
           _22 = opaque::<&*mut usize>(move _23) -> [return: bb3, unwind continue];
       }
   
@@ -265,10 +265,10 @@
           StorageLive(_27);
           _27 = &raw mut _26;
           StorageLive(_28);
-          _28 = (*_26);
+          _28 = copy (*_26);
           StorageLive(_29);
           StorageLive(_30);
-          _30 = _27;
+          _30 = copy _27;
           _29 = opaque::<*mut *mut usize>(move _30) -> [return: bb4, unwind continue];
       }
   
@@ -287,10 +287,10 @@
           StorageLive(_33);
           _33 = &raw mut _32;
           StorageLive(_34);
-          _34 = (*_33);
+          _34 = copy (*_33);
           StorageLive(_35);
           StorageLive(_36);
-          _36 = _33;
+          _36 = copy _33;
           _35 = opaque::<*mut usize>(move _36) -> [return: bb5, unwind continue];
       }
   
@@ -308,16 +308,16 @@
           StorageLive(_39);
           _39 = &raw mut _38;
           StorageLive(_40);
-          _40 = (*_39);
+          _40 = copy (*_39);
           StorageLive(_41);
-          _41 = _39;
+          _41 = copy _39;
           StorageLive(_42);
-          _42 = (*_41);
+          _42 = copy (*_41);
           StorageLive(_43);
-          _43 = _41;
+          _43 = copy _41;
           StorageLive(_44);
           StorageLive(_45);
-          _45 = _43;
+          _45 = copy _43;
           _44 = opaque::<*mut usize>(move _45) -> [return: bb6, unwind continue];
       }
   
@@ -336,8 +336,8 @@
 -         StorageLive(_47);
 -         _47 = &raw mut (*_1);
           StorageLive(_48);
--         _48 = (*_47);
-+         _48 = (*_1);
+-         _48 = copy (*_47);
++         _48 = copy (*_1);
           StorageLive(_49);
           StorageLive(_50);
           _50 = ();
@@ -359,7 +359,7 @@
           _2 = move _53;
           StorageDead(_53);
           StorageLive(_54);
-          _54 = (*_52);
+          _54 = copy (*_52);
           StorageLive(_55);
           StorageLive(_56);
           _56 = ();
@@ -381,7 +381,7 @@
           StorageLive(_60);
           _60 = &_59;
           StorageLive(_61);
-          _61 = (*_59);
+          _61 = copy (*_59);
           StorageLive(_62);
           StorageLive(_63);
           _63 = ();
@@ -404,7 +404,7 @@
           StorageLive(_66);
           _66 = &mut _65;
           StorageLive(_67);
-          _67 = (*_65);
+          _67 = copy (*_65);
           StorageLive(_68);
           StorageLive(_69);
           _69 = ();

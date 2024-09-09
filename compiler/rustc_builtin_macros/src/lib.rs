@@ -5,7 +5,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -17,14 +16,16 @@
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate proc_macro;
 
-use crate::deriving::*;
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::symbol::sym;
+
+use crate::deriving::*;
 
 mod alloc_error_handler;
 mod assert;

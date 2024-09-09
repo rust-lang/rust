@@ -1,6 +1,7 @@
 //! Functionality for statements, operands, places, and things that appear in them.
 
-use super::{interpret::GlobalAlloc, *};
+use super::interpret::GlobalAlloc;
+use super::*;
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements
@@ -422,7 +423,7 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
-            | Rvalue::AddressOf(_, _)
+            | Rvalue::RawPtr(_, _)
             | Rvalue::Len(_)
             | Rvalue::Cast(
                 CastKind::IntToInt

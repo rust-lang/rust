@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{position_before_rarrow, snippet_opt};
+use clippy_utils::source::{position_before_rarrow, SpanRangeExt};
 use rustc_ast::visit::FnKind;
 use rustc_ast::{ast, ClosureBinder};
 use rustc_errors::Applicability;
@@ -128,15 +128,17 @@ fn is_unit_expr(expr: &ast::Expr) -> bool {
 
 fn lint_unneeded_unit_return(cx: &EarlyContext<'_>, ty: &ast::Ty, span: Span) {
     let (ret_span, appl) =
-        snippet_opt(cx, span.with_hi(ty.span.hi())).map_or((ty.span, Applicability::MaybeIncorrect), |fn_source| {
-            position_before_rarrow(&fn_source).map_or((ty.span, Applicability::MaybeIncorrect), |rpos| {
-                (
-                    #[expect(clippy::cast_possible_truncation)]
-                    ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),
-                    Applicability::MachineApplicable,
-                )
-            })
-        });
+        span.with_hi(ty.span.hi())
+            .get_source_text(cx)
+            .map_or((ty.span, Applicability::MaybeIncorrect), |src| {
+                position_before_rarrow(&src).map_or((ty.span, Applicability::MaybeIncorrect), |rpos| {
+                    (
+                        #[expect(clippy::cast_possible_truncation)]
+                        ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),
+                        Applicability::MachineApplicable,
+                    )
+                })
+            });
     span_lint_and_sugg(
         cx,
         UNUSED_UNIT,

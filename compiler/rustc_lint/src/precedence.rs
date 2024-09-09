@@ -16,6 +16,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
+    /// # #![deny(ambiguous_negative_literals)]
     /// # #![allow(unused)]
     /// -1i32.abs(); // equals -1, while `(-1i32).abs()` equals 1
     /// ```
@@ -27,7 +28,7 @@ declare_lint! {
     /// Method calls take precedence over unary precedence. Setting the
     /// precedence explicitly makes the code clearer and avoid potential bugs.
     pub AMBIGUOUS_NEGATIVE_LITERALS,
-    Deny,
+    Allow,
     "ambiguous negative literals operations",
     report_in_external_macro
 }

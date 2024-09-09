@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::BitSet;
 use rustc_index::interval::IntervalSet;
@@ -6,24 +8,20 @@ use rustc_infer::infer::outlives::for_liveness;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
+use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
-use std::rc::Rc;
-
-use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
-use rustc_mir_dataflow::ResultsCursor;
+use tracing::debug;
 
 use crate::location::RichLocation;
-use crate::{
-    region_infer::values::{self, LiveLoans},
-    type_check::liveness::local_use_map::LocalUseMap,
-    type_check::liveness::polonius,
-    type_check::NormalizeLocation,
-    type_check::TypeChecker,
-};
+use crate::region_infer::values::{self, LiveLoans};
+use crate::type_check::liveness::local_use_map::LocalUseMap;
+use crate::type_check::liveness::polonius;
+use crate::type_check::{NormalizeLocation, TypeChecker};
 
 /// This is the heart of the liveness computation. For each variable X
 /// that requires a liveness computation, it walks over all the uses
@@ -220,7 +218,7 @@ impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tc
         // This collect is more necessary than immediately apparent
         // because these facts go into `add_drop_live_facts_for()`,
         // which also writes to `all_facts`, and so this is genuinely
-        // a simulatneous overlapping mutable borrow.
+        // a simultaneous overlapping mutable borrow.
         // FIXME for future hackers: investigate whether this is
         // actually necessary; these facts come from Polonius
         // and probably maybe plausibly does not need to go back in.

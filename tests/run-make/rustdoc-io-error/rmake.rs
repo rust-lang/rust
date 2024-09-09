@@ -14,21 +14,20 @@
 // `mkfs.ext4 -d`, as well as mounting a loop device for the rootfs.
 //@ ignore-windows - the `set_readonly` functions doesn't work on folders.
 
-use run_make_support::{path, rustdoc};
-use std::fs;
+use run_make_support::{path, rfs, rustdoc};
 
 fn main() {
     let out_dir = path("rustdoc-io-error");
-    let output = fs::create_dir(&out_dir).unwrap();
-    let mut permissions = fs::metadata(&out_dir).unwrap().permissions();
+    rfs::create_dir(&out_dir);
+    let mut permissions = rfs::metadata(&out_dir).permissions();
     let original_permissions = permissions.clone();
 
     permissions.set_readonly(true);
-    fs::set_permissions(&out_dir, permissions).unwrap();
+    rfs::set_permissions(&out_dir, permissions);
 
-    let output = rustdoc().input("foo.rs").output(&out_dir).env("RUST_BACKTRACE", "1").run_fail();
+    let output = rustdoc().input("foo.rs").out_dir(&out_dir).env("RUST_BACKTRACE", "1").run_fail();
 
-    fs::set_permissions(&out_dir, original_permissions).unwrap();
+    rfs::set_permissions(&out_dir, original_permissions);
 
     output
         .assert_exit_code(1)

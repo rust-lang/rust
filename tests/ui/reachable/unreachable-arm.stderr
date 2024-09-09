@@ -2,9 +2,9 @@ error: unreachable pattern
   --> $DIR/unreachable-arm.rs:11:9
    |
 LL |         Foo::B(_) | Foo::A(box _, 1) => { }
-   |         ---------------------------- matches all the values already
+   |         ---------------------------- matches all the relevant values
 LL |         Foo::A(_, 1) => { }
-   |         ^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^ no value can reach this
    |
 note: the lint level is defined here
   --> $DIR/unreachable-arm.rs:4:9

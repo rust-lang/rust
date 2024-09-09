@@ -4,20 +4,21 @@
 //! monomorphic body using internal representation.
 //! After that, we convert the internal representation into a stable one.
 
-use crate::rustc_smir::{Stable, Tables};
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::ty::{self, TyCtxt};
 
+use crate::rustc_smir::{Stable, Tables};
+
 /// Builds a monomorphic body for a given instance.
-pub struct BodyBuilder<'tcx> {
+pub(crate) struct BodyBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
 }
 
 impl<'tcx> BodyBuilder<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>) -> Self {
         let instance = match instance.def {
             // To get the fallback body of an intrinsic, we need to convert it to an item.
             ty::InstanceKind::Intrinsic(def_id) => ty::Instance::new(def_id, instance.args),
@@ -29,7 +30,7 @@ impl<'tcx> BodyBuilder<'tcx> {
     /// Build a stable monomorphic body for a given instance based on the MIR body.
     ///
     /// All constants are also evaluated.
-    pub fn build(mut self, tables: &mut Tables<'tcx>) -> stable_mir::mir::Body {
+    pub(crate) fn build(mut self, tables: &mut Tables<'tcx>) -> stable_mir::mir::Body {
         let body = tables.tcx.instance_mir(self.instance.def).clone();
         let mono_body = if !self.instance.args.is_empty()
             // Without the `generic_const_exprs` feature gate, anon consts in signatures do not

@@ -215,4 +215,39 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Removed android-ndk r25b support in favor of android-ndk r26d.",
     },
+    ChangeInfo {
+        change_id: 125181,
+        severity: ChangeSeverity::Warning,
+        summary: "For tarball sources, default value for `rust.channel` will be taken from `src/ci/channel` file.",
+    },
+    ChangeInfo {
+        change_id: 125642,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.libzstd` to control whether llvm is built with zstd support.",
+    },
+    ChangeInfo {
+        change_id: 128841,
+        severity: ChangeSeverity::Warning,
+        summary: "./x test --rustc-args was renamed to --compiletest-rustc-args as it only applies there. ./x miri --rustc-args was also removed.",
+    },
+    ChangeInfo {
+        change_id: 129295,
+        severity: ChangeSeverity::Info,
+        summary: "The `build.profiler` option now tries to use source code from `download-ci-llvm` if possible, instead of checking out the `src/llvm-project` submodule.",
+    },
+    ChangeInfo {
+        change_id: 129152,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.cargo-clippy` added for supporting the use of custom/external clippy.",
+    },
+    ChangeInfo {
+        change_id: 129925,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.split-debuginfo` as it was deprecated long time ago.",
+    },
+    ChangeInfo {
+        change_id: 129176,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.enzyme` to control whether the llvm based autodiff tool (Enzyme) is built.",
+    },
 ];

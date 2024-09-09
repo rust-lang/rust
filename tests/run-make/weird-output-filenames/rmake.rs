@@ -1,6 +1,5 @@
 use run_make_support::regex::Regex;
-use run_make_support::rfs;
-use run_make_support::{cwd, rustc};
+use run_make_support::{cwd, rfs, rustc};
 
 fn main() {
     let invalid_characters = [".foo.rs", ".foo.bar", "+foo+bar.rs"];

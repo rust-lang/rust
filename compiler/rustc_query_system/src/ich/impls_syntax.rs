@@ -1,14 +1,14 @@
 //! This module contains `HashStable` implementations for various data types
 //! from `rustc_ast` in no particular order.
 
-use crate::ich::StableHashingContext;
+use std::assert_matches::assert_matches;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::SourceFile;
-use std::assert_matches::assert_matches;
-
 use smallvec::SmallVec;
+
+use crate::ich::StableHashingContext;
 
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 

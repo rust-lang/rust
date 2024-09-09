@@ -18,15 +18,15 @@ fn shortcut_second_or() -> () {
         _1 = (move _2, const 0_i32);
         StorageDead(_2);
         PlaceMention(_1);
-        switchInt(((_1.0: (i32, i32)).0: i32)) -> [0: bb2, otherwise: bb1];
+        switchInt(copy ((_1.0: (i32, i32)).0: i32)) -> [0: bb2, otherwise: bb1];
     }
 
     bb1: {
-        switchInt(((_1.0: (i32, i32)).1: i32)) -> [1: bb4, otherwise: bb3];
+        switchInt(copy ((_1.0: (i32, i32)).1: i32)) -> [1: bb4, otherwise: bb3];
     }
 
     bb2: {
-        switchInt((_1.1: i32)) -> [2: bb5, 3: bb6, otherwise: bb3];
+        switchInt(copy (_1.1: i32)) -> [2: bb5, 3: bb6, otherwise: bb3];
     }
 
     bb3: {
@@ -35,11 +35,11 @@ fn shortcut_second_or() -> () {
     }
 
     bb4: {
-        switchInt((_1.1: i32)) -> [2: bb7, 3: bb8, otherwise: bb3];
+        switchInt(copy (_1.1: i32)) -> [2: bb7, 3: bb8, otherwise: bb3];
     }
 
     bb5: {
-        falseEdge -> [real: bb10, imaginary: bb6];
+        falseEdge -> [real: bb12, imaginary: bb6];
     }
 
     bb6: {
@@ -47,50 +47,50 @@ fn shortcut_second_or() -> () {
     }
 
     bb7: {
-        falseEdge -> [real: bb12, imaginary: bb8];
+        falseEdge -> [real: bb10, imaginary: bb8];
     }
 
     bb8: {
-        falseEdge -> [real: bb13, imaginary: bb3];
+        falseEdge -> [real: bb9, imaginary: bb3];
     }
 
     bb9: {
-        _0 = const ();
-        StorageDead(_4);
-        StorageDead(_3);
-        goto -> bb14;
+        StorageLive(_3);
+        _3 = copy (_1.0: (i32, i32));
+        StorageLive(_4);
+        _4 = copy (_1.1: i32);
+        goto -> bb13;
     }
 
     bb10: {
         StorageLive(_3);
-        _3 = (_1.0: (i32, i32));
+        _3 = copy (_1.0: (i32, i32));
         StorageLive(_4);
-        _4 = (_1.1: i32);
-        goto -> bb9;
+        _4 = copy (_1.1: i32);
+        goto -> bb13;
     }
 
     bb11: {
         StorageLive(_3);
-        _3 = (_1.0: (i32, i32));
+        _3 = copy (_1.0: (i32, i32));
         StorageLive(_4);
-        _4 = (_1.1: i32);
-        goto -> bb9;
+        _4 = copy (_1.1: i32);
+        goto -> bb13;
     }
 
     bb12: {
         StorageLive(_3);
-        _3 = (_1.0: (i32, i32));
+        _3 = copy (_1.0: (i32, i32));
         StorageLive(_4);
-        _4 = (_1.1: i32);
-        goto -> bb9;
+        _4 = copy (_1.1: i32);
+        goto -> bb13;
     }
 
     bb13: {
-        StorageLive(_3);
-        _3 = (_1.0: (i32, i32));
-        StorageLive(_4);
-        _4 = (_1.1: i32);
-        goto -> bb9;
+        _0 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        goto -> bb14;
     }
 
     bb14: {

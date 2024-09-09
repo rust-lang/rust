@@ -3,25 +3,19 @@ import * as vscode from "vscode";
 import * as path from "path";
 import type * as ra from "./lsp_ext";
 
-import { Cargo, getRustcId, getSysroot } from "./toolchain";
+import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { prepareEnv } from "./run";
-import { isCargoRunnableArgs, unwrapUndefinable } from "./util";
+import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
+import type { Config } from "./config";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");
-type DebugConfigProvider = (
-    runnable: ra.Runnable,
-    runnableArgs: ra.CargoRunnableArgs,
-    executable: string,
-    env: Record<string, string>,
-    sourceFileMap?: Record<string, string>,
-) => vscode.DebugConfiguration;
 
 export async function makeDebugConfig(ctx: Ctx, runnable: ra.Runnable): Promise<void> {
     const scope = ctx.activeRustEditor?.document.uri;
     if (!scope) return;
 
-    const debugConfig = await getDebugConfiguration(ctx, runnable);
+    const debugConfig = await getDebugConfiguration(ctx.config, runnable, false);
     if (!debugConfig) return;
 
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", scope);
@@ -57,7 +51,7 @@ export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promis
         message = " (from launch.json)";
         debugOutput.clear();
     } else {
-        debugConfig = await getDebugConfiguration(ctx, runnable);
+        debugConfig = await getDebugConfiguration(ctx.config, runnable);
     }
 
     if (!debugConfig) return false;
@@ -74,35 +68,35 @@ function createCommandLink(extensionId: string): string {
 }
 
 async function getDebugConfiguration(
-    ctx: Ctx,
+    config: Config,
     runnable: ra.Runnable,
+    inheritEnv: boolean = true,
 ): Promise<vscode.DebugConfiguration | undefined> {
     if (!isCargoRunnableArgs(runnable.args)) {
         return;
     }
     const runnableArgs: ra.CargoRunnableArgs = runnable.args;
 
-    const editor = ctx.activeRustEditor;
-    if (!editor) return;
+    const debugOptions = config.debug;
 
-    const knownEngines: Record<string, DebugConfigProvider> = {
-        "vadimcn.vscode-lldb": getCodeLldbDebugConfig,
-        "ms-vscode.cpptools": getCCppDebugConfig,
-        "webfreak.debug": getNativeDebugConfig,
-    };
-    const debugOptions = ctx.config.debug;
+    let provider: null | KnownEnginesType = null;
 
-    let debugEngine = null;
     if (debugOptions.engine === "auto") {
-        for (var engineId in knownEngines) {
-            debugEngine = vscode.extensions.getExtension(engineId);
-            if (debugEngine) break;
+        for (const engineId in knownEngines) {
+            const debugEngine = vscode.extensions.getExtension(engineId);
+            if (debugEngine) {
+                provider = knownEngines[engineId as keyof typeof knownEngines];
+                break;
+            }
         }
     } else if (debugOptions.engine) {
-        debugEngine = vscode.extensions.getExtension(debugOptions.engine);
+        const debugEngine = vscode.extensions.getExtension(debugOptions.engine);
+        if (debugEngine && Object.keys(knownEngines).includes(debugOptions.engine)) {
+            provider = knownEngines[debugOptions.engine as keyof typeof knownEngines];
+        }
     }
 
-    if (!debugEngine) {
+    if (!provider) {
         const commandCCpp: string = createCommandLink("ms-vscode.cpptools");
         const commandCodeLLDB: string = createCommandLink("vadimcn.vscode-lldb");
         const commandNativeDebug: string = createCommandLink("webfreak.debug");
@@ -116,7 +110,7 @@ async function getDebugConfiguration(
     }
 
     debugOutput.clear();
-    if (ctx.config.debug.openDebugPane) {
+    if (config.debug.openDebugPane) {
         debugOutput.show(true);
     }
     // folder exists or RA is not active.
@@ -131,29 +125,39 @@ async function getDebugConfiguration(
               firstWorkspace;
 
     const workspace = unwrapUndefinable(maybeWorkspace);
-    const wsFolder = path.normalize(workspace.uri.fsPath);
+    let wsFolder = path.normalize(workspace.uri.fsPath);
+    if (os.platform() === "win32") {
+        // in windows, the drive letter can vary in casing for VSCode, so we gotta normalize that first
+        wsFolder = wsFolder.replace(/^[a-z]:\\/, (c) => c.toUpperCase());
+    }
+
     const workspaceQualifier = isMultiFolderWorkspace ? `:${workspace.name}` : "";
     function simplifyPath(p: string): string {
+        // in windows, the drive letter can vary in casing for VSCode, so we gotta normalize that first
+        if (os.platform() === "win32") {
+            p = p.replace(/^[a-z]:\\/, (c) => c.toUpperCase());
+        }
         // see https://github.com/rust-lang/rust-analyzer/pull/5513#issuecomment-663458818 for why this is needed
         return path.normalize(p).replace(wsFolder, `\${workspaceFolder${workspaceQualifier}}`);
     }
 
-    const env = prepareEnv(runnable.label, runnableArgs, ctx.config.runnablesExtraEnv);
+    const env = prepareEnv(inheritEnv, runnable.label, runnableArgs, config.runnablesExtraEnv);
     const executable = await getDebugExecutable(runnableArgs, env);
     let sourceFileMap = debugOptions.sourceFileMap;
     if (sourceFileMap === "auto") {
-        // let's try to use the default toolchain
-        const [commitHash, sysroot] = await Promise.all([
-            getRustcId(wsFolder),
-            getSysroot(wsFolder),
-        ]);
-        const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
         sourceFileMap = {};
-        sourceFileMap[`/rustc/${commitHash}/`] = rustlib;
+        await discoverSourceFileMap(sourceFileMap, env, wsFolder);
     }
 
-    const provider = unwrapUndefinable(knownEngines[debugEngine.id]);
-    const debugConfig = provider(runnable, runnableArgs, simplifyPath(executable), env);
+    const debugConfig = getDebugConfig(
+        provider,
+        simplifyPath,
+        runnable,
+        runnableArgs,
+        executable,
+        env,
+        sourceFileMap,
+    );
     if (debugConfig.type in debugOptions.engineSettings) {
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
         for (var key in settingsMap) {
@@ -175,6 +179,92 @@ async function getDebugConfiguration(
     return debugConfig;
 }
 
+async function discoverSourceFileMap(
+    sourceFileMap: Record<string, string>,
+    env: Record<string, string>,
+    cwd: string,
+) {
+    const sysroot = env["RUSTC_TOOLCHAIN"];
+    if (sysroot) {
+        // let's try to use the default toolchain
+        const data = await execute(`rustc -V -v`, { cwd, env });
+        const rx = /commit-hash:\s(.*)$/m;
+
+        const commitHash = rx.exec(data)?.[1];
+        if (commitHash) {
+            const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
+            sourceFileMap[`/rustc/${commitHash}/`] = rustlib;
+        }
+    }
+}
+
+type PropertyFetcher<Config, Input, Key extends keyof Config> = (
+    input: Input,
+) => [Key, Config[Key]];
+
+type DebugConfigProvider<Type extends string, DebugConfig extends BaseDebugConfig<Type>> = {
+    executableProperty: keyof DebugConfig;
+    environmentProperty: PropertyFetcher<DebugConfig, Record<string, string>, keyof DebugConfig>;
+    runnableArgsProperty: PropertyFetcher<DebugConfig, ra.CargoRunnableArgs, keyof DebugConfig>;
+    sourceFileMapProperty?: keyof DebugConfig;
+    type: Type;
+    additional?: Record<string, unknown>;
+};
+
+type KnownEnginesType = (typeof knownEngines)[keyof typeof knownEngines];
+const knownEngines: {
+    "vadimcn.vscode-lldb": DebugConfigProvider<"lldb", CodeLldbDebugConfig>;
+    "ms-vscode.cpptools": DebugConfigProvider<"cppvsdbg" | "cppdbg", CCppDebugConfig>;
+    "webfreak.debug": DebugConfigProvider<"gdb", NativeDebugConfig>;
+} = {
+    "vadimcn.vscode-lldb": {
+        type: "lldb",
+        executableProperty: "program",
+        environmentProperty: (env) => ["env", env],
+        runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
+            "args",
+            runnableArgs.executableArgs,
+        ],
+        sourceFileMapProperty: "sourceMap",
+        additional: {
+            sourceLanguages: ["rust"],
+        },
+    },
+    "ms-vscode.cpptools": {
+        type: os.platform() === "win32" ? "cppvsdbg" : "cppdbg",
+        executableProperty: "program",
+        environmentProperty: (env) => [
+            "environment",
+            Object.entries(env).map((entry) => ({
+                name: entry[0],
+                value: entry[1],
+            })),
+        ],
+        runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
+            "args",
+            runnableArgs.executableArgs,
+        ],
+        sourceFileMapProperty: "sourceFileMap",
+        additional: {
+            osx: {
+                MIMode: "lldb",
+            },
+        },
+    },
+    "webfreak.debug": {
+        type: "gdb",
+        executableProperty: "target",
+        runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
+            "arguments",
+            quote(runnableArgs.executableArgs),
+        ],
+        environmentProperty: (env) => ["env", env],
+        additional: {
+            valuesFormatting: "prettyPrinters",
+        },
+    },
+};
+
 async function getDebugExecutable(
     runnableArgs: ra.CargoRunnableArgs,
     env: Record<string, string>,
@@ -186,71 +276,74 @@ async function getDebugExecutable(
     return executable;
 }
 
-function getCCppDebugConfig(
+type BaseDebugConfig<type extends string> = {
+    type: type;
+    request: "launch";
+    name: string;
+    cwd: string;
+};
+
+function getDebugConfig(
+    provider: KnownEnginesType,
+    simplifyPath: (p: string) => string,
     runnable: ra.Runnable,
     runnableArgs: ra.CargoRunnableArgs,
     executable: string,
     env: Record<string, string>,
     sourceFileMap?: Record<string, string>,
 ): vscode.DebugConfiguration {
+    const {
+        environmentProperty,
+        executableProperty,
+        runnableArgsProperty,
+        type,
+        additional,
+        sourceFileMapProperty,
+    } = provider;
+    const [envProperty, envValue] = environmentProperty(env);
+    const [argsProperty, argsValue] = runnableArgsProperty(runnableArgs);
     return {
-        type: os.platform() === "win32" ? "cppvsdbg" : "cppdbg",
+        type,
         request: "launch",
         name: runnable.label,
-        program: executable,
-        args: runnableArgs.executableArgs,
-        cwd: runnable.args.cwd || runnableArgs.workspaceRoot || ".",
-        sourceFileMap,
-        environment: Object.entries(env).map((entry) => ({
-            name: entry[0],
-            value: entry[1],
-        })),
-        // See https://github.com/rust-lang/rust-analyzer/issues/16901#issuecomment-2024486941
-        osx: {
-            MIMode: "lldb",
-        },
+        cwd: simplifyPath(runnable.args.cwd || runnableArgs.workspaceRoot || "."),
+        [executableProperty]: simplifyPath(executable),
+        [envProperty]: envValue,
+        [argsProperty]: argsValue,
+        ...(sourceFileMapProperty ? { [sourceFileMapProperty]: sourceFileMap } : {}),
+        ...additional,
     };
 }
 
-function getCodeLldbDebugConfig(
-    runnable: ra.Runnable,
-    runnableArgs: ra.CargoRunnableArgs,
-    executable: string,
-    env: Record<string, string>,
-    sourceFileMap?: Record<string, string>,
-): vscode.DebugConfiguration {
-    return {
-        type: "lldb",
-        request: "launch",
-        name: runnable.label,
-        program: executable,
-        args: runnableArgs.executableArgs,
-        cwd: runnable.args.cwd || runnableArgs.workspaceRoot || ".",
-        sourceMap: sourceFileMap,
-        sourceLanguages: ["rust"],
-        env,
+type CCppDebugConfig = {
+    program: string;
+    args: string[];
+    sourceFileMap: Record<string, string> | undefined;
+    environment: {
+        name: string;
+        value: string;
+    }[];
+    // See https://github.com/rust-lang/rust-analyzer/issues/16901#issuecomment-2024486941
+    osx: {
+        MIMode: "lldb";
     };
-}
+} & BaseDebugConfig<"cppvsdbg" | "cppdbg">;
 
-function getNativeDebugConfig(
-    runnable: ra.Runnable,
-    runnableArgs: ra.CargoRunnableArgs,
-    executable: string,
-    env: Record<string, string>,
-    _sourceFileMap?: Record<string, string>,
-): vscode.DebugConfiguration {
-    return {
-        type: "gdb",
-        request: "launch",
-        name: runnable.label,
-        target: executable,
-        // See https://github.com/WebFreak001/code-debug/issues/359
-        arguments: quote(runnableArgs.executableArgs),
-        cwd: runnable.args.cwd || runnableArgs.workspaceRoot || ".",
-        env,
-        valuesFormatting: "prettyPrinters",
-    };
-}
+type CodeLldbDebugConfig = {
+    program: string;
+    args: string[];
+    sourceMap: Record<string, string> | undefined;
+    sourceLanguages: ["rust"];
+    env: Record<string, string>;
+} & BaseDebugConfig<"lldb">;
+
+type NativeDebugConfig = {
+    target: string;
+    // See https://github.com/WebFreak001/code-debug/issues/359
+    arguments: string;
+    env: Record<string, string>;
+    valuesFormatting: "prettyPrinters";
+} & BaseDebugConfig<"gdb">;
 
 // Based on https://github.com/ljharb/shell-quote/blob/main/quote.js
 function quote(xs: string[]) {

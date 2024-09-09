@@ -1,8 +1,8 @@
-use crate::alloc::Allocator;
 use core::iter::TrustedLen;
 use core::slice::{self};
 
 use super::{IntoIter, Vec};
+use crate::alloc::Allocator;
 
 // Specialization trait used for Vec::extend
 pub(super) trait SpecExtend<T, I> {

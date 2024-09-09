@@ -29,7 +29,16 @@ pub struct Assist {
     /// cumbersome, especially if you want to embed an assist into another data
     /// structure, such as a diagnostic.
     pub source_change: Option<SourceChange>,
-    pub trigger_signature_help: bool,
+    /// The command to execute after the assist is applied.
+    pub command: Option<Command>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Command {
+    /// Show the parameter hints popup.
+    TriggerParameterHints,
+    /// Rename the just inserted item.
+    Rename,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

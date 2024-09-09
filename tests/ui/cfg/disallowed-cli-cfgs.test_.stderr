@@ -1,0 +1,8 @@
+error: unexpected `--cfg test` flag
+   |
+   = note: config `test` is only supposed to be controlled by `--test`
+   = note: see <https://github.com/rust-lang/rust/issues/xxxxx> for more information
+   = note: `#[deny(unexpected_builtin_cfgs)]` on by default
+
+error: aborting due to 1 previous error
+

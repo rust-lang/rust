@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 
+use core::hash::{Hash, Hasher};
+
 use super::hermit_abi::{self, timespec, CLOCK_MONOTONIC, CLOCK_REALTIME};
 use crate::cmp::Ordering;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::time::Duration;
-use core::hash::{Hash, Hasher};
 
 const NSEC_PER_SEC: i32 = 1_000_000_000;
 

@@ -44,7 +44,6 @@ pub trait MyTrait<T> {
     fn dummy(&self, t: T) -> T { panic!() }
 }
 
-#[allow(dead_code)]
 pub struct MyContainer<'a, T:'a> {
     foos: Vec<&'a (dyn MyTrait<T>+'a)> ,
 }

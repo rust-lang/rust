@@ -41,9 +41,9 @@
       bb0: {
           StorageLive(_4);
           StorageLive(_5);
-          _5 = _1;
+          _5 = copy _1;
 -         switchInt(move _5) -> [0: bb4, otherwise: bb1];
-+         switchInt(_1) -> [0: bb4, otherwise: bb1];
++         switchInt(copy _1) -> [0: bb4, otherwise: bb1];
       }
   
       bb1: {
@@ -51,15 +51,15 @@
 -         StorageLive(_7);
 +         nop;
           StorageLive(_8);
-          _8 = _2;
+          _8 = copy _2;
           StorageLive(_9);
-          _9 = _3;
+          _9 = copy _3;
 -         _7 = Add(move _8, move _9);
-+         _7 = Add(_2, _3);
++         _7 = Add(copy _2, copy _3);
           StorageDead(_9);
           StorageDead(_8);
 -         _6 = opaque::<u8>(move _7) -> [return: bb2, unwind unreachable];
-+         _6 = opaque::<u8>(_7) -> [return: bb2, unwind unreachable];
++         _6 = opaque::<u8>(copy _7) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
@@ -69,15 +69,15 @@
           StorageLive(_10);
           StorageLive(_11);
           StorageLive(_12);
-          _12 = _2;
+          _12 = copy _2;
           StorageLive(_13);
-          _13 = _3;
+          _13 = copy _3;
 -         _11 = Add(move _12, move _13);
-+         _11 = _7;
++         _11 = copy _7;
           StorageDead(_13);
           StorageDead(_12);
 -         _10 = opaque::<u8>(move _11) -> [return: bb3, unwind unreachable];
-+         _10 = opaque::<u8>(_7) -> [return: bb3, unwind unreachable];
++         _10 = opaque::<u8>(copy _7) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
@@ -92,15 +92,15 @@
 -         StorageLive(_15);
 +         nop;
           StorageLive(_16);
-          _16 = _2;
+          _16 = copy _2;
           StorageLive(_17);
-          _17 = _3;
+          _17 = copy _3;
 -         _15 = Add(move _16, move _17);
-+         _15 = Add(_2, _3);
++         _15 = Add(copy _2, copy _3);
           StorageDead(_17);
           StorageDead(_16);
 -         _14 = opaque::<u8>(move _15) -> [return: bb5, unwind unreachable];
-+         _14 = opaque::<u8>(_15) -> [return: bb5, unwind unreachable];
++         _14 = opaque::<u8>(copy _15) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {
@@ -110,15 +110,15 @@
           StorageLive(_18);
           StorageLive(_19);
           StorageLive(_20);
-          _20 = _2;
+          _20 = copy _2;
           StorageLive(_21);
-          _21 = _3;
+          _21 = copy _3;
 -         _19 = Add(move _20, move _21);
-+         _19 = _15;
++         _19 = copy _15;
           StorageDead(_21);
           StorageDead(_20);
 -         _18 = opaque::<u8>(move _19) -> [return: bb6, unwind unreachable];
-+         _18 = opaque::<u8>(_15) -> [return: bb6, unwind unreachable];
++         _18 = opaque::<u8>(copy _15) -> [return: bb6, unwind unreachable];
       }
   
       bb6: {
@@ -135,15 +135,15 @@
 -         StorageLive(_23);
 +         nop;
           StorageLive(_24);
-          _24 = _2;
+          _24 = copy _2;
           StorageLive(_25);
-          _25 = _3;
+          _25 = copy _3;
 -         _23 = Add(move _24, move _25);
-+         _23 = Add(_2, _3);
++         _23 = Add(copy _2, copy _3);
           StorageDead(_25);
           StorageDead(_24);
 -         _22 = opaque::<u8>(move _23) -> [return: bb8, unwind unreachable];
-+         _22 = opaque::<u8>(_23) -> [return: bb8, unwind unreachable];
++         _22 = opaque::<u8>(copy _23) -> [return: bb8, unwind unreachable];
       }
   
       bb8: {
@@ -151,24 +151,24 @@
 +         nop;
           StorageDead(_22);
           StorageLive(_26);
-          _26 = _1;
+          _26 = copy _1;
 -         switchInt(move _26) -> [0: bb11, otherwise: bb9];
-+         switchInt(_1) -> [0: bb11, otherwise: bb9];
++         switchInt(copy _1) -> [0: bb11, otherwise: bb9];
       }
   
       bb9: {
           StorageLive(_27);
           StorageLive(_28);
           StorageLive(_29);
-          _29 = _2;
+          _29 = copy _2;
           StorageLive(_30);
-          _30 = _3;
+          _30 = copy _3;
 -         _28 = Add(move _29, move _30);
-+         _28 = _23;
++         _28 = copy _23;
           StorageDead(_30);
           StorageDead(_29);
 -         _27 = opaque::<u8>(move _28) -> [return: bb10, unwind unreachable];
-+         _27 = opaque::<u8>(_23) -> [return: bb10, unwind unreachable];
++         _27 = opaque::<u8>(copy _23) -> [return: bb10, unwind unreachable];
       }
   
       bb10: {
@@ -182,15 +182,15 @@
           StorageLive(_31);
           StorageLive(_32);
           StorageLive(_33);
-          _33 = _2;
+          _33 = copy _2;
           StorageLive(_34);
-          _34 = _3;
+          _34 = copy _3;
 -         _32 = Add(move _33, move _34);
-+         _32 = _23;
++         _32 = copy _23;
           StorageDead(_34);
           StorageDead(_33);
 -         _31 = opaque::<u8>(move _32) -> [return: bb12, unwind unreachable];
-+         _31 = opaque::<u8>(_23) -> [return: bb12, unwind unreachable];
++         _31 = opaque::<u8>(copy _23) -> [return: bb12, unwind unreachable];
       }
   
       bb12: {

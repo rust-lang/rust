@@ -34,21 +34,13 @@ pub(crate) struct QueryRevisions {
     /// Minimum durability of the inputs to this query.
     pub(crate) durability: Durability,
 
+    /// Whether the input is untracked.
+    /// Invariant: if `untracked`, `inputs` is `None`.
+    /// Why is this encoded like this and not a proper enum? Struct size, this saves us 8 bytes.
+    pub(crate) untracked: bool,
+
     /// The inputs that went into our query, if we are tracking them.
-    pub(crate) inputs: QueryInputs,
-}
-
-/// Every input.
-#[derive(Debug, Clone)]
-pub(crate) enum QueryInputs {
-    /// Non-empty set of inputs, fully known
-    Tracked { inputs: ThinArc<(), DatabaseKeyIndex> },
-
-    /// Empty set of inputs, fully known.
-    NoInputs,
-
-    /// Unknown quantity of inputs
-    Untracked,
+    pub(crate) inputs: Option<ThinArc<(), DatabaseKeyIndex>>,
 }
 
 impl Default for LocalState {

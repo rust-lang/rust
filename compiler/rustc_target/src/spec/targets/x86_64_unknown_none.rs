@@ -4,10 +4,12 @@
 // `target-cpu` compiler flags to opt-in more hardware-specific
 // features.
 
-use crate::spec::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
-use crate::spec::{RelroLevel, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{
+    Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelroLevel, SanitizerSet, StackProbeType,
+    Target, TargetOptions,
+};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         cpu: "x86-64".into(),
         plt_by_default: false,

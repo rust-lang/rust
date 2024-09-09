@@ -157,7 +157,7 @@ async unsafe fn surface_drop_in_place<T: Drop + ?Sized>(ptr: *mut T) {
     unsafe { crate::ops::fallback_surface_drop(&mut *ptr) }
 }
 
-/// Wraps a future to continue outputing `Poll::Ready(())` once after
+/// Wraps a future to continue outputting `Poll::Ready(())` once after
 /// wrapped future completes by returning `Poll::Ready(())` on poll. This
 /// is useful for constructing async destructors to guarantee this
 /// "fuse" property
@@ -205,7 +205,7 @@ async unsafe fn slice<T>(s: *mut [T]) {
     }
 }
 
-/// Construct a chain of two futures, which awaits them sequentially as
+/// Constructs a chain of two futures, which awaits them sequentially as
 /// a future.
 #[lang = "async_drop_chain"]
 async fn chain<F, G>(first: F, last: G)
@@ -223,7 +223,7 @@ where
 /// # Safety
 ///
 /// Same as `async_drop_in_place` except is lazy to avoid creating
-/// multiple mutable refernces.
+/// multiple mutable references.
 #[lang = "async_drop_defer"]
 async unsafe fn defer<T: ?Sized>(to_drop: *mut T) {
     // SAFETY: same safety requirements as `async_drop_in_place`
@@ -235,8 +235,8 @@ async unsafe fn defer<T: ?Sized>(to_drop: *mut T) {
 ///
 /// # Safety
 ///
-/// User should carefully manage returned future, since it would
-/// try creating an immutable referece from `this` and get pointee's
+/// Users should carefully manage the returned future, since it would
+/// try creating an immutable reference from `this` and get pointee's
 /// discriminant.
 // FIXME(zetanumbers): Send and Sync impls
 #[lang = "async_drop_either"]

@@ -19,6 +19,7 @@ use rustc_span::source_map::respan;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
+use tracing::debug;
 
 use super::{local_decls_for_sig, new_body};
 
@@ -343,7 +344,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 .tcx
                 .mk_place_elems(&[PlaceElem::Deref, PlaceElem::Field(field, field_ty)]),
         };
-        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+        self.put_temp_rvalue(Rvalue::RawPtr(Mutability::Mut, place))
     }
 
     /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
@@ -363,7 +364,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 PlaceElem::Field(field, field_ty),
             ]),
         };
-        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+        self.put_temp_rvalue(Rvalue::RawPtr(Mutability::Mut, place))
     }
 
     /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of

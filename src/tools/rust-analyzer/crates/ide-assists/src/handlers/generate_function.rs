@@ -3,13 +3,12 @@ use hir::{
     StructKind, Type, TypeInfo,
 };
 use ide_db::{
-    base_db::FileId,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
     helpers::is_editable_crate,
     path_transform::PathTransform,
     source_change::SourceChangeBuilder,
-    FxHashMap, FxHashSet, RootDatabase, SnippetCap,
+    FileId, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
@@ -18,7 +17,7 @@ use syntax::{
         self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, BlockExpr, CallExpr,
         HasArgList, HasGenericParams, HasModuleItem, HasTypeBounds,
     },
-    ted, SyntaxKind, SyntaxNode, TextRange, T,
+    ted, Edition, SyntaxKind, SyntaxNode, TextRange, T,
 };
 
 use crate::{
@@ -176,6 +175,7 @@ fn add_func_to_accumulator(
         edit.edit_file(file);
 
         let target = function_builder.target.clone();
+        let edition = function_builder.target_edition;
         let func = function_builder.render(ctx.config.snippet_cap, edit);
 
         if let Some(adt) =
@@ -184,7 +184,7 @@ fn add_func_to_accumulator(
         {
             let name = make::ty_path(make::ext::ident_path(&format!(
                 "{}",
-                adt.name(ctx.db()).display(ctx.db())
+                adt.name(ctx.db()).display(ctx.db(), edition)
             )));
 
             // FIXME: adt may have generic params.
@@ -208,7 +208,8 @@ fn get_adt_source(
     let file = ctx.sema.parse(range.file_id);
     let adt_source =
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
-    find_struct_impl(ctx, &adt_source, &[fn_name.to_owned()]).map(|impl_| (impl_, range.file_id))
+    find_struct_impl(ctx, &adt_source, &[fn_name.to_owned()])
+        .map(|impl_| (impl_, range.file_id.file_id()))
 }
 
 struct FunctionBuilder {
@@ -222,6 +223,7 @@ struct FunctionBuilder {
     should_focus_return_type: bool,
     visibility: Visibility,
     is_async: bool,
+    target_edition: Edition,
 }
 
 impl FunctionBuilder {
@@ -237,6 +239,7 @@ impl FunctionBuilder {
     ) -> Option<Self> {
         let target_module =
             target_module.or_else(|| ctx.sema.scope(target.syntax()).map(|it| it.module()))?;
+        let target_edition = target_module.krate().edition(ctx.db());
 
         let current_module = ctx.sema.scope(call.syntax())?.module();
         let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
@@ -258,7 +261,9 @@ impl FunctionBuilder {
 
         // If generated function has the name "new" and is an associated function, we generate fn body
         // as a constructor and assume a "Self" return type.
-        if let Some(body) = make_fn_body_as_new_function(ctx, &fn_name.text(), adt_info) {
+        if let Some(body) =
+            make_fn_body_as_new_function(ctx, &fn_name.text(), adt_info, target_edition)
+        {
             ret_type = Some(make::ret_type(make::ty_path(make::ext::ident_path("Self"))));
             should_focus_return_type = false;
             fn_body = body;
@@ -288,6 +293,7 @@ impl FunctionBuilder {
             should_focus_return_type,
             visibility,
             is_async,
+            target_edition,
         })
     }
 
@@ -299,6 +305,8 @@ impl FunctionBuilder {
         target_module: Module,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
+        let target_edition = target_module.krate().edition(ctx.db());
+
         let current_module = ctx.sema.scope(call.syntax())?.module();
         let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
 
@@ -336,6 +344,7 @@ impl FunctionBuilder {
             should_focus_return_type,
             visibility,
             is_async,
+            target_edition,
         })
     }
 
@@ -355,6 +364,7 @@ impl FunctionBuilder {
             self.ret_type,
             self.is_async,
             false, // FIXME : const and unsafe are not handled yet.
+            false,
             false,
         )
         .clone_for_update();
@@ -425,6 +435,7 @@ fn make_fn_body_as_new_function(
     ctx: &AssistContext<'_>,
     fn_name: &str,
     adt_info: &Option<AdtInfo>,
+    edition: Edition,
 ) -> Option<ast::BlockExpr> {
     if fn_name != "new" {
         return None;
@@ -441,7 +452,10 @@ fn make_fn_body_as_new_function(
                     .iter()
                     .map(|field| {
                         make::record_expr_field(
-                            make::name_ref(&format!("{}", field.name(ctx.db()).display(ctx.db()))),
+                            make::name_ref(&format!(
+                                "{}",
+                                field.name(ctx.db()).display(ctx.db(), edition)
+                            )),
                             Some(placeholder_expr.clone()),
                         )
                     })
@@ -482,7 +496,7 @@ fn get_fn_target(
     target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId)> {
-    let mut file = ctx.file_id();
+    let mut file = ctx.file_id().into();
     let target = match target_module {
         Some(target_module) => {
             let (in_file, target) = next_space_for_fn_in_module(ctx.db(), target_module);
@@ -1102,8 +1116,9 @@ fn fn_arg_type(
 
         if ty.is_reference() || ty.is_mutable_reference() {
             let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax())?.krate());
+            let target_edition = target_module.krate().edition(ctx.db());
             convert_reference_type(ty.strip_references(), ctx.db(), famous_defs)
-                .map(|conversion| conversion.convert_type(ctx.db()).to_string())
+                .map(|conversion| conversion.convert_type(ctx.db(), target_edition).to_string())
                 .or_else(|| ty.display_source_code(ctx.db(), target_module.into(), true).ok())
         } else {
             ty.display_source_code(ctx.db(), target_module.into(), true).ok()
@@ -1168,7 +1183,7 @@ fn next_space_for_fn_in_module(
         }
     };
 
-    (file, assist_item)
+    (file.file_id(), assist_item)
 }
 
 #[derive(Clone, Copy)]

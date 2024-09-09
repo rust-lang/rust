@@ -1,11 +1,8 @@
 //! This module contains a variety of sort implementations that are optimized for small lengths.
 
-use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
-use crate::ptr;
-use crate::slice;
-
 use crate::slice::sort::shared::FreezeMarker;
+use crate::{intrinsics, ptr, slice};
 
 // It's important to differentiate between SMALL_SORT_THRESHOLD performance for
 // small slices and small-sort performance sorting small sub-slices as part of
@@ -834,18 +831,33 @@ unsafe fn bidirectional_merge<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
             right = right.add((!left_nonempty) as usize);
         }
 
-        // We now should have consumed the full input exactly once. This can
-        // only fail if the comparison operator fails to be Ord, in which case
-        // we will panic and never access the inconsistent state in dst.
+        // We now should have consumed the full input exactly once. This can only fail if the
+        // user-provided comparison function fails to implement a strict weak ordering. In that case
+        // we panic and never access the inconsistent state in dst.
         if left != left_end || right != right_end {
             panic_on_ord_violation();
         }
     }
 }
 
-#[inline(never)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 fn panic_on_ord_violation() -> ! {
-    panic!("Ord violation");
+    // This is indicative of a logic bug in the user-provided comparison function or Ord
+    // implementation. They are expected to implement a total order as explained in the Ord
+    // documentation.
+    //
+    // By panicking we inform the user, that they have a logic bug in their program. If a strict
+    // weak ordering is not given, the concept of comparison based sorting cannot yield a sorted
+    // result. E.g.: a < b < c < a
+    //
+    // The Ord documentation requires users to implement a total order. Arguably that's
+    // unnecessarily strict in the context of sorting. Issues only arise if the weaker requirement
+    // of a strict weak ordering is violated.
+    //
+    // The panic message talks about a total order because that's what the Ord documentation talks
+    // about and requires, so as to not confuse users.
+    panic!("user-provided comparison function does not correctly implement a total order");
 }
 
 #[must_use]

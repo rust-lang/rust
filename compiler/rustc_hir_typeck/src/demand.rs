@@ -1,6 +1,4 @@
-use crate::FnCtxt;
-use rustc_errors::MultiSpan;
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
@@ -15,11 +13,13 @@ use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
+use tracing::instrument;
 
 use super::method::probe;
+use crate::FnCtxt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn emit_type_mismatch_suggestions(
+    pub(crate) fn emit_type_mismatch_suggestions(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -71,7 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn emit_coerce_suggestions(
+    pub(crate) fn emit_coerce_suggestions(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -166,13 +166,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Requires that the two types unify, and prints an error message if
     /// they don't.
-    pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
+    pub(crate) fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         if let Err(e) = self.demand_suptype_diag(sp, expected, actual) {
             e.emit();
         }
     }
 
-    pub fn demand_suptype_diag(
+    pub(crate) fn demand_suptype_diag(
         &'a self,
         sp: Span,
         expected: Ty<'tcx>,
@@ -194,13 +194,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
     }
 
-    pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
+    pub(crate) fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         if let Err(err) = self.demand_eqtype_diag(sp, expected, actual) {
             err.emit();
         }
     }
 
-    pub fn demand_eqtype_diag(
+    pub(crate) fn demand_eqtype_diag(
         &'a self,
         sp: Span,
         expected: Ty<'tcx>,
@@ -209,7 +209,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
-    pub fn demand_eqtype_with_origin(
+    pub(crate) fn demand_eqtype_with_origin(
         &'a self,
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
@@ -221,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
     }
 
-    pub fn demand_coerce(
+    pub(crate) fn demand_coerce(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
@@ -280,7 +280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Notes the point at which a variable is constrained to some type incompatible
     /// with some expectation given by `source`.
-    pub fn note_source_of_type_mismatch_constraint(
+    pub(crate) fn note_source_of_type_mismatch_constraint(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
@@ -559,7 +559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // When encountering a type error on the value of a `break`, try to point at the reason for the
     // expected type.
-    pub fn annotate_loop_expected_due_to_inference(
+    pub(crate) fn annotate_loop_expected_due_to_inference(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
@@ -965,7 +965,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
-    pub fn get_conversion_methods_for_diagnostic(
+    pub(crate) fn get_conversion_methods_for_diagnostic(
         &self,
         span: Span,
         expected: Ty<'tcx>,
@@ -1187,7 +1187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-pub enum TypeMismatchSource<'tcx> {
+pub(crate) enum TypeMismatchSource<'tcx> {
     /// Expected the binding to have the given type, but it was found to have
     /// a different type. Find out when that type first became incompatible.
     Ty(Ty<'tcx>),

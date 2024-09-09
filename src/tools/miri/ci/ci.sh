@@ -137,7 +137,7 @@ case $HOST_TARGET in
     MANY_SEEDS=16 TEST_TARGET=x86_64-pc-windows-gnu run_tests
     ;;
   aarch64-apple-darwin)
-    # Host (tier 2)
+    # Host
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
@@ -150,8 +150,8 @@ case $HOST_TARGET in
     UNIX="panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
     TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal $BASIC $UNIX threadname libc-time fs
     TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX threadname libc-time fs
-    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX threadname pthread-sync available-parallelism libc-time
-    TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX threadname pthread-sync available-parallelism libc-time
+    TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX threadname pthread-sync available-parallelism libc-time tls
+    TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX threadname pthread-sync available-parallelism libc-time tls
     TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX
     TEST_TARGET=wasm32-wasip2          run_tests_minimal empty_main wasm heap_alloc libc-mem
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal empty_main wasm

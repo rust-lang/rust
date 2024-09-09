@@ -1,6 +1,7 @@
-use super::BackendTypes;
 use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
 use rustc_target::abi;
+
+use super::BackendTypes;
 
 pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors
@@ -29,6 +30,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
 
     fn const_str(&self, s: &str) -> (Self::Value, Self::Value);
     fn const_struct(&self, elts: &[Self::Value], packed: bool) -> Self::Value;
+    fn const_vector(&self, elts: &[Self::Value]) -> Self::Value;
 
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
     fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;

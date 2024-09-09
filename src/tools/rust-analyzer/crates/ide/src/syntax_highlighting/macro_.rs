@@ -117,7 +117,7 @@ fn update_macro_state(state: &mut MacroMatcherParseState, tok: &SyntaxToken) {
 
 fn is_metavariable(token: &SyntaxToken) -> Option<TextRange> {
     match token.kind() {
-        kind if kind == SyntaxKind::IDENT || kind.is_keyword() => {
+        kind if kind.is_any_identifier() => {
             if let Some(_dollar) = token.prev_token().filter(|t| t.kind() == T![$]) {
                 return Some(token.text_range());
             }

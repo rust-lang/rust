@@ -7,7 +7,6 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::rfs;
 use run_make_support::{run, rust_lib_name, rustc, test_while_readonly};
 
 fn main() {

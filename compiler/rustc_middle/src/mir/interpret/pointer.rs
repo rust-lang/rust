@@ -1,10 +1,11 @@
-use super::{AllocId, InterpResult};
+use std::fmt;
+use std::num::NonZero;
 
 use rustc_data_structures::static_assert_size;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{HasDataLayout, Size};
 
-use std::{fmt, num::NonZero};
+use super::AllocId;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pointer arithmetic
@@ -39,62 +40,13 @@ pub trait PointerArithmetic: HasDataLayout {
     }
 
     #[inline]
-    fn target_usize_to_isize(&self, val: u64) -> i64 {
-        let val = val as i64;
-        // Now wrap-around into the machine_isize range.
-        if val > self.target_isize_max() {
-            // This can only happen if the ptr size is < 64, so we know max_usize_plus_1 fits into
-            // i64.
-            debug_assert!(self.pointer_size().bits() < 64);
-            let max_usize_plus_1 = 1u128 << self.pointer_size().bits();
-            val - i64::try_from(max_usize_plus_1).unwrap()
-        } else {
-            val
-        }
-    }
-
-    /// Helper function: truncate given value-"overflowed flag" pair to pointer size and
-    /// update "overflowed flag" if there was an overflow.
-    /// This should be called by all the other methods before returning!
-    #[inline]
-    fn truncate_to_ptr(&self, (val, over): (u64, bool)) -> (u64, bool) {
-        let val = u128::from(val);
-        let max_ptr_plus_1 = 1u128 << self.pointer_size().bits();
-        (u64::try_from(val % max_ptr_plus_1).unwrap(), over || val >= max_ptr_plus_1)
+    fn truncate_to_target_usize(&self, val: u64) -> u64 {
+        self.pointer_size().truncate(val.into()).try_into().unwrap()
     }
 
     #[inline]
-    fn overflowing_offset(&self, val: u64, i: u64) -> (u64, bool) {
-        // We do not need to check if i fits in a machine usize. If it doesn't,
-        // either the wrapping_add will wrap or res will not fit in a pointer.
-        let res = val.overflowing_add(i);
-        self.truncate_to_ptr(res)
-    }
-
-    #[inline]
-    fn overflowing_signed_offset(&self, val: u64, i: i64) -> (u64, bool) {
-        // We need to make sure that i fits in a machine isize.
-        let n = i.unsigned_abs();
-        if i >= 0 {
-            let (val, over) = self.overflowing_offset(val, n);
-            (val, over || i > self.target_isize_max())
-        } else {
-            let res = val.overflowing_sub(n);
-            let (val, over) = self.truncate_to_ptr(res);
-            (val, over || i < self.target_isize_min())
-        }
-    }
-
-    #[inline]
-    fn offset<'tcx>(&self, val: u64, i: u64) -> InterpResult<'tcx, u64> {
-        let (res, over) = self.overflowing_offset(val, i);
-        if over { throw_ub!(PointerArithOverflow) } else { Ok(res) }
-    }
-
-    #[inline]
-    fn signed_offset<'tcx>(&self, val: u64, i: i64) -> InterpResult<'tcx, u64> {
-        let (res, over) = self.overflowing_signed_offset(val, i);
-        if over { throw_ub!(PointerArithOverflow) } else { Ok(res) }
+    fn sign_extend_to_target_isize(&self, val: u64) -> i64 {
+        self.pointer_size().sign_extend(val.into()).try_into().unwrap()
     }
 }
 
@@ -330,7 +282,7 @@ impl<Prov> Pointer<Option<Prov>> {
     }
 }
 
-impl<'tcx, Prov> Pointer<Prov> {
+impl<Prov> Pointer<Prov> {
     #[inline(always)]
     pub fn new(provenance: Prov, offset: Size) -> Self {
         Pointer { provenance, offset }
@@ -348,43 +300,16 @@ impl<'tcx, Prov> Pointer<Prov> {
         Pointer { provenance: f(self.provenance), ..self }
     }
 
-    #[inline]
-    pub fn offset(self, i: Size, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
-        Ok(Pointer {
-            offset: Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
-            ..self
-        })
-    }
-
-    #[inline]
-    pub fn overflowing_offset(self, i: Size, cx: &impl HasDataLayout) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
-        let ptr = Pointer { offset: Size::from_bytes(res), ..self };
-        (ptr, over)
-    }
-
     #[inline(always)]
     pub fn wrapping_offset(self, i: Size, cx: &impl HasDataLayout) -> Self {
-        self.overflowing_offset(i, cx).0
-    }
-
-    #[inline]
-    pub fn signed_offset(self, i: i64, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
-        Ok(Pointer {
-            offset: Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
-            ..self
-        })
-    }
-
-    #[inline]
-    pub fn overflowing_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
-        let ptr = Pointer { offset: Size::from_bytes(res), ..self };
-        (ptr, over)
+        let res =
+            cx.data_layout().truncate_to_target_usize(self.offset.bytes().wrapping_add(i.bytes()));
+        Pointer { offset: Size::from_bytes(res), ..self }
     }
 
     #[inline(always)]
     pub fn wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
-        self.overflowing_signed_offset(i, cx).0
+        // It's wrapping anyway, so we can just cast to `u64`.
+        self.wrapping_offset(Size::from_bytes(i as u64), cx)
     }
 }

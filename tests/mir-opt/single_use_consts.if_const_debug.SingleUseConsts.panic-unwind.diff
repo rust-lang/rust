@@ -22,7 +22,7 @@
       bb1: {
           StorageDead(_2);
           StorageLive(_3);
--         _3 = _1;
+-         _3 = copy _1;
 +         _3 = const <T as MyTrait>::ASSOC_BOOL;
           switchInt(move _3) -> [0: bb3, otherwise: bb2];
       }

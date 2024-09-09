@@ -2,14 +2,13 @@
 
 use std::iter;
 
-use hir::{DescendPreference, Semantics};
+use hir::Semantics;
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
     search::FileReference,
-    FxIndexMap, RootDatabase,
+    FileRange, FxIndexMap, RootDatabase,
 };
-use span::FileRange;
 use syntax::{ast, AstNode, SyntaxKind::IDENT};
 
 use crate::{goto_definition, FilePosition, NavigationTarget, RangeInfo, TryToNav};
@@ -33,7 +32,7 @@ pub(crate) fn incoming_calls(
 ) -> Option<Vec<CallItem>> {
     let sema = &Semantics::new(db);
 
-    let file = sema.parse(file_id);
+    let file = sema.parse_guess_edition(file_id);
     let file = file.syntax();
     let mut calls = CallLocations::default();
 
@@ -63,9 +62,9 @@ pub(crate) fn incoming_calls(
             });
             if let Some(nav) = nav {
                 let range = sema.original_range(name.syntax());
-                calls.add(nav.call_site, range);
+                calls.add(nav.call_site, range.into());
                 if let Some(other) = nav.def_site {
-                    calls.add(other, range);
+                    calls.add(other, range.into());
                 }
             }
         }
@@ -79,7 +78,7 @@ pub(crate) fn outgoing_calls(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<Vec<CallItem>> {
     let sema = Semantics::new(db);
-    let file = sema.parse(file_id);
+    let file = sema.parse_guess_edition(file_id);
     let file = file.syntax();
     let token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT => 1,
@@ -87,7 +86,7 @@ pub(crate) fn outgoing_calls(
     })?;
     let mut calls = CallLocations::default();
 
-    sema.descend_into_macros(DescendPreference::None, token)
+    sema.descend_into_macros_exact(token)
         .into_iter()
         .filter_map(|it| it.parent_ancestors().nth(1).and_then(ast::Item::cast))
         .filter_map(|item| match item {
@@ -121,7 +120,7 @@ pub(crate) fn outgoing_calls(
             Some(nav_target.into_iter().zip(iter::repeat(range)))
         })
         .flatten()
-        .for_each(|(nav, range)| calls.add(nav, range));
+        .for_each(|(nav, range)| calls.add(nav, range.into()));
 
     Some(calls.into_items())
 }
@@ -144,7 +143,7 @@ impl CallLocations {
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::base_db::FilePosition;
+    use ide_db::FilePosition;
     use itertools::Itertools;
 
     use crate::fixture;

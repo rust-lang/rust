@@ -1,38 +1,3 @@
-//! Checks for continue statements in loops that are redundant.
-//!
-//! For example, the lint would catch
-//!
-//! ```rust
-//! let mut a = 1;
-//! let x = true;
-//!
-//! while a < 5 {
-//!     a = 6;
-//!     if x {
-//!         // ...
-//!     } else {
-//!         continue;
-//!     }
-//!     println!("Hello, world");
-//! }
-//! ```
-//!
-//! And suggest something like this:
-//!
-//! ```rust
-//! let mut a = 1;
-//! let x = true;
-//!
-//! while a < 5 {
-//!     a = 6;
-//!     if x {
-//!         // ...
-//!         println!("Hello, world");
-//!     }
-//! }
-//! ```
-//!
-//! This lint is **warn** by default.
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::{indent_of, snippet, snippet_block};
 use rustc_ast::ast;

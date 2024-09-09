@@ -5,25 +5,21 @@
 //! generic parameters are unused (and eventually, in what ways generic parameters are used - only
 //! for their size, offset of a field, etc.).
 
-use rustc_hir::{def::DefKind, def_id::DefId, ConstContext};
-use rustc_middle::mir::{
-    self,
-    visit::{TyContext, Visitor},
-    Local, LocalDecl, Location,
-};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
+use rustc_hir::ConstContext;
+use rustc_middle::mir::visit::{TyContext, Visitor};
+use rustc_middle::mir::{self, Local, LocalDecl, Location};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{
-    self,
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor},
-    GenericArgsRef, Ty, TyCtxt, UnusedGenericParams,
-};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, UnusedGenericParams};
 use rustc_span::symbol::sym;
 use tracing::{debug, instrument};
 
 use crate::errors::UnusedGenericParamsHint;
 
 /// Provide implementations of queries relating to polymorphization analysis.
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.unused_generic_params = unused_generic_params;
 }
 
@@ -131,7 +127,7 @@ fn mark_used_by_default_parameters<'tcx>(
     unused_parameters: &mut UnusedGenericParams,
 ) {
     match tcx.def_kind(def_id) {
-        DefKind::Closure => {
+        DefKind::Closure | DefKind::SyntheticCoroutineBody => {
             for param in &generics.own_params {
                 debug!(?param, "(closure/gen)");
                 unused_parameters.mark_used(param.index);

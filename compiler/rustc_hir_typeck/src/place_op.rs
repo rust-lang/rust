@@ -1,16 +1,19 @@
-use crate::method::MethodCallee;
-use crate::{FnCtxt, PlaceOp};
-use rustc_ast as ast;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
 use rustc_middle::span_bug;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCoercion};
-use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, OverloadedDeref,
+    PointerCoercion,
+};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use tracing::debug;
+use {rustc_ast as ast, rustc_hir as hir};
+
+use crate::method::MethodCallee;
+use crate::{FnCtxt, PlaceOp};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type-check `*oprnd_expr` with `oprnd_expr` type-checked already.
@@ -244,7 +247,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// always know whether a place needs to be mutable or not in the first pass.
     /// This happens whether there is an implicit mutable reborrow, e.g. when the type
     /// is used as the receiver of a method call.
-    pub fn convert_place_derefs_to_mutable(&self, expr: &hir::Expr<'_>) {
+    pub(crate) fn convert_place_derefs_to_mutable(&self, expr: &hir::Expr<'_>) {
         // Gather up expressions we want to munge.
         let mut exprs = vec![expr];
 

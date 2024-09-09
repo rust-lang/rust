@@ -1,40 +1,121 @@
-error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
-  --> tests/ui/implicit_hasher.rs:14:1
+error: impl for `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:15:35
    |
-LL | pub trait Foo<T>: Sized {
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<K: Hash + Eq, V> Foo<i8> for HashMap<K, V> {
+   |                                   ^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/implicit_hasher.rs:2:9
+   |
+LL | #![deny(clippy::implicit_hasher)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashMap<K, V, S> {
+LL |     fn make() -> (Self, Self) {
+...
+LL |
+LL ~         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+   |
 
-error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
-  --> tests/ui/implicit_hasher.rs:71:1
+error: impl for `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:24:36
    |
-LL | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<K: Hash + Eq, V> Foo<i8> for (HashMap<K, V>,) {
+   |                                    ^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for (HashMap<K, V, S>,) {
+LL |     fn make() -> (Self, Self) {
+LL ~         ((HashMap::default(),), (HashMap::with_capacity_and_hasher(10, Default::default()),))
+   |
 
-error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
-  --> tests/ui/implicit_hasher.rs:74:1
+error: impl for `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:29:19
    |
-LL | pub mod gen {
-   | ^^^^^^^^^^^
+LL | impl Foo<i16> for HashMap<String, String> {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashMap<String, String, S> {
+LL |     fn make() -> (Self, Self) {
+LL ~         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+   |
 
-error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
-  --> tests/ui/implicit_hasher.rs:92:1
+error: impl for `HashSet` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:46:32
    |
-LL | pub mod test_macro;
-   | ^^^^^^^^^^^^^^^^^^^
+LL | impl<T: Hash + Eq> Foo<i8> for HashSet<T> {
+   |                                ^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<T: Hash + Eq, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashSet<T, S> {
+LL |     fn make() -> (Self, Self) {
+LL ~         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
+   |
 
-error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
-  --> tests/ui/implicit_hasher.rs:96:1
+error: impl for `HashSet` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:51:19
    |
-LL | external! {
-   | ^^^^^^^^^
+LL | impl Foo<i16> for HashSet<String> {
+   |                   ^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `external` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add a type parameter for `BuildHasher`
+   |
+LL ~ impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashSet<String, S> {
+LL |     fn make() -> (Self, Self) {
+LL ~         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
+   |
 
-error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
-  --> tests/ui/implicit_hasher.rs:101:1
+error: parameter of type `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:68:22
+   |
+LL | pub fn map(map: &mut HashMap<i32, i32>) {}
+   |                      ^^^^^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL | pub fn map<S: ::std::hash::BuildHasher>(map: &mut HashMap<i32, i32, S>) {}
+   |           +++++++++++++++++++++++++++++           ~~~~~~~~~~~~~~~~~~~~
+
+error: parameter of type `HashSet` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:70:22
+   |
+LL | pub fn set(set: &mut HashSet<i32>) {}
+   |                      ^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL | pub fn set<S: ::std::hash::BuildHasher>(set: &mut HashSet<i32, S>) {}
+   |           +++++++++++++++++++++++++++++           ~~~~~~~~~~~~~~~
+
+error: impl for `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:76:43
+   |
+LL |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
+   |                                           ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `__inline_mac_mod_gen` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add a type parameter for `BuildHasher`
+   |
+LL ~         impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u8> for HashMap<K, V, S> {
+LL |             fn make() -> (Self, Self) {
+LL ~                 (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+   |
+
+error: parameter of type `HashMap` should be generalized over different hashers
+  --> tests/ui/implicit_hasher.rs:100:35
    |
 LL | pub async fn election_vote(_data: HashMap<i32, i32>) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                   ^^^^^^^^^^^^^^^^^
+   |
+help: add a type parameter for `BuildHasher`
+   |
+LL | pub async fn election_vote<S: ::std::hash::BuildHasher>(_data: HashMap<i32, i32, S>) {}
+   |                           +++++++++++++++++++++++++++++        ~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 6 previous errors
+error: aborting due to 9 previous errors
 

@@ -1,12 +1,14 @@
-use crate::error::{TranslateError, TranslateErrorKind};
-use crate::snippet::Style;
-use crate::{DiagArg, DiagMessage, FluentBundle};
-use rustc_data_structures::sync::Lrc;
-pub use rustc_error_messages::FluentArgs;
 use std::borrow::Cow;
 use std::env;
 use std::error::Report;
+
+use rustc_data_structures::sync::Lrc;
+pub use rustc_error_messages::FluentArgs;
 use tracing::{debug, trace};
+
+use crate::error::{TranslateError, TranslateErrorKind};
+use crate::snippet::Style;
+use crate::{DiagArg, DiagMessage, FluentBundle};
 
 /// Convert diagnostic arguments (a rustc internal type that exists to implement
 /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
@@ -57,7 +59,7 @@ pub trait Translate {
         &'a self,
         message: &'a DiagMessage,
         args: &'a FluentArgs<'_>,
-    ) -> Result<Cow<'_, str>, TranslateError<'_>> {
+    ) -> Result<Cow<'a, str>, TranslateError<'a>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
             DiagMessage::Str(msg) | DiagMessage::Translated(msg) => {

@@ -1,14 +1,15 @@
 //! The compiler code necessary for `#[derive(RustcDecodable)]`. See encodable.rs for more.
 
-use crate::deriving::generic::ty::*;
-use crate::deriving::generic::*;
-use crate::deriving::pathvec_std;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Expr, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
+
+use crate::deriving::generic::ty::*;
+use crate::deriving::generic::*;
+use crate::deriving::pathvec_std;
 
 pub(crate) fn expand_deriving_rustc_decodable(
     cx: &ExtCtxt<'_>,

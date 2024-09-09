@@ -15,8 +15,10 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
-// Use the crates.io version unconditionally until the API settles enough that we can switch to
-// using the in-tree one.
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_pattern_analysis;
+
+#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
 mod builder;
@@ -61,10 +63,12 @@ use chalk_ir::{
 };
 use either::Either;
 use hir_def::{hir::ExprId, type_ref::Rawness, CallableDefId, GeneralConstId, TypeOrConstParamId};
-use hir_expand::name;
+use hir_expand::name::Name;
+use intern::{sym, Symbol};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::Edition;
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -422,45 +426,45 @@ impl Hash for FnAbi {
 }
 
 impl FnAbi {
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> FnAbi {
+    #[rustfmt::skip]
+    pub fn from_symbol(s: &Symbol) -> FnAbi {
         match s {
-            "aapcs-unwind" => FnAbi::AapcsUnwind,
-            "aapcs" => FnAbi::Aapcs,
-            "avr-interrupt" => FnAbi::AvrInterrupt,
-            "avr-non-blocking-interrupt" => FnAbi::AvrNonBlockingInterrupt,
-            "C-cmse-nonsecure-call" => FnAbi::CCmseNonsecureCall,
-            "C-unwind" => FnAbi::CUnwind,
-            "C" => FnAbi::C,
-            "cdecl-unwind" => FnAbi::CDeclUnwind,
-            "cdecl" => FnAbi::CDecl,
-            "efiapi" => FnAbi::Efiapi,
-            "fastcall-unwind" => FnAbi::FastcallUnwind,
-            "fastcall" => FnAbi::Fastcall,
-            "msp430-interrupt" => FnAbi::Msp430Interrupt,
-            "platform-intrinsic" => FnAbi::PlatformIntrinsic,
-            "ptx-kernel" => FnAbi::PtxKernel,
-            "riscv-interrupt-m" => FnAbi::RiscvInterruptM,
-            "riscv-interrupt-s" => FnAbi::RiscvInterruptS,
-            "rust-call" => FnAbi::RustCall,
-            "rust-cold" => FnAbi::RustCold,
-            "rust-intrinsic" => FnAbi::RustIntrinsic,
-            "Rust" => FnAbi::Rust,
-            "stdcall-unwind" => FnAbi::StdcallUnwind,
-            "stdcall" => FnAbi::Stdcall,
-            "system-unwind" => FnAbi::SystemUnwind,
-            "system" => FnAbi::System,
-            "sysv64-unwind" => FnAbi::Sysv64Unwind,
-            "sysv64" => FnAbi::Sysv64,
-            "thiscall-unwind" => FnAbi::ThiscallUnwind,
-            "thiscall" => FnAbi::Thiscall,
-            "unadjusted" => FnAbi::Unadjusted,
-            "vectorcall-unwind" => FnAbi::VectorcallUnwind,
-            "vectorcall" => FnAbi::Vectorcall,
-            "wasm" => FnAbi::Wasm,
-            "win64-unwind" => FnAbi::Win64Unwind,
-            "win64" => FnAbi::Win64,
-            "x86-interrupt" => FnAbi::X86Interrupt,
+            s if *s == sym::aapcs_dash_unwind => FnAbi::AapcsUnwind,
+            s if *s == sym::aapcs => FnAbi::Aapcs,
+            s if *s == sym::avr_dash_interrupt => FnAbi::AvrInterrupt,
+            s if *s == sym::avr_dash_non_dash_blocking_dash_interrupt => FnAbi::AvrNonBlockingInterrupt,
+            s if *s == sym::C_dash_cmse_dash_nonsecure_dash_call => FnAbi::CCmseNonsecureCall,
+            s if *s == sym::C_dash_unwind => FnAbi::CUnwind,
+            s if *s == sym::C => FnAbi::C,
+            s if *s == sym::cdecl_dash_unwind => FnAbi::CDeclUnwind,
+            s if *s == sym::cdecl => FnAbi::CDecl,
+            s if *s == sym::efiapi => FnAbi::Efiapi,
+            s if *s == sym::fastcall_dash_unwind => FnAbi::FastcallUnwind,
+            s if *s == sym::fastcall => FnAbi::Fastcall,
+            s if *s == sym::msp430_dash_interrupt => FnAbi::Msp430Interrupt,
+            s if *s == sym::platform_dash_intrinsic => FnAbi::PlatformIntrinsic,
+            s if *s == sym::ptx_dash_kernel => FnAbi::PtxKernel,
+            s if *s == sym::riscv_dash_interrupt_dash_m => FnAbi::RiscvInterruptM,
+            s if *s == sym::riscv_dash_interrupt_dash_s => FnAbi::RiscvInterruptS,
+            s if *s == sym::rust_dash_call => FnAbi::RustCall,
+            s if *s == sym::rust_dash_cold => FnAbi::RustCold,
+            s if *s == sym::rust_dash_intrinsic => FnAbi::RustIntrinsic,
+            s if *s == sym::Rust => FnAbi::Rust,
+            s if *s == sym::stdcall_dash_unwind => FnAbi::StdcallUnwind,
+            s if *s == sym::stdcall => FnAbi::Stdcall,
+            s if *s == sym::system_dash_unwind => FnAbi::SystemUnwind,
+            s if *s == sym::system => FnAbi::System,
+            s if *s == sym::sysv64_dash_unwind => FnAbi::Sysv64Unwind,
+            s if *s == sym::sysv64 => FnAbi::Sysv64,
+            s if *s == sym::thiscall_dash_unwind => FnAbi::ThiscallUnwind,
+            s if *s == sym::thiscall => FnAbi::Thiscall,
+            s if *s == sym::unadjusted => FnAbi::Unadjusted,
+            s if *s == sym::vectorcall_dash_unwind => FnAbi::VectorcallUnwind,
+            s if *s == sym::vectorcall => FnAbi::Vectorcall,
+            s if *s == sym::wasm => FnAbi::Wasm,
+            s if *s == sym::win64_dash_unwind => FnAbi::Win64Unwind,
+            s if *s == sym::win64 => FnAbi::Win64,
+            s if *s == sym::x86_dash_interrupt => FnAbi::X86Interrupt,
             _ => FnAbi::Unknown,
         }
     }
@@ -594,7 +598,7 @@ impl TypeFoldable<Interner> for CallableSig {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
     ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx),
-    AssociatedTypeImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
+    TypeAliasImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 impl InternValueTrivial for ImplTraitId {}
@@ -894,7 +898,9 @@ pub fn callable_sig_from_fn_trait(
 ) -> Option<(FnTrait, CallableSig)> {
     let krate = trait_env.krate;
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
-    let output_assoc_type = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
+    let output_assoc_type = db
+        .trait_data(fn_once_trait)
+        .associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
 
     let mut table = InferenceTable::new(db, trait_env.clone());
     let b = TyBuilder::trait_ref(db, fn_once_trait);
@@ -1022,7 +1028,11 @@ where
     collector.placeholders.into_iter().collect()
 }
 
-pub fn known_const_to_ast(konst: &Const, db: &dyn HirDatabase) -> Option<ConstArg> {
+pub fn known_const_to_ast(
+    konst: &Const,
+    db: &dyn HirDatabase,
+    edition: Edition,
+) -> Option<ConstArg> {
     if let ConstValue::Concrete(c) = &konst.interned().value {
         match c.interned {
             ConstScalar::UnevaluatedConst(GeneralConstId::InTypeConstId(cid), _) => {
@@ -1032,5 +1042,5 @@ pub fn known_const_to_ast(konst: &Const, db: &dyn HirDatabase) -> Option<ConstAr
             _ => (),
         }
     }
-    Some(make::expr_const_value(konst.display(db).to_string().as_str()))
+    Some(make::expr_const_value(konst.display(db, edition).to_string().as_str()))
 }

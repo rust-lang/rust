@@ -3,7 +3,7 @@
 use hir::{db::HirDatabase, Name, StructKind};
 use ide_db::{documentation::HasDocs, SnippetCap};
 use itertools::Itertools;
-use syntax::SmolStr;
+use syntax::{Edition, SmolStr, ToSmolStr};
 
 use crate::{
     context::{ParamContext, ParamKind, PathCompletionCtx, PatternContext},
@@ -31,7 +31,10 @@ pub(crate) fn render_struct_pat(
     }
 
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db()));
-    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
+    let (name, escaped_name) = (
+        name.unescaped().display(ctx.db()).to_smolstr(),
+        name.display(ctx.db(), ctx.completion.edition).to_smolstr(),
+    );
     let kind = strukt.kind(ctx.db());
     let label = format_literal_label(name.as_str(), kind, ctx.snippet_cap());
     let lookup = format_literal_lookup(name.as_str(), kind);
@@ -59,11 +62,15 @@ pub(crate) fn render_variant_pat(
     let (name, escaped_name) = match path {
         Some(path) => (
             path.unescaped().display(ctx.db()).to_string().into(),
-            path.display(ctx.db()).to_string().into(),
+            path.display(ctx.db(), ctx.completion.edition).to_string().into(),
         ),
         None => {
             let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
-            (name.unescaped().to_smol_str(), name.to_smol_str())
+            let it = (
+                name.unescaped().display(ctx.db()).to_smolstr(),
+                name.display(ctx.db(), ctx.completion.edition).to_smolstr(),
+            );
+            it
         }
     };
 
@@ -114,7 +121,12 @@ fn build_completion(
         relevance.type_match = super::compute_type_match(ctx.completion, &adt_ty);
     }
 
-    let mut item = CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label);
+    let mut item = CompletionItem::new(
+        CompletionItemKind::Binding,
+        ctx.source_range(),
+        label,
+        ctx.completion.edition,
+    );
     item.set_documentation(ctx.docs(def))
         .set_deprecated(ctx.is_deprecated(def))
         .detail(&pat)
@@ -137,9 +149,14 @@ fn render_pat(
 ) -> Option<String> {
     let mut pat = match kind {
         StructKind::Tuple => render_tuple_as_pat(ctx.snippet_cap(), fields, name, fields_omitted),
-        StructKind::Record => {
-            render_record_as_pat(ctx.db(), ctx.snippet_cap(), fields, name, fields_omitted)
-        }
+        StructKind::Record => render_record_as_pat(
+            ctx.db(),
+            ctx.snippet_cap(),
+            fields,
+            name,
+            fields_omitted,
+            ctx.completion.edition,
+        ),
         StructKind::Unit => name.to_owned(),
     };
 
@@ -168,6 +185,7 @@ fn render_record_as_pat(
     fields: &[hir::Field],
     name: &str,
     fields_omitted: bool,
+    edition: Edition,
 ) -> String {
     let fields = fields.iter();
     match snippet_cap {
@@ -175,7 +193,7 @@ fn render_record_as_pat(
             format!(
                 "{name} {{ {}{} }}",
                 fields.enumerate().format_with(", ", |(idx, field), f| {
-                    f(&format_args!("{}${}", field.name(db).display(db.upcast()), idx + 1))
+                    f(&format_args!("{}${}", field.name(db).display(db.upcast(), edition), idx + 1))
                 }),
                 if fields_omitted { ", .." } else { "" },
                 name = name
@@ -184,7 +202,7 @@ fn render_record_as_pat(
         None => {
             format!(
                 "{name} {{ {}{} }}",
-                fields.map(|field| field.name(db).to_smol_str()).format(", "),
+                fields.map(|field| field.name(db).display_no_db(edition).to_smolstr()).format(", "),
                 if fields_omitted { ", .." } else { "" },
                 name = name
             )

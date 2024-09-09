@@ -1,9 +1,7 @@
 use super::abi;
-use crate::{
-    cell::UnsafeCell,
-    mem::MaybeUninit,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-};
+use crate::cell::UnsafeCell;
+use crate::mem::MaybeUninit;
+use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 /// A mutex implemented by `dis_dsp` (for intra-core synchronization) and a
 /// spinlock (for inter-core synchronization).

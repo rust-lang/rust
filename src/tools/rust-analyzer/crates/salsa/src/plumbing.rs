@@ -12,8 +12,9 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use triomphe::Arc;
 
-pub use crate::derived::DependencyStorage;
 pub use crate::derived::MemoizedStorage;
+pub use crate::derived_lru::DependencyStorage as LruDependencyStorage;
+pub use crate::derived_lru::MemoizedStorage as LruMemoizedStorage;
 pub use crate::input::{InputStorage, UnitInputStorage};
 pub use crate::interned::InternedStorage;
 pub use crate::interned::LookupInternedStorage;
@@ -228,7 +229,7 @@ where
 /// that is, storage whose value is not derived from other storage but
 /// is set independently.
 pub trait LruQueryStorageOps {
-    fn set_lru_capacity(&self, new_capacity: usize);
+    fn set_lru_capacity(&self, new_capacity: u16);
 }
 
 pub trait DerivedQueryStorageOps<Q>

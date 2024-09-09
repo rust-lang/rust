@@ -5,9 +5,10 @@ use either::Either;
 use hir::{AsAssocItem, HirDisplay, ImportPathConfig, ModuleDef, SemanticsScope};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
+use span::Edition;
 use syntax::{
     ast::{self, make, AstNode, HasGenericArgs},
-    ted, SyntaxNode,
+    ted, NodeOrToken, SyntaxNode,
 };
 
 #[derive(Default)]
@@ -146,6 +147,7 @@ impl<'a> PathTransform<'a> {
         let mut type_substs: FxHashMap<hir::TypeParam, ast::Type> = Default::default();
         let mut const_substs: FxHashMap<hir::ConstParam, SyntaxNode> = Default::default();
         let mut defaulted_params: Vec<DefaultedParam> = Default::default();
+        let target_edition = target_module.krate().edition(self.source_scope.db);
         self.generic_def
             .into_iter()
             .flat_map(|it| it.type_or_const_params(db))
@@ -190,7 +192,7 @@ impl<'a> PathTransform<'a> {
                     }
                 }
                 (Either::Left(k), None) => {
-                    if let Some(default) = k.default(db) {
+                    if let Some(default) = k.default(db, target_edition) {
                         if let Some(default) = default.expr() {
                             const_substs.insert(k, default.syntax().clone_for_update());
                             defaulted_params.push(Either::Right(k));
@@ -204,7 +206,9 @@ impl<'a> PathTransform<'a> {
             .into_iter()
             .flat_map(|it| it.lifetime_params(db))
             .zip(self.substs.lifetimes.clone())
-            .filter_map(|(k, v)| Some((k.name(db).display(db.upcast()).to_string(), v.lifetime()?)))
+            .filter_map(|(k, v)| {
+                Some((k.name(db).display(db.upcast(), target_edition).to_string(), v.lifetime()?))
+            })
             .collect();
         let ctx = Ctx {
             type_substs,
@@ -213,6 +217,7 @@ impl<'a> PathTransform<'a> {
             target_module,
             source_scope: self.source_scope,
             same_self_type: self.target_scope.has_same_self_type(self.source_scope),
+            target_edition,
         };
         ctx.transform_default_values(defaulted_params);
         ctx
@@ -226,6 +231,7 @@ struct Ctx<'a> {
     target_module: hir::Module,
     source_scope: &'a SemanticsScope<'a>,
     same_self_type: bool,
+    target_edition: Edition,
 }
 
 fn preorder_rev(item: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
@@ -318,7 +324,7 @@ impl Ctx<'_> {
                                 hir::ModuleDef::Trait(trait_ref),
                                 cfg,
                             )?;
-                            match make::ty_path(mod_path_to_ast(&found_path)) {
+                            match make::ty_path(mod_path_to_ast(&found_path, self.target_edition)) {
                                 ast::Type::PathType(path_ty) => Some(path_ty),
                                 _ => None,
                             }
@@ -328,10 +334,26 @@ impl Ctx<'_> {
                         let qualified = make::path_from_segments(std::iter::once(segment), false);
                         ted::replace(path.syntax(), qualified.clone_for_update().syntax());
                     } else if let Some(path_ty) = ast::PathType::cast(parent) {
-                        ted::replace(
-                            path_ty.syntax(),
-                            subst.clone_subtree().clone_for_update().syntax(),
-                        );
+                        let old = path_ty.syntax();
+
+                        if old.parent().is_some() {
+                            ted::replace(old, subst.clone_subtree().clone_for_update().syntax());
+                        } else {
+                            // Some `path_ty` has no parent, especially ones made for default value
+                            // of type parameters.
+                            // In this case, `ted` cannot replace `path_ty` with `subst` directly.
+                            // So, just replace its children as long as the `subst` is the same type.
+                            let new = subst.clone_subtree().clone_for_update();
+                            if !matches!(new, ast::Type::PathType(..)) {
+                                return None;
+                            }
+                            let start = path_ty.syntax().first_child().map(NodeOrToken::Node)?;
+                            let end = path_ty.syntax().last_child().map(NodeOrToken::Node)?;
+                            ted::replace_all(
+                                start..=end,
+                                new.syntax().children().map(NodeOrToken::Node).collect::<Vec<_>>(),
+                            );
+                        }
                     } else {
                         ted::replace(
                             path.syntax(),
@@ -358,7 +380,7 @@ impl Ctx<'_> {
                 };
                 let found_path =
                     self.target_module.find_path(self.source_scope.db.upcast(), def, cfg)?;
-                let res = mod_path_to_ast(&found_path).clone_for_update();
+                let res = mod_path_to_ast(&found_path, self.target_edition).clone_for_update();
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list()) {
                     if let Some(segment) = res.segment() {
                         let old = segment.get_or_create_generic_arg_list();
@@ -401,7 +423,9 @@ impl Ctx<'_> {
                             cfg,
                         )?;
 
-                        if let Some(qual) = mod_path_to_ast(&found_path).qualifier() {
+                        if let Some(qual) =
+                            mod_path_to_ast(&found_path, self.target_edition).qualifier()
+                        {
                             let res = make::path_concat(qual, path_ty.path()?).clone_for_update();
                             ted::replace(path.syntax(), res.syntax());
                             return Some(());
@@ -472,7 +496,7 @@ fn find_trait_for_assoc_item(
         });
 
         for name in names {
-            if assoc_item_name.as_str() == name.as_text()?.as_str() {
+            if assoc_item_name.as_str() == name.as_str() {
                 // It is fine to return the first match because in case of
                 // multiple possibilities, the exact trait must be disambiguated
                 // in the definition of trait being implemented, so this search

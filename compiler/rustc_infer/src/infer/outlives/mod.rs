@@ -1,12 +1,14 @@
 //! Various code related to computing outlives relations.
 
+use rustc_middle::traits::query::{NoSolution, OutlivesBound};
+use rustc_middle::ty;
+use tracing::instrument;
+
 use self::env::OutlivesEnvironment;
 use super::region_constraints::RegionConstraintData;
 use super::{InferCtxt, RegionResolutionError, SubregionOrigin};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
-use rustc_middle::traits::query::{NoSolution, OutlivesBound};
-use rustc_middle::ty;
 
 pub mod env;
 pub mod for_liveness;

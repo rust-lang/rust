@@ -6,32 +6,10 @@
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod errors;
-
-use rustc_ast::visit::{try_visit, VisitorResult};
-use rustc_ast::MacroDef;
-use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::intern::Interned;
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
-use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
-use rustc_middle::query::Providers;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, Const, GenericParamDefKind};
-use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
-use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
-use tracing::debug;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -42,6 +20,28 @@ use errors::{
     ItemIsPrivate, PrivateInterfacesOrBoundsLint, ReportEffectiveVisibility, UnnameableTypesLint,
     UnnamedItemIsPrivate,
 };
+use rustc_ast::visit::{try_visit, VisitorResult};
+use rustc_ast::MacroDef;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::intern::Interned;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
+use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
+use rustc_middle::query::Providers;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::{
+    self, Const, GenericArgs, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor,
+};
+use rustc_middle::{bug, span_bug};
+use rustc_session::lint;
+use rustc_span::hygiene::Transparency;
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::Span;
+use tracing::debug;
+use {rustc_attr as attr, rustc_hir as hir};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -627,7 +627,8 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::Field
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::Closure => (),
+            | DefKind::Closure
+            | DefKind::SyntheticCoroutineBody => (),
         }
     }
 }
@@ -1497,7 +1498,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
         self.effective_visibilities.effective_vis(def_id).copied()
     }
 
-    pub fn check_item(&mut self, id: ItemId) {
+    fn check_item(&mut self, id: ItemId) {
         let tcx = self.tcx;
         let def_id = id.owner_id.def_id;
         let item_visibility = tcx.local_visibility(def_id);

@@ -1,20 +1,7 @@
-use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
-use crate::mem;
-use crate::num::NonZero;
-use crate::sys;
-use crate::sys::cvt;
-use crate::sys::process::process_common::*;
-
-#[cfg(target_os = "linux")]
-use crate::sys::pal::unix::linux::pidfd::PidFd;
-
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;
-
 #[cfg(not(target_os = "vxworks"))]
 use libc::{c_int, pid_t};
-
 #[cfg(not(any(
     target_os = "vxworks",
     target_os = "l4re",
@@ -23,8 +10,17 @@ use libc::{c_int, pid_t};
 )))]
 use libc::{gid_t, uid_t};
 
+use crate::io::{self, Error, ErrorKind};
+use crate::num::NonZero;
+use crate::sys::cvt;
+#[cfg(target_os = "linux")]
+use crate::sys::pal::unix::linux::pidfd::PidFd;
+use crate::sys::process::process_common::*;
+use crate::{fmt, mem, sys};
+
 cfg_if::cfg_if! {
-    if #[cfg(all(target_os = "nto", target_env = "nto71"))] {
+    // This workaround is only needed for QNX 7.0 and 7.1. The bug should have been fixed in 8.0
+    if #[cfg(any(target_env = "nto70", target_env = "nto71"))] {
         use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
         use crate::time::Duration;
@@ -194,7 +190,8 @@ impl Command {
     #[cfg(not(any(
         target_os = "watchos",
         target_os = "tvos",
-        all(target_os = "nto", target_env = "nto71"),
+        target_env = "nto70",
+        target_env = "nto71"
     )))]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         cvt(libc::fork())
@@ -204,7 +201,8 @@ impl Command {
     // or closed a file descriptor while the fork() was occurring".
     // Documentation says "... or try calling fork() again". This is what we do here.
     // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
-    #[cfg(all(target_os = "nto", target_env = "nto71"))]
+    // This workaround is only needed for QNX 7.0 and 7.1. The bug should have been fixed in 8.0
+    #[cfg(any(target_env = "nto70", target_env = "nto71"))]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         use crate::sys::os::errno;
 
@@ -446,11 +444,12 @@ impl Command {
         stdio: &ChildPipes,
         envp: Option<&CStringArray>,
     ) -> io::Result<Option<Process>> {
+        #[cfg(target_os = "linux")]
+        use core::sync::atomic::{AtomicU8, Ordering};
+
         use crate::mem::MaybeUninit;
         use crate::sys::weak::weak;
         use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
-        #[cfg(target_os = "linux")]
-        use core::sync::atomic::{AtomicU8, Ordering};
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
@@ -541,7 +540,7 @@ impl Command {
         // or closed a file descriptor while the posix_spawn() was occurring".
         // Documentation says "... or try calling posix_spawn() again". This is what we do here.
         // See also http://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/p/posix_spawn.html
-        #[cfg(all(target_os = "nto", target_env = "nto71"))]
+        #[cfg(target_os = "nto")]
         unsafe fn retrying_libc_posix_spawnp(
             pid: *mut pid_t,
             file: *const c_char,
@@ -762,10 +761,11 @@ impl Command {
 
     #[cfg(target_os = "linux")]
     fn send_pidfd(&self, sock: &crate::sys::net::Socket) {
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
         use crate::io::IoSlice;
         use crate::os::fd::RawFd;
         use crate::sys::cvt_r;
-        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
 
         unsafe {
             let child_pid = libc::getpid();
@@ -819,10 +819,10 @@ impl Command {
 
     #[cfg(target_os = "linux")]
     fn recv_pidfd(&self, sock: &crate::sys::net::Socket) -> pid_t {
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
         use crate::io::IoSliceMut;
         use crate::sys::cvt_r;
-
-        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
 
         unsafe {
             const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
@@ -1047,7 +1047,7 @@ impl From<c_int> for ExitStatus {
     }
 }
 
-/// Convert a signal number to a readable, searchable name.
+/// Converts a signal number to a readable, searchable name.
 ///
 /// This string should be displayed right after the signal number.
 /// If a signal is unrecognized, it returns the empty string, so that
@@ -1089,13 +1089,13 @@ fn signal_string(signal: i32) -> &'static str {
         libc::SIGURG => " (SIGURG)",
         #[cfg(not(target_os = "l4re"))]
         libc::SIGXCPU => " (SIGXCPU)",
-        #[cfg(not(target_os = "l4re"))]
+        #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
         libc::SIGXFSZ => " (SIGXFSZ)",
-        #[cfg(not(target_os = "l4re"))]
+        #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
         libc::SIGVTALRM => " (SIGVTALRM)",
         #[cfg(not(target_os = "l4re"))]
         libc::SIGPROF => " (SIGPROF)",
-        #[cfg(not(target_os = "l4re"))]
+        #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
         libc::SIGWINCH => " (SIGWINCH)",
         #[cfg(not(any(target_os = "haiku", target_os = "l4re")))]
         libc::SIGIO => " (SIGIO)",
@@ -1189,12 +1189,11 @@ impl ExitStatusError {
 #[cfg(target_os = "linux")]
 mod linux_child_ext {
 
-    use crate::io;
-    use crate::mem;
     use crate::os::linux::process as os;
     use crate::sys::pal::unix::linux::pidfd as imp;
     use crate::sys::pal::unix::ErrorKind;
     use crate::sys_common::FromInner;
+    use crate::{io, mem};
 
     #[unstable(feature = "linux_pidfd", issue = "82971")]
     impl crate::os::linux::process::ChildExt for crate::process::Child {

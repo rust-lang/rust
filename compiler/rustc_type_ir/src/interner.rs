@@ -1,22 +1,23 @@
-use rustc_ast_ir::Movability;
-use rustc_index::bit_set::BitSet;
-use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
+
+use rustc_ast_ir::Movability;
+use rustc_index::bit_set::BitSet;
+use smallvec::SmallVec;
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
-use crate::search_graph;
-use crate::solve::inspect::CanonicalGoalEvaluationStep;
 use crate::solve::{
     CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, SolverMode,
 };
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{self as ty};
+use crate::{
+    search_graph, {self as ty},
+};
 
 pub trait Interner:
     Sized
@@ -63,11 +64,6 @@ pub trait Interner:
         + Eq
         + TypeVisitable<Self>
         + SliceLike<Item = Self::LocalDefId>;
-    type CanonicalGoalEvaluationStepRef: Copy
-        + Debug
-        + Hash
-        + Eq
-        + Deref<Target = CanonicalGoalEvaluationStep<Self>>;
 
     type CanonicalVars: Copy
         + Debug
@@ -174,11 +170,6 @@ pub trait Interner:
     fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool;
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
-
-    fn intern_canonical_goal_evaluation_step(
-        self,
-        step: CanonicalGoalEvaluationStep<Self>,
-    ) -> Self::CanonicalGoalEvaluationStepRef;
 
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where
@@ -388,7 +379,6 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 }
 
 impl<I: Interner> search_graph::Cx for I {
-    type ProofTree = Option<I::CanonicalGoalEvaluationStepRef>;
     type Input = CanonicalInput<I>;
     type Result = QueryResult<I>;
 

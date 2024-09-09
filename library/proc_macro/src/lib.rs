@@ -28,7 +28,6 @@
 #![feature(decl_macro)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
-#![feature(new_uninit)]
 #![feature(panic_can_unwind)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
@@ -37,6 +36,7 @@
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
+#![warn(rustdoc::unescaped_backticks)]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
@@ -45,15 +45,16 @@ pub mod bridge;
 mod diagnostic;
 mod escape;
 
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub use diagnostic::{Diagnostic, Level, MultiSpan};
-
-use crate::escape::{escape_bytes, EscapeOptions};
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{error, fmt};
+
+#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+pub use diagnostic::{Diagnostic, Level, MultiSpan};
+
+use crate::escape::{escape_bytes, EscapeOptions};
 
 /// Determines whether proc_macro has been made accessible to the currently
 /// running program.

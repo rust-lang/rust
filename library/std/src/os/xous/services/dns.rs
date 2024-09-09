@@ -1,6 +1,7 @@
+use core::sync::atomic::{AtomicU32, Ordering};
+
 use crate::os::xous::ffi::Connection;
 use crate::os::xous::services::connect;
-use core::sync::atomic::{AtomicU32, Ordering};
 
 #[repr(usize)]
 pub(crate) enum DnsLendMut {
@@ -13,7 +14,7 @@ impl Into<usize> for DnsLendMut {
     }
 }
 
-/// Return a `Connection` to the DNS lookup server. This server is used for
+/// Returns a `Connection` to the DNS lookup server. This server is used for
 /// querying domain name values.
 pub(crate) fn dns_server() -> Connection {
     static DNS_CONNECTION: AtomicU32 = AtomicU32::new(0);

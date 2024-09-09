@@ -1,5 +1,10 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
+use std::assert_matches::assert_matches;
+use std::borrow::Cow;
+use std::mem;
+use std::ops::Deref;
+
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
@@ -9,17 +14,15 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
-use rustc_middle::ty::{Instance, InstanceKind, TypeVisitableExt};
+use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_mir_dataflow::impls::MaybeStorageLive;
+use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
-
-use std::mem;
-use std::ops::Deref;
-
 use tracing::{debug, instrument, trace};
 
 use super::ops::{self, NonConstOp, Status};
@@ -43,7 +46,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    pub fn needs_drop(
+    fn needs_drop(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -73,7 +76,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsNonConstDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    pub fn needs_non_const_drop(
+    pub(crate) fn needs_non_const_drop(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -103,7 +106,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary.
-    pub fn has_mut_interior(
+    fn has_mut_interior(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -171,7 +174,7 @@ struct LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
 impl<'ck, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
-            ty::FnPtr(_) => {}
+            ty::FnPtr(..) => {}
             ty::Ref(_, _, hir::Mutability::Mut) => {
                 self.checker.check_op(ops::mut_ref::MutRef(self.kind));
                 t.super_visit_with(self)
@@ -188,8 +191,9 @@ pub struct Checker<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
-    /// A set that stores for each local whether it has a `StorageDead` for it somewhere.
-    local_has_storage_dead: Option<BitSet<Local>>,
+    /// A set that stores for each local whether it is "transient", i.e. guaranteed to be dead
+    /// when this MIR body returns.
+    transient_locals: Option<BitSet<Local>>,
 
     error_emitted: Option<ErrorGuaranteed>,
     secondary_errors: Vec<Diag<'tcx>>,
@@ -209,7 +213,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
-            local_has_storage_dead: None,
+            transient_locals: None,
             error_emitted: None,
             secondary_errors: Vec::new(),
         }
@@ -264,23 +268,33 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
     }
 
-    fn local_has_storage_dead(&mut self, local: Local) -> bool {
+    fn local_is_transient(&mut self, local: Local) -> bool {
         let ccx = self.ccx;
-        self.local_has_storage_dead
+        self.transient_locals
             .get_or_insert_with(|| {
-                struct StorageDeads {
-                    locals: BitSet<Local>,
-                }
-                impl<'tcx> Visitor<'tcx> for StorageDeads {
-                    fn visit_statement(&mut self, stmt: &Statement<'tcx>, _: Location) {
-                        if let StatementKind::StorageDead(l) = stmt.kind {
-                            self.locals.insert(l);
-                        }
+                // A local is "transient" if it is guaranteed dead at all `Return`.
+                // So first compute the say of "maybe live" locals at each program point.
+                let always_live_locals = &always_storage_live_locals(&ccx.body);
+                let mut maybe_storage_live =
+                    MaybeStorageLive::new(Cow::Borrowed(always_live_locals))
+                        .into_engine(ccx.tcx, &ccx.body)
+                        .iterate_to_fixpoint()
+                        .into_results_cursor(&ccx.body);
+
+                // And then check all `Return` in the MIR, and if a local is "maybe live" at a
+                // `Return` then it is definitely not transient.
+                let mut transient = BitSet::new_filled(ccx.body.local_decls.len());
+                // Make sure to only visit reachable blocks, the dataflow engine can ICE otherwise.
+                for (bb, data) in traversal::reachable(&ccx.body) {
+                    if matches!(data.terminator().kind, TerminatorKind::Return) {
+                        let location = ccx.body.terminator_loc(bb);
+                        maybe_storage_live.seek_after_primary_effect(location);
+                        // If a local may be live here, it is definitely not transient.
+                        transient.subtract(maybe_storage_live.get());
                     }
                 }
-                let mut v = StorageDeads { locals: BitSet::new_empty(ccx.body.local_decls.len()) };
-                v.visit_body(ccx.body);
-                v.locals
+
+                transient
             })
             .contains(local)
     }
@@ -375,7 +389,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 // `StorageDead` in every control flow path leading to a `return` terminator.
                 // The good news is that interning will detect if any unexpected mutable
                 // pointer slips through.
-                if place.is_indirect() || self.local_has_storage_dead(place.local) {
+                if place.is_indirect() || self.local_is_transient(place.local) {
                     self.check_op(ops::TransientMutBorrow(kind));
                 } else {
                     self.check_op(ops::MutBorrow(kind));
@@ -431,13 +445,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
             }
-            Rvalue::AddressOf(mutbl, place) => {
+            Rvalue::RawPtr(mutbl, place) => {
                 if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match mutbl {
                         Mutability::Not => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow)
                         }
-                        Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
+                        Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::RawBorrow),
                     };
                     self.visit_local(reborrowed_place_ref.local, ctx, location);
                     self.visit_projection(reborrowed_place_ref, ctx, location);
@@ -472,7 +486,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Ref(_, BorrowKind::Mut { .. }, place)
-            | Rvalue::AddressOf(Mutability::Mut, place) => {
+            | Rvalue::RawPtr(Mutability::Mut, place) => {
                 // Inside mutable statics, we allow arbitrary mutable references.
                 // We've allowed `static mut FOO = &mut [elements];` for a long time (the exact
                 // reasons why are lost to history), and there is no reason to restrict that to
@@ -493,7 +507,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake(_), place)
-            | Rvalue::AddressOf(Mutability::Not, place) => {
+            | Rvalue::RawPtr(Mutability::Not, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     self.ccx,
                     &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
@@ -526,7 +540,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // `StorageDead` in every control flow path leading to a `return` terminator.
                             // The good news is that interning will detect if any unexpected mutable
                             // pointer slips through.
-                            if self.local_has_storage_dead(place.local) {
+                            if self.local_is_transient(place.local) {
                                 self.check_op(ops::TransientCellBorrow);
                             } else {
                                 self.check_op(ops::CellBorrow);
@@ -575,10 +589,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::UnaryOp(_, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
-                if is_int_bool_or_char(ty) {
-                    // Int, bool, and char operations are fine.
-                } else if ty.is_floating_point() {
-                    self.check_op(ops::FloatingPointOp);
+                if is_int_bool_float_or_char(ty) {
+                    // Int, bool, float, and char operations are fine.
                 } else {
                     span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
                 }
@@ -588,10 +600,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
-                if is_int_bool_or_char(lhs_ty) && is_int_bool_or_char(rhs_ty) {
-                    // Int, bool, and char operations are fine.
+                if is_int_bool_float_or_char(lhs_ty) && is_int_bool_float_or_char(rhs_ty) {
+                    // Int, bool, float, and char operations are fine.
                 } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
-                    assert!(matches!(
+                    assert_matches!(
                         op,
                         BinOp::Eq
                             | BinOp::Ne
@@ -600,11 +612,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             | BinOp::Ge
                             | BinOp::Gt
                             | BinOp::Offset
-                    ));
+                    );
 
                     self.check_op(ops::RawPtrComparison);
-                } else if lhs_ty.is_floating_point() || rhs_ty.is_floating_point() {
-                    self.check_op(ops::FloatingPointOp);
                 } else {
                     span_bug!(
                         self.span,
@@ -635,10 +645,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         trace!(
             "visit_projection_elem: place_ref={:?} elem={:?} \
             context={:?} location={:?}",
-            place_ref,
-            elem,
-            context,
-            location,
+            place_ref, elem, context, location,
         );
 
         self.super_projection_elem(place_ref, elem, context, location);
@@ -729,7 +736,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let (mut callee, mut fn_args) = match *fn_ty.kind() {
                     ty::FnDef(def_id, fn_args) => (def_id, fn_args),
 
-                    ty::FnPtr(_) => {
+                    ty::FnPtr(..) => {
                         self.check_op(ops::FnCallIndirect);
                         return;
                     }
@@ -861,9 +868,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // Calling an unstable function *always* requires that the corresponding gate
                     // (or implied gate) be enabled, even if the function has
                     // `#[rustc_allow_const_fn_unstable(the_gate)]`.
-                    let gate_declared = |gate| {
-                        tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == gate)
-                    };
+                    let gate_declared = |gate| tcx.features().declared(gate);
                     let feature_gate_declared = gate_declared(gate);
                     let implied_gate_declared = implied_by.is_some_and(gate_declared);
                     if !feature_gate_declared && !implied_gate_declared {
@@ -1012,8 +1017,8 @@ fn place_as_reborrow<'tcx>(
     }
 }
 
-fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
-    ty.is_bool() || ty.is_integral() || ty.is_char()
+fn is_int_bool_float_or_char(ty: Ty<'_>) -> bool {
+    ty.is_bool() || ty.is_integral() || ty.is_char() || ty.is_floating_point()
 }
 
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {

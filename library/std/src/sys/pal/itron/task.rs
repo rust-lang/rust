@@ -1,23 +1,20 @@
-use super::{
-    abi,
-    error::{fail, fail_aborting, ItronError},
-};
-
+use super::abi;
+use super::error::{fail, fail_aborting, ItronError};
 use crate::mem::MaybeUninit;
 
-/// Get the ID of the task in Running state. Panics on failure.
+/// Gets the ID of the task in Running state. Panics on failure.
 #[inline]
 pub fn current_task_id() -> abi::ID {
     try_current_task_id().unwrap_or_else(|e| fail(e, &"get_tid"))
 }
 
-/// Get the ID of the task in Running state. Aborts on failure.
+/// Gets the ID of the task in Running state. Aborts on failure.
 #[inline]
 pub fn current_task_id_aborting() -> abi::ID {
     try_current_task_id().unwrap_or_else(|e| fail_aborting(e, &"get_tid"))
 }
 
-/// Get the ID of the task in Running state.
+/// Gets the ID of the task in Running state.
 #[inline]
 pub fn try_current_task_id() -> Result<abi::ID, ItronError> {
     unsafe {
@@ -27,13 +24,13 @@ pub fn try_current_task_id() -> Result<abi::ID, ItronError> {
     }
 }
 
-/// Get the specified task's priority. Panics on failure.
+/// Gets the specified task's priority. Panics on failure.
 #[inline]
 pub fn task_priority(task: abi::ID) -> abi::PRI {
     try_task_priority(task).unwrap_or_else(|e| fail(e, &"get_pri"))
 }
 
-/// Get the specified task's priority.
+/// Gets the specified task's priority.
 #[inline]
 pub fn try_task_priority(task: abi::ID) -> Result<abi::PRI, ItronError> {
     unsafe {

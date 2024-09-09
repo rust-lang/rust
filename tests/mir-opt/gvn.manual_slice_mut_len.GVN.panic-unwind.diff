@@ -22,14 +22,14 @@
 -         StorageLive(_3);
 +         nop;
           StorageLive(_4);
-          _4 = _2;
+          _4 = copy _2;
 -         _3 = move _4 as *const [i32] (PtrToPtr);
-+         _3 = _2 as *const [i32] (PtrToPtr);
++         _3 = copy _2 as *const [i32] (PtrToPtr);
           StorageDead(_4);
           StorageLive(_5);
-          _5 = _3;
+          _5 = copy _3;
 -         _0 = PtrMetadata(move _5);
-+         _0 = PtrMetadata(_1);
++         _0 = PtrMetadata(copy _1);
           StorageDead(_5);
 -         StorageDead(_3);
 -         StorageDead(_2);

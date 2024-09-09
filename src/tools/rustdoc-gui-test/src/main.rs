@@ -1,10 +1,11 @@
-use build_helper::util::try_run;
-use compiletest::header::TestProps;
-use config::Config;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 use std::{env, fs};
+
+use build_helper::util::try_run;
+use compiletest::header::TestProps;
+use config::Config;
 
 mod config;
 

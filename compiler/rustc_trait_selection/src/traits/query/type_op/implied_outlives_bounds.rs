@@ -1,7 +1,3 @@
-use crate::traits::query::NoSolution;
-use crate::traits::wf;
-use crate::traits::ObligationCtxt;
-
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::query::OutlivesBound;
@@ -13,6 +9,10 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::DUMMY_SP;
 use rustc_type_ir::outlives::{push_outlives_components, Component};
 use smallvec::{smallvec, SmallVec};
+use tracing::debug;
+
+use crate::traits::query::NoSolution;
+use crate::traits::{wf, ObligationCtxt};
 
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ImpliedOutlivesBounds<'tcx> {

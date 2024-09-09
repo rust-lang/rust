@@ -1,7 +1,8 @@
 [package]
 name = "parser"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "The Rust parser for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

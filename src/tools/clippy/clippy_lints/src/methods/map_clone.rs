@@ -2,10 +2,10 @@ use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, should_call_clone_as_function};
-use clippy_utils::{is_diag_trait_item, match_def_path, paths, peel_blocks};
+use clippy_utils::{is_diag_trait_item, peel_blocks};
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
@@ -114,7 +114,7 @@ fn handle_path(
     recv: &hir::Expr<'_>,
 ) {
     if let Some(path_def_id) = cx.qpath_res(qpath, arg.hir_id).opt_def_id()
-        && match_def_path(cx, path_def_id, &paths::CLONE_TRAIT_METHOD)
+        && cx.tcx.lang_items().get(LangItem::CloneFn) == Some(path_def_id)
     {
         // The `copied` and `cloned` methods are only available on `&T` and `&mut T` in `Option`
         // and `Result`.

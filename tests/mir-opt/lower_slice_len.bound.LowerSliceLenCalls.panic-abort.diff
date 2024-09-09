@@ -16,7 +16,7 @@
       bb0: {
           StorageLive(_3);
           StorageLive(_4);
-          _4 = _1;
+          _4 = copy _1;
           StorageLive(_5);
           StorageLive(_6);
           _6 = &(*_2);
@@ -35,14 +35,14 @@
           StorageDead(_5);
           StorageDead(_4);
           StorageLive(_7);
-          _7 = _1;
+          _7 = copy _1;
           _8 = Len((*_2));
-          _9 = Lt(_7, _8);
-          assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> [success: bb3, unwind unreachable];
+          _9 = Lt(copy _7, copy _8);
+          assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, copy _7) -> [success: bb3, unwind unreachable];
       }
   
       bb3: {
-          _0 = (*_2)[_7];
+          _0 = copy (*_2)[_7];
           StorageDead(_7);
           goto -> bb5;
       }

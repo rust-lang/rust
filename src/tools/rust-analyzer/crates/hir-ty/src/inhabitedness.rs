@@ -6,6 +6,7 @@ use chalk_ir::{
     DebruijnIndex,
 };
 use hir_def::{visibility::Visibility, AdtId, EnumVariantId, HasModule, ModuleId, VariantId};
+use intern::sym;
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -118,7 +119,7 @@ impl UninhabitedFrom<'_> {
         subst: &Substitution,
     ) -> ControlFlow<VisiblyUninhabited> {
         let is_local = variant.krate(self.db.upcast()) == self.target_mod.krate();
-        if !is_local && self.db.attrs(variant.into()).by_key("non_exhaustive").exists() {
+        if !is_local && self.db.attrs(variant.into()).by_key(&sym::non_exhaustive).exists() {
             return CONTINUE_OPAQUELY_INHABITED;
         }
 

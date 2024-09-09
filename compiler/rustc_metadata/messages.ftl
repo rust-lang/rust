@@ -41,6 +41,9 @@ metadata_crate_dep_multiple =
 metadata_crate_dep_not_static =
     `{$crate_name}` was unavailable as a static crate, preventing fully static linking
 
+metadata_crate_dep_rustc_driver =
+    `feature(rustc_private)` is needed to link to the compiler's `rustc_driver` library
+
 metadata_crate_location_unknown_type =
     extern location for {$crate_name} is of an unknown type: {$path}
 
@@ -131,11 +134,17 @@ metadata_lib_framework_apple =
 metadata_lib_required =
     crate `{$crate_name}` required to be available in {$kind} format, but was not found in this form
 
+metadata_link_arg_unstable =
+    link kind `link-arg` is unstable
+
 metadata_link_cfg_form =
     link cfg must be of the form `cfg(/* predicate */)`
 
 metadata_link_cfg_single_predicate =
     link cfg must have a single predicate argument
+
+metadata_link_cfg_unstable =
+    link cfg is unstable
 
 metadata_link_framework_apple =
     link kind `framework` is only supported on Apple targets

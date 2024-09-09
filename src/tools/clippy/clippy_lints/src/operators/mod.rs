@@ -80,7 +80,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// // `n` can be any number, including `i32::MAX`.
     /// fn foo(n: i32) -> i32 {
-    ///   n + 1
+    ///     n + 1
     /// }
     /// ```
     ///

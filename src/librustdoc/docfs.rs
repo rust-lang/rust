@@ -9,11 +9,11 @@
 //! abstraction.
 
 use std::cmp::max;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::thread::available_parallelism;
+use std::{fs, io};
+
 use threadpool::ThreadPool;
 
 pub(crate) trait PathError {

@@ -1,8 +1,8 @@
-use crate::error::UnsupportedFnAbi;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::query::TyCtxtAt;
-use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
+use std::borrow::Cow;
+use std::num::NonZero;
+use std::ops::Bound;
+use std::{cmp, fmt};
+
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
@@ -17,16 +17,15 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
-use rustc_target::spec::{
-    abi::Abi as SpecAbi, HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi,
-};
+use rustc_target::spec::abi::Abi as SpecAbi;
+use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi};
 use tracing::debug;
 
-use std::borrow::Cow;
-use std::cmp;
-use std::fmt;
-use std::num::NonZero;
-use std::ops::Bound;
+use crate::error::UnsupportedFnAbi;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::query::TyCtxtAt;
+use crate::ty::normalize_erasing_regions::NormalizationError;
+use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
 
 #[extension(pub trait IntegerExt)]
 impl Integer {
@@ -231,8 +230,9 @@ pub enum LayoutError<'tcx> {
 
 impl<'tcx> LayoutError<'tcx> {
     pub fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         use LayoutError::*;
+
+        use crate::fluent_generated::*;
         match self {
             Unknown(_) => middle_unknown_layout,
             SizeOverflow(_) => middle_values_too_big,
@@ -243,8 +243,9 @@ impl<'tcx> LayoutError<'tcx> {
     }
 
     pub fn into_diagnostic(self) -> crate::error::LayoutError<'tcx> {
-        use crate::error::LayoutError as E;
         use LayoutError::*;
+
+        use crate::error::LayoutError as E;
         match self {
             Unknown(ty) => E::Unknown { ty },
             SizeOverflow(ty) => E::Overflow { ty },
@@ -361,7 +362,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_unsafe_ptr();
 
-                let tail = tcx.struct_tail_with_normalize(
+                let tail = tcx.struct_tail_raw(
                     pointee,
                     |ty| match tcx.try_normalize_erasing_regions(param_env, ty) {
                         Ok(ty) => ty,
@@ -800,7 +801,7 @@ where
                 | ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_)
-                | ty::FnPtr(_)
+                | ty::FnPtr(..)
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::CoroutineWitness(..)
@@ -868,7 +869,7 @@ where
                             metadata
                         }
                     } else {
-                        match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
+                        match tcx.struct_tail_for_codegen(pointee, cx.param_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,
                             ty::Dynamic(data, _, ty::Dyn) => mk_dyn_vtable(data.principal()),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
@@ -985,9 +986,11 @@ where
                     safe: None,
                 })
             }
-            ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
-                tcx.layout_of(param_env.and(Ty::new_fn_ptr(tcx, fn_sig))).ok().map(|layout| {
-                    PointeeInfo { size: layout.size, align: layout.align.abi, safe: None }
+            ty::FnPtr(..) if offset.bytes() == 0 => {
+                tcx.layout_of(param_env.and(this.ty)).ok().map(|layout| PointeeInfo {
+                    size: layout.size,
+                    align: layout.align.abi,
+                    safe: None,
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
@@ -1072,11 +1075,13 @@ where
                 // the raw pointer, so size and align are set to the boxed type, but `pointee.safe`
                 // will still be `None`.
                 if let Some(ref mut pointee) = result {
-                    if offset.bytes() == 0 && this.ty.is_box() {
+                    if offset.bytes() == 0
+                        && let Some(boxed_ty) = this.ty.boxed_ty()
+                    {
                         debug_assert!(pointee.safe.is_none());
                         let optimize = tcx.sess.opts.optimize != OptLevel::No;
                         pointee.safe = Some(PointerKind::Box {
-                            unpin: optimize && this.ty.boxed_ty().is_unpin(tcx, cx.param_env()),
+                            unpin: optimize && boxed_ty.is_unpin(tcx, cx.param_env()),
                             global: this.ty.is_box_global(tcx),
                         });
                     }
@@ -1101,7 +1106,7 @@ where
     }
 
     fn is_never(this: TyAndLayout<'tcx>) -> bool {
-        this.ty.kind() == &ty::Never
+        matches!(this.ty.kind(), ty::Never)
     }
 
     fn is_tuple(this: TyAndLayout<'tcx>) -> bool {
@@ -1347,7 +1352,7 @@ impl<'tcx> TyCtxt<'tcx> {
             layout = layout.field(&cx, index);
             if !layout.is_sized() {
                 // If it is not sized, then the tail must still have at least a known static alignment.
-                let tail = self.struct_tail_erasing_lifetimes(layout.ty, param_env);
+                let tail = self.struct_tail_for_codegen(layout.ty, param_env);
                 if !matches!(tail.kind(), ty::Slice(..)) {
                     bug!(
                         "offset of not-statically-aligned field (type {:?}) cannot be computed statically",

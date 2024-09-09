@@ -8,11 +8,11 @@
       let mut _4: *mut bool;
   
       bb0: {
-          _2 = _1;
+          _2 = copy _1;
           _3 = &raw const _2;
           _4 = &raw mut (*_3);
           (*_4) = const false;
-          _0 = _1;
+          _0 = copy _1;
           return;
       }
   }

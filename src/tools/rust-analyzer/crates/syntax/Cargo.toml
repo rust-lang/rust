@@ -1,8 +1,8 @@
 [package]
 name = "syntax"
 version = "0.0.0"
-description = "Comment and whitespace preserving parser for the Rust language"
-repository = "https://github.com/rust-lang/rust-analyzer"
+repository.workspace = true
+description = "Concrete syntax tree definitions for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -16,9 +16,8 @@ doctest = false
 cov-mark = "2.0.0-pre.1"
 either.workspace = true
 itertools.workspace = true
-rowan = "0.15.15"
+rowan = "=0.15.15"
 rustc-hash.workspace = true
-once_cell = "1.17.0"
 indexmap.workspace = true
 smol_str.workspace = true
 triomphe.workspace = true

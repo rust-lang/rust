@@ -6,7 +6,8 @@ use base_db::CrateId;
 use hir_expand::{
     name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefKind,
 };
-use intern::Interned;
+use intern::{sym, Interned, Symbol};
+use la_arena::{Idx, RawIdx};
 use smallvec::SmallVec;
 use syntax::{ast, Parse};
 use triomphe::Arc;
@@ -38,8 +39,8 @@ pub struct FunctionData {
     pub ret_type: Interned<TypeRef>,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub abi: Option<Interned<str>>,
-    pub legacy_const_generics_indices: Box<[u32]>,
+    pub abi: Option<Symbol>,
+    pub legacy_const_generics_indices: Option<Box<Box<[u32]>>>,
     pub rustc_allow_incoherent_impl: bool,
     flags: FnFlags,
 }
@@ -58,52 +59,58 @@ impl FunctionData {
 
         let crate_graph = db.crate_graph();
         let cfg_options = &crate_graph[krate].cfg_options;
-        let enabled_params = func
-            .params
-            .clone()
-            .filter(|&param| item_tree.attrs(db, krate, param.into()).is_cfg_enabled(cfg_options));
-
-        // If last cfg-enabled param is a `...` param, it's a varargs function.
-        let is_varargs = enabled_params
-            .clone()
-            .next_back()
-            .map_or(false, |param| item_tree[param].type_ref.is_none());
+        let attr_owner = |idx| {
+            item_tree::AttrOwner::Param(loc.id.value, Idx::from_raw(RawIdx::from(idx as u32)))
+        };
 
         let mut flags = func.flags;
-        if is_varargs {
-            flags |= FnFlags::IS_VARARGS;
-        }
         if flags.contains(FnFlags::HAS_SELF_PARAM) {
             // If there's a self param in the syntax, but it is cfg'd out, remove the flag.
-            let is_cfgd_out = match func.params.clone().next() {
-                Some(param) => {
-                    !item_tree.attrs(db, krate, param.into()).is_cfg_enabled(cfg_options)
-                }
-                None => {
-                    stdx::never!("fn HAS_SELF_PARAM but no parameters allocated");
-                    true
-                }
-            };
+            let is_cfgd_out =
+                !item_tree.attrs(db, krate, attr_owner(0usize)).is_cfg_enabled(cfg_options);
             if is_cfgd_out {
                 cov_mark::hit!(cfgd_out_self_param);
                 flags.remove(FnFlags::HAS_SELF_PARAM);
             }
         }
+        if flags.contains(FnFlags::IS_VARARGS) {
+            if let Some((_, param)) = func.params.iter().enumerate().rev().find(|&(idx, _)| {
+                item_tree.attrs(db, krate, attr_owner(idx)).is_cfg_enabled(cfg_options)
+            }) {
+                if param.type_ref.is_some() {
+                    flags.remove(FnFlags::IS_VARARGS);
+                }
+            } else {
+                flags.remove(FnFlags::IS_VARARGS);
+            }
+        }
 
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let legacy_const_generics_indices = attrs
-            .by_key("rustc_legacy_const_generics")
+            .by_key(&sym::rustc_legacy_const_generics)
             .tt_values()
             .next()
             .map(parse_rustc_legacy_const_generics)
-            .unwrap_or_default();
-        let rustc_allow_incoherent_impl = attrs.by_key("rustc_allow_incoherent_impl").exists();
+            .filter(|it| !it.is_empty())
+            .map(Box::new);
+        let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
+        if flags.contains(FnFlags::HAS_UNSAFE_KW)
+            && !crate_graph[krate].edition.at_least_2024()
+            && attrs.by_key(&sym::rustc_deprecated_safe_2024).exists()
+        {
+            flags.remove(FnFlags::HAS_UNSAFE_KW);
+        }
 
         Arc::new(FunctionData {
             name: func.name.clone(),
-            params: enabled_params
-                .clone()
-                .filter_map(|id| item_tree[id].type_ref.clone())
+            params: func
+                .params
+                .iter()
+                .enumerate()
+                .filter(|&(idx, _)| {
+                    item_tree.attrs(db, krate, attr_owner(idx)).is_cfg_enabled(cfg_options)
+                })
+                .filter_map(|(_, param)| param.type_ref.clone())
                 .collect(),
             ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
@@ -125,19 +132,19 @@ impl FunctionData {
         self.flags.contains(FnFlags::HAS_SELF_PARAM)
     }
 
-    pub fn has_default_kw(&self) -> bool {
+    pub fn is_default(&self) -> bool {
         self.flags.contains(FnFlags::HAS_DEFAULT_KW)
     }
 
-    pub fn has_const_kw(&self) -> bool {
+    pub fn is_const(&self) -> bool {
         self.flags.contains(FnFlags::HAS_CONST_KW)
     }
 
-    pub fn has_async_kw(&self) -> bool {
+    pub fn is_async(&self) -> bool {
         self.flags.contains(FnFlags::HAS_ASYNC_KW)
     }
 
-    pub fn has_unsafe_kw(&self) -> bool {
+    pub fn is_unsafe(&self) -> bool {
         self.flags.contains(FnFlags::HAS_UNSAFE_KW)
     }
 
@@ -150,7 +157,7 @@ fn parse_rustc_legacy_const_generics(tt: &crate::tt::Subtree) -> Box<[u32]> {
     let mut indices = Vec::new();
     for args in tt.token_trees.chunks(2) {
         match &args[0] {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => match lit.text.parse() {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => match lit.symbol.as_str().parse() {
                 Ok(index) => indices.push(index),
                 Err(_) => break,
             },
@@ -200,8 +207,8 @@ impl TypeAliasData {
             ModItem::from(loc.id.value).into(),
         );
         let rustc_has_incoherent_inherent_impls =
-            attrs.by_key("rustc_has_incoherent_inherent_impls").exists();
-        let rustc_allow_incoherent_impl = attrs.by_key("rustc_allow_incoherent_impl").exists();
+            attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists();
+        let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
@@ -223,6 +230,7 @@ pub struct TraitData {
     pub is_unsafe: bool,
     pub rustc_has_incoherent_inherent_impls: bool,
     pub skip_array_during_method_dispatch: bool,
+    pub skip_boxed_slice_during_method_dispatch: bool,
     pub fundamental: bool,
     pub visibility: RawVisibility,
     /// Whether the trait has `#[rust_skip_array_during_method_dispatch]`. `hir_ty` will ignore
@@ -250,11 +258,20 @@ impl TraitData {
         let is_unsafe = tr_def.is_unsafe;
         let visibility = item_tree[tr_def.visibility].clone();
         let attrs = item_tree.attrs(db, module_id.krate(), ModItem::from(tree_id.value).into());
-        let skip_array_during_method_dispatch =
-            attrs.by_key("rustc_skip_array_during_method_dispatch").exists();
+        let mut skip_array_during_method_dispatch =
+            attrs.by_key(&sym::rustc_skip_array_during_method_dispatch).exists();
+        let mut skip_boxed_slice_during_method_dispatch = false;
+        for tt in attrs.by_key(&sym::rustc_skip_during_method_dispatch).tt_values() {
+            for tt in tt.token_trees.iter() {
+                if let crate::tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt {
+                    skip_array_during_method_dispatch |= ident.sym == sym::array;
+                    skip_boxed_slice_during_method_dispatch |= ident.sym == sym::boxed_slice;
+                }
+            }
+        }
         let rustc_has_incoherent_inherent_impls =
-            attrs.by_key("rustc_has_incoherent_inherent_impls").exists();
-        let fundamental = attrs.by_key("fundamental").exists();
+            attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists();
+        let fundamental = attrs.by_key(&sym::fundamental).exists();
         let mut collector =
             AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
         collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
@@ -269,6 +286,7 @@ impl TraitData {
                 is_unsafe,
                 visibility,
                 skip_array_during_method_dispatch,
+                skip_boxed_slice_during_method_dispatch,
                 rustc_has_incoherent_inherent_impls,
                 fundamental,
             }),
@@ -393,7 +411,7 @@ impl Macro2Data {
 
         let helpers = item_tree
             .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
-            .by_key("rustc_builtin_macro")
+            .by_key(&sym::rustc_builtin_macro)
             .tt_values()
             .next()
             .and_then(|attr| parse_macro_name_and_helper_attrs(&attr.token_trees))
@@ -423,7 +441,7 @@ impl MacroRulesData {
 
         let macro_export = item_tree
             .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
-            .by_key("macro_export")
+            .by_key(&sym::macro_export)
             .exists();
 
         Arc::new(MacroRulesData { name: makro.name.clone(), macro_export })
@@ -485,7 +503,7 @@ impl ExternCrateDeclData {
 
         let name = extern_crate.name.clone();
         let krate = loc.container.krate();
-        let crate_id = if name == hir_expand::name![self] {
+        let crate_id = if name == sym::self_.clone() {
             Some(krate)
         } else {
             db.crate_def_map(krate)
@@ -526,7 +544,7 @@ impl ConstData {
 
         let rustc_allow_incoherent_impl = item_tree
             .attrs(db, loc.container.module(db).krate(), ModItem::from(loc.id.value).into())
-            .by_key("rustc_allow_incoherent_impl")
+            .by_key(&sym::rustc_allow_incoherent_impl)
             .exists();
 
         Arc::new(ConstData {
@@ -618,7 +636,8 @@ impl<'a> AssocItemCollector<'a> {
             if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
                 self.diagnostics.push(DefDiagnostic::unconfigured_code(
                     self.module_id.local_id,
-                    InFile::new(self.expander.current_file_id(), item.ast_id(item_tree).erase()),
+                    tree_id,
+                    ModItem::from(item).into(),
                     attrs.cfg().unwrap(),
                     self.expander.cfg_options().clone(),
                 ));
@@ -644,22 +663,18 @@ impl<'a> AssocItemCollector<'a> {
                             // crate failed), skip expansion like we would if it was
                             // disabled. This is analogous to the handling in
                             // `DefCollector::collect_macros`.
-                            if exp.is_dummy() {
-                                self.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                            if let Some(err) = exp.as_expand_error(self.module_id.krate) {
+                                self.diagnostics.push(DefDiagnostic::macro_error(
                                     self.module_id.local_id,
-                                    loc.kind,
-                                    loc.def.krate,
+                                    ast_id,
+                                    (*attr.path).clone(),
+                                    err,
                                 ));
-
-                                continue 'attrs;
-                            }
-                            if exp.is_disabled() {
                                 continue 'attrs;
                             }
                         }
 
                         self.macro_calls.push((ast_id, call_id));
-
                         let res =
                             self.expander.enter_expand_id::<ast::MacroItems>(self.db, call_id);
                         self.collect_macro_items(res);

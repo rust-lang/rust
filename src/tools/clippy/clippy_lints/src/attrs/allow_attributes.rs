@@ -1,5 +1,5 @@
 use super::ALLOW_ATTRIBUTES;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use rustc_ast::{AttrStyle, Attribute};
 use rustc_errors::Applicability;
@@ -13,14 +13,14 @@ pub fn check<'cx>(cx: &LateContext<'cx>, attr: &'cx Attribute) {
         && let Some(ident) = attr.ident()
         && !is_from_proc_macro(cx, attr)
     {
-        span_lint_and_sugg(
-            cx,
-            ALLOW_ATTRIBUTES,
-            ident.span,
-            "#[allow] attribute found",
-            "replace it with",
-            "expect".into(),
-            Applicability::MachineApplicable,
-        );
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(cx, ALLOW_ATTRIBUTES, ident.span, "#[allow] attribute found", |diag| {
+            diag.span_suggestion(
+                ident.span,
+                "replace it with",
+                "expect",
+                Applicability::MachineApplicable,
+            );
+        });
     }
 }

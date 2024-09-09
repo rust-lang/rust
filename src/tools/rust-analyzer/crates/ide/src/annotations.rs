@@ -1,9 +1,7 @@
 use hir::{HasSource, InFile, InRealFile, Semantics};
 use ide_db::{
-    base_db::{FileId, FilePosition, FileRange},
-    defs::Definition,
-    helpers::visit_file_defs,
-    FxHashSet, RootDatabase,
+    defs::Definition, helpers::visit_file_defs, FileId, FilePosition, FileRange, FxHashSet,
+    RootDatabase,
 };
 use itertools::Itertools;
 use syntax::{ast::HasName, AstNode, TextRange};
@@ -256,7 +254,7 @@ fn main() {
                     Annotation {
                         range: 6..10,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -264,7 +262,7 @@ fn main() {
                             },
                             data: Some(
                                 [
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -277,7 +275,7 @@ fn main() {
                     Annotation {
                         range: 30..36,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -310,7 +308,7 @@ fn main() {
                     Annotation {
                         range: 53..57,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -341,7 +339,7 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -349,7 +347,7 @@ fn main() {
                             },
                             data: Some(
                                 [
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -362,7 +360,7 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasImpls {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -395,7 +393,7 @@ fn main() {
                     Annotation {
                         range: 17..21,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -430,7 +428,7 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -438,13 +436,13 @@ fn main() {
                             },
                             data: Some(
                                 [
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
                                         range: 57..61,
                                     },
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -457,7 +455,7 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasImpls {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -481,7 +479,7 @@ fn main() {
                     Annotation {
                         range: 20..31,
                         kind: HasImpls {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -505,7 +503,7 @@ fn main() {
                     Annotation {
                         range: 20..31,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -513,7 +511,7 @@ fn main() {
                             },
                             data: Some(
                                 [
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -526,7 +524,7 @@ fn main() {
                     Annotation {
                         range: 69..73,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -591,7 +589,7 @@ fn main() {}
                     Annotation {
                         range: 3..7,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -626,7 +624,7 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -634,13 +632,13 @@ fn main() {
                             },
                             data: Some(
                                 [
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
                                         range: 19..23,
                                     },
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -653,7 +651,7 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasImpls {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -677,7 +675,7 @@ fn main() {
                     Annotation {
                         range: 33..44,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -685,7 +683,7 @@ fn main() {
                             },
                             data: Some(
                                 [
-                                    FileRange {
+                                    FileRangeWrapper {
                                         file_id: FileId(
                                             0,
                                         ),
@@ -698,7 +696,7 @@ fn main() {
                     Annotation {
                         range: 61..65,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -749,7 +747,7 @@ mod tests {
                     Annotation {
                         range: 3..7,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -879,7 +877,7 @@ struct Foo;
                     Annotation {
                         range: 0..71,
                         kind: HasReferences {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),
@@ -893,7 +891,7 @@ struct Foo;
                     Annotation {
                         range: 0..71,
                         kind: HasImpls {
-                            pos: FilePosition {
+                            pos: FilePositionWrapper {
                                 file_id: FileId(
                                     0,
                                 ),

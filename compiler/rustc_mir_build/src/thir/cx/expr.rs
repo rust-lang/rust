@@ -1,29 +1,30 @@
-use crate::errors;
-use crate::thir::cx::region::Scope;
-use crate::thir::cx::Cx;
-use crate::thir::util::UserAnnotatedTyHelpers;
 use itertools::Itertools;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::Idx;
-use rustc_middle::hir::place::Place as HirPlace;
-use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
-use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
+use rustc_middle::hir::place::{
+    Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
+};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
-use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
-    self, AdtKind, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs, UserType,
+    self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs,
+    UserType,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, Span};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use tracing::{debug, info, instrument, trace};
+
+use crate::errors;
+use crate::thir::cx::region::Scope;
+use crate::thir::cx::Cx;
+use crate::thir::util::UserAnnotatedTyHelpers;
 
 impl<'tcx> Cx<'tcx> {
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
@@ -142,7 +143,7 @@ impl<'tcx> Cx<'tcx> {
                 arg: self.thir.exprs.push(expr),
             },
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
-                ExprKind::AddressOf { mutability, arg: self.thir.exprs.push(expr) }
+                ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
             Adjust::DynStar => ExprKind::Cast { source: self.thir.exprs.push(expr) },
         };
@@ -217,12 +218,7 @@ impl<'tcx> Cx<'tcx> {
                     let lhs =
                         self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
                     let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
-                    self.thir.exprs.push(Expr {
-                        temp_lifetime,
-                        ty: discr_ty,
-                        span: span,
-                        kind: bin,
-                    })
+                    self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind: bin })
                 }
                 None => offset,
             };
@@ -395,7 +391,7 @@ impl<'tcx> Cx<'tcx> {
             }
 
             hir::ExprKind::AddrOf(hir::BorrowKind::Raw, mutability, arg) => {
-                ExprKind::AddressOf { mutability, arg: self.mirror_expr(arg) }
+                ExprKind::RawBorrow { mutability, arg: self.mirror_expr(arg) }
             }
 
             hir::ExprKind::Block(blk, _) => ExprKind::Block { block: self.mirror_block(blk) },

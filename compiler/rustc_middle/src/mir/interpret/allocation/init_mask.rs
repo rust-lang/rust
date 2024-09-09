@@ -1,9 +1,8 @@
 #[cfg(test)]
 mod tests;
 
-use std::hash;
-use std::iter;
 use std::ops::Range;
+use std::{hash, iter};
 
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_serialize::{Decodable, Encodable};
@@ -244,7 +243,7 @@ impl hash::Hash for InitMaskMaterialized {
 }
 
 impl InitMaskMaterialized {
-    pub const BLOCK_SIZE: u64 = 64;
+    const BLOCK_SIZE: u64 = 64;
 
     fn new(size: Size, state: bool) -> Self {
         let mut m = InitMaskMaterialized { blocks: vec![] };

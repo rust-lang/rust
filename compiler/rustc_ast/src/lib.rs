@@ -19,6 +19,7 @@
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod util {
@@ -43,10 +44,10 @@ pub mod token;
 pub mod tokenstream;
 pub mod visit;
 
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+
 pub use self::ast::*;
 pub use self::ast_traits::{AstDeref, AstNodeWrapper, HasAttrs, HasNodeId, HasTokens};
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro

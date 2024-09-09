@@ -1,16 +1,16 @@
-use super::{
-    mir::{Body, Mutability, Safety},
-    with, DefId, Error, Symbol,
-};
+use std::fmt::{self, Debug, Display, Formatter};
+use std::ops::Range;
+
+use serde::Serialize;
+
+use super::mir::{Body, Mutability, Safety};
+use super::{with, DefId, Error, Symbol};
 use crate::abi::{FnAbi, Layout};
 use crate::crate_def::{CrateDef, CrateDefType};
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
 use crate::{Filename, Opaque};
-use serde::Serialize;
-use std::fmt::{self, Debug, Display, Formatter};
-use std::ops::Range;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize)]
 pub struct Ty(usize);
@@ -267,7 +267,7 @@ impl Span {
         with(|c| c.get_filename(self))
     }
 
-    /// Return lines that corespond to this `Span`
+    /// Return lines that correspond to this `Span`
     pub fn get_lines(&self) -> LineInfo {
         with(|c| c.get_lines(self))
     }

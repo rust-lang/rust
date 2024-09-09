@@ -1,4 +1,3 @@
-use hir::ImportPathConfig;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast, traits::resolve_target_trait};
 use syntax::ast::{self, AstNode, HasGenericArgs, HasName};
 
@@ -44,11 +43,7 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
         return None;
     }
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     let src_type_path = {
         let src_type_path = src_type.syntax().descendants().find_map(ast::Path::cast)?;
@@ -56,7 +51,10 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
             Some(hir::PathResolution::Def(module_def)) => module_def,
             _ => return None,
         };
-        mod_path_to_ast(&module.find_path(ctx.db(), src_type_def, cfg)?)
+        mod_path_to_ast(
+            &module.find_path(ctx.db(), src_type_def, cfg)?,
+            module.krate().edition(ctx.db()),
+        )
     };
 
     let dest_type = match &ast_trait {

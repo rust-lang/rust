@@ -1,9 +1,7 @@
 #![cfg_attr(test, allow(dead_code))]
 
+pub use self::imp::{cleanup, init};
 use self::imp::{drop_handler, make_handler};
-
-pub use self::imp::cleanup;
-pub use self::imp::init;
 
 pub struct Handler {
     data: *mut libc::c_void,
@@ -37,24 +35,23 @@ impl Drop for Handler {
     target_os = "solaris"
 ))]
 mod imp {
-    use super::Handler;
-    use crate::cell::Cell;
-    use crate::io;
-    use crate::mem;
-    use crate::ops::Range;
-    use crate::ptr;
-    use crate::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
-    use crate::sync::OnceLock;
-    use crate::sys::pal::unix::os;
-    use crate::thread;
-
     #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
     use libc::{mmap as mmap64, mprotect, munmap};
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{mmap64, mprotect, munmap};
-    use libc::{sigaction, sighandler_t, SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSEGV, SIG_DFL};
-    use libc::{sigaltstack, SS_DISABLE};
-    use libc::{MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE};
+    use libc::{
+        sigaction, sigaltstack, sighandler_t, MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE,
+        PROT_NONE, PROT_READ, PROT_WRITE, SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSEGV, SIG_DFL,
+        SS_DISABLE,
+    };
+
+    use super::Handler;
+    use crate::cell::Cell;
+    use crate::ops::Range;
+    use crate::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
+    use crate::sync::OnceLock;
+    use crate::sys::pal::unix::os;
+    use crate::{io, mem, ptr, thread};
 
     // We use a TLS variable to store the address of the guard page. While TLS
     // variables are not guaranteed to be signal-safe, this works out in practice

@@ -21,21 +21,20 @@
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(maybe_uninit_slice)]
-#![feature(new_uninit)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(strict_provenance)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
-
-use smallvec::SmallVec;
 
 use std::alloc::Layout;
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
 use std::mem::{self, MaybeUninit};
 use std::ptr::{self, NonNull};
-use std::slice;
-use std::{cmp, intrinsics};
+use std::{cmp, intrinsics, slice};
+
+use smallvec::SmallVec;
 
 /// This calls the passed function while ensuring it won't be inlined into the caller.
 #[inline(never)]

@@ -1,7 +1,6 @@
 #![feature(core_intrinsics)]
 #![crate_type = "lib"]
 use std::arch::asm;
-
 use std::intrinsics;
 
 #[allow(unreachable_code)]

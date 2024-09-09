@@ -8,13 +8,15 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/thir.html
 
+use std::cmp::Ordering;
+use std::fmt;
+use std::ops::Index;
+
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
-use rustc_index::newtype_index;
-use rustc_index::IndexVec;
+use rustc_index::{newtype_index, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
@@ -26,12 +28,9 @@ use rustc_middle::ty::{
     TyCtxt, UpvarArgs,
 };
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, ErrorGuaranteed, Span, Symbol, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_target::abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
-use std::cmp::Ordering;
-use std::fmt;
-use std::ops::Index;
 use tracing::instrument;
 
 pub mod visit;
@@ -408,7 +407,7 @@ pub enum ExprKind<'tcx> {
         arg: ExprId,
     },
     /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
-    AddressOf {
+    RawBorrow {
         mutability: hir::Mutability,
         arg: ExprId,
     },
@@ -598,10 +597,6 @@ pub struct Pat<'tcx> {
 }
 
 impl<'tcx> Pat<'tcx> {
-    pub fn wildcard_from_ty(ty: Ty<'tcx>) -> Self {
-        Pat { ty, span: DUMMY_SP, kind: PatKind::Wild }
-    }
-
     pub fn simple_ident(&self) -> Option<Symbol> {
         match self.kind {
             PatKind::Binding {
@@ -699,12 +694,6 @@ impl<'tcx> Pat<'tcx> {
             _ => true,
         });
         is_never_pattern
-    }
-}
-
-impl<'tcx> IntoDiagArg for Pat<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        format!("{self}").into_diag_arg()
     }
 }
 
@@ -1080,164 +1069,12 @@ impl<'tcx> PatRangeBoundary<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Display for Pat<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Printing lists is a chore.
-        let mut first = true;
-        let mut start_or_continue = |s| {
-            if first {
-                first = false;
-                ""
-            } else {
-                s
-            }
-        };
-        let mut start_or_comma = || start_or_continue(", ");
-
-        match self.kind {
-            PatKind::Wild => write!(f, "_"),
-            PatKind::Never => write!(f, "!"),
-            PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{subpattern}: _"),
-            PatKind::Binding { name, mode, ref subpattern, .. } => {
-                f.write_str(mode.prefix_str())?;
-                write!(f, "{name}")?;
-                if let Some(ref subpattern) = *subpattern {
-                    write!(f, " @ {subpattern}")?;
-                }
-                Ok(())
-            }
-            PatKind::Variant { ref subpatterns, .. } | PatKind::Leaf { ref subpatterns } => {
-                let variant_and_name = match self.kind {
-                    PatKind::Variant { adt_def, variant_index, .. } => ty::tls::with(|tcx| {
-                        let variant = adt_def.variant(variant_index);
-                        let adt_did = adt_def.did();
-                        let name = if tcx.get_diagnostic_item(sym::Option) == Some(adt_did)
-                            || tcx.get_diagnostic_item(sym::Result) == Some(adt_did)
-                        {
-                            variant.name.to_string()
-                        } else {
-                            format!("{}::{}", tcx.def_path_str(adt_def.did()), variant.name)
-                        };
-                        Some((variant, name))
-                    }),
-                    _ => self.ty.ty_adt_def().and_then(|adt_def| {
-                        if !adt_def.is_enum() {
-                            ty::tls::with(|tcx| {
-                                Some((adt_def.non_enum_variant(), tcx.def_path_str(adt_def.did())))
-                            })
-                        } else {
-                            None
-                        }
-                    }),
-                };
-
-                if let Some((variant, name)) = &variant_and_name {
-                    write!(f, "{name}")?;
-
-                    // Only for Adt we can have `S {...}`,
-                    // which we handle separately here.
-                    if variant.ctor.is_none() {
-                        write!(f, " {{ ")?;
-
-                        let mut printed = 0;
-                        for p in subpatterns {
-                            if let PatKind::Wild = p.pattern.kind {
-                                continue;
-                            }
-                            let name = variant.fields[p.field].name;
-                            write!(f, "{}{}: {}", start_or_comma(), name, p.pattern)?;
-                            printed += 1;
-                        }
-
-                        let is_union = self.ty.ty_adt_def().is_some_and(|adt| adt.is_union());
-                        if printed < variant.fields.len() && (!is_union || printed == 0) {
-                            write!(f, "{}..", start_or_comma())?;
-                        }
-
-                        return write!(f, " }}");
-                    }
-                }
-
-                let num_fields =
-                    variant_and_name.as_ref().map_or(subpatterns.len(), |(v, _)| v.fields.len());
-                if num_fields != 0 || variant_and_name.is_none() {
-                    write!(f, "(")?;
-                    for i in 0..num_fields {
-                        write!(f, "{}", start_or_comma())?;
-
-                        // Common case: the field is where we expect it.
-                        if let Some(p) = subpatterns.get(i) {
-                            if p.field.index() == i {
-                                write!(f, "{}", p.pattern)?;
-                                continue;
-                            }
-                        }
-
-                        // Otherwise, we have to go looking for it.
-                        if let Some(p) = subpatterns.iter().find(|p| p.field.index() == i) {
-                            write!(f, "{}", p.pattern)?;
-                        } else {
-                            write!(f, "_")?;
-                        }
-                    }
-                    write!(f, ")")?;
-                }
-
-                Ok(())
-            }
-            PatKind::Deref { ref subpattern } => {
-                match self.ty.kind() {
-                    ty::Adt(def, _) if def.is_box() => write!(f, "box ")?,
-                    ty::Ref(_, _, mutbl) => {
-                        write!(f, "&{}", mutbl.prefix_str())?;
-                    }
-                    _ => bug!("{} is a bad Deref pattern type", self.ty),
-                }
-                write!(f, "{subpattern}")
-            }
-            PatKind::DerefPattern { ref subpattern, .. } => {
-                write!(f, "deref!({subpattern})")
-            }
-            PatKind::Constant { value } => write!(f, "{value}"),
-            PatKind::InlineConstant { def: _, ref subpattern } => {
-                write!(f, "{} (from inline const)", subpattern)
-            }
-            PatKind::Range(ref range) => write!(f, "{range}"),
-            PatKind::Slice { ref prefix, ref slice, ref suffix }
-            | PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                write!(f, "[")?;
-                for p in prefix.iter() {
-                    write!(f, "{}{}", start_or_comma(), p)?;
-                }
-                if let Some(ref slice) = *slice {
-                    write!(f, "{}", start_or_comma())?;
-                    match slice.kind {
-                        PatKind::Wild => {}
-                        _ => write!(f, "{slice}")?,
-                    }
-                    write!(f, "..")?;
-                }
-                for p in suffix.iter() {
-                    write!(f, "{}{}", start_or_comma(), p)?;
-                }
-                write!(f, "]")
-            }
-            PatKind::Or { ref pats } => {
-                for pat in pats.iter() {
-                    write!(f, "{}{}", start_or_continue(" | "), pat)?;
-                }
-                Ok(())
-            }
-            PatKind::Error(_) => write!(f, "<error>"),
-        }
-    }
-}
-
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);

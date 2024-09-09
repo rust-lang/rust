@@ -18,17 +18,15 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::fmt::Display;
 use std::fs::{self, File};
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::str;
 use std::sync::OnceLock;
 use std::time::SystemTime;
+use std::{env, io, str};
 
-use build_helper::ci::{gha, CiEnv};
+use build_helper::ci::gha;
 use build_helper::exit;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
@@ -37,18 +35,19 @@ use utils::helpers::hex_encode;
 
 use crate::core::builder;
 use crate::core::builder::{Builder, Kind};
-use crate::core::config::{flags, LldMode};
-use crate::core::config::{DryRun, Target};
-use crate::core::config::{LlvmLibunwind, TargetSelection};
-use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput};
-use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
+use crate::core::config::{flags, DryRun, LldMode, LlvmLibunwind, Target, TargetSelection};
+use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
+use crate::utils::helpers::{
+    self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
+};
 
 mod core;
 mod utils;
 
 pub use core::builder::PathSet;
-pub use core::config::flags::Subcommand;
+pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::Config;
+
 pub use utils::change_tracker::{
     find_recent_config_change_ids, human_readable_changes, CONFIG_CHANGE_HISTORY,
 };
@@ -78,6 +77,9 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 #[allow(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (None, "bootstrap", None),
+    (Some(Mode::Rustc), "llvm_enzyme", None),
+    (Some(Mode::Codegen), "llvm_enzyme", None),
+    (Some(Mode::ToolRustc), "llvm_enzyme", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "rust_analyzer", None),
@@ -141,6 +143,7 @@ pub struct Build {
     clippy_info: GitInfo,
     miri_info: GitInfo,
     rustfmt_info: GitInfo,
+    enzyme_info: GitInfo,
     in_tree_llvm_info: GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
@@ -171,7 +174,6 @@ pub struct Build {
     crates: HashMap<String, Crate>,
     crate_paths: HashMap<PathBuf, String>,
     is_sudo: bool,
-    ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
 
@@ -185,6 +187,7 @@ struct Crate {
     deps: HashSet<String>,
     path: PathBuf,
     has_lib: bool,
+    features: Vec<String>,
 }
 
 impl Crate {
@@ -308,6 +311,7 @@ impl Build {
         let clippy_info = GitInfo::new(omit_git_hash, &src.join("src/tools/clippy"));
         let miri_info = GitInfo::new(omit_git_hash, &src.join("src/tools/miri"));
         let rustfmt_info = GitInfo::new(omit_git_hash, &src.join("src/tools/rustfmt"));
+        let enzyme_info = GitInfo::new(omit_git_hash, &src.join("src/tools/enzyme"));
 
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = GitInfo::new(false, &src.join("src/llvm-project"));
@@ -334,14 +338,20 @@ impl Build {
         .trim()
         .to_string();
 
-        let initial_libdir = initial_target_dir
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .strip_prefix(&initial_sysroot)
-            .unwrap()
-            .to_path_buf();
+        // FIXME(Zalathar): Determining this path occasionally fails locally for
+        // unknown reasons, so we print some extra context to help track down why.
+        let find_initial_libdir = || {
+            let initial_libdir =
+                initial_target_dir.parent()?.parent()?.strip_prefix(&initial_sysroot).ok()?;
+            Some(initial_libdir.to_path_buf())
+        };
+        let Some(initial_libdir) = find_initial_libdir() else {
+            panic!(
+                "couldn't determine `initial_libdir` \
+                from target dir {initial_target_dir:?} \
+                and sysroot {initial_sysroot:?}"
+            )
+        };
 
         let version = std::fs::read_to_string(src.join("src").join("version"))
             .expect("failed to read src/version");
@@ -395,6 +405,7 @@ impl Build {
             clippy_info,
             miri_info,
             rustfmt_info,
+            enzyme_info,
             in_tree_llvm_info,
             cc: RefCell::new(HashMap::new()),
             cxx: RefCell::new(HashMap::new()),
@@ -403,7 +414,6 @@ impl Build {
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
-            ci_env: CiEnv::current(),
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
 
@@ -441,7 +451,13 @@ impl Build {
             // Cargo.toml files.
             let rust_submodules = ["library/backtrace", "library/stdarch"];
             for s in rust_submodules {
-                build.update_submodule(Path::new(s));
+                build.require_submodule(
+                    s,
+                    Some(
+                        "The submodule is required for the standard library \
+                         and the main Cargo workspace.",
+                    ),
+                );
             }
             // Now, update all existing submodules.
             build.update_existing_submodules();
@@ -451,7 +467,7 @@ impl Build {
         }
 
         // Make a symbolic link so we can use a consistent directory in the documentation.
-        let build_triple = build.out.join(build.build.triple);
+        let build_triple = build.out.join(build.build);
         t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
         if host.is_symlink() {
@@ -470,150 +486,82 @@ impl Build {
         build
     }
 
-    // modified from `check_submodule` and `update_submodule` in bootstrap.py
-    /// Given a path to the directory of a submodule, update it.
+    /// Updates a submodule, and exits with a failure if submodule management
+    /// is disabled and the submodule does not exist.
     ///
-    /// `relative_path` should be relative to the root of the git repository, not an absolute path.
-    pub(crate) fn update_submodule(&self, relative_path: &Path) {
-        if !self.config.submodules(self.rust_info()) {
+    /// The given submodule name should be its path relative to the root of
+    /// the main repository.
+    ///
+    /// The given `err_hint` will be shown to the user if the submodule is not
+    /// checked out and submodule management is disabled.
+    pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+        // When testing bootstrap itself, it is much faster to ignore
+        // submodules. Almost all Steps work fine without their submodules.
+        if cfg!(test) && !self.config.submodules() {
             return;
         }
-
-        let absolute_path = self.config.src.join(relative_path);
-
-        // NOTE: The check for the empty directory is here because when running x.py the first time,
-        // the submodule won't be checked out. Check it out now so we can build it.
-        if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
-            && !dir_is_empty(&absolute_path)
-        {
-            return;
+        self.config.update_submodule(submodule);
+        let absolute_path = self.config.src.join(submodule);
+        if dir_is_empty(&absolute_path) {
+            let maybe_enable = if !self.config.submodules()
+                && self.config.rust_info.is_managed_git_subrepository()
+            {
+                "\nConsider setting `build.submodules = true` or manually initializing the submodules."
+            } else {
+                ""
+            };
+            let err_hint = err_hint.map_or_else(String::new, |e| format!("\n{e}"));
+            eprintln!(
+                "submodule {submodule} does not appear to be checked out, \
+                 but it is required for this step{maybe_enable}{err_hint}"
+            );
+            exit!(1);
         }
+    }
 
-        // Submodule updating actually happens during in the dry run mode. We need to make sure that
-        // all the git commands below are actually executed, because some follow-up code
-        // in bootstrap might depend on the submodules being checked out. Furthermore, not all
-        // the command executions below work with an empty output (produced during dry run).
-        // Therefore, all commands below are marked with `run_always()`, so that they also run in
-        // dry run mode.
-        let submodule_git = || {
-            let mut cmd = helpers::git(Some(&absolute_path)).capture_stdout();
-            cmd.run_always();
-            cmd
-        };
-
-        // Determine commit checked out in submodule.
-        let checked_out_hash = submodule_git().args(["rev-parse", "HEAD"]).run(self).stdout();
-        let checked_out_hash = checked_out_hash.trim_end();
-        // Determine commit that the submodule *should* have.
-        let recorded = helpers::git(Some(&self.src))
-            .capture_stdout()
-            .run_always()
-            .args(["ls-tree", "HEAD"])
-            .arg(relative_path)
-            .run(self)
-            .stdout();
-        let actual_hash = recorded
-            .split_whitespace()
-            .nth(2)
-            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
-
-        if actual_hash == checked_out_hash {
-            // already checked out
-            return;
-        }
-
-        println!("Updating submodule {}", relative_path.display());
-        helpers::git(Some(&self.src))
-            .run_always()
-            .args(["submodule", "-q", "sync"])
-            .arg(relative_path)
-            .run(self);
-
-        // Try passing `--progress` to start, then run git again without if that fails.
-        let update = |progress: bool| {
-            // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
-            // even though that has no relation to the upstream for the submodule.
-            let current_branch = helpers::git(Some(&self.src))
-                .capture_stdout()
-                .allow_failure()
-                .run_always()
-                .args(["symbolic-ref", "--short", "HEAD"])
-                .run(self)
-                .stdout_if_ok()
-                .map(|s| s.trim().to_owned());
-
-            let mut git = helpers::git(Some(&self.src)).allow_failure();
-            git.run_always();
-            if let Some(branch) = current_branch {
-                // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
-                // This syntax isn't accepted by `branch.{branch}`. Strip it.
-                let branch = branch.strip_prefix("heads/").unwrap_or(&branch);
-                git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
-            }
-            git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);
-            if progress {
-                git.arg("--progress");
-            }
-            git.arg(relative_path);
-            git
-        };
-        if !update(true).run(self).is_success() {
-            update(false).run(self);
-        }
-
-        // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
-        // diff-index reports the modifications through the exit status
-        let has_local_modifications = submodule_git()
-            .allow_failure()
-            .args(["diff-index", "--quiet", "HEAD"])
-            .run(self)
-            .is_failure();
-        if has_local_modifications {
-            submodule_git().args(["stash", "push"]).run(self);
-        }
-
-        submodule_git().args(["reset", "-q", "--hard"]).run(self);
-        submodule_git().args(["clean", "-qdfx"]).run(self);
-
-        if has_local_modifications {
-            submodule_git().args(["stash", "pop"]).run(self);
+    /// Updates all submodules, and exits with an error if submodule
+    /// management is disabled and the submodule does not exist.
+    pub fn require_and_update_all_submodules(&self) {
+        for submodule in build_helper::util::parse_gitmodules(&self.src) {
+            self.require_submodule(submodule, None);
         }
     }
 
     /// If any submodule has been initialized already, sync it unconditionally.
     /// This avoids contributors checking in a submodule change by accident.
-    pub fn update_existing_submodules(&self) {
-        // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules(self.rust_info()) {
+    fn update_existing_submodules(&self) {
+        // Avoid running git when there isn't a git checkout, or the user has
+        // explicitly disabled submodules in `config.toml`.
+        if !self.config.submodules() {
             return;
         }
         let output = helpers::git(Some(&self.src))
-            .capture()
             .args(["config", "--file"])
             .arg(self.config.src.join(".gitmodules"))
             .args(["--get-regexp", "path"])
-            .run(self)
+            .run_capture(self)
             .stdout();
         for line in output.lines() {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
-            let submodule = Path::new(line.split_once(' ').unwrap().1);
+            let submodule = line.split_once(' ').unwrap().1;
+            let path = Path::new(submodule);
             // Don't update the submodule unless it's already been cloned.
-            if GitInfo::new(false, submodule).is_managed_git_subrepository() {
-                self.update_submodule(submodule);
+            if GitInfo::new(false, path).is_managed_git_subrepository() {
+                self.config.update_submodule(submodule);
             }
         }
     }
 
     /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
-    pub fn update_existing_submodule(&self, submodule: &Path) {
+    pub fn update_existing_submodule(&self, submodule: &str) {
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules(self.rust_info()) {
+        if !self.config.submodules() {
             return;
         }
 
-        if GitInfo::new(false, submodule).is_managed_git_subrepository() {
-            self.update_submodule(submodule);
+        if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
+            self.config.update_submodule(submodule);
         }
     }
 
@@ -731,17 +679,28 @@ impl Build {
     }
 
     /// Gets the space-separated set of activated features for the compiler.
-    fn rustc_features(&self, kind: Kind, target: TargetSelection) -> String {
+    fn rustc_features(&self, kind: Kind, target: TargetSelection, crates: &[String]) -> String {
+        let possible_features_by_crates: HashSet<_> = crates
+            .iter()
+            .flat_map(|krate| &self.crates[krate].features)
+            .map(std::ops::Deref::deref)
+            .collect();
+        let check = |feature: &str| -> bool {
+            crates.is_empty() || possible_features_by_crates.contains(feature)
+        };
         let mut features = vec![];
-        if self.config.jemalloc {
+        if self.config.jemalloc && check("jemalloc") {
             features.push("jemalloc");
         }
-        if self.config.llvm_enabled(target) || kind == Kind::Check {
+        if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
-        if self.config.rustc_parallel {
+        if self.config.rustc_parallel && check("rustc_use_parallel_compiler") {
             features.push("rustc_use_parallel_compiler");
+        }
+        if self.config.rust_randomize_layout {
+            features.push("rustc_randomized_layouts");
         }
 
         // If debug logging is on, then we want the default for tracing:
@@ -749,7 +708,7 @@ impl Build {
         // which is everything (including debug/trace/etc.)
         // if its unset, if debug_assertions is on, then debug_logging will also be on
         // as well as tracing *ignoring* this feature when debug_assertions is on
-        if !self.config.rust_debug_logging {
+        if !self.config.rust_debug_logging && check("max_level_info") {
             features.push("max_level_info");
         }
 
@@ -763,10 +722,7 @@ impl Build {
     }
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
-        let out = self
-            .out
-            .join(&*compiler.host.triple)
-            .join(format!("stage{}-tools-bin", compiler.stage));
+        let out = self.out.join(compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
         t!(fs::create_dir_all(&out));
         out
     }
@@ -783,14 +739,14 @@ impl Build {
             Mode::ToolBootstrap => "-bootstrap-tools",
             Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
-        self.out.join(&*compiler.host.triple).join(format!("stage{}{}", compiler.stage, suffix))
+        self.out.join(compiler.host).join(format!("stage{}{}", compiler.stage, suffix))
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self, compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
-        self.stage_out(compiler, mode).join(&*target.triple).join(self.cargo_dir())
+        self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
     }
 
     /// Root output directory of LLVM for `target`
@@ -801,36 +757,40 @@ impl Build {
         if self.config.llvm_from_ci && self.config.build == target {
             self.config.ci_llvm_root()
         } else {
-            self.out.join(&*target.triple).join("llvm")
+            self.out.join(target).join("llvm")
         }
     }
 
+    fn enzyme_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("enzyme")
+    }
+
     fn lld_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("lld")
+        self.out.join(target).join("lld")
     }
 
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("doc")
+        self.out.join(target).join("doc")
     }
 
     /// Output directory for all JSON-formatted documentation for a target
     fn json_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("json-doc")
+        self.out.join(target).join("json-doc")
     }
 
     fn test_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("test")
+        self.out.join(target).join("test")
     }
 
     /// Output directory for all documentation for a target
     fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("compiler-doc")
+        self.out.join(target).join("compiler-doc")
     }
 
     /// Output directory for some generated md crate documentation for a target (temporary)
     fn md_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("md-doc")
+        self.out.join(target).join("md-doc")
     }
 
     /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
@@ -870,14 +830,14 @@ impl Build {
         if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
             s.to_path_buf()
         } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = command(s).capture_stdout().arg("--bindir").run(self).stdout();
+            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(self).stdout();
             let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
             if filecheck.exists() {
                 filecheck
             } else {
                 // On Fedora the system LLVM installs FileCheck in the
                 // llvm subdirectory of the libdir.
-                let llvm_libdir = command(s).capture_stdout().arg("--libdir").run(self).stdout();
+                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(self).stdout();
                 let lib_filecheck =
                     Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
                 if lib_filecheck.exists() {
@@ -910,7 +870,7 @@ impl Build {
 
     /// Directory for libraries built from C/C++ code and shared between stages.
     fn native_dir(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("native")
+        self.out.join(target).join("native")
     }
 
     /// Root output directory for rust_test_helpers library compiled for
@@ -942,9 +902,15 @@ impl Build {
     }
 
     /// Execute a command and return its output.
-    /// This method should be used for all command executions in bootstrap.
+    /// Note: Ideally, you should use one of the BootstrapCommand::run* functions to
+    /// execute commands. They internally call this method.
     #[track_caller]
-    fn run(&self, command: &mut BootstrapCommand) -> CommandOutput {
+    fn run(
+        &self,
+        command: &mut BootstrapCommand,
+        stdout: OutputMode,
+        stderr: OutputMode,
+    ) -> CommandOutput {
         command.mark_as_executed();
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
@@ -957,19 +923,20 @@ impl Build {
             println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
         });
 
-        let stdout = command.stdout.stdio();
-        command.as_command_mut().stdout(stdout);
-        let stderr = command.stderr.stdio();
-        command.as_command_mut().stderr(stderr);
+        let cmd = command.as_command_mut();
+        cmd.stdout(stdout.stdio());
+        cmd.stderr(stderr.stdio());
 
-        let output = command.as_command_mut().output();
+        let output = cmd.output();
 
         use std::fmt::Write;
 
         let mut message = String::new();
         let output: CommandOutput = match output {
             // Command has succeeded
-            Ok(output) if output.status.success() => output.into(),
+            Ok(output) if output.status.success() => {
+                CommandOutput::from_output(output, stdout, stderr)
+            }
             // Command has started, but then it failed
             Ok(output) => {
                 writeln!(
@@ -983,15 +950,15 @@ Executed at: {executed_at}"#,
                 )
                 .unwrap();
 
-                let output: CommandOutput = output.into();
+                let output: CommandOutput = CommandOutput::from_output(output, stdout, stderr);
 
                 // If the output mode is OutputMode::Capture, we can now print the output.
                 // If it is OutputMode::Print, then the output has already been printed to
                 // stdout/stderr, and we thus don't have anything captured to print anyway.
-                if command.stdout.captures() {
+                if stdout.captures() {
                     writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
                 }
-                if command.stderr.captures() {
+                if stderr.captures() {
                     writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
                 }
                 output
@@ -1004,23 +971,49 @@ Executed at: {executed_at}"#,
             \nIt was not possible to execute the command: {e:?}"
                 )
                 .unwrap();
-                CommandOutput::did_not_start()
+                CommandOutput::did_not_start(stdout, stderr)
             }
         };
+
+        let fail = |message: &str, output: CommandOutput| -> ! {
+            if self.is_verbose() {
+                println!("{message}");
+            } else {
+                let (stdout, stderr) = (output.stdout_if_present(), output.stderr_if_present());
+                // If the command captures output, the user would not see any indication that
+                // it has failed. In this case, print a more verbose error, since to provide more
+                // context.
+                if stdout.is_some() || stderr.is_some() {
+                    if let Some(stdout) =
+                        output.stdout_if_present().take_if(|s| !s.trim().is_empty())
+                    {
+                        println!("STDOUT:\n{stdout}\n");
+                    }
+                    if let Some(stderr) =
+                        output.stderr_if_present().take_if(|s| !s.trim().is_empty())
+                    {
+                        println!("STDERR:\n{stderr}\n");
+                    }
+                    println!("Command {command:?} has failed. Rerun with -v to see more details.");
+                } else {
+                    println!("Command has failed. Rerun with -v to see more details.");
+                }
+            }
+            exit!(1);
+        };
+
         if !output.is_success() {
             match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if self.fail_fast {
-                        println!("{message}");
-                        exit!(1);
+                        fail(&message, output);
                     }
 
                     let mut failures = self.delayed_failures.borrow_mut();
                     failures.push(message);
                 }
                 BehaviorOnFailure::Exit => {
-                    println!("{message}");
-                    exit!(1);
+                    fail(&message, output);
                 }
                 BehaviorOnFailure::Ignore => {
                     // If failures are allowed, either the error has been printed already
@@ -1414,16 +1407,17 @@ Executed at: {executed_at}"#,
         None
     }
 
-    /// Returns whether it's requested that `wasm-component-ld` is built as part
-    /// of the sysroot. This is done either with the `extended` key in
-    /// `config.toml` or with the `tools` set.
-    fn build_wasm_component_ld(&self) -> bool {
-        if self.config.extended {
-            return true;
+    /// Returns whether the specified tool is configured as part of this build.
+    ///
+    /// This requires that both the `extended` key is set and the `tools` key is
+    /// either unset or specifically contains the specified tool.
+    fn tool_enabled(&self, tool: &str) -> bool {
+        if !self.config.extended {
+            return false;
         }
         match &self.config.tools {
-            Some(set) => set.contains("wasm-component-ld"),
-            None => false,
+            Some(set) => set.contains(tool),
+            None => true,
         }
     }
 
@@ -1529,7 +1523,6 @@ Executed at: {executed_at}"#,
             // That's our beta number!
             // (Note that we use a `..` range, not the `...` symmetric difference.)
             helpers::git(Some(&self.src))
-                .capture()
                 .arg("rev-list")
                 .arg("--count")
                 .arg("--merges")
@@ -1537,7 +1530,8 @@ Executed at: {executed_at}"#,
                     "refs/remotes/origin/{}..HEAD",
                     self.config.stage0_metadata.config.nightly_branch
                 ))
-                .run(self)
+                .run_always()
+                .run_capture(self)
                 .stdout()
         });
         let n = count.trim().parse().unwrap();
@@ -1719,21 +1713,20 @@ Executed at: {executed_at}"#,
             }
         }
         if let Ok(()) = fs::hard_link(&src, dst) {
-            // Attempt to "easy copy" by creating a hard link
-            // (symlinks don't work on windows), but if that fails
-            // just fall back to a slow `copy` operation.
+            // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
+            // but if that fails just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
 
+            // Restore file times because changing permissions on e.g. Linux using `chmod` can cause
+            // file access time to change.
             let file_times = fs::FileTimes::new()
                 .set_accessed(t!(metadata.accessed()))
                 .set_modified(t!(metadata.modified()));
-
-            let dst_file = t!(fs::File::open(dst));
-            t!(dst_file.set_times(file_times));
+            t!(set_file_times(dst, file_times));
         }
     }
 
@@ -1972,21 +1965,19 @@ pub fn generate_smart_stamp_hash(
     additional_input: &str,
 ) -> String {
     let diff = helpers::git(Some(dir))
-        .capture_stdout()
         .allow_failure()
         .arg("diff")
-        .run(builder)
+        .run_capture_stdout(builder)
         .stdout_if_ok()
         .unwrap_or_default();
 
     let status = helpers::git(Some(dir))
-        .capture_stdout()
         .allow_failure()
         .arg("status")
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
-        .run(builder)
+        .run_capture_stdout(builder)
         .stdout_if_ok()
         .unwrap_or_default();
 

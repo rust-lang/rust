@@ -276,7 +276,7 @@ impl TyExt for Ty {
                             data.substitute(Interner, &subst).into_value_and_skipped_binders().0
                         })
                     }
-                    ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                         db.type_alias_impl_traits(alias).map(|it| {
                             let data =
                                 (*it).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
@@ -295,7 +295,7 @@ impl TyExt for Ty {
                             data.substitute(Interner, &opaque_ty.substitution)
                         })
                     }
-                    ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                         db.type_alias_impl_traits(alias).map(|it| {
                             let data =
                                 (*it).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());

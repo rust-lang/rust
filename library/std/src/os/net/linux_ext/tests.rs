@@ -1,9 +1,8 @@
 #[test]
 fn quickack() {
-    use crate::{
-        net::{test::next_test_ip4, TcpListener, TcpStream},
-        os::net::linux_ext::tcp::TcpStreamExt,
-    };
+    use crate::net::test::next_test_ip4;
+    use crate::net::{TcpListener, TcpStream};
+    use crate::os::net::linux_ext::tcp::TcpStreamExt;
 
     macro_rules! t {
         ($e:expr) => {
@@ -30,10 +29,9 @@ fn quickack() {
 #[test]
 #[cfg(target_os = "linux")]
 fn deferaccept() {
-    use crate::{
-        net::{test::next_test_ip4, TcpListener, TcpStream},
-        os::net::linux_ext::tcp::TcpStreamExt,
-    };
+    use crate::net::test::next_test_ip4;
+    use crate::net::{TcpListener, TcpStream};
+    use crate::os::net::linux_ext::tcp::TcpStreamExt;
 
     macro_rules! t {
         ($e:expr) => {

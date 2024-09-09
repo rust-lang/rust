@@ -2,13 +2,14 @@
 
 use std::cell::RefCell;
 
-use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
-use crate::diagnostics::error::{span_err, DiagnosticDeriveError};
-use crate::diagnostics::utils::SetOnce;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::spanned::Spanned;
 use synstructure::Structure;
+
+use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
+use crate::diagnostics::error::{span_err, DiagnosticDeriveError};
+use crate::diagnostics::utils::SetOnce;
 
 /// The central struct for constructing the `into_diag` method from an annotated struct.
 pub(crate) struct DiagnosticDerive<'a> {

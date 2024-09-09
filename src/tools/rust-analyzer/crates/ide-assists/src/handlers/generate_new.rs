@@ -1,4 +1,3 @@
-use hir::ImportPathConfig;
 use ide_db::{
     imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
 };
@@ -62,17 +61,16 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 let type_path = current_module.find_path(
                     ctx.sema.db,
                     item_for_path_search(ctx.sema.db, item_in_ns)?,
-                    ImportPathConfig {
-                        prefer_no_std: ctx.config.prefer_no_std,
-                        prefer_prelude: ctx.config.prefer_prelude,
-                        prefer_absolute: ctx.config.prefer_absolute,
-                    },
+                    ctx.config.import_path_config(),
                 )?;
+
+                let edition = current_module.krate().edition(ctx.db());
 
                 let expr = use_trivial_constructor(
                     ctx.sema.db,
-                    ide_db::helpers::mod_path_to_ast(&type_path),
+                    ide_db::helpers::mod_path_to_ast(&type_path, edition),
                     &ty,
+                    edition,
                 )?;
 
                 Some(make::record_expr_field(make::name_ref(&name.text()), Some(expr)))
@@ -114,6 +112,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             params,
             body,
             Some(ret_type),
+            false,
             false,
             false,
             false,

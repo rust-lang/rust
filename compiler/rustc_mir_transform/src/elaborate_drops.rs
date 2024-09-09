@@ -1,20 +1,23 @@
-use crate::deref_separator::deref_finder;
+use std::fmt;
+
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_mir_dataflow::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
-use rustc_mir_dataflow::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
+use rustc_mir_dataflow::elaborate_drops::{
+    elaborate_drop, DropElaborator, DropFlagMode, DropFlagState, DropStyle, Unwind,
+};
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
-use rustc_mir_dataflow::on_all_children_bits;
-use rustc_mir_dataflow::on_lookup_result_bits;
-use rustc_mir_dataflow::MoveDataParamEnv;
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::{
+    on_all_children_bits, on_lookup_result_bits, Analysis, MoveDataParamEnv, ResultsCursor,
+};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
-use std::fmt;
+use tracing::{debug, instrument};
+
+use crate::deref_separator::deref_finder;
 
 /// During MIR building, Drop terminators are inserted in every place where a drop may occur.
 /// However, in this phase, the presence of these terminators does not guarantee that a destructor will run,
@@ -46,7 +49,7 @@ use std::fmt;
 /// ```
 pub struct ElaborateDrops;
 
-impl<'tcx> MirPass<'tcx> for ElaborateDrops {
+impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
@@ -60,7 +63,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         let elaborate_patch = {
             let env = MoveDataParamEnv { move_data, param_env };
 
-            let mut inits = MaybeInitializedPlaces::new(tcx, body, &env)
+            let mut inits = MaybeInitializedPlaces::new(tcx, body, &env.move_data)
                 .skipping_unreachable_unwind()
                 .into_engine(tcx, body)
                 .pass_name("elaborate_drops")
@@ -68,7 +71,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 .into_results_cursor(body);
             let dead_unwinds = compute_dead_unwinds(body, &mut inits);
 
-            let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
+            let uninits = MaybeUninitializedPlaces::new(tcx, body, &env.move_data)
                 .mark_inactive_variants_as_uninit()
                 .skipping_unreachable_unwind(dead_unwinds)
                 .into_engine(tcx, body)
@@ -441,9 +444,13 @@ impl<'b, 'mir, 'tcx> ElaborateDropsCtxt<'b, 'mir, 'tcx> {
 
     fn drop_flags_for_args(&mut self) {
         let loc = Location::START;
-        rustc_mir_dataflow::drop_flag_effects_for_function_entry(self.body, self.env, |path, ds| {
-            self.set_drop_flag(loc, path, ds);
-        })
+        rustc_mir_dataflow::drop_flag_effects_for_function_entry(
+            self.body,
+            &self.env.move_data,
+            |path, ds| {
+                self.set_drop_flag(loc, path, ds);
+            },
+        )
     }
 
     fn drop_flags_for_locs(&mut self) {
@@ -476,7 +483,7 @@ impl<'b, 'mir, 'tcx> ElaborateDropsCtxt<'b, 'mir, 'tcx> {
                 let loc = Location { block: bb, statement_index: i };
                 rustc_mir_dataflow::drop_flag_effects_for_location(
                     self.body,
-                    self.env,
+                    &self.env.move_data,
                     loc,
                     |path, ds| self.set_drop_flag(loc, path, ds),
                 )

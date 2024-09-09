@@ -1,14 +1,16 @@
-use crate::fluent_generated as fluent;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, Diagnostic, EmissionGuarantee, Level, MultiSpan,
-    SubdiagMessageOp, Subdiagnostic,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
-use rustc_errors::{DiagArgValue, DiagCtxtHandle};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
-use rustc_pattern_analysis::{errors::Uncovered, rustc::RustcPatCtxt};
+use rustc_pattern_analysis::errors::Uncovered;
+use rustc_pattern_analysis::rustc::RustcPatCtxt;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+
+use crate::fluent_generated as fluent;
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unconditional_recursion)]
@@ -26,6 +28,7 @@ pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafe {
     #[label]
     pub(crate) span: Span,
     pub(crate) function: String,
+    pub(crate) guarantee: String,
     #[subdiagnostic]
     pub(crate) sub: CallToDeprecatedSafeFnRequiresUnsafeSub,
 }
@@ -33,10 +36,8 @@ pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafe {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(mir_build_suggestion, applicability = "machine-applicable")]
 pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafeSub {
-    pub(crate) indent: String,
-    #[suggestion_part(
-        code = "{indent}// TODO: Audit that the environment access only happens in single-threaded code.\n" // ignore-tidy-todo
-    )]
+    pub(crate) start_of_line_suggestion: String,
+    #[suggestion_part(code = "{start_of_line_suggestion}")]
     pub(crate) start_of_line: Span,
     #[suggestion_part(code = "unsafe {{ ")]
     pub(crate) left: Span,
@@ -160,7 +161,7 @@ pub(crate) struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
     pub(crate) missing_target_features: DiagArgValue,
     pub(crate) missing_target_features_count: usize,
     #[note]
-    pub(crate) note: Option<()>,
+    pub(crate) note: bool,
     pub(crate) build_target_features: DiagArgValue,
     pub(crate) build_target_features_count: usize,
     #[subdiagnostic]
@@ -412,7 +413,7 @@ pub(crate) struct CallToFunctionWithRequiresUnsafe {
     pub(crate) missing_target_features: DiagArgValue,
     pub(crate) missing_target_features_count: usize,
     #[note]
-    pub(crate) note: Option<()>,
+    pub(crate) note: bool,
     pub(crate) build_target_features: DiagArgValue,
     pub(crate) build_target_features_count: usize,
     #[subdiagnostic]
@@ -430,7 +431,7 @@ pub(crate) struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     pub(crate) missing_target_features: DiagArgValue,
     pub(crate) missing_target_features_count: usize,
     #[note]
-    pub(crate) note: Option<()>,
+    pub(crate) note: bool,
     pub(crate) build_target_features: DiagArgValue,
     pub(crate) build_target_features_count: usize,
     #[subdiagnostic]
@@ -492,7 +493,7 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let mut diag =
             Diag::new(dcx, level, fluent::mir_build_non_exhaustive_patterns_type_not_empty);
         diag.span(self.scrut_span);
@@ -585,20 +586,18 @@ pub(crate) struct NonConstPath {
 pub(crate) struct UnreachablePattern<'tcx> {
     #[label]
     pub(crate) span: Option<Span>,
-    #[subdiagnostic]
-    pub(crate) matches_no_values: Option<UnreachableMatchesNoValues<'tcx>>,
+    #[label(mir_build_unreachable_matches_no_values)]
+    pub(crate) matches_no_values: Option<Span>,
+    pub(crate) matches_no_values_ty: Ty<'tcx>,
+    #[note(mir_build_unreachable_uninhabited_note)]
+    pub(crate) uninhabited_note: Option<()>,
     #[label(mir_build_unreachable_covered_by_catchall)]
     pub(crate) covered_by_catchall: Option<Span>,
     #[label(mir_build_unreachable_covered_by_one)]
     pub(crate) covered_by_one: Option<Span>,
     #[note(mir_build_unreachable_covered_by_many)]
     pub(crate) covered_by_many: Option<MultiSpan>,
-}
-
-#[derive(Subdiagnostic)]
-#[note(mir_build_unreachable_matches_no_values)]
-pub(crate) struct UnreachableMatchesNoValues<'tcx> {
-    pub(crate) ty: Ty<'tcx>,
+    pub(crate) covered_by_many_n_more_count: usize,
 }
 
 #[derive(Diagnostic)]
@@ -622,7 +621,7 @@ pub(crate) struct LowerRangeBoundMustBeLessThanOrEqualToUpper {
     #[label]
     pub(crate) span: Span,
     #[note(mir_build_teach_note)]
-    pub(crate) teach: Option<()>,
+    pub(crate) teach: bool,
 }
 
 #[derive(Diagnostic)]
@@ -856,7 +855,7 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub(crate) span: Span,
     pub(crate) origin: &'s str,
     #[subdiagnostic]
-    pub(crate) uncovered: Uncovered<'tcx>,
+    pub(crate) uncovered: Uncovered,
     #[subdiagnostic]
     pub(crate) inform: Option<Inform>,
     #[subdiagnostic]
@@ -864,7 +863,7 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[subdiagnostic]
     pub(crate) adt_defined_here: Option<AdtDefinedHere<'tcx>>,
     #[note(mir_build_privately_uninhabited)]
-    pub(crate) witness_1_is_privately_uninhabited: Option<()>,
+    pub(crate) witness_1_is_privately_uninhabited: bool,
     #[note(mir_build_pattern_ty)]
     pub(crate) _p: (),
     pub(crate) pattern_ty: Ty<'tcx>,

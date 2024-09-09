@@ -5,11 +5,11 @@
 use std::cell::UnsafeCell;
 
 mod assert {
-    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    use std::mem::{Assume, TransmuteFrom};
 
     pub fn is_maybe_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, { Assume::SAFETY }>
+        Dst: TransmuteFrom<Src, { Assume::SAFETY }>
     {}
 }
 

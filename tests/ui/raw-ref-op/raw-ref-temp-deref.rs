@@ -1,7 +1,7 @@
 //@ check-pass
 // Check that taking the address of a place that contains a dereference is
 // allowed.
-#![feature(raw_ref_op, type_ascription)]
+#![feature(type_ascription)]
 
 const PAIR_REF: &(i32, i64) = &(1, 2);
 

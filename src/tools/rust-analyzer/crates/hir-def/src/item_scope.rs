@@ -1,15 +1,16 @@
 //! Describes items defined or visible (ie, imported) in a certain scope.
 //! This is shared between modules and blocks.
 
-use std::collections::hash_map::Entry;
+use std::sync::LazyLock;
 
 use base_db::CrateId;
 use hir_expand::{attrs::AttrId, db::ExpandDatabase, name::Name, AstId, MacroCallId};
+use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
-use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
+use span::Edition;
 use stdx::format_to;
 use syntax::ast;
 
@@ -17,8 +18,8 @@ use crate::{
     db::DefDatabase,
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
-    AdtId, BuiltinType, ConstId, ExternCrateId, HasModule, ImplId, LocalModuleId, Lookup, MacroId,
-    ModuleDefId, ModuleId, TraitId, UseId,
+    AdtId, BuiltinType, ConstId, ExternCrateId, FxIndexMap, HasModule, ImplId, LocalModuleId,
+    Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
 };
 
 #[derive(Debug, Default)]
@@ -62,14 +63,26 @@ pub struct ImportId {
     pub idx: Idx<ast::UseTree>,
 }
 
+impl PerNsGlobImports {
+    pub(crate) fn contains_type(&self, module_id: LocalModuleId, name: Name) -> bool {
+        self.types.contains(&(module_id, name))
+    }
+    pub(crate) fn contains_value(&self, module_id: LocalModuleId, name: Name) -> bool {
+        self.values.contains(&(module_id, name))
+    }
+    pub(crate) fn contains_macro(&self, module_id: LocalModuleId, name: Name) -> bool {
+        self.macros.contains(&(module_id, name))
+    }
+}
+
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
     /// Defs visible in this scope. This includes `declarations`, but also
     /// imports. The imports belong to this module and can be resolved by using them on
     /// the `use_imports_*` fields.
-    types: FxHashMap<Name, (ModuleDefId, Visibility, Option<ImportOrExternCrate>)>,
-    values: FxHashMap<Name, (ModuleDefId, Visibility, Option<ImportId>)>,
-    macros: FxHashMap<Name, (MacroId, Visibility, Option<ImportId>)>,
+    types: FxIndexMap<Name, (ModuleDefId, Visibility, Option<ImportOrExternCrate>)>,
+    values: FxIndexMap<Name, (ModuleDefId, Visibility, Option<ImportId>)>,
+    macros: FxIndexMap<Name, (MacroId, Visibility, Option<ImportId>)>,
     unresolved: FxHashSet<Name>,
 
     /// The defs declared in this scope. Each def has a single scope where it is
@@ -118,8 +131,8 @@ struct DeriveMacroInvocation {
     derive_call_ids: SmallVec<[Option<MacroCallId>; 1]>,
 }
 
-pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
-    BuiltinType::ALL
+pub(crate) static BUILTIN_SCOPE: LazyLock<FxIndexMap<Name, PerNs>> = LazyLock::new(|| {
+    BuiltinType::all_builtin_types()
         .iter()
         .map(|(name, ty)| (name.clone(), PerNs::types((*ty).into(), Visibility::Public, None)))
         .collect()
@@ -511,38 +524,48 @@ impl ItemScope {
                     entry.insert(fld);
                     changed = true;
                 }
-                Entry::Occupied(mut entry) if !matches!(import, Some(ImportType::Glob(..))) => {
-                    if glob_imports.types.remove(&lookup) {
-                        let import = match import {
-                            Some(ImportType::ExternCrate(extern_crate)) => {
-                                Some(ImportOrExternCrate::ExternCrate(extern_crate))
-                            }
-                            Some(ImportType::Import(import)) => {
-                                Some(ImportOrExternCrate::Import(import))
-                            }
-                            None | Some(ImportType::Glob(_)) => None,
-                        };
-                        let prev = std::mem::replace(&mut fld.2, import);
-                        if let Some(import) = import {
-                            self.use_imports_types.insert(
-                                import,
-                                match prev {
-                                    Some(ImportOrExternCrate::Import(import)) => {
-                                        ImportOrDef::Import(import)
-                                    }
-                                    Some(ImportOrExternCrate::ExternCrate(import)) => {
-                                        ImportOrDef::ExternCrate(import)
-                                    }
-                                    None => ImportOrDef::Def(fld.0),
-                                },
-                            );
+                Entry::Occupied(mut entry) => {
+                    match import {
+                        Some(ImportType::Glob(..)) => {
+                            // Multiple globs may import the same item and they may
+                            // override visibility from previously resolved globs. This is
+                            // currently handled by `DefCollector`, because we need to
+                            // compute the max visibility for items and we need `DefMap`
+                            // for that.
                         }
-                        cov_mark::hit!(import_shadowed);
-                        entry.insert(fld);
-                        changed = true;
+                        _ => {
+                            if glob_imports.types.remove(&lookup) {
+                                let import = match import {
+                                    Some(ImportType::ExternCrate(extern_crate)) => {
+                                        Some(ImportOrExternCrate::ExternCrate(extern_crate))
+                                    }
+                                    Some(ImportType::Import(import)) => {
+                                        Some(ImportOrExternCrate::Import(import))
+                                    }
+                                    None | Some(ImportType::Glob(_)) => None,
+                                };
+                                let prev = std::mem::replace(&mut fld.2, import);
+                                if let Some(import) = import {
+                                    self.use_imports_types.insert(
+                                        import,
+                                        match prev {
+                                            Some(ImportOrExternCrate::Import(import)) => {
+                                                ImportOrDef::Import(import)
+                                            }
+                                            Some(ImportOrExternCrate::ExternCrate(import)) => {
+                                                ImportOrDef::ExternCrate(import)
+                                            }
+                                            None => ImportOrDef::Def(fld.0),
+                                        },
+                                    );
+                                }
+                                cov_mark::hit!(import_shadowed);
+                                entry.insert(fld);
+                                changed = true;
+                            }
+                        }
                     }
                 }
-                _ => {}
             }
         }
 
@@ -685,7 +708,7 @@ impl ItemScope {
             format_to!(
                 buf,
                 "{}:",
-                name.map_or("_".to_owned(), |name| name.display(db).to_string())
+                name.map_or("_".to_owned(), |name| name.display(db, Edition::LATEST).to_string())
             );
 
             if let Some((.., i)) = def.types {
@@ -754,6 +777,27 @@ impl ItemScope {
         extern_crate_decls.shrink_to_fit();
         use_decls.shrink_to_fit();
         macro_invocations.shrink_to_fit();
+    }
+}
+
+// These methods are a temporary measure only meant to be used by `DefCollector::push_res_and_update_glob_vis()`.
+impl ItemScope {
+    pub(crate) fn update_visibility_types(&mut self, name: &Name, vis: Visibility) {
+        let res =
+            self.types.get_mut(name).expect("tried to update visibility of non-existent type");
+        res.1 = vis;
+    }
+
+    pub(crate) fn update_visibility_values(&mut self, name: &Name, vis: Visibility) {
+        let res =
+            self.values.get_mut(name).expect("tried to update visibility of non-existent value");
+        res.1 = vis;
+    }
+
+    pub(crate) fn update_visibility_macros(&mut self, name: &Name, vis: Visibility) {
+        let res =
+            self.macros.get_mut(name).expect("tried to update visibility of non-existent macro");
+        res.1 = vis;
     }
 }
 

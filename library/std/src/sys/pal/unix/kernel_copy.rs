@@ -42,6 +42,12 @@
 //!   progress, they can hit a performance cliff.
 //! * complexity
 
+#[cfg(not(any(all(target_os = "linux", target_env = "gnu"), target_os = "hurd")))]
+use libc::sendfile as sendfile64;
+#[cfg(any(all(target_os = "linux", target_env = "gnu"), target_os = "hurd"))]
+use libc::sendfile64;
+use libc::{EBADF, EINVAL, ENOSYS, EOPNOTSUPP, EOVERFLOW, EPERM, EXDEV};
+
 use crate::cmp::min;
 use crate::fs::{File, Metadata};
 use crate::io::copy::generic_copy;
@@ -54,16 +60,12 @@ use crate::net::TcpStream;
 use crate::os::unix::fs::FileTypeExt;
 use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use crate::os::unix::net::UnixStream;
+use crate::pipe::{PipeReader, PipeWriter};
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
 use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
 use crate::sys::weak::syscall;
-#[cfg(not(any(all(target_os = "linux", target_env = "gnu"), target_os = "hurd")))]
-use libc::sendfile as sendfile64;
-#[cfg(any(all(target_os = "linux", target_env = "gnu"), target_os = "hurd"))]
-use libc::sendfile64;
-use libc::{EBADF, EINVAL, ENOSYS, EOPNOTSUPP, EOVERFLOW, EPERM, EXDEV};
 
 #[cfg(test)]
 mod tests;
@@ -401,6 +403,30 @@ impl CopyWrite for &UnixStream {
     fn properties(&self) -> CopyParams {
         // avoid the stat syscall since we can be fairly sure it's a socket
         CopyParams(FdMeta::Socket, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyRead for PipeReader {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Pipe, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyRead for &PipeReader {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Pipe, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyWrite for PipeWriter {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Pipe, Some(self.as_raw_fd()))
+    }
+}
+
+impl CopyWrite for &PipeWriter {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Pipe, Some(self.as_raw_fd()))
     }
 }
 

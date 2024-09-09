@@ -1,4 +1,4 @@
-use run_make_support::{cwd, path, rustc};
+use run_make_support::{path, rustc};
 
 fn main() {
     rustc().input("foo.rs").emit("asm,llvm-ir").output("out").run();

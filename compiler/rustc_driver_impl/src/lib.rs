@@ -15,10 +15,26 @@
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
+use std::cmp::max;
+use std::collections::BTreeMap;
+use std::ffi::OsString;
+use std::fmt::Write as _;
+use std::fs::{self, File};
+use std::io::{self, IsTerminal, Read, Write};
+use std::panic::{self, catch_unwind, PanicHookInfo};
+use std::path::PathBuf;
+use std::process::{self, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, OnceLock};
+use std::time::{Duration, Instant, SystemTime};
+use std::{env, str};
+
 use rustc_ast as ast;
-use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
+use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
 use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
@@ -35,31 +51,18 @@ use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
-use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
-use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType};
+use rustc_session::config::{
+    nightly_options, ErrorOutputType, Input, OutFileName, OutputType, UnstableOptions, CG_OPTIONS,
+    Z_OPTIONS,
+};
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::collect_crate_types;
 use rustc_session::{config, filesearch, EarlyDiagCtxt, Session};
 use rustc_span::source_map::FileLoader;
-use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTriple};
-use std::cmp::max;
-use std::collections::BTreeMap;
-use std::env;
-use std::ffi::OsString;
-use std::fmt::Write as _;
-use std::fs::{self, File};
-use std::io::{self, IsTerminal, Read, Write};
-use std::panic::{self, catch_unwind, PanicHookInfo};
-use std::path::PathBuf;
-use std::process::{self, Command, Stdio};
-use std::str;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, OnceLock};
-use std::time::{Duration, Instant, SystemTime};
 use time::OffsetDateTime;
 use tracing::trace;
 
@@ -299,6 +302,8 @@ fn run_compiler(
     let Some(matches) = handle_options(&default_early_dcx, &args) else { return Ok(()) };
 
     let sopts = config::build_session_options(&mut default_early_dcx, &matches);
+    // fully initialize ice path static once unstable options are available as context
+    let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
 
     if let Some(ref code) = matches.opt_str("explain") {
         handle_explain(&default_early_dcx, diagnostics_registry(), code, sopts.color);
@@ -313,7 +318,7 @@ fn run_compiler(
         input: Input::File(PathBuf::new()),
         output_file: ofile,
         output_dir: odir,
-        ice_file: ice_path().clone(),
+        ice_file,
         file_loader,
         locale_resources: DEFAULT_LOCALE_RESOURCES,
         lint_caps: Default::default(),
@@ -333,12 +338,11 @@ fn run_compiler(
             config.input = input;
             true // has input: normal compilation
         }
-        Ok(None) => match matches.free.len() {
-            0 => false, // no input: we will exit early
-            1 => panic!("make_input should have provided valid inputs"),
-            _ => default_early_dcx.early_fatal(format!(
-                "multiple input filenames provided (first two filenames are `{}` and `{}`)",
-                matches.free[0], matches.free[1],
+        Ok(None) => match matches.free.as_slice() {
+            [] => false, // no input: we will exit early
+            [_] => panic!("make_input should have provided valid inputs"),
+            [fst, snd, ..] => default_early_dcx.early_fatal(format!(
+                "multiple input filenames provided (first two filenames are `{fst}` and `{snd}`)"
             )),
         },
     };
@@ -387,13 +391,17 @@ fn run_compiler(
 
         let linker = compiler.enter(|queries| {
             let early_exit = || early_exit().map(|_| None);
+
+            // Parse the crate root source code (doesn't parse submodules yet)
+            // Everything else is parsed during macro expansion.
             queries.parse()?;
 
-            if let Some(ppm) = &sess.opts.pretty {
-                if ppm.needs_ast_map() {
+            // If pretty printing is requested: Figure out the representation, print it and exit
+            if let Some(pp_mode) = sess.opts.pretty {
+                if pp_mode.needs_ast_map() {
                     queries.global_ctxt()?.enter(|tcx| {
                         tcx.ensure().early_lint_checks(());
-                        pretty::print(sess, *ppm, pretty::PrintExtra::NeedsAstMap { tcx });
+                        pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
                         Ok(())
                     })?;
 
@@ -404,7 +412,7 @@ fn run_compiler(
                     let krate = queries.parse()?;
                     pretty::print(
                         sess,
-                        *ppm,
+                        pp_mode,
                         pretty::PrintExtra::AfterParsing { krate: &*krate.borrow() },
                     );
                 }
@@ -459,12 +467,8 @@ fn run_compiler(
             linker.link(sess, codegen_backend)?
         }
 
-        if sess.opts.unstable_opts.print_fuel.is_some() {
-            eprintln!(
-                "Fuel used by {}: {}",
-                sess.opts.unstable_opts.print_fuel.as_ref().unwrap(),
-                sess.print_fuel.load(Ordering::SeqCst)
-            );
+        if let Some(fuel) = sess.opts.unstable_opts.print_fuel.as_deref() {
+            eprintln!("Fuel used by {}: {}", fuel, sess.print_fuel.load(Ordering::SeqCst));
         }
 
         Ok(())
@@ -481,40 +485,43 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileNa
     (odir, ofile)
 }
 
-// Extract input (string or file and optional path) from matches.
+/// Extract input (string or file and optional path) from matches.
+/// This handles reading from stdin if `-` is provided.
 fn make_input(
     early_dcx: &EarlyDiagCtxt,
     free_matches: &[String],
 ) -> Result<Option<Input>, ErrorGuaranteed> {
-    if free_matches.len() == 1 {
-        let ifile = &free_matches[0];
-        if ifile == "-" {
-            let mut src = String::new();
-            if io::stdin().read_to_string(&mut src).is_err() {
-                // Immediately stop compilation if there was an issue reading
-                // the input (for example if the input stream is not UTF-8).
-                let reported = early_dcx
-                    .early_err("couldn't read from stdin, as it did not contain valid UTF-8");
-                return Err(reported);
-            }
-            if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
-                let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
-                    "when UNSTABLE_RUSTDOC_TEST_PATH is set \
-                                    UNSTABLE_RUSTDOC_TEST_LINE also needs to be set",
-                );
-                let line = isize::from_str_radix(&line, 10)
-                    .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
-                let file_name = FileName::doc_test_source_code(PathBuf::from(path), line);
-                Ok(Some(Input::Str { name: file_name, input: src }))
-            } else {
-                Ok(Some(Input::Str { name: FileName::anon_source_code(&src), input: src }))
-            }
-        } else {
-            Ok(Some(Input::File(PathBuf::from(ifile))))
-        }
-    } else {
-        Ok(None)
+    let [input_file] = free_matches else { return Ok(None) };
+
+    if input_file != "-" {
+        // Normal `Input::File`
+        return Ok(Some(Input::File(PathBuf::from(input_file))));
     }
+
+    // read from stdin as `Input::Str`
+    let mut input = String::new();
+    if io::stdin().read_to_string(&mut input).is_err() {
+        // Immediately stop compilation if there was an issue reading
+        // the input (for example if the input stream is not UTF-8).
+        let reported =
+            early_dcx.early_err("couldn't read from stdin, as it did not contain valid UTF-8");
+        return Err(reported);
+    }
+
+    let name = match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+        Ok(path) => {
+            let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
+                "when UNSTABLE_RUSTDOC_TEST_PATH is set \
+                                    UNSTABLE_RUSTDOC_TEST_LINE also needs to be set",
+            );
+            let line = isize::from_str_radix(&line, 10)
+                .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
+            FileName::doc_test_source_code(PathBuf::from(path), line)
+        }
+        Err(_) => FileName::anon_source_code(&input),
+    };
+
+    Ok(Some(Input::Str { name, input }))
 }
 
 /// Whether to stop or continue compilation.
@@ -689,7 +696,6 @@ fn print_crate_info(
     parse_attrs: bool,
 ) -> Compilation {
     use rustc_session::config::PrintKind::*;
-
     // This import prevents the following code from using the printing macros
     // used by the rest of the module. Within this function, we only write to
     // the output specified by `sess.io.output_file`.
@@ -769,16 +775,8 @@ fn print_crate_info(
                     .config
                     .iter()
                     .filter_map(|&(name, value)| {
-                        // Note that crt-static is a specially recognized cfg
-                        // directive that's printed out here as part of
-                        // rust-lang/rust#37406, but in general the
-                        // `target_feature` cfg is gated under
-                        // rust-lang/rust#29717. For now this is just
-                        // specifically allowing the crt-static cfg and that's
-                        // it, this is intended to get into Cargo and then go
-                        // through to build scripts.
-                        if (name != sym::target_feature || value != Some(sym::crt_dash_static))
-                            && !sess.is_nightly_build()
+                        // On stable, exclude unstable flags.
+                        if !sess.is_nightly_build()
                             && find_gated_cfg(|cfg_sym| cfg_sym == name).is_some()
                         {
                             return None;
@@ -863,9 +861,9 @@ fn print_crate_info(
                 use rustc_target::spec::current_apple_deployment_target;
 
                 if sess.target.is_like_osx {
-                    let (major, minor) = current_apple_deployment_target(&sess.target)
-                        .expect("unknown Apple target OS");
-                    println_info!("deployment_target={}", format!("{major}.{minor}"))
+                    let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+                    let patch = if patch != 0 { format!(".{patch}") } else { String::new() };
+                    println_info!("deployment_target={major}.{minor}{patch}")
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")
@@ -907,6 +905,15 @@ pub fn version_at_macro_invocation(
     release: &str,
 ) {
     let verbose = matches.opt_present("verbose");
+
+    let mut version = version;
+    let mut release = release;
+    let tmp;
+    if let Ok(force_version) = std::env::var("RUSTC_OVERRIDE_VERSION_STRING") {
+        tmp = force_version;
+        version = &tmp;
+        release = &tmp;
+    }
 
     safe_println!("{binary} {version}");
 
@@ -1296,14 +1303,26 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
 
 static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
+// This function should only be called from the ICE hook.
+//
+// The intended behavior is that `run_compiler` will invoke `ice_path_with_config` early in the
+// initialization process to properly initialize the ICE_PATH static based on parsed CLI flags.
+//
+// Subsequent calls to either function will then return the proper ICE path as configured by
+// the environment and cli flags
 fn ice_path() -> &'static Option<PathBuf> {
+    ice_path_with_config(None)
+}
+
+fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<PathBuf> {
+    if ICE_PATH.get().is_some() && config.is_some() && cfg!(debug_assertions) {
+        tracing::warn!(
+            "ICE_PATH has already been initialized -- files may be emitted at unintended paths"
+        )
+    }
+
     ICE_PATH.get_or_init(|| {
         if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
-            return None;
-        }
-        if let Some(s) = std::env::var_os("RUST_BACKTRACE")
-            && s == "0"
-        {
             return None;
         }
         let mut path = match std::env::var_os("RUSTC_ICE") {
@@ -1312,9 +1331,15 @@ fn ice_path() -> &'static Option<PathBuf> {
                     // Explicitly opting out of writing ICEs to disk.
                     return None;
                 }
+                if let Some(unstable_opts) = config && unstable_opts.metrics_dir.is_some() {
+                    tracing::warn!("ignoring -Zerror-metrics in favor of RUSTC_ICE for destination of ICE report files");
+                }
                 PathBuf::from(s)
             }
-            None => std::env::current_dir().unwrap_or_default(),
+            None => config
+                .and_then(|unstable_opts| unstable_opts.metrics_dir.to_owned())
+                .or_else(|| std::env::current_dir().ok())
+                .unwrap_or_default(),
         };
         let now: OffsetDateTime = SystemTime::now().into();
         let file_now = now

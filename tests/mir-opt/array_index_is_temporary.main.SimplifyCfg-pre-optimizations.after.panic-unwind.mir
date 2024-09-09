@@ -33,17 +33,17 @@ fn main() -> () {
         StorageDead(_4);
         StorageLive(_5);
         StorageLive(_6);
-        _6 = _3;
+        _6 = copy _3;
         _5 = foo(move _6) -> [return: bb1, unwind continue];
     }
 
     bb1: {
         StorageDead(_6);
         StorageLive(_7);
-        _7 = _2;
+        _7 = copy _2;
         _8 = Len(_1);
-        _9 = Lt(_7, _8);
-        assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> [success: bb2, unwind continue];
+        _9 = Lt(copy _7, copy _8);
+        assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, copy _7) -> [success: bb2, unwind continue];
     }
 
     bb2: {

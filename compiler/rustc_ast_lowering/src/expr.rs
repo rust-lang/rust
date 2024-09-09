@@ -1,15 +1,5 @@
 use std::assert_matches::assert_matches;
 
-use super::errors::{
-    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
-    ClosureCannotBeStatic, CoroutineTooManyParameters,
-    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
-    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign,
-};
-use super::ResolverAstLoweringExt;
-use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
-use crate::errors::YieldInClosure;
-use crate::{FnDeclKind, ImplTraitPosition};
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -20,9 +10,20 @@ use rustc_middle::span_bug;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::DUMMY_SP;
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use thin_vec::{thin_vec, ThinVec};
+
+use super::errors::{
+    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
+    ClosureCannotBeStatic, CoroutineTooManyParameters,
+    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
+    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign,
+};
+use super::{
+    GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
+};
+use crate::errors::YieldInClosure;
+use crate::{fluent_generated, FnDeclKind, ImplTraitPosition};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -106,7 +107,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         e.span,
                         seg,
                         ParamMode::Optional,
-                        ParenthesizedGenericArgs::Err,
+                        GenericArgsMode::Err,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         // Method calls can't have bound modifiers
                         None,
@@ -386,7 +387,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let node_id = self.next_node_id();
 
                 // HACK(min_generic_const_args): see lower_anon_const
-                if !arg.is_potential_trivial_const_arg() {
+                if !self.tcx.features().const_arg_path || !arg.is_potential_trivial_const_arg() {
                     // Add a definition for the in-band const def.
                     self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
                 }
@@ -1539,7 +1540,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         let yielded =
             opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| self.expr_unit(span));
@@ -1574,7 +1574,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         &self.tcx.sess,
                         sym::coroutines,
                         span,
-                        "yield syntax is experimental",
+                        fluent_generated::ast_lowering_yield,
                     )
                     .emit();
                 }
@@ -1586,7 +1586,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         &self.tcx.sess,
                         sym::coroutines,
                         span,
-                        "yield syntax is experimental",
+                        fluent_generated::ast_lowering_yield,
                     )
                     .emit();
                 }

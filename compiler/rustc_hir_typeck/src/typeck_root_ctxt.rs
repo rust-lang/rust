@@ -1,4 +1,5 @@
-use super::callee::DeferredCallResolution;
+use std::cell::RefCell;
+use std::ops::Deref;
 
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
@@ -14,9 +15,9 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, PredicateObligation, TraitEngine, TraitEngineExt as _,
 };
+use tracing::{debug, instrument};
 
-use std::cell::RefCell;
-use std::ops::Deref;
+use super::callee::DeferredCallResolution;
 
 /// Data shared between a "typeck root" and its nested bodies,
 /// e.g. closures defined within the function. For example:
@@ -77,7 +78,7 @@ impl<'tcx> Deref for TypeckRootCtxt<'tcx> {
 }
 
 impl<'tcx> TypeckRootCtxt<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
         let infcx = tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(def_id).build();
@@ -124,7 +125,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
         infer_ok.value
     }
 
-    pub fn update_infer_var_info(&self, obligation: &PredicateObligation<'tcx>) {
+    fn update_infer_var_info(&self, obligation: &PredicateObligation<'tcx>) {
         let infer_var_info = &mut self.infer_var_info.borrow_mut();
 
         // (*) binder skipped

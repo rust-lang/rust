@@ -2,7 +2,7 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
 // This target is for glibc Linux on Csky
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         //https://github.com/llvm/llvm-project/blob/8b76aea8d8b1b71f6220bc2845abc749f18a19b7/clang/lib/Basic/Targets/CSKY.h
         llvm_target: "csky-unknown-linux-gnuabiv2".into(),

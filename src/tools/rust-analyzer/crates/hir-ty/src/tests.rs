@@ -1,3 +1,4 @@
+mod closure_captures;
 mod coercion;
 mod diagnostics;
 mod display_source_code;
@@ -9,10 +10,12 @@ mod patterns;
 mod regression;
 mod simple;
 mod traits;
+mod type_alias_impl_traits;
 
 use std::env;
+use std::sync::LazyLock;
 
-use base_db::{FileRange, SourceDatabaseExt2 as _};
+use base_db::SourceDatabaseFileInputExt as _;
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
@@ -23,8 +26,8 @@ use hir_def::{
     src::HasSource,
     AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
 };
-use hir_expand::{db::ExpandDatabase, InFile};
-use once_cell::race::OnceBool;
+use hir_expand::{db::ExpandDatabase, FileRange, InFile};
+use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{
@@ -49,8 +52,8 @@ use crate::{
 // `env UPDATE_EXPECT=1 cargo test -p hir_ty` to update the snapshots.
 
 fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
-    static ENABLE: OnceBool = OnceBool::new();
-    if !ENABLE.get_or_init(|| env::var("CHALK_DEBUG").is_ok()) {
+    static ENABLE: LazyLock<bool> = LazyLock::new(|| env::var("CHALK_DEBUG").is_ok());
+    if !*ENABLE {
         return None;
     }
 
@@ -93,7 +96,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
     let mut had_annotations = false;
     let mut mismatches = FxHashMap::default();
     let mut types = FxHashMap::default();
-    let mut adjustments = FxHashMap::<_, Vec<_>>::default();
+    let mut adjustments = FxHashMap::default();
     for (file_id, annotations) in db.extract_annotations() {
         for (range, expected) in annotations {
             let file_range = FileRange { file_id, range };
@@ -106,13 +109,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             } else if expected.starts_with("adjustments:") {
                 adjustments.insert(
                     file_range,
-                    expected
-                        .trim_start_matches("adjustments:")
-                        .trim()
-                        .split(',')
-                        .map(|it| it.trim().to_owned())
-                        .filter(|it| !it.is_empty())
-                        .collect(),
+                    expected.trim_start_matches("adjustments:").trim().to_owned(),
                 );
             } else {
                 panic!("unexpected annotation: {expected}");
@@ -199,7 +196,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                     adjustments
                         .iter()
                         .map(|Adjustment { kind, .. }| format!("{kind:?}"))
-                        .collect::<Vec<_>>()
+                        .join(", ")
                 );
             }
         }
@@ -344,7 +341,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             } else {
                 (node.value.text_range(), node.value.text().to_string().replace('\n', " "))
             };
-            let macro_prefix = if node.file_id != file_id.into() { "!" } else { "" };
+            let macro_prefix = if node.file_id != file_id { "!" } else { "" };
             format_to!(
                 buf,
                 "{}{:?} '{}': {}\n",
@@ -361,7 +358,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             });
             for (src_ptr, mismatch) in &mismatches {
                 let range = src_ptr.value.text_range();
-                let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
+                let macro_prefix = if src_ptr.file_id != file_id { "!" } else { "" };
                 format_to!(
                     buf,
                     "{}{:?}: expected {}, got {}\n",
@@ -584,7 +581,7 @@ fn salsa_bug() {
         }
     ";
 
-    db.set_file_text(pos.file_id, new_text);
+    db.set_file_text(pos.file_id.file_id(), new_text);
 
     let module = db.module_for_file(pos.file_id);
     let crate_def_map = module.def_map(&db);

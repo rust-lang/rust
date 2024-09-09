@@ -332,29 +332,12 @@ impl someStruct {
         check_diagnostics(
             r#"
 enum Option { Some, None }
+use Option::{Some, None};
 
 #[allow(unused)]
 fn main() {
     match Option::None {
         None => (),
-        Some => (),
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn non_let_bind() {
-        check_diagnostics(
-            r#"
-enum Option { Some, None }
-
-#[allow(unused)]
-fn main() {
-    match Option::None {
-        SOME_VAR @ None => (),
-     // ^^^^^^^^ 💡 warn: Variable `SOME_VAR` should have snake_case name, e.g. `some_var`
         Some => (),
     }
 }
@@ -427,7 +410,12 @@ fn qualify() {
 
     #[test] // Issue #8809.
     fn parenthesized_parameter() {
-        check_diagnostics(r#"fn f((O): _) { _ = O; }"#)
+        check_diagnostics(
+            r#"
+fn f((_O): u8) {}
+   // ^^ 💡 warn: Variable `_O` should have snake_case name, e.g. `_o`
+"#,
+        )
     }
 
     #[test]
@@ -765,5 +753,107 @@ mod Foo;
   //^^^ 💡 warn: Module `Foo` should have snake_case name, e.g. `foo`
 "#,
         )
+    }
+
+    #[test]
+    fn test_field_shorthand() {
+        check_diagnostics(
+            r#"
+struct Foo { _nonSnake: u8 }
+          // ^^^^^^^^^ 💡 warn: Field `_nonSnake` should have snake_case name, e.g. `_non_snake`
+fn func(Foo { _nonSnake }: Foo) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_match() {
+        check_diagnostics(
+            r#"
+enum Foo { Variant { nonSnake1: u8 } }
+                  // ^^^^^^^^^ 💡 warn: Field `nonSnake1` should have snake_case name, e.g. `non_snake1`
+fn func() {
+    match (Foo::Variant { nonSnake1: 1 }) {
+        Foo::Variant { nonSnake1: _nonSnake2 } => {},
+                               // ^^^^^^^^^^ 💡 warn: Variable `_nonSnake2` should have snake_case name, e.g. `_non_snake2`
+    }
+}
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+struct Foo(u8);
+
+fn func() {
+    match Foo(1) {
+        Foo(_nonSnake) => {},
+         // ^^^^^^^^^ 💡 warn: Variable `_nonSnake` should have snake_case name, e.g. `_non_snake`
+    }
+}
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+fn main() {
+    match 1 {
+        _Bad1 @ _Bad2 => {}
+     // ^^^^^ 💡 warn: Variable `_Bad1` should have snake_case name, e.g. `_bad1`
+             // ^^^^^ 💡 warn: Variable `_Bad2` should have snake_case name, e.g. `_bad2`
+    }
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+fn main() {
+    match 1 { _Bad1 => () }
+           // ^^^^^ 💡 warn: Variable `_Bad1` should have snake_case name, e.g. `_bad1`
+}
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+enum Foo { V1, V2 }
+use Foo::V1;
+
+fn main() {
+    match V1 {
+        _Bad1 @ V1 => {},
+     // ^^^^^ 💡 warn: Variable `_Bad1` should have snake_case name, e.g. `_bad1`
+        Foo::V2 => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_for_loop() {
+        check_diagnostics(
+            r#"
+//- minicore: iterators
+fn func() {
+    for _nonSnake in [] {}
+     // ^^^^^^^^^ 💡 warn: Variable `_nonSnake` should have snake_case name, e.g. `_non_snake`
+}
+"#,
+        );
+
+        check_fix(
+            r#"
+//- minicore: iterators
+fn func() {
+    for nonSnake$0 in [] { nonSnake; }
+}
+"#,
+            r#"
+fn func() {
+    for non_snake in [] { non_snake; }
+}
+"#,
+        );
     }
 }

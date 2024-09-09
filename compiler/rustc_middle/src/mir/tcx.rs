@@ -3,9 +3,10 @@
  * building is complete.
  */
 
-use crate::mir::*;
 use rustc_hir as hir;
 use tracing::{debug, instrument};
+
+use crate::mir::*;
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {
@@ -169,7 +170,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
             }
-            Rvalue::AddressOf(mutability, ref place) => {
+            Rvalue::RawPtr(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, mutability)
             }

@@ -50,17 +50,18 @@
 //!    and either equal or disjoint.
 //!  - If we did run out of access, the borrow can access a part of it.
 
-use crate::ArtificialField;
-use crate::Overlap;
-use crate::{AccessDepth, Deep, Shallow};
+use std::cmp::max;
+use std::iter;
+
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::{
     Body, BorrowKind, FakeBorrowKind, MutBorrowKind, Place, PlaceElem, PlaceRef, ProjectionElem,
 };
 use rustc_middle::ty::{self, TyCtxt};
-use std::cmp::max;
-use std::iter;
+use tracing::{debug, instrument};
+
+use crate::{AccessDepth, ArtificialField, Deep, Overlap, Shallow};
 
 /// When checking if a place conflicts with another place, this enum is used to influence decisions
 /// where a place might be equal or disjoint with another place, such as if `a[i] == a[j]`.
@@ -201,7 +202,7 @@ fn place_components_conflict<'tcx>(
 
             let base_ty = base.ty(body, tcx).ty;
 
-            match (elem, &base_ty.kind(), access) {
+            match (elem, base_ty.kind(), access) {
                 (_, _, Shallow(Some(ArtificialField::ArrayLength)))
                 | (_, _, Shallow(Some(ArtificialField::FakeBorrow))) => {
                     // The array length is like additional fields on the

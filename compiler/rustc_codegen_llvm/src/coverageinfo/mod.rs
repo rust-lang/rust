@@ -1,9 +1,4 @@
-use crate::llvm;
-
-use crate::builder::Builder;
-use crate::common::CodegenCx;
-use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
-use crate::coverageinfo::map_data::FunctionCoverageCollector;
+use std::cell::RefCell;
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
@@ -19,14 +14,18 @@ use rustc_middle::ty::Instance;
 use rustc_target::abi::{Align, Size};
 use tracing::{debug, instrument};
 
-use std::cell::RefCell;
+use crate::builder::Builder;
+use crate::common::CodegenCx;
+use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
+use crate::coverageinfo::map_data::FunctionCoverageCollector;
+use crate::llvm;
 
 pub(crate) mod ffi;
 pub(crate) mod map_data;
-pub mod mapgen;
+mod mapgen;
 
 /// A context object for maintaining all state needed by the coverageinfo module.
-pub struct CrateCoverageContext<'ll, 'tcx> {
+pub(crate) struct CrateCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
     pub(crate) function_coverage_map:
         RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
@@ -35,7 +34,7 @@ pub struct CrateCoverageContext<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             function_coverage_map: Default::default(),
             pgo_func_name_var_map: Default::default(),
@@ -43,7 +42,7 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
         }
     }
 
-    pub fn take_function_coverage_map(
+    fn take_function_coverage_map(
         &self,
     ) -> FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>> {
         self.function_coverage_map.replace(FxIndexMap::default())

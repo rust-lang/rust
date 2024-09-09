@@ -1,7 +1,9 @@
-use crate::timer::TimerSection;
+use std::time::Duration;
+
 use build_helper::metrics::{JsonNode, JsonRoot};
 use camino::Utf8Path;
-use std::time::Duration;
+
+use crate::timer::TimerSection;
 
 #[derive(Clone, Debug)]
 pub struct BuildStep {

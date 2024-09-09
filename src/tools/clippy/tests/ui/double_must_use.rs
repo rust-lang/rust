@@ -3,19 +3,19 @@
 
 #[must_use]
 pub fn must_use_result() -> Result<(), ()> {
-    //~^ ERROR: this function has an empty `#[must_use]` attribute, but returns a type already
+    //~^ ERROR: this function has a `#[must_use]` attribute with no message, but returns a type already
     unimplemented!();
 }
 
 #[must_use]
 pub fn must_use_tuple() -> (Result<(), ()>, u8) {
-    //~^ ERROR: this function has an empty `#[must_use]` attribute, but returns a type already
+    //~^ ERROR: this function has a `#[must_use]` attribute with no message, but returns a type already
     unimplemented!();
 }
 
 #[must_use]
 pub fn must_use_array() -> [Result<(), ()>; 1] {
-    //~^ ERROR: this function has an empty `#[must_use]` attribute, but returns a type already
+    //~^ ERROR: this function has a `#[must_use]` attribute with no message, but returns a type already
     unimplemented!();
 }
 
@@ -32,7 +32,7 @@ async fn async_must_use() -> usize {
 
 #[must_use]
 async fn async_must_use_result() -> Result<(), ()> {
-    //~^ ERROR: this function has an empty `#[must_use]` attribute, but returns a type already
+    //~^ ERROR: this function has a `#[must_use]` attribute with no message, but returns a type already
     Ok(())
 }
 

@@ -1,5 +1,4 @@
-use crate::clean::{self, rustc_span, PrimitiveType};
-use crate::html::sources;
+use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
@@ -11,7 +10,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{BytePos, ExpnKind, Span};
 
-use std::path::{Path, PathBuf};
+use crate::clean::{self, rustc_span, PrimitiveType};
+use crate::html::sources;
 
 /// This enum allows us to store two different kinds of information:
 ///

@@ -1,15 +1,12 @@
-#![allow(unused_imports)]
-
 use super::ITER_KV_MAP;
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::pat_is_wild;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{pat_is_wild, sugg};
-use rustc_hir::{BindingMode, Body, BorrowKind, ByRef, Expr, ExprKind, Mutability, Pat, PatKind};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty;
-use rustc_span::{sym, Span};
+use rustc_hir::{Body, Expr, ExprKind, PatKind};
+use rustc_lint::LateContext;
+use rustc_span::sym;
 
 /// lint use of:
 ///

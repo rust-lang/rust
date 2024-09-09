@@ -1,12 +1,12 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{def::DefKind, def_id::LocalDefId};
 use rustc_hir::{intravisit, CRATE_HIR_ID};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
 use tracing::{instrument, trace};
 
@@ -348,7 +348,8 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Impl { .. } => {}
+        | DefKind::Impl { .. }
+        | DefKind::SyntheticCoroutineBody => {}
         // Closures and coroutines are type checked with their parent, so we need to allow all
         // opaques from the closure signature *and* from the parent body.
         DefKind::Closure | DefKind::InlineConst => {

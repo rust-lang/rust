@@ -6,8 +6,7 @@
     extern_types,
     naked_functions,
     thread_local,
-    repr_simd,
-    raw_ref_op
+    repr_simd
 )]
 #![no_core]
 #![allow(dead_code, non_camel_case_types, internal_features)]
@@ -585,6 +584,7 @@ pub enum E2<X> {
     V4,
 }
 
+#[allow(unreachable_patterns)]
 fn check_niche_behavior() {
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
         intrinsics::abort();

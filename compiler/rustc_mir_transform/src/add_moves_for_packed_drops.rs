@@ -1,8 +1,9 @@
+use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use tracing::debug;
 
 use crate::util;
-use rustc_middle::mir::patch::MirPatch;
 
 /// This pass moves values being dropped that are within a packed
 /// struct to a separate local before dropping them, to ensure that
@@ -36,7 +37,7 @@ use rustc_middle::mir::patch::MirPatch;
 /// blowup.
 pub struct AddMovesForPackedDrops;
 
-impl<'tcx> MirPass<'tcx> for AddMovesForPackedDrops {
+impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", body.source, body.span);
         add_moves_for_packed_drops(tcx, body);
@@ -85,7 +86,7 @@ fn add_move_for_packed_drop<'tcx>(
 
     let source_info = terminator.source_info;
     let ty = place.ty(body, tcx).ty;
-    let temp = patch.new_temp(ty, terminator.source_info.span);
+    let temp = patch.new_temp(ty, source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData {
         statements: vec![Statement { source_info, kind: StatementKind::StorageDead(temp) }],

@@ -1,10 +1,8 @@
+use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
 
-use crate::middle::resolve_bound_vars as rbv;
-use hir::{
-    intravisit::{self, Visitor},
-    GenericParamKind, HirId, Node,
-};
+use hir::intravisit::{self, Visitor};
+use hir::{GenericParamKind, HirId, Node};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -12,6 +10,10 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use tracing::{debug, instrument};
+
+use crate::delegation::inherit_generics_for_delegation_item;
+use crate::middle::resolve_bound_vars as rbv;
 
 #[instrument(level = "debug", skip(tcx), ret)]
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
@@ -57,6 +59,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let node = tcx.hir_node(hir_id);
+    if let Some(sig) = node.fn_sig()
+        && let Some(sig_id) = sig.decl.opt_delegation_sig_id()
+    {
+        return inherit_generics_for_delegation_item(tcx, def_id, sig_id);
+    }
+
     let parent_def_id = match node {
         Node::ImplItem(_)
         | Node::TraitItem(_)
@@ -207,9 +215,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ..
             }) => {
                 if in_trait {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn))
+                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn);
                 } else {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn))
+                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn);
                 }
                 Some(fn_def_id.to_def_id())
             }
@@ -218,9 +226,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ..
             }) => {
                 if in_assoc_ty {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::AssocTy));
+                    assert_matches!(tcx.def_kind(parent), DefKind::AssocTy);
                 } else {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::TyAlias));
+                    assert_matches!(tcx.def_kind(parent), DefKind::TyAlias);
                 }
                 debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent);
                 // Opaque types are always nested within another item, and
@@ -328,8 +336,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             if default.is_some() {
                 match allow_defaults {
                     Defaults::Allowed => {}
-                    Defaults::FutureCompatDisallowed
-                        if tcx.features().default_type_parameter_fallback => {}
                     Defaults::FutureCompatDisallowed => {
                         tcx.node_span_lint(
                             lint::builtin::INVALID_TYPE_PARAM_DEFAULT,

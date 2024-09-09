@@ -5,9 +5,9 @@
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
 
-use rustc_data_structures::base_n::ToBaseN;
-use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
-use rustc_data_structures::base_n::CASE_INSENSITIVE;
+use std::fmt::Write as _;
+
+use rustc_data_structures::base_n::{ToBaseN, ALPHANUMERIC_ONLY, CASE_INSENSITIVE};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::bug;
@@ -20,18 +20,17 @@ use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
-use std::fmt::Write as _;
 use tracing::instrument;
 
 use crate::cfi::typeid::itanium_cxx_abi::transform::{TransformTy, TransformTyOptions};
 use crate::cfi::typeid::TypeIdOptions;
 
 /// Options for encode_ty.
-pub type EncodeTyOptions = TypeIdOptions;
+pub(crate) type EncodeTyOptions = TypeIdOptions;
 
 /// Substitution dictionary key.
 #[derive(Eq, Hash, PartialEq)]
-pub enum DictKey<'tcx> {
+pub(crate) enum DictKey<'tcx> {
     Ty(Ty<'tcx>, TyQ),
     Region(Region<'tcx>),
     Const(Const<'tcx>),
@@ -40,7 +39,7 @@ pub enum DictKey<'tcx> {
 
 /// Type and extended type qualifiers.
 #[derive(Eq, Hash, PartialEq)]
-pub enum TyQ {
+pub(crate) enum TyQ {
     None,
     Const,
     Mut,
@@ -608,10 +607,15 @@ pub fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
-        ty::FnPtr(fn_sig) => {
+        ty::FnPtr(sig_tys, hdr) => {
             // PF<return-type><parameter-type1..parameter-typeN>E
             let mut s = String::from("P");
-            s.push_str(&encode_fnsig(tcx, &fn_sig.skip_binder(), dict, TypeIdOptions::empty()));
+            s.push_str(&encode_fnsig(
+                tcx,
+                &sig_tys.with(*hdr).skip_binder(),
+                dict,
+                TypeIdOptions::empty(),
+            ));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }

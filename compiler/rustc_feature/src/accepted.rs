@@ -1,7 +1,8 @@
 //! List of the accepted feature gates.
 
-use super::{to_nonzero, Feature};
 use rustc_span::symbol::sym;
+
+use super::{to_nonzero, Feature};
 
 macro_rules! declare_features {
     ($(
@@ -59,6 +60,8 @@ declare_features! (
     (accepted, adx_target_feature, "1.61.0", Some(44839)),
     /// Allows explicit discriminants on non-unit enum variants.
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553)),
+    /// Allows using `const` operands in inline assembly.
+    (accepted, asm_const, "1.82.0", Some(93332)),
     /// Allows using `sym` operands in inline assembly.
     (accepted, asm_sym, "1.66.0", Some(93333)),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
@@ -85,7 +88,7 @@ declare_features! (
     /// Allows `c"foo"` literals.
     (accepted, c_str_literals, "1.77.0", Some(105723)),
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries and treat `extern "C" fn` as nounwind.
-    (accepted, c_unwind, "CURRENT_RUSTC_VERSION", Some(74990)),
+    (accepted, c_unwind, "1.81.0", Some(74990)),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
@@ -112,6 +115,8 @@ declare_features! (
     (accepted, conservative_impl_trait, "1.26.0", Some(34511)),
     /// Allows calling constructor functions in `const fn`.
     (accepted, const_constructor, "1.40.0", Some(61456)),
+    /// Allows basic arithmetic on floating point types in a `const fn`.
+    (accepted, const_fn_floating_point_arithmetic, "1.82.0", Some(57241)),
     /// Allows using and casting function pointers in a `const fn`.
     (accepted, const_fn_fn_ptr_basics, "1.61.0", Some(57563)),
     /// Allows trait bounds in `const fn`.
@@ -237,7 +242,7 @@ declare_features! (
     /// Allows `let...else` statements.
     (accepted, let_else, "1.65.0", Some(87335)),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
-    (accepted, lint_reasons, "CURRENT_RUSTC_VERSION", Some(54503)),
+    (accepted, lint_reasons, "1.81.0", Some(54503)),
     /// Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339)),
     /// Allows use of `?` as the Kleene "at most one" operator in macros.
@@ -266,6 +271,8 @@ declare_features! (
     (accepted, min_const_generics, "1.51.0", Some(74878)),
     /// Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607)),
+    /// Allows exhaustive pattern matching on uninhabited types when matched by value.
+    (accepted, min_exhaustive_patterns, "1.82.0", Some(119612)),
     /// Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544)),
     /// Allows using the MOVBE target feature.
@@ -291,6 +298,8 @@ declare_features! (
     (accepted, non_exhaustive, "1.40.0", Some(44109)),
     /// Allows `foo.rs` as an alternative to `foo/mod.rs`.
     (accepted, non_modrs_mods, "1.30.0", Some(44660)),
+    /// Allows using multiple nested field accesses in offset_of!
+    (accepted, offset_of_nested, "1.82.0", Some(120140)),
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (accepted, or_patterns, "1.53.0", Some(54883)),
     /// Allows using `+bundle,+whole-archive` link modifiers with native libs.
@@ -302,6 +311,8 @@ declare_features! (
     (accepted, param_attrs, "1.39.0", Some(60406)),
     /// Allows parentheses in patterns.
     (accepted, pattern_parentheses, "1.31.0", Some(51087)),
+    /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
+    (accepted, precise_capturing, "1.82.0", Some(123432)),
     /// Allows procedural macros in `proc-macro` crates.
     (accepted, proc_macro, "1.29.0", Some(38356)),
     /// Allows multi-segment paths in attributes and derives.
@@ -314,6 +325,8 @@ declare_features! (
     (accepted, raw_dylib, "1.71.0", Some(58713)),
     /// Allows keywords to be escaped for use as identifiers.
     (accepted, raw_identifiers, "1.30.0", Some(48589)),
+    /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
+    (accepted, raw_ref_op, "1.82.0", Some(64490)),
     /// Allows relaxing the coherence rules such that
     /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
     (accepted, re_rebalance_coherence, "1.41.0", Some(55437)),
@@ -385,8 +398,12 @@ declare_features! (
     (accepted, universal_impl_trait, "1.26.0", Some(34511)),
     /// Allows arbitrary delimited token streams in non-macro attributes.
     (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208)),
+    /// Allows unsafe attributes.
+    (accepted, unsafe_attributes, "1.82.0", Some(123757)),
     /// The `unsafe_op_in_unsafe_fn` lint (allowed by default): no longer treat an unsafe function as an unsafe block.
     (accepted, unsafe_block_in_unsafe_fn, "1.52.0", Some(71668)),
+    /// Allows unsafe on extern declarations and safety qualifiers over internal items.
+    (accepted, unsafe_extern_blocks, "1.82.0", Some(123743)),
     /// Allows importing and reexporting macros with `use`,
     /// enables macro modularization in general.
     (accepted, use_extern_macros, "1.30.0", Some(35896)),

@@ -304,6 +304,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "doc-comment"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
+
+[[package]]
 name = "elasticlunr-rs"
 version = "3.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -463,6 +469,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "html_parser"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6f56db07b6612644f6f7719f8ef944f75fff9d6378fdf3d316fd32194184abd"
+dependencies = [
+ "doc-comment",
+ "pest",
+ "pest_derive",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -662,17 +683,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "mdbook-spec"
+version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "mdbook",
+ "once_cell",
+ "pathdiff",
+ "pulldown-cmark",
+ "regex",
+ "semver",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "mdbook-trpl-listing"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "html_parser",
  "mdbook",
  "pulldown-cmark",
  "pulldown-cmark-to-cmark",
  "serde_json",
  "thiserror",
  "toml 0.8.14",
- "xmlparser",
 ]
 
 [[package]]
@@ -793,6 +829,12 @@ dependencies = [
  "smallvec",
  "windows-targets 0.52.6",
 ]
+
+[[package]]
+name = "pathdiff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
 name = "percent-encoding"
@@ -1079,6 +1121,7 @@ dependencies = [
  "env_logger",
  "mdbook",
  "mdbook-i18n-helpers",
+ "mdbook-spec",
  "mdbook-trpl-listing",
  "mdbook-trpl-note",
 ]
@@ -1745,12 +1788,6 @@ checksum = "59b5e5f6c299a3c7890b876a2a587f3115162487e704907d9b6cd29473052ba1"
 dependencies = [
  "memchr",
 ]
-
-[[package]]
-name = "xmlparser"
-version = "0.13.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66fee0b777b0f5ac1c69bb06d361268faafa61cd4682ae064a171c16c433e9e4"
 
 [[package]]
 name = "yaml-rust"

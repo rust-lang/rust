@@ -1,8 +1,8 @@
 use crate::intrinsics::unlikely;
 use crate::iter::adapters::zip::try_get_unchecked;
-use crate::iter::TrustedFused;
+use crate::iter::adapters::SourceIter;
 use crate::iter::{
-    adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen, TrustedRandomAccess,
+    FusedIterator, InPlaceIterable, TrustedFused, TrustedLen, TrustedRandomAccess,
     TrustedRandomAccessNoCoerce,
 };
 use crate::num::NonZero;

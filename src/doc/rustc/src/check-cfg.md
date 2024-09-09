@@ -99,7 +99,7 @@ the need to specify them manually.
 Well known names and values are implicitly added as long as at least one `--check-cfg` argument
 is present.
 
-As of `2024-05-06T`, the list of known names is as follows:
+As of `2024-08-20T`, the list of known names is as follows:
 
 <!--- See CheckCfg::fill_well_known in compiler/rustc_session/src/config.rs -->
 
@@ -107,6 +107,7 @@ As of `2024-05-06T`, the list of known names is as follows:
  - `debug_assertions`
  - `doc`
  - `doctest`
+ - `fmt_debug`
  - `miri`
  - `overflow_checks`
  - `panic`

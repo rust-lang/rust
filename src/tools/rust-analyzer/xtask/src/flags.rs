@@ -2,7 +2,7 @@
 
 use std::{fmt, str::FromStr};
 
-use crate::install::{ClientOpt, ServerOpt};
+use crate::install::{ClientOpt, ProcMacroServerOpt, ServerOpt};
 
 xflags::xflags! {
     src "./src/flags.rs"
@@ -23,6 +23,10 @@ xflags::xflags! {
             optional --mimalloc
             /// Use jemalloc allocator for server.
             optional --jemalloc
+
+            /// Install the proc-macro server.
+            optional --proc-macro-server
+
             /// build in release with debug info set to 2.
             optional --dev-rel
         }
@@ -109,6 +113,7 @@ pub struct Install {
     pub client: bool,
     pub code_bin: Option<String>,
     pub server: bool,
+    pub proc_macro_server: bool,
     pub mimalloc: bool,
     pub jemalloc: bool,
     pub dev_rel: bool,
@@ -284,7 +289,7 @@ impl Malloc {
 
 impl Install {
     pub(crate) fn server(&self) -> Option<ServerOpt> {
-        if self.client && !self.server {
+        if (self.client || self.proc_macro_server) && !self.server {
             return None;
         }
         let malloc = if self.mimalloc {
@@ -296,8 +301,14 @@ impl Install {
         };
         Some(ServerOpt { malloc, dev_rel: self.dev_rel })
     }
+    pub(crate) fn proc_macro_server(&self) -> Option<ProcMacroServerOpt> {
+        if !self.proc_macro_server {
+            return None;
+        }
+        Some(ProcMacroServerOpt { dev_rel: self.dev_rel })
+    }
     pub(crate) fn client(&self) -> Option<ClientOpt> {
-        if !self.client && self.server {
+        if (self.server || self.proc_macro_server) && !self.client {
             return None;
         }
         Some(ClientOpt { code_bin: self.code_bin.clone() })

@@ -1,8 +1,8 @@
 // tidy-alphabetical-start
 #![feature(decl_macro)]
 #![feature(let_chains)]
-#![feature(thread_spawn_unchecked)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod callbacks;

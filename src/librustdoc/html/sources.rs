@@ -1,12 +1,9 @@
-use crate::clean;
-use crate::clean::utils::has_doc_flag;
-use crate::docfs::PathError;
-use crate::error::Error;
-use crate::html::format;
-use crate::html::highlight;
-use crate::html::layout;
-use crate::html::render::Context;
-use crate::visit::DocVisitor;
+use std::cell::RefCell;
+use std::ffi::OsStr;
+use std::ops::RangeInclusive;
+use std::path::{Component, Path, PathBuf};
+use std::rc::Rc;
+use std::{fmt, fs};
 
 use rinja::Template;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -14,14 +11,15 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::{sym, FileName};
+use tracing::info;
 
-use std::cell::RefCell;
-use std::ffi::OsStr;
-use std::fmt;
-use std::fs;
-use std::ops::RangeInclusive;
-use std::path::{Component, Path, PathBuf};
-use std::rc::Rc;
+use crate::clean;
+use crate::clean::utils::has_doc_flag;
+use crate::docfs::PathError;
+use crate::error::Error;
+use crate::html::render::Context;
+use crate::html::{format, highlight, layout};
+use crate::visit::DocVisitor;
 
 pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
     info!("emitting source files");
@@ -292,9 +290,34 @@ where
     }
 }
 
-pub(crate) enum SourceContext {
+pub(crate) struct ScrapedInfo<'a> {
+    pub(crate) offset: usize,
+    pub(crate) needs_prev_next_buttons: bool,
+    pub(crate) name: &'a str,
+    pub(crate) url: &'a str,
+    pub(crate) title: &'a str,
+    pub(crate) locations: String,
+    pub(crate) needs_expansion: bool,
+}
+
+#[derive(Template)]
+#[template(path = "scraped_source.html")]
+struct ScrapedSource<'a, Code: std::fmt::Display> {
+    info: ScrapedInfo<'a>,
+    lines: RangeInclusive<usize>,
+    code_html: Code,
+}
+
+#[derive(Template)]
+#[template(path = "source.html")]
+struct Source<Code: std::fmt::Display> {
+    lines: RangeInclusive<usize>,
+    code_html: Code,
+}
+
+pub(crate) enum SourceContext<'a> {
     Standalone,
-    Embedded { offset: usize, needs_expansion: bool },
+    Embedded(ScrapedInfo<'a>),
 }
 
 /// Wrapper struct to render the source code of a file. This will do things like
@@ -306,23 +329,8 @@ pub(crate) fn print_src(
     context: &Context<'_>,
     root_path: &str,
     decoration_info: highlight::DecorationInfo,
-    source_context: SourceContext,
+    source_context: SourceContext<'_>,
 ) {
-    #[derive(Template)]
-    #[template(path = "source.html")]
-    struct Source<Code: std::fmt::Display> {
-        embedded: bool,
-        needs_expansion: bool,
-        lines: RangeInclusive<usize>,
-        code_html: Code,
-    }
-    let lines = s.lines().count();
-    let (embedded, needs_expansion, lines) = match source_context {
-        SourceContext::Standalone => (false, false, 1..=lines),
-        SourceContext::Embedded { offset, needs_expansion } => {
-            (true, needs_expansion, (1 + offset)..=(lines + offset))
-        }
-    };
     let current_href = context
         .href_from_span(clean::Span::new(file_span), false)
         .expect("only local crates should have sources emitted");
@@ -335,5 +343,14 @@ pub(crate) fn print_src(
         );
         Ok(())
     });
-    Source { embedded, needs_expansion, lines, code_html: code }.render_into(&mut writer).unwrap();
+    let lines = s.lines().count();
+    match source_context {
+        SourceContext::Standalone => {
+            Source { lines: (1..=lines), code_html: code }.render_into(&mut writer).unwrap()
+        }
+        SourceContext::Embedded(info) => {
+            let lines = (1 + info.offset)..=(lines + info.offset);
+            ScrapedSource { info, lines, code_html: code }.render_into(&mut writer).unwrap();
+        }
+    };
 }

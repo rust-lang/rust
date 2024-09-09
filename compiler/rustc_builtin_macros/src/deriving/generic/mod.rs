@@ -174,26 +174,25 @@
 //! )
 //! ```
 
+use std::cell::RefCell;
+use std::ops::Not;
+use std::{iter, vec};
+
+use rustc_ast::ptr::P;
+use rustc_ast::{
+    self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
+    Mutability, PatKind, VariantData,
+};
+use rustc_attr as attr;
+use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::{Span, DUMMY_SP};
+use thin_vec::{thin_vec, ThinVec};
+use ty::{Bounds, Path, Ref, Self_, Ty};
 pub(crate) use StaticFields::*;
 pub(crate) use SubstructureFields::*;
 
 use crate::{deriving, errors};
-use rustc_ast::ptr::P;
-use rustc_ast::{
-    self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
-    Mutability, PatKind, TyKind, VariantData,
-};
-use rustc_attr as attr;
-use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_session::lint::builtin::BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
-use std::cell::RefCell;
-use std::iter;
-use std::ops::Not;
-use std::vec;
-use thin_vec::{thin_vec, ThinVec};
-use ty::{Bounds, Path, Ref, Self_, Ty};
 
 pub(crate) mod ty;
 
@@ -352,15 +351,15 @@ struct TypeParameter {
 pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<P<Expr>>);
 
 impl BlockOrExpr {
-    pub fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
+    pub(crate) fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
         BlockOrExpr(stmts, None)
     }
 
-    pub fn new_expr(expr: P<Expr>) -> BlockOrExpr {
+    pub(crate) fn new_expr(expr: P<Expr>) -> BlockOrExpr {
         BlockOrExpr(ThinVec::new(), Some(expr))
     }
 
-    pub fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
+    pub(crate) fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
         BlockOrExpr(stmts, expr)
     }
 
@@ -379,8 +378,8 @@ impl BlockOrExpr {
                 None => cx.expr_block(cx.block(span, ThinVec::new())),
                 Some(expr) => expr,
             }
-        } else if self.0.len() == 1
-            && let ast::StmtKind::Expr(expr) = &self.0[0].kind
+        } else if let [stmt] = self.0.as_slice()
+            && let ast::StmtKind::Expr(expr) = &stmt.kind
             && self.1.is_none()
         {
             // There's only a single statement expression. Pull it out.
@@ -462,7 +461,7 @@ fn find_type_parameters(
 }
 
 impl<'a> TraitDef<'a> {
-    pub fn expand(
+    pub(crate) fn expand(
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
@@ -472,7 +471,7 @@ impl<'a> TraitDef<'a> {
         self.expand_ext(cx, mitem, item, push, false);
     }
 
-    pub fn expand_ext(
+    pub(crate) fn expand_ext(
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
@@ -1274,7 +1273,7 @@ impl<'a> MethodDef<'a> {
                     }
                     FieldlessVariantsStrategy::Default => (),
                 }
-            } else if variants.len() == 1 {
+            } else if let [variant] = variants.as_slice() {
                 // If there is a single variant, we don't need an operation on
                 // the discriminant(s). Just use the most degenerate result.
                 return self.call_substructure_method(
@@ -1282,7 +1281,7 @@ impl<'a> MethodDef<'a> {
                     trait_,
                     type_ident,
                     nonselflike_args,
-                    &EnumMatching(0, &variants[0], Vec::new()),
+                    &EnumMatching(0, variant, Vec::new()),
                 );
             }
         }
@@ -1599,52 +1598,11 @@ impl<'a> TraitDef<'a> {
                         ),
                     );
                     if is_packed {
-                        // In general, fields in packed structs are copied via a
-                        // block, e.g. `&{self.0}`. The two exceptions are `[u8]`
-                        // and `str` fields, which cannot be copied and also never
-                        // cause unaligned references. These exceptions are allowed
-                        // to handle the `FlexZeroSlice` type in the `zerovec`
-                        // crate within `icu4x-0.9.0`.
-                        //
-                        // Once use of `icu4x-0.9.0` has dropped sufficiently, this
-                        // exception should be removed.
-                        let is_simple_path = |ty: &P<ast::Ty>, sym| {
-                            if let TyKind::Path(None, ast::Path { segments, .. }) = &ty.kind
-                                && let [seg] = segments.as_slice()
-                                && seg.ident.name == sym
-                                && seg.args.is_none()
-                            {
-                                true
-                            } else {
-                                false
-                            }
-                        };
-
-                        let exception = if let TyKind::Slice(ty) = &struct_field.ty.kind
-                            && is_simple_path(ty, sym::u8)
-                        {
-                            Some("byte")
-                        } else if is_simple_path(&struct_field.ty, sym::str) {
-                            Some("string")
-                        } else {
-                            None
-                        };
-
-                        if let Some(ty) = exception {
-                            cx.sess.psess.buffer_lint(
-                                BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
-                                sp,
-                                ast::CRATE_NODE_ID,
-                                rustc_lint_defs::BuiltinLintDiag::ByteSliceInPackedStructWithDerive {
-                                    ty: ty.to_string(),
-                                },
-                            );
-                        } else {
-                            // Wrap the expression in `{...}`, causing a copy.
-                            field_expr = cx.expr_block(
-                                cx.block(struct_field.span, thin_vec![cx.stmt_expr(field_expr)]),
-                            );
-                        }
+                        // Fields in packed structs are wrapped in a block, e.g. `&{self.0}`,
+                        // causing a copy instead of a (potentially misaligned) reference.
+                        field_expr = cx.expr_block(
+                            cx.block(struct_field.span, thin_vec![cx.stmt_expr(field_expr)]),
+                        );
                     }
                     cx.expr_addr_of(sp, field_expr)
                 })

@@ -307,7 +307,7 @@ fn add_query_desc_cached_impl(
     });
 }
 
-pub fn rustc_queries(input: TokenStream) -> TokenStream {
+pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
     let queries = parse_macro_input!(input as List<Query>);
 
     let mut query_stream = quote! {};

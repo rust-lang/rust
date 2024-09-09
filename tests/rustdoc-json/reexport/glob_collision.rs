@@ -14,13 +14,13 @@ mod m2 {
 }
 
 //@ set m1_use = "$.index[*][?(@.docs=='m1 re-export')].id"
-//@ is "$.index[*].inner.import[?(@.name=='m1')].id" $m1
-//@ is "$.index[*].inner.import[?(@.name=='m1')].glob" true
+//@ is "$.index[*].inner.use[?(@.name=='m1')].id" $m1
+//@ is "$.index[*].inner.use[?(@.name=='m1')].is_glob" true
 /// m1 re-export
 pub use m1::*;
 //@ set m2_use = "$.index[*][?(@.docs=='m2 re-export')].id"
-//@ is "$.index[*].inner.import[?(@.name=='m2')].id" $m2
-//@ is "$.index[*].inner.import[?(@.name=='m2')].glob" true
+//@ is "$.index[*].inner.use[?(@.name=='m2')].id" $m2
+//@ is "$.index[*].inner.use[?(@.name=='m2')].is_glob" true
 /// m2 re-export
 pub use m2::*;
 

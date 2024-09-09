@@ -1,7 +1,8 @@
-use super::merge_iter::MergeIterInner;
-use super::node::{self, Root};
 use core::alloc::Allocator;
 use core::iter::FusedIterator;
+
+use super::merge_iter::MergeIterInner;
+use super::node::{self, Root};
 
 impl<K, V> Root<K, V> {
     /// Appends all key-value pairs from the union of two ascending iterators,

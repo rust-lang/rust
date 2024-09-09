@@ -177,3 +177,9 @@ fn issue_12371(x: usize) -> bool {
     // Should not warn!
     !x != 0
 }
+
+// Not linted because it is slow to do so
+// https://github.com/rust-lang/rust-clippy/issues/13206
+fn many_ops(a: bool, b: bool, c: bool, d: bool, e: bool, f: bool) -> bool {
+    (a && c && f) || (!a && b && !d) || (!b && !c && !e) || (d && e && !f)
+}

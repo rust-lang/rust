@@ -11,7 +11,7 @@ define-function: (
     [theme, background, border],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
-        assert-css: ("#method\.a_method:target", {
+        wait-for-css: ("#method\.a_method:target", {
             "background-color": |background|,
             "border-right": "3px solid " + |border|,
         })

@@ -19,26 +19,26 @@
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
           _2 = move _3 as [u32; 4] (Transmute);
           StorageDead(_3);
-          switchInt(_2[0 of 4]) -> [0: bb1, otherwise: bb4];
+          switchInt(copy _2[0 of 4]) -> [0: bb1, otherwise: bb4];
       }
   
       bb1: {
-          switchInt(_2[1 of 4]) -> [0: bb2, otherwise: bb4];
+          switchInt(copy _2[1 of 4]) -> [0: bb2, otherwise: bb4];
       }
   
       bb2: {
-          switchInt(_2[2 of 4]) -> [0: bb3, 4294901760: bb3, otherwise: bb4];
+          switchInt(copy _2[2 of 4]) -> [0: bb3, 4294901760: bb3, otherwise: bb4];
       }
   
       bb3: {
           StorageLive(_4);
-          _4 = _2[3 of 4];
+          _4 = copy _2[3 of 4];
           StorageLive(_5);
           StorageLive(_6);
-          _6 = _4;
+          _6 = copy _4;
           _5 = move _6 as [u8; 4] (Transmute);
           StorageDead(_6);
           _0 = Option::<[u8; 4]>::Some(move _5);

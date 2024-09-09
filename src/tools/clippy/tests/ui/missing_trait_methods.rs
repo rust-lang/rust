@@ -49,4 +49,12 @@ impl B for Complete {
     }
 }
 
+trait MissingMultiple {
+    fn one() {}
+    fn two() {}
+    fn three() {}
+}
+
+impl MissingMultiple for Partial {}
+
 fn main() {}

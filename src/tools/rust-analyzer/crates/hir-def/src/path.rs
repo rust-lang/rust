@@ -13,6 +13,7 @@ use crate::{
 };
 use hir_expand::name::Name;
 use intern::Interned;
+use span::Edition;
 use syntax::ast;
 
 pub use hir_expand::mod_path::{path, ModPath, PathKind};
@@ -25,11 +26,21 @@ pub enum ImportAlias {
     Alias(Name),
 }
 
-impl Display for ImportAlias {
+impl ImportAlias {
+    pub fn display(&self, edition: Edition) -> impl Display + '_ {
+        ImportAliasDisplay { value: self, edition }
+    }
+}
+
+struct ImportAliasDisplay<'a> {
+    value: &'a ImportAlias,
+    edition: Edition,
+}
+impl Display for ImportAliasDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
+        match self.value {
             ImportAlias::Underscore => f.write_str("_"),
-            ImportAlias::Alias(name) => f.write_str(&name.to_smol_str()),
+            ImportAlias::Alias(name) => Display::fmt(&name.display_no_db(self.edition), f),
         }
     }
 }

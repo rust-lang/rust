@@ -12,8 +12,7 @@ use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, source_span_for_mar
 use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
 
-use crate::clean::utils::find_nearest_parent_module;
-use crate::clean::utils::inherits_doc_hidden;
+use crate::clean::utils::{find_nearest_parent_module, inherits_doc_hidden};
 use crate::clean::Item;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;

@@ -608,8 +608,8 @@ fn main() {
     // `Never` is deliberately not defined so that it's an uninferred type.
     // We ignore these to avoid triggering bugs in the analysis.
     match Option::<Never>::None {
-        None => (),
-        Some(never) => match never {},
+        Option::None => (),
+        Option::Some(never) => match never {},
     }
     match Option::<Never>::None {
         Option::Some(_never) => {},
@@ -1030,6 +1030,44 @@ fn f() {
         write!(code, "  }}").unwrap();
         write!(code, "}}").unwrap();
         check_diagnostics_no_bails(&code);
+    }
+
+    #[test]
+    fn min_exhaustive() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(x: Result<i32, !>) {
+    match x {
+        Ok(_y) => {}
+    }
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(ptr: *const Result<i32, !>) {
+    unsafe {
+        match *ptr {
+            //^^^^ error: missing match arm: `Err(!)` not covered
+            Ok(_x) => {}
+        }
+    }
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(x: Result<i32, &'static !>) {
+    match x {
+        //^ error: missing match arm: `Err(_)` not covered
+        Ok(_y) => {}
+    }
+}
+"#,
+        );
     }
 
     mod rust_unstable {

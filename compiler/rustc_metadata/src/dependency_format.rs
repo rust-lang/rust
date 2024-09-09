@@ -51,13 +51,7 @@
 //! Additionally, the algorithm is geared towards finding *any* solution rather
 //! than finding a number of solutions (there are normally quite a few).
 
-use crate::creader::CStore;
-use crate::errors::{
-    BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy, LibRequired,
-    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
-};
-
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
@@ -65,7 +59,15 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::CrateDepKind;
 use rustc_session::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
+use rustc_span::sym;
 use tracing::info;
+
+use crate::creader::CStore;
+use crate::errors::{
+    BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy, LibRequired,
+    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcDriverHelp, RustcLibRequired,
+    TwoPanicRuntimes,
+};
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.crate_types()
@@ -160,25 +162,49 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         Linkage::Dynamic | Linkage::IncludedFromDylib => {}
     }
 
+    let all_dylibs = || {
+        tcx.crates(()).iter().filter(|&&cnum| {
+            !tcx.dep_kind(cnum).macros_only() && tcx.used_crate_source(cnum).dylib.is_some()
+        })
+    };
+
+    let mut upstream_in_dylibs = FxHashSet::default();
+
+    if tcx.features().rustc_private {
+        // We need this to prevent users of `rustc_driver` from linking dynamically to `std`
+        // which does not work as `std` is also statically linked into `rustc_driver`.
+
+        // Find all libraries statically linked to upstream dylibs.
+        for &cnum in all_dylibs() {
+            let deps = tcx.dylib_dependency_formats(cnum);
+            for &(depnum, style) in deps.iter() {
+                if let RequireStatic = style {
+                    upstream_in_dylibs.insert(depnum);
+                }
+            }
+        }
+    }
+
     let mut formats = FxHashMap::default();
 
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
-    for &cnum in tcx.crates(()).iter() {
-        if tcx.dep_kind(cnum).macros_only() {
+    for &cnum in all_dylibs() {
+        if upstream_in_dylibs.contains(&cnum) {
+            info!("skipping dylib: {}", tcx.crate_name(cnum));
+            // If this dylib is also available statically linked to another dylib
+            // we try to use that instead.
             continue;
         }
+
         let name = tcx.crate_name(cnum);
-        let src = tcx.used_crate_source(cnum);
-        if src.dylib.is_some() {
-            info!("adding dylib: {}", name);
-            add_library(tcx, cnum, RequireDynamic, &mut formats, &mut unavailable_as_static);
-            let deps = tcx.dylib_dependency_formats(cnum);
-            for &(depnum, style) in deps.iter() {
-                info!("adding {:?}: {}", style, tcx.crate_name(depnum));
-                add_library(tcx, depnum, style, &mut formats, &mut unavailable_as_static);
-            }
+        info!("adding dylib: {}", name);
+        add_library(tcx, cnum, RequireDynamic, &mut formats, &mut unavailable_as_static);
+        let deps = tcx.dylib_dependency_formats(cnum);
+        for &(depnum, style) in deps.iter() {
+            info!("adding {:?}: {}", style, tcx.crate_name(depnum));
+            add_library(tcx, depnum, style, &mut formats, &mut unavailable_as_static);
         }
     }
 
@@ -268,12 +294,15 @@ fn add_library(
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
+                let linking_to_rustc_driver = tcx.sess.psess.unstable_features.is_nightly_build()
+                    && tcx.crates(()).iter().any(|&cnum| tcx.crate_name(cnum) == sym::rustc_driver);
                 tcx.dcx().emit_err(CrateDepMultiple {
                     crate_name: tcx.crate_name(cnum),
                     non_static_deps: unavailable_as_static
                         .drain(..)
                         .map(|cnum| NonStaticCrateDep { crate_name: tcx.crate_name(cnum) })
                         .collect(),
+                    rustc_driver_help: linking_to_rustc_driver.then_some(RustcDriverHelp),
                 });
             }
         }

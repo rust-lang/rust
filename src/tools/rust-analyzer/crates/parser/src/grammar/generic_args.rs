@@ -102,13 +102,18 @@ fn generic_arg(p: &mut Parser<'_>) -> bool {
         IDENT if p.nth_at(1, T!['(']) => {
             let m = p.start();
             name_ref(p);
-            params::param_list_fn_trait(p);
-            if p.at(T![:]) && !p.at(T![::]) {
-                // test associated_return_type_bounds
-                // fn foo<T: Foo<foo(): Send, bar(i32): Send, baz(i32, i32): Send>>() {}
+            if p.nth_at(1, T![..]) {
+                let rtn = p.start();
+                p.bump(T!['(']);
+                p.bump(T![..]);
+                p.expect(T![')']);
+                rtn.complete(p, RETURN_TYPE_SYNTAX);
+                // test return_type_syntax_assoc_type_bound
+                // fn foo<T: Trait<method(..): Send>>() {}
                 generic_params::bounds(p);
                 m.complete(p, ASSOC_TYPE_ARG);
             } else {
+                params::param_list_fn_trait(p);
                 // test bare_dyn_types_with_paren_as_generic_args
                 // type A = S<Fn(i32)>;
                 // type A = S<Fn(i32) + Send>;

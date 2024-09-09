@@ -1,6 +1,6 @@
 use ide_db::{
-    base_db::{CrateOrigin, FileId, SourceDatabase},
-    FxIndexSet, RootDatabase,
+    base_db::{CrateOrigin, SourceDatabase},
+    FileId, FxIndexSet, RootDatabase,
 };
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -38,5 +38,5 @@ fn crate_info(data: &ide_db::base_db::CrateData) -> CrateInfo {
 }
 
 fn crate_name(data: &ide_db::base_db::CrateData) -> Option<String> {
-    data.display_name.as_ref().map(|it| it.canonical_name().to_owned())
+    data.display_name.as_ref().map(|it| it.canonical_name().as_str().to_owned())
 }

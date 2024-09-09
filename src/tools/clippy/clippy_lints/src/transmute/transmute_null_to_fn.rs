@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{is_integer_literal, is_path_diagnostic_item};
 use rustc_hir::{Expr, ExprKind};
@@ -33,10 +33,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
         // Catching:
         // transmute over constants that resolve to `null`.
         ExprKind::Path(ref _qpath)
-            if matches!(
-                constant(cx, cx.typeck_results(), casts_peeled),
-                Some(Constant::RawPtr(0))
-            ) =>
+            if matches!(ConstEvalCtxt::new(cx).eval(casts_peeled), Some(Constant::RawPtr(0))) =>
         {
             lint_expr(cx, expr);
             true

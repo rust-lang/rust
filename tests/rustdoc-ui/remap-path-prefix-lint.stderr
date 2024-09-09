@@ -1,0 +1,14 @@
+error: unopened HTML tag `script`
+  --> remapped_path/remap-path-prefix-lint.rs:9:5
+   |
+LL | /// </script>
+   |     ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> remapped_path/remap-path-prefix-lint.rs:7:9
+   |
+LL | #![deny(rustdoc::invalid_html_tags)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,32 +1,14 @@
-use self::type_map::DINodeCreationResult;
-use self::type_map::Stub;
-use self::type_map::UniqueTypeId;
+use std::borrow::Cow;
+use std::fmt::{self, Write};
+use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
+use std::{iter, ptr};
 
-use super::namespace::mangled_name_of_instance;
-use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
-use super::utils::{
-    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
-};
-use super::CodegenUnitDebugContext;
-
-use crate::abi;
-use crate::common::CodegenCx;
-use crate::debuginfo::metadata::type_map::build_type_with_children;
-use crate::debuginfo::utils::fat_pointer_kind;
-use crate::debuginfo::utils::FatPtrKind;
-use crate::llvm;
-use crate::llvm::debuginfo::{
-    DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
-    DebugNameTableKind,
-};
-use crate::value::Value;
-
-use rustc_codegen_ssa::debuginfo::type_names::cpp_like_debuginfo;
-use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
+use libc::{c_char, c_longlong, c_uint};
+use rustc_codegen_ssa::debuginfo::type_names::{cpp_like_debuginfo, VTableNameKind};
 use rustc_codegen_ssa::traits::*;
 use rustc_fs_util::path_to_c_string;
-use rustc_hir::def::CtorKind;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
@@ -36,21 +18,29 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
-use rustc_span::{hygiene, FileName, DUMMY_SP};
-use rustc_span::{FileNameDisplayPreference, SourceFile};
+use rustc_span::{hygiene, FileName, FileNameDisplayPreference, SourceFile, DUMMY_SP};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
-use libc::{c_char, c_longlong, c_uint};
-use std::borrow::Cow;
-use std::fmt::{self, Write};
-use std::hash::{Hash, Hasher};
-use std::iter;
-use std::path::{Path, PathBuf};
-use std::ptr;
+use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
+use super::namespace::mangled_name_of_instance;
+use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
+use super::utils::{
+    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
+};
+use super::CodegenUnitDebugContext;
+use crate::common::CodegenCx;
+use crate::debuginfo::metadata::type_map::build_type_with_children;
+use crate::debuginfo::utils::{fat_pointer_kind, FatPtrKind};
+use crate::llvm::debuginfo::{
+    DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
+    DebugNameTableKind,
+};
+use crate::value::Value;
+use crate::{abi, llvm};
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -95,7 +85,7 @@ const NO_GENERICS: for<'ll> fn(&CodegenCx<'ll, '_>) -> SmallVec<&'ll DIType> = |
 
 // SmallVec is used quite a bit in this module, so create a shorthand.
 // The actual number of elements is not so important.
-pub type SmallVec<T> = smallvec::SmallVec<[T; 16]>;
+type SmallVec<T> = smallvec::SmallVec<[T; 16]>;
 
 mod enums;
 mod type_map;
@@ -226,6 +216,8 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     //        need to make sure that we don't break existing debuginfo consumers
                     //        by doing that (at least not without a warning period).
                     let layout_type = if ptr_type.is_box() {
+                        // The assertion at the start of this function ensures we have a ZST allocator.
+                        // We'll make debuginfo "skip" all ZST allocators, not just the default allocator.
                         Ty::new_mut_ptr(cx.tcx, pointee_type)
                     } else {
                         ptr_type
@@ -435,7 +427,7 @@ fn build_slice_type_di_node<'ll, 'tcx>(
 ///
 /// This function will look up the debuginfo node in the TypeMap. If it can't find it, it
 /// will create the node by dispatching to the corresponding `build_*_di_node()` function.
-pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
+pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
     let unique_type_id = UniqueTypeId::for_ty(cx.tcx, t);
 
     if let Some(existing_di_node) = debug_context(cx).type_map.di_node_for_unique_id(unique_type_id)
@@ -464,9 +456,9 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
             if def.is_box()
                 && args.get(1).map_or(true, |arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
         {
-            build_pointer_or_reference_di_node(cx, t, t.boxed_ty(), unique_type_id)
+            build_pointer_or_reference_di_node(cx, t, t.expect_boxed_ty(), unique_type_id)
         }
-        ty::FnDef(..) | ty::FnPtr(_) => build_subroutine_type_di_node(cx, unique_type_id),
+        ty::FnDef(..) | ty::FnPtr(..) => build_subroutine_type_di_node(cx, unique_type_id),
         ty::Closure(..) => build_closure_env_di_node(cx, unique_type_id),
         ty::CoroutineClosure(..) => build_closure_env_di_node(cx, unique_type_id),
         ty::Coroutine(..) => enums::build_coroutine_di_node(cx, unique_type_id),
@@ -541,7 +533,7 @@ fn hex_encode(data: &[u8]) -> String {
     hex_string
 }
 
-pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
+pub(crate) fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
     let cache_key = Some((source_file.stable_id, source_file.src_hash));
     return debug_context(cx)
         .created_files
@@ -639,6 +631,9 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
         };
         let hash_value = hex_encode(source_file.src_hash.hash_bytes());
 
+        let source =
+            cx.sess().opts.unstable_opts.embed_source.then_some(()).and(source_file.src.as_ref());
+
         unsafe {
             llvm::LLVMRustDIBuilderCreateFile(
                 DIB(cx),
@@ -649,12 +644,14 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
                 hash_kind,
                 hash_value.as_ptr().cast(),
                 hash_value.len(),
+                source.map_or(ptr::null(), |x| x.as_ptr().cast()),
+                source.map_or(0, |x| x.len()),
             )
         }
     }
 }
 
-pub fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
+fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
     debug_context(cx).created_files.borrow_mut().entry(None).or_insert_with(|| unsafe {
         let file_name = "<unknown>";
         let directory = "";
@@ -669,6 +666,8 @@ pub fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
             llvm::ChecksumKind::None,
             hash_value.as_ptr().cast(),
             hash_value.len(),
+            ptr::null(),
+            0,
         )
     })
 }
@@ -869,12 +868,13 @@ fn build_param_type_di_node<'ll, 'tcx>(
     }
 }
 
-pub fn build_compile_unit_di_node<'ll, 'tcx>(
+pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
 ) -> &'ll DIDescriptor {
-    use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
+    use rustc_session::config::RemapPathScopeComponents;
+    use rustc_session::RemapFileNameExt;
     let mut name_in_debuginfo = tcx
         .sess
         .local_crate_source_file()
@@ -952,6 +952,8 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             llvm::ChecksumKind::None,
             ptr::null(),
             0,
+            ptr::null(),
+            0,
         );
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
@@ -961,7 +963,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             producer.as_ptr().cast(),
             producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
-            c"".as_ptr().cast(),
+            c"".as_ptr(),
             0,
             // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead
             // put the path supplied to `MCSplitDwarfFile` into the debug info of the final
@@ -1328,7 +1330,11 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
 /// Creates debug information for the given global variable.
 ///
 /// Adds the created debuginfo nodes directly to the crate's IR.
-pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, global: &'ll Value) {
+pub(crate) fn build_global_var_di_node<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    def_id: DefId,
+    global: &'ll Value,
+) {
     if cx.dbg_cx.is_none() {
         return;
     }
@@ -1568,7 +1574,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
 /// given type.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_vtable_di_node<'ll, 'tcx>(
+pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
     poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
@@ -1613,7 +1619,7 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
 }
 
 /// Creates an "extension" of an existing `DIScope` into another file.
-pub fn extend_scope_to_file<'ll>(
+pub(crate) fn extend_scope_to_file<'ll>(
     cx: &CodegenCx<'ll, '_>,
     scope_metadata: &'ll DIScope,
     file: &SourceFile,
@@ -1622,7 +1628,7 @@ pub fn extend_scope_to_file<'ll>(
     unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata) }
 }
 
-pub fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
+fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
     const TUPLE_FIELD_NAMES: [&'static str; 16] = [
         "__0", "__1", "__2", "__3", "__4", "__5", "__6", "__7", "__8", "__9", "__10", "__11",
         "__12", "__13", "__14", "__15",

@@ -18,6 +18,10 @@ trait FixedHrtb: for<'a> SuperGeneric<'a, Assoc2 = &'a u8> {}
 trait AnyDifferentBinders: for<'a> SuperGeneric<'a, Assoc2 = &'a u8> + Super {}
 trait FixedDifferentBinders: for<'a> SuperGeneric<'a, Assoc2 = &'a u8> + Super<Assoc = u8> {}
 
+trait HasGat<Outer> {
+    type Assoc<Inner> where Self: Sized;
+}
+
 fn dyn_super(x: &dyn Super<Assoc = u8>) { x } //~ERROR mismatched types
 fn dyn_any(x: &dyn Any<Assoc = u8>) { x } //~ERROR mismatched types
 fn dyn_fixed(x: &dyn Fixed) { x } //~ERROR mismatched types
@@ -33,5 +37,8 @@ fn dyn_fixed_generic_multi(x: &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>) { x 
 fn dyn_fixed_hrtb(x: &dyn FixedHrtb) { x } //~ERROR mismatched types
 fn dyn_any_different_binders(x: &dyn AnyDifferentBinders<Assoc = u8>) { x } //~ERROR mismatched types
 fn dyn_fixed_different_binders(x: &dyn FixedDifferentBinders) { x } //~ERROR mismatched types
+
+fn dyn_has_gat(x: &dyn HasGat<u8, Assoc<bool> = ()>) { x } //~ERROR mismatched types
+//~^ WARN unnecessary associated type bound
 
 fn main() {}

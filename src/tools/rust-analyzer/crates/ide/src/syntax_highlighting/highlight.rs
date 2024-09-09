@@ -6,6 +6,8 @@ use ide_db::{
     defs::{Definition, IdentClass, NameClass, NameRefClass},
     FxHashMap, RootDatabase, SymbolKind,
 };
+use span::Edition;
+use stdx::hash_once;
 use syntax::{
     ast, match_ast, AstNode, AstToken, NodeOrToken,
     SyntaxKind::{self, *},
@@ -17,7 +19,11 @@ use crate::{
     Highlight, HlMod, HlTag,
 };
 
-pub(super) fn token(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Highlight> {
+pub(super) fn token(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+    edition: Edition,
+) -> Option<Highlight> {
     if let Some(comment) = ast::Comment::cast(token.clone()) {
         let h = HlTag::Comment;
         return Some(match comment.kind().doc {
@@ -40,7 +46,7 @@ pub(super) fn token(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> O
             HlTag::None.into()
         }
         p if p.is_punct() => punctuation(sema, token, p),
-        k if k.is_keyword() => keyword(sema, token, k)?,
+        k if k.is_keyword(edition) => keyword(sema, token, k)?,
         _ => return None,
     };
     Some(highlight)
@@ -358,17 +364,7 @@ fn highlight_name(
 }
 
 fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
-    fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
-        use ide_db::FxHasher;
-
-        use std::hash::Hasher;
-
-        let mut hasher = FxHasher::default();
-        x.hash(&mut hasher);
-        hasher.finish()
-    }
-
-    hash((name, shadow_count))
+    hash_once::<ide_db::FxHasher>((name.as_str(), shadow_count))
 }
 
 pub(super) fn highlight_def(

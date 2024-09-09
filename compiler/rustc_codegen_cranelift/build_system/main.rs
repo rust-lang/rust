@@ -2,9 +2,8 @@
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
 
-use std::env;
 use std::path::PathBuf;
-use std::process;
+use std::{env, process};
 
 use self::utils::Compiler;
 

@@ -13,7 +13,6 @@ use base_db::Env;
 use paths::{AbsPath, AbsPathBuf};
 use span::Span;
 use std::{fmt, io, sync::Arc};
-use tt::SmolStr;
 
 use serde::{Deserialize, Serialize};
 
@@ -66,7 +65,7 @@ impl MacroDylib {
 pub struct ProcMacro {
     process: Arc<ProcMacroProcessSrv>,
     dylib_path: Arc<AbsPathBuf>,
-    name: SmolStr,
+    name: Box<str>,
     kind: ProcMacroKind,
 }
 
@@ -155,7 +154,8 @@ impl ProcMacro {
         mixed_site: Span,
     ) -> Result<Result<tt::Subtree<Span>, PanicMessage>, ServerError> {
         let version = self.process.version();
-        let current_dir = env.get("CARGO_MANIFEST_DIR");
+        let current_dir =
+            env.get("CARGO_RUSTC_CURRENT_DIR").or_else(|| env.get("CARGO_MANIFEST_DIR"));
 
         let mut span_data_table = SpanDataIndexMap::default();
         let def_site = span_data_table.insert_full(def_site).0;

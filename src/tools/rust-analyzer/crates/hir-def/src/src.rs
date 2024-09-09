@@ -6,9 +6,10 @@ use la_arena::ArenaMap;
 use syntax::{ast, AstNode, AstPtr};
 
 use crate::{
-    data::adt::lower_struct, db::DefDatabase, item_tree::ItemTreeNode, trace::Trace, GenericDefId,
-    ItemTreeLoc, LocalFieldId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, UseId,
-    VariantId,
+    db::DefDatabase,
+    item_tree::{AttrOwner, FieldParent, ItemTreeNode},
+    GenericDefId, ItemTreeLoc, LocalFieldId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
+    UseId, VariantId,
 };
 
 pub trait HasSource {
@@ -124,13 +125,13 @@ impl HasChildSource<LocalFieldId> for VariantId {
 
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<LocalFieldId, Self::Value>> {
         let item_tree;
-        let (src, fields, container) = match *self {
+        let (src, parent, container) = match *self {
             VariantId::EnumVariantId(it) => {
                 let lookup = it.lookup(db);
                 item_tree = lookup.id.item_tree(db);
                 (
                     lookup.source(db).map(|it| it.kind()),
-                    &item_tree[lookup.id.value].fields,
+                    FieldParent::Variant(lookup.id.value),
                     lookup.parent.lookup(db).container,
                 )
             }
@@ -139,7 +140,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 item_tree = lookup.id.item_tree(db);
                 (
                     lookup.source(db).map(|it| it.kind()),
-                    &item_tree[lookup.id.value].fields,
+                    FieldParent::Struct(lookup.id.value),
                     lookup.container,
                 )
             }
@@ -148,13 +149,54 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 item_tree = lookup.id.item_tree(db);
                 (
                     lookup.source(db).map(|it| it.kind()),
-                    &item_tree[lookup.id.value].fields,
+                    FieldParent::Union(lookup.id.value),
                     lookup.container,
                 )
             }
         };
-        let mut trace = Trace::new_for_map();
-        lower_struct(db, &mut trace, &src, container.krate, &item_tree, fields);
-        src.with_value(trace.into_map())
+
+        let mut map = ArenaMap::new();
+        match &src.value {
+            ast::StructKind::Tuple(fl) => {
+                let cfg_options = &db.crate_graph()[container.krate].cfg_options;
+                let mut idx = 0;
+                for (i, fd) in fl.fields().enumerate() {
+                    let attrs = item_tree.attrs(
+                        db,
+                        container.krate,
+                        AttrOwner::make_field_indexed(parent, i),
+                    );
+                    if !attrs.is_cfg_enabled(cfg_options) {
+                        continue;
+                    }
+                    map.insert(
+                        LocalFieldId::from_raw(la_arena::RawIdx::from(idx)),
+                        Either::Left(fd.clone()),
+                    );
+                    idx += 1;
+                }
+            }
+            ast::StructKind::Record(fl) => {
+                let cfg_options = &db.crate_graph()[container.krate].cfg_options;
+                let mut idx = 0;
+                for (i, fd) in fl.fields().enumerate() {
+                    let attrs = item_tree.attrs(
+                        db,
+                        container.krate,
+                        AttrOwner::make_field_indexed(parent, i),
+                    );
+                    if !attrs.is_cfg_enabled(cfg_options) {
+                        continue;
+                    }
+                    map.insert(
+                        LocalFieldId::from_raw(la_arena::RawIdx::from(idx)),
+                        Either::Right(fd.clone()),
+                    );
+                    idx += 1;
+                }
+            }
+            _ => (),
+        }
+        InFile::new(src.file_id, map)
     }
 }

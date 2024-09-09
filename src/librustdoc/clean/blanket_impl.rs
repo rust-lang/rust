@@ -5,8 +5,8 @@ use rustc_middle::ty::{self, Upcast};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-
 use thin_vec::ThinVec;
+use tracing::{debug, instrument, trace};
 
 use crate::clean;
 use crate::clean::{
@@ -25,7 +25,7 @@ pub(crate) fn synthesize_blanket_impls(
     let mut blanket_impls = Vec::new();
     for trait_def_id in tcx.all_traits() {
         if !cx.cache.effective_visibilities.is_reachable(tcx, trait_def_id)
-            || cx.generated_synthetics.get(&(ty.skip_binder(), trait_def_id)).is_some()
+            || cx.generated_synthetics.contains(&(ty.skip_binder(), trait_def_id))
         {
             continue;
         }

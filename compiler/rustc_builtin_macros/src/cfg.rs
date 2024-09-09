@@ -2,14 +2,15 @@
 //! a literal `true` or `false` based on whether the given cfg matches the
 //! current compilation environment.
 
-use crate::errors;
-use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_attr as attr;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
+use rustc_parse::parser::attr::AllowLeadingUnsafe;
 use rustc_span::Span;
+use {rustc_ast as ast, rustc_attr as attr};
+
+use crate::errors;
 
 pub(crate) fn expand_cfg(
     cx: &mut ExtCtxt<'_>,
@@ -42,7 +43,7 @@ fn parse_cfg<'a>(cx: &ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, 
         return Err(cx.dcx().create_err(errors::RequiresCfgPattern { span }));
     }
 
-    let cfg = p.parse_meta_item()?;
+    let cfg = p.parse_meta_item(AllowLeadingUnsafe::Yes)?;
 
     let _ = p.eat(&token::Comma);
 

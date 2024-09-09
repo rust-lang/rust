@@ -21,45 +21,12 @@
 #![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-use rustc_arena::{DroplessArena, TypedArena};
-use rustc_ast::expand::StrippedCfgItem;
-use rustc_ast::node_id::NodeMap;
-use rustc_ast::{self as ast, attr, NodeId, CRATE_NODE_ID};
-use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::intern::Interned;
-use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
-use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
-use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::NonMacroAttrKind;
-use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::{PrimTy, TraitCandidate};
-use rustc_index::IndexVec;
-use rustc_metadata::creader::{CStore, CrateLoader};
-use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::privacy::EffectiveVisibilities;
-use rustc_middle::query::Providers;
-use rustc_middle::span_bug;
-use rustc_middle::ty::{self, DelegationFnSig, Feed, MainDefinition, RegisteredTools};
-use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs, TyCtxt, TyCtxtFeed};
-use rustc_query_system::ich::StableHashingContext;
-use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
-use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
-use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::fmt;
-use tracing::debug;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
@@ -69,6 +36,44 @@ use errors::{
 use imports::{Import, ImportData, ImportKind, NameResolution};
 use late::{HasGenericParams, PathSource, PatternSource, UnnecessaryQualification};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use rustc_arena::{DroplessArena, TypedArena};
+use rustc_ast::expand::StrippedCfgItem;
+use rustc_ast::node_id::NodeMap;
+use rustc_ast::{
+    self as ast, attr, AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind,
+    NodeId, Path, CRATE_NODE_ID,
+};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::intern::Interned;
+use rustc_data_structures::steal::Steal;
+use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
+use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
+use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
+use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_hir::def::Namespace::{self, *};
+use rustc_hir::def::{
+    self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS,
+};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_index::IndexVec;
+use rustc_metadata::creader::{CStore, CrateLoader};
+use rustc_middle::metadata::ModChild;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
+use rustc_middle::query::Providers;
+use rustc_middle::span_bug;
+use rustc_middle::ty::{
+    self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverGlobalCtxt,
+    ResolverOutputs, TyCtxt, TyCtxtFeed,
+};
+use rustc_query_system::ich::StableHashingContext;
+use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
+use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
+use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::{Span, DUMMY_SP};
+use smallvec::{smallvec, SmallVec};
+use tracing::debug;
 
 type Res = def::Res<NodeId>;
 
@@ -174,8 +179,8 @@ enum ImplTraitContext {
 
 /// Used for tracking import use types which will be used for redundant import checking.
 /// ### Used::Scope Example
-///  ```rust,ignore (redundant_imports)
-/// #![deny(unused_imports)]
+///  ```rust,compile_fail
+/// #![deny(redundant_imports)]
 /// use std::mem::drop;
 /// fn main() {
 ///     let s = Box::new(32);
@@ -1012,6 +1017,8 @@ pub struct Resolver<'a, 'tcx> {
     partial_res_map: NodeMap<PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     import_res_map: NodeMap<PerNS<Option<Res>>>,
+    /// An import will be inserted into this map if it has been used.
+    import_use_map: FxHashMap<Import<'a>, Used>,
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     label_res_map: NodeMap<NodeId>,
     /// Resolutions for lifetimes.
@@ -1125,9 +1132,6 @@ pub struct Resolver<'a, 'tcx> {
     /// Also includes of list of each fields visibility
     struct_constructors: LocalDefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
 
-    /// Features declared for this crate.
-    declared_features: FxHashSet<Symbol>,
-
     lint_buffer: LintBuffer,
 
     next_node_id: NodeId,
@@ -1176,6 +1180,10 @@ pub struct Resolver<'a, 'tcx> {
     /// Simplified analogue of module `resolutions` but in trait impls, excluding glob delegations.
     /// Needed because glob delegations exclude explicitly defined names.
     impl_binding_keys: FxHashMap<LocalDefId, FxHashSet<BindingKey>>,
+
+    /// This is the `Span` where an `extern crate foo;` suggestion would be inserted, if `foo`
+    /// could be a crate that wasn't imported. For diagnostics use only.
+    current_crate_outer_attr_insert_span: Span,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1338,6 +1346,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         attrs: &[ast::Attribute],
         crate_span: Span,
+        current_crate_outer_attr_insert_span: Span,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
@@ -1393,7 +1402,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let registered_tools = tcx.registered_tools(());
 
-        let features = tcx.features();
         let pub_vis = ty::Visibility::<DefId>::Public;
         let edition = tcx.sess.edition();
 
@@ -1417,6 +1425,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             pat_span_map: Default::default(),
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
+            import_use_map: Default::default(),
             label_res_map: Default::default(),
             lifetimes_res_map: Default::default(),
             extra_lifetime_params_map: Default::default(),
@@ -1497,7 +1506,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             multi_segment_macro_resolutions: Default::default(),
             builtin_attrs: Default::default(),
             containers_deriving_copy: Default::default(),
-            declared_features: features.declared_features.clone(),
             lint_buffer: LintBuffer::default(),
             next_node_id: CRATE_NODE_ID,
             node_id_to_def_id,
@@ -1521,6 +1529,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             glob_delegation_invoc_ids: Default::default(),
             impl_unexpanded_invocations: Default::default(),
             impl_binding_keys: Default::default(),
+            current_crate_outer_attr_insert_span,
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1834,7 +1843,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Test if AmbiguityError ambi is any identical to any one inside ambiguity_errors
-    fn matches_previous_ambiguity_error(&mut self, ambi: &AmbiguityError<'_>) -> bool {
+    fn matches_previous_ambiguity_error(&self, ambi: &AmbiguityError<'_>) -> bool {
         for ambiguity_error in &self.ambiguity_errors {
             // if the span location and ident as well as its span are the same
             if ambiguity_error.kind == ambi.kind
@@ -1895,10 +1904,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
             }
-            let old_used = import.used.get();
-            let new_used = Some(used);
-            if new_used > old_used {
-                import.used.set(new_used);
+            let old_used = self.import_use_map.entry(import).or_insert(used);
+            if *old_used < used {
+                *old_used = used;
             }
             if let Some(id) = import.id() {
                 self.used_imports.insert(id);
@@ -2110,7 +2118,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        match self.maybe_resolve_path(&segments, Some(ns), &parent_scope) {
+        match self.maybe_resolve_path(&segments, Some(ns), &parent_scope, None) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
             PathResult::NonModule(path_res) => path_res.full_res(),
             PathResult::Module(ModuleOrUniformRoot::ExternPrelude) | PathResult::Failed { .. } => {
@@ -2194,6 +2202,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ident,
             ValueNS,
             parent_scope,
+            None,
         ) else {
             return;
         };

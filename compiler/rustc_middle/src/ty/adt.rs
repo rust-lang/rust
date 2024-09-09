@@ -1,12 +1,13 @@
-use crate::mir::interpret::ErrorHandled;
-use crate::ty;
-use crate::ty::util::{Discr, IntTypeExt};
+use std::cell::RefCell;
+use std::hash::{Hash, Hasher};
+use std::ops::Range;
+use std::str;
+
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::HashingControls;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -19,14 +20,12 @@ use rustc_span::symbol::sym;
 use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
 use tracing::{debug, info, trace};
 
-use std::cell::RefCell;
-use std::hash::{Hash, Hasher};
-use std::ops::Range;
-use std::str;
-
 use super::{
     AsyncDestructor, Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr,
 };
+use crate::mir::interpret::ErrorHandled;
+use crate::ty;
+use crate::ty::util::{Discr, IntTypeExt};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct AdtFlags(u16);

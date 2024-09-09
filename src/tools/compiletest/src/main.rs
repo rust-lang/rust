@@ -1,6 +1,9 @@
-use std::{env, io::IsTerminal, sync::Arc};
+use std::env;
+use std::io::IsTerminal;
+use std::sync::Arc;
 
-use compiletest::{common::Mode, log_config, parse_config, run_tests};
+use compiletest::common::Mode;
+use compiletest::{log_config, parse_config, run_tests};
 
 fn main() {
     tracing_subscriber::fmt::init();

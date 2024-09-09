@@ -12,7 +12,6 @@
 //!     will still not cause any further changes.
 //!
 
-use crate::util::is_within_packed;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -23,6 +22,8 @@ use rustc_mir_dataflow::impls::{
 };
 use rustc_mir_dataflow::Analysis;
 
+use crate::util::is_within_packed;
+
 /// Performs the optimization on the body
 ///
 /// The `borrowed` set must be a `BitSet` of all the locals that are ever borrowed in this body. It
@@ -31,7 +32,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let borrowed_locals = borrowed_locals(body);
 
     // If the user requests complete debuginfo, mark the locals that appear in it as live, so
-    // we don't remove assignements to them.
+    // we don't remove assignments to them.
     let mut always_live = debuginfo_locals(body);
     always_live.union(&borrowed_locals);
 
@@ -131,7 +132,7 @@ pub enum DeadStoreElimination {
     Final,
 }
 
-impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
+impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
     fn name(&self) -> &'static str {
         match self {
             DeadStoreElimination::Initial => "DeadStoreElimination-initial",

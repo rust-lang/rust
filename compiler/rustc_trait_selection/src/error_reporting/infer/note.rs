@@ -1,3 +1,12 @@
+use rustc_errors::{Diag, Subdiagnostic};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::traits::ObligationCauseCode;
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::{self, IsSuggestable, Region, Ty};
+use rustc_span::symbol::kw;
+use tracing::debug;
+
+use super::ObligationCauseAsDiagArg;
 use crate::error_reporting::infer::{note_and_explain_region, TypeErrCtxt};
 use crate::errors::{
     note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
@@ -5,14 +14,6 @@ use crate::errors::{
 };
 use crate::fluent_generated as fluent;
 use crate::infer::{self, SubregionOrigin};
-use rustc_errors::{Diag, Subdiagnostic};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::traits::ObligationCauseCode;
-use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, IsSuggestable, Region, Ty};
-use rustc_span::symbol::kw;
-
-use super::ObligationCauseAsDiagArg;
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self, err: &mut Diag<'_>, origin: &SubregionOrigin<'tcx>) {
@@ -52,7 +53,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .add_to_diag(err);
                 }
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, _) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_relate_region_param_bound }
                     .add_to_diag(err);
             }
@@ -199,7 +200,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     note,
                 })
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, _) => {
                 let param_instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,

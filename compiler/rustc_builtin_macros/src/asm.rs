@@ -1,8 +1,5 @@
-use crate::errors;
-use crate::util::expr_to_spanned_string;
 use ast::token::IdentIsRaw;
 use lint::BuiltinLintDiag;
-use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
@@ -11,13 +8,15 @@ use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::Parser;
-use rustc_parse_format as parse;
 use rustc_session::lint;
-use rustc_span::symbol::Ident;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
+use {rustc_ast as ast, rustc_parse_format as parse};
+
+use crate::errors;
+use crate::util::expr_to_spanned_string;
 
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
@@ -27,6 +26,29 @@ pub struct AsmArgs {
     pub clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
     pub options_spans: Vec<Span>,
+}
+
+/// Used for better error messages when operand types are used that are not
+/// supported by the current macro (e.g. `in` or `out` for `global_asm!`)
+///
+/// returns
+///
+/// - `Ok(true)` if the current token matches the keyword, and was expected
+/// - `Ok(false)` if the current token does not match the keyword
+/// - `Err(_)` if the current token matches the keyword, but was not expected
+fn eat_operand_keyword<'a>(p: &mut Parser<'a>, symbol: Symbol, expect: bool) -> PResult<'a, bool> {
+    if expect {
+        Ok(p.eat_keyword(symbol))
+    } else {
+        let span = p.token.span;
+        if p.eat_keyword_noexpect(symbol) {
+            // in gets printed as `r#in` otherwise
+            let symbol = if symbol == kw::In { "in" } else { symbol.as_str() };
+            Err(p.dcx().create_err(errors::GlobalAsmUnsupportedOperand { span, symbol }))
+        } else {
+            Ok(false)
+        }
+    }
 }
 
 fn parse_args<'a>(
@@ -106,7 +128,7 @@ pub fn parse_asm_args<'a>(
         };
 
         let mut explicit_reg = false;
-        let op = if !is_global_asm && p.eat_keyword(kw::In) {
+        let op = if eat_operand_keyword(p, kw::In, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
@@ -114,15 +136,15 @@ pub fn parse_asm_args<'a>(
             }
             let expr = p.parse_expr()?;
             ast::InlineAsmOperand::In { reg, expr }
-        } else if !is_global_asm && p.eat_keyword(sym::out) {
+        } else if eat_operand_keyword(p, sym::out, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             let expr = if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: false }
-        } else if !is_global_asm && p.eat_keyword(sym::lateout) {
+        } else if eat_operand_keyword(p, sym::lateout, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             let expr = if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: true }
-        } else if !is_global_asm && p.eat_keyword(sym::inout) {
+        } else if eat_operand_keyword(p, sym::inout, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
@@ -136,7 +158,7 @@ pub fn parse_asm_args<'a>(
             } else {
                 ast::InlineAsmOperand::InOut { reg, expr, late: false }
             }
-        } else if !is_global_asm && p.eat_keyword(sym::inlateout) {
+        } else if eat_operand_keyword(p, sym::inlateout, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
@@ -150,6 +172,9 @@ pub fn parse_asm_args<'a>(
             } else {
                 ast::InlineAsmOperand::InOut { reg, expr, late: true }
             }
+        } else if eat_operand_keyword(p, sym::label, !is_global_asm)? {
+            let block = p.parse_block()?;
+            ast::InlineAsmOperand::Label { block }
         } else if p.eat_keyword(kw::Const) {
             let anon_const = p.parse_expr_anon_const()?;
             ast::InlineAsmOperand::Const { anon_const }
@@ -165,9 +190,6 @@ pub fn parse_asm_args<'a>(
                 path: path.clone(),
             };
             ast::InlineAsmOperand::Sym { sym }
-        } else if !is_global_asm && p.eat_keyword(sym::label) {
-            let block = p.parse_block()?;
-            ast::InlineAsmOperand::Label { block }
         } else if allow_templates {
             let template = p.parse_expr()?;
             // If it can't possibly expand to a string, provide diagnostics here to include other
@@ -306,8 +328,18 @@ pub fn parse_asm_args<'a>(
 /// Otherwise, the suggestion will be incorrect.
 fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
     // Tool-only output
-    let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
+    let full_span = if p.token == token::Comma { span.to(p.token.span) } else { span };
     p.dcx().emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
+}
+
+/// Report an invalid option error.
+///
+/// This function must be called immediately after the option token is parsed.
+/// Otherwise, the suggestion will be incorrect.
+fn err_unsupported_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
+    // Tool-only output
+    let full_span = if p.token == token::Comma { span.to(p.token.span) } else { span };
+    p.dcx().emit_err(errors::GlobalAsmUnsupportedOption { span, symbol, full_span });
 }
 
 /// Try to set the provided option in the provided `AsmArgs`.
@@ -318,13 +350,16 @@ fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
 fn try_set_option<'a>(
     p: &Parser<'a>,
     args: &mut AsmArgs,
+    is_global_asm: bool,
     symbol: Symbol,
     option: ast::InlineAsmOptions,
 ) {
-    if !args.options.contains(option) {
-        args.options |= option;
-    } else {
+    if is_global_asm && !ast::InlineAsmOptions::GLOBAL_OPTIONS.contains(option) {
+        err_unsupported_option(p, symbol, p.prev_token.span);
+    } else if args.options.contains(option) {
         err_duplicate_option(p, symbol, p.prev_token.span);
+    } else {
+        args.options |= option;
     }
 }
 
@@ -338,25 +373,33 @@ fn parse_options<'a>(
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     while !p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        if !is_global_asm && p.eat_keyword(sym::pure) {
-            try_set_option(p, args, sym::pure, ast::InlineAsmOptions::PURE);
-        } else if !is_global_asm && p.eat_keyword(sym::nomem) {
-            try_set_option(p, args, sym::nomem, ast::InlineAsmOptions::NOMEM);
-        } else if !is_global_asm && p.eat_keyword(sym::readonly) {
-            try_set_option(p, args, sym::readonly, ast::InlineAsmOptions::READONLY);
-        } else if !is_global_asm && p.eat_keyword(sym::preserves_flags) {
-            try_set_option(p, args, sym::preserves_flags, ast::InlineAsmOptions::PRESERVES_FLAGS);
-        } else if !is_global_asm && p.eat_keyword(sym::noreturn) {
-            try_set_option(p, args, sym::noreturn, ast::InlineAsmOptions::NORETURN);
-        } else if !is_global_asm && p.eat_keyword(sym::nostack) {
-            try_set_option(p, args, sym::nostack, ast::InlineAsmOptions::NOSTACK);
-        } else if !is_global_asm && p.eat_keyword(sym::may_unwind) {
-            try_set_option(p, args, kw::Raw, ast::InlineAsmOptions::MAY_UNWIND);
-        } else if p.eat_keyword(sym::att_syntax) {
-            try_set_option(p, args, sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX);
-        } else if p.eat_keyword(kw::Raw) {
-            try_set_option(p, args, kw::Raw, ast::InlineAsmOptions::RAW);
-        } else {
+        const OPTIONS: [(Symbol, ast::InlineAsmOptions); ast::InlineAsmOptions::COUNT] = [
+            (sym::pure, ast::InlineAsmOptions::PURE),
+            (sym::nomem, ast::InlineAsmOptions::NOMEM),
+            (sym::readonly, ast::InlineAsmOptions::READONLY),
+            (sym::preserves_flags, ast::InlineAsmOptions::PRESERVES_FLAGS),
+            (sym::noreturn, ast::InlineAsmOptions::NORETURN),
+            (sym::nostack, ast::InlineAsmOptions::NOSTACK),
+            (sym::may_unwind, ast::InlineAsmOptions::MAY_UNWIND),
+            (sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX),
+            (kw::Raw, ast::InlineAsmOptions::RAW),
+        ];
+
+        'blk: {
+            for (symbol, option) in OPTIONS {
+                let kw_matched =
+                    if !is_global_asm || ast::InlineAsmOptions::GLOBAL_OPTIONS.contains(option) {
+                        p.eat_keyword(symbol)
+                    } else {
+                        p.eat_keyword_noexpect(symbol)
+                    };
+
+                if kw_matched {
+                    try_set_option(p, args, is_global_asm, symbol, option);
+                    break 'blk;
+                }
+            }
+
             return p.unexpected();
         }
 
@@ -702,10 +745,9 @@ fn expand_preparsed_asm(
             unused_operands.push((args.operands[idx].1, msg));
         }
     }
-    match unused_operands.len() {
-        0 => {}
-        1 => {
-            let (sp, msg) = unused_operands.into_iter().next().unwrap();
+    match unused_operands[..] {
+        [] => {}
+        [(sp, msg)] => {
             ecx.dcx()
                 .struct_span_err(sp, msg)
                 .with_span_label(sp, msg)

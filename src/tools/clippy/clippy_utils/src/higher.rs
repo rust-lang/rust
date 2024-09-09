@@ -2,7 +2,7 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::consts::{constant_simple, Constant};
+use crate::consts::{ConstEvalCtxt, Constant};
 use crate::ty::is_type_diagnostic_item;
 use crate::{is_expn_of, match_def_path, paths};
 
@@ -25,6 +25,8 @@ pub struct ForLoop<'tcx> {
     pub loop_id: HirId,
     /// entire `for` loop span
     pub span: Span,
+    /// label
+    pub label: Option<ast::Label>,
 }
 
 impl<'tcx> ForLoop<'tcx> {
@@ -33,7 +35,7 @@ impl<'tcx> ForLoop<'tcx> {
         if let ExprKind::DropTemps(e) = expr.kind
             && let ExprKind::Match(iterexpr, [arm], MatchSource::ForLoopDesugar) = e.kind
             && let ExprKind::Call(_, [arg]) = iterexpr.kind
-            && let ExprKind::Loop(block, ..) = arm.body.kind
+            && let ExprKind::Loop(block, label, ..) = arm.body.kind
             && let [stmt] = block.stmts
             && let hir::StmtKind::Expr(e) = stmt.kind
             && let ExprKind::Match(_, [_, some_arm], _) = e.kind
@@ -45,6 +47,7 @@ impl<'tcx> ForLoop<'tcx> {
                 body: some_arm.body,
                 loop_id: arm.body.hir_id,
                 span: expr.span.ctxt().outer_expn_data().call_site,
+                label,
             });
         }
         None
@@ -367,6 +370,7 @@ pub struct WhileLet<'hir> {
     pub let_expr: &'hir Expr<'hir>,
     /// `while let` loop body
     pub if_then: &'hir Expr<'hir>,
+    pub label: Option<ast::Label>,
     /// `while let PAT = EXPR`
     ///        ^^^^^^^^^^^^^^
     pub let_span: Span,
@@ -399,7 +403,7 @@ impl<'hir> WhileLet<'hir> {
                     }),
                 ..
             },
-            _,
+            label,
             LoopSource::While,
             _,
         ) = expr.kind
@@ -408,6 +412,7 @@ impl<'hir> WhileLet<'hir> {
                 let_pat,
                 let_expr,
                 if_then,
+                label,
                 let_span,
             });
         }
@@ -466,7 +471,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                     return Some(VecInitKind::Default);
                 } else if name.ident.name.as_str() == "with_capacity" {
                     let arg = args.first()?;
-                    return match constant_simple(cx, cx.typeck_results(), arg) {
+                    return match ConstEvalCtxt::new(cx).eval_simple(arg) {
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
                     };

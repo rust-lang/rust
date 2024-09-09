@@ -5,7 +5,7 @@
       debug x => _1;
       let mut _0: ();
       let _2: &[T];
-      let mut _3: &[T; 3];
+      let _3: &[T; 3];
       let _4: [T; 3];
       let mut _5: usize;
       let mut _6: bool;
@@ -23,12 +23,10 @@
       }
   
       bb0: {
-          StorageLive(_3);
           StorageLive(_4);
-          _4 = [_1, _1, _1];
+          _4 = [copy _1, copy _1, copy _1];
           _3 = &_4;
-          _2 = move _3 as &[T] (PointerCoercion(Unsize));
-          StorageDead(_3);
+          _2 = copy _3 as &[T] (PointerCoercion(Unsize));
           nop;
           nop;
           goto -> bb2;

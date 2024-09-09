@@ -1,26 +1,28 @@
+use std::assert_matches::assert_matches;
+use std::{fmt, iter};
+
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
+use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, GenericArgs, Ty, TyCtxt,
+};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{source_map::Spanned, Span, DUMMY_SP};
+use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
+use rustc_span::source_map::Spanned;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
-
-use std::assert_matches::assert_matches;
-use std::fmt;
-use std::iter;
+use tracing::{debug, instrument};
 
 use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
     instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
 };
-use rustc_middle::mir::patch::MirPatch;
-use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 
 mod async_destructor_ctor;
 
@@ -77,15 +79,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             receiver_by_ref,
         } => build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id, receiver_by_ref),
 
-        ty::InstanceKind::CoroutineKindShim { coroutine_def_id } => {
-            return tcx.optimized_mir(coroutine_def_id).coroutine_by_move_body().unwrap().clone();
-        }
-
         ty::InstanceKind::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
-                let coroutine_body = tcx.optimized_mir(*coroutine_def_id);
+            if let Some(&ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
+                let coroutine_body = tcx.optimized_mir(coroutine_def_id);
 
                 let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
                 else {
@@ -104,7 +102,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                         args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
                         ty::ClosureKind::FnOnce
                     );
-                    coroutine_body.coroutine_by_move_body().unwrap().coroutine_drop().unwrap()
+                    tcx.optimized_mir(tcx.coroutine_by_move_body_def_id(coroutine_def_id))
+                        .coroutine_drop()
+                        .unwrap()
                 };
 
                 let mut body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
@@ -154,7 +154,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             &deref_separator::Derefer,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::MakeShim,
-            &instsimplify::InstSimplify,
+            &instsimplify::InstSimplify::BeforeInline,
             &abort_unwinding_calls::AbortUnwindingCalls,
             &add_call_guards::CriticalCallEdges,
         ],
@@ -304,7 +304,7 @@ fn new_body<'tcx>(
     arg_count: usize,
     span: Span,
 ) -> Body<'tcx> {
-    Body::new(
+    let mut body = Body::new(
         source,
         basic_blocks,
         IndexVec::from_elem_n(
@@ -325,7 +325,10 @@ fn new_body<'tcx>(
         None,
         // FIXME(compiler-errors): is this correct?
         None,
-    )
+    );
+    // Shims do not directly mention any consts.
+    body.set_required_consts(Vec::new());
+    body
 }
 
 pub struct DropShimElaborator<'a, 'tcx> {
@@ -433,8 +436,11 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let src = tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
 
     match self_ty.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => builder.copy_shim(),
+        ty::FnDef(..) | ty::FnPtr(..) => builder.copy_shim(),
         ty::Closure(_, args) => builder.tuple_like_shim(dest, src, args.as_closure().upvar_tys()),
+        ty::CoroutineClosure(_, args) => {
+            builder.tuple_like_shim(dest, src, args.as_coroutine_closure().upvar_tys())
+        }
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
         ty::Coroutine(coroutine_def_id, args) => {
             assert_eq!(tcx.coroutine_movability(*coroutine_def_id), hir::Movability::Movable);
@@ -965,13 +971,16 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     };
 
     let source = MirSource::item(ctor_id);
-    let body = new_body(
+    let mut body = new_body(
         source,
         IndexVec::from_elem_n(start_block, 1),
         local_decls,
         sig.inputs().len(),
         span,
     );
+    // A constructor doesn't mention any other items (and we don't run the usual optimization passes
+    // so this would otherwise not get filled).
+    body.set_mentioned_items(Vec::new());
 
     crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
 
@@ -986,7 +995,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 /// }
 /// ```
 fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
-    assert!(matches!(self_ty.kind(), ty::FnPtr(..)), "expected fn ptr, found {self_ty}");
+    assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
     let span = tcx.def_span(def_id);
     let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars() else {
         span_bug!(span, "FnPtr::addr with bound vars for `{self_ty}`");

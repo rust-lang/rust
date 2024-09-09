@@ -19,7 +19,7 @@ fn simple<'a>(x: &'a i32) {
 
     let c = async move || { println!("{}", *x); };
     outlives::<'a>(c()); //~ ERROR `c` does not live long enough
-    outlives::<'a>(call_once(c)); //~ ERROR cannot move out of `c`
+    outlives::<'a>(call_once(c));
 }
 
 struct S<'a>(&'a i32);

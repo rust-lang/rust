@@ -1,12 +1,6 @@
-pub use crate::llvm::Type;
+use std::{fmt, ptr};
 
-use crate::abi::{FnAbiLlvmExt, LlvmType};
-use crate::common;
-use crate::context::CodegenCx;
-use crate::llvm;
-use crate::llvm::{Bool, False, True};
-use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
+use libc::{c_char, c_uint};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -16,10 +10,13 @@ use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
-use std::fmt;
-use std::ptr;
-
-use libc::{c_char, c_uint};
+use crate::abi::{FnAbiLlvmExt, LlvmType};
+use crate::context::CodegenCx;
+pub(crate) use crate::llvm::Type;
+use crate::llvm::{Bool, False, True};
+use crate::type_of::LayoutLlvmExt;
+use crate::value::Value;
+use crate::{common, llvm};
 
 impl PartialEq for Type {
     fn eq(&self, other: &Self) -> bool {

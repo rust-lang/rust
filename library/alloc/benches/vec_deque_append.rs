@@ -1,4 +1,5 @@
-use std::{collections::VecDeque, time::Instant};
+use std::collections::VecDeque;
+use std::time::Instant;
 
 const VECDEQUE_LEN: i32 = 100000;
 const WARMUP_N: usize = 100;

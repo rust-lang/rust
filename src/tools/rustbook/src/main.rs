@@ -1,14 +1,11 @@
-use clap::crate_version;
-
 use std::env;
 use std::path::{Path, PathBuf};
 
-use clap::{arg, ArgMatches, Command};
-
+use clap::{arg, crate_version, ArgMatches, Command};
 use mdbook::errors::Result as Result3;
 use mdbook::MDBook;
 use mdbook_i18n_helpers::preprocessors::Gettext;
-
+use mdbook_spec::Spec;
 use mdbook_trpl_listing::TrplListing;
 use mdbook_trpl_note::TrplNote;
 
@@ -83,12 +80,23 @@ pub fn build(args: &ArgMatches) -> Result3<()> {
         book.config.build.build_dir = dest_dir.into();
     }
 
+    // NOTE: Replacing preprocessors using this technique causes error
+    // messages to be displayed when the original preprocessor doesn't work
+    // (but it otherwise succeeds).
+    //
+    // This should probably be fixed in mdbook to remove the existing
+    // preprocessor, or this should modify the config and use
+    // MDBook::load_with_config.
     if book.config.get_preprocessor("trpl-note").is_some() {
         book.with_preprocessor(TrplNote);
     }
 
     if book.config.get_preprocessor("trpl-listing").is_some() {
         book.with_preprocessor(TrplListing);
+    }
+
+    if book.config.get_preprocessor("spec").is_some() {
+        book.with_preprocessor(Spec::new());
     }
 
     book.build()?;

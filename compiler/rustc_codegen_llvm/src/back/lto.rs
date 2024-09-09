@@ -1,11 +1,11 @@
-use crate::back::write::{
-    self, bitcode_section_name, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers,
-};
-use crate::errors::{
-    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
-};
-use crate::llvm::{self, build_string};
-use crate::{LlvmCodegenBackend, ModuleLlvm};
+use std::collections::BTreeMap;
+use std::ffi::{CStr, CString};
+use std::fs::File;
+use std::mem::ManuallyDrop;
+use std::path::Path;
+use std::sync::Arc;
+use std::{io, iter, slice};
+
 use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
@@ -22,21 +22,20 @@ use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel
 use rustc_session::config::{self, CrateType, Lto};
 use tracing::{debug, info};
 
-use std::collections::BTreeMap;
-use std::ffi::{CStr, CString};
-use std::fs::File;
-use std::io;
-use std::iter;
-use std::mem::ManuallyDrop;
-use std::path::Path;
-use std::slice;
-use std::sync::Arc;
+use crate::back::write::{
+    self, bitcode_section_name, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers,
+};
+use crate::errors::{
+    DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
+};
+use crate::llvm::{self, build_string};
+use crate::{LlvmCodegenBackend, ModuleLlvm};
 
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.
-pub const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
+const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
-pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
+fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
         CrateType::Executable
         | CrateType::Dylib
@@ -617,7 +616,7 @@ pub(crate) fn run_pass_manager(
             llvm::LLVMRustAddModuleFlagU32(
                 module.module_llvm.llmod(),
                 llvm::LLVMModFlagBehavior::Error,
-                c"LTOPostLink".as_ptr().cast(),
+                c"LTOPostLink".as_ptr(),
                 1,
             );
         }
@@ -711,7 +710,7 @@ impl Drop for ThinBuffer {
     }
 }
 
-pub unsafe fn optimize_thin_module(
+pub(crate) unsafe fn optimize_thin_module(
     thin_module: ThinModule<LlvmCodegenBackend>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
@@ -807,7 +806,7 @@ pub unsafe fn optimize_thin_module(
 
 /// Maps LLVM module identifiers to their corresponding LLVM LTO cache keys
 #[derive(Debug, Default)]
-pub struct ThinLTOKeysMap {
+struct ThinLTOKeysMap {
     // key = llvm name of importing module, value = LLVM cache key
     keys: BTreeMap<String, String>,
 }
@@ -864,7 +863,7 @@ fn module_name_to_str(c_str: &CStr) -> &str {
     })
 }
 
-pub fn parse_module<'a>(
+pub(crate) fn parse_module<'a>(
     cx: &'a llvm::Context,
     name: &CStr,
     data: &[u8],

@@ -73,7 +73,7 @@ fn statics() {
     static RC: &E = &E::V2(4);
 
     // CHECK: [[t:_.*]] = const {alloc5: &&E};
-    // CHECK: [[e2]] = (*[[t]]);
+    // CHECK: [[e2]] = copy (*[[t]]);
     let e2 = RC;
 
     // CHECK: switchInt({{move _.*}}) -> {{.*}}
@@ -108,7 +108,7 @@ fn mutate_discriminant() -> u8 {
             // CHECK: [[a:_.*]] = discriminant({{_.*}});
             let a = Discriminant(x);
 
-            // CHECK: switchInt([[a]]) -> [0: {{bb.*}}, otherwise: {{bb.*}}];
+            // CHECK: switchInt(copy [[a]]) -> [0: {{bb.*}}, otherwise: {{bb.*}}];
             match a {
                 0 => bb1,
                 _ => bad,
@@ -143,8 +143,8 @@ fn multiple(x: bool, i: u8) {
     //   discriminant(e) => Top
     //   (e as Some).0 => Top
     // CHECK: [[x2]] = const 0_u8;
-    // CHECK: [[some:_.*]] = (({{_.*}} as Some).0: u8)
-    // CHECK: [[x2]] = [[some]];
+    // CHECK: [[some:_.*]] = copy (({{_.*}} as Some).0: u8)
+    // CHECK: [[x2]] = copy [[some]];
     let x2 = match e {
         Some(i) => i,
         None => 0,
@@ -153,7 +153,7 @@ fn multiple(x: bool, i: u8) {
     // Therefore, `x2` should be `Top` here, and no replacement shall happen.
 
     // CHECK-NOT: [[y]] = const
-    // CHECK: [[y]] = [[x2]];
+    // CHECK: [[y]] = copy [[x2]];
     // CHECK-NOT: [[y]] = const
     let y = x2;
 }

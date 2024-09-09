@@ -7,8 +7,9 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::core::builder::Builder;
-use crate::core::{build_steps::dist::distdir, builder::Kind};
+use crate::core::build_steps::dist::distdir;
+use crate::core::builder::{Builder, Kind};
+use crate::core::config::BUILDER_CONFIG_FILENAME;
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{move_file, t};
 use crate::utils::{channel, helpers};
@@ -317,6 +318,12 @@ impl<'a> Tarball<'a> {
             channel::write_commit_hash_file(&self.overlay_dir, &info.sha);
             channel::write_commit_info_file(&self.overlay_dir, info);
         }
+
+        // Add config file if present.
+        if let Some(config) = &self.builder.config.config {
+            self.add_renamed_file(config, &self.overlay_dir, BUILDER_CONFIG_FILENAME);
+        }
+
         for file in self.overlay.legal_and_readme() {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
         }
@@ -370,11 +377,10 @@ impl<'a> Tarball<'a> {
         if self.builder.rust_info().is_managed_git_subrepository() {
             // %ct means committer date
             let timestamp = helpers::git(Some(&self.builder.src))
-                .capture_stdout()
                 .arg("log")
                 .arg("-1")
                 .arg("--format=%ct")
-                .run(self.builder)
+                .run_capture_stdout(self.builder)
                 .stdout();
             cmd.args(["--override-file-mtime", timestamp.trim()]);
         }

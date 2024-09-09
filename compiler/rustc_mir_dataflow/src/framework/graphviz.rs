@@ -8,8 +8,7 @@ use std::{io, ops, str};
 use regex::Regex;
 use rustc_graphviz as dot;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::graphviz_safe_def_name;
-use rustc_middle::mir::{self, BasicBlock, Body, Location};
+use rustc_middle::mir::{self, graphviz_safe_def_name, BasicBlock, Body, Location};
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
 use super::{Analysis, CallReturnPlaces, Direction, Results, ResultsCursor, ResultsVisitor};

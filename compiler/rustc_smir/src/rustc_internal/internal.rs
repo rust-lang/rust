@@ -5,7 +5,6 @@
 
 // Prefer importing stable_mir over internal rustc constructs to make this file more readable.
 
-use crate::rustc_smir::Tables;
 use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, Ty as InternalTy, TyCtxt};
 use rustc_span::Symbol;
 use stable_mir::abi::Layout;
@@ -21,6 +20,7 @@ use stable_mir::ty::{
 use stable_mir::{CrateItem, CrateNum, DefId};
 
 use super::RustcInternal;
+use crate::rustc_smir::Tables;
 
 impl RustcInternal for CrateItem {
     type T<'tcx> = rustc_span::def_id::DefId;
@@ -131,7 +131,10 @@ impl RustcInternal for RigidTy {
             RigidTy::FnDef(def, args) => {
                 rustc_ty::TyKind::FnDef(def.0.internal(tables, tcx), args.internal(tables, tcx))
             }
-            RigidTy::FnPtr(sig) => rustc_ty::TyKind::FnPtr(sig.internal(tables, tcx)),
+            RigidTy::FnPtr(sig) => {
+                let (sig_tys, hdr) = sig.internal(tables, tcx).split();
+                rustc_ty::TyKind::FnPtr(sig_tys, hdr)
+            }
             RigidTy::Closure(def, args) => {
                 rustc_ty::TyKind::Closure(def.0.internal(tables, tcx), args.internal(tables, tcx))
             }

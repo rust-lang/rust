@@ -3,18 +3,29 @@
 //! The main entry point is the `step` method.
 
 use either::Either;
+use rustc_index::IndexSlice;
+use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::{bug, mir, span_bug};
+use rustc_span::source_map::Spanned;
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use tracing::{info, instrument, trace};
 
-use rustc_index::IndexSlice;
-use rustc_middle::mir;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::{bug, span_bug};
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
-
 use super::{
-    ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy, Projectable, Scalar,
+    throw_ub, FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta,
+    PlaceTy, Projectable, Scalar,
 };
 use crate::util;
+
+struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
+    callee: FnVal<'tcx, M::ExtraFnVal>,
+    args: Vec<FnArg<'tcx, M::Provenance>>,
+    fn_sig: ty::FnSig<'tcx>,
+    fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+    /// True if the function is marked as `#[track_caller]` ([`ty::InstanceKind::requires_caller_location`])
+    with_caller_location: bool,
+}
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns `true` as long as there are more things to do.
@@ -39,7 +50,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
             let old_frames = self.frame_idx();
-            self.statement(stmt)?;
+            self.eval_statement(stmt)?;
             // Make sure we are not updating `statement_index` of the wrong frame.
             assert_eq!(old_frames, self.frame_idx());
             // Advance the program counter.
@@ -50,7 +61,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         M::before_terminator(self)?;
 
         let terminator = basic_block.terminator();
-        self.terminator(terminator)?;
+        self.eval_terminator(terminator)?;
+        if !self.stack().is_empty() {
+            if let Either::Left(loc) = self.frame().loc {
+                info!("// executing {:?}", loc.block);
+            }
+        }
         Ok(true)
     }
 
@@ -58,7 +74,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// statement counter.
     ///
     /// This does NOT move the statement counter forward, the caller has to do that!
-    pub fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
+    pub fn eval_statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
         use rustc_middle::mir::StatementKind::*;
@@ -96,7 +112,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 M::retag_place_contents(self, *kind, &dest)?;
             }
 
-            Intrinsic(box intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
+            Intrinsic(box intrinsic) => self.eval_nondiverging_intrinsic(intrinsic)?,
 
             // Evaluate the place expression, without reading from it.
             PlaceMention(box place) => {
@@ -181,6 +197,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*result, &dest)?;
             }
 
+            NullaryOp(null_op, ty) => {
+                let ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(ty)?;
+                let val = self.nullary_op(null_op, ty)?;
+                self.write_immediate(*val, &dest)?;
+            }
+
             Aggregate(box ref kind, ref operands) => {
                 self.write_aggregate(kind, operands, &dest)?;
             }
@@ -212,7 +234,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
-            AddressOf(_, place) => {
+            RawPtr(_, place) => {
                 // Figure out whether this is an addr_of of an already raw place.
                 let place_base_raw = if place.is_indirect_first_projection() {
                     let ty = self.frame().body.local_decls[place.local].ty;
@@ -230,38 +252,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
                 }
                 self.write_immediate(*val, &dest)?;
-            }
-
-            NullaryOp(ref null_op, ty) => {
-                let ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(ty)?;
-                let layout = self.layout_of(ty)?;
-                if let mir::NullOp::SizeOf | mir::NullOp::AlignOf = null_op
-                    && layout.is_unsized()
-                {
-                    span_bug!(
-                        self.frame().current_span(),
-                        "{null_op:?} MIR operator called for unsized type {ty}",
-                    );
-                }
-                let val = match null_op {
-                    mir::NullOp::SizeOf => {
-                        let val = layout.size.bytes();
-                        Scalar::from_target_usize(val, self)
-                    }
-                    mir::NullOp::AlignOf => {
-                        let val = layout.align.abi.bytes();
-                        Scalar::from_target_usize(val, self)
-                    }
-                    mir::NullOp::OffsetOf(fields) => {
-                        let val = self
-                            .tcx
-                            .offset_of_subfield(self.param_env, layout, fields.iter())
-                            .bytes();
-                        Scalar::from_target_usize(val, self)
-                    }
-                    mir::NullOp::UbChecks => Scalar::from_bool(self.tcx.sess.ub_checks()),
-                };
-                self.write_scalar(val, &dest)?;
             }
 
             ShallowInitBox(ref operand, _) => {
@@ -364,7 +354,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // of the first element.
             let elem_size = first.layout.size;
             let first_ptr = first.ptr();
-            let rest_ptr = first_ptr.offset(elem_size, self)?;
+            let rest_ptr = first_ptr.wrapping_offset(elem_size, self);
             // No alignment requirement since `copy_op` above already checked it.
             self.mem_copy_repeatedly(
                 first_ptr,
@@ -378,16 +368,222 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(())
     }
 
-    /// Evaluate the given terminator. Will also adjust the stack frame and statement position accordingly.
-    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
+    /// Evaluate the arguments of a function call
+    fn eval_fn_call_argument(
+        &self,
+        op: &mir::Operand<'tcx>,
+    ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
+        Ok(match op {
+            mir::Operand::Copy(_) | mir::Operand::Constant(_) => {
+                // Make a regular copy.
+                let op = self.eval_operand(op, None)?;
+                FnArg::Copy(op)
+            }
+            mir::Operand::Move(place) => {
+                // If this place lives in memory, preserve its location.
+                // We call `place_to_op` which will be an `MPlaceTy` whenever there exists
+                // an mplace for this place. (This is in contrast to `PlaceTy::as_mplace_or_local`
+                // which can return a local even if that has an mplace.)
+                let place = self.eval_place(*place)?;
+                let op = self.place_to_op(&place)?;
+
+                match op.as_mplace_or_imm() {
+                    Either::Left(mplace) => FnArg::InPlace(mplace),
+                    Either::Right(_imm) => {
+                        // This argument doesn't live in memory, so there's no place
+                        // to make inaccessible during the call.
+                        // We rely on there not being any stray `PlaceTy` that would let the
+                        // caller directly access this local!
+                        // This is also crucial for tail calls, where we want the `FnArg` to
+                        // stay valid when the old stack frame gets popped.
+                        FnArg::Copy(op)
+                    }
+                }
+            }
+        })
+    }
+
+    /// Shared part of `Call` and `TailCall` implementation — finding and evaluating all the
+    /// necessary information about callee and arguments to make a call.
+    fn eval_callee_and_args(
+        &self,
+        terminator: &mir::Terminator<'tcx>,
+        func: &mir::Operand<'tcx>,
+        args: &[Spanned<mir::Operand<'tcx>>],
+    ) -> InterpResult<'tcx, EvaluatedCalleeAndArgs<'tcx, M>> {
+        let func = self.eval_operand(func, None)?;
+        let args = args
+            .iter()
+            .map(|arg| self.eval_fn_call_argument(&arg.node))
+            .collect::<InterpResult<'tcx, Vec<_>>>()?;
+
+        let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
+        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
+        let extra_args = &args[fn_sig.inputs().len()..];
+        let extra_args =
+            self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
+
+        let (callee, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
+            ty::FnPtr(..) => {
+                let fn_ptr = self.read_pointer(&func)?;
+                let fn_val = self.get_ptr_fn(fn_ptr)?;
+                (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
+            }
+            ty::FnDef(def_id, args) => {
+                let instance = self.resolve(def_id, args)?;
+                (
+                    FnVal::Instance(instance),
+                    self.fn_abi_of_instance(instance, extra_args)?,
+                    instance.def.requires_caller_location(*self.tcx),
+                )
+            }
+            _ => {
+                span_bug!(terminator.source_info.span, "invalid callee of type {}", func.layout.ty)
+            }
+        };
+
+        Ok(EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location })
+    }
+
+    fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
 
-        self.eval_terminator(terminator)?;
-        if !self.stack().is_empty() {
-            if let Either::Left(loc) = self.frame().loc {
-                info!("// executing {:?}", loc.block);
+        use rustc_middle::mir::TerminatorKind::*;
+        match terminator.kind {
+            Return => {
+                self.return_from_current_stack_frame(/* unwinding */ false)?
+            }
+
+            Goto { target } => self.go_to_block(target),
+
+            SwitchInt { ref discr, ref targets } => {
+                let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
+                trace!("SwitchInt({:?})", *discr);
+
+                // Branch to the `otherwise` case by default, if no match is found.
+                let mut target_block = targets.otherwise();
+
+                for (const_int, target) in targets.iter() {
+                    // Compare using MIR BinOp::Eq, to also support pointer values.
+                    // (Avoiding `self.binary_op` as that does some redundant layout computation.)
+                    let res = self.binary_op(
+                        mir::BinOp::Eq,
+                        &discr,
+                        &ImmTy::from_uint(const_int, discr.layout),
+                    )?;
+                    if res.to_scalar().to_bool()? {
+                        target_block = target;
+                        break;
+                    }
+                }
+
+                self.go_to_block(target_block);
+            }
+
+            Call {
+                ref func,
+                ref args,
+                destination,
+                target,
+                unwind,
+                call_source: _,
+                fn_span: _,
+            } => {
+                let old_stack = self.frame_idx();
+                let old_loc = self.frame().loc;
+
+                let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
+                    self.eval_callee_and_args(terminator, func, args)?;
+
+                let destination = self.force_allocation(&self.eval_place(destination)?)?;
+                self.init_fn_call(
+                    callee,
+                    (fn_sig.abi, fn_abi),
+                    &args,
+                    with_caller_location,
+                    &destination,
+                    target,
+                    if fn_abi.can_unwind { unwind } else { mir::UnwindAction::Unreachable },
+                )?;
+                // Sanity-check that `eval_fn_call` either pushed a new frame or
+                // did a jump to another block.
+                if self.frame_idx() == old_stack && self.frame().loc == old_loc {
+                    span_bug!(terminator.source_info.span, "evaluating this call made no progress");
+                }
+            }
+
+            TailCall { ref func, ref args, fn_span: _ } => {
+                let old_frame_idx = self.frame_idx();
+
+                let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
+                    self.eval_callee_and_args(terminator, func, args)?;
+
+                self.init_fn_tail_call(callee, (fn_sig.abi, fn_abi), &args, with_caller_location)?;
+
+                if self.frame_idx() != old_frame_idx {
+                    span_bug!(
+                        terminator.source_info.span,
+                        "evaluating this tail call pushed a new stack frame"
+                    );
+                }
+            }
+
+            Drop { place, target, unwind, replace: _ } => {
+                let place = self.eval_place(place)?;
+                let instance = Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
+                if let ty::InstanceKind::DropGlue(_, None) = instance.def {
+                    // This is the branch we enter if and only if the dropped type has no drop glue
+                    // whatsoever. This can happen as a result of monomorphizing a drop of a
+                    // generic. In order to make sure that generic and non-generic code behaves
+                    // roughly the same (and in keeping with Mir semantics) we do nothing here.
+                    self.go_to_block(target);
+                    return Ok(());
+                }
+                trace!("TerminatorKind::drop: {:?}, type {}", place, place.layout.ty);
+                self.init_drop_in_place_call(&place, instance, target, unwind)?;
+            }
+
+            Assert { ref cond, expected, ref msg, target, unwind } => {
+                let ignored =
+                    M::ignore_optional_overflow_checks(self) && msg.is_optional_overflow_check();
+                let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
+                if ignored || expected == cond_val {
+                    self.go_to_block(target);
+                } else {
+                    M::assert_panic(self, msg, unwind)?;
+                }
+            }
+
+            UnwindTerminate(reason) => {
+                M::unwind_terminate(self, reason)?;
+            }
+
+            // When we encounter Resume, we've finished unwinding
+            // cleanup for the current stack frame. We pop it in order
+            // to continue unwinding the next frame
+            UnwindResume => {
+                trace!("unwinding: resuming from cleanup");
+                // By definition, a Resume terminator means
+                // that we're unwinding
+                self.return_from_current_stack_frame(/* unwinding */ true)?;
+                return Ok(());
+            }
+
+            // It is UB to ever encounter this.
+            Unreachable => throw_ub!(Unreachable),
+
+            // These should never occur for MIR we actually run.
+            FalseEdge { .. } | FalseUnwind { .. } | Yield { .. } | CoroutineDrop => span_bug!(
+                terminator.source_info.span,
+                "{:#?} should have been eliminated by MIR pass",
+                terminator.kind
+            ),
+
+            InlineAsm { template, ref operands, options, ref targets, .. } => {
+                M::eval_inline_asm(self, template, operands, options, targets)?;
             }
         }
+
         Ok(())
     }
 }

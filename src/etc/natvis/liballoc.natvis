@@ -4,10 +4,10 @@
     <DisplayString>{{ len={len} }}</DisplayString>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">len</Item>
-      <Item Name="[capacity]" ExcludeView="simple">buf.cap.__0</Item>
+      <Item Name="[capacity]" ExcludeView="simple">buf.inner.cap.__0</Item>
       <ArrayItems>
         <Size>len</Size>
-        <ValuePointer>buf.ptr.pointer.pointer</ValuePointer>
+        <ValuePointer>($T1*)buf.inner.ptr.pointer.pointer</ValuePointer>
       </ArrayItems>
     </Expand>
   </Type>
@@ -15,7 +15,7 @@
     <DisplayString>{{ len={len} }}</DisplayString>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">len</Item>
-      <Item Name="[capacity]" ExcludeView="simple">buf.cap.__0</Item>
+      <Item Name="[capacity]" ExcludeView="simple">buf.inner.cap.__0</Item>
       <CustomListItems>
         <Variable Name="i" InitialValue="0" />
         <Size>len</Size>
@@ -23,7 +23,7 @@
           <If Condition="i == len">
             <Break/>
           </If>
-          <Item>buf.ptr.pointer.pointer[(i + head) % buf.cap.__0]</Item>
+          <Item>(($T1*)buf.inner.ptr.pointer.pointer)[(i + head) % buf.inner.cap.__0]</Item>
           <Exec>i = i + 1</Exec>
         </Loop>
       </CustomListItems>
@@ -41,17 +41,17 @@
     </Expand>
   </Type>
   <Type Name="alloc::string::String">
-    <DisplayString>{(char*)vec.buf.ptr.pointer.pointer,[vec.len]s8}</DisplayString>
-    <StringView>(char*)vec.buf.ptr.pointer.pointer,[vec.len]s8</StringView>
+    <DisplayString>{(char*)vec.buf.inner.ptr.pointer.pointer,[vec.len]s8}</DisplayString>
+    <StringView>(char*)vec.buf.inner.ptr.pointer.pointer,[vec.len]s8</StringView>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">vec.len</Item>
-      <Item Name="[capacity]" ExcludeView="simple">vec.buf.cap.__0</Item>
+      <Item Name="[capacity]" ExcludeView="simple">vec.buf.inner.cap.__0</Item>
       <Synthetic Name="[chars]">
-        <DisplayString>{(char*)vec.buf.ptr.pointer.pointer,[vec.len]s8}</DisplayString>
+        <DisplayString>{(char*)vec.buf.inner.ptr.pointer.pointer,[vec.len]s8}</DisplayString>
         <Expand>
           <ArrayItems>
             <Size>vec.len</Size>
-            <ValuePointer>(char*)vec.buf.ptr.pointer.pointer</ValuePointer>
+            <ValuePointer>(char*)vec.buf.inner.ptr.pointer.pointer</ValuePointer>
           </ArrayItems>
         </Expand>
       </Synthetic>

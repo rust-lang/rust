@@ -3,9 +3,9 @@ use std::ops::ControlFlow;
 
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method};
@@ -159,7 +159,7 @@ impl UselessVec {
 
         let snippet = match *vec_args {
             higher::VecArgs::Repeat(elem, len) => {
-                if let Some(Constant::Int(len_constant)) = constant(cx, cx.typeck_results(), len) {
+                if let Some(Constant::Int(len_constant)) = ConstEvalCtxt::new(cx).eval(len) {
                     // vec![ty; N] works when ty is Clone, [ty; N] requires it to be Copy also
                     if !is_copy(cx, cx.typeck_results().expr_ty(elem)) {
                         return;
@@ -214,9 +214,11 @@ impl SuggestedType {
     }
 
     fn snippet(self, cx: &LateContext<'_>, args_span: Option<Span>, len_span: Option<Span>) -> String {
-        let maybe_args = args_span.and_then(|sp| snippet_opt(cx, sp)).unwrap_or_default();
+        let maybe_args = args_span
+            .and_then(|sp| sp.get_source_text(cx))
+            .map_or(String::new(), |x| x.to_owned());
         let maybe_len = len_span
-            .and_then(|sp| snippet_opt(cx, sp).map(|s| format!("; {s}")))
+            .and_then(|sp| sp.get_source_text(cx).map(|s| format!("; {s}")))
             .unwrap_or_default();
 
         match self {

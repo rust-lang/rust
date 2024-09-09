@@ -1,8 +1,8 @@
-error: Undefined Behavior: out-of-bounds pointer use: 0x4[noalloc] is a dangling pointer (it has no provenance)
+error: Undefined Behavior: out-of-bounds pointer use: expected a pointer to 4 bytes of memory, but got 0x4[noalloc] which is a dangling pointer (it has no provenance)
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
 LL |         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: 0x4[noalloc] is a dangling pointer (it has no provenance)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: expected a pointer to 4 bytes of memory, but got 0x4[noalloc] which is a dangling pointer (it has no provenance)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

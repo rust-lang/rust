@@ -1,12 +1,10 @@
-use rustc_middle::mir::{
-    interpret::{alloc_range, AllocRange, Pointer},
-    ConstValue,
-};
+use rustc_middle::mir::interpret::{alloc_range, AllocRange, Pointer};
+use rustc_middle::mir::ConstValue;
+use stable_mir::mir::Mutability;
+use stable_mir::ty::{Allocation, ProvenanceMap};
 use stable_mir::Error;
 
 use crate::rustc_smir::{Stable, Tables};
-use stable_mir::mir::Mutability;
-use stable_mir::ty::{Allocation, ProvenanceMap};
 
 /// Creates new empty `Allocation` from given `Align`.
 fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {
@@ -22,7 +20,7 @@ fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {
 // because we need to get `Ty` of the const we are trying to create, to do that
 // we need to have access to `ConstantKind` but we can't access that inside Stable impl.
 #[allow(rustc::usage_of_qualified_ty)]
-pub fn new_allocation<'tcx>(
+pub(crate) fn new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
@@ -32,7 +30,7 @@ pub fn new_allocation<'tcx>(
 }
 
 #[allow(rustc::usage_of_qualified_ty)]
-pub fn try_new_allocation<'tcx>(
+pub(crate) fn try_new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
@@ -134,7 +132,7 @@ pub(super) fn allocation_filter<'tcx>(
         ));
     }
     Allocation {
-        bytes: bytes,
+        bytes,
         provenance: ProvenanceMap { ptrs },
         align: alloc.align.bytes(),
         mutability: alloc.mutability.stable(tables),

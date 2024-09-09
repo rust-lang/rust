@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{snippet_with_applicability, SpanRangeExt};
 use rustc_ast::ast::{Expr, ExprKind, Mutability, UnOp};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::BytePos;
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -56,11 +56,11 @@ impl EarlyLintPass for DerefAddrOf {
         {
             let mut applicability = Applicability::MachineApplicable;
             let sugg = if e.span.from_expansion() {
-                if let Some(macro_source) = snippet_opt(cx, e.span) {
+                if let Some(macro_source) = e.span.get_source_text(cx) {
                     // Remove leading whitespace from the given span
                     // e.g: ` $visitor` turns into `$visitor`
-                    let trim_leading_whitespaces = |span| {
-                        snippet_opt(cx, span)
+                    let trim_leading_whitespaces = |span: Span| {
+                        span.get_source_text(cx)
                             .and_then(|snip| {
                                 #[expect(clippy::cast_possible_truncation)]
                                 snip.find(|c: char| !c.is_whitespace())

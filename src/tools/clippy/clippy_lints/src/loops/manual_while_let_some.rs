@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::{match_def_path, paths, SpanlessEq};
 use rustc_errors::Applicability;
@@ -38,11 +38,10 @@ fn report_lint(cx: &LateContext<'_>, pop_span: Span, pop_stmt_kind: PopStmt<'_>,
             };
 
             let loop_replacement = format!("while let Some({}) = {}.pop()", pat, snippet(cx, receiver_span, ".."));
-            multispan_sugg_with_applicability(
-                diag,
+            diag.multipart_suggestion(
                 "consider using a `while..let` loop",
+                vec![(loop_span, loop_replacement), (pop_span, pop_replacement)],
                 Applicability::MachineApplicable,
-                [(loop_span, loop_replacement), (pop_span, pop_replacement)],
             );
         },
     );

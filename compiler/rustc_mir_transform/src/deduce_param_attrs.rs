@@ -40,7 +40,7 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
                 // This is a mutation, so mark it as such.
                 true
             }
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf) => {
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => {
                 // Whether mutating though a `&raw const` is allowed is still undecided, so we
                 // disable any sketchy `readonly` optimizations for now.
                 // But we only need to do this if the pointer would point into the argument.

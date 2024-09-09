@@ -1,4 +1,3 @@
-use crate::collect::ItemCtxt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{ForeignItem, ForeignItemKind};
@@ -9,8 +8,11 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
+use tracing::debug;
 
-pub fn provide(providers: &mut Providers) {
+use crate::collect::ItemCtxt;
+
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { diagnostic_hir_wf_check, ..*providers };
 }
 

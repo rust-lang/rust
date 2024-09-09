@@ -11,7 +11,6 @@ async fn foo() {
     async_in_foo(async_out_foo::<4>().await).await;
 }
 
-#[allow(dead_code)]
 struct Faz<const N: usize>;
 
 impl<const N: usize> Foo<N> for Faz<N> {}

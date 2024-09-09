@@ -13,7 +13,7 @@ pub(super) fn find_all_methods(
     file_id: FileId,
 ) -> Vec<(TextRange, Option<TextRange>)> {
     let sema = Semantics::new(db);
-    let source_file = sema.parse(file_id);
+    let source_file = sema.parse_guess_edition(file_id);
     source_file.syntax().descendants().filter_map(method_range).collect()
 }
 

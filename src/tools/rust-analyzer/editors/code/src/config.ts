@@ -2,9 +2,9 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
-import { type Env, log, unwrapUndefinable, expectNotUndefined } from "./util";
-import type { JsonProject } from "./rust_project";
-import type { Disposable } from "./ctx";
+import { expectNotUndefined, log, unwrapUndefinable } from "./util";
+import type { Env } from "./util";
+import type { Disposable } from "vscode";
 
 export type RunnableEnvCfgItem = {
     mask?: string;
@@ -31,7 +31,6 @@ export class Config {
     );
 
     constructor(disposables: Disposable[]) {
-        this.discoveredWorkspaces = [];
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, disposables);
         this.refreshLogging();
         this.configureLanguage();
@@ -42,7 +41,6 @@ export class Config {
     }
 
     private refreshLogging() {
-        log.setEnabled(this.traceExtension ?? false);
         log.info(
             "Extension version:",
             vscode.extensions.getExtension(this.extensionId)!.packageJSON.version,
@@ -51,8 +49,6 @@ export class Config {
         const cfg = Object.entries(this.cfg).filter(([_, val]) => !(val instanceof Function));
         log.info("Using configuration", Object.fromEntries(cfg));
     }
-
-    public discoveredWorkspaces: JsonProject[];
 
     private async onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {
         this.refreshLogging();
@@ -256,14 +252,6 @@ export class Config {
         await this.cfg.update("checkOnSave", !(value || false), target || null, overrideInLanguage);
     }
 
-    get traceExtension() {
-        return this.get<boolean>("trace.extension");
-    }
-
-    get discoverProjectRunner(): string | undefined {
-        return this.get<string | undefined>("discoverProjectRunner");
-    }
-
     get problemMatcher(): string[] {
         return this.get<string[]>("runnables.problemMatcher") || [];
     }
@@ -342,18 +330,7 @@ export class Config {
     }
 }
 
-// the optional `cb?` parameter is meant to be used to add additional
-// key/value pairs to the VS Code configuration. This needed for, e.g.,
-// including a `rust-project.json` into the `linkedProjects` key as part
-// of the configuration/InitializationParams _without_ causing VS Code
-// configuration to be written out to workspace-level settings. This is
-// undesirable behavior because rust-project.json files can be tens of
-// thousands of lines of JSON, most of which is not meant for humans
-// to interact with.
-export function prepareVSCodeConfig<T>(
-    resp: T,
-    cb?: (key: Extract<keyof T, string>, res: { [key: string]: any }) => void,
-): T {
+export function prepareVSCodeConfig<T>(resp: T): T {
     if (Is.string(resp)) {
         return substituteVSCodeVariableInString(resp) as T;
     } else if (resp && Is.array<any>(resp)) {
@@ -365,9 +342,6 @@ export function prepareVSCodeConfig<T>(
         for (const key in resp) {
             const val = resp[key];
             res[key] = prepareVSCodeConfig(val);
-            if (cb) {
-                cb(key, res);
-            }
         }
         return res as T;
     }

@@ -2,9 +2,10 @@ use std::borrow::Cow;
 
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
-    SubdiagMessageOp, Subdiagnostic,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, SubdiagMessageOp,
+    Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -259,7 +260,7 @@ pub(crate) struct NotAsNegationOperator {
 }
 
 #[derive(Subdiagnostic)]
-pub enum NotAsNegationOperatorSub {
+pub(crate) enum NotAsNegationOperatorSub {
     #[suggestion(
         parse_unexpected_token_after_not_default,
         style = "verbose",
@@ -423,7 +424,7 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
 #[derive(Diagnostic)]
 #[diag(parse_ternary_operator)]
 #[help]
-pub struct TernaryOperator {
+pub(crate) struct TernaryOperator {
     #[primary_span]
     pub span: Span,
 }
@@ -554,12 +555,7 @@ pub(crate) enum MissingInInForLoopSub {
         code = "in"
     )]
     InNotOf(#[primary_span] Span),
-    #[suggestion(
-        parse_add_in,
-        style = "verbose",
-        applicability = "maybe-incorrect",
-        code = " in "
-    )]
+    #[suggestion(parse_add_in, style = "verbose", applicability = "maybe-incorrect", code = " in ")]
     AddIn(#[primary_span] Span),
 }
 
@@ -917,7 +913,7 @@ pub(crate) struct InvalidLiteralSuffixOnTupleIndex {
     #[help(parse_tuple_exception_line_1)]
     #[help(parse_tuple_exception_line_2)]
     #[help(parse_tuple_exception_line_3)]
-    pub exception: Option<()>,
+    pub exception: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1092,7 +1088,7 @@ pub(crate) enum ExpectedIdentifierFound {
 }
 
 impl ExpectedIdentifierFound {
-    pub fn new(token_descr: Option<TokenDescription>, span: Span) -> Self {
+    pub(crate) fn new(token_descr: Option<TokenDescription>, span: Span) -> Self {
         (match token_descr {
             Some(TokenDescription::ReservedIdentifier) => {
                 ExpectedIdentifierFound::ReservedIdentifier
@@ -1303,7 +1299,7 @@ pub(crate) struct ComparisonOperatorsCannotBeChained {
     pub suggest_turbofish: Option<Span>,
     #[help(parse_sugg_turbofish_syntax)]
     #[help(parse_sugg_parentheses_for_function_args)]
-    pub help_turbofish: Option<()>,
+    pub help_turbofish: bool,
     #[subdiagnostic]
     pub chaining_sugg: Option<ComparisonOperatorsCannotBeChainedSugg>,
 }
@@ -1582,7 +1578,7 @@ pub(crate) struct PathSingleColon {
     pub suggestion: Span,
 
     #[note(parse_type_ascription_removed)]
-    pub type_ascription: Option<()>,
+    pub type_ascription: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1593,7 +1589,7 @@ pub(crate) struct ColonAsSemi {
     pub span: Span,
 
     #[note(parse_type_ascription_removed)]
-    pub type_ascription: Option<()>,
+    pub type_ascription: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1663,7 +1659,7 @@ pub(crate) struct SelfArgumentPointer {
 
 #[derive(Diagnostic)]
 #[diag(parse_unexpected_token_after_dot)]
-pub struct UnexpectedTokenAfterDot<'a> {
+pub(crate) struct UnexpectedTokenAfterDot<'a> {
     #[primary_span]
     pub span: Span,
     pub actual: Cow<'a, str>,
@@ -1932,7 +1928,7 @@ pub(crate) enum UnexpectedTokenAfterStructName {
 }
 
 impl UnexpectedTokenAfterStructName {
-    pub fn new(span: Span, token: Token) -> Self {
+    pub(crate) fn new(span: Span, token: Token) -> Self {
         match TokenDescription::from_token(&token) {
             Some(TokenDescription::ReservedIdentifier) => Self::ReservedIdentifier { span, token },
             Some(TokenDescription::Keyword) => Self::Keyword { span, token },
@@ -2010,7 +2006,7 @@ pub(crate) enum TopLevelOrPatternNotAllowed {
 
 #[derive(Diagnostic)]
 #[diag(parse_cannot_be_raw_ident)]
-pub struct CannotBeRawIdent {
+pub(crate) struct CannotBeRawIdent {
     #[primary_span]
     pub span: Span,
     pub ident: Symbol,
@@ -2018,14 +2014,14 @@ pub struct CannotBeRawIdent {
 
 #[derive(Diagnostic)]
 #[diag(parse_keyword_lifetime)]
-pub struct KeywordLifetime {
+pub(crate) struct KeywordLifetime {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(parse_invalid_label)]
-pub struct InvalidLabel {
+pub(crate) struct InvalidLabel {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
@@ -2033,7 +2029,7 @@ pub struct InvalidLabel {
 
 #[derive(Diagnostic)]
 #[diag(parse_cr_doc_comment)]
-pub struct CrDocComment {
+pub(crate) struct CrDocComment {
     #[primary_span]
     pub span: Span,
     pub block: bool,
@@ -2041,14 +2037,14 @@ pub struct CrDocComment {
 
 #[derive(Diagnostic)]
 #[diag(parse_no_digits_literal, code = E0768)]
-pub struct NoDigitsLiteral {
+pub(crate) struct NoDigitsLiteral {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(parse_invalid_digit_literal)]
-pub struct InvalidDigitLiteral {
+pub(crate) struct InvalidDigitLiteral {
     #[primary_span]
     pub span: Span,
     pub base: u32,
@@ -2056,14 +2052,14 @@ pub struct InvalidDigitLiteral {
 
 #[derive(Diagnostic)]
 #[diag(parse_empty_exponent_float)]
-pub struct EmptyExponentFloat {
+pub(crate) struct EmptyExponentFloat {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(parse_float_literal_unsupported_base)]
-pub struct FloatLiteralUnsupportedBase {
+pub(crate) struct FloatLiteralUnsupportedBase {
     #[primary_span]
     pub span: Span,
     pub base: &'static str,
@@ -2072,7 +2068,7 @@ pub struct FloatLiteralUnsupportedBase {
 #[derive(Diagnostic)]
 #[diag(parse_unknown_prefix)]
 #[note]
-pub struct UnknownPrefix<'a> {
+pub(crate) struct UnknownPrefix<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -2083,12 +2079,12 @@ pub struct UnknownPrefix<'a> {
 
 #[derive(Subdiagnostic)]
 #[note(parse_macro_expands_to_adt_field)]
-pub struct MacroExpandsToAdtField<'a> {
+pub(crate) struct MacroExpandsToAdtField<'a> {
     pub adt_ty: &'a str,
 }
 
 #[derive(Subdiagnostic)]
-pub enum UnknownPrefixSugg {
+pub(crate) enum UnknownPrefixSugg {
     #[suggestion(
         parse_suggestion_br,
         code = "br",
@@ -2118,7 +2114,7 @@ pub enum UnknownPrefixSugg {
 
 #[derive(Diagnostic)]
 #[diag(parse_too_many_hashes)]
-pub struct TooManyHashes {
+pub(crate) struct TooManyHashes {
     #[primary_span]
     pub span: Span,
     pub num: u32,
@@ -2126,7 +2122,7 @@ pub struct TooManyHashes {
 
 #[derive(Diagnostic)]
 #[diag(parse_unknown_start_of_token)]
-pub struct UnknownTokenStart {
+pub(crate) struct UnknownTokenStart {
     #[primary_span]
     pub span: Span,
     pub escaped: String,
@@ -2139,7 +2135,7 @@ pub struct UnknownTokenStart {
 }
 
 #[derive(Subdiagnostic)]
-pub enum TokenSubstitution {
+pub(crate) enum TokenSubstitution {
     #[suggestion(
         parse_sugg_quotes,
         code = "{suggestion}",
@@ -2172,16 +2168,16 @@ pub enum TokenSubstitution {
 
 #[derive(Subdiagnostic)]
 #[note(parse_note_repeats)]
-pub struct UnknownTokenRepeat {
+pub(crate) struct UnknownTokenRepeat {
     pub repeats: usize,
 }
 
 #[derive(Subdiagnostic)]
 #[help(parse_help_null)]
-pub struct UnknownTokenNull;
+pub(crate) struct UnknownTokenNull;
 
 #[derive(Diagnostic)]
-pub enum UnescapeError {
+pub(crate) enum UnescapeError {
     #[diag(parse_invalid_unicode_escape)]
     #[help]
     InvalidUnicodeEscape {
@@ -2326,7 +2322,7 @@ pub enum UnescapeError {
 }
 
 #[derive(Subdiagnostic)]
-pub enum MoreThanOneCharSugg {
+pub(crate) enum MoreThanOneCharSugg {
     #[suggestion(
         parse_consider_normalized,
         code = "{normalized}",
@@ -2374,7 +2370,7 @@ pub enum MoreThanOneCharSugg {
 }
 
 #[derive(Subdiagnostic)]
-pub enum MoreThanOneCharNote {
+pub(crate) enum MoreThanOneCharNote {
     #[note(parse_followed_by)]
     AllCombining {
         #[primary_span]
@@ -2392,7 +2388,7 @@ pub enum MoreThanOneCharNote {
 }
 
 #[derive(Subdiagnostic)]
-pub enum NoBraceUnicodeSub {
+pub(crate) enum NoBraceUnicodeSub {
     #[suggestion(
         parse_use_braces,
         code = "{suggestion}",
@@ -2466,7 +2462,7 @@ pub(crate) struct TrailingVertNotAllowed {
     pub start: Option<Span>,
     pub token: Token,
     #[note(parse_note_pattern_alternatives_use_single_vert)]
-    pub note_double_vert: Option<()>,
+    pub note_double_vert: bool,
 }
 
 #[derive(Diagnostic)]
@@ -2707,7 +2703,7 @@ pub(crate) struct InvalidDynKeyword {
 }
 
 #[derive(Subdiagnostic)]
-pub enum HelpUseLatestEdition {
+pub(crate) enum HelpUseLatestEdition {
     #[help(parse_help_set_edition_cargo)]
     #[note(parse_note_edition_guide)]
     Cargo { edition: Edition },
@@ -2717,7 +2713,7 @@ pub enum HelpUseLatestEdition {
 }
 
 impl HelpUseLatestEdition {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let edition = LATEST_STABLE_EDITION;
         if rustc_session::utils::was_invoked_from_cargo() {
             Self::Cargo { edition }
@@ -2729,15 +2725,24 @@ impl HelpUseLatestEdition {
 
 #[derive(Diagnostic)]
 #[diag(parse_box_syntax_removed)]
-pub struct BoxSyntaxRemoved<'a> {
+pub(crate) struct BoxSyntaxRemoved {
     #[primary_span]
-    #[suggestion(
-        code = "Box::new({code})",
-        applicability = "machine-applicable",
-        style = "verbose"
-    )]
     pub span: Span,
-    pub code: &'a str,
+    #[subdiagnostic]
+    pub sugg: AddBoxNew,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_box_syntax_removed_suggestion,
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub(crate) struct AddBoxNew {
+    #[suggestion_part(code = "Box::new(")]
+    pub box_kw_and_lo: Span,
+    #[suggestion_part(code = ")")]
+    pub hi: Span,
 }
 
 #[derive(Diagnostic)]
@@ -2889,7 +2894,7 @@ pub(crate) struct BadItemKind {
     pub descr: &'static str,
     pub ctx: &'static str,
     #[help]
-    pub help: Option<()>,
+    pub help: bool,
 }
 
 #[derive(Diagnostic)]
@@ -3185,15 +3190,16 @@ pub(crate) struct DotDotRangeAttribute {
 #[derive(Diagnostic)]
 #[diag(parse_invalid_attr_unsafe)]
 #[note]
-pub struct InvalidAttrUnsafe {
+pub(crate) struct InvalidAttrUnsafe {
     #[primary_span]
+    #[label]
     pub span: Span,
     pub name: Path,
 }
 
 #[derive(Diagnostic)]
 #[diag(parse_unsafe_attr_outside_unsafe)]
-pub struct UnsafeAttrOutsideUnsafe {
+pub(crate) struct UnsafeAttrOutsideUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -3206,7 +3212,7 @@ pub struct UnsafeAttrOutsideUnsafe {
     parse_unsafe_attr_outside_unsafe_suggestion,
     applicability = "machine-applicable"
 )]
-pub struct UnsafeAttrOutsideUnsafeSuggestion {
+pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
     #[suggestion_part(code = "unsafe(")]
     pub left: Span,
     #[suggestion_part(code = ")")]
@@ -3215,7 +3221,7 @@ pub struct UnsafeAttrOutsideUnsafeSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(parse_binder_before_modifiers)]
-pub struct BinderBeforeModifiers {
+pub(crate) struct BinderBeforeModifiers {
     #[primary_span]
     pub binder_span: Span,
     #[label]
@@ -3224,7 +3230,7 @@ pub struct BinderBeforeModifiers {
 
 #[derive(Diagnostic)]
 #[diag(parse_binder_and_polarity)]
-pub struct BinderAndPolarity {
+pub(crate) struct BinderAndPolarity {
     #[primary_span]
     pub polarity_span: Span,
     #[label]
@@ -3234,7 +3240,7 @@ pub struct BinderAndPolarity {
 
 #[derive(Diagnostic)]
 #[diag(parse_modifiers_and_polarity)]
-pub struct PolarityAndModifiers {
+pub(crate) struct PolarityAndModifiers {
     #[primary_span]
     pub polarity_span: Span,
     #[label]

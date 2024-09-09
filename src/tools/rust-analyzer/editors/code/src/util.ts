@@ -17,49 +17,48 @@ export type Env = {
     [name: string]: string;
 };
 
-export const log = new (class {
-    private enabled = true;
-    private readonly output = vscode.window.createOutputChannel("Rust Analyzer Client");
+class Log {
+    private readonly output = vscode.window.createOutputChannel("Rust Analyzer Client", {
+        log: true,
+    });
 
-    setEnabled(yes: boolean): void {
-        log.enabled = yes;
+    trace(...messages: [unknown, ...unknown[]]): void {
+        this.output.trace(this.stringify(messages));
     }
 
-    // Hint: the type [T, ...T[]] means a non-empty array
-    debug(...msg: [unknown, ...unknown[]]): void {
-        if (!log.enabled) return;
-        log.write("DEBUG", ...msg);
+    debug(...messages: [unknown, ...unknown[]]): void {
+        this.output.debug(this.stringify(messages));
     }
 
-    info(...msg: [unknown, ...unknown[]]): void {
-        log.write("INFO", ...msg);
+    info(...messages: [unknown, ...unknown[]]): void {
+        this.output.info(this.stringify(messages));
     }
 
-    warn(...msg: [unknown, ...unknown[]]): void {
-        debugger;
-        log.write("WARN", ...msg);
+    warn(...messages: [unknown, ...unknown[]]): void {
+        this.output.warn(this.stringify(messages));
     }
 
-    error(...msg: [unknown, ...unknown[]]): void {
-        debugger;
-        log.write("ERROR", ...msg);
-        log.output.show(true);
+    error(...messages: [unknown, ...unknown[]]): void {
+        this.output.error(this.stringify(messages));
+        this.output.show(true);
     }
 
-    private write(label: string, ...messageParts: unknown[]): void {
-        const message = messageParts.map(log.stringify).join(" ");
-        const dateTime = new Date().toLocaleString();
-        log.output.appendLine(`${label} [${dateTime}]: ${message}`);
+    private stringify(messages: unknown[]): string {
+        return messages
+            .map((message) => {
+                if (typeof message === "string") {
+                    return message;
+                }
+                if (message instanceof Error) {
+                    return message.stack || message.message;
+                }
+                return inspect(message, { depth: 6, colors: false });
+            })
+            .join(" ");
     }
+}
 
-    private stringify(val: unknown): string {
-        if (typeof val === "string") return val;
-        return inspect(val, {
-            colors: false,
-            depth: 6, // heuristic
-        });
-    }
-})();
+export const log = new Log();
 
 export function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -135,7 +134,7 @@ export function execute(command: string, options: ExecOptions): Promise<string> 
     return new Promise((resolve, reject) => {
         exec(command, options, (err, stdout, stderr) => {
             if (err) {
-                log.error(err);
+                log.error("error:", err);
                 reject(err);
                 return;
             }

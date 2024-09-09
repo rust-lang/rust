@@ -1,5 +1,6 @@
-use run_make_support::{htmldocck, rfs, rustc, rustdoc, source_root};
 use std::path::Path;
+
+use run_make_support::{htmldocck, rfs, rustc, rustdoc};
 
 pub fn scrape(extra_args: &[&str]) {
     let out_dir = Path::new("rustdoc");
@@ -19,7 +20,7 @@ pub fn scrape(extra_args: &[&str]) {
             .input(&dep)
             .crate_name(&dep_stem)
             .crate_type("bin")
-            .output(&out_dir)
+            .out_dir(&out_dir)
             .extern_(crate_name, format!("lib{crate_name}.rmeta"))
             .arg("-Zunstable-options")
             .arg("--scrape-examples-output-path")
@@ -34,7 +35,7 @@ pub fn scrape(extra_args: &[&str]) {
     let mut rustdoc = rustdoc();
     rustdoc
         .input("src/lib.rs")
-        .output(&out_dir)
+        .out_dir(&out_dir)
         .crate_name(crate_name)
         .crate_type("lib")
         .arg("-Zunstable-options");

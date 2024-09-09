@@ -18,15 +18,9 @@
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
-pub use crate::format::*;
-pub use crate::util::parser::ExprPrecedence;
-pub use rustc_span::AttrId;
-pub use GenericArgs::*;
-pub use UnsafeSource::*;
+use std::borrow::Cow;
+use std::{cmp, fmt, mem};
 
-use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
 pub use rustc_ast_ir::{Movability, Mutability};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -35,12 +29,17 @@ use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+pub use rustc_span::AttrId;
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
-use std::borrow::Cow;
-use std::cmp;
-use std::fmt;
-use std::mem;
 use thin_vec::{thin_vec, ThinVec};
+pub use GenericArgs::*;
+pub use UnsafeSource::*;
+
+pub use crate::format::*;
+use crate::ptr::P;
+use crate::token::{self, CommentKind, Delimiter};
+use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+pub use crate::util::parser::ExprPrecedence;
 
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
@@ -586,7 +585,9 @@ impl Pat {
             }
             // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
             // when `P` can be reparsed as a type `T`.
-            PatKind::Slice(pats) if pats.len() == 1 => pats[0].to_ty().map(TyKind::Slice)?,
+            PatKind::Slice(pats) if let [pat] = pats.as_slice() => {
+                pat.to_ty().map(TyKind::Slice)?
+            }
             // A tuple pattern `(P0, .., Pn)` can be reparsed as `(T0, .., Tn)`
             // assuming `T0` to `Tn` are all syntactically valid as types.
             PatKind::Tuple(pats) => {
@@ -1188,8 +1189,8 @@ impl Expr {
     /// Does not ensure that the path resolves to a const param, the caller should check this.
     pub fn is_potential_trivial_const_arg(&self) -> bool {
         let this = if let ExprKind::Block(block, None) = &self.kind
-            && block.stmts.len() == 1
-            && let StmtKind::Expr(expr) = &block.stmts[0].kind
+            && let [stmt] = block.stmts.as_slice()
+            && let StmtKind::Expr(expr) = &stmt.kind
         {
             expr
         } else {
@@ -1249,7 +1250,9 @@ impl Expr {
                 expr.to_ty().map(|ty| TyKind::Array(ty, expr_len.clone()))?
             }
 
-            ExprKind::Array(exprs) if exprs.len() == 1 => exprs[0].to_ty().map(TyKind::Slice)?,
+            ExprKind::Array(exprs) if let [expr] = exprs.as_slice() => {
+                expr.to_ty().map(TyKind::Slice)?
+            }
 
             ExprKind::Tup(exprs) => {
                 let tys = exprs.iter().map(|expr| expr.to_ty()).collect::<Option<ThinVec<_>>>()?;
@@ -2266,6 +2269,11 @@ bitflags::bitflags! {
 }
 
 impl InlineAsmOptions {
+    pub const COUNT: usize = Self::all().bits().count_ones() as usize;
+
+    pub const GLOBAL_OPTIONS: Self = Self::ATT_SYNTAX.union(Self::RAW);
+    pub const NAKED_OPTIONS: Self = Self::ATT_SYNTAX.union(Self::RAW).union(Self::NORETURN);
+
     pub fn human_readable_names(&self) -> Vec<&'static str> {
         let mut options = vec![];
 
@@ -2894,6 +2902,17 @@ pub struct AttrItem {
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
+impl AttrItem {
+    pub fn is_valid_for_outer_style(&self) -> bool {
+        self.path == sym::cfg_attr
+            || self.path == sym::cfg
+            || self.path == sym::forbid
+            || self.path == sym::warn
+            || self.path == sym::allow
+            || self.path == sym::deny
+    }
+}
+
 /// `TraitRef`s appear in impls.
 ///
 /// Resolution maps each `TraitRef`'s `ref_id` to its defining trait; that's all
@@ -3486,8 +3505,9 @@ pub type ForeignItem = Item<ForeignItemKind>;
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(AssocItem, 88);
     static_assert_size!(AssocItemKind, 16);

@@ -5,18 +5,20 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_index::Idx;
+use rustc_middle::bug;
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, BoundVar, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
+};
+use smallvec::SmallVec;
+use tracing::debug;
+
 use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
-use rustc_middle::bug;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_index::Idx;
-use smallvec::SmallVec;
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Canonicalizes a query value `V`. When we canonicalize a query,
@@ -49,7 +51,7 @@ impl<'tcx> InferCtxt<'tcx> {
             query_state,
             |tcx, param_env, query_state| {
                 // FIXME(#118965): We don't canonicalize the static lifetimes that appear in the
-                // `param_env` beacause they are treated differently by trait selection.
+                // `param_env` because they are treated differently by trait selection.
                 Canonicalizer::canonicalize(
                     param_env,
                     None,
@@ -437,7 +439,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             | ty::RawPtr(..)
             | ty::Ref(..)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(..)
             | ty::Never
             | ty::Tuple(..)

@@ -2,6 +2,9 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
+use std::hash::{Hash, Hasher};
+use std::{fmt, str};
+
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
@@ -10,10 +13,6 @@ use rustc_data_structures::stable_hasher::{
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{symbols, Decodable, Encodable, HashStable_Generic};
 
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::str;
-
 use crate::{with_session_globals, Edition, Span, DUMMY_SP};
 
 #[cfg(test)]
@@ -21,7 +20,8 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // If you modify this list, adjust `is_special` and `is_used_keyword`/`is_unused_keyword`.
+    // If you modify this list, adjust `is_special`, `is_used_keyword`/`is_unused_keyword`
+    // and `AllKeywords`.
     // But this should rarely be necessary if the keywords are kept in alphabetic order.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
@@ -277,6 +277,7 @@ symbols! {
         Path,
         PathBuf,
         Pending,
+        PinCoerceUnsized,
         Pointer,
         Poll,
         ProcMacro,
@@ -356,6 +357,7 @@ symbols! {
         _task_context,
         a32,
         aarch64_target_feature,
+        aarch64_unstable_target_feature,
         aarch64_ver_target_feature,
         abi,
         abi_amdgpu_kernel,
@@ -406,6 +408,7 @@ symbols! {
         append_const_msg,
         arbitrary_enum_discriminant,
         arbitrary_self_types,
+        arbitrary_self_types_pointers,
         args,
         arith_offset,
         arm,
@@ -472,6 +475,7 @@ symbols! {
         attr,
         attr_literals,
         attributes,
+        audit_that,
         augmented_assignments,
         auto_traits,
         automatically_derived,
@@ -534,6 +538,7 @@ symbols! {
         cfg_attr_multi,
         cfg_doctest,
         cfg_eval,
+        cfg_fmt_debug,
         cfg_hide,
         cfg_overflow_checks,
         cfg_panic,
@@ -594,6 +599,7 @@ symbols! {
         conservative_impl_trait,
         console,
         const_allocate,
+        const_arg_path,
         const_async_blocks,
         const_closures,
         const_compare_raw_pointers,
@@ -672,6 +678,7 @@ symbols! {
         crate_visibility_modifier,
         crt_dash_static: "crt-static",
         csky_target_feature,
+        cstr_type,
         cstring_type,
         ctlz,
         ctlz_nonzero,
@@ -891,6 +898,7 @@ symbols! {
         fmaf32,
         fmaf64,
         fmt,
+        fmt_debug,
         fmul_algebraic,
         fmul_fast,
         fn_align,
@@ -934,6 +942,7 @@ symbols! {
         fs_create_dir,
         fsub_algebraic,
         fsub_fast,
+        full,
         fundamental,
         fused_iterator,
         future,
@@ -1217,6 +1226,7 @@ symbols! {
         mir_static_mut,
         mir_storage_dead,
         mir_storage_live,
+        mir_tail_call,
         mir_unreachable,
         mir_unwind_cleanup,
         mir_unwind_continue,
@@ -1230,6 +1240,7 @@ symbols! {
         modifiers,
         module,
         module_path,
+        more_maybe_bounds,
         more_qualified_paths,
         more_struct_aliases,
         movbe_target_feature,
@@ -1275,6 +1286,7 @@ symbols! {
         new_binary,
         new_const,
         new_debug,
+        new_debug_noop,
         new_display,
         new_lower_exp,
         new_lower_hex,
@@ -1617,6 +1629,7 @@ symbols! {
         rustc_dirty,
         rustc_do_not_const_check,
         rustc_doc_primitive,
+        rustc_driver,
         rustc_dummy,
         rustc_dump_def_parents,
         rustc_dump_item_bounds,
@@ -1642,6 +1655,7 @@ symbols! {
         rustc_lint_opt_deny_field_access,
         rustc_lint_opt_ty,
         rustc_lint_query_instability,
+        rustc_lint_untracked_query_information,
         rustc_macro_transparency,
         rustc_main,
         rustc_mir,
@@ -1668,6 +1682,7 @@ symbols! {
         rustc_private,
         rustc_proc_macro_decls,
         rustc_promotable,
+        rustc_pub_transparent,
         rustc_reallocator,
         rustc_regions,
         rustc_reservation_impl,
@@ -1701,10 +1716,13 @@ symbols! {
         saturating_add,
         saturating_div,
         saturating_sub,
+        select_unpredictable,
         self_in_typedefs,
         self_struct_ctor,
         semitransparent,
+        sha512_sm_x86,
         shadow_call_stack,
+        shallow,
         shl,
         shl_assign,
         shorter_tail_lifetimes,
@@ -1887,6 +1905,7 @@ symbols! {
         three_way_compare,
         thumb2,
         thumb_mode: "thumb-mode",
+        time,
         tmm_reg,
         to_owned_method,
         to_string,
@@ -2445,13 +2464,11 @@ pub mod kw {
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
 pub mod sym {
-    use super::Symbol;
-
-    #[doc(inline)]
-    pub use super::sym_generated::*;
-
     // Used from a macro in `librustc_feature/accepted.rs`
     pub use super::kw::MacroRules as macro_rules;
+    #[doc(inline)]
+    pub use super::sym_generated::*;
+    use super::Symbol;
 
     /// Get the symbol for an integer.
     ///
@@ -2561,5 +2578,44 @@ impl Ident {
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
+    }
+}
+
+/// An iterator over all the keywords in Rust.
+#[derive(Copy, Clone)]
+pub struct AllKeywords {
+    curr_idx: u32,
+    end_idx: u32,
+}
+
+impl AllKeywords {
+    /// Initialize a new iterator over all the keywords.
+    ///
+    /// *Note:* Please update this if a new keyword is added beyond the current
+    /// range.
+    pub fn new() -> Self {
+        AllKeywords { curr_idx: kw::Empty.as_u32(), end_idx: kw::Yeet.as_u32() }
+    }
+
+    /// Collect all the keywords in a given edition into a vector.
+    pub fn collect_used(&self, edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
+        self.filter(|&keyword| {
+            keyword.is_used_keyword_always() || keyword.is_used_keyword_conditional(edition)
+        })
+        .collect()
+    }
+}
+
+impl Iterator for AllKeywords {
+    type Item = Symbol;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.curr_idx <= self.end_idx {
+            let keyword = Symbol::new(self.curr_idx);
+            self.curr_idx += 1;
+            Some(keyword)
+        } else {
+            None
+        }
     }
 }

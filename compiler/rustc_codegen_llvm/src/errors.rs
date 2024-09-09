@@ -1,12 +1,12 @@
-use std::borrow::Cow;
 use std::ffi::CString;
 use std::path::Path;
 
-use crate::fluent_generated as fluent;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
+
+use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unknown_ctarget_feature_prefix)]
@@ -40,13 +40,6 @@ pub(crate) enum PossibleFeature<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_error_creating_import_library)]
-pub(crate) struct ErrorCreatingImportLibrary<'a> {
-    pub lib_name: &'a str,
-    pub error: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_symbol_already_defined)]
 pub(crate) struct SymbolAlreadyDefined<'a> {
     #[primary_span]
@@ -69,28 +62,6 @@ pub(crate) struct InvalidMinimumAlignmentTooLarge {
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_sanitizer_memtag_requires_mte)]
 pub(crate) struct SanitizerMemtagRequiresMte;
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_error_writing_def_file)]
-pub(crate) struct ErrorWritingDEFFile {
-    pub error: std::io::Error,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_error_calling_dlltool)]
-pub(crate) struct ErrorCallingDllTool<'a> {
-    pub dlltool_path: Cow<'a, str>,
-    pub error: std::io::Error,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_dlltool_fail_import_library)]
-pub(crate) struct DlltoolFailImportLibrary<'a> {
-    pub dlltool_path: Cow<'a, str>,
-    pub dlltool_args: String,
-    pub stdout: Cow<'a, str>,
-    pub stderr: Cow<'a, str>,
-}
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_dynamic_linking_with_lto)]
@@ -236,13 +207,13 @@ pub(crate) struct CopyBitcode {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unknown_debuginfo_compression)]
-pub struct UnknownCompression {
+pub(crate) struct UnknownCompression {
     pub algorithm: &'static str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_mismatch_data_layout)]
-pub struct MismatchedDataLayout<'a> {
+pub(crate) struct MismatchedDataLayout<'a> {
     pub rustc_target: &'a str,
     pub rustc_layout: &'a str,
     pub llvm_target: &'a str,

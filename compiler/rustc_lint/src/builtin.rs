@@ -20,25 +20,8 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
-use crate::fluent_generated as fluent;
-use crate::{
-    errors::BuiltinEllipsisInclusiveRangePatterns,
-    lints::{
-        BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
-        BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr,
-        BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
-        BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
-        BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
-        BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
-        BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
-        BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
-        BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-        BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
-        BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-        BuiltinWhileTrue, InvalidAsmLabel,
-    },
-    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
-};
+use std::fmt::Write;
+
 use ast::token::TokenKind;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
@@ -55,9 +38,9 @@ use rustc_middle::bug;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::Upcast;
-use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
+// hardwired lints from rustc_lint_defs
+pub use rustc_session::lint::builtin::*;
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition;
@@ -67,15 +50,29 @@ use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::Abi;
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
+use rustc_trait_selection::traits::{self};
 
+use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
+use crate::lints::{
+    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
+    BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr,
+    BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
+    BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
+    BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
+    BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
+    BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
+    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
+    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
+    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
+    BuiltinWhileTrue, InvalidAsmLabel,
+};
 use crate::nonstandard_style::{method_context, MethodLateContext};
-
-use std::fmt::Write;
-
-// hardwired lints from rustc_lint_defs
-pub use rustc_session::lint::builtin::*;
+use crate::{
+    fluent_generated as fluent, EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level,
+    LintContext,
+};
 
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
@@ -1333,7 +1330,7 @@ impl UnreachablePub {
                 BuiltinUnreachablePub {
                     what,
                     suggestion: (vis_span, applicability),
-                    help: exportable.then_some(()),
+                    help: exportable,
                 },
             );
         }
@@ -1672,7 +1669,8 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             return;
         }
 
-        use self::ast::{PatKind, RangeSyntax::DotDotDot};
+        use self::ast::PatKind;
+        use self::ast::RangeSyntax::DotDotDot;
 
         /// If `pat` is a `...` pattern, return the start and end of the range, as well as the span
         /// corresponding to the ellipsis.
@@ -1853,8 +1851,15 @@ impl KeywordIdents {
                 TokenTree::Token(token, _) => {
                     if let Some((ident, token::IdentIsRaw::No)) = token.ident() {
                         if !prev_dollar {
-                            self.check_ident_token(cx, UnderMacro(true), ident);
+                            self.check_ident_token(cx, UnderMacro(true), ident, "");
                         }
+                    } else if let Some((ident, token::IdentIsRaw::No)) = token.lifetime() {
+                        self.check_ident_token(
+                            cx,
+                            UnderMacro(true),
+                            ident.without_first_quote(),
+                            "'",
+                        );
                     } else if token.kind == TokenKind::Dollar {
                         prev_dollar = true;
                         continue;
@@ -1871,6 +1876,7 @@ impl KeywordIdents {
         cx: &EarlyContext<'_>,
         UnderMacro(under_macro): UnderMacro,
         ident: Ident,
+        prefix: &'static str,
     ) {
         let (lint, edition) = match ident.name {
             kw::Async | kw::Await | kw::Try => (KEYWORD_IDENTS_2018, Edition::Edition2018),
@@ -1904,7 +1910,7 @@ impl KeywordIdents {
         cx.emit_span_lint(
             lint,
             ident.span,
-            BuiltinKeywordIdents { kw: ident, next: edition, suggestion: ident.span },
+            BuiltinKeywordIdents { kw: ident, next: edition, suggestion: ident.span, prefix },
         );
     }
 }
@@ -1917,7 +1923,11 @@ impl EarlyLintPass for KeywordIdents {
         self.check_tokens(cx, &mac.args.tokens);
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
-        self.check_ident_token(cx, UnderMacro(false), ident);
+        if ident.name.as_str().starts_with('\'') {
+            self.check_ident_token(cx, UnderMacro(false), ident.without_first_quote(), "'");
+        } else {
+            self.check_ident_token(cx, UnderMacro(false), ident, "");
+        }
     }
 }
 
@@ -1926,18 +1936,17 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
         tcx: TyCtxt<'tcx>,
-        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
-        item: DefId,
-        lifetime: DefId,
+        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, Span)>,
+        item: LocalDefId,
+        lifetime: LocalDefId,
     ) -> Vec<ty::Region<'tcx>> {
         let item_generics = tcx.generics_of(item);
 
         inferred_outlives
-            .iter()
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
                     ty::ReEarlyParam(ebr)
-                        if item_generics.region_param(ebr, tcx).def_id == lifetime =>
+                        if item_generics.region_param(ebr, tcx).def_id == lifetime.to_def_id() =>
                     {
                         Some(b)
                     }
@@ -1949,11 +1958,10 @@ impl ExplicitOutlivesRequirements {
     }
 
     fn lifetimes_outliving_type<'tcx>(
-        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
+        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, Span)>,
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
-            .iter()
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
                 ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
@@ -1986,7 +1994,7 @@ impl ExplicitOutlivesRequirements {
                 let is_inferred = match tcx.named_bound_var(lifetime.hir_id) {
                     Some(ResolvedArg::EarlyBound(def_id)) => inferred_outlives
                         .iter()
-                        .any(|r| matches!(**r, ty::ReEarlyParam(ebr) if { item_generics.region_param(ebr, tcx).def_id == def_id })),
+                        .any(|r| matches!(**r, ty::ReEarlyParam(ebr) if { item_generics.region_param(ebr, tcx).def_id == def_id.to_def_id() })),
                     _ => false,
                 };
 
@@ -2096,8 +2104,12 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                 (
                                     Self::lifetimes_outliving_lifetime(
                                         cx.tcx,
-                                        inferred_outlives,
-                                        item.owner_id.to_def_id(),
+                                        // don't warn if the inferred span actually came from the predicate we're looking at
+                                        // this happens if the type is recursively defined
+                                        inferred_outlives
+                                            .iter()
+                                            .filter(|(_, span)| !predicate.span.contains(*span)),
+                                        item.owner_id.def_id,
                                         region_def_id,
                                     ),
                                     &predicate.bounds,
@@ -2118,7 +2130,14 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                     };
                                     let index = ty_generics.param_def_id_to_index[&def_id];
                                     (
-                                        Self::lifetimes_outliving_type(inferred_outlives, index),
+                                        Self::lifetimes_outliving_type(
+                                            // don't warn if the inferred span actually came from the predicate we're looking at
+                                            // this happens if the type is recursively defined
+                                            inferred_outlives.iter().filter(|(_, span)| {
+                                                !predicate.span.contains(*span)
+                                            }),
+                                            index,
+                                        ),
                                         &predicate.bounds,
                                         predicate.span,
                                         predicate.origin == PredicateOrigin::WhereClause,

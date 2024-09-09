@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::path_res;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::local_used_after_expr;
 use rustc_errors::Applicability;
@@ -32,7 +32,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, name
             expr.span,
             "derefed type is same as origin",
             "try",
-            snippet_opt(cx, recv.span).unwrap(),
+            recv.span.get_source_text(cx).unwrap().to_owned(),
             Applicability::MachineApplicable,
         );
     }

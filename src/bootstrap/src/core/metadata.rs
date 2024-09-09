@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use serde_derive::Deserialize;
@@ -21,6 +22,7 @@ struct Package {
     manifest_path: String,
     dependencies: Vec<Dependency>,
     targets: Vec<Target>,
+    features: BTreeMap<String, Vec<String>>,
 }
 
 /// For more information, see the output of
@@ -51,7 +53,13 @@ pub fn build(build: &mut Build) {
                 .map(|dep| dep.name)
                 .collect();
             let has_lib = package.targets.iter().any(|t| t.kind.iter().any(|k| k == "lib"));
-            let krate = Crate { name: name.clone(), deps, path, has_lib };
+            let krate = Crate {
+                name: name.clone(),
+                deps,
+                path,
+                has_lib,
+                features: package.features.keys().cloned().collect(),
+            };
             let relative_path = krate.local_path(build);
             build.crates.insert(name.clone(), krate);
             let existing_path = build.crate_paths.insert(relative_path, name);
@@ -81,11 +89,14 @@ fn workspace_members(build: &Build) -> Vec<Package> {
             .arg("--no-deps")
             .arg("--manifest-path")
             .arg(build.src.join(manifest_path));
-        let metadata_output = cargo.capture_stdout().run_always().run(build).stdout();
+        let metadata_output = cargo.run_always().run_capture_stdout(build).stdout();
         let Output { packages, .. } = t!(serde_json::from_str(&metadata_output));
         packages
     };
 
-    // Collects `metadata.packages` from all workspaces.
-    collect_metadata("Cargo.toml")
+    // Collects `metadata.packages` from the root and library workspaces.
+    let mut packages = vec![];
+    packages.extend(collect_metadata("Cargo.toml"));
+    packages.extend(collect_metadata("library/Cargo.toml"));
+    packages
 }

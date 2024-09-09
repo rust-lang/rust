@@ -8,11 +8,11 @@ path = "lib.rs"
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
-rinja = { version = "0.2", default-features = false, features = ["config"] }
+rinja = { version = "0.3", default-features = false, features = ["config"] }
 base64 = "0.21.7"
 itertools = "0.12"
 indexmap = "2"
-minifier = "0.3.0"
+minifier = "0.3.1"
 pulldown-cmark-old = { version = "0.9.6", package = "pulldown-cmark", default-features = false }
 regex = "1"
 rustdoc-json-types = { path = "../rustdoc-json-types" }
@@ -23,6 +23,7 @@ tempfile = "3"
 tracing = "0.1"
 tracing-tree = "0.3.0"
 threadpool = "1.8.1"
+unicode-segmentation = "1.9"
 
 [dependencies.tracing-subscriber]
 version = "0.3.3"

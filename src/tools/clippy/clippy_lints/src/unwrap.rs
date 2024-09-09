@@ -89,15 +89,15 @@ enum UnwrappableKind {
 impl UnwrappableKind {
     fn success_variant_pattern(self) -> &'static str {
         match self {
-            UnwrappableKind::Option => "Some(..)",
-            UnwrappableKind::Result => "Ok(..)",
+            UnwrappableKind::Option => "Some(<item>)",
+            UnwrappableKind::Result => "Ok(<item>)",
         }
     }
 
     fn error_variant_pattern(self) -> &'static str {
         match self {
             UnwrappableKind::Option => "None",
-            UnwrappableKind::Result => "Err(..)",
+            UnwrappableKind::Result => "Err(<item>)",
         }
     }
 }

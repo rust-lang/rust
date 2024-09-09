@@ -1,6 +1,5 @@
 //@ run-rustfix
 
-#![feature(unsafe_extern_blocks)]
 #![deny(missing_unsafe_on_extern)]
 #![allow(unused)]
 

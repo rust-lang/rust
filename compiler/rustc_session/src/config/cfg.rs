@@ -17,19 +17,22 @@
 //!  - Add the activation logic in [`default_configuration`]
 //!  - Add the cfg to [`CheckCfg::fill_well_known`] (and related files),
 //!    so that the compiler can know the cfg is expected
+//!  - Add the cfg in [`disallow_cfgs`] to disallow users from setting it via `--cfg`
 //!  - Add the feature gating in `compiler/rustc_feature/src/builtin_attrs.rs`
-
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::Align;
-use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet};
-use rustc_target::spec::{Target, TargetTriple, TARGETS};
-
-use crate::config::CrateType;
-use crate::Session;
 
 use std::hash::Hash;
 use std::iter;
+
+use rustc_ast::ast;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
+use rustc_lint_defs::BuiltinLintDiag;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_target::abi::Align;
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target, TargetTriple, TARGETS};
+
+use crate::config::{CrateType, FmtDebug};
+use crate::Session;
 
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.
@@ -83,6 +86,68 @@ impl<'a, T: Eq + Hash + Copy + 'a> Extend<&'a T> for ExpectedValues<T> {
     }
 }
 
+/// Disallow builtin cfgs from the CLI.
+pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
+    let disallow = |cfg: &(Symbol, Option<Symbol>), controlled_by| {
+        let cfg_name = cfg.0;
+        let cfg = if let Some(value) = cfg.1 {
+            format!(r#"{}="{}""#, cfg_name, value)
+        } else {
+            format!("{}", cfg_name)
+        };
+        sess.psess.opt_span_buffer_lint(
+            EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
+            None,
+            ast::CRATE_NODE_ID,
+            BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by },
+        )
+    };
+
+    // We want to restrict setting builtin cfgs that will produce incoherent behavior
+    // between the cfg and the rustc cli flag that sets it.
+    //
+    // The tests are in tests/ui/cfg/disallowed-cli-cfgs.rs.
+
+    // By-default all builtin cfgs are disallowed, only those are allowed:
+    //  - test: as it makes sense to the have the `test` cfg active without the builtin
+    //          test harness. See Cargo `harness = false` config.
+    //
+    // Cargo `--cfg test`: https://github.com/rust-lang/cargo/blob/bc89bffa5987d4af8f71011c7557119b39e44a65/src/cargo/core/compiler/mod.rs#L1124
+
+    for cfg in user_cfgs {
+        match cfg {
+            (sym::overflow_checks, None) => disallow(cfg, "-C overflow-checks"),
+            (sym::debug_assertions, None) => disallow(cfg, "-C debug-assertions"),
+            (sym::ub_checks, None) => disallow(cfg, "-Z ub-checks"),
+            (sym::sanitize, None | Some(_)) => disallow(cfg, "-Z sanitizer"),
+            (
+                sym::sanitizer_cfi_generalize_pointers | sym::sanitizer_cfi_normalize_integers,
+                None | Some(_),
+            ) => disallow(cfg, "-Z sanitizer=cfi"),
+            (sym::proc_macro, None) => disallow(cfg, "--crate-type proc-macro"),
+            (sym::panic, Some(sym::abort | sym::unwind)) => disallow(cfg, "-C panic"),
+            (sym::target_feature, Some(_)) => disallow(cfg, "-C target-feature"),
+            (sym::unix, None)
+            | (sym::windows, None)
+            | (sym::relocation_model, Some(_))
+            | (sym::target_abi, None | Some(_))
+            | (sym::target_arch, Some(_))
+            | (sym::target_endian, Some(_))
+            | (sym::target_env, None | Some(_))
+            | (sym::target_family, Some(_))
+            | (sym::target_os, Some(_))
+            | (sym::target_pointer_width, Some(_))
+            | (sym::target_vendor, None | Some(_))
+            | (sym::target_has_atomic, Some(_))
+            | (sym::target_has_atomic_equal_alignment, Some(_))
+            | (sym::target_has_atomic_load_store, Some(_))
+            | (sym::target_thread_local, None) => disallow(cfg, "--target"),
+            (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
+            _ => {}
+        }
+    }
+}
+
 /// Generate the default configs for a given session
 pub(crate) fn default_configuration(sess: &Session) -> Cfg {
     let mut ret = Cfg::default();
@@ -113,6 +178,20 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
 
     if sess.opts.debug_assertions {
         ins_none!(sym::debug_assertions);
+    }
+
+    if sess.is_nightly_build() {
+        match sess.opts.unstable_opts.fmt_debug {
+            FmtDebug::Full => {
+                ins_sym!(sym::fmt_debug, sym::full);
+            }
+            FmtDebug::Shallow => {
+                ins_sym!(sym::fmt_debug, sym::shallow);
+            }
+            FmtDebug::None => {
+                ins_sym!(sym::fmt_debug, sym::none);
+            }
+        }
     }
 
     if sess.overflow_checks() {
@@ -261,6 +340,8 @@ impl CheckCfg {
         // in the unstable book as well!
 
         ins!(sym::debug_assertions, no_values);
+
+        ins!(sym::fmt_debug, empty_values).extend(FmtDebug::all());
 
         // These four are never set by rustc, but we set them anyway; they
         // should not trigger the lint because `cargo clippy`, `cargo doc`,

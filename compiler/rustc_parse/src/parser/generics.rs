@@ -1,20 +1,18 @@
-use crate::errors::{
-    self, MultipleWhereClauses, UnexpectedDefaultValueForLifetimeInGenericParameters,
-    UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
-    WhereClauseBeforeTupleStructBodySugg,
-};
-
-use super::{ForceCollect, Parser};
-
 use ast::token::Delimiter;
-use rustc_ast::token;
 use rustc_ast::{
-    self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause,
+    self as ast, token, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 use thin_vec::ThinVec;
+
+use super::{ForceCollect, Parser, Trailing, UsePreAttrPos};
+use crate::errors::{
+    self, MultipleWhereClauses, UnexpectedDefaultValueForLifetimeInGenericParameters,
+    UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
+    WhereClauseBeforeTupleStructBodySugg,
+};
 
 enum PredicateOrStructBody {
     Predicate(ast::WherePredicate),
@@ -171,93 +169,88 @@ impl<'a> Parser<'a> {
         let mut done = false;
         while !done {
             let attrs = self.parse_outer_attributes()?;
-            let param =
-                self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
-                    if this.eat_keyword_noexpect(kw::SelfUpper) {
-                        // `Self` as a generic param is invalid. Here we emit the diagnostic and continue parsing
-                        // as if `Self` never existed.
-                        this.dcx().emit_err(UnexpectedSelfInGenericParameters {
-                            span: this.prev_token.span,
-                        });
+            let param = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
+                if this.eat_keyword_noexpect(kw::SelfUpper) {
+                    // `Self` as a generic param is invalid. Here we emit the diagnostic and continue parsing
+                    // as if `Self` never existed.
+                    this.dcx()
+                        .emit_err(UnexpectedSelfInGenericParameters { span: this.prev_token.span });
 
-                        this.eat(&token::Comma);
-                    }
+                    // Eat a trailing comma, if it exists.
+                    let _ = this.eat(&token::Comma);
+                }
 
-                    let param = if this.check_lifetime() {
-                        let lifetime = this.expect_lifetime();
-                        // Parse lifetime parameter.
-                        let (colon_span, bounds) = if this.eat(&token::Colon) {
-                            (Some(this.prev_token.span), this.parse_lt_param_bounds())
-                        } else {
-                            (None, Vec::new())
-                        };
-
-                        if this.check_noexpect(&token::Eq)
-                            && this.look_ahead(1, |t| t.is_lifetime())
-                        {
-                            let lo = this.token.span;
-                            // Parse `= 'lifetime`.
-                            this.bump(); // `=`
-                            this.bump(); // `'lifetime`
-                            let span = lo.to(this.prev_token.span);
-                            this.dcx().emit_err(
-                                UnexpectedDefaultValueForLifetimeInGenericParameters { span },
-                            );
-                        }
-
-                        Some(ast::GenericParam {
-                            ident: lifetime.ident,
-                            id: lifetime.id,
-                            attrs,
-                            bounds,
-                            kind: ast::GenericParamKind::Lifetime,
-                            is_placeholder: false,
-                            colon_span,
-                        })
-                    } else if this.check_keyword(kw::Const) {
-                        // Parse const parameter.
-                        Some(this.parse_const_param(attrs)?)
-                    } else if this.check_ident() {
-                        // Parse type parameter.
-                        Some(this.parse_ty_param(attrs)?)
-                    } else if this.token.can_begin_type() {
-                        // Trying to write an associated type bound? (#26271)
-                        let snapshot = this.create_snapshot_for_diagnostic();
-                        match this.parse_ty_where_predicate() {
-                            Ok(where_predicate) => {
-                                this.dcx().emit_err(errors::BadAssocTypeBounds {
-                                    span: where_predicate.span(),
-                                });
-                                // FIXME - try to continue parsing other generics?
-                                return Ok((None, false));
-                            }
-                            Err(err) => {
-                                err.cancel();
-                                // FIXME - maybe we should overwrite 'self' outside of `collect_tokens`?
-                                this.restore_snapshot(snapshot);
-                                return Ok((None, false));
-                            }
-                        }
+                let param = if this.check_lifetime() {
+                    let lifetime = this.expect_lifetime();
+                    // Parse lifetime parameter.
+                    let (colon_span, bounds) = if this.eat(&token::Colon) {
+                        (Some(this.prev_token.span), this.parse_lt_param_bounds())
                     } else {
-                        // Check for trailing attributes and stop parsing.
-                        if !attrs.is_empty() {
-                            if !params.is_empty() {
-                                this.dcx()
-                                    .emit_err(errors::AttrAfterGeneric { span: attrs[0].span });
-                            } else {
-                                this.dcx()
-                                    .emit_err(errors::AttrWithoutGenerics { span: attrs[0].span });
-                            }
-                        }
-                        return Ok((None, false));
+                        (None, Vec::new())
                     };
 
-                    if !this.eat(&token::Comma) {
-                        done = true;
+                    if this.check_noexpect(&token::Eq) && this.look_ahead(1, |t| t.is_lifetime()) {
+                        let lo = this.token.span;
+                        // Parse `= 'lifetime`.
+                        this.bump(); // `=`
+                        this.bump(); // `'lifetime`
+                        let span = lo.to(this.prev_token.span);
+                        this.dcx().emit_err(UnexpectedDefaultValueForLifetimeInGenericParameters {
+                            span,
+                        });
                     }
-                    // We just ate the comma, so no need to capture the trailing token.
-                    Ok((param, false))
-                })?;
+
+                    Some(ast::GenericParam {
+                        ident: lifetime.ident,
+                        id: lifetime.id,
+                        attrs,
+                        bounds,
+                        kind: ast::GenericParamKind::Lifetime,
+                        is_placeholder: false,
+                        colon_span,
+                    })
+                } else if this.check_keyword(kw::Const) {
+                    // Parse const parameter.
+                    Some(this.parse_const_param(attrs)?)
+                } else if this.check_ident() {
+                    // Parse type parameter.
+                    Some(this.parse_ty_param(attrs)?)
+                } else if this.token.can_begin_type() {
+                    // Trying to write an associated type bound? (#26271)
+                    let snapshot = this.create_snapshot_for_diagnostic();
+                    match this.parse_ty_where_predicate() {
+                        Ok(where_predicate) => {
+                            this.dcx().emit_err(errors::BadAssocTypeBounds {
+                                span: where_predicate.span(),
+                            });
+                            // FIXME - try to continue parsing other generics?
+                        }
+                        Err(err) => {
+                            err.cancel();
+                            // FIXME - maybe we should overwrite 'self' outside of `collect_tokens`?
+                            this.restore_snapshot(snapshot);
+                        }
+                    }
+                    return Ok((None, Trailing::No, UsePreAttrPos::No));
+                } else {
+                    // Check for trailing attributes and stop parsing.
+                    if !attrs.is_empty() {
+                        if !params.is_empty() {
+                            this.dcx().emit_err(errors::AttrAfterGeneric { span: attrs[0].span });
+                        } else {
+                            this.dcx()
+                                .emit_err(errors::AttrWithoutGenerics { span: attrs[0].span });
+                        }
+                    }
+                    return Ok((None, Trailing::No, UsePreAttrPos::No));
+                };
+
+                if !this.eat(&token::Comma) {
+                    done = true;
+                }
+                // We just ate the comma, so no need to capture the trailing token.
+                Ok((param, Trailing::No, UsePreAttrPos::No))
+            })?;
 
             if let Some(param) = param {
                 params.push(param);
@@ -394,7 +387,7 @@ impl<'a> Parser<'a> {
 
         if let Some(struct_) = struct_
             && self.may_recover()
-            && self.token.kind == token::OpenDelim(Delimiter::Parenthesis)
+            && self.token == token::OpenDelim(Delimiter::Parenthesis)
         {
             snapshot = Some((struct_, self.create_snapshot_for_diagnostic()));
         };

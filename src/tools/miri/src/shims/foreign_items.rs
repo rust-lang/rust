@@ -8,7 +8,7 @@ use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_span::Symbol;
 use rustc_target::{
-    abi::{Align, Size},
+    abi::{Align, AlignFromBytesError, Size},
     spec::abi::Abi,
 };
 
@@ -199,9 +199,20 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if i128::from(size) > this.tcx.data_layout.pointer_size.signed_int_max() {
             throw_ub_format!("creating an allocation larger than half the address space");
         }
-        if !align.is_power_of_two() {
-            throw_ub_format!("creating allocation with non-power-of-two alignment {}", align);
+        if let Err(e) = Align::from_bytes(align) {
+            match e {
+                AlignFromBytesError::TooLarge(_) => {
+                    throw_unsup_format!(
+                        "creating allocation with alignment {align} exceeding rustc's maximum \
+                         supported value"
+                    );
+                }
+                AlignFromBytesError::NotPowerOfTwo(_) => {
+                    throw_ub_format!("creating allocation with non-power-of-two alignment {align}");
+                }
+            }
         }
+
         Ok(())
     }
 
@@ -215,7 +226,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // First deal with any external C functions in linked .so file.
-        #[cfg(target_os = "linux")]
+        #[cfg(unix)]
         if this.machine.native_lib.as_ref().is_some() {
             use crate::shims::native_lib::EvalContextExt as _;
             // An Ok(false) here means that the function being called was not exported
@@ -278,7 +289,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "miri_get_alloc_id" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr).map_err(|_e| {
+                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr, 0).map_err(|_e| {
                     err_machine_stop!(TerminationInfo::Abort(format!(
                         "pointer passed to `miri_get_alloc_id` must not be dangling, got {ptr:?}"
                     )))
@@ -289,8 +300,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [id, show_unnamed] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let id = this.read_scalar(id)?.to_u64()?;
                 let show_unnamed = this.read_scalar(show_unnamed)?.to_bool()?;
-                if let Some(id) = std::num::NonZero::new(id) {
-                    this.print_borrow_state(AllocId(id), show_unnamed)?;
+                if let Some(id) = std::num::NonZero::new(id).map(AllocId)
+                    && this.get_alloc_info(id).2 == AllocKind::LiveData
+                {
+                    this.print_borrow_state(id, show_unnamed)?;
+                } else {
+                    eprintln!("{id} is not the ID of a live data allocation");
                 }
             }
             "miri_pointer_name" => {
@@ -311,7 +326,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "miri_static_root" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                let (alloc_id, offset, _) = this.ptr_get_alloc_id(ptr)?;
+                let (alloc_id, offset, _) = this.ptr_get_alloc_id(ptr, 0)?;
                 if offset != Size::ZERO {
                     throw_unsup_format!(
                         "pointer passed to `miri_static_root` must point to beginning of an allocated block"
@@ -392,7 +407,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "`miri_promise_symbolic_alignment`: pointer is not actually aligned"
                     );
                 }
-                if let Ok((alloc_id, offset, ..)) = this.ptr_try_get_alloc_id(ptr) {
+                if let Ok((alloc_id, offset, ..)) = this.ptr_try_get_alloc_id(ptr, 0) {
                     let (_size, alloc_align, _kind) = this.get_alloc_info(alloc_id);
                     // If the newly promised alignment is bigger than the native alignment of this
                     // allocation, and bigger than the previously promised alignment, then set it.
@@ -584,8 +599,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let n = Size::from_bytes(this.read_target_usize(n)?);
 
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
-                this.ptr_get_alloc_id(left)?;
-                this.ptr_get_alloc_id(right)?;
+                this.ptr_get_alloc_id(left, 0)?;
+                this.ptr_get_alloc_id(right, 0)?;
 
                 let result = {
                     let left_bytes = this.read_bytes_ptr_strip_provenance(left, n)?;
@@ -612,7 +627,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let val = val as u8;
 
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
-                this.ptr_get_alloc_id(ptr)?;
+                this.ptr_get_alloc_id(ptr, 0)?;
 
                 if let Some(idx) = this
                     .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
@@ -622,7 +637,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 {
                     let idx = u64::try_from(idx).unwrap();
                     #[allow(clippy::arithmetic_side_effects)] // idx < num, so this never wraps
-                    let new_ptr = ptr.offset(Size::from_bytes(num - idx - 1), this)?;
+                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(num - idx - 1), this);
                     this.write_pointer(new_ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
@@ -639,14 +654,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let val = val as u8;
 
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
-                this.ptr_get_alloc_id(ptr)?;
+                this.ptr_get_alloc_id(ptr, 0)?;
 
                 let idx = this
                     .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
                     .iter()
                     .position(|&c| c == val);
                 if let Some(idx) = idx {
-                    let new_ptr = ptr.offset(Size::from_bytes(idx as u64), this)?;
+                    let new_ptr = ptr.wrapping_offset(Size::from_bytes(idx as u64), this);
                     this.write_pointer(new_ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
@@ -681,8 +696,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // C requires that this must always be a valid pointer, even if `n` is zero, so we better check that.
                 // (This is more than Rust requires, so `mem_copy` is not sufficient.)
-                this.ptr_get_alloc_id(ptr_dest)?;
-                this.ptr_get_alloc_id(ptr_src)?;
+                this.ptr_get_alloc_id(ptr_dest, 0)?;
+                this.ptr_get_alloc_id(ptr_src, 0)?;
 
                 this.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
                 this.write_pointer(ptr_dest, dest)?;

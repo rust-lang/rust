@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::{implements_trait, is_must_use_ty, match_type};
 use clippy_utils::{is_from_proc_macro, is_must_use_func_call, paths};
 use rustc_hir::{LetStmt, LocalSource, PatKind};
@@ -149,43 +149,53 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
             });
             if contains_sync_guard {
-                span_lint_and_help(
+                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                span_lint_and_then(
                     cx,
                     LET_UNDERSCORE_LOCK,
                     local.span,
                     "non-binding `let` on a synchronization lock",
-                    None,
-                    "consider using an underscore-prefixed named \
-                            binding or dropping explicitly with `std::mem::drop`",
+                    |diag| {
+                        diag.help(
+                            "consider using an underscore-prefixed named \
+                                binding or dropping explicitly with `std::mem::drop`",
+                        );
+                    },
                 );
             } else if let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
                 && implements_trait(cx, cx.typeck_results().expr_ty(init), future_trait_def_id, &[])
             {
-                span_lint_and_help(
+                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                span_lint_and_then(
                     cx,
                     LET_UNDERSCORE_FUTURE,
                     local.span,
                     "non-binding `let` on a future",
-                    None,
-                    "consider awaiting the future or dropping explicitly with `std::mem::drop`",
+                    |diag| {
+                        diag.help("consider awaiting the future or dropping explicitly with `std::mem::drop`");
+                    },
                 );
             } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init)) {
-                span_lint_and_help(
+                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                span_lint_and_then(
                     cx,
                     LET_UNDERSCORE_MUST_USE,
                     local.span,
                     "non-binding `let` on an expression with `#[must_use]` type",
-                    None,
-                    "consider explicitly using expression value",
+                    |diag| {
+                        diag.help("consider explicitly using expression value");
+                    },
                 );
             } else if is_must_use_func_call(cx, init) {
-                span_lint_and_help(
+                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                span_lint_and_then(
                     cx,
                     LET_UNDERSCORE_MUST_USE,
                     local.span,
                     "non-binding `let` on a result of a `#[must_use]` function",
-                    None,
-                    "consider explicitly using function result",
+                    |diag| {
+                        diag.help("consider explicitly using function result");
+                    },
                 );
             }
 
@@ -204,18 +214,22 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     return;
                 }
 
-                span_lint_and_help(
+                span_lint_and_then(
                     cx,
                     LET_UNDERSCORE_UNTYPED,
                     local.span,
                     "non-binding `let` without a type annotation",
-                    Some(Span::new(
-                        local.pat.span.hi(),
-                        local.pat.span.hi() + BytePos(1),
-                        local.pat.span.ctxt(),
-                        local.pat.span.parent(),
-                    )),
-                    "consider adding a type annotation",
+                    |diag| {
+                        diag.span_help(
+                            Span::new(
+                                local.pat.span.hi(),
+                                local.pat.span.hi() + BytePos(1),
+                                local.pat.span.ctxt(),
+                                local.pat.span.parent(),
+                            ),
+                            "consider adding a type annotation",
+                        );
+                    },
                 );
             }
         }

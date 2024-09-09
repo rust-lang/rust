@@ -50,12 +50,13 @@
 //! rust-project.json over time via configuration request!)
 
 use base_db::{CrateDisplayName, CrateName};
+use cfg::CfgAtom;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de, Deserialize, Serialize};
 use span::Edition;
 
-use crate::{cfg::CfgFlag, ManifestPath, TargetKind};
+use crate::{ManifestPath, TargetKind};
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -73,6 +74,153 @@ pub struct ProjectJson {
     runnables: Vec<Runnable>,
 }
 
+impl ProjectJson {
+    /// Create a new ProjectJson instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `manifest` - The path to the `rust-project.json`.
+    /// * `base` - The path to the workspace root (i.e. the folder containing `rust-project.json`)
+    /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via
+    ///            configuration.
+    pub fn new(
+        manifest: Option<ManifestPath>,
+        base: &AbsPath,
+        data: ProjectJsonData,
+    ) -> ProjectJson {
+        let absolutize_on_base = |p| base.absolutize(p);
+        ProjectJson {
+            sysroot: data.sysroot.map(absolutize_on_base),
+            sysroot_src: data.sysroot_src.map(absolutize_on_base),
+            project_root: base.to_path_buf(),
+            manifest,
+            runnables: data.runnables.into_iter().map(Runnable::from).collect(),
+            crates: data
+                .crates
+                .into_iter()
+                .map(|crate_data| {
+                    let root_module = absolutize_on_base(crate_data.root_module);
+                    let is_workspace_member = crate_data
+                        .is_workspace_member
+                        .unwrap_or_else(|| root_module.starts_with(base));
+                    let (include, exclude) = match crate_data.source {
+                        Some(src) => {
+                            let absolutize = |dirs: Vec<Utf8PathBuf>| {
+                                dirs.into_iter().map(absolutize_on_base).collect::<Vec<_>>()
+                            };
+                            (absolutize(src.include_dirs), absolutize(src.exclude_dirs))
+                        }
+                        None => (vec![root_module.parent().unwrap().to_path_buf()], Vec::new()),
+                    };
+
+                    let build = match crate_data.build {
+                        Some(build) => Some(Build {
+                            label: build.label,
+                            build_file: build.build_file,
+                            target_kind: build.target_kind.into(),
+                        }),
+                        None => None,
+                    };
+
+                    let cfg = crate_data
+                        .cfg_groups
+                        .iter()
+                        .flat_map(|cfg_extend| {
+                            let cfg_group = data.cfg_groups.get(cfg_extend);
+                            match cfg_group {
+                                Some(cfg_group) => cfg_group.0.iter().cloned(),
+                                None => {
+                                    tracing::error!(
+                                        "Unknown cfg group `{cfg_extend}` in crate `{}`",
+                                        crate_data.display_name.as_deref().unwrap_or("<unknown>"),
+                                    );
+                                    [].iter().cloned()
+                                }
+                            }
+                        })
+                        .chain(crate_data.cfg.0)
+                        .collect();
+
+                    Crate {
+                        display_name: crate_data
+                            .display_name
+                            .as_deref()
+                            .map(CrateDisplayName::from_canonical_name),
+                        root_module,
+                        edition: crate_data.edition.into(),
+                        version: crate_data.version.as_ref().map(ToString::to_string),
+                        deps: crate_data.deps,
+                        cfg,
+                        target: crate_data.target,
+                        env: crate_data.env,
+                        proc_macro_dylib_path: crate_data
+                            .proc_macro_dylib_path
+                            .map(absolutize_on_base),
+                        is_workspace_member,
+                        include,
+                        exclude,
+                        is_proc_macro: crate_data.is_proc_macro,
+                        repository: crate_data.repository,
+                        build,
+                    }
+                })
+                .collect(),
+        }
+    }
+
+    /// Returns the number of crates in the project.
+    pub fn n_crates(&self) -> usize {
+        self.crates.len()
+    }
+
+    /// Returns an iterator over the crates in the project.
+    pub fn crates(&self) -> impl Iterator<Item = (CrateArrayIdx, &Crate)> {
+        self.crates.iter().enumerate().map(|(idx, krate)| (CrateArrayIdx(idx), krate))
+    }
+
+    /// Returns the path to the project's root folder.
+    pub fn path(&self) -> &AbsPath {
+        &self.project_root
+    }
+
+    pub fn crate_by_root(&self, root: &AbsPath) -> Option<Crate> {
+        self.crates
+            .iter()
+            .filter(|krate| krate.is_workspace_member)
+            .find(|krate| krate.root_module == root)
+            .cloned()
+    }
+
+    /// Returns the path to the project's manifest, if it exists.
+    pub fn manifest(&self) -> Option<&ManifestPath> {
+        self.manifest.as_ref()
+    }
+
+    pub fn crate_by_buildfile(&self, path: &AbsPath) -> Option<Build> {
+        // this is fast enough for now, but it's unfortunate that this is O(crates).
+        let path: &std::path::Path = path.as_ref();
+        self.crates
+            .iter()
+            .filter(|krate| krate.is_workspace_member)
+            .filter_map(|krate| krate.build.clone())
+            .find(|build| build.build_file.as_std_path() == path)
+    }
+
+    /// Returns the path to the project's manifest or root folder, if no manifest exists.
+    pub fn manifest_or_root(&self) -> &AbsPath {
+        self.manifest.as_ref().map_or(&self.project_root, |manifest| manifest.as_ref())
+    }
+
+    /// Returns the path to the project's root folder.
+    pub fn project_root(&self) -> &AbsPath {
+        &self.project_root
+    }
+
+    pub fn runnables(&self) -> &[Runnable] {
+        &self.runnables
+    }
+}
+
 /// A crate points to the root module of a crate and lists the dependencies of the crate. This is
 /// useful in creating the crate graph.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -82,7 +230,7 @@ pub struct Crate {
     pub(crate) edition: Edition,
     pub(crate) version: Option<String>,
     pub(crate) deps: Vec<Dep>,
-    pub(crate) cfg: Vec<CfgFlag>,
+    pub(crate) cfg: Vec<CfgAtom>,
     pub(crate) target: Option<String>,
     pub(crate) env: FxHashMap<String, String>,
     pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
@@ -173,128 +321,22 @@ pub enum RunnableKind {
     TestOne,
 }
 
-impl ProjectJson {
-    /// Create a new ProjectJson instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `manifest` - The path to the `rust-project.json`.
-    /// * `base` - The path to the workspace root (i.e. the folder containing `rust-project.json`)
-    /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via
-    ///            configuration.
-    pub fn new(
-        manifest: Option<ManifestPath>,
-        base: &AbsPath,
-        data: ProjectJsonData,
-    ) -> ProjectJson {
-        let absolutize_on_base = |p| base.absolutize(p);
-        ProjectJson {
-            sysroot: data.sysroot.map(absolutize_on_base),
-            sysroot_src: data.sysroot_src.map(absolutize_on_base),
-            project_root: base.to_path_buf(),
-            manifest,
-            runnables: data.runnables.into_iter().map(Runnable::from).collect(),
-            crates: data
-                .crates
-                .into_iter()
-                .map(|crate_data| {
-                    let root_module = absolutize_on_base(crate_data.root_module);
-                    let is_workspace_member = crate_data
-                        .is_workspace_member
-                        .unwrap_or_else(|| root_module.starts_with(base));
-                    let (include, exclude) = match crate_data.source {
-                        Some(src) => {
-                            let absolutize = |dirs: Vec<Utf8PathBuf>| {
-                                dirs.into_iter().map(absolutize_on_base).collect::<Vec<_>>()
-                            };
-                            (absolutize(src.include_dirs), absolutize(src.exclude_dirs))
-                        }
-                        None => (vec![root_module.parent().unwrap().to_path_buf()], Vec::new()),
-                    };
-
-                    let build = match crate_data.build {
-                        Some(build) => Some(Build {
-                            label: build.label,
-                            build_file: build.build_file,
-                            target_kind: build.target_kind.into(),
-                        }),
-                        None => None,
-                    };
-
-                    Crate {
-                        display_name: crate_data
-                            .display_name
-                            .map(CrateDisplayName::from_canonical_name),
-                        root_module,
-                        edition: crate_data.edition.into(),
-                        version: crate_data.version.as_ref().map(ToString::to_string),
-                        deps: crate_data.deps,
-                        cfg: crate_data.cfg,
-                        target: crate_data.target,
-                        env: crate_data.env,
-                        proc_macro_dylib_path: crate_data
-                            .proc_macro_dylib_path
-                            .map(absolutize_on_base),
-                        is_workspace_member,
-                        include,
-                        exclude,
-                        is_proc_macro: crate_data.is_proc_macro,
-                        repository: crate_data.repository,
-                        build,
-                    }
-                })
-                .collect(),
-        }
-    }
-
-    /// Returns the number of crates in the project.
-    pub fn n_crates(&self) -> usize {
-        self.crates.len()
-    }
-
-    /// Returns an iterator over the crates in the project.
-    pub fn crates(&self) -> impl Iterator<Item = (CrateArrayIdx, &Crate)> {
-        self.crates.iter().enumerate().map(|(idx, krate)| (CrateArrayIdx(idx), krate))
-    }
-
-    /// Returns the path to the project's root folder.
-    pub fn path(&self) -> &AbsPath {
-        &self.project_root
-    }
-
-    pub fn crate_by_root(&self, root: &AbsPath) -> Option<Crate> {
-        self.crates
-            .iter()
-            .filter(|krate| krate.is_workspace_member)
-            .find(|krate| krate.root_module == root)
-            .cloned()
-    }
-
-    /// Returns the path to the project's manifest, if it exists.
-    pub fn manifest(&self) -> Option<&ManifestPath> {
-        self.manifest.as_ref()
-    }
-
-    /// Returns the path to the project's manifest or root folder, if no manifest exists.
-    pub fn manifest_or_root(&self) -> &AbsPath {
-        self.manifest.as_ref().map_or(&self.project_root, |manifest| manifest.as_ref())
-    }
-
-    pub fn runnables(&self) -> &[Runnable] {
-        &self.runnables
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct ProjectJsonData {
     sysroot: Option<Utf8PathBuf>,
     sysroot_src: Option<Utf8PathBuf>,
+    #[serde(default)]
+    cfg_groups: FxHashMap<String, CfgList>,
     crates: Vec<CrateData>,
     #[serde(default)]
     runnables: Vec<RunnableData>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Default)]
+#[serde(transparent)]
+struct CfgList(#[serde(with = "cfg_")] Vec<CfgAtom>);
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 struct CrateData {
     display_name: Option<String>,
     root_module: Utf8PathBuf,
@@ -303,7 +345,9 @@ struct CrateData {
     version: Option<semver::Version>,
     deps: Vec<Dep>,
     #[serde(default)]
-    cfg: Vec<CfgFlag>,
+    cfg_groups: FxHashSet<String>,
+    #[serde(default)]
+    cfg: CfgList,
     target: Option<String>,
     #[serde(default)]
     env: FxHashMap<String, String>,
@@ -318,7 +362,34 @@ struct CrateData {
     build: Option<BuildData>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+mod cfg_ {
+    use cfg::CfgAtom;
+    use serde::{Deserialize, Serialize};
+
+    pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<CfgAtom>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let cfg: Vec<String> = Vec::deserialize(deserializer)?;
+        cfg.into_iter().map(|it| crate::parse_cfg(&it).map_err(serde::de::Error::custom)).collect()
+    }
+    pub(super) fn serialize<S>(cfg: &[CfgAtom], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        cfg.iter()
+            .map(|cfg| match cfg {
+                CfgAtom::Flag(flag) => flag.as_str().to_owned(),
+                CfgAtom::KeyValue { key, value } => {
+                    format!("{}=\"{}\"", key.as_str(), value.as_str())
+                }
+            })
+            .collect::<Vec<String>>()
+            .serialize(serializer)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename = "edition")]
 enum EditionData {
     #[serde(rename = "2015")]
@@ -331,7 +402,7 @@ enum EditionData {
     Edition2024,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct BuildData {
     label: String,
     build_file: Utf8PathBuf,
@@ -361,6 +432,29 @@ pub enum TargetKindData {
     /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
     Lib,
     Test,
+}
+/// Identifies a crate by position in the crates array.
+///
+/// This will differ from `CrateId` when multiple `ProjectJson`
+/// workspaces are loaded.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[serde(transparent)]
+pub struct CrateArrayIdx(pub usize);
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub(crate) struct Dep {
+    /// Identifies a crate by position in the crates array.
+    #[serde(rename = "crate")]
+    pub(crate) krate: CrateArrayIdx,
+    #[serde(serialize_with = "serialize_crate_name")]
+    #[serde(deserialize_with = "deserialize_crate_name")]
+    pub(crate) name: CrateName,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+struct CrateSource {
+    include_dirs: Vec<Utf8PathBuf>,
+    exclude_dirs: Vec<Utf8PathBuf>,
 }
 
 impl From<TargetKindData> for TargetKind {
@@ -398,30 +492,6 @@ impl From<RunnableKindData> for RunnableKind {
             RunnableKindData::TestOne => RunnableKind::TestOne,
         }
     }
-}
-
-/// Identifies a crate by position in the crates array.
-///
-/// This will differ from `CrateId` when multiple `ProjectJson`
-/// workspaces are loaded.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
-#[serde(transparent)]
-pub struct CrateArrayIdx(pub usize);
-
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
-pub(crate) struct Dep {
-    /// Identifies a crate by position in the crates array.
-    #[serde(rename = "crate")]
-    pub(crate) krate: CrateArrayIdx,
-    #[serde(serialize_with = "serialize_crate_name")]
-    #[serde(deserialize_with = "deserialize_crate_name")]
-    pub(crate) name: CrateName,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct CrateSource {
-    include_dirs: Vec<Utf8PathBuf>,
-    exclude_dirs: Vec<Utf8PathBuf>,
 }
 
 fn deserialize_crate_name<'de, D>(de: D) -> std::result::Result<CrateName, D::Error>

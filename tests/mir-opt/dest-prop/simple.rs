@@ -7,9 +7,9 @@ fn nrvo(init: fn(&mut [u8; 1024])) -> [u8; 1024] {
     // CHECK: debug init => [[init:_.*]];
     // CHECK: debug buf => [[buf:_.*]];
     // CHECK: [[buf]] = [const 0_u8; 1024];
-    // CHECK-NOT: {{_.*}} = [[init]];
+    // CHECK-NOT: {{_.*}} = copy [[init]];
     // CHECK: move [[init]](move {{_.*}})
-    // CHECK: {{_.*}} = [[buf]]
+    // CHECK: {{_.*}} = copy [[buf]]
     let mut buf = [0; 1024];
     init(&mut buf);
     buf

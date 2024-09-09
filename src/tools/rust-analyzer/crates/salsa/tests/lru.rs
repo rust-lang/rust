@@ -24,7 +24,9 @@ impl Drop for HotPotato {
 
 #[salsa::query_group(QueryGroupStorage)]
 trait QueryGroup: salsa::Database {
+    #[salsa::lru]
     fn get(&self, x: u32) -> Arc<HotPotato>;
+    #[salsa::lru]
     fn get_volatile(&self, x: u32) -> usize;
 }
 

@@ -7,6 +7,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;
+use tracing::trace;
 
 /// Registers query/hook implementations related to coverage.
 pub(crate) fn provide(providers: &mut Providers) {

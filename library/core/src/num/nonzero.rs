@@ -1,18 +1,13 @@
 //! Definitions of integer that is known not to equal zero.
 
+use super::{IntErrorKind, ParseIntError};
 use crate::cmp::Ordering;
-use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::hint;
-use crate::intrinsics;
 use crate::marker::{Freeze, StructuralPartialEq};
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::ptr;
 use crate::str::FromStr;
-use crate::ub_checks;
-
-use super::{IntErrorKind, ParseIntError};
+use crate::{fmt, intrinsics, ptr, ub_checks};
 
 /// A marker trait for primitive types which can be zero.
 ///
@@ -455,6 +450,12 @@ macro_rules! nonzero_integer {
         UnsignedPrimitive = $Uint:ty,
 
         // Used in doc comments.
+        rot = $rot:literal,
+        rot_op = $rot_op:literal,
+        rot_result = $rot_result:literal,
+        swap_op = $swap_op:literal,
+        swapped = $swapped:literal,
+        reversed = $reversed:literal,
         leading_zeros_test = $leading_zeros_test:expr,
     ) => {
         /// An integer that is known not to equal zero.
@@ -602,6 +603,270 @@ macro_rules! nonzero_integer {
                 // `self` is non-zero, which means it has at least one bit set, which means
                 // that the result of `count_ones` is non-zero.
                 unsafe { NonZero::new_unchecked(self.get().count_ones()) }
+            }
+
+            /// Shifts the bits to the left by a specified amount, `n`,
+            /// wrapping the truncated bits to the end of the resulting integer.
+            ///
+            /// Please note this isn't the same operation as the `<<` shifting operator!
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(nonzero_bitwise)]
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::new(", $rot_op, stringify!($Int), ")?;")]
+            #[doc = concat!("let m = NonZero::new(", $rot_result, ")?;")]
+            ///
+            #[doc = concat!("assert_eq!(n.rotate_left(", $rot, "), m);")]
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_bitwise", issue = "128281")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn rotate_left(self, n: u32) -> Self {
+                let result = self.get().rotate_left(n);
+                // SAFETY: Rotating bits preserves the property int > 0.
+                unsafe { Self::new_unchecked(result) }
+            }
+
+            /// Shifts the bits to the right by a specified amount, `n`,
+            /// wrapping the truncated bits to the beginning of the resulting
+            /// integer.
+            ///
+            /// Please note this isn't the same operation as the `>>` shifting operator!
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(nonzero_bitwise)]
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::new(", $rot_result, stringify!($Int), ")?;")]
+            #[doc = concat!("let m = NonZero::new(", $rot_op, ")?;")]
+            ///
+            #[doc = concat!("assert_eq!(n.rotate_right(", $rot, "), m);")]
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_bitwise", issue = "128281")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn rotate_right(self, n: u32) -> Self {
+                let result = self.get().rotate_right(n);
+                // SAFETY: Rotating bits preserves the property int > 0.
+                unsafe { Self::new_unchecked(result) }
+            }
+
+            /// Reverses the byte order of the integer.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(nonzero_bitwise)]
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::new(", $swap_op, stringify!($Int), ")?;")]
+            /// let m = n.swap_bytes();
+            ///
+            #[doc = concat!("assert_eq!(m, NonZero::new(", $swapped, ")?);")]
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_bitwise", issue = "128281")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn swap_bytes(self) -> Self {
+                let result = self.get().swap_bytes();
+                // SAFETY: Shuffling bytes preserves the property int > 0.
+                unsafe { Self::new_unchecked(result) }
+            }
+
+            /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
+            /// second least-significant bit becomes second most-significant bit, etc.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(nonzero_bitwise)]
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::new(", $swap_op, stringify!($Int), ")?;")]
+            /// let m = n.reverse_bits();
+            ///
+            #[doc = concat!("assert_eq!(m, NonZero::new(", $reversed, ")?);")]
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_bitwise", issue = "128281")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn reverse_bits(self) -> Self {
+                let result = self.get().reverse_bits();
+                // SAFETY: Reversing bits preserves the property int > 0.
+                unsafe { Self::new_unchecked(result) }
+            }
+
+            /// Converts an integer from big endian to the target's endianness.
+            ///
+            /// On big endian this is a no-op. On little endian the bytes are
+            /// swapped.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(nonzero_bitwise)]
+            /// # use std::num::NonZero;
+            #[doc = concat!("use std::num::", stringify!($Ty), ";")]
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::new(0x1A", stringify!($Int), ")?;")]
+            ///
+            /// if cfg!(target_endian = "big") {
+            #[doc = concat!("    assert_eq!(", stringify!($Ty), "::from_be(n), n)")]
+            /// } else {
+            #[doc = concat!("    assert_eq!(", stringify!($Ty), "::from_be(n), n.swap_bytes())")]
+            /// }
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_bitwise", issue = "128281")]
+            #[must_use]
+            #[inline(always)]
+            pub const fn from_be(x: Self) -> Self {
+                let result = $Int::from_be(x.get());
+                // SAFETY: Shuffling bytes preserves the property int > 0.
+                unsafe { Self::new_unchecked(result) }
+            }
+
+            /// Converts an integer from little endian to the target's endianness.
+            ///
+            /// On little endian this is a no-op. On big endian the bytes are
+            /// swapped.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(nonzero_bitwise)]
+            /// # use std::num::NonZero;
+            #[doc = concat!("use std::num::", stringify!($Ty), ";")]
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::new(0x1A", stringify!($Int), ")?;")]
+            ///
+            /// if cfg!(target_endian = "little") {
+            #[doc = concat!("    assert_eq!(", stringify!($Ty), "::from_le(n), n)")]
+            /// } else {
+            #[doc = concat!("    assert_eq!(", stringify!($Ty), "::from_le(n), n.swap_bytes())")]
+            /// }
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_bitwise", issue = "128281")]
+            #[must_use]
+            #[inline(always)]
+            pub const fn from_le(x: Self) -> Self {
+                let result = $Int::from_le(x.get());
+                // SAFETY: Shuffling bytes preserves the property int > 0.
+                unsafe { Self::new_unchecked(result) }
+            }
+
+            /// Converts `self` to big endian from the target's endianness.
+            ///
+            /// On big endian this is a no-op. On little endian the bytes are
+            /// swapped.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(nonzero_bitwise)]
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::new(0x1A", stringify!($Int), ")?;")]
+            ///
+            /// if cfg!(target_endian = "big") {
+            ///     assert_eq!(n.to_be(), n)
+            /// } else {
+            ///     assert_eq!(n.to_be(), n.swap_bytes())
+            /// }
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_bitwise", issue = "128281")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn to_be(self) -> Self {
+                let result = self.get().to_be();
+                // SAFETY: Shuffling bytes preserves the property int > 0.
+                unsafe { Self::new_unchecked(result) }
+            }
+
+            /// Converts `self` to little endian from the target's endianness.
+            ///
+            /// On little endian this is a no-op. On big endian the bytes are
+            /// swapped.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(nonzero_bitwise)]
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::new(0x1A", stringify!($Int), ")?;")]
+            ///
+            /// if cfg!(target_endian = "little") {
+            ///     assert_eq!(n.to_le(), n)
+            /// } else {
+            ///     assert_eq!(n.to_le(), n.swap_bytes())
+            /// }
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_bitwise", issue = "128281")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn to_le(self) -> Self {
+                let result = self.get().to_le();
+                // SAFETY: Shuffling bytes preserves the property int > 0.
+                unsafe { Self::new_unchecked(result) }
             }
 
             nonzero_integer_signedness_dependent_methods! {
@@ -826,22 +1091,54 @@ macro_rules! nonzero_integer {
         nonzero_integer_signedness_dependent_impls!($signedness $Int);
     };
 
-    (Self = $Ty:ident, Primitive = unsigned $Int:ident $(,)?) => {
+    (
+        Self = $Ty:ident,
+        Primitive = unsigned $Int:ident,
+        rot = $rot:literal,
+        rot_op = $rot_op:literal,
+        rot_result = $rot_result:literal,
+        swap_op = $swap_op:literal,
+        swapped = $swapped:literal,
+        reversed = $reversed:literal,
+        $(,)?
+    ) => {
         nonzero_integer! {
             #[stable(feature = "nonzero", since = "1.28.0")]
             Self = $Ty,
             Primitive = unsigned $Int,
             UnsignedPrimitive = $Int,
+            rot = $rot,
+            rot_op = $rot_op,
+            rot_result = $rot_result,
+            swap_op = $swap_op,
+            swapped = $swapped,
+            reversed = $reversed,
             leading_zeros_test = concat!(stringify!($Int), "::MAX"),
         }
     };
 
-    (Self = $Ty:ident, Primitive = signed $Int:ident, $($rest:tt)*) => {
+    (
+        Self = $Ty:ident,
+        Primitive = signed $Int:ident,
+        UnsignedPrimitive = $UInt:ident,
+        rot = $rot:literal,
+        rot_op = $rot_op:literal,
+        rot_result = $rot_result:literal,
+        swap_op = $swap_op:literal,
+        swapped = $swapped:literal,
+        reversed = $reversed:literal,
+    ) => {
         nonzero_integer! {
             #[stable(feature = "signed_nonzero", since = "1.34.0")]
             Self = $Ty,
             Primitive = signed $Int,
-            $($rest)*
+            UnsignedPrimitive = $UInt,
+            rot = $rot,
+            rot_op = $rot_op,
+            rot_result = $rot_result,
+            swap_op = $swap_op,
+            swapped = $swapped,
+            reversed = $reversed,
             leading_zeros_test = concat!("-1", stringify!($Int)),
         }
     };
@@ -1241,37 +1538,21 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// assert_eq!(ten.isqrt(), three);
         /// # Some(())
         /// # }
+        /// ```
         #[unstable(feature = "isqrt", issue = "116226")]
         #[rustc_const_unstable(feature = "isqrt", issue = "116226")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            // The algorithm is based on the one presented in
-            // <https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)>
-            // which cites as source the following C code:
-            // <https://web.archive.org/web/20120306040058/http://medialab.freaknet.org/martin/src/sqrt/sqrt.c>.
+            let result = self.get().isqrt();
 
-            let mut op = self.get();
-            let mut res = 0;
-            let mut one = 1 << (self.ilog2() & !1);
-
-            while one != 0 {
-                if op >= res + one {
-                    op -= res + one;
-                    res = (res >> 1) + one;
-                } else {
-                    res >>= 1;
-                }
-                one >>= 2;
-            }
-
-            // SAFETY: The result fits in an integer with half as many bits.
-            // Inform the optimizer about it.
-            unsafe { hint::assert_unchecked(res < 1 << (Self::BITS / 2)) };
-
-            // SAFETY: The square root of an integer >= 1 is always >= 1.
-            unsafe { Self::new_unchecked(res) }
+            // SAFETY: Integer square root is a monotonically nondecreasing
+            // function, which means that increasing the input will never cause
+            // the output to decrease. Thus, since the input for nonzero
+            // unsigned integers has a lower bound of 1, the lower bound of the
+            // results will be sqrt(1), which is 1, so a result can't be zero.
+            unsafe { Self::new_unchecked(result) }
         }
     };
 
@@ -1704,65 +1985,189 @@ macro_rules! sign_dependent_expr {
 nonzero_integer! {
     Self = NonZeroU8,
     Primitive = unsigned u8,
+    rot = 2,
+    rot_op = "0x82",
+    rot_result = "0xa",
+    swap_op = "0x12",
+    swapped = "0x12",
+    reversed = "0x48",
 }
 
 nonzero_integer! {
     Self = NonZeroU16,
     Primitive = unsigned u16,
+    rot = 4,
+    rot_op = "0xa003",
+    rot_result = "0x3a",
+    swap_op = "0x1234",
+    swapped = "0x3412",
+    reversed = "0x2c48",
 }
 
 nonzero_integer! {
     Self = NonZeroU32,
     Primitive = unsigned u32,
+    rot = 8,
+    rot_op = "0x10000b3",
+    rot_result = "0xb301",
+    swap_op = "0x12345678",
+    swapped = "0x78563412",
+    reversed = "0x1e6a2c48",
 }
 
 nonzero_integer! {
     Self = NonZeroU64,
     Primitive = unsigned u64,
+    rot = 12,
+    rot_op = "0xaa00000000006e1",
+    rot_result = "0x6e10aa",
+    swap_op = "0x1234567890123456",
+    swapped = "0x5634129078563412",
+    reversed = "0x6a2c48091e6a2c48",
 }
 
 nonzero_integer! {
     Self = NonZeroU128,
     Primitive = unsigned u128,
+    rot = 16,
+    rot_op = "0x13f40000000000000000000000004f76",
+    rot_result = "0x4f7613f4",
+    swap_op = "0x12345678901234567890123456789012",
+    swapped = "0x12907856341290785634129078563412",
+    reversed = "0x48091e6a2c48091e6a2c48091e6a2c48",
 }
 
+#[cfg(target_pointer_width = "16")]
 nonzero_integer! {
     Self = NonZeroUsize,
     Primitive = unsigned usize,
+    rot = 4,
+    rot_op = "0xa003",
+    rot_result = "0x3a",
+    swap_op = "0x1234",
+    swapped = "0x3412",
+    reversed = "0x2c48",
+}
+
+#[cfg(target_pointer_width = "32")]
+nonzero_integer! {
+    Self = NonZeroUsize,
+    Primitive = unsigned usize,
+    rot = 8,
+    rot_op = "0x10000b3",
+    rot_result = "0xb301",
+    swap_op = "0x12345678",
+    swapped = "0x78563412",
+    reversed = "0x1e6a2c48",
+}
+
+#[cfg(target_pointer_width = "64")]
+nonzero_integer! {
+    Self = NonZeroUsize,
+    Primitive = unsigned usize,
+    rot = 12,
+    rot_op = "0xaa00000000006e1",
+    rot_result = "0x6e10aa",
+    swap_op = "0x1234567890123456",
+    swapped = "0x5634129078563412",
+    reversed = "0x6a2c48091e6a2c48",
 }
 
 nonzero_integer! {
     Self = NonZeroI8,
     Primitive = signed i8,
     UnsignedPrimitive = u8,
+    rot = 2,
+    rot_op = "-0x7e",
+    rot_result = "0xa",
+    swap_op = "0x12",
+    swapped = "0x12",
+    reversed = "0x48",
 }
 
 nonzero_integer! {
     Self = NonZeroI16,
     Primitive = signed i16,
     UnsignedPrimitive = u16,
+    rot = 4,
+    rot_op = "-0x5ffd",
+    rot_result = "0x3a",
+    swap_op = "0x1234",
+    swapped = "0x3412",
+    reversed = "0x2c48",
 }
 
 nonzero_integer! {
     Self = NonZeroI32,
     Primitive = signed i32,
     UnsignedPrimitive = u32,
+    rot = 8,
+    rot_op = "0x10000b3",
+    rot_result = "0xb301",
+    swap_op = "0x12345678",
+    swapped = "0x78563412",
+    reversed = "0x1e6a2c48",
 }
 
 nonzero_integer! {
     Self = NonZeroI64,
     Primitive = signed i64,
     UnsignedPrimitive = u64,
+    rot = 12,
+    rot_op = "0xaa00000000006e1",
+    rot_result = "0x6e10aa",
+    swap_op = "0x1234567890123456",
+    swapped = "0x5634129078563412",
+    reversed = "0x6a2c48091e6a2c48",
 }
 
 nonzero_integer! {
     Self = NonZeroI128,
     Primitive = signed i128,
     UnsignedPrimitive = u128,
+    rot = 16,
+    rot_op = "0x13f40000000000000000000000004f76",
+    rot_result = "0x4f7613f4",
+    swap_op = "0x12345678901234567890123456789012",
+    swapped = "0x12907856341290785634129078563412",
+    reversed = "0x48091e6a2c48091e6a2c48091e6a2c48",
 }
 
+#[cfg(target_pointer_width = "16")]
 nonzero_integer! {
     Self = NonZeroIsize,
     Primitive = signed isize,
     UnsignedPrimitive = usize,
+    rot = 4,
+    rot_op = "-0x5ffd",
+    rot_result = "0x3a",
+    swap_op = "0x1234",
+    swapped = "0x3412",
+    reversed = "0x2c48",
+}
+
+#[cfg(target_pointer_width = "32")]
+nonzero_integer! {
+    Self = NonZeroIsize,
+    Primitive = signed isize,
+    UnsignedPrimitive = usize,
+    rot = 8,
+    rot_op = "0x10000b3",
+    rot_result = "0xb301",
+    swap_op = "0x12345678",
+    swapped = "0x78563412",
+    reversed = "0x1e6a2c48",
+}
+
+#[cfg(target_pointer_width = "64")]
+nonzero_integer! {
+    Self = NonZeroIsize,
+    Primitive = signed isize,
+    UnsignedPrimitive = usize,
+    rot = 12,
+    rot_op = "0xaa00000000006e1",
+    rot_result = "0x6e10aa",
+    swap_op = "0x1234567890123456",
+    swapped = "0x5634129078563412",
+    reversed = "0x6a2c48091e6a2c48",
 }

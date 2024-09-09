@@ -1,3 +1,6 @@
+use std::ops::ControlFlow;
+use std::path::{Path, PathBuf};
+
 use rustc_ast::{NestedMetaItem, CRATE_NODE_ID};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
@@ -14,12 +17,68 @@ use rustc_session::Session;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
+use rustc_target::spec::LinkSelfContainedComponents;
 
-use crate::errors;
+use crate::{errors, fluent_generated};
 
-use std::path::PathBuf;
+pub fn walk_native_lib_search_dirs<R>(
+    sess: &Session,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
+    mut f: impl FnMut(&Path, bool /*is_framework*/) -> ControlFlow<R>,
+) -> ControlFlow<R> {
+    // Library search paths explicitly supplied by user (`-L` on the command line).
+    for search_path in sess.target_filesearch(PathKind::Native).cli_search_paths() {
+        f(&search_path.dir, false)?;
+    }
+    for search_path in sess.target_filesearch(PathKind::Framework).cli_search_paths() {
+        // Frameworks are looked up strictly in framework-specific paths.
+        if search_path.kind != PathKind::All {
+            f(&search_path.dir, true)?;
+        }
+    }
 
-pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
+    // The toolchain ships some native library components and self-contained linking was enabled.
+    // Add the self-contained library directory to search paths.
+    if self_contained_components.intersects(
+        LinkSelfContainedComponents::LIBC
+            | LinkSelfContainedComponents::UNWIND
+            | LinkSelfContainedComponents::MINGW,
+    ) {
+        f(&sess.target_tlib_path.dir.join("self-contained"), false)?;
+    }
+
+    // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
+    // library directory instead of the self-contained directories.
+    // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
+    // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
+    // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
+    // and sanitizers to self-contained directory, and stop adding this search path.
+    if sess.target.vendor == "fortanix"
+        || sess.target.os == "linux"
+        || sess.target.os == "fuchsia"
+        || sess.target.is_like_osx && !sess.opts.unstable_opts.sanitizer.is_empty()
+    {
+        f(&sess.target_tlib_path.dir, false)?;
+    }
+
+    // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
+    // we must have the support library stubs in the library search path (#121430).
+    if let Some(sdk_root) = apple_sdk_root
+        && sess.target.llvm_target.contains("macabi")
+    {
+        f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
+        f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;
+    }
+
+    ControlFlow::Continue(())
+}
+
+pub fn try_find_native_static_library(
+    sess: &Session,
+    name: &str,
+    verbatim: bool,
+) -> Option<PathBuf> {
     let formats = if verbatim {
         vec![("".into(), "".into())]
     } else {
@@ -30,16 +89,29 @@ pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) ->
         if os == unix { vec![os] } else { vec![os, unix] }
     };
 
-    for path in sess.target_filesearch(PathKind::Native).search_paths() {
-        for (prefix, suffix) in &formats {
-            let test = path.dir.join(format!("{prefix}{name}{suffix}"));
-            if test.exists() {
-                return test;
+    // FIXME: Account for self-contained linking settings and Apple SDK.
+    walk_native_lib_search_dirs(
+        sess,
+        LinkSelfContainedComponents::empty(),
+        None,
+        |dir, is_framework| {
+            if !is_framework {
+                for (prefix, suffix) in &formats {
+                    let test = dir.join(format!("{prefix}{name}{suffix}"));
+                    if test.exists() {
+                        return ControlFlow::Break(test);
+                    }
+                }
             }
-        }
-    }
+            ControlFlow::Continue(())
+        },
+    )
+    .break_value()
+}
 
-    sess.dcx().emit_fatal(errors::MissingNativeLibrary::new(name, verbatim));
+pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
+    try_find_native_static_library(sess, name, verbatim)
+        .unwrap_or_else(|| sess.dcx().emit_fatal(errors::MissingNativeLibrary::new(name, verbatim)))
 }
 
 fn find_bundled_library(
@@ -87,7 +159,6 @@ struct Collector<'tcx> {
 }
 
 impl<'tcx> Collector<'tcx> {
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn process_module(&mut self, module: &ForeignModule) {
         let ForeignModule { def_id, abi, ref foreign_items } = *module;
         let def_id = def_id.expect_local();
@@ -161,7 +232,7 @@ impl<'tcx> Collector<'tcx> {
                                         sess,
                                         sym::link_arg_attribute,
                                         span,
-                                        "link kind `link-arg` is unstable",
+                                        fluent_generated::metadata_link_arg_unstable,
                                     )
                                     .emit();
                                 }
@@ -201,8 +272,13 @@ impl<'tcx> Collector<'tcx> {
                             continue;
                         };
                         if !features.link_cfg {
-                            feature_err(sess, sym::link_cfg, item.span(), "link cfg is unstable")
-                                .emit();
+                            feature_err(
+                                sess,
+                                sym::link_cfg,
+                                item.span(),
+                                fluent_generated::metadata_link_cfg_unstable,
+                            )
+                            .emit();
                         }
                         cfg = Some(link_cfg.clone());
                     }
@@ -266,6 +342,8 @@ impl<'tcx> Collector<'tcx> {
 
                     macro report_unstable_modifier($feature: ident) {
                         if !features.$feature {
+                            // FIXME: make this translatable
+                            #[expect(rustc::untranslatable_diagnostic)]
                             feature_err(
                                 sess,
                                 sym::$feature,

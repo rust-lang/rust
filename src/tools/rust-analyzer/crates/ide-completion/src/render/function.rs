@@ -4,7 +4,7 @@ use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
-use syntax::{format_smolstr, AstNode, SmolStr};
+use syntax::{format_smolstr, AstNode, Edition, SmolStr, ToSmolStr};
 
 use crate::{
     context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
@@ -62,9 +62,16 @@ fn render(
                 receiver.unescaped().display(ctx.db()),
                 name.unescaped().display(ctx.db())
             ),
-            format_smolstr!("{}.{}", receiver.display(ctx.db()), name.display(ctx.db())),
+            format_smolstr!(
+                "{}.{}",
+                receiver.display(ctx.db(), completion.edition),
+                name.display(ctx.db(), completion.edition)
+            ),
         ),
-        _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
+        _ => (
+            name.unescaped().display(db).to_smolstr(),
+            name.display(db, completion.edition).to_smolstr(),
+        ),
     };
     let has_self_param = func.self_param(db).is_some();
     let mut item = CompletionItem::new(
@@ -75,6 +82,7 @@ fn render(
         }),
         ctx.source_range(),
         call.clone(),
+        completion.edition,
     );
 
     let ret_type = func.ret_type(db);
@@ -141,14 +149,14 @@ fn render(
     }
 
     let detail = if ctx.completion.config.full_function_signatures {
-        detail_full(db, func)
+        detail_full(db, func, ctx.completion.edition)
     } else {
-        detail(db, func)
+        detail(db, func, ctx.completion.edition)
     };
     item.set_documentation(ctx.docs(func))
         .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
         .detail(detail)
-        .lookup_by(name.unescaped().to_smol_str());
+        .lookup_by(name.unescaped().display(db).to_smolstr());
 
     if let Some((cap, (self_param, params))) = complete_call_parens {
         add_call_parens(&mut item, completion, cap, call, escaped_call, self_param, params);
@@ -161,7 +169,9 @@ fn render(
         None => {
             if let Some(actm) = assoc_item {
                 if let Some(trt) = actm.container_or_implemented_trait(db) {
-                    item.trait_name(trt.name(db).to_smol_str());
+                    item.trait_name(
+                        trt.name(db).display_no_db(ctx.completion.edition).to_smolstr(),
+                    );
                 }
             }
         }
@@ -188,7 +198,7 @@ fn compute_return_type_match(
         CompletionRelevanceReturnType::Constructor
     } else if ret_type
         .as_adt()
-        .and_then(|adt| adt.name(db).as_str().map(|name| name.ends_with("Builder")))
+        .map(|adt| adt.name(db).as_str().ends_with("Builder"))
         .unwrap_or(false)
     {
         // fn([..]) -> [..]Builder
@@ -219,7 +229,7 @@ pub(super) fn add_call_parens<'b>(
                 params.iter().enumerate().format_with(", ", |(index, param), f| {
                     match param.name(ctx.db) {
                         Some(n) => {
-                            let smol_str = n.to_smol_str();
+                            let smol_str = n.display_no_db(ctx.edition).to_smolstr();
                             let text = smol_str.as_str().trim_start_matches('_');
                             let ref_ = ref_of_param(ctx, text, param.ty());
                             f(&format_args!("${{{}:{ref_}{text}}}", index + offset))
@@ -227,11 +237,7 @@ pub(super) fn add_call_parens<'b>(
                         None => {
                             let name = match param.ty().as_adt() {
                                 None => "_".to_owned(),
-                                Some(adt) => adt
-                                    .name(ctx.db)
-                                    .as_text()
-                                    .map(|s| to_lower_snake_case(s.as_str()))
-                                    .unwrap_or_else(|| "_".to_owned()),
+                                Some(adt) => to_lower_snake_case(adt.name(ctx.db).as_str()),
                             };
                             f(&format_args!("${{{}:{name}}}", index + offset))
                         }
@@ -242,7 +248,7 @@ pub(super) fn add_call_parens<'b>(
                     format!(
                         "{}(${{1:{}}}{}{})$0",
                         escaped_name,
-                        self_param.display(ctx.db),
+                        self_param.display(ctx.db, ctx.edition),
                         if params.is_empty() { "" } else { ", " },
                         function_params_snippet
                     )
@@ -263,8 +269,8 @@ pub(super) fn add_call_parens<'b>(
 
 fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'static str {
     if let Some(derefed_ty) = ty.remove_ref() {
-        for (name, local) in ctx.locals.iter() {
-            if name.as_text().as_deref() == Some(arg) {
+        for (name, local) in ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()) {
+            if name.as_str() == arg {
                 return if local.ty(ctx.db) == derefed_ty {
                     if ty.is_mutable_reference() {
                         "&mut "
@@ -280,7 +286,7 @@ fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'sta
     ""
 }
 
-fn detail(db: &dyn HirDatabase, func: hir::Function) -> String {
+fn detail(db: &dyn HirDatabase, func: hir::Function, edition: Edition) -> String {
     let mut ret_ty = func.ret_type(db);
     let mut detail = String::new();
 
@@ -297,15 +303,15 @@ fn detail(db: &dyn HirDatabase, func: hir::Function) -> String {
         format_to!(detail, "unsafe ");
     }
 
-    format_to!(detail, "fn({})", params_display(db, func));
+    format_to!(detail, "fn({})", params_display(db, func, edition));
     if !ret_ty.is_unit() {
-        format_to!(detail, " -> {}", ret_ty.display(db));
+        format_to!(detail, " -> {}", ret_ty.display(db, edition));
     }
     detail
 }
 
-fn detail_full(db: &dyn HirDatabase, func: hir::Function) -> String {
-    let signature = format!("{}", func.display(db));
+fn detail_full(db: &dyn HirDatabase, func: hir::Function, edition: Edition) -> String {
+    let signature = format!("{}", func.display(db, edition));
     let mut detail = String::with_capacity(signature.len());
 
     for segment in signature.split_whitespace() {
@@ -319,16 +325,16 @@ fn detail_full(db: &dyn HirDatabase, func: hir::Function) -> String {
     detail
 }
 
-fn params_display(db: &dyn HirDatabase, func: hir::Function) -> String {
+fn params_display(db: &dyn HirDatabase, func: hir::Function, edition: Edition) -> String {
     if let Some(self_param) = func.self_param(db) {
         let assoc_fn_params = func.assoc_fn_params(db);
         let params = assoc_fn_params
             .iter()
             .skip(1) // skip the self param because we are manually handling that
-            .map(|p| p.ty().display(db));
+            .map(|p| p.ty().display(db, edition));
         format!(
             "{}{}",
-            self_param.display(db),
+            self_param.display(db, edition),
             params.format_with("", |display, f| {
                 f(&", ")?;
                 f(&display)
@@ -336,7 +342,7 @@ fn params_display(db: &dyn HirDatabase, func: hir::Function) -> String {
         )
     } else {
         let assoc_fn_params = func.assoc_fn_params(db);
-        assoc_fn_params.iter().map(|p| p.ty().display(db)).join(", ")
+        assoc_fn_params.iter().map(|p| p.ty().display(db, edition)).join(", ")
     }
 }
 

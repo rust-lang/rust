@@ -17,7 +17,6 @@ fn main() {
     x;
     //~^ ERROR cannot move out of `x` because it is borrowed
     //~| move out of `x` occurs here
-    //~| HELP consider cloning
 
     let y = Int(2);
     //~^ HELP consider changing this to be mutable

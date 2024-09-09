@@ -10,8 +10,7 @@ use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::VecDeque;
-use std::fmt;
-use std::ptr;
+use std::{fmt, ptr};
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -20,10 +19,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
-
 use tracing::{debug, instrument, trace};
-
-use crate::fluent_generated as fluent;
 
 use super::{
     alloc_range, err_ub, err_ub_custom, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
@@ -31,6 +27,7 @@ use super::{
     CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
     PointerArithmetic, Provenance, Scalar,
 };
+use crate::fluent_generated as fluent;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
@@ -198,7 +195,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     pub fn fn_ptr(&mut self, fn_val: FnVal<'tcx, M::ExtraFnVal>) -> Pointer<M::Provenance> {
         let id = match fn_val {
-            FnVal::Instance(instance) => self.tcx.reserve_and_set_fn_alloc(instance),
+            FnVal::Instance(instance) => {
+                let salt = M::get_global_alloc_salt(self, Some(instance));
+                self.tcx.reserve_and_set_fn_alloc(instance, salt)
+            }
             FnVal::Other(extra) => {
                 // FIXME(RalfJung): Should we have a cache here?
                 let id = self.tcx.reserve_alloc_id();
@@ -264,7 +264,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         new_align: Align,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
-        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr)?;
+        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
             throw_ub_custom!(
                 fluent::const_eval_realloc_or_alloc_with_offset,
@@ -294,7 +294,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         old_size_and_align: Option<(Size, Align)>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx> {
-        let (alloc_id, offset, prov) = self.ptr_get_alloc_id(ptr)?;
+        let (alloc_id, offset, prov) = self.ptr_get_alloc_id(ptr, 0)?;
         trace!("deallocating: {alloc_id:?}");
 
         if offset.bytes() != 0 {
@@ -386,6 +386,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
     ) -> InterpResult<'tcx, Option<(AllocId, Size, M::ProvenanceExtra)>> {
+        let size = i64::try_from(size.bytes()).unwrap(); // it would be an error to even ask for more than isize::MAX bytes
         self.check_and_deref_ptr(
             ptr,
             size,
@@ -407,6 +408,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         size: Size,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx> {
+        let size = i64::try_from(size.bytes()).unwrap(); // it would be an error to even ask for more than isize::MAX bytes
+        self.check_and_deref_ptr(ptr, size, msg, |alloc_id, _, _| {
+            let (size, align) = self.get_live_alloc_size_and_align(alloc_id, msg)?;
+            Ok((size, align, ()))
+        })?;
+        Ok(())
+    }
+
+    /// Check whether the given pointer points to live memory for a signed amount of bytes.
+    /// A negative amounts means that the given range of memory to the left of the pointer
+    /// needs to be dereferenceable.
+    pub fn check_ptr_access_signed(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+        size: i64,
+        msg: CheckInAllocMsg,
+    ) -> InterpResult<'tcx> {
         self.check_and_deref_ptr(ptr, size, msg, |alloc_id, _, _| {
             let (size, align) = self.get_live_alloc_size_and_align(alloc_id, msg)?;
             Ok((size, align, ()))
@@ -416,7 +434,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Low-level helper function to check if a ptr is in-bounds and potentially return a reference
     /// to the allocation it points to. Supports both shared and mutable references, as the actual
-    /// checking is offloaded to a helper closure.
+    /// checking is offloaded to a helper closure. Supports signed sizes for checks "to the left" of
+    /// a pointer.
     ///
     /// `alloc_size` will only get called for non-zero-sized accesses.
     ///
@@ -424,7 +443,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn check_and_deref_ptr<T>(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
-        size: Size,
+        size: i64,
         msg: CheckInAllocMsg,
         alloc_size: impl FnOnce(
             AllocId,
@@ -433,25 +452,32 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ) -> InterpResult<'tcx, (Size, Align, T)>,
     ) -> InterpResult<'tcx, Option<T>> {
         // Everything is okay with size 0.
-        if size.bytes() == 0 {
+        if size == 0 {
             return Ok(None);
         }
 
-        Ok(match self.ptr_try_get_alloc_id(ptr) {
+        Ok(match self.ptr_try_get_alloc_id(ptr, size) {
             Err(addr) => {
                 // We couldn't get a proper allocation.
-                throw_ub!(DanglingIntPointer(addr, msg));
+                throw_ub!(DanglingIntPointer { addr, inbounds_size: size, msg });
             }
             Ok((alloc_id, offset, prov)) => {
                 let (alloc_size, _alloc_align, ret_val) = alloc_size(alloc_id, offset, prov)?;
-                // Test bounds.
-                // It is sufficient to check this for the end pointer. Also check for overflow!
-                if offset.checked_add(size, &self.tcx).is_none_or(|end| end > alloc_size) {
+                let offset = offset.bytes();
+                // Compute absolute begin and end of the range.
+                let (begin, end) = if size >= 0 {
+                    (Some(offset), offset.checked_add(size as u64))
+                } else {
+                    (offset.checked_sub(size.unsigned_abs()), Some(offset))
+                };
+                // Ensure both are within bounds.
+                let in_bounds = begin.is_some() && end.is_some_and(|e| e <= alloc_size.bytes());
+                if !in_bounds {
                     throw_ub!(PointerOutOfBounds {
                         alloc_id,
                         alloc_size,
-                        ptr_offset: self.target_usize_to_isize(offset.bytes()),
-                        ptr_size: size,
+                        ptr_offset: self.sign_extend_to_target_isize(offset),
+                        inbounds_size: size,
                         msg,
                     })
                 }
@@ -482,7 +508,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
 
         #[inline]
-        fn offset_misalignment(offset: u64, align: Align) -> Option<Misalignment> {
+        fn is_offset_misaligned(offset: u64, align: Align) -> Option<Misalignment> {
             if offset % align.bytes() == 0 {
                 None
             } else {
@@ -492,8 +518,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         }
 
-        match self.ptr_try_get_alloc_id(ptr) {
-            Err(addr) => offset_misalignment(addr, align),
+        match self.ptr_try_get_alloc_id(ptr, 0) {
+            Err(addr) => is_offset_misaligned(addr, align),
             Ok((alloc_id, offset, _prov)) => {
                 let (_size, alloc_align, kind) = self.get_alloc_info(alloc_id);
                 if let Some(misalign) =
@@ -501,14 +527,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 {
                     Some(misalign)
                 } else if M::Provenance::OFFSET_IS_ADDR {
-                    // `use_addr_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
-                    offset_misalignment(ptr.addr().bytes(), align)
+                    is_offset_misaligned(ptr.addr().bytes(), align)
                 } else {
                     // Check allocation alignment and offset alignment.
                     if alloc_align.bytes() < align.bytes() {
                         Some(Misalignment { has: alloc_align, required: align })
                     } else {
-                        offset_misalignment(offset.bytes(), align)
+                        is_offset_misaligned(offset.bytes(), align)
                     }
                 }
             }
@@ -644,9 +669,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         size: Size,
     ) -> InterpResult<'tcx, Option<AllocRef<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
+        let size_i64 = i64::try_from(size.bytes()).unwrap(); // it would be an error to even ask for more than isize::MAX bytes
         let ptr_and_alloc = self.check_and_deref_ptr(
             ptr,
-            size,
+            size_i64,
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
                 let alloc = self.get_alloc_raw(alloc_id)?;
@@ -657,7 +683,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // accesses. That means we cannot rely on the closure above or the `Some` branch below. We
         // do this after `check_and_deref_ptr` to ensure some basic sanity has already been checked.
         if !self.memory.validation_in_progress.get() {
-            if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(ptr) {
+            if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(ptr, size_i64) {
                 M::before_alloc_read(self, alloc_id)?;
             }
         }
@@ -801,7 +827,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let (size, align) = if nested {
                     // Nested anonymous statics are untyped, so let's get their
-                    // size and alignment from the allocaiton itself. This always
+                    // size and alignment from the allocation itself. This always
                     // succeeds, as the query is fed at DefId creation time, so no
                     // evaluation actually occurs.
                     let alloc = self.tcx.eval_static_initializer(def_id).unwrap();
@@ -878,7 +904,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         trace!("get_ptr_fn({:?})", ptr);
-        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr)?;
+        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
             throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
         }
@@ -894,7 +920,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         expected_trait: Option<&'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>>,
     ) -> InterpResult<'tcx, Ty<'tcx>> {
         trace!("get_ptr_vtable({:?})", ptr);
-        let (alloc_id, offset, _tag) = self.ptr_get_alloc_id(ptr)?;
+        let (alloc_id, offset, _tag) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
             throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
         }
@@ -983,9 +1009,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
-    /// Runs the close in "validation" mode, which means the machine's memory read hooks will be
+    /// Runs the closure in "validation" mode, which means the machine's memory read hooks will be
     /// suppressed. Needless to say, this must only be set with great care! Cannot be nested.
-    pub(super) fn run_for_validation<R>(&self, f: impl FnOnce() -> R) -> R {
+    ///
+    /// We do this so Miri's allocation access tracking does not show the validation
+    /// reads as spurious accesses.
+    pub fn run_for_validation<R>(&self, f: impl FnOnce() -> R) -> R {
         // This deliberately uses `==` on `bool` to follow the pattern
         // `assert!(val.replace(new) == old)`.
         assert!(
@@ -1375,7 +1404,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Err(_) => {
                 // Can only happen during CTFE.
                 let ptr = scalar.to_pointer(self)?;
-                match self.ptr_try_get_alloc_id(ptr) {
+                match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
                         let (size, _align, _kind) = self.get_alloc_info(alloc_id);
                         // If the pointer is out-of-bounds, it may be null.
@@ -1391,6 +1420,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Turning a "maybe pointer" into a proper pointer (and some information
     /// about where it points), or an absolute address.
     ///
+    /// `size` says how many bytes of memory are expected at that pointer. This is largely only used
+    /// for error messages; however, the *sign* of `size` can be used to disambiguate situations
+    /// where a wildcard pointer sits right in between two allocations.
+    /// It is almost always okay to just set the size to 0; this will be treated like a positive size
+    /// for handling wildcard pointers.
+    ///
     /// The result must be used immediately; it is not allowed to convert
     /// the returned data back into a `Pointer` and store that in machine state.
     /// (In fact that's not even possible since `M::ProvenanceExtra` is generic and
@@ -1398,9 +1433,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn ptr_try_get_alloc_id(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
+        size: i64,
     ) -> Result<(AllocId, Size, M::ProvenanceExtra), u64> {
         match ptr.into_pointer_or_addr() {
-            Ok(ptr) => match M::ptr_get_alloc(self, ptr) {
+            Ok(ptr) => match M::ptr_get_alloc(self, ptr, size) {
                 Some((alloc_id, offset, extra)) => Ok((alloc_id, offset, extra)),
                 None => {
                     assert!(M::Provenance::OFFSET_IS_ADDR);
@@ -1414,6 +1450,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Turning a "maybe pointer" into a proper pointer (and some information about where it points).
     ///
+    /// `size` says how many bytes of memory are expected at that pointer. This is largely only used
+    /// for error messages; however, the *sign* of `size` can be used to disambiguate situations
+    /// where a wildcard pointer sits right in between two allocations.
+    /// It is almost always okay to just set the size to 0; this will be treated like a positive size
+    /// for handling wildcard pointers.
+    ///
     /// The result must be used immediately; it is not allowed to convert
     /// the returned data back into a `Pointer` and store that in machine state.
     /// (In fact that's not even possible since `M::ProvenanceExtra` is generic and
@@ -1422,9 +1464,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn ptr_get_alloc_id(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
+        size: i64,
     ) -> InterpResult<'tcx, (AllocId, Size, M::ProvenanceExtra)> {
-        self.ptr_try_get_alloc_id(ptr).map_err(|offset| {
-            err_ub!(DanglingIntPointer(offset, CheckInAllocMsg::InboundsTest)).into()
+        self.ptr_try_get_alloc_id(ptr, size).map_err(|offset| {
+            err_ub!(DanglingIntPointer {
+                addr: offset,
+                inbounds_size: size,
+                msg: CheckInAllocMsg::InboundsTest
+            })
+            .into()
         })
     }
 }

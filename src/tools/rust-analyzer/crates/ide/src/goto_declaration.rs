@@ -1,4 +1,4 @@
-use hir::{AsAssocItem, DescendPreference, Semantics};
+use hir::{AsAssocItem, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -23,13 +23,13 @@ pub(crate) fn goto_declaration(
     position @ FilePosition { file_id, offset }: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = Semantics::new(db);
-    let file = sema.parse(file_id).syntax().clone();
+    let file = sema.parse_guess_edition(file_id).syntax().clone();
     let original_token = file
         .token_at_offset(offset)
         .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate] | T![Self]))?;
     let range = original_token.text_range();
     let info: Vec<NavigationTarget> = sema
-        .descend_into_macros(DescendPreference::None, original_token)
+        .descend_into_macros(original_token)
         .iter()
         .filter_map(|token| {
             let parent = token.parent()?;
@@ -78,7 +78,7 @@ pub(crate) fn goto_declaration(
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::FileRange;
+    use ide_db::FileRange;
     use itertools::Itertools;
 
     use crate::fixture;

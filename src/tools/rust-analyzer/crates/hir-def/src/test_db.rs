@@ -4,10 +4,10 @@ use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
     salsa::{self, Durability},
-    AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, FilePosition, SourceDatabase,
-    Upcast,
+    AnchoredPath, CrateId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
-use hir_expand::{db::ExpandDatabase, InFile};
+use hir_expand::{db::ExpandDatabase, files::FilePosition, InFile};
+use span::{EditionedFileId, FileId};
 use syntax::{algo, ast, AstNode};
 use triomphe::Arc;
 
@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[salsa::database(
-    base_db::SourceDatabaseExtStorage,
+    base_db::SourceRootDatabaseStorage,
     base_db::SourceDatabaseStorage,
     hir_expand::db::ExpandDatabaseStorage,
     crate::db::InternDatabaseStorage,
@@ -69,9 +69,6 @@ impl fmt::Debug for TestDB {
 impl panic::RefUnwindSafe for TestDB {}
 
 impl FileLoader for TestDB {
-    fn file_text(&self, file_id: FileId) -> Arc<str> {
-        FileLoaderDelegate(self).file_text(file_id)
-    }
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
@@ -85,7 +82,7 @@ impl TestDB {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (local_id, data) in crate_def_map.modules() {
-                if data.origin.file_id() == Some(file_id) {
+                if data.origin.file_id().map(EditionedFileId::file_id) == Some(file_id) {
                     return crate_def_map.module_id(local_id);
                 }
             }
@@ -94,7 +91,7 @@ impl TestDB {
     }
 
     pub(crate) fn module_at_position(&self, position: FilePosition) -> ModuleId {
-        let file_module = self.module_for_file(position.file_id);
+        let file_module = self.module_for_file(position.file_id.file_id());
         let mut def_map = file_module.def_map(self);
         let module = self.mod_at_position(&def_map, position);
 
@@ -122,7 +119,7 @@ impl TestDB {
         let mut res = DefMap::ROOT;
         for (module, data) in def_map.modules() {
             let src = data.definition_source(self);
-            if src.file_id != position.file_id.into() {
+            if src.file_id != position.file_id {
                 continue;
             }
 
@@ -148,7 +145,6 @@ impl TestDB {
             };
 
             if size != Some(new_size) {
-                cov_mark::hit!(submodule_in_testdb);
                 size = Some(new_size);
                 res = module;
             }
@@ -163,7 +159,7 @@ impl TestDB {
         let mut fn_def = None;
         for (_, module) in def_map.modules() {
             let file_id = module.definition_source(self).file_id;
-            if file_id != position.file_id.into() {
+            if file_id != position.file_id {
                 continue;
             }
             for decl in module.scope.declarations() {

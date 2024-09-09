@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{ImportPathConfig, ModuleDef};
+use hir::ModuleDef;
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -105,7 +105,7 @@ fn replace_usages(
     target_module: &hir::Module,
 ) {
     for (file_id, references) in usages.iter() {
-        edit.edit_file(*file_id);
+        edit.edit_file(file_id.file_id());
 
         let refs_with_imports =
             augment_references_with_imports(edit, ctx, references, struct_name, target_module);
@@ -183,11 +183,7 @@ fn augment_references_with_imports(
 ) -> Vec<(ast::NameLike, Option<(ImportScope, ast::Path)>)> {
     let mut visited_modules = FxHashSet::default();
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     references
         .iter()
@@ -215,7 +211,7 @@ fn augment_references_with_imports(
                     )
                     .map(|mod_path| {
                         make::path_concat(
-                            mod_path_to_ast(&mod_path),
+                            mod_path_to_ast(&mod_path, target_module.krate().edition(ctx.db())),
                             make::path_from_text(struct_name),
                         )
                     });

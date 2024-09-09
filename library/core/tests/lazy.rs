@@ -1,7 +1,6 @@
-use core::{
-    cell::{Cell, LazyCell, OnceCell},
-    sync::atomic::{AtomicUsize, Ordering::SeqCst},
-};
+use core::cell::{Cell, LazyCell, OnceCell};
+use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::Ordering::SeqCst;
 
 #[test]
 fn once_cell() {

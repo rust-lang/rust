@@ -3,9 +3,6 @@ use std::path::Path;
 use crate::command::Command;
 use crate::{env_var, is_msvc, is_windows, uname};
 
-// FIXME(jieyouxu): can we get rid of the `cygpath` external dependency?
-use super::cygpath::get_windows_path;
-
 /// Construct a new platform-specific C compiler invocation.
 ///
 /// WARNING: This means that what flags are accepted by the underlying C compiler is
@@ -98,12 +95,12 @@ impl Cc {
 
         if is_msvc() {
             path.set_extension("exe");
-            let fe_path = get_windows_path(&path);
+            let fe_path = path.clone();
             path.set_extension("");
             path.set_extension("obj");
-            let fo_path = get_windows_path(path);
-            self.cmd.arg(format!("-Fe:{fe_path}"));
-            self.cmd.arg(format!("-Fo:{fo_path}"));
+            let fo_path = path;
+            self.cmd.arg(format!("-Fe:{}", fe_path.to_str().unwrap()));
+            self.cmd.arg(format!("-Fo:{}", fo_path.to_str().unwrap()));
         } else {
             self.cmd.arg("-o");
             self.cmd.arg(name);
@@ -116,6 +113,17 @@ impl Cc {
     pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("-o");
         self.cmd.arg(path.as_ref());
+        self
+    }
+
+    /// Optimize the output.
+    /// Equivalent to `-O3` for GNU-compatible linkers or `-O2` for MSVC linkers.
+    pub fn optimize(&mut self) -> &mut Self {
+        if is_msvc() {
+            self.cmd.arg("-O2");
+        } else {
+            self.cmd.arg("-O3");
+        }
         self
     }
 }

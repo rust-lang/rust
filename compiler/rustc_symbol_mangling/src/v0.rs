@@ -1,3 +1,7 @@
+use std::fmt::Write;
+use std::iter;
+use std::ops::Range;
+
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -9,17 +13,12 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, Instance, IntTy, ReifyReason, Ty, TyCtxt, TypeVisitable,
-    TypeVisitableExt, UintTy,
+    self, EarlyBinder, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty,
+    TyCtxt, TypeVisitable, TypeVisitableExt, UintTy,
 };
-use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::kw;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
-
-use std::fmt::Write;
-use std::iter;
-use std::ops::Range;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -57,7 +56,6 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: false, .. } => {
             Some("by_ref")
         }
-        ty::InstanceKind::CoroutineKindShim { .. } => Some("by_move_body"),
 
         _ => None,
     };
@@ -428,7 +426,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 self.print_def_path(def_id, &[])?;
             }
 
-            ty::FnPtr(sig) => {
+            ty::FnPtr(sig_tys, hdr) => {
+                let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.in_binder(&sig, |cx, sig| {
                     if sig.safety == hir::Safety::Unsafe {

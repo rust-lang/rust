@@ -1,5 +1,5 @@
 error[E0658]: raw mutable pointers are not allowed in constants
-  --> $DIR/const-address-of-mut.rs:3:32
+  --> $DIR/const-address-of-mut.rs:1:32
    |
 LL | const A: () = { let mut x = 2; &raw mut x; };
    |                                ^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | const A: () = { let mut x = 2; &raw mut x; };
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: raw mutable pointers are not allowed in statics
-  --> $DIR/const-address-of-mut.rs:5:33
+  --> $DIR/const-address-of-mut.rs:3:33
    |
 LL | static B: () = { let mut x = 2; &raw mut x; };
    |                                 ^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | static B: () = { let mut x = 2; &raw mut x; };
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: raw mutable pointers are not allowed in constant functions
-  --> $DIR/const-address-of-mut.rs:9:13
+  --> $DIR/const-address-of-mut.rs:7:13
    |
 LL |     let y = &raw mut x;
    |             ^^^^^^^^^^

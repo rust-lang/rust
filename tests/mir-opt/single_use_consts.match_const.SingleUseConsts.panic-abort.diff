@@ -8,9 +8,9 @@
       bb0: {
           StorageLive(_1);
 -         _1 = const <T as MyTrait>::ASSOC_INT;
--         switchInt(_1) -> [7: bb2, 42: bb3, otherwise: bb1];
+-         switchInt(copy _1) -> [7: bb3, 42: bb2, otherwise: bb1];
 +         nop;
-+         switchInt(const <T as MyTrait>::ASSOC_INT) -> [7: bb2, 42: bb3, otherwise: bb1];
++         switchInt(const <T as MyTrait>::ASSOC_INT) -> [7: bb3, 42: bb2, otherwise: bb1];
       }
   
       bb1: {
@@ -19,12 +19,12 @@
       }
   
       bb2: {
-          _0 = const "hello";
+          _0 = const "towel";
           goto -> bb4;
       }
   
       bb3: {
-          _0 = const "towel";
+          _0 = const "hello";
           goto -> bb4;
       }
   

@@ -2,13 +2,15 @@
 //! be careful wrt to subtyping. To deal with this we only allow updates by using
 //! `FunctionCx::overwrite_local` which handles it automatically.
 
-use crate::mir::{FunctionCx, LocalRef};
-use crate::traits::BuilderMethods;
+use std::ops::{Index, IndexMut};
+
 use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use std::ops::{Index, IndexMut};
 use tracing::{debug, warn};
+
+use crate::mir::{FunctionCx, LocalRef};
+use crate::traits::BuilderMethods;
 
 pub(super) struct Locals<'tcx, V> {
     values: IndexVec<mir::Local, LocalRef<'tcx, V>>,

@@ -3,14 +3,13 @@ use gccjit::{FnAttribute, VarAttribute, Visibility};
 use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, StaticMethods};
 use rustc_hir::def::DefKind;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
     self, read_target_uint, ConstAllocation, ErrorHandled, Scalar as InterpScalar,
 };
-use rustc_middle::span_bug;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
 

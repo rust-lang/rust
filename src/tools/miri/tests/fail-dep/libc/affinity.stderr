@@ -1,8 +1,8 @@
-error: Undefined Behavior: memory access failed: ALLOC has size 128, so pointer to 129 bytes starting at offset 0 is out-of-bounds
+error: Undefined Behavior: memory access failed: expected a pointer to 129 bytes of memory, but got ALLOC which is only 128 bytes from the end of the allocation
   --> $DIR/affinity.rs:LL:CC
    |
 LL |     let err = unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>() + 1, &cpuset) };
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: ALLOC has size 128, so pointer to 129 bytes starting at offset 0 is out-of-bounds
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 129 bytes of memory, but got ALLOC which is only 128 bytes from the end of the allocation
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

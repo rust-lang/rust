@@ -8,7 +8,7 @@ use crate::{
     ted, AstToken, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IndentLevel(pub u8);
 
 impl From<u8> for IndentLevel {

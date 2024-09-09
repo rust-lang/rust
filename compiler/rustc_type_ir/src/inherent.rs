@@ -133,12 +133,12 @@ pub trait Ty<I: Interner<Ty = Self>>:
     }
 
     fn is_fn_ptr(self) -> bool {
-        matches!(self.kind(), ty::FnPtr(_))
+        matches!(self.kind(), ty::FnPtr(..))
     }
 
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self.kind() {
-            ty::FnPtr(sig) => sig,
+            ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
             ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, args),
             ty::Error(_) => {
                 // ignore errors (#54954)
@@ -162,7 +162,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     /// Returns `true` when the outermost type cannot be further normalized,
     /// resolved, or instantiated. This includes all primitive types, but also
-    /// things like ADTs and trait objects, sice even if their arguments or
+    /// things like ADTs and trait objects, since even if their arguments or
     /// nested types may be further simplified, the outermost [`ty::TyKind`] or
     /// type constructor remains the same.
     fn is_known_rigid(self) -> bool {
@@ -181,7 +181,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
@@ -203,7 +203,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
 pub trait Tys<I: Interner<Tys = Self>>:
     Copy + Debug + Hash + Eq + SliceLike<Item = I::Ty> + TypeFoldable<I> + Default
 {
-    fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty);
+    fn inputs(self) -> I::FnInputTys;
+
+    fn output(self) -> I::Ty;
 }
 
 pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
@@ -432,6 +434,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
+    + Elaboratable<I>
 {
     fn as_clause(self) -> Option<I::Clause>;
 
@@ -450,6 +453,8 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
+    + UpcastFrom<I, ty::TraitPredicate<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::TraitPredicate<I>>>
     + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>

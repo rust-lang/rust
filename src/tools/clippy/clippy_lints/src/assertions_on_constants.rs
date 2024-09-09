@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_inside_always_const_context;
 use clippy_utils::macros::{find_assert_args, root_macro_call_first_node, PanicExpn};
@@ -43,7 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
         let Some((condition, panic_expn)) = find_assert_args(cx, e, macro_call.expn) else {
             return;
         };
-        let Some(Constant::Bool(val)) = constant(cx, cx.typeck_results(), condition) else {
+        let Some(Constant::Bool(val)) = ConstEvalCtxt::new(cx).eval(condition) else {
             return;
         };
 

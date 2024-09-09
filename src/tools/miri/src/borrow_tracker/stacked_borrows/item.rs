@@ -7,9 +7,12 @@ use crate::borrow_tracker::BorTag;
 pub struct Item(u64);
 
 // An Item contains 3 bitfields:
-// * Bits 0-61 store a BorTag
-// * Bits 61-63 store a Permission
-// * Bit 64 stores a flag which indicates if we have a protector
+// * Bits 0-61 store a BorTag.
+// * Bits 61-63 store a Permission.
+// * Bit 64 stores a flag which indicates if we might have a protector.
+//   This is purely an optimization: if the bit is set, the tag *might* be
+//   in `protected_tags`, but if the bit is not set then the tag is definitely
+//   not in `protected_tags`.
 const TAG_MASK: u64 = u64::MAX >> 3;
 const PERM_MASK: u64 = 0x3 << 61;
 const PROTECTED_MASK: u64 = 0x1 << 63;

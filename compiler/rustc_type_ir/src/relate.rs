@@ -524,8 +524,8 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(Ty::new_fn_def(cx, a_def_id, args))
         }
 
-        (ty::FnPtr(a_fty), ty::FnPtr(b_fty)) => {
-            let fty = relation.relate(a_fty, b_fty)?;
+        (ty::FnPtr(a_sig_tys, a_hdr), ty::FnPtr(b_sig_tys, b_hdr)) => {
+            let fty = relation.relate(a_sig_tys.with(a_hdr), b_sig_tys.with(b_hdr))?;
             Ok(Ty::new_fn_ptr(cx, fty))
         }
 
@@ -550,7 +550,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
 /// Any semantic equality, e.g. of unevaluated consts, and inference variables have
 /// to be handled by the caller.
 ///
-/// FIXME: This is not totally structual, which probably should be fixed.
+/// FIXME: This is not totally structural, which probably should be fixed.
 /// See the HACKs below.
 pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
     relation: &mut R,

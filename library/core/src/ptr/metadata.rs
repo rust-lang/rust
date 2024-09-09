@@ -2,8 +2,7 @@
 
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::intrinsics::aggregate_raw_ptr;
-use crate::intrinsics::ptr_metadata;
+use crate::intrinsics::{aggregate_raw_ptr, ptr_metadata};
 use crate::marker::Freeze;
 use crate::ptr::NonNull;
 
@@ -81,7 +80,7 @@ pub trait Pointee {
 // NOTE: don’t stabilize this before trait aliases are stable in the language?
 pub trait Thin = Pointee<Metadata = ()>;
 
-/// Extract the metadata component of a pointer.
+/// Extracts the metadata component of a pointer.
 ///
 /// Values of type `*mut T`, `&T`, or `&mut T` can be passed directly to this function
 /// as they implicitly coerce to `*const T`.
@@ -188,14 +187,14 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
         // Consider a reference like `&(i32, dyn Send)`: the vtable will only store the size of the
         // `Send` part!
         // SAFETY: DynMetadata always contains a valid vtable pointer
-        return unsafe { crate::intrinsics::vtable_size(self.vtable_ptr() as *const ()) };
+        unsafe { crate::intrinsics::vtable_size(self.vtable_ptr() as *const ()) }
     }
 
     /// Returns the alignment of the type associated with this vtable.
     #[inline]
     pub fn align_of(self) -> usize {
         // SAFETY: DynMetadata always contains a valid vtable pointer
-        return unsafe { crate::intrinsics::vtable_align(self.vtable_ptr() as *const ()) };
+        unsafe { crate::intrinsics::vtable_align(self.vtable_ptr() as *const ()) }
     }
 
     /// Returns the size and alignment together as a `Layout`

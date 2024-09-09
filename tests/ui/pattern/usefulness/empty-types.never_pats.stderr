@@ -1,5 +1,5 @@
 warning: the feature `never_patterns` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/empty-types.rs:14:33
+  --> $DIR/empty-types.rs:12:33
    |
 LL | #![cfg_attr(never_pats, feature(never_patterns))]
    |                                 ^^^^^^^^^^^^^^
@@ -8,28 +8,28 @@ LL | #![cfg_attr(never_pats, feature(never_patterns))]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:51:9
+  --> $DIR/empty-types.rs:49:9
    |
 LL |         _ => {}
-   |         ^
+   |         ^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
-  --> $DIR/empty-types.rs:17:9
+  --> $DIR/empty-types.rs:15:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:54:9
+  --> $DIR/empty-types.rs:52:9
    |
 LL |         _x => {}
-   |         ^^
+   |         ^^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error[E0004]: non-exhaustive patterns: type `&!` is non-empty
-  --> $DIR/empty-types.rs:58:11
+  --> $DIR/empty-types.rs:56:11
    |
 LL |     match ref_never {}
    |           ^^^^^^^^^
@@ -43,69 +43,43 @@ LL +         _ => todo!(),
 LL +     }
    |
 
-error[E0004]: non-exhaustive patterns: type `(u32, !)` is non-empty
-  --> $DIR/empty-types.rs:70:11
+error: unreachable pattern
+  --> $DIR/empty-types.rs:70:9
    |
-LL |     match tuple_half_never {}
-   |           ^^^^^^^^^^^^^^^^
+LL |         (_, _) => {}
+   |         ^^^^^^ matches no values because `(u32, !)` is uninhabited
    |
-   = note: the matched value is of type `(u32, !)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
-   |
-LL ~     match tuple_half_never {
-LL +         _ => todo!(),
-LL +     }
-   |
-
-error[E0004]: non-exhaustive patterns: type `(!, !)` is non-empty
-  --> $DIR/empty-types.rs:77:11
-   |
-LL |     match tuple_never {}
-   |           ^^^^^^^^^^^
-   |
-   = note: the matched value is of type `(!, !)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
-   |
-LL ~     match tuple_never {
-LL +         _ => todo!(),
-LL +     }
-   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:87:9
+  --> $DIR/empty-types.rs:76:9
    |
 LL |         _ => {}
-   |         ^
+   |         ^ matches no values because `(!, !)` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
-error[E0004]: non-exhaustive patterns: `Ok(_)` and `Err(!)` not covered
-  --> $DIR/empty-types.rs:91:11
+error: unreachable pattern
+  --> $DIR/empty-types.rs:79:9
+   |
+LL |         (_, _) => {}
+   |         ^^^^^^ matches no values because `(!, !)` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:83:9
+   |
+LL |         _ => {}
+   |         ^ matches no values because `!` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error[E0004]: non-exhaustive patterns: `Ok(_)` not covered
+  --> $DIR/empty-types.rs:87:11
    |
 LL |     match res_u32_never {}
-   |           ^^^^^^^^^^^^^ patterns `Ok(_)` and `Err(!)` not covered
-   |
-note: `Result<u32, !>` defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-   = note: the matched value is of type `Result<u32, !>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
-   |
-LL ~     match res_u32_never {
-LL +         Ok(_) | Err(!) => todo!(),
-LL +     }
-   |
-
-error[E0004]: non-exhaustive patterns: `Err(!)` not covered
-  --> $DIR/empty-types.rs:93:11
-   |
-LL |     match res_u32_never {
-   |           ^^^^^^^^^^^^^ pattern `Err(!)` not covered
+   |           ^^^^^^^^^^^^^ pattern `Ok(_)` not covered
    |
 note: `Result<u32, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -115,12 +89,29 @@ note: `Result<u32, !>` defined here
    = note: the matched value is of type `Result<u32, !>`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         Ok(_) => {},
-LL +         Err(!)
+LL ~     match res_u32_never {
+LL +         Ok(_) => todo!(),
+LL +     }
    |
 
+error: unreachable pattern
+  --> $DIR/empty-types.rs:94:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^ matches no values because `!` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:99:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^ matches no values because `!` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
 error[E0004]: non-exhaustive patterns: `Ok(1_u32..=u32::MAX)` not covered
-  --> $DIR/empty-types.rs:101:11
+  --> $DIR/empty-types.rs:96:11
    |
 LL |     match res_u32_never {
    |           ^^^^^^^^^^^^^ pattern `Ok(1_u32..=u32::MAX)` not covered
@@ -138,21 +129,7 @@ LL ~         Ok(1_u32..=u32::MAX) => todo!()
    |
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/empty-types.rs:106:9
-   |
-LL |     let Ok(_x) = res_u32_never;
-   |         ^^^^^^ pattern `Err(!)` not covered
-   |
-   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
-   = note: the matched value is of type `Result<u32, !>`
-help: you might want to use `let else` to handle the variant that isn't matched
-   |
-LL |     let Ok(_x) = res_u32_never else { todo!() };
-   |                                ++++++++++++++++
-
-error[E0005]: refutable pattern in local binding
-  --> $DIR/empty-types.rs:108:9
+  --> $DIR/empty-types.rs:102:9
    |
 LL |     let Ok(_x) = res_u32_never.as_ref();
    |         ^^^^^^ pattern `Err(_)` not covered
@@ -166,7 +143,7 @@ LL |     let Ok(_x) = res_u32_never.as_ref() else { todo!() };
    |                                         ++++++++++++++++
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/empty-types.rs:112:9
+  --> $DIR/empty-types.rs:106:9
    |
 LL |     let Ok(_x) = &res_u32_never;
    |         ^^^^^^ pattern `&Err(!)` not covered
@@ -179,81 +156,88 @@ help: you might want to use `let else` to handle the variant that isn't matched
 LL |     let Ok(_x) = &res_u32_never else { todo!() };
    |                                 ++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `Ok(!)` and `Err(!)` not covered
-  --> $DIR/empty-types.rs:116:11
+error: unreachable pattern
+  --> $DIR/empty-types.rs:112:9
    |
-LL |     match result_never {}
-   |           ^^^^^^^^^^^^ patterns `Ok(!)` and `Err(!)` not covered
+LL |         _ => {}
+   |         ^ matches no values because `Result<!, !>` is uninhabited
    |
-note: `Result<!, !>` defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-   = note: the matched value is of type `Result<!, !>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
-   |
-LL ~     match result_never {
-LL +         Ok(!) | Err(!),
-LL +     }
-   |
-
-error[E0004]: non-exhaustive patterns: `Err(!)` not covered
-  --> $DIR/empty-types.rs:121:11
-   |
-LL |     match result_never {
-   |           ^^^^^^^^^^^^ pattern `Err(!)` not covered
-   |
-note: `Result<!, !>` defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-   = note: the matched value is of type `Result<!, !>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
-   |
-LL |         Ok(_) => {}, Err(!)
-   |                    ++++++++
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:140:13
+  --> $DIR/empty-types.rs:115:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^ matches no values because `Result<!, !>` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:118:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^ matches no values because `Result<!, !>` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:119:9
+   |
+LL |         _ => {}
+   |         ^ matches no values because `Result<!, !>` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:122:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^ matches no values because `Result<!, !>` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:123:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^ matches no values because `Result<!, !>` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:132:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `Void` is uninhabited
    |
-   = note: this pattern matches no values because `Void` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:135:13
+   |
+LL |             _ if false => {}
+   |             ^ matches no values because `Void` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:143:13
    |
-LL |             _ if false => {}
-   |             ^
+LL |             Some(_) => {}
+   |             ^^^^^^^ matches no values because `Void` is uninhabited
    |
-   = note: this pattern matches no values because `Void` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:147:13
+   |
+LL |             None => {}
+   |             ---- matches all the relevant values
+LL |             _ => {}
+   |             ^ no value can reach this
 
 error[E0004]: non-exhaustive patterns: `Some(!)` not covered
-  --> $DIR/empty-types.rs:146:15
-   |
-LL |         match opt_void {
-   |               ^^^^^^^^ pattern `Some(!)` not covered
-   |
-note: `Option<Void>` defined here
-  --> $SRC_DIR/core/src/option.rs:LL:COL
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
-   |
-   = note: not covered
-   = note: the matched value is of type `Option<Void>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
-   |
-LL ~             None => {},
-LL +             Some(!)
-   |
-
-error[E0004]: non-exhaustive patterns: `Some(!)` not covered
-  --> $DIR/empty-types.rs:165:15
+  --> $DIR/empty-types.rs:156:15
    |
 LL |         match *ref_opt_void {
    |               ^^^^^^^^^^^^^ pattern `Some(!)` not covered
@@ -264,6 +248,7 @@ note: `Option<Void>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Option<Void>`
+   = note: `Void` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             None => {},
@@ -271,52 +256,90 @@ LL +             Some(!)
    |
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:208:13
+  --> $DIR/empty-types.rs:199:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:213:13
+  --> $DIR/empty-types.rs:204:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:218:13
+  --> $DIR/empty-types.rs:209:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:223:13
+  --> $DIR/empty-types.rs:214:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:229:13
+  --> $DIR/empty-types.rs:220:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:281:9
+   |
+LL |         _ => {}
+   |         ^ matches no values because `!` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:284:9
+   |
+LL |         (_, _) => {}
+   |         ^^^^^^ matches no values because `(!, !)` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:287:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^ matches no values because `Result<!, !>` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:288:9
    |
-LL |         _ => {}
-   |         ^
+LL |         Err(_) => {}
+   |         ^^^^^^ matches no values because `Result<!, !>` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/empty-types.rs:297:13
+   |
+LL |         let Ok(_) = *ptr_result_never_err;
+   |             ^^^^^ pattern `Err(!)` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `Result<u8, !>`
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |         if let Ok(_) = *ptr_result_never_err { todo!() };
+   |         ++                                   +++++++++++
 
 error[E0004]: non-exhaustive patterns: type `(u32, !)` is non-empty
   --> $DIR/empty-types.rs:316:11
@@ -403,6 +426,7 @@ LL |     match slice_never {
    |           ^^^^^^^^^^^ pattern `&[!, ..]` not covered
    |
    = note: the matched value is of type `&[!]`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         [] => {},
@@ -450,22 +474,32 @@ LL +         _ => todo!(),
 LL +     }
    |
 
-error[E0004]: non-exhaustive patterns: type `[!; 3]` is non-empty
-  --> $DIR/empty-types.rs:366:11
+error: unreachable pattern
+  --> $DIR/empty-types.rs:368:9
    |
-LL |     match array_3_never {}
-   |           ^^^^^^^^^^^^^
+LL |         _ => {}
+   |         ^ matches no values because `[!; 3]` is uninhabited
    |
-   = note: the matched value is of type `[!; 3]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:371:9
    |
-LL ~     match array_3_never {
-LL +         _ => todo!(),
-LL +     }
+LL |         [_, _, _] => {}
+   |         ^^^^^^^^^ matches no values because `[!; 3]` is uninhabited
    |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:374:9
+   |
+LL |         [_, ..] => {}
+   |         ^^^^^^^ matches no values because `[!; 3]` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error[E0004]: non-exhaustive patterns: type `[!; 0]` is non-empty
-  --> $DIR/empty-types.rs:389:11
+  --> $DIR/empty-types.rs:388:11
    |
 LL |     match array_0_never {}
    |           ^^^^^^^^^^^^^
@@ -479,15 +513,15 @@ LL +     }
    |
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:396:9
+  --> $DIR/empty-types.rs:395:9
    |
 LL |         [] => {}
-   |         -- matches all the values already
+   |         -- matches all the relevant values
 LL |         _ => {}
-   |         ^ unreachable pattern
+   |         ^ no value can reach this
 
 error[E0004]: non-exhaustive patterns: `[]` not covered
-  --> $DIR/empty-types.rs:398:11
+  --> $DIR/empty-types.rs:397:11
    |
 LL |     match array_0_never {
    |           ^^^^^^^^^^^^^ pattern `[]` not covered
@@ -500,8 +534,42 @@ LL ~         [..] if false => {},
 LL +         [] => todo!()
    |
 
+error: unreachable pattern
+  --> $DIR/empty-types.rs:416:9
+   |
+LL |         Some(_) => {}
+   |         ^^^^^^^ matches no values because `!` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:421:9
+   |
+LL |         Some(_a) => {}
+   |         ^^^^^^^^ matches no values because `!` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:426:9
+   |
+LL |         None => {}
+   |         ---- matches all the relevant values
+LL |         // !useful, !reachable
+LL |         _ => {}
+   |         ^ no value can reach this
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:431:9
+   |
+LL |         None => {}
+   |         ---- matches all the relevant values
+LL |         // !useful, !reachable
+LL |         _a => {}
+   |         ^^ no value can reach this
+
 error[E0004]: non-exhaustive patterns: `&Some(!)` not covered
-  --> $DIR/empty-types.rs:452:11
+  --> $DIR/empty-types.rs:451:11
    |
 LL |     match ref_opt_never {
    |           ^^^^^^^^^^^^^ pattern `&Some(!)` not covered
@@ -512,6 +580,7 @@ note: `Option<!>` defined here
    |
    = note: not covered
    = note: the matched value is of type `&Option<!>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         &None => {},
@@ -519,7 +588,7 @@ LL +         &Some(!)
    |
 
 error[E0004]: non-exhaustive patterns: `Some(!)` not covered
-  --> $DIR/empty-types.rs:493:11
+  --> $DIR/empty-types.rs:492:11
    |
 LL |     match *ref_opt_never {
    |           ^^^^^^^^^^^^^^ pattern `Some(!)` not covered
@@ -530,6 +599,7 @@ note: `Option<!>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Option<!>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
@@ -537,7 +607,7 @@ LL +         Some(!)
    |
 
 error[E0004]: non-exhaustive patterns: `Err(!)` not covered
-  --> $DIR/empty-types.rs:541:11
+  --> $DIR/empty-types.rs:540:11
    |
 LL |     match *ref_res_never {
    |           ^^^^^^^^^^^^^^ pattern `Err(!)` not covered
@@ -548,6 +618,7 @@ note: `Result<!, !>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Result<!, !>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Ok(_) => {},
@@ -555,7 +626,7 @@ LL +         Err(!)
    |
 
 error[E0004]: non-exhaustive patterns: `Err(!)` not covered
-  --> $DIR/empty-types.rs:552:11
+  --> $DIR/empty-types.rs:551:11
    |
 LL |     match *ref_res_never {
    |           ^^^^^^^^^^^^^^ pattern `Err(!)` not covered
@@ -566,6 +637,7 @@ note: `Result<!, !>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Result<!, !>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Ok(_a) => {},
@@ -573,7 +645,7 @@ LL +         Err(!)
    |
 
 error[E0004]: non-exhaustive patterns: type `(u32, !)` is non-empty
-  --> $DIR/empty-types.rs:571:11
+  --> $DIR/empty-types.rs:570:11
    |
 LL |     match *ref_tuple_half_never {}
    |           ^^^^^^^^^^^^^^^^^^^^^
@@ -587,44 +659,45 @@ LL +     }
    |
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:604:9
+  --> $DIR/empty-types.rs:603:9
    |
 LL |         _ => {}
-   |         ^
+   |         ^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:607:9
+  --> $DIR/empty-types.rs:606:9
    |
 LL |         _x => {}
-   |         ^^
+   |         ^^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:610:9
+  --> $DIR/empty-types.rs:609:9
    |
 LL |         _ if false => {}
-   |         ^
+   |         ^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:613:9
+  --> $DIR/empty-types.rs:612:9
    |
 LL |         _x if false => {}
-   |         ^^
+   |         ^^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error[E0004]: non-exhaustive patterns: `&!` not covered
-  --> $DIR/empty-types.rs:638:11
+  --> $DIR/empty-types.rs:637:11
    |
 LL |     match ref_never {
    |           ^^^^^^^^^ pattern `&!` not covered
    |
    = note: the matched value is of type `&!`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
    = note: references are always considered inhabited
    = note: match arms with guards don't count towards exhaustivity
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
@@ -634,7 +707,7 @@ LL +         &!
    |
 
 error[E0004]: non-exhaustive patterns: `Ok(!)` not covered
-  --> $DIR/empty-types.rs:654:11
+  --> $DIR/empty-types.rs:653:11
    |
 LL |     match *ref_result_never {
    |           ^^^^^^^^^^^^^^^^^ pattern `Ok(!)` not covered
@@ -645,6 +718,7 @@ note: `Result<!, !>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Result<!, !>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Err(_) => {},
@@ -652,7 +726,7 @@ LL +         Ok(!)
    |
 
 error[E0004]: non-exhaustive patterns: `Some(!)` not covered
-  --> $DIR/empty-types.rs:674:11
+  --> $DIR/empty-types.rs:673:11
    |
 LL |     match *x {
    |           ^^ pattern `Some(!)` not covered
@@ -663,13 +737,14 @@ note: `Option<Result<!, !>>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Option<Result<!, !>>`
+   = note: `Result<!, !>` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
 LL +         Some(!)
    |
 
-error: aborting due to 49 previous errors; 1 warning emitted
+error: aborting due to 65 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0004, E0005.
 For more information about an error, try `rustc --explain E0004`.

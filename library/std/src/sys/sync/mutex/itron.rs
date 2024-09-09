@@ -2,18 +2,16 @@
 //! `TA_INHERIT` are available.
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::sys::pal::itron::{
-    abi,
-    error::{expect_success, expect_success_aborting, fail, ItronError},
-    spin::SpinIdOnceCell,
-};
+use crate::sys::pal::itron::abi;
+use crate::sys::pal::itron::error::{expect_success, expect_success_aborting, fail, ItronError};
+use crate::sys::pal::itron::spin::SpinIdOnceCell;
 
 pub struct Mutex {
     /// The ID of the underlying mutex object
     mtx: SpinIdOnceCell<()>,
 }
 
-/// Create a mutex object. This function never panics.
+/// Creates a mutex object. This function never panics.
 fn new_mtx() -> Result<abi::ID, ItronError> {
     ItronError::err_if_negative(unsafe {
         abi::acre_mtx(&abi::T_CMTX {
@@ -31,7 +29,7 @@ impl Mutex {
         Mutex { mtx: SpinIdOnceCell::new() }
     }
 
-    /// Get the inner mutex's ID, which is lazily created.
+    /// Gets the inner mutex's ID, which is lazily created.
     fn raw(&self) -> abi::ID {
         match self.mtx.get_or_try_init(|| new_mtx().map(|id| (id, ()))) {
             Ok((id, ())) => id,

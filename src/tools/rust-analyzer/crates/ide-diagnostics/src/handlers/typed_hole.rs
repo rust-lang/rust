@@ -26,7 +26,9 @@ pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Di
         (
             format!(
                 "invalid `_` expression, expected type `{}`",
-                d.expected.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),
+                d.expected
+                    .display(ctx.sema.db, ctx.edition)
+                    .with_closure_style(ClosureStyle::ClosureWithId),
             ),
             fixes(ctx, d),
         )
@@ -69,20 +71,21 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
                     prefer_prelude: ctx.config.prefer_prelude,
                     prefer_absolute: ctx.config.prefer_absolute,
                 },
+                ctx.edition,
             )
             .ok()
         })
         .unique()
         .map(|code| Assist {
             id: AssistId("typed-hole", AssistKind::QuickFix),
-            label: Label::new(format!("Replace `_` with `{}`", &code)),
+            label: Label::new(format!("Replace `_` with `{code}`")),
             group: Some(GroupLabel("Replace `_` with a term".to_owned())),
             target: original_range.range,
             source_change: Some(SourceChange::from_text_edit(
                 original_range.file_id,
                 TextEdit::replace(original_range.range, code),
             )),
-            trigger_signature_help: false,
+            command: None,
         })
         .collect();
 

@@ -141,7 +141,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetCurrentProcessId" => {
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.GetCurrentProcessId()?;
-                this.write_int(result, dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             // File related shims
@@ -372,7 +372,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
 
                 // Return success (`1`).
-                this.write_scalar(Scalar::from_i32(1), dest)?;
+                this.write_int(1, dest)?;
             }
 
             // Access to command-line arguments
@@ -563,7 +563,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_target_usize(len)?;
                 this.gen_random(ptr, len)?;
-                this.write_scalar(Scalar::from_i32(1), dest)?;
+                this.write_int(1, dest)?;
             }
             "BCryptGenRandom" => {
                 // used by getrandom 0.2
@@ -627,7 +627,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 this.CloseHandle(handle)?;
 
-                this.write_scalar(Scalar::from_u32(1), dest)?;
+                this.write_int(1, dest)?;
             }
             "GetModuleFileNameW" => {
                 let [handle, filename, size] =

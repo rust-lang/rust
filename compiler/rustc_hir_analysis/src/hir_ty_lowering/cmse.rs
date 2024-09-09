@@ -11,7 +11,7 @@ use crate::errors;
 /// Check conditions on inputs and outputs that the cmse ABIs impose: arguments and results MUST be
 /// returned via registers (i.e. MUST NOT spill to the stack). LLVM will also validate these
 /// conditions, but by checking them here rustc can emit nicer error messages.
-pub fn validate_cmse_abi<'tcx>(
+pub(crate) fn validate_cmse_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     dcx: DiagCtxtHandle<'_>,
     hir_id: HirId,

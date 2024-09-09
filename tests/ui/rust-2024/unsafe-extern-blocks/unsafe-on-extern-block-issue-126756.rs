@@ -1,6 +1,5 @@
 //@ run-rustfix
 
-#![feature(unsafe_extern_blocks)]
 #![allow(dead_code)]
 
 extern "C" {

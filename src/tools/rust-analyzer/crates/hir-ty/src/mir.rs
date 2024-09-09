@@ -16,7 +16,8 @@ use base_db::CrateId;
 use chalk_ir::Mutability;
 use either::Either;
 use hir_def::{
-    hir::{BindingId, Expr, ExprId, Ordering, PatId},
+    body::Body,
+    hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
@@ -158,7 +159,10 @@ impl<V, T> ProjectionElem<V, T> {
                     subst.at(Interner, 0).assert_ty_ref(Interner).clone()
                 }
                 _ => {
-                    never!("Overloaded deref on type {} is not a projection", base.display(db));
+                    never!(
+                        "Overloaded deref on type {} is not a projection",
+                        base.display(db, db.crate_graph()[krate].edition)
+                    );
                     TyKind::Error.intern(Interner)
                 }
             },
@@ -633,6 +637,7 @@ pub enum TerminatorKind {
     },
 }
 
+// Order of variants in this enum matter: they are used to compare borrow kinds.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -663,15 +668,16 @@ pub enum BorrowKind {
     Mut { kind: MutBorrowKind },
 }
 
+// Order of variants in this enum matter: they are used to compare borrow kinds.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum MutBorrowKind {
+    /// Data must be immutable but not aliasable. This kind of borrow cannot currently
+    /// be expressed by the user and is used only in implicit closure bindings.
+    ClosureCapture,
     Default,
     /// This borrow arose from method-call auto-ref
     /// (i.e., adjustment::Adjust::Borrow).
     TwoPhasedBorrow,
-    /// Data must be immutable but not aliasable. This kind of borrow cannot currently
-    /// be expressed by the user and is used only in implicit closure bindings.
-    ClosureCapture,
 }
 
 impl BorrowKind {
@@ -1164,8 +1170,23 @@ impl MirBody {
 pub enum MirSpan {
     ExprId(ExprId),
     PatId(PatId),
+    BindingId(BindingId),
     SelfParam,
     Unknown,
+}
+
+impl MirSpan {
+    pub fn is_ref_span(&self, body: &Body) -> bool {
+        match *self {
+            MirSpan::ExprId(expr) => matches!(body[expr], Expr::Ref { .. }),
+            // FIXME: Figure out if this is correct wrt. match ergonomics.
+            MirSpan::BindingId(binding) => matches!(
+                body.bindings[binding].mode,
+                BindingAnnotation::Ref | BindingAnnotation::RefMut
+            ),
+            MirSpan::PatId(_) | MirSpan::SelfParam | MirSpan::Unknown => false,
+        }
+    }
 }
 
 impl_from!(ExprId, PatId for MirSpan);

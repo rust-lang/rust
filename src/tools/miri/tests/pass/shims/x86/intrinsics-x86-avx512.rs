@@ -6,7 +6,7 @@
 //@ignore-target-avr
 //@ignore-target-s390x
 //@ignore-target-thumbv7em
-//@ignore-target-wasm32
+//@ignore-target-wasm
 //@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bitalg,+avx512vpopcntdq
 
 #![feature(avx512_target_feature)]

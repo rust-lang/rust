@@ -1,6 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
 use clippy_utils::ty::is_copy;
@@ -246,7 +246,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
                 && let parent_id = cx.tcx.parent_hir_id(expr.hir_id)
                 && let hir::Node::Expr(parent_expr) = cx.tcx.hir_node(parent_id)
                 && let hir::ExprKind::Index(_, index_expr, _) = parent_expr.kind
-                && let Some(Constant::Int(index_value)) = constant(cx, cx.typeck_results(), index_expr)
+                && let Some(Constant::Int(index_value)) = ConstEvalCtxt::new(cx).eval(index_expr)
                 && let Ok(index_value) = index_value.try_into()
                 && index_value < max_suggested_slice
 

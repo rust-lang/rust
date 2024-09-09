@@ -1,7 +1,8 @@
 [package]
 name = "tt"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "A `TokenTree` data structure for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -13,10 +14,14 @@ doctest = false
 
 [dependencies]
 arrayvec.workspace = true
-smol_str.workspace = true
 text-size.workspace = true
 
 stdx.workspace = true
+intern.workspace = true
+ra-ap-rustc_lexer.workspace = true
+
+[features]
+in-rust-tree = []
 
 [lints]
 workspace = true

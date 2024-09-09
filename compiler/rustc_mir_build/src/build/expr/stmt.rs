@@ -1,11 +1,12 @@
-use crate::build::scope::BreakableTarget;
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_span::source_map::Spanned;
 use tracing::debug;
+
+use crate::build::scope::BreakableTarget;
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds a block of MIR statements to evaluate the THIR `expr`.

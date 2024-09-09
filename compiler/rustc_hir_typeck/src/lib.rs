@@ -5,14 +5,11 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
-#![feature(is_none_or)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
-
-#[macro_use]
-extern crate tracing;
 
 mod _match;
 mod autoderef;
@@ -44,16 +41,9 @@ mod writeback;
 
 pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
-use typeck_root_ctxt::TypeckRootCtxt;
-
-use crate::check::check_fn;
-use crate::coercion::DynamicCoerceMany;
-use crate::diverges::Diverges;
-use crate::expectation::Expectation;
-use crate::fn_ctxt::LoweredTy;
-use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, ErrorGuaranteed};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -67,6 +57,15 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use tracing::{debug, instrument};
+use typeck_root_ctxt::TypeckRootCtxt;
+
+use crate::check::check_fn;
+use crate::coercion::DynamicCoerceMany;
+use crate::diverges::Diverges;
+use crate::expectation::Expectation;
+use crate::fn_ctxt::LoweredTy;
+use crate::gather_locals::GatherLocalsVisitor;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -87,14 +86,17 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
     &tcx.typeck(def_id).used_trait_imports
 }
 
-fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
+fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
     let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
     typeck_with_fallback(tcx, def_id, fallback, None)
 }
 
 /// Used only to get `TypeckResults` for type inference during error recovery.
 /// Currently only used for type inference of `static`s and `const`s to avoid type cycle errors.
-fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
+fn diagnostic_only_typeck<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> &'tcx ty::TypeckResults<'tcx> {
     let fallback = move || {
         let span = tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
         Ty::new_error_with_message(tcx, span, "diagnostic only typeck table used")
@@ -264,11 +266,10 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
             Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), span, .. })
             | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), span, .. }) => {
                 asm.operands.iter().find_map(|(op, _op_sp)| match op {
-                    hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == id => {
-                        // Inline assembly constants must be integers.
-                        Some(fcx.next_int_var())
-                    }
-                    hir::InlineAsmOperand::SymFn { anon_const } if anon_const.hir_id == id => {
+                    hir::InlineAsmOperand::Const { anon_const }
+                    | hir::InlineAsmOperand::SymFn { anon_const }
+                        if anon_const.hir_id == id =>
+                    {
                         Some(fcx.next_ty_var(span))
                     }
                     _ => None,

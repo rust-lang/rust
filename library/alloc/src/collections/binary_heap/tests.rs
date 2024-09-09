@@ -1,7 +1,8 @@
+use std::panic::{catch_unwind, AssertUnwindSafe};
+
 use super::*;
 use crate::boxed::Box;
 use crate::testing::crash_test::{CrashTestDummy, Panic};
-use std::panic::{catch_unwind, AssertUnwindSafe};
 
 #[test]
 fn test_iterator() {
@@ -504,10 +505,11 @@ fn test_retain_catch_unwind() {
 #[cfg(not(target_os = "emscripten"))]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn panic_safe() {
-    use rand::seq::SliceRandom;
     use std::cmp;
     use std::panic::{self, AssertUnwindSafe};
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use rand::seq::SliceRandom;
 
     static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 

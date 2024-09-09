@@ -1,17 +1,19 @@
 error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
-  --> $DIR/overcaptures-2024.rs:7:29
+  --> $DIR/overcaptures-2024.rs:6:29
    |
 LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
    |                             ^^^^^^^^^^
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
-  --> $DIR/overcaptures-2024.rs:7:10
+  --> $DIR/overcaptures-2024.rs:6:10
    |
 LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
    |          ^^
    = note: all lifetimes in scope will be captured by `impl Trait`s in edition 2024
 note: the lint level is defined here
-  --> $DIR/overcaptures-2024.rs:5:9
+  --> $DIR/overcaptures-2024.rs:4:9
    |
 LL | #![deny(impl_trait_overcaptures)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,6 +28,8 @@ error: `impl Sized` will capture more lifetimes than possibly intended in editio
 LL | fn implicit(x: &i32) -> impl Sized { *x }
    |                         ^^^^^^^^^^
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024.rs:10:16
    |
@@ -38,13 +42,15 @@ LL | fn implicit(x: &i32) -> impl Sized + use<> { *x }
    |                                    +++++++
 
 error: `impl Sized + '_` will capture more lifetimes than possibly intended in edition 2024
-  --> $DIR/overcaptures-2024.rs:15:33
+  --> $DIR/overcaptures-2024.rs:16:33
    |
 LL |     fn hello(&self, x: &i32) -> impl Sized + '_ { self }
    |                                 ^^^^^^^^^^^^^^^
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
-  --> $DIR/overcaptures-2024.rs:15:24
+  --> $DIR/overcaptures-2024.rs:16:24
    |
 LL |     fn hello(&self, x: &i32) -> impl Sized + '_ { self }
    |                        ^
@@ -55,13 +61,15 @@ LL |     fn hello(&self, x: &i32) -> impl Sized + '_ + use<'_> { self }
    |                                                 +++++++++
 
 error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
-  --> $DIR/overcaptures-2024.rs:26:47
+  --> $DIR/overcaptures-2024.rs:28:47
    |
 LL | fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized> {}
    |                                               ^^^^^^^^^^
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
-  --> $DIR/overcaptures-2024.rs:26:23
+  --> $DIR/overcaptures-2024.rs:28:23
    |
 LL | fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized> {}
    |                       ^^

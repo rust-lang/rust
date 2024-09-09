@@ -1,4 +1,3 @@
-use crate::attributes;
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
     alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
@@ -8,9 +7,8 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
 
-use crate::debuginfo;
 use crate::llvm::{self, Context, False, Module, True, Type};
-use crate::ModuleLlvm;
+use crate::{attributes, debuginfo, ModuleLlvm};
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
@@ -151,7 +149,7 @@ fn create_wrapper_function(
         }
         llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
 
-        let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, c"entry".as_ptr().cast());
+        let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, c"entry".as_ptr());
 
         let llbuilder = llvm::LLVMCreateBuilderInContext(llcx);
         llvm::LLVMPositionBuilderAtEnd(llbuilder, llbb);

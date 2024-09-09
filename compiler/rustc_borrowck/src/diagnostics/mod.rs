@@ -1,14 +1,8 @@
 //! Borrow checker diagnostics.
 
-use crate::session_diagnostics::{
-    CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
-    CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
-};
-use rustc_errors::MultiSpan;
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::CoroutineKind;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, CoroutineKind, LangItem};
 use rustc_index::IndexSlice;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::SelectionError;
@@ -25,18 +19,23 @@ use rustc_middle::util::{call_kind, CallDesugaringKind};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
-use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
     type_known_to_meet_bound_modulo_regions, FulfillmentErrorCode,
 };
-
-use crate::fluent_generated as fluent;
+use tracing::debug;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
+use crate::fluent_generated as fluent;
+use crate::session_diagnostics::{
+    CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
+    CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
+};
 
 mod find_all_local_uses;
 mod find_use;
@@ -60,11 +59,11 @@ pub(crate) use region_name::{RegionName, RegionNameSource};
 pub(crate) use rustc_middle::util::CallKind;
 
 pub(super) struct DescribePlaceOpt {
-    pub including_downcast: bool,
+    including_downcast: bool,
 
     /// Enable/Disable tuple fields.
     /// For example `x` tuple. if it's `true` `x.0`. Otherwise `x`
-    pub including_tuple_field: bool,
+    including_tuple_field: bool,
 }
 
 pub(super) struct IncludingTupleField(pub(super) bool);
@@ -346,9 +345,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         variant_index: Option<VariantIdx>,
         including_tuple_field: IncludingTupleField,
     ) -> Option<String> {
-        if ty.is_box() {
+        if let Some(boxed_ty) = ty.boxed_ty() {
             // If the type is a box, the field is described from the boxed type
-            self.describe_field_from_ty(ty.boxed_ty(), field, variant_index, including_tuple_field)
+            self.describe_field_from_ty(boxed_ty, field, variant_index, including_tuple_field)
         } else {
             match *ty.kind() {
                 ty::Adt(def, _) => {
@@ -599,8 +598,9 @@ impl UseSpans<'_> {
         err: &mut Diag<'_>,
         action: crate::InitializationRequiringAction,
     ) {
-        use crate::InitializationRequiringAction::*;
         use CaptureVarPathUseCause::*;
+
+        use crate::InitializationRequiringAction::*;
         if let UseSpans::ClosureUse { closure_kind, path_span, .. } = self {
             match closure_kind {
                 hir::ClosureKind::Coroutine(_) => {

@@ -1,12 +1,3 @@
-// This is a test which attempts to blow out the system limit with how many
-// arguments can be passed to a process. This'll successively call rustc with
-// larger and larger argument lists in an attempt to find one that's way too
-// big for the system at hand. This file itself is then used as a "linker" to
-// detect when the process creation succeeds.
-//
-// Eventually we should see an argument that looks like `@` as we switch from
-// passing literal arguments to passing everything in the file.
-
 use std::collections::HashSet;
 use std::env;
 use std::fs::{self, File};
@@ -43,8 +34,7 @@ fn read_linker_args(path: &Path) -> String {
 }
 
 fn main() {
-    let tmpdir = PathBuf::from(env::var_os("TMPDIR").unwrap());
-    let ok = tmpdir.join("ok");
+    let ok = PathBuf::from("ok");
     if env::var("YOU_ARE_A_LINKER").is_ok() {
         if let Some(file) = env::args_os().find(|a| a.to_string_lossy().contains("@")) {
             let file = file.to_str().expect("non-utf8 file argument");
@@ -53,11 +43,11 @@ fn main() {
         return;
     }
 
-    let rustc = env::var_os("RUSTC").unwrap_or("rustc".into());
+    let rustc = env::var_os("RUSTC").unwrap();
     let me_as_linker = format!("linker={}", env::current_exe().unwrap().display());
     for i in (1..).map(|i| i * 100) {
         println!("attempt: {}", i);
-        let file = tmpdir.join("bar.rs");
+        let file = PathBuf::from("bar.rs");
         let mut expected_libs = write_test_case(&file, i);
 
         drop(fs::remove_file(&ok));
@@ -65,8 +55,6 @@ fn main() {
             .arg(&file)
             .arg("-C")
             .arg(&me_as_linker)
-            .arg("--out-dir")
-            .arg(&tmpdir)
             .env("YOU_ARE_A_LINKER", "1")
             .output()
             .unwrap();

@@ -12,7 +12,6 @@ use hir_expand::{
 };
 use intern::Interned;
 use la_arena::{Arena, RawIdx};
-use once_cell::unsync::Lazy;
 use stdx::impl_from;
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
 use triomphe::Arc;
@@ -394,11 +393,16 @@ impl GenericParams {
 
                     // Don't create an `Expander` if not needed since this
                     // could cause a reparse after the `ItemTree` has been created due to the spanmap.
-                    let mut expander = Lazy::new(|| {
-                        (module.def_map(db), Expander::new(db, loc.id.file_id(), module))
-                    });
+                    let mut expander = None;
                     for param in func_data.params.iter() {
-                        generic_params.fill_implicit_impl_trait_args(db, &mut expander, param);
+                        generic_params.fill_implicit_impl_trait_args(
+                            db,
+                            &mut expander,
+                            &mut || {
+                                (module.def_map(db), Expander::new(db, loc.id.file_id(), module))
+                            },
+                            param,
+                        );
                     }
                     Interned::new(generic_params.finish())
                 }
@@ -597,7 +601,9 @@ impl GenericParamsCollector {
     fn fill_implicit_impl_trait_args(
         &mut self,
         db: &dyn DefDatabase,
-        exp: &mut Lazy<(Arc<DefMap>, Expander), impl FnOnce() -> (Arc<DefMap>, Expander)>,
+        // FIXME: Change this back to `LazyCell` if https://github.com/rust-lang/libs-team/issues/429 is accepted.
+        exp: &mut Option<(Arc<DefMap>, Expander)>,
+        exp_fill: &mut dyn FnMut() -> (Arc<DefMap>, Expander),
         type_ref: &TypeRef,
     ) {
         type_ref.walk(&mut |type_ref| {
@@ -617,7 +623,7 @@ impl GenericParamsCollector {
             }
             if let TypeRef::Macro(mc) = type_ref {
                 let macro_call = mc.to_node(db.upcast());
-                let (def_map, expander) = &mut **exp;
+                let (def_map, expander) = exp.get_or_insert_with(&mut *exp_fill);
 
                 let module = expander.module.local_id;
                 let resolver = |path: &_| {
@@ -637,8 +643,8 @@ impl GenericParamsCollector {
                 {
                     let ctx = expander.ctx(db);
                     let type_ref = TypeRef::from_ast(&ctx, expanded.tree());
-                    self.fill_implicit_impl_trait_args(db, &mut *exp, &type_ref);
-                    exp.1.exit(mark);
+                    self.fill_implicit_impl_trait_args(db, &mut *exp, exp_fill, &type_ref);
+                    exp.get_or_insert_with(&mut *exp_fill).1.exit(mark);
                 }
             }
         });

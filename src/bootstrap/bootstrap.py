@@ -79,6 +79,11 @@ def get(base, url, path, checksums, verbose=False):
                 eprint("removing", temp_path)
             os.unlink(temp_path)
 
+def curl_version():
+    m = re.match(bytes("^curl ([0-9]+)\\.([0-9]+)", "utf8"), require(["curl", "-V"]))
+    if m is None:
+        return (0, 0)
+    return (int(m[1]), int(m[2]))
 
 def download(path, url, probably_big, verbose):
     for _ in range(4):
@@ -101,18 +106,29 @@ def _download(path, url, probably_big, verbose, exception):
 
     try:
         if (probably_big or verbose) and "GITHUB_ACTIONS" not in os.environ:
-            option = "-#"
+            option = "--progress-bar"
         else:
-            option = "-s"
+            option = "--silent"
         # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32())
-        run(["curl", option,
-            "-L", # Follow redirect.
-            "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
-            "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
-            "-o", path,
-            "--retry", "3", "-SRf", url],
+        extra_flags = []
+        if curl_version() > (7, 70):
+            extra_flags = [ "--retry-all-errors" ]
+        # options should be kept in sync with
+        # src/bootstrap/src/core/download.rs
+        # for consistency.
+        # they are also more compreprensivly explained in that file.
+        run(["curl", option] + extra_flags + [
+            # Follow redirect.
+            "--location",
+            # timeout if speed is < 10 bytes/sec for > 30 seconds
+            "--speed-time", "30", "--speed-limit", "10",
+            # timeout if cannot connect within 30 seconds
+            "--connect-timeout", "30",
+            "--output", path,
+            "--continue-at", "-",
+            "--retry", "3", "--show-error", "--remote-time", "--fail", url],
             verbose=verbose,
             exception=True, # Will raise RuntimeError on failure
         )
@@ -533,9 +549,13 @@ class RustBuild(object):
         bin_root = self.bin_root()
 
         key = self.stage0_compiler.date
-        if self.rustc().startswith(bin_root) and \
-                (not os.path.exists(self.rustc()) or
-                 self.program_out_of_date(self.rustc_stamp(), key)):
+        is_outdated = self.program_out_of_date(self.rustc_stamp(), key)
+        need_rustc = self.rustc().startswith(bin_root) and (not os.path.exists(self.rustc()) \
+            or is_outdated)
+        need_cargo = self.cargo().startswith(bin_root) and (not os.path.exists(self.cargo()) \
+            or is_outdated)
+
+        if need_rustc or need_cargo:
             if os.path.exists(bin_root):
                 # HACK: On Windows, we can't delete rust-analyzer-proc-macro-server while it's
                 # running. Kill it.
@@ -556,7 +576,6 @@ class RustBuild(object):
                     run_powershell([script])
                 shutil.rmtree(bin_root)
 
-            key = self.stage0_compiler.date
             cache_dst = (self.get_toml('bootstrap-cache-path', 'build') or
                 os.path.join(self.build_dir, "cache"))
 
@@ -568,11 +587,16 @@ class RustBuild(object):
 
             toolchain_suffix = "{}-{}{}".format(rustc_channel, self.build, tarball_suffix)
 
-            tarballs_to_download = [
-                ("rust-std-{}".format(toolchain_suffix), "rust-std-{}".format(self.build)),
-                ("rustc-{}".format(toolchain_suffix), "rustc"),
-                ("cargo-{}".format(toolchain_suffix), "cargo"),
-            ]
+            tarballs_to_download = []
+
+            if need_rustc:
+                tarballs_to_download.append(
+                    ("rust-std-{}".format(toolchain_suffix), "rust-std-{}".format(self.build))
+                )
+                tarballs_to_download.append(("rustc-{}".format(toolchain_suffix), "rustc"))
+
+            if need_cargo:
+                tarballs_to_download.append(("cargo-{}".format(toolchain_suffix), "cargo"))
 
             tarballs_download_info = [
                 DownloadInfo(

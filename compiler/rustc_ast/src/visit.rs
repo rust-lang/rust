@@ -13,14 +13,13 @@
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
-use crate::ast::*;
-use crate::ptr::P;
-
+pub use rustc_ast_ir::visit::VisitorResult;
+pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-pub use rustc_ast_ir::visit::VisitorResult;
-pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
+use crate::ast::*;
+use crate::ptr::P;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AssocCtxt {
@@ -70,14 +69,14 @@ pub enum FnKind<'a> {
     Fn(FnCtxt, Ident, &'a FnSig, &'a Visibility, &'a Generics, Option<&'a Block>),
 
     /// E.g., `|x, y| body`.
-    Closure(&'a ClosureBinder, &'a FnDecl, &'a Expr),
+    Closure(&'a ClosureBinder, &'a Option<CoroutineKind>, &'a FnDecl, &'a Expr),
 }
 
 impl<'a> FnKind<'a> {
     pub fn header(&self) -> Option<&'a FnHeader> {
         match *self {
             FnKind::Fn(_, _, sig, _, _, _) => Some(&sig.header),
-            FnKind::Closure(_, _, _) => None,
+            FnKind::Closure(..) => None,
         }
     }
 
@@ -91,7 +90,7 @@ impl<'a> FnKind<'a> {
     pub fn decl(&self) -> &'a FnDecl {
         match self {
             FnKind::Fn(_, _, sig, _, _, _) => &sig.decl,
-            FnKind::Closure(_, decl, _) => decl,
+            FnKind::Closure(_, _, decl, _) => decl,
         }
     }
 
@@ -840,7 +839,7 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             try_visit!(walk_fn_decl(visitor, decl));
             visit_opt!(visitor, visit_block, body);
         }
-        FnKind::Closure(binder, decl, body) => {
+        FnKind::Closure(binder, _coroutine_kind, decl, body) => {
             try_visit!(visitor.visit_closure_binder(binder));
             try_visit!(walk_fn_decl(visitor, decl));
             try_visit!(visitor.visit_expr(body));
@@ -1108,7 +1107,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         ExprKind::Closure(box Closure {
             binder,
             capture_clause,
-            coroutine_kind: _,
+            coroutine_kind,
             constness: _,
             movability: _,
             fn_decl,
@@ -1117,7 +1116,11 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
             fn_arg_span: _,
         }) => {
             try_visit!(visitor.visit_capture_by(capture_clause));
-            try_visit!(visitor.visit_fn(FnKind::Closure(binder, fn_decl, body), *span, *id))
+            try_visit!(visitor.visit_fn(
+                FnKind::Closure(binder, coroutine_kind, fn_decl, body),
+                *span,
+                *id
+            ))
         }
         ExprKind::Block(block, opt_label) => {
             visit_opt!(visitor, visit_label, opt_label);

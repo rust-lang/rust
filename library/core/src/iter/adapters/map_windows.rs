@@ -1,9 +1,6 @@
-use crate::{
-    fmt,
-    iter::FusedIterator,
-    mem::{self, MaybeUninit},
-    ptr,
-};
+use crate::iter::FusedIterator;
+use crate::mem::{self, MaybeUninit};
+use crate::{fmt, ptr};
 
 /// An iterator over the mapped windows of another iterator.
 ///

@@ -1,6 +1,6 @@
 use super::CAST_NAN_TO_INT;
 
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_note;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
 }
 
 fn is_known_nan(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    match constant(cx, cx.typeck_results(), e) {
+    match ConstEvalCtxt::new(cx).eval(e) {
         // FIXME(f16_f128): add these types when nan checks are available on all platforms
         Some(Constant::F64(n)) => n.is_nan(),
         Some(Constant::F32(n)) => n.is_nan(),

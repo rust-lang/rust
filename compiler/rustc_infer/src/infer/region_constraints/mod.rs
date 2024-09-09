@@ -1,10 +1,7 @@
 //! See `README.md`.
 
-use self::CombineMapType::*;
-use self::UndoLog::*;
-
-use super::{MiscVariable, RegionVariableOrigin, Rollback, SubregionOrigin};
-use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, Snapshot};
+use std::ops::Range;
+use std::{cmp, fmt, mem};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -13,15 +10,15 @@ use rustc_data_structures::unify as ut;
 use rustc_index::IndexVec;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::infer::unify_key::{RegionVariableValue, RegionVidKey};
-use rustc_middle::ty::ReStatic;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ReBound, ReVar};
-use rustc_middle::ty::{Region, RegionVid};
+use rustc_middle::ty::{self, ReBound, ReStatic, ReVar, Region, RegionVid, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
-use std::ops::Range;
-use std::{cmp, fmt, mem};
+use self::CombineMapType::*;
+use self::UndoLog::*;
+use super::{MiscVariable, RegionVariableOrigin, Rollback, SubregionOrigin};
+use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, Snapshot};
 
 mod leak_check;
 

@@ -1,24 +1,44 @@
-use crate::bounds::Bounds;
-use crate::collect::ItemCtxt;
-use crate::constrained_generic_params as cgp;
-use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason};
+use std::assert_matches::assert_matches;
+
 use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{GenericPredicates, ImplTraitInTraitData, Upcast};
+use rustc_middle::ty::{self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument, trace};
+
+use crate::bounds::Bounds;
+use crate::collect::ItemCtxt;
+use crate::constrained_generic_params as cgp;
+use crate::delegation::inherit_predicates_for_delegation_item;
+use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
-/// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
-/// `Self: Trait` predicates for traits.
+/// ID `def_id`. This includes all predicates returned by `explicit_predicates_of`, plus
+/// inferred constraints concerning which regions outlive other regions.
+#[instrument(level = "debug", skip(tcx))]
 pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
-    let mut result = tcx.predicates_defined_on(def_id);
+    let mut result = tcx.explicit_predicates_of(def_id);
+    debug!("predicates_of: explicit_predicates_of({:?}) = {:?}", def_id, result);
+
+    let inferred_outlives = tcx.inferred_outlives_of(def_id);
+    if !inferred_outlives.is_empty() {
+        debug!("predicates_of: inferred_outlives_of({:?}) = {:?}", def_id, inferred_outlives,);
+        let inferred_outlives_iter =
+            inferred_outlives.iter().map(|(clause, span)| ((*clause).upcast(tcx), *span));
+        if result.predicates.is_empty() {
+            result.predicates = tcx.arena.alloc_from_iter(inferred_outlives_iter);
+        } else {
+            result.predicates = tcx.arena.alloc_from_iter(
+                result.predicates.into_iter().copied().chain(inferred_outlives_iter),
+            );
+        }
+    }
 
     if tcx.is_trait(def_id) {
         // For traits, add `Self: Trait` predicate. This is
@@ -48,7 +68,8 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
                 .chain(std::iter::once((ty::TraitRef::identity(tcx, def_id).upcast(tcx), span))),
         );
     }
-    debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
+
+    debug!("predicates_of({:?}) = {:?}", def_id, result);
     result
 }
 
@@ -116,6 +137,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(hir_id);
+
+    if let Some(sig) = node.fn_sig()
+        && let Some(sig_id) = sig.decl.opt_delegation_sig_id()
+    {
+        return inherit_predicates_for_delegation_item(tcx, def_id, sig_id);
+    }
 
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
@@ -550,24 +577,24 @@ pub(super) fn explicit_predicates_of<'tcx>(
 /// Ensures that the super-predicates of the trait with a `DefId`
 /// of `trait_def_id` are lowered and stored. This also ensures that
 /// the transitive super-predicates are lowered.
-pub(super) fn explicit_super_predicates_of(
-    tcx: TyCtxt<'_>,
+pub(super) fn explicit_super_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_def_id: LocalDefId,
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     implied_predicates_with_filter(tcx, trait_def_id.to_def_id(), PredicateFilter::SelfOnly)
 }
 
-pub(super) fn explicit_supertraits_containing_assoc_item(
-    tcx: TyCtxt<'_>,
+pub(super) fn explicit_supertraits_containing_assoc_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
     (trait_def_id, assoc_name): (DefId, Ident),
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     implied_predicates_with_filter(tcx, trait_def_id, PredicateFilter::SelfThatDefines(assoc_name))
 }
 
-pub(super) fn explicit_implied_predicates_of(
-    tcx: TyCtxt<'_>,
+pub(super) fn explicit_implied_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_def_id: LocalDefId,
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     implied_predicates_with_filter(
         tcx,
         trait_def_id.to_def_id(),
@@ -582,15 +609,15 @@ pub(super) fn explicit_implied_predicates_of(
 /// Ensures that the super-predicates of the trait with a `DefId`
 /// of `trait_def_id` are lowered and stored. This also ensures that
 /// the transitive super-predicates are lowered.
-pub(super) fn implied_predicates_with_filter(
-    tcx: TyCtxt<'_>,
+pub(super) fn implied_predicates_with_filter<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     filter: PredicateFilter,
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     let Some(trait_def_id) = trait_def_id.as_local() else {
         // if `assoc_name` is None, then the query should've been redirected to an
         // external provider
-        assert!(matches!(filter, PredicateFilter::SelfThatDefines(_)));
+        assert_matches!(filter, PredicateFilter::SelfThatDefines(_));
         return tcx.explicit_super_predicates_of(trait_def_id);
     };
 
@@ -649,20 +676,16 @@ pub(super) fn implied_predicates_with_filter(
         _ => {}
     }
 
-    ty::GenericPredicates {
-        parent: None,
-        predicates: implied_bounds,
-        effects_min_tys: ty::List::empty(),
-    }
+    ty::EarlyBinder::bind(implied_bounds)
 }
 
 /// Returns the predicates defined on `item_def_id` of the form
 /// `X: Foo` where `X` is the type parameter `def_id`.
 #[instrument(level = "trace", skip(tcx))]
-pub(super) fn type_param_predicates(
-    tcx: TyCtxt<'_>,
+pub(super) fn type_param_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
     (item_def_id, def_id, assoc_name): (LocalDefId, LocalDefId, Ident),
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
 
@@ -683,18 +706,20 @@ pub(super) fn type_param_predicates(
         tcx.generics_of(item_def_id).parent.map(|def_id| def_id.expect_local())
     };
 
-    let mut result = parent
-        .map(|parent| {
-            let icx = ItemCtxt::new(tcx, parent);
-            icx.probe_ty_param_bounds(DUMMY_SP, def_id, assoc_name)
-        })
-        .unwrap_or_default();
+    let result = if let Some(parent) = parent {
+        let icx = ItemCtxt::new(tcx, parent);
+        icx.probe_ty_param_bounds(DUMMY_SP, def_id, assoc_name)
+    } else {
+        ty::EarlyBinder::bind(&[] as &[_])
+    };
     let mut extend = None;
 
     let item_hir_id = tcx.local_def_id_to_hir_id(item_def_id);
 
     let hir_node = tcx.hir_node(item_hir_id);
-    let Some(hir_generics) = hir_node.generics() else { return result };
+    let Some(hir_generics) = hir_node.generics() else {
+        return result;
+    };
     if let Node::Item(item) = hir_node
         && let ItemKind::Trait(..) = item.kind
         // Implied `Self: Trait` and supertrait bounds.
@@ -718,9 +743,10 @@ pub(super) fn type_param_predicates(
             _ => false,
         }),
     );
-    result.predicates =
-        tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(extra_predicates));
-    result
+
+    ty::EarlyBinder::bind(
+        tcx.arena.alloc_from_iter(result.skip_binder().iter().copied().chain(extra_predicates)),
+    )
 }
 
 impl<'tcx> ItemCtxt<'tcx> {

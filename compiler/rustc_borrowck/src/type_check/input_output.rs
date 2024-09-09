@@ -15,11 +15,11 @@ use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
-
-use crate::renumber::RegionCtxt;
-use crate::universal_regions::{DefiningTy, UniversalRegions};
+use tracing::{debug, instrument};
 
 use super::{Locations, TypeChecker};
+use crate::renumber::RegionCtxt;
+use crate::universal_regions::{DefiningTy, UniversalRegions};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Check explicit closure signature annotation,

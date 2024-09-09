@@ -1,13 +1,9 @@
 //! A readers-writer lock implementation backed by the SOLID kernel extension.
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::sys::pal::{
-    abi,
-    itron::{
-        error::{expect_success, expect_success_aborting, fail, ItronError},
-        spin::SpinIdOnceCell,
-    },
-};
+use crate::sys::pal::abi;
+use crate::sys::pal::itron::error::{expect_success, expect_success_aborting, fail, ItronError};
+use crate::sys::pal::itron::spin::SpinIdOnceCell;
 
 pub struct RwLock {
     /// The ID of the underlying mutex object
@@ -28,7 +24,7 @@ impl RwLock {
         RwLock { rwl: SpinIdOnceCell::new() }
     }
 
-    /// Get the inner mutex's ID, which is lazily created.
+    /// Gets the inner mutex's ID, which is lazily created.
     fn raw(&self) -> abi::ID {
         match self.rwl.get_or_try_init(|| new_rwl().map(|id| (id, ()))) {
             Ok((id, ())) => id,

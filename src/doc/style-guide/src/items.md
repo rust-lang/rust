@@ -449,8 +449,8 @@ entries, format it across multiple lines as with a type alias.
 ## extern items
 
 When writing extern items (such as `extern "C" fn`), always specify the ABI.
-For example, write `extern "C" fn foo ...`, not `extern fn foo ...`, or
-`extern "C" { ... }`.
+For example, write `extern "C" fn foo ...` or `unsafe extern "C" { ...}`
+and avoid `extern fn foo ...` and `unsafe extern { ... }`.
 
 ## Imports (`use` statements)
 

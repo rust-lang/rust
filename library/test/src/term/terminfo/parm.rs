@@ -1,9 +1,9 @@
 //! Parameterized string expansion
 
+use std::iter::repeat;
+
 use self::Param::*;
 use self::States::*;
-
-use std::iter::repeat;
 
 #[cfg(test)]
 mod tests;

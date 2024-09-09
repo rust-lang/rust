@@ -14,6 +14,7 @@ use hir_def::{
     body::Body, data::adt::VariantData, hir::PatId, AdtId, EnumVariantId, LocalFieldId, VariantId,
 };
 use hir_expand::name::Name;
+use span::Edition;
 use stdx::{always, never};
 
 use crate::{
@@ -151,7 +152,11 @@ impl<'a> PatCtxt<'a> {
                 match (bm, ty.kind(Interner)) {
                     (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty,
                     (BindingMode::Ref(_), _) => {
-                        never!("`ref {}` has wrong type {:?}", name.display(self.db.upcast()), ty);
+                        never!(
+                            "`ref {}` has wrong type {:?}",
+                            name.display(self.db.upcast(), Edition::LATEST),
+                            ty
+                        );
                         self.errors.push(PatternError::UnexpectedType);
                         return Pat { ty: ty.clone(), kind: PatKind::Wild.into() };
                     }
@@ -206,7 +211,7 @@ impl<'a> PatCtxt<'a> {
         &mut self,
         pats: &[PatId],
         expected_len: usize,
-        ellipsis: Option<usize>,
+        ellipsis: Option<u32>,
     ) -> Vec<FieldPat> {
         if pats.len() > expected_len {
             self.errors.push(PatternError::ExtraFields);
@@ -214,7 +219,7 @@ impl<'a> PatCtxt<'a> {
         }
 
         pats.iter()
-            .enumerate_and_adjust(expected_len, ellipsis)
+            .enumerate_and_adjust(expected_len, ellipsis.map(|it| it as usize))
             .map(|(i, &subpattern)| FieldPat {
                 field: LocalFieldId::from_raw((i as u32).into()),
                 pattern: self.lower_pattern(subpattern),
@@ -297,7 +302,7 @@ impl HirDisplay for Pat {
             PatKind::Wild => write!(f, "_"),
             PatKind::Never => write!(f, "!"),
             PatKind::Binding { name, subpattern } => {
-                write!(f, "{}", name.display(f.db.upcast()))?;
+                write!(f, "{}", name.display(f.db.upcast(), f.edition()))?;
                 if let Some(subpattern) = subpattern {
                     write!(f, " @ ")?;
                     subpattern.hir_fmt(f)?;
@@ -317,14 +322,22 @@ impl HirDisplay for Pat {
                 if let Some(variant) = variant {
                     match variant {
                         VariantId::EnumVariantId(v) => {
-                            write!(f, "{}", f.db.enum_variant_data(v).name.display(f.db.upcast()))?;
+                            write!(
+                                f,
+                                "{}",
+                                f.db.enum_variant_data(v).name.display(f.db.upcast(), f.edition())
+                            )?;
                         }
-                        VariantId::StructId(s) => {
-                            write!(f, "{}", f.db.struct_data(s).name.display(f.db.upcast()))?
-                        }
-                        VariantId::UnionId(u) => {
-                            write!(f, "{}", f.db.union_data(u).name.display(f.db.upcast()))?
-                        }
+                        VariantId::StructId(s) => write!(
+                            f,
+                            "{}",
+                            f.db.struct_data(s).name.display(f.db.upcast(), f.edition())
+                        )?,
+                        VariantId::UnionId(u) => write!(
+                            f,
+                            "{}",
+                            f.db.union_data(u).name.display(f.db.upcast(), f.edition())
+                        )?,
                     };
 
                     let variant_data = variant.variant_data(f.db.upcast());
@@ -341,7 +354,9 @@ impl HirDisplay for Pat {
                                     write!(
                                         f,
                                         "{}: ",
-                                        rec_fields[p.field].name.display(f.db.upcast())
+                                        rec_fields[p.field]
+                                            .name
+                                            .display(f.db.upcast(), f.edition())
                                     )?;
                                     p.pattern.hir_fmt(f)
                                 })

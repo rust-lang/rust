@@ -1,14 +1,15 @@
 //! Lowers intrinsic calls
 
-use crate::take_array;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 
+use crate::take_array;
+
 pub struct LowerIntrinsics;
 
-impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
+impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let local_decls = &body.local_decls;
         for block in body.basic_blocks.as_mut() {

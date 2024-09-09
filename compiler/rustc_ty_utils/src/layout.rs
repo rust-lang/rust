@@ -1,3 +1,6 @@
+use std::fmt::Debug;
+use std::iter;
+
 use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
@@ -18,9 +21,6 @@ use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::*;
 use tracing::{debug, instrument, trace};
-
-use std::fmt::Debug;
-use std::iter;
 
 use crate::errors::{
     MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
@@ -184,7 +184,7 @@ fn layout_of_uncached<'tcx>(
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
         ty::Float(fty) => scalar(Float(Float::from_float_ty(fty))),
-        ty::FnPtr(_) => {
+        ty::FnPtr(..) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
             tcx.mk_layout(LayoutS::scalar(cx, ptr))
@@ -219,9 +219,13 @@ fn layout_of_uncached<'tcx>(
                             // its struct tail cannot be normalized either, so try to get a
                             // more descriptive layout error here, which will lead to less confusing
                             // diagnostics.
+                            //
+                            // We use the raw struct tail function here to get the first tail
+                            // that is an alias, which is likely the cause of the normalization
+                            // error.
                             match tcx.try_normalize_erasing_regions(
                                 param_env,
-                                tcx.struct_tail_without_normalization(pointee),
+                                tcx.struct_tail_raw(pointee, |ty| ty, || {}),
                             ) {
                                 Ok(_) => {}
                                 Err(better_err) => {
@@ -244,7 +248,7 @@ fn layout_of_uncached<'tcx>(
 
                 metadata
             } else {
-                let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
+                let unsized_part = tcx.struct_tail_for_codegen(pointee, param_env);
 
                 match unsized_part.kind() {
                     ty::Foreign(..) => {
@@ -733,9 +737,7 @@ fn coroutine_saved_local_eligibility(
                     // point, so it is no longer a candidate.
                     trace!(
                         "removing local {:?} in >1 variant ({:?}, {:?})",
-                        local,
-                        variant_index,
-                        idx
+                        local, variant_index, idx
                     );
                     ineligible_locals.insert(*local);
                     assignments[*local] = Ineligible(None);
@@ -999,7 +1001,13 @@ fn coroutine_layout<'tcx>(
         },
         fields: outer_fields,
         abi,
-        largest_niche: prefix.largest_niche,
+        // Suppress niches inside coroutines. If the niche is inside a field that is aliased (due to
+        // self-referentiality), getting the discriminant can cause aliasing violations.
+        // `UnsafeCell` blocks niches for the same reason, but we don't yet have `UnsafePinned` that
+        // would do the same for us here.
+        // See <https://github.com/rust-lang/rust/issues/63818>, <https://github.com/rust-lang/miri/issues/3780>.
+        // FIXME: Remove when <https://github.com/rust-lang/rust/issues/125735> is implemented and aliased coroutine fields are wrapped in `UnsafePinned`.
+        largest_niche: None,
         size,
         align,
         max_repr_align: None,

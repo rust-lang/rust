@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet_opt, snippet_with_context};
+use clippy_utils::source::{snippet_with_context, SpanRangeExt};
 use clippy_utils::sugg::{has_enclosing_paren, Sugg};
 use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
 use rustc_ast::ast::LitKind;
@@ -216,7 +216,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
 }
 
 fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
-    let Some(snippet) = snippet_opt(cx, span) else {
+    let Some(snippet) = span.get_source_text(cx) else {
         return span;
     };
     if has_enclosing_paren(snippet) {

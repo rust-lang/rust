@@ -1,11 +1,10 @@
 //! impl char {}
 
+use super::*;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
 use crate::unicode::{self, conversions};
-
-use super::*;
 
 impl char {
     /// The lowest valid code point a `char` can have, `'\0'`.
@@ -223,10 +222,7 @@ impl char {
     /// assert_eq!('❤', c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_stable(
-        feature = "const_char_from_u32_unchecked",
-        since = "CURRENT_RUSTC_VERSION"
-    )]
+    #[rustc_const_stable(feature = "const_char_from_u32_unchecked", since = "1.81.0")]
     #[must_use]
     #[inline]
     pub const unsafe fn from_u32_unchecked(i: u32) -> char {

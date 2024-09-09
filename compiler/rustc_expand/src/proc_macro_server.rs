@@ -1,4 +1,5 @@
-use crate::base::ExtCtxt;
+use std::ops::{Bound, Range};
+
 use ast::token::IdentIsRaw;
 use pm::bridge::{
     server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
@@ -20,7 +21,8 @@ use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 use smallvec::{smallvec, SmallVec};
-use std::ops::{Bound, Range};
+
+use crate::base::ExtCtxt;
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -227,15 +229,16 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     span: ident.span,
                 })),
 
-                Lifetime(name) => {
+                Lifetime(name, is_raw) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
-                        TokenTree::Ident(Ident { sym: ident.name, is_raw: false, span }),
+                        TokenTree::Ident(Ident { sym: ident.name, is_raw: is_raw.into(), span }),
                     ]);
                 }
-                NtLifetime(ident) => {
-                    let stream = TokenStream::token_alone(token::Lifetime(ident.name), ident.span);
+                NtLifetime(ident, is_raw) => {
+                    let stream =
+                        TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span);
                     trees.push(TokenTree::Group(Group {
                         delimiter: pm::Delimiter::None,
                         stream: Some(stream),
@@ -412,7 +415,7 @@ impl ToInternal<rustc_errors::Level> for Level {
     }
 }
 
-pub struct FreeFunctions;
+pub(crate) struct FreeFunctions;
 
 pub(crate) struct Rustc<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
@@ -424,7 +427,7 @@ pub(crate) struct Rustc<'a, 'b> {
 }
 
 impl<'a, 'b> Rustc<'a, 'b> {
-    pub fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
+    pub(crate) fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
         let expn_data = ecx.current_expansion.id.expn_data();
         Rustc {
             def_site: ecx.with_def_site_ctxt(expn_data.def_site),

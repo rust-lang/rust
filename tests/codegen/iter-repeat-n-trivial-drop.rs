@@ -1,8 +1,9 @@
-//@ compile-flags: -O
+//@ compile-flags: -C opt-level=3
 //@ only-x86_64
 
 #![crate_type = "lib"]
 #![feature(iter_repeat_n)]
+#![feature(array_repeat)]
 
 #[derive(Clone)]
 pub struct NotCopy(u16);
@@ -53,4 +54,16 @@ pub fn vec_extend_via_iter_repeat_n() -> Vec<u8> {
     let mut v = Vec::with_capacity(n);
     v.extend(std::iter::repeat_n(42_u8, n));
     v
+}
+
+// Array repeat uses `RepeatN::next_unchecked` internally,
+// so also check that the distinction disappears there.
+
+#[no_mangle]
+// CHECK-LABEL: @array_repeat_not_copy
+pub unsafe fn array_repeat_not_copy(item: NotCopy) -> [NotCopy; 8] {
+    // CHECK: insertelement {{.+}} i16 %item
+    // CHECK: shufflevector <8 x i16> {{.+}} zeroinitializer
+    // CHECK: store <8 x i16>
+    std::array::repeat(item)
 }

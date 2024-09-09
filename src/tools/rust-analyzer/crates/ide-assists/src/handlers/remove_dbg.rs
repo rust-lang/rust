@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use syntax::{
     ast::{self, make, AstNode, AstToken},
-    match_ast, ted, NodeOrToken, SyntaxElement, TextRange, TextSize, T,
+    match_ast, ted, Edition, NodeOrToken, SyntaxElement, TextRange, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -77,7 +77,7 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
     let input_expressions = input_expressions
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
-        .map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
+        .map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join(""), Edition::CURRENT))
         .collect::<Option<Vec<ast::Expr>>>()?;
 
     let parent = macro_expr.syntax().parent()?;

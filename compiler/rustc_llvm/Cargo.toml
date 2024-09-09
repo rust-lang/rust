@@ -10,5 +10,5 @@ libc = "0.2.73"
 
 [build-dependencies]
 # tidy-alphabetical-start
-cc = "1.0.97"
+cc = "=1.0.105" # FIXME(cc): pinned to keep support for VS2013
 # tidy-alphabetical-end

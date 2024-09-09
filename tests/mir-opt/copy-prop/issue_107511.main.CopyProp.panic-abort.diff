@@ -88,15 +88,15 @@
   
       bb6: {
 -         StorageLive(_16);
-          _16 = ((_11 as Some).0: usize);
+          _16 = copy ((_11 as Some).0: usize);
           StorageLive(_17);
 -         StorageLive(_18);
--         _18 = _16;
+-         _18 = copy _16;
           _19 = Len(_2);
--         _20 = Lt(_18, _19);
--         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, _18) -> [success: bb8, unwind unreachable];
-+         _20 = Lt(_16, _19);
-+         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, _16) -> [success: bb8, unwind unreachable];
+-         _20 = Lt(copy _18, copy _19);
+-         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, copy _18) -> [success: bb8, unwind unreachable];
++         _20 = Lt(copy _16, copy _19);
++         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, copy _16) -> [success: bb8, unwind unreachable];
       }
   
       bb7: {
@@ -112,9 +112,9 @@
       }
   
       bb8: {
--         _17 = _2[_18];
-+         _17 = _2[_16];
-          _1 = Add(_1, move _17);
+-         _17 = copy _2[_18];
++         _17 = copy _2[_16];
+          _1 = Add(copy _1, move _17);
           StorageDead(_17);
 -         StorageDead(_18);
 -         _10 = const ();

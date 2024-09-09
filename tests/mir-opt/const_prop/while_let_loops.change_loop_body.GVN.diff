@@ -30,7 +30,7 @@
       }
   
       bb1: {
--         switchInt(((_3 as Some).0: u32)) -> [0: bb2, otherwise: bb3];
+-         switchInt(copy ((_3 as Some).0: u32)) -> [0: bb2, otherwise: bb3];
 +         switchInt(const Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: u32) -> [0: bb2, otherwise: bb3];
       }
   

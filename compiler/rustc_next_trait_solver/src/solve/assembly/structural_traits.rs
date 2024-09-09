@@ -7,7 +7,7 @@ use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, Upcast as _};
+use rustc_type_ir::{self as ty, elaborate, Interner, Upcast as _};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
@@ -31,7 +31,7 @@ where
         | ty::Bool
         | ty::Float(_)
         | ty::FnDef(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::Error(_)
         | ty::Never
         | ty::Char => Ok(vec![]),
@@ -117,7 +117,7 @@ where
         | ty::Bool
         | ty::Float(_)
         | ty::FnDef(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::RawPtr(..)
         | ty::Char
         | ty::Ref(..)
@@ -178,7 +178,7 @@ where
 {
     match ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
-        ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Ok(vec![]),
+        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(vec![]),
 
         // Implementations are provided in core
         ty::Uint(_)
@@ -217,7 +217,10 @@ where
         // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
         ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
 
-        ty::CoroutineClosure(..) => Err(NoSolution),
+        // impl Copy/Clone for CoroutineClosure where Self::TupledUpvars: Copy/Clone
+        ty::CoroutineClosure(_, args) => {
+            Ok(vec![ty::Binder::dummy(args.as_coroutine_closure().tupled_upvars_ty())])
+        }
 
         // only when `coroutine_clone` is enabled and the coroutine is movable
         // impl Copy/Clone for Coroutine where T: Copy/Clone forall T in (upvars, witnesses)
@@ -266,7 +269,8 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             }
         }
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
-        ty::FnPtr(sig) => {
+        ty::FnPtr(sig_tys, hdr) => {
+            let sig = sig_tys.with(hdr);
             if sig.is_fn_trait_compatible() {
                 Ok(Some(
                     sig.map_bound(|sig| (Ty::new_tup(cx, sig.inputs().as_slice()), sig.output())),
@@ -455,28 +459,23 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             ))
         }
 
-        ty::FnDef(..) | ty::FnPtr(..) => {
-            let bound_sig = self_ty.fn_sig(cx);
-            let sig = bound_sig.skip_binder();
-            let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::Future);
-            // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
-            // return type implements `Future`.
-            let nested = vec![
-                bound_sig
-                    .rebind(ty::TraitRef::new(cx, future_trait_def_id, [sig.output()]))
-                    .upcast(cx),
-            ];
-            let future_output_def_id = cx.require_lang_item(TraitSolverLangItem::FutureOutput);
-            let future_output_ty = Ty::new_projection(cx, future_output_def_id, [sig.output()]);
-            Ok((
-                bound_sig.rebind(AsyncCallableRelevantTypes {
-                    tupled_inputs_ty: Ty::new_tup(cx, sig.inputs().as_slice()),
-                    output_coroutine_ty: sig.output(),
-                    coroutine_return_ty: future_output_ty,
-                }),
-                nested,
-            ))
+        ty::FnDef(def_id, _) => {
+            let sig = self_ty.fn_sig(cx);
+            if sig.is_fn_trait_compatible() && !cx.has_target_features(def_id) {
+                fn_item_to_async_callable(cx, sig)
+            } else {
+                Err(NoSolution)
+            }
         }
+        ty::FnPtr(..) => {
+            let sig = self_ty.fn_sig(cx);
+            if sig.is_fn_trait_compatible() {
+                fn_item_to_async_callable(cx, sig)
+            } else {
+                Err(NoSolution)
+            }
+        }
+
         ty::Closure(_, args) => {
             let args = args.as_closure();
             let bound_sig = args.sig();
@@ -558,6 +557,29 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             panic!("unexpected type `{self_ty:?}`")
         }
     }
+}
+
+fn fn_item_to_async_callable<I: Interner>(
+    cx: I,
+    bound_sig: ty::Binder<I, ty::FnSig<I>>,
+) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
+    let sig = bound_sig.skip_binder();
+    let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::Future);
+    // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
+    // return type implements `Future`.
+    let nested = vec![
+        bound_sig.rebind(ty::TraitRef::new(cx, future_trait_def_id, [sig.output()])).upcast(cx),
+    ];
+    let future_output_def_id = cx.require_lang_item(TraitSolverLangItem::FutureOutput);
+    let future_output_ty = Ty::new_projection(cx, future_output_def_id, [sig.output()]);
+    Ok((
+        bound_sig.rebind(AsyncCallableRelevantTypes {
+            tupled_inputs_ty: Ty::new_tup(cx, sig.inputs().as_slice()),
+            output_coroutine_ty: sig.output(),
+            coroutine_return_ty: future_output_ty,
+        }),
+        nested,
+    ))
 }
 
 /// Given a coroutine-closure, project to its returned coroutine when we are *certain*
@@ -668,11 +690,19 @@ where
 {
     let cx = ecx.cx();
     let mut requirements = vec![];
-    requirements.extend(
+    // Elaborating all supertrait outlives obligations here is not soundness critical,
+    // since if we just used the unelaborated set, then the transitive supertraits would
+    // be reachable when proving the former. However, since we elaborate all supertrait
+    // outlives obligations when confirming impls, we would end up with a different set
+    // of outlives obligations here if we didn't do the same, leading to ambiguity.
+    // FIXME(-Znext-solver=coinductive): Adding supertraits here can be removed once we
+    // make impls coinductive always, since they'll always need to prove their supertraits.
+    requirements.extend(elaborate::elaborate(
+        cx,
         cx.explicit_super_predicates_of(trait_ref.def_id)
             .iter_instantiated(cx, trait_ref.args)
             .map(|(pred, _)| pred),
-    );
+    ));
 
     // FIXME(associated_const_equality): Also add associated consts to
     // the requirements here.

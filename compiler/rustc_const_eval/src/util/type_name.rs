@@ -1,13 +1,11 @@
+use std::fmt::Write;
+
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::bug;
-use rustc_middle::ty::{
-    self,
-    print::{PrettyPrinter, Print, PrintError, Printer},
-    GenericArg, GenericArgKind, Ty, TyCtxt,
-};
-use std::fmt::Write;
+use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
+use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt};
 
 struct AbsolutePathPrinter<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -37,7 +35,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Dynamic(_, _, _) => self.pretty_print_type(ty),

@@ -1,23 +1,20 @@
 //! Iterators for `str` methods.
 
-use crate::char as char_mod;
+use super::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
+use super::validations::{next_code_point, next_code_point_reverse};
+use super::{
+    from_utf8_unchecked, BytesIsNotEmpty, CharEscapeDebugContinue, CharEscapeDefault,
+    CharEscapeUnicode, IsAsciiWhitespace, IsNotEmpty, IsWhitespace, LinesMap, UnsafeBytesToStr,
+};
 use crate::fmt::{self, Write};
-use crate::iter::{Chain, FlatMap, Flatten};
-use crate::iter::{Copied, Filter, FusedIterator, Map, TrustedLen};
-use crate::iter::{TrustedRandomAccess, TrustedRandomAccessNoCoerce};
+use crate::iter::{
+    Chain, Copied, Filter, FlatMap, Flatten, FusedIterator, Map, TrustedLen, TrustedRandomAccess,
+    TrustedRandomAccessNoCoerce,
+};
 use crate::num::NonZero;
 use crate::ops::Try;
-use crate::option;
 use crate::slice::{self, Split as SliceSplit};
-
-use super::from_utf8_unchecked;
-use super::pattern::Pattern;
-use super::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
-use super::validations::{next_code_point, next_code_point_reverse};
-use super::LinesMap;
-use super::{BytesIsNotEmpty, UnsafeBytesToStr};
-use super::{CharEscapeDebugContinue, CharEscapeDefault, CharEscapeUnicode};
-use super::{IsAsciiWhitespace, IsNotEmpty, IsWhitespace};
+use crate::{char as char_mod, option};
 
 /// An iterator over the [`char`]s of a string slice.
 ///
@@ -244,24 +241,35 @@ impl<'a> CharIndices<'a> {
     /// Returns the byte position of the next character, or the length
     /// of the underlying string if there are no more characters.
     ///
+    /// This means that, when the iterator has not been fully consumed,
+    /// the returned value will match the index that will be returned
+    /// by the next call to [`next()`](Self::next).
+    ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(char_indices_offset)]
     /// let mut chars = "a楽".char_indices();
     ///
+    /// // `next()` has not been called yet, so `offset()` returns the byte
+    /// // index of the first character of the string, which is always 0.
     /// assert_eq!(chars.offset(), 0);
+    /// // As expected, the first call to `next()` also returns 0 as index.
     /// assert_eq!(chars.next(), Some((0, 'a')));
     ///
+    /// // `next()` has been called once, so `offset()` returns the byte index
+    /// // of the second character ...
     /// assert_eq!(chars.offset(), 1);
+    /// // ... which matches the index returned by the next call to `next()`.
     /// assert_eq!(chars.next(), Some((1, '楽')));
     ///
+    /// // Once the iterator has been consumed, `offset()` returns the length
+    /// // in bytes of the string.
     /// assert_eq!(chars.offset(), 4);
     /// assert_eq!(chars.next(), None);
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "char_indices_offset", issue = "83871")]
+    #[stable(feature = "char_indices_offset", since = "1.82.0")]
     pub fn offset(&self) -> usize {
         self.front_offset
     }

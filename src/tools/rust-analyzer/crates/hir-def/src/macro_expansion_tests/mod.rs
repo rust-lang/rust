@@ -24,7 +24,8 @@ use hir_expand::{
     span_map::SpanMapRef,
     InFile, MacroFileId, MacroFileIdExt,
 };
-use span::Span;
+use intern::Symbol;
+use span::{Edition, Span};
 use stdx::{format_to, format_to_acc};
 use syntax::{
     ast::{self, edit::IndentLevel},
@@ -55,7 +56,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 "#
         .into(),
         ProcMacro {
-            name: "identity_when_valid".into(),
+            name: Symbol::intern("identity_when_valid"),
             kind: ProcMacroKind::Attr,
             expander: sync::Arc::new(IdentityWhenValidProcMacroExpander),
             disabled: false,
@@ -121,7 +122,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
         let mut expn_text = String::new();
         if let Some(err) = exp.err {
-            format_to!(expn_text, "/* error: {} */", err);
+            format_to!(expn_text, "/* error: {} */", err.render_to_string(&db).0);
         }
         let (parse, token_map) = exp.value;
         if expect_errors {
@@ -256,21 +257,25 @@ fn pretty_print_macro_expansion(
             (T![;] | T!['{'] | T!['}'], _) => "\n",
             (_, T!['}']) => "\n",
             (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
-            _ if prev_kind.is_keyword() && curr_kind.is_keyword() => " ",
-            (IDENT, _) if curr_kind.is_keyword() => " ",
-            (_, IDENT) if prev_kind.is_keyword() => " ",
+            _ if prev_kind.is_keyword(Edition::CURRENT)
+                && curr_kind.is_keyword(Edition::CURRENT) =>
+            {
+                " "
+            }
+            (IDENT, _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
+            (_, IDENT) if prev_kind.is_keyword(Edition::CURRENT) => " ",
             (T![>], IDENT) => " ",
-            (T![>], _) if curr_kind.is_keyword() => " ",
+            (T![>], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![->], _) | (_, T![->]) => " ",
             (T![&&], _) | (_, T![&&]) => " ",
             (T![,], _) => " ",
             (T![:], IDENT | T!['(']) => " ",
-            (T![:], _) if curr_kind.is_keyword() => " ",
+            (T![:], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![fn], T!['(']) => "",
-            (T![']'], _) if curr_kind.is_keyword() => " ",
+            (T![']'], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![']'], T![#]) => "\n",
             (T![Self], T![::]) => "",
-            _ if prev_kind.is_keyword() => " ",
+            _ if prev_kind.is_keyword(Edition::CURRENT) => " ",
             _ => "",
         };
 
@@ -316,9 +321,9 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         _: Span,
         _: Span,
     ) -> Result<Subtree, ProcMacroExpansionError> {
-        let (parse, _) = ::mbe::token_tree_to_syntax_node(
+        let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             subtree,
-            ::mbe::TopEntryPoint::MacroItems,
+            syntax_bridge::TopEntryPoint::MacroItems,
             span::Edition::CURRENT,
         );
         if parse.errors().is_empty() {

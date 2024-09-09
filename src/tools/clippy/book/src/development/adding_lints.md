@@ -739,7 +739,7 @@ for some users. Adding a configuration is done in the following steps:
 
 5. Update [Lint Configuration](../lint_configuration.md)
 
-   Run `cargo collect-metadata` to generate documentation changes for the book.
+   Run `cargo bless --test config-metadata` to generate documentation changes for the book.
 
 [`clippy_config::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_config/src/conf.rs
 [`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs

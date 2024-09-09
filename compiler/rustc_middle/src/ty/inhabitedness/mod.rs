@@ -43,12 +43,12 @@
 //! This code should only compile in modules where the uninhabitedness of `Foo`
 //! is visible.
 
+use rustc_type_ir::TyKind::*;
+use tracing::instrument;
+
 use crate::query::Providers;
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, DefId, Ty, TypeVisitableExt, VariantDef, Visibility};
-
-use rustc_type_ir::TyKind::*;
-use tracing::instrument;
 
 pub mod inhabited_predicate;
 
@@ -81,10 +81,6 @@ impl<'tcx> VariantDef {
         adt: ty::AdtDef<'_>,
     ) -> InhabitedPredicate<'tcx> {
         debug_assert!(!adt.is_union());
-        if self.is_field_list_non_exhaustive() && !self.def_id.is_local() {
-            // Non-exhaustive variants from other crates are always considered inhabited.
-            return InhabitedPredicate::True;
-        }
         InhabitedPredicate::all(
             tcx,
             self.fields.iter().map(|field| {

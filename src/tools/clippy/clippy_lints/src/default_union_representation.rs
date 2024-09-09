@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::{HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
@@ -56,16 +56,18 @@ impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {
             && is_union_with_two_non_zst_fields(cx, item)
             && !has_c_repr_attr(cx, item.hir_id())
         {
-            span_lint_and_help(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 DEFAULT_UNION_REPRESENTATION,
                 item.span,
                 "this union has the default representation",
-                None,
-                format!(
-                    "consider annotating `{}` with `#[repr(C)]` to explicitly specify memory layout",
-                    cx.tcx.def_path_str(item.owner_id)
-                ),
+                |diag| {
+                    diag.help(format!(
+                        "consider annotating `{}` with `#[repr(C)]` to explicitly specify memory layout",
+                        cx.tcx.def_path_str(item.owner_id)
+                    ));
+                },
             );
         }
     }

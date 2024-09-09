@@ -2,8 +2,10 @@ mod dec2flt;
 mod flt2dec;
 mod int_log;
 mod int_pow;
+mod int_sqrt;
 
 use std::str::FromStr;
+
 use test::{black_box, Bencher};
 
 const ASCII_NUMBERS: [&str; 19] = [

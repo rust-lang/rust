@@ -4,8 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_semver::RustcVersion;
-use rustc_session::impl_lint_pass;
+use rustc_session::{impl_lint_pass, RustcVersion};
 use rustc_span::symbol;
 use std::f64::consts as f64;
 
@@ -97,7 +96,7 @@ impl ApproxConstant {
                         cx,
                         APPROX_CONSTANT,
                         e.span,
-                        format!("approximate value of `{module}::consts::{}` found", &name),
+                        format!("approximate value of `{module}::consts::{name}` found"),
                         None,
                         "consider using the constant directly",
                     );

@@ -1,7 +1,8 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use rustc_errors::{codes::*, DiagArgName, DiagArgValue, DiagMessage};
+use rustc_errors::codes::*;
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -159,7 +160,7 @@ pub struct TypeLengthLimit {
     pub span: Span,
     pub shrunk: String,
     #[note(middle_written_to_path)]
-    pub was_written: Option<()>,
+    pub was_written: bool,
     pub path: PathBuf,
     pub type_length: usize,
 }

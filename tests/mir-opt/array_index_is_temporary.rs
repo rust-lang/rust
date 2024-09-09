@@ -15,7 +15,7 @@ fn main() {
     // CHECK: debug x => [[x:_.*]];
     // CHECK: debug y => [[y:_.*]];
     // CHECK: [[y]] = const 1_usize;
-    // CHECK: [[tmp:_.*]] = [[y]];
+    // CHECK: [[tmp:_.*]] = copy [[y]];
     // CHECK: [[x]][[[tmp]]] =
     let mut x = [42, 43, 44];
     let mut y = 1;

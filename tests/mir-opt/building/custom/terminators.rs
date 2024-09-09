@@ -22,6 +22,18 @@ fn direct_call(x: i32) -> i32 {
     }
 }
 
+// EMIT_MIR terminators.tail_call.built.after.mir
+#[custom_mir(dialect = "built")]
+fn tail_call(x: i32) -> i32 {
+    mir! {
+        let y;
+        {
+            y = x + 42;
+            TailCall(ident(y))
+        }
+    }
+}
+
 // EMIT_MIR terminators.indirect_call.built.after.mir
 #[custom_mir(dialect = "built")]
 fn indirect_call(x: i32, f: fn(i32) -> i32) -> i32 {

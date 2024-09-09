@@ -1,7 +1,7 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{snippet, snippet_with_applicability, SpanRangeExt};
 use clippy_utils::{is_from_proc_macro, SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use itertools::Itertools;
@@ -183,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
             // Iterate the bounds and add them to our seen hash
             // If we haven't yet seen it, add it to the fixed traits
-            for bound in bounds {
+            for (bound, _) in bounds {
                 let Some(def_id) = bound.trait_ref.trait_def_id() else {
                     continue;
                 };
@@ -198,16 +198,15 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             // If the number of unique traits isn't the same as the number of traits in the bounds,
             // there must be 1 or more duplicates
             if bounds.len() != unique_traits.len() {
-                let mut bounds_span = bounds[0].span;
+                let mut bounds_span = bounds[0].0.span;
 
-                for bound in bounds.iter().skip(1) {
+                for (bound, _) in bounds.iter().skip(1) {
                     bounds_span = bounds_span.to(bound.span);
                 }
 
                 let fixed_trait_snippet = unique_traits
                     .iter()
-                    .filter_map(|b| snippet_opt(cx, b.span))
-                    .collect::<Vec<_>>()
+                    .filter_map(|b| b.span.get_source_text(cx))
                     .join(" + ");
 
                 span_lint_and_sugg(
@@ -462,9 +461,8 @@ fn rollup_traits(
 
         let traits = comparable_bounds
             .iter()
-            .filter_map(|&(_, span)| snippet_opt(cx, span))
-            .collect::<Vec<_>>();
-        let traits = traits.join(" + ");
+            .filter_map(|&(_, span)| span.get_source_text(cx))
+            .join(" + ");
 
         span_lint_and_sugg(
             cx,

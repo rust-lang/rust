@@ -10,11 +10,12 @@ use hir::{
     mir::{MirSpan, TerminatorKind},
     ChalkTyInterner, DefWithBody, Semantics,
 };
-use ide_db::{base_db::FileRange, RootDatabase};
+use ide_db::{FileRange, RootDatabase};
 
+use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode},
-    match_ast,
+    match_ast, ToSmolStr,
 };
 
 use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
@@ -23,6 +24,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
+    file_id: EditionedFileId,
     def: &ast::Fn,
 ) -> Option<()> {
     if !config.implicit_drop_hints {
@@ -32,9 +34,8 @@ pub(super) fn hints(
     let def = sema.to_def(def)?;
     let def: DefWithBody = def.into();
 
-    let source_map = sema.db.body_with_source_map(def.into()).1;
+    let (hir, source_map) = sema.db.body_with_source_map(def.into());
 
-    let hir = sema.db.body(def.into());
     let mir = sema.db.mir_body(def.into()).ok()?;
 
     let local_to_binding = mir.local_to_binding_map();
@@ -74,21 +75,34 @@ pub(super) fn hints(
                     Ok(s) => s.value.text_range(),
                     Err(_) => continue,
                 },
+                MirSpan::BindingId(b) => {
+                    match source_map
+                        .patterns_for_binding(b)
+                        .iter()
+                        .find_map(|p| source_map.pat_syntax(*p).ok())
+                    {
+                        Some(s) => s.value.text_range(),
+                        None => continue,
+                    }
+                }
                 MirSpan::SelfParam => match source_map.self_param_syntax() {
                     Some(s) => s.value.text_range(),
                     None => continue,
                 },
                 MirSpan::Unknown => continue,
             };
-            let binding = &hir.bindings[*binding];
-            let binding_source = binding
-                .definitions
+            let binding_source = source_map
+                .patterns_for_binding(*binding)
                 .first()
                 .and_then(|d| source_map.pat_syntax(*d).ok())
                 .and_then(|d| {
-                    Some(FileRange { file_id: d.file_id.file_id()?, range: d.value.text_range() })
+                    Some(FileRange {
+                        file_id: d.file_id.file_id()?.into(),
+                        range: d.value.text_range(),
+                    })
                 });
-            let name = binding.name.to_smol_str();
+            let binding = &hir.bindings[*binding];
+            let name = binding.name.display_no_db(file_id.edition()).to_smolstr();
             if name.starts_with("<ra@") {
                 continue; // Ignore desugared variables
             }

@@ -4,21 +4,17 @@ use super::hermit_abi::{
     O_DIRECTORY, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY, S_IFDIR, S_IFLNK, S_IFMT, S_IFREG,
 };
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
-use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-use crate::mem;
+use crate::io::{self, BorrowedCursor, Error, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::hermit::ffi::OsStringExt;
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
-use crate::sys::cvt;
 use crate::sys::time::SystemTime;
-use crate::sys::unsupported;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-
+use crate::sys::{cvt, unsupported};
 pub use crate::sys_common::fs::{copy, exists};
+use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::{fmt, mem};
 
 #[derive(Debug)]
 pub struct File(FileDesc);
@@ -488,7 +484,8 @@ impl IntoRawFd for File {
 
 impl FromRawFd for File {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-        Self(FromRawFd::from_raw_fd(raw_fd))
+        let file_desc = unsafe { FileDesc::from_raw_fd(raw_fd) };
+        Self(file_desc)
     }
 }
 

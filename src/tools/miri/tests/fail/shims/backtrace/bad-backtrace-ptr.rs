@@ -4,6 +4,6 @@ extern "Rust" {
 
 fn main() {
     unsafe {
-        miri_resolve_frame(std::ptr::null_mut(), 0); //~ ERROR: null pointer is a dangling pointer
+        miri_resolve_frame(std::ptr::null_mut(), 0); //~ ERROR: got a null pointer
     }
 }

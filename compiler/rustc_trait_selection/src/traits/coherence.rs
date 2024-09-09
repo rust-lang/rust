@@ -4,15 +4,8 @@
 //! [trait-resolution]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
-use crate::infer::outlives::env::OutlivesEnvironment;
-use crate::infer::InferOk;
-use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use crate::solve::{deeply_normalize_for_diagnostics, inspect};
-use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::NormalizeExt;
-use crate::traits::SkipLeakCheck;
-use crate::traits::{util, FulfillmentErrorCode};
-use crate::traits::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
+use std::fmt::Debug;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
@@ -22,16 +15,26 @@ use rustc_middle::bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 pub use rustc_next_trait_solver::coherence::*;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
-use std::fmt::Debug;
+use tracing::{debug, instrument, warn};
 
 use super::ObligationCtxt;
 use crate::error_reporting::traits::suggest_new_overflow_limit;
+use crate::infer::outlives::env::OutlivesEnvironment;
+use crate::infer::InferOk;
+use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use crate::solve::{deeply_normalize_for_diagnostics, inspect};
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::select::IntercrateAmbiguityCause;
+use crate::traits::{
+    util, FulfillmentErrorCode, NormalizeExt, Obligation, ObligationCause, PredicateObligation,
+    SelectionContext, SkipLeakCheck,
+};
 
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
@@ -52,7 +55,7 @@ pub fn add_placeholder_note<G: EmissionGuarantee>(err: &mut Diag<'_, G>) {
     );
 }
 
-pub fn suggest_increasing_recursion_limit<'tcx, G: EmissionGuarantee>(
+pub(crate) fn suggest_increasing_recursion_limit<'tcx, G: EmissionGuarantee>(
     tcx: TyCtxt<'tcx>,
     err: &mut Diag<'_, G>,
     overflowing_predicates: &[ty::Predicate<'tcx>],
@@ -93,7 +96,7 @@ pub fn overlapping_impls(
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
-    let drcx = DeepRejectCtxt::new(tcx, TreatParams::AsCandidateKey);
+    let drcx = DeepRejectCtxt::relate_infer_infer(tcx);
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
     let may_overlap = match (impl1_ref, impl2_ref) {
@@ -622,14 +625,13 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         // at ambiguous goals, as for others the coherence unknowable candidate
         // was irrelevant.
         match goal.result() {
-            Ok(Certainty::Maybe(_)) => {}
             Ok(Certainty::Yes) | Err(NoSolution) => return,
+            Ok(Certainty::Maybe(_)) => {}
         }
-
-        let Goal { param_env, predicate } = goal.goal();
 
         // For bound predicates we simply call `infcx.enter_forall`
         // and then prove the resulting predicate as a nested goal.
+        let Goal { param_env, predicate } = goal.goal();
         let trait_ref = match predicate.kind().no_bound_vars() {
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) => tr.trait_ref,
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)))
@@ -643,7 +645,11 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             _ => return,
         };
 
-        // Add ambiguity causes for reservation impls.
+        if trait_ref.references_error() {
+            return;
+        }
+
+        let mut candidates = goal.candidates();
         for cand in goal.candidates() {
             if let inspect::ProbeKind::TraitCandidate {
                 source: CandidateSource::Impl(def_id),
@@ -662,78 +668,68 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             }
         }
 
-        // Add ambiguity causes for unknowable goals.
-        let mut ambiguity_cause = None;
-        for cand in goal.candidates() {
-            if let inspect::ProbeKind::TraitCandidate {
-                source: CandidateSource::CoherenceUnknowable,
-                result: Ok(_),
-            } = cand.kind()
-            {
-                let lazily_normalize_ty = |mut ty: Ty<'tcx>| {
-                    if matches!(ty.kind(), ty::Alias(..)) {
-                        let ocx = ObligationCtxt::new(infcx);
-                        ty = ocx
-                            .structurally_normalize(&ObligationCause::dummy(), param_env, ty)
-                            .map_err(|_| ())?;
-                        if !ocx.select_where_possible().is_empty() {
-                            return Err(());
-                        }
-                    }
-                    Ok(ty)
-                };
+        // We also look for unknowable candidates. In case a goal is unknowable, there's
+        // always exactly 1 candidate.
+        let Some(cand) = candidates.pop() else {
+            return;
+        };
 
-                infcx.probe(|_| {
-                    match trait_ref_is_knowable(infcx, trait_ref, lazily_normalize_ty) {
-                        Err(()) => {}
-                        Ok(Ok(())) => warn!("expected an unknowable trait ref: {trait_ref:?}"),
-                        Ok(Err(conflict)) => {
-                            if !trait_ref.references_error() {
-                                // Normalize the trait ref for diagnostics, ignoring any errors if this fails.
-                                let trait_ref =
-                                    deeply_normalize_for_diagnostics(infcx, param_env, trait_ref);
+        let inspect::ProbeKind::TraitCandidate {
+            source: CandidateSource::CoherenceUnknowable,
+            result: Ok(_),
+        } = cand.kind()
+        else {
+            return;
+        };
 
-                                let self_ty = trait_ref.self_ty();
-                                let self_ty = self_ty.has_concrete_skeleton().then(|| self_ty);
-                                ambiguity_cause = Some(match conflict {
-                                    Conflict::Upstream => {
-                                        IntercrateAmbiguityCause::UpstreamCrateUpdate {
-                                            trait_ref,
-                                            self_ty,
-                                        }
-                                    }
-                                    Conflict::Downstream => {
-                                        IntercrateAmbiguityCause::DownstreamCrate {
-                                            trait_ref,
-                                            self_ty,
-                                        }
-                                    }
-                                });
-                            }
-                        }
-                    }
-                })
-            } else {
-                match cand.result() {
-                    // We only add an ambiguity cause if the goal would otherwise
-                    // result in an error.
-                    //
-                    // FIXME: While this matches the behavior of the
-                    // old solver, it is not the only way in which the unknowable
-                    // candidates *weaken* coherence, they can also force otherwise
-                    // sucessful normalization to be ambiguous.
-                    Ok(Certainty::Maybe(_) | Certainty::Yes) => {
-                        ambiguity_cause = None;
-                        break;
-                    }
-                    Err(NoSolution) => continue,
+        let lazily_normalize_ty = |mut ty: Ty<'tcx>| {
+            if matches!(ty.kind(), ty::Alias(..)) {
+                let ocx = ObligationCtxt::new(infcx);
+                ty = ocx
+                    .structurally_normalize(&ObligationCause::dummy(), param_env, ty)
+                    .map_err(|_| ())?;
+                if !ocx.select_where_possible().is_empty() {
+                    return Err(());
                 }
             }
-        }
+            Ok(ty)
+        };
 
-        if let Some(ambiguity_cause) = ambiguity_cause {
-            self.causes.insert(ambiguity_cause);
-        }
+        infcx.probe(|_| {
+            let conflict = match trait_ref_is_knowable(infcx, trait_ref, lazily_normalize_ty) {
+                Err(()) => return,
+                Ok(Ok(())) => {
+                    warn!("expected an unknowable trait ref: {trait_ref:?}");
+                    return;
+                }
+                Ok(Err(conflict)) => conflict,
+            };
+
+            // It is only relevant that a goal is unknowable if it would have otherwise
+            // failed.
+            let non_intercrate_infcx = infcx.fork_with_intercrate(false);
+            if non_intercrate_infcx.predicate_may_hold(&Obligation::new(
+                infcx.tcx,
+                ObligationCause::dummy(),
+                param_env,
+                predicate,
+            )) {
+                return;
+            }
+
+            // Normalize the trait ref for diagnostics, ignoring any errors if this fails.
+            let trait_ref = deeply_normalize_for_diagnostics(infcx, param_env, trait_ref);
+            let self_ty = trait_ref.self_ty();
+            let self_ty = self_ty.has_concrete_skeleton().then(|| self_ty);
+            self.causes.insert(match conflict {
+                Conflict::Upstream => {
+                    IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_ref, self_ty }
+                }
+                Conflict::Downstream => {
+                    IntercrateAmbiguityCause::DownstreamCrate { trait_ref, self_ty }
+                }
+            });
+        });
     }
 }
 

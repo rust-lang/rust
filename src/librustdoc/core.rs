@@ -1,9 +1,16 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, LazyLock};
+use std::{io, mem};
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
+use rustc_errors::codes::*;
 use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter};
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::{codes::*, DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -14,25 +21,18 @@ use rustc_lint::{late_lint_mod, MissingDoc};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
-use rustc_session::lint;
-use rustc_session::Session;
+pub(crate) use rustc_session::config::{Options, UnstableOptions};
+use rustc_session::{lint, Session};
 use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span};
-
-use std::cell::RefCell;
-use std::io;
-use std::mem;
-use std::rc::Rc;
-use std::sync::LazyLock;
-use std::sync::{atomic::AtomicBool, Arc};
+use tracing::{debug, info};
 
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
-use crate::passes::{self, Condition::*};
-
-pub(crate) use rustc_session::config::{Options, UnstableOptions};
+use crate::passes::Condition::*;
+use crate::passes::{self};
 
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -139,8 +139,8 @@ pub(crate) fn new_dcx(
         false,
     );
     let emitter: Box<DynEmitter> = match error_format {
-        ErrorOutputType::HumanReadable(kind) => {
-            let (short, color_config) = kind.unzip();
+        ErrorOutputType::HumanReadable(kind, color_config) => {
+            let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))
@@ -151,7 +151,7 @@ pub(crate) fn new_dcx(
                     .ui_testing(unstable_opts.ui_testing),
             )
         }
-        ErrorOutputType::Json { pretty, json_rendered } => {
+        ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             let source_map = source_map.unwrap_or_else(|| {
                 Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
@@ -162,6 +162,7 @@ pub(crate) fn new_dcx(
                     fallback_bundle,
                     pretty,
                     json_rendered,
+                    color_config,
                 )
                 .ui_testing(unstable_opts.ui_testing)
                 .diagnostic_width(diagnostic_width)
@@ -196,6 +197,7 @@ pub(crate) fn create_config(
         lint_cap,
         scrape_examples_options,
         expanded_args,
+        remap_path_prefix,
         ..
     }: RustdocOptions,
     RenderOptions { document_private, .. }: &RenderOptions,
@@ -248,6 +250,7 @@ pub(crate) fn create_config(
         describe_lints,
         crate_name,
         test,
+        remap_path_prefix,
         ..Options::default()
     };
 
@@ -286,7 +289,7 @@ pub(crate) fn create_config(
                 let hir = tcx.hir();
                 let body = hir.body_owned_by(def_id);
                 debug!("visiting body for {def_id:?}");
-                EmitIgnoredResolutionErrors::new(tcx).visit_body(&body);
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),

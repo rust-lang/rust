@@ -1,7 +1,8 @@
+use tracing::debug;
+
 use crate::query::Providers;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::{self, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
-use tracing::debug;
 
 pub(super) fn provide(providers: &mut Providers) {
     *providers = Providers { erase_regions_ty, ..*providers };

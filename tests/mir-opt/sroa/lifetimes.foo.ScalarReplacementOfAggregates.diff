@@ -75,8 +75,8 @@
 -         _5 = move (_1.0: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>);
 +         _5 = move _29;
           StorageLive(_6);
--         _6 = (_1.1: u32);
-+         _6 = _30;
+-         _6 = copy (_1.1: u32);
++         _6 = copy _30;
           _7 = discriminant(_5);
           switchInt(move _7) -> [0: bb2, otherwise: bb7];
       }
@@ -171,7 +171,7 @@
       }
   
       bb11: {
-          switchInt(_25) -> [0: bb10, otherwise: bb12];
+          switchInt(copy _25) -> [0: bb10, otherwise: bb12];
       }
   
       bb12: {

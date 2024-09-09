@@ -4,7 +4,7 @@ fn unions(_1: U) -> i32 {
     let mut _0: i32;
 
     bb0: {
-        _0 = (_1.0: i32);
+        _0 = copy (_1.0: i32);
         return;
     }
 }

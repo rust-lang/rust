@@ -1,11 +1,12 @@
-use crate::traits::query::normalize::QueryNormalizeExt;
-use crate::traits::query::NoSolution;
-use crate::traits::{Normalized, ObligationCause, ObligationCtxt};
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument};
+
+use crate::traits::query::normalize::QueryNormalizeExt;
+use crate::traits::query::NoSolution;
+use crate::traits::{Normalized, ObligationCause, ObligationCtxt};
 
 /// This returns true if the type `ty` is "trivial" for
 /// dropck-outlives -- that is, if it doesn't require any types to
@@ -33,7 +34,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Float(_)
         | ty::Never
         | ty::FnDef(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::Char
         | ty::CoroutineWitness(..)
         | ty::RawPtr(_, _)
@@ -42,8 +43,15 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Foreign(..)
         | ty::Error(_) => true,
 
-        // `T is PAT`, `[T; N]`, and `[T]` have same properties as T.
-        ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
+        // `T is PAT` and `[T]` have same properties as T.
+        ty::Pat(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
+        ty::Array(ty, size) => {
+            // Empty array never has a dtor. See issue #110288.
+            match size.try_to_target_usize(tcx) {
+                Some(0) => true,
+                _ => trivial_dropck_outlives(tcx, *ty),
+            }
+        }
 
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *all* of them are trivial.
@@ -217,7 +225,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         | ty::RawPtr(..)
         | ty::Ref(..)
         | ty::FnDef(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::CoroutineWitness(..) => {
             // these types never have a destructor
         }

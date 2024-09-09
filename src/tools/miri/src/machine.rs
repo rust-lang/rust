@@ -1,6 +1,7 @@
 //! Global machine state as well as implementation of the interpreter engine
 //! `Machine` trait.
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
@@ -11,6 +12,7 @@ use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
 
+use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
@@ -23,6 +25,7 @@ use rustc_middle::{
         Instance, Ty, TyCtxt,
     },
 };
+use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
@@ -47,10 +50,10 @@ pub const SIGRTMIN: i32 = 34;
 /// `SIGRTMAX` - `SIGRTMIN` >= 8 (which is the value of `_POSIX_RTSIG_MAX`)
 pub const SIGRTMAX: i32 = 42;
 
-/// Each const has multiple addresses, but only this many. Since const allocations are never
-/// deallocated, choosing a new [`AllocId`] and thus base address for each evaluation would
-/// produce unbounded memory usage.
-const ADDRS_PER_CONST: usize = 16;
+/// Each anonymous global (constant, vtable, function pointer, ...) has multiple addresses, but only
+/// this many. Since const allocations are never deallocated, choosing a new [`AllocId`] and thus
+/// base address for each evaluation would produce unbounded memory usage.
+const ADDRS_PER_ANON_GLOBAL: usize = 32;
 
 /// Extra data stored with each stack frame
 pub struct FrameExtra<'tcx> {
@@ -187,7 +190,11 @@ impl fmt::Display for MiriMemoryKind {
 pub type MemoryKind = interpret::MemoryKind<MiriMemoryKind>;
 
 /// Pointer provenance.
-#[derive(Clone, Copy)]
+// This needs to be `Eq`+`Hash` because the `Machine` trait needs that because validity checking
+// *might* be recursive and then it has to track which places have already been visited.
+// These implementations are a bit questionable, and it means we may check the same place multiple
+// times with different provenance, but that is in general not wrong.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Provenance {
     /// For pointers with concrete provenance. we exactly know which allocation they are attached to
     /// and what their borrow tag is.
@@ -213,24 +220,6 @@ pub enum Provenance {
     ///   of using *any* exposed pointer for this access, and only keep information about the borrow
     ///   stack that would be true with all possible choices.
     Wildcard,
-}
-
-// This needs to be `Eq`+`Hash` because the `Machine` trait needs that because validity checking
-// *might* be recursive and then it has to track which places have already been visited.
-// However, comparing provenance is meaningless, since `Wildcard` might be any provenance -- and of
-// course we don't actually do recursive checking.
-// We could change `RefTracking` to strip provenance for its `seen` set but that type is generic so that is quite annoying.
-// Instead owe add the required instances but make them panic.
-impl PartialEq for Provenance {
-    fn eq(&self, _other: &Self) -> bool {
-        panic!("Provenance must not be compared")
-    }
-}
-impl Eq for Provenance {}
-impl std::hash::Hash for Provenance {
-    fn hash<H: std::hash::Hasher>(&self, _state: &mut H) {
-        panic!("Provenance must not be hashed")
-    }
 }
 
 /// The "extra" information a pointer has over a regular AllocId.
@@ -460,12 +449,15 @@ pub struct MiriMachine<'tcx> {
     pub(crate) isolated_op: IsolatedOp,
 
     /// Whether to enforce the validity invariant.
-    pub(crate) validate: bool,
+    pub(crate) validation: ValidationMode,
 
     /// The table of file descriptors.
     pub(crate) fds: shims::FdTable,
     /// The table of directory descriptors.
     pub(crate) dirs: shims::DirTable,
+
+    /// The list of all EpollEventInterest.
+    pub(crate) epoll_interests: shims::EpollInterestTable,
 
     /// This machine's monotone clock.
     pub(crate) clock: Clock,
@@ -543,9 +535,9 @@ pub struct MiriMachine<'tcx> {
     pub(crate) basic_block_count: u64,
 
     /// Handle of the optional shared object file for native functions.
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     pub native_lib: Option<(libloading::Library, std::path::PathBuf)>,
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(unix))]
     pub native_lib: Option<!>,
 
     /// Run a garbage collector for BorTags every N basic blocks.
@@ -659,8 +651,9 @@ impl<'tcx> MiriMachine<'tcx> {
             cmd_line: None,
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
-            validate: config.validate,
-            fds: shims::FdTable::new(config.mute_stdout_stderr),
+            validation: config.validation,
+            fds: shims::FdTable::init(config.mute_stdout_stderr),
+            epoll_interests: shims::EpollInterestTable::new(),
             dirs: Default::default(),
             layouts,
             threads,
@@ -685,7 +678,7 @@ impl<'tcx> MiriMachine<'tcx> {
             report_progress: config.report_progress,
             basic_block_count: 0,
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             native_lib: config.native_lib.as_ref().map(|lib_file_path| {
                 let target_triple = layout_cx.tcx.sess.opts.target_triple.triple();
                 // Check if host target == the session target.
@@ -707,9 +700,9 @@ impl<'tcx> MiriMachine<'tcx> {
                     lib_file_path.clone(),
                 )
             }),
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(not(unix))]
             native_lib: config.native_lib.as_ref().map(|_| {
-                panic!("loading external .so files is only supported on Linux")
+                panic!("calling functions from native libraries via FFI is only supported on Unix")
             }),
             gc_interval: config.gc_interval,
             since_gc: 0,
@@ -799,9 +792,10 @@ impl VisitProvenance for MiriMachine<'_> {
             data_race,
             alloc_addresses,
             fds,
+            epoll_interests:_,
             tcx: _,
             isolated_op: _,
-            validate: _,
+            validation: _,
             clock: _,
             layouts: _,
             static_roots: _,
@@ -943,17 +937,56 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
     #[inline(always)]
     fn enforce_validity(ecx: &MiriInterpCx<'tcx>, _layout: TyAndLayout<'tcx>) -> bool {
-        ecx.machine.validate
+        ecx.machine.validation != ValidationMode::No
     }
-
     #[inline(always)]
-    fn enforce_abi(_ecx: &MiriInterpCx<'tcx>) -> bool {
-        true
+    fn enforce_validity_recursively(
+        ecx: &InterpCx<'tcx, Self>,
+        _layout: TyAndLayout<'tcx>,
+    ) -> bool {
+        ecx.machine.validation == ValidationMode::Deep
     }
 
     #[inline(always)]
     fn ignore_optional_overflow_checks(ecx: &MiriInterpCx<'tcx>) -> bool {
         !ecx.tcx.sess.overflow_checks()
+    }
+
+    fn check_fn_target_features(
+        ecx: &MiriInterpCx<'tcx>,
+        instance: ty::Instance<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let attrs = ecx.tcx.codegen_fn_attrs(instance.def_id());
+        if attrs
+            .target_features
+            .iter()
+            .any(|feature| !ecx.tcx.sess.target_features.contains(&feature.name))
+        {
+            let unavailable = attrs
+                .target_features
+                .iter()
+                .filter(|&feature| {
+                    !feature.implied && !ecx.tcx.sess.target_features.contains(&feature.name)
+                })
+                .fold(String::new(), |mut s, feature| {
+                    if !s.is_empty() {
+                        s.push_str(", ");
+                    }
+                    s.push_str(feature.name.as_str());
+                    s
+                });
+            let msg = format!(
+                "calling a function that requires unavailable target features: {unavailable}"
+            );
+            // On WASM, this is not UB, but instead gets rejected during validation of the module
+            // (see #84988).
+            if ecx.tcx.sess.target.is_like_wasm {
+                throw_machine_stop!(TerminationInfo::Abort(msg));
+            } else {
+                throw_ub_format!("{msg}");
+            }
+        }
+        Ok(())
     }
 
     #[inline(always)]
@@ -1058,6 +1091,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         inputs: &[F1],
     ) -> F2 {
         ecx.generate_nan(inputs)
+    }
+
+    fn ub_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
+        Ok(ecx.tcx.sess.ub_checks())
     }
 
     fn thread_local_static_pointer(
@@ -1198,19 +1235,23 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
     }
 
-    /// Convert a pointer with provenance into an allocation-offset pair,
-    /// or a `None` with an absolute address if that conversion is not possible.
+    /// Convert a pointer with provenance into an allocation-offset pair and extra provenance info.
+    /// `size` says how many bytes of memory are expected at that pointer. The *sign* of `size` can
+    /// be used to disambiguate situations where a wildcard pointer sits right in between two
+    /// allocations.
     ///
-    /// This is called when a pointer is about to be used for memory access,
-    /// an in-bounds check, or anything else that requires knowing which allocation it points to.
+    /// If `ptr.provenance.get_alloc_id()` is `Some(p)`, the returned `AllocId` must be `p`.
     /// The resulting `AllocId` will just be used for that one step and the forgotten again
     /// (i.e., we'll never turn the data returned here back into a `Pointer` that might be
     /// stored in machine state).
+    ///
+    /// When this fails, that means the pointer does not point to a live allocation.
     fn ptr_get_alloc(
         ecx: &MiriInterpCx<'tcx>,
         ptr: StrictPointer,
+        size: i64,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
-        let rel = ecx.ptr_get_alloc(ptr);
+        let rel = ecx.ptr_get_alloc(ptr, size);
 
         rel.map(|(alloc_id, size)| {
             let tag = match ptr.provenance {
@@ -1219,6 +1260,30 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             };
             (alloc_id, size, tag)
         })
+    }
+
+    /// Called to adjust global allocations to the Provenance and AllocExtra of this machine.
+    ///
+    /// If `alloc` contains pointers, then they are all pointing to globals.
+    ///
+    /// This should avoid copying if no work has to be done! If this returns an owned
+    /// allocation (because a copy had to be done to adjust things), machine memory will
+    /// cache the result. (This relies on `AllocMap::get_or` being able to add the
+    /// owned allocation to the map even when the map is shared.)
+    fn adjust_global_allocation<'b>(
+        ecx: &InterpCx<'tcx, Self>,
+        id: AllocId,
+        alloc: &'b Allocation,
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
+    {
+        let kind = Self::GLOBAL_KIND.unwrap().into();
+        let alloc = alloc.adjust_from_tcx(
+            &ecx.tcx,
+            |bytes, align| ecx.get_global_alloc_bytes(id, kind, bytes, align),
+            |ptr| ecx.global_root_pointer(ptr),
+        )?;
+        let extra = Self::init_alloc_extra(ecx, id, kind, alloc.size(), alloc.align)?;
+        Ok(Cow::Owned(alloc.with_extra(extra)))
     }
 
     #[inline(always)]
@@ -1355,7 +1420,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     ) -> InterpResult<'tcx, Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
         // Start recording our event before doing anything else
         let timing = if let Some(profiler) = ecx.machine.profiler.as_ref() {
-            let fn_name = frame.instance.to_string();
+            let fn_name = frame.instance().to_string();
             let entry = ecx.machine.string_cache.entry(fn_name.clone());
             let name = entry.or_insert_with(|| profiler.alloc_string(&*fn_name));
 
@@ -1371,11 +1436,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         let borrow_tracker = ecx.machine.borrow_tracker.as_ref();
 
         let extra = FrameExtra {
-            borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame(&ecx.machine)),
+            borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame()),
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
-            salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_CONST,
+            salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL,
         };
 
         Ok(frame.with_extra(extra))
@@ -1446,7 +1511,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // tracing-tree can autoamtically annotate scope changes, but it gets very confused by our
         // concurrency and what it prints is just plain wrong. So we print our own information
         // instead. (Cc https://github.com/rust-lang/miri/issues/2266)
-        info!("Leaving {}", ecx.frame().instance);
+        info!("Leaving {}", ecx.frame().instance());
         Ok(())
     }
 
@@ -1476,7 +1541,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Needs to be done after dropping frame to show up on the right nesting level.
         // (Cc https://github.com/rust-lang/miri/issues/2266)
         if !ecx.active_thread_stack().is_empty() {
-            info!("Continuing in {}", ecx.frame().instance);
+            info!("Continuing in {}", ecx.frame().instance());
         }
         res
     }
@@ -1489,7 +1554,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         let Some(Provenance::Concrete { alloc_id, .. }) = mplace.ptr().provenance else {
             panic!("after_local_allocated should only be called on fresh allocations");
         };
-        let local_decl = &ecx.frame().body.local_decls[local];
+        let local_decl = &ecx.frame().body().local_decls[local];
         let span = local_decl.source_info.span;
         ecx.machine.allocation_spans.borrow_mut().insert(alloc_id, (span, None));
         Ok(())
@@ -1519,6 +1584,47 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 Ok(op)
             }
             Entry::Occupied(oe) => Ok(oe.get().clone()),
+        }
+    }
+
+    fn get_global_alloc_salt(
+        ecx: &InterpCx<'tcx, Self>,
+        instance: Option<ty::Instance<'tcx>>,
+    ) -> usize {
+        let unique = if let Some(instance) = instance {
+            // Functions cannot be identified by pointers, as asm-equal functions can get
+            // deduplicated by the linker (we set the "unnamed_addr" attribute for LLVM) and
+            // functions can be duplicated across crates. We thus generate a new `AllocId` for every
+            // mention of a function. This means that `main as fn() == main as fn()` is false, while
+            // `let x = main as fn(); x == x` is true. However, as a quality-of-life feature it can
+            // be useful to identify certain functions uniquely, e.g. for backtraces. So we identify
+            // whether codegen will actually emit duplicate functions. It does that when they have
+            // non-lifetime generics, or when they can be inlined. All other functions are given a
+            // unique address. This is not a stable guarantee! The `inline` attribute is a hint and
+            // cannot be relied upon for anything. But if we don't do this, the
+            // `__rust_begin_short_backtrace`/`__rust_end_short_backtrace` logic breaks and panic
+            // backtraces look terrible.
+            let is_generic = instance
+                .args
+                .into_iter()
+                .any(|kind| !matches!(kind.unpack(), ty::GenericArgKind::Lifetime(_)));
+            let can_be_inlined = matches!(
+                ecx.tcx.sess.opts.unstable_opts.cross_crate_inline_threshold,
+                InliningThreshold::Always
+            ) || !matches!(
+                ecx.tcx.codegen_fn_attrs(instance.def_id()).inline,
+                InlineAttr::Never
+            );
+            !is_generic && !can_be_inlined
+        } else {
+            // Non-functions are never unique.
+            false
+        };
+        // Always use the same salt if the allocation is unique.
+        if unique {
+            CTFE_ALLOC_SALT
+        } else {
+            ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL
         }
     }
 }

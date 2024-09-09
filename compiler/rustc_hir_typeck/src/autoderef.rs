@@ -1,7 +1,6 @@
 //! Some helper functions for `AutoDeref`.
 
-use super::method::MethodCallee;
-use super::{FnCtxt, PlaceOp};
+use std::iter;
 
 use itertools::Itertools;
 use rustc_hir_analysis::autoderef::{Autoderef, AutoderefKind};
@@ -10,14 +9,15 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
-use std::iter;
+use super::method::MethodCallee;
+use super::{FnCtxt, PlaceOp};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'tcx> {
+    pub(crate) fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'tcx> {
         Autoderef::new(self, self.param_env, self.body_id, span, base_ty)
     }
 
-    pub fn try_overloaded_deref(
+    pub(crate) fn try_overloaded_deref(
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
@@ -26,11 +26,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Returns the adjustment steps.
-    pub fn adjust_steps(&self, autoderef: &Autoderef<'a, 'tcx>) -> Vec<Adjustment<'tcx>> {
+    pub(crate) fn adjust_steps(&self, autoderef: &Autoderef<'a, 'tcx>) -> Vec<Adjustment<'tcx>> {
         self.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(autoderef))
     }
 
-    pub fn adjust_steps_as_infer_ok(
+    pub(crate) fn adjust_steps_as_infer_ok(
         &self,
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {

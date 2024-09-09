@@ -10,7 +10,7 @@ note: lifetime declared here
 LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
    |                                    ^^
 
-error: [o]
+error: ['a: o]
   --> $DIR/implicit-capture-late.rs:10:55
    |
 LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {

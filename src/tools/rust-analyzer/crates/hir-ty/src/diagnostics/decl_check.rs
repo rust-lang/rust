@@ -17,17 +17,19 @@ use std::fmt;
 
 use hir_def::{
     data::adt::VariantData, db::DefDatabase, hir::Pat, src::HasSource, AdtId, AttrDefId, ConstId,
-    EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, ModuleId, StaticId, StructId,
-    TraitId, TypeAliasId,
+    EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, ModuleDefId, ModuleId,
+    StaticId, StructId, TraitId, TypeAliasId,
 };
 use hir_expand::{
     name::{AsName, Name},
-    HirFileId, MacroFileIdExt,
+    HirFileId, HirFileIdExt, MacroFileIdExt,
 };
+use intern::sym;
 use stdx::{always, never};
 use syntax::{
     ast::{self, HasName},
-    AstNode, AstPtr,
+    utils::is_raw_identifier,
+    AstNode, AstPtr, ToSmolStr,
 };
 
 use crate::db::HirDatabase;
@@ -163,8 +165,8 @@ impl<'a> DeclValidator<'a> {
         let is_allowed = |def_id| {
             let attrs = self.db.attrs(def_id);
             // don't bug the user about directly no_mangle annotated stuff, they can't do anything about it
-            (!recursing && attrs.by_key("no_mangle").exists())
-                || attrs.by_key("allow").tt_values().any(|tt| {
+            (!recursing && attrs.by_key(&sym::no_mangle).exists())
+                || attrs.by_key(&sym::allow).tt_values().any(|tt| {
                     let allows = tt.to_string();
                     allows.contains(allow_name)
                         || allows.contains(allow::BAD_STYLE)
@@ -247,7 +249,7 @@ impl<'a> DeclValidator<'a> {
         // Check the module name.
         let Some(module_name) = module_id.name(self.db.upcast()) else { return };
         let Some(module_name_replacement) =
-            module_name.as_str().and_then(to_lower_snake_case).map(|new_name| Replacement {
+            to_lower_snake_case(module_name.as_str()).map(|new_name| Replacement {
                 current_name: module_name,
                 suggested_text: new_name,
                 expected_case: CaseType::LowerSnakeCase,
@@ -317,15 +319,21 @@ impl<'a> DeclValidator<'a> {
     /// This includes function parameters except for trait implementation associated functions.
     fn validate_func_body(&mut self, func: FunctionId) {
         let body = self.db.body(func.into());
+        let edition = self.edition(func);
         let mut pats_replacements = body
             .pats
             .iter()
             .filter_map(|(pat_id, pat)| match pat {
                 Pat::Bind { id, .. } => {
                     let bind_name = &body.bindings[*id].name;
+                    let mut suggested_text =
+                        to_lower_snake_case(&bind_name.unescaped().display_no_db().to_smolstr())?;
+                    if is_raw_identifier(&suggested_text, edition) {
+                        suggested_text.insert_str(0, "r#");
+                    }
                     let replacement = Replacement {
                         current_name: bind_name.clone(),
-                        suggested_text: to_lower_snake_case(&bind_name.to_smol_str())?,
+                        suggested_text,
                         expected_case: CaseType::LowerSnakeCase,
                     };
                     Some((pat_id, replacement))
@@ -353,17 +361,16 @@ impl<'a> DeclValidator<'a> {
                 continue;
             };
 
-            let is_param = ast::Param::can_cast(parent.kind());
-            // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
-            // because e.g. match arms are patterns as well.
-            // In other words, we check that it's a named variable binding.
-            let is_binding = ast::LetStmt::can_cast(parent.kind())
-                || (ast::MatchArm::can_cast(parent.kind()) && ident_pat.at_token().is_some());
-            if !(is_param || is_binding) {
-                // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
+            let is_shorthand = ast::RecordPatField::cast(parent.clone())
+                .map(|parent| parent.name_ref().is_none())
+                .unwrap_or_default();
+            if is_shorthand {
+                // We don't check shorthand field patterns, such as 'field' in `Thing { field }`,
+                // since the shorthand isn't the declaration.
                 continue;
             }
 
+            let is_param = ast::Param::can_cast(parent.kind());
             let ident_type = if is_param { IdentType::Parameter } else { IdentType::Variable };
 
             self.create_incorrect_case_diagnostic_for_ast_node(
@@ -373,6 +380,11 @@ impl<'a> DeclValidator<'a> {
                 ident_type,
             );
         }
+    }
+
+    fn edition(&self, id: impl HasModule) -> span::Edition {
+        let krate = id.krate(self.db.upcast());
+        self.db.crate_graph()[krate].edition
     }
 
     fn validate_struct(&mut self, struct_id: StructId) {
@@ -403,14 +415,17 @@ impl<'a> DeclValidator<'a> {
         let VariantData::Record(fields) = data.variant_data.as_ref() else {
             return;
         };
+        let edition = self.edition(struct_id);
         let mut struct_fields_replacements = fields
             .iter()
             .filter_map(|(_, field)| {
-                to_lower_snake_case(&field.name.to_smol_str()).map(|new_name| Replacement {
-                    current_name: field.name.clone(),
-                    suggested_text: new_name,
-                    expected_case: CaseType::LowerSnakeCase,
-                })
+                to_lower_snake_case(&field.name.display_no_db(edition).to_smolstr()).map(
+                    |new_name| Replacement {
+                        current_name: field.name.clone(),
+                        suggested_text: new_name,
+                        expected_case: CaseType::LowerSnakeCase,
+                    },
+                )
             })
             .peekable();
 
@@ -489,14 +504,22 @@ impl<'a> DeclValidator<'a> {
     /// Check incorrect names for enum variants.
     fn validate_enum_variants(&mut self, enum_id: EnumId) {
         let data = self.db.enum_data(enum_id);
+
+        for (variant_id, _) in data.variants.iter() {
+            self.validate_enum_variant_fields(*variant_id);
+        }
+
+        let edition = self.edition(enum_id);
         let mut enum_variants_replacements = data
             .variants
             .iter()
             .filter_map(|(_, name)| {
-                to_camel_case(&name.to_smol_str()).map(|new_name| Replacement {
-                    current_name: name.clone(),
-                    suggested_text: new_name,
-                    expected_case: CaseType::UpperCamelCase,
+                to_camel_case(&name.display_no_db(edition).to_smolstr()).map(|new_name| {
+                    Replacement {
+                        current_name: name.clone(),
+                        suggested_text: new_name,
+                        expected_case: CaseType::UpperCamelCase,
+                    }
                 })
             })
             .peekable();
@@ -547,6 +570,78 @@ impl<'a> DeclValidator<'a> {
                 enum_src.file_id,
                 &variant,
                 IdentType::Variant,
+            );
+        }
+    }
+
+    /// Check incorrect names for fields of enum variant.
+    fn validate_enum_variant_fields(&mut self, variant_id: EnumVariantId) {
+        let variant_data = self.db.enum_variant_data(variant_id);
+        let VariantData::Record(fields) = variant_data.variant_data.as_ref() else {
+            return;
+        };
+        let edition = self.edition(variant_id);
+        let mut variant_field_replacements = fields
+            .iter()
+            .filter_map(|(_, field)| {
+                to_lower_snake_case(&field.name.display_no_db(edition).to_smolstr()).map(
+                    |new_name| Replacement {
+                        current_name: field.name.clone(),
+                        suggested_text: new_name,
+                        expected_case: CaseType::LowerSnakeCase,
+                    },
+                )
+            })
+            .peekable();
+
+        // XXX: only look at sources if we do have incorrect names
+        if variant_field_replacements.peek().is_none() {
+            return;
+        }
+
+        let variant_loc = variant_id.lookup(self.db.upcast());
+        let variant_src = variant_loc.source(self.db.upcast());
+
+        let Some(ast::FieldList::RecordFieldList(variant_fields_list)) =
+            variant_src.value.field_list()
+        else {
+            always!(
+                variant_field_replacements.peek().is_none(),
+                "Replacements ({:?}) were generated for an enum variant \
+                which had no fields list: {:?}",
+                variant_field_replacements.collect::<Vec<_>>(),
+                variant_src
+            );
+            return;
+        };
+        let mut variant_variants_iter = variant_fields_list.fields();
+        for field_replacement in variant_field_replacements {
+            // We assume that parameters in replacement are in the same order as in the
+            // actual params list, but just some of them (ones that named correctly) are skipped.
+            let field = loop {
+                if let Some(field) = variant_variants_iter.next() {
+                    let Some(field_name) = field.name() else {
+                        continue;
+                    };
+                    if field_name.as_name() == field_replacement.current_name {
+                        break field;
+                    }
+                } else {
+                    never!(
+                        "Replacement ({:?}) was generated for an enum variant field \
+                        which was not found: {:?}",
+                        field_replacement,
+                        variant_src
+                    );
+                    return;
+                }
+            };
+
+            self.create_incorrect_case_diagnostic_for_ast_node(
+                field_replacement,
+                variant_src.file_id,
+                &field,
+                IdentType::Field,
             );
         }
     }
@@ -624,15 +719,21 @@ impl<'a> DeclValidator<'a> {
     ) where
         N: AstNode + HasName + fmt::Debug,
         S: HasSource<Value = N>,
-        L: Lookup<Data = S, Database<'a> = dyn DefDatabase + 'a>,
+        L: Lookup<Data = S, Database<'a> = dyn DefDatabase + 'a> + HasModule + Copy,
     {
         let to_expected_case_type = match expected_case {
             CaseType::LowerSnakeCase => to_lower_snake_case,
             CaseType::UpperSnakeCase => to_upper_snake_case,
             CaseType::UpperCamelCase => to_camel_case,
         };
-        let Some(replacement) = to_expected_case_type(&name.to_smol_str()).map(|new_name| {
-            Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
+        let edition = self.edition(item_id);
+        let Some(replacement) = to_expected_case_type(
+            &name.display(self.db.upcast(), edition).to_smolstr(),
+        )
+        .map(|new_name| Replacement {
+            current_name: name.clone(),
+            suggested_text: new_name,
+            expected_case,
         }) else {
             return;
         };
@@ -666,12 +767,13 @@ impl<'a> DeclValidator<'a> {
             return;
         };
 
+        let edition = file_id.original_file(self.db.upcast()).edition();
         let diagnostic = IncorrectCase {
             file: file_id,
             ident_type,
             ident: AstPtr::new(&name_ast),
             expected_case: replacement.expected_case,
-            ident_text: replacement.current_name.display(self.db.upcast()).to_string(),
+            ident_text: replacement.current_name.display(self.db.upcast(), edition).to_string(),
             suggested_text: replacement.suggested_text,
         };
 

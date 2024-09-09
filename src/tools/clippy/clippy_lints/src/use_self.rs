@@ -229,7 +229,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity()
             && same_type_and_consts(ty, impl_ty)
             // Ensure the type we encounter and the one from the impl have the same lifetime parameters. It may be that
-            // the lifetime parameters of `ty` are ellided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`, in
+            // the lifetime parameters of `ty` are elided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`, in
             // which case we must still trigger the lint.
             && (has_no_lifetime(ty) || same_lifetimes(ty, impl_ty))
         {

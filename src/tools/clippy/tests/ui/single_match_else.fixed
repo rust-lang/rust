@@ -89,7 +89,7 @@ fn main() {
 
     // lint here
     use std::convert::Infallible;
-    if let Ok(a) = Result::<i32, Infallible>::Ok(1) { println!("${:?}", a) } else {
+    if let Ok(a) = Result::<i32, &Infallible>::Ok(1) { println!("${:?}", a) } else {
         println!("else block");
         return;
     }

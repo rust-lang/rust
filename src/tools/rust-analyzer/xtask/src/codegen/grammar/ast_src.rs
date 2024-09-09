@@ -1,241 +1,212 @@
 //! Defines input for code generation process.
 
-pub(crate) struct KindsSrc<'a> {
-    pub(crate) punct: &'a [(&'a str, &'a str)],
-    pub(crate) keywords: &'a [&'a str],
-    pub(crate) contextual_keywords: &'a [&'a str],
-    pub(crate) literals: &'a [&'a str],
-    pub(crate) tokens: &'a [&'a str],
-    pub(crate) nodes: &'a [&'a str],
+use quote::ToTokens;
+
+use crate::codegen::grammar::to_upper_snake_case;
+
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct KindsSrc {
+    pub(crate) punct: &'static [(&'static str, &'static str)],
+    pub(crate) keywords: &'static [&'static str],
+    pub(crate) contextual_keywords: &'static [&'static str],
+    pub(crate) literals: &'static [&'static str],
+    pub(crate) tokens: &'static [&'static str],
+    pub(crate) nodes: &'static [&'static str],
+    pub(crate) edition_dependent_keywords: &'static [(&'static str, Edition)],
 }
 
-pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
-    punct: &[
-        (";", "SEMICOLON"),
-        (",", "COMMA"),
-        ("(", "L_PAREN"),
-        (")", "R_PAREN"),
-        ("{", "L_CURLY"),
-        ("}", "R_CURLY"),
-        ("[", "L_BRACK"),
-        ("]", "R_BRACK"),
-        ("<", "L_ANGLE"),
-        (">", "R_ANGLE"),
-        ("@", "AT"),
-        ("#", "POUND"),
-        ("~", "TILDE"),
-        ("?", "QUESTION"),
-        ("$", "DOLLAR"),
-        ("&", "AMP"),
-        ("|", "PIPE"),
-        ("+", "PLUS"),
-        ("*", "STAR"),
-        ("/", "SLASH"),
-        ("^", "CARET"),
-        ("%", "PERCENT"),
-        ("_", "UNDERSCORE"),
-        (".", "DOT"),
-        ("..", "DOT2"),
-        ("...", "DOT3"),
-        ("..=", "DOT2EQ"),
-        (":", "COLON"),
-        ("::", "COLON2"),
-        ("=", "EQ"),
-        ("==", "EQ2"),
-        ("=>", "FAT_ARROW"),
-        ("!", "BANG"),
-        ("!=", "NEQ"),
-        ("-", "MINUS"),
-        ("->", "THIN_ARROW"),
-        ("<=", "LTEQ"),
-        (">=", "GTEQ"),
-        ("+=", "PLUSEQ"),
-        ("-=", "MINUSEQ"),
-        ("|=", "PIPEEQ"),
-        ("&=", "AMPEQ"),
-        ("^=", "CARETEQ"),
-        ("/=", "SLASHEQ"),
-        ("*=", "STAREQ"),
-        ("%=", "PERCENTEQ"),
-        ("&&", "AMP2"),
-        ("||", "PIPE2"),
-        ("<<", "SHL"),
-        (">>", "SHR"),
-        ("<<=", "SHLEQ"),
-        (">>=", "SHREQ"),
-    ],
-    keywords: &[
-        "abstract", "as", "async", "await", "become", "box", "break", "const", "continue", "crate",
-        "do", "dyn", "else", "enum", "extern", "false", "final", "fn", "for", "if", "impl", "in",
-        "let", "loop", "macro", "match", "mod", "move", "mut", "override", "priv", "pub", "ref",
-        "return", "self", "Self", "static", "struct", "super", "trait", "true", "try", "type",
-        "typeof", "unsafe", "unsized", "use", "virtual", "where", "while", "yield",
-    ],
-    contextual_keywords: &[
-        "auto",
-        "builtin",
-        "default",
-        "existential",
-        "union",
-        "raw",
-        "macro_rules",
-        "yeet",
-        "offset_of",
-        "asm",
-        "format_args",
-    ],
-    literals: &["INT_NUMBER", "FLOAT_NUMBER", "CHAR", "BYTE", "STRING", "BYTE_STRING", "C_STRING"],
-    tokens: &["ERROR", "IDENT", "WHITESPACE", "LIFETIME_IDENT", "COMMENT", "SHEBANG"],
-    nodes: &[
-        "SOURCE_FILE",
-        "STRUCT",
-        "UNION",
-        "ENUM",
-        "FN",
-        "RET_TYPE",
-        "EXTERN_CRATE",
-        "MODULE",
-        "USE",
-        "STATIC",
-        "CONST",
-        "TRAIT",
-        "TRAIT_ALIAS",
-        "IMPL",
-        "TYPE_ALIAS",
-        "MACRO_CALL",
-        "MACRO_RULES",
-        "MACRO_ARM",
-        "TOKEN_TREE",
-        "MACRO_DEF",
-        "PAREN_TYPE",
-        "TUPLE_TYPE",
-        "MACRO_TYPE",
-        "NEVER_TYPE",
-        "PATH_TYPE",
-        "PTR_TYPE",
-        "ARRAY_TYPE",
-        "SLICE_TYPE",
-        "REF_TYPE",
-        "INFER_TYPE",
-        "FN_PTR_TYPE",
-        "FOR_TYPE",
-        "IMPL_TRAIT_TYPE",
-        "DYN_TRAIT_TYPE",
-        "OR_PAT",
-        "PAREN_PAT",
-        "REF_PAT",
-        "BOX_PAT",
-        "IDENT_PAT",
-        "WILDCARD_PAT",
-        "REST_PAT",
-        "PATH_PAT",
-        "RECORD_PAT",
-        "RECORD_PAT_FIELD_LIST",
-        "RECORD_PAT_FIELD",
-        "TUPLE_STRUCT_PAT",
-        "TUPLE_PAT",
-        "SLICE_PAT",
-        "RANGE_PAT",
-        "LITERAL_PAT",
-        "MACRO_PAT",
-        "CONST_BLOCK_PAT",
-        // atoms
-        "TUPLE_EXPR",
-        "ARRAY_EXPR",
-        "PAREN_EXPR",
-        "PATH_EXPR",
-        "CLOSURE_EXPR",
-        "IF_EXPR",
-        "WHILE_EXPR",
-        "LOOP_EXPR",
-        "FOR_EXPR",
-        "CONTINUE_EXPR",
-        "BREAK_EXPR",
-        "LABEL",
-        "BLOCK_EXPR",
-        "STMT_LIST",
-        "RETURN_EXPR",
-        "BECOME_EXPR",
-        "YIELD_EXPR",
-        "YEET_EXPR",
-        "LET_EXPR",
-        "UNDERSCORE_EXPR",
-        "MACRO_EXPR",
-        "MATCH_EXPR",
-        "MATCH_ARM_LIST",
-        "MATCH_ARM",
-        "MATCH_GUARD",
-        "RECORD_EXPR",
-        "RECORD_EXPR_FIELD_LIST",
-        "RECORD_EXPR_FIELD",
-        "OFFSET_OF_EXPR",
-        "ASM_EXPR",
-        "FORMAT_ARGS_EXPR",
-        "FORMAT_ARGS_ARG",
-        // postfix
-        "CALL_EXPR",
-        "INDEX_EXPR",
-        "METHOD_CALL_EXPR",
-        "FIELD_EXPR",
-        "AWAIT_EXPR",
-        "TRY_EXPR",
-        "CAST_EXPR",
-        // unary
-        "REF_EXPR",
-        "PREFIX_EXPR",
-        "RANGE_EXPR", // just weird
-        "BIN_EXPR",
-        "EXTERN_BLOCK",
-        "EXTERN_ITEM_LIST",
-        "VARIANT",
-        "RECORD_FIELD_LIST",
-        "RECORD_FIELD",
-        "TUPLE_FIELD_LIST",
-        "TUPLE_FIELD",
-        "VARIANT_LIST",
-        "ITEM_LIST",
-        "ASSOC_ITEM_LIST",
-        "ATTR",
-        "META",
-        "USE_TREE",
-        "USE_TREE_LIST",
-        "PATH",
-        "PATH_SEGMENT",
-        "LITERAL",
-        "RENAME",
-        "VISIBILITY",
-        "WHERE_CLAUSE",
-        "WHERE_PRED",
-        "ABI",
-        "NAME",
-        "NAME_REF",
-        "LET_STMT",
-        "LET_ELSE",
-        "EXPR_STMT",
-        "GENERIC_PARAM_LIST",
-        "GENERIC_PARAM",
-        "LIFETIME_PARAM",
-        "TYPE_PARAM",
-        "RETURN_TYPE_ARG",
-        "CONST_PARAM",
-        "GENERIC_ARG_LIST",
-        "LIFETIME",
-        "LIFETIME_ARG",
-        "TYPE_ARG",
-        "ASSOC_TYPE_ARG",
-        "CONST_ARG",
-        "PARAM_LIST",
-        "PARAM",
-        "SELF_PARAM",
-        "ARG_LIST",
-        "TYPE_BOUND",
-        "TYPE_BOUND_LIST",
-        // macro related
-        "MACRO_ITEMS",
-        "MACRO_STMTS",
-        "MACRO_EAGER_INPUT",
-    ],
-};
+#[allow(dead_code)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(super) enum Edition {
+    Edition2015,
+    Edition2018,
+    Edition2021,
+    Edition2024,
+}
+
+impl ToTokens for Edition {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            Edition::Edition2015 => {
+                tokens.extend(quote::quote! { Edition::Edition2015 });
+            }
+            Edition::Edition2018 => {
+                tokens.extend(quote::quote! { Edition::Edition2018 });
+            }
+            Edition::Edition2021 => {
+                tokens.extend(quote::quote! { Edition::Edition2021 });
+            }
+            Edition::Edition2024 => {
+                tokens.extend(quote::quote! { Edition::Edition2024 });
+            }
+        }
+    }
+}
+
+/// The punctuations of the language.
+const PUNCT: &[(&str, &str)] = &[
+    // KEEP THE DOLLAR AT THE TOP ITS SPECIAL
+    ("$", "DOLLAR"),
+    (";", "SEMICOLON"),
+    (",", "COMMA"),
+    ("(", "L_PAREN"),
+    (")", "R_PAREN"),
+    ("{", "L_CURLY"),
+    ("}", "R_CURLY"),
+    ("[", "L_BRACK"),
+    ("]", "R_BRACK"),
+    ("<", "L_ANGLE"),
+    (">", "R_ANGLE"),
+    ("@", "AT"),
+    ("#", "POUND"),
+    ("~", "TILDE"),
+    ("?", "QUESTION"),
+    ("&", "AMP"),
+    ("|", "PIPE"),
+    ("+", "PLUS"),
+    ("*", "STAR"),
+    ("/", "SLASH"),
+    ("^", "CARET"),
+    ("%", "PERCENT"),
+    ("_", "UNDERSCORE"),
+    (".", "DOT"),
+    ("..", "DOT2"),
+    ("...", "DOT3"),
+    ("..=", "DOT2EQ"),
+    (":", "COLON"),
+    ("::", "COLON2"),
+    ("=", "EQ"),
+    ("==", "EQ2"),
+    ("=>", "FAT_ARROW"),
+    ("!", "BANG"),
+    ("!=", "NEQ"),
+    ("-", "MINUS"),
+    ("->", "THIN_ARROW"),
+    ("<=", "LTEQ"),
+    (">=", "GTEQ"),
+    ("+=", "PLUSEQ"),
+    ("-=", "MINUSEQ"),
+    ("|=", "PIPEEQ"),
+    ("&=", "AMPEQ"),
+    ("^=", "CARETEQ"),
+    ("/=", "SLASHEQ"),
+    ("*=", "STAREQ"),
+    ("%=", "PERCENTEQ"),
+    ("&&", "AMP2"),
+    ("||", "PIPE2"),
+    ("<<", "SHL"),
+    (">>", "SHR"),
+    ("<<=", "SHLEQ"),
+    (">>=", "SHREQ"),
+];
+const TOKENS: &[&str] = &["ERROR", "WHITESPACE", "NEWLINE", "COMMENT"];
+// &["ERROR", "IDENT", "WHITESPACE", "LIFETIME_IDENT", "COMMENT", "SHEBANG"],;
+
+const EOF: &str = "EOF";
+
+const RESERVED: &[&str] = &[
+    "abstract", "become", "box", "do", "final", "macro", "override", "priv", "typeof", "unsized",
+    "virtual", "yield",
+];
+// keywords that are keywords only in specific parse contexts
+#[doc(alias = "WEAK_KEYWORDS")]
+const CONTEXTUAL_KEYWORDS: &[&str] =
+    &["macro_rules", "union", "default", "raw", "dyn", "auto", "yeet"];
+// keywords we use for special macro expansions
+const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &["builtin", "offset_of", "format_args", "asm"];
+// keywords that are keywords depending on the edition
+const EDITION_DEPENDENT_KEYWORDS: &[(&str, Edition)] = &[
+    ("try", Edition::Edition2018),
+    ("dyn", Edition::Edition2018),
+    ("async", Edition::Edition2018),
+    ("await", Edition::Edition2018),
+    ("gen", Edition::Edition2024),
+];
+
+pub(crate) fn generate_kind_src(
+    nodes: &[AstNodeSrc],
+    enums: &[AstEnumSrc],
+    grammar: &ungrammar::Grammar,
+) -> KindsSrc {
+    let mut contextual_keywords: Vec<&_> =
+        CONTEXTUAL_KEYWORDS.iter().chain(CONTEXTUAL_BUILTIN_KEYWORDS).copied().collect();
+
+    let mut keywords: Vec<&_> = Vec::new();
+    let mut tokens: Vec<&_> = TOKENS.to_vec();
+    let mut literals: Vec<&_> = Vec::new();
+    let mut used_puncts = vec![false; PUNCT.len()];
+    // Mark $ as used
+    used_puncts[0] = true;
+    grammar.tokens().for_each(|token| {
+        let name = &*grammar[token].name;
+        if name == EOF {
+            return;
+        }
+        match name.split_at(1) {
+            ("@", lit) if !lit.is_empty() => {
+                literals.push(String::leak(to_upper_snake_case(lit)));
+            }
+            ("#", token) if !token.is_empty() => {
+                tokens.push(String::leak(to_upper_snake_case(token)));
+            }
+            _ if contextual_keywords.contains(&name) => {}
+            _ if name.chars().all(char::is_alphabetic) => {
+                keywords.push(String::leak(name.to_owned()));
+            }
+            _ => {
+                let idx = PUNCT
+                    .iter()
+                    .position(|(punct, _)| punct == &name)
+                    .unwrap_or_else(|| panic!("Grammar references unknown punctuation {name:?}"));
+                used_puncts[idx] = true;
+            }
+        }
+    });
+    PUNCT.iter().zip(used_puncts).filter(|(_, used)| !used).for_each(|((punct, _), _)| {
+        panic!("Punctuation {punct:?} is not used in grammar");
+    });
+    keywords.extend(RESERVED.iter().copied());
+    keywords.sort();
+    keywords.dedup();
+    contextual_keywords.sort();
+    contextual_keywords.dedup();
+    let mut edition_dependent_keywords: Vec<(&_, _)> = EDITION_DEPENDENT_KEYWORDS.to_vec();
+    edition_dependent_keywords.sort();
+    edition_dependent_keywords.dedup();
+
+    keywords.retain(|&it| !contextual_keywords.contains(&it));
+    keywords.retain(|&it| !edition_dependent_keywords.iter().any(|&(kw, _)| kw == it));
+
+    // we leak things here for simplicity, that way we don't have to deal with lifetimes
+    // The execution is a one shot job so thats fine
+    let nodes = nodes
+        .iter()
+        .map(|it| &it.name)
+        .chain(enums.iter().map(|it| &it.name))
+        .map(|it| to_upper_snake_case(it))
+        .map(String::leak)
+        .map(|it| &*it)
+        .collect();
+    let nodes = Vec::leak(nodes);
+    nodes.sort();
+    let keywords = Vec::leak(keywords);
+    let contextual_keywords = Vec::leak(contextual_keywords);
+    let edition_dependent_keywords = Vec::leak(edition_dependent_keywords);
+    let literals = Vec::leak(literals);
+    literals.sort();
+    let tokens = Vec::leak(tokens);
+    tokens.sort();
+
+    KindsSrc {
+        punct: PUNCT,
+        nodes,
+        keywords,
+        contextual_keywords,
+        edition_dependent_keywords,
+        literals,
+        tokens,
+    }
+}
 
 #[derive(Default, Debug)]
 pub(crate) struct AstSrc {

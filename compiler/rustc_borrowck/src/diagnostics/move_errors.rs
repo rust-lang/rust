@@ -10,14 +10,14 @@ use rustc_middle::ty::{self, Ty};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
+use tracing::debug;
 
-use crate::diagnostics::CapturedMessageOpt;
-use crate::diagnostics::{DescribePlaceOpt, UseSpans};
+use crate::diagnostics::{CapturedMessageOpt, DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
 use crate::MirBorrowckCtxt;
 
 #[derive(Debug)]
-pub enum IllegalMoveOriginKind<'tcx> {
+pub(crate) enum IllegalMoveOriginKind<'tcx> {
     /// Illegal move due to attempt to move from behind a reference.
     BorrowedContent {
         /// The place the reference refers to: if erroneous code was trying to
@@ -565,9 +565,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
 
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {
         match error {
-            GroupedMoveError::MovesFromPlace {
-                mut binds_to, move_from, span: other_span, ..
-            } => {
+            GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
                 self.add_borrow_suggestions(err, span);
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
@@ -577,7 +575,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     };
 
                     if let Some(expr) = self.find_expr(span) {
-                        self.suggest_cloning(err, place_ty, expr, self.find_expr(other_span), None);
+                        self.suggest_cloning(err, place_ty, expr, None);
                     }
 
                     err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
@@ -609,13 +607,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 };
 
                 if let Some(expr) = self.find_expr(use_span) {
-                    self.suggest_cloning(
-                        err,
-                        place_ty,
-                        expr,
-                        self.find_expr(span),
-                        Some(use_spans),
-                    );
+                    self.suggest_cloning(err, place_ty, expr, Some(use_spans));
                 }
 
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
@@ -740,7 +732,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 let place_desc = &format!("`{}`", self.local_names[*local].unwrap());
 
                 if let Some(expr) = self.find_expr(binding_span) {
-                    self.suggest_cloning(err, bind_to.ty, expr, None, None);
+                    self.suggest_cloning(err, bind_to.ty, expr, None);
                 }
 
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {

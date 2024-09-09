@@ -5,17 +5,23 @@
 //! name resolution.
 
 use std::mem;
+use std::{cell::LazyCell, cmp::Reverse};
 
-use base_db::{salsa::Database, FileId, FileRange, SourceDatabase, SourceDatabaseExt};
+use base_db::{salsa::Database, SourceDatabase, SourceRootDatabase};
 use hir::{
-    AsAssocItem, DefWithBody, DescendPreference, HasAttrs, HasSource, HirFileIdExt, InFile,
-    InRealFile, ModuleSource, PathResolution, Semantics, Visibility,
+    sym, Adt, AsAssocItem, DefWithBody, FileRange, FileRangeWrapper, HasAttrs, HasContainer,
+    HasSource, HirFileIdExt, InFile, InFileWrapper, InRealFile, ItemContainer, ModuleSource,
+    PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
-use nohash_hasher::IntMap;
-use once_cell::unsync::Lazy;
 use parser::SyntaxKind;
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize};
+use rustc_hash::{FxHashMap, FxHashSet};
+use span::EditionedFileId;
+use syntax::{
+    ast::{self, HasName},
+    match_ast, AstNode, AstToken, SmolStr, SyntaxElement, SyntaxNode, TextRange, TextSize,
+    ToSmolStr,
+};
 use triomphe::Arc;
 
 use crate::{
@@ -26,7 +32,7 @@ use crate::{
 
 #[derive(Debug, Default, Clone)]
 pub struct UsageSearchResult {
-    pub references: IntMap<FileId, Vec<FileReference>>,
+    pub references: FxHashMap<EditionedFileId, Vec<FileReference>>,
 }
 
 impl UsageSearchResult {
@@ -38,8 +44,8 @@ impl UsageSearchResult {
         self.references.len()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&FileId, &[FileReference])> + '_ {
-        self.references.iter().map(|(file_id, refs)| (file_id, &**refs))
+    pub fn iter(&self) -> impl Iterator<Item = (EditionedFileId, &[FileReference])> + '_ {
+        self.references.iter().map(|(&file_id, refs)| (file_id, &**refs))
     }
 
     pub fn file_ranges(&self) -> impl Iterator<Item = FileRange> + '_ {
@@ -50,8 +56,8 @@ impl UsageSearchResult {
 }
 
 impl IntoIterator for UsageSearchResult {
-    type Item = (FileId, Vec<FileReference>);
-    type IntoIter = <IntMap<FileId, Vec<FileReference>> as IntoIterator>::IntoIter;
+    type Item = (EditionedFileId, Vec<FileReference>);
+    type IntoIter = <FxHashMap<EditionedFileId, Vec<FileReference>> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.references.into_iter()
@@ -142,36 +148,40 @@ bitflags::bitflags! {
 /// e.g. for things like local variables.
 #[derive(Clone, Debug)]
 pub struct SearchScope {
-    entries: IntMap<FileId, Option<TextRange>>,
+    entries: FxHashMap<EditionedFileId, Option<TextRange>>,
 }
 
 impl SearchScope {
-    fn new(entries: IntMap<FileId, Option<TextRange>>) -> SearchScope {
+    fn new(entries: FxHashMap<EditionedFileId, Option<TextRange>>) -> SearchScope {
         SearchScope { entries }
     }
 
     /// Build a search scope spanning the entire crate graph of files.
     fn crate_graph(db: &RootDatabase) -> SearchScope {
-        let mut entries = IntMap::default();
+        let mut entries = FxHashMap::default();
 
         let graph = db.crate_graph();
         for krate in graph.iter() {
             let root_file = graph[krate].root_file_id;
             let source_root_id = db.file_source_root(root_file);
             let source_root = db.source_root(source_root_id);
-            entries.extend(source_root.iter().map(|id| (id, None)));
+            entries.extend(
+                source_root.iter().map(|id| (EditionedFileId::new(id, graph[krate].edition), None)),
+            );
         }
         SearchScope { entries }
     }
 
     /// Build a search scope spanning all the reverse dependencies of the given crate.
     fn reverse_dependencies(db: &RootDatabase, of: hir::Crate) -> SearchScope {
-        let mut entries = IntMap::default();
+        let mut entries = FxHashMap::default();
         for rev_dep in of.transitive_reverse_dependencies(db) {
             let root_file = rev_dep.root_file(db);
             let source_root_id = db.file_source_root(root_file);
             let source_root = db.source_root(source_root_id);
-            entries.extend(source_root.iter().map(|id| (id, None)));
+            entries.extend(
+                source_root.iter().map(|id| (EditionedFileId::new(id, rev_dep.edition(db)), None)),
+            );
         }
         SearchScope { entries }
     }
@@ -181,12 +191,17 @@ impl SearchScope {
         let root_file = of.root_file(db);
         let source_root_id = db.file_source_root(root_file);
         let source_root = db.source_root(source_root_id);
-        SearchScope { entries: source_root.iter().map(|id| (id, None)).collect() }
+        SearchScope {
+            entries: source_root
+                .iter()
+                .map(|id| (EditionedFileId::new(id, of.edition(db)), None))
+                .collect(),
+        }
     }
 
     /// Build a search scope spanning the given module and all its submodules.
     pub fn module_and_children(db: &RootDatabase, module: hir::Module) -> SearchScope {
-        let mut entries = IntMap::default();
+        let mut entries = FxHashMap::default();
 
         let (file_id, range) = {
             let InFile { file_id, value } = module.definition_source_range(db);
@@ -211,11 +226,11 @@ impl SearchScope {
 
     /// Build an empty search scope.
     pub fn empty() -> SearchScope {
-        SearchScope::new(IntMap::default())
+        SearchScope::new(FxHashMap::default())
     }
 
     /// Build a empty search scope spanning the given file.
-    pub fn single_file(file: FileId) -> SearchScope {
+    pub fn single_file(file: EditionedFileId) -> SearchScope {
         SearchScope::new(std::iter::once((file, None)).collect())
     }
 
@@ -225,7 +240,7 @@ impl SearchScope {
     }
 
     /// Build a empty search scope spanning the given files.
-    pub fn files(files: &[FileId]) -> SearchScope {
+    pub fn files(files: &[EditionedFileId]) -> SearchScope {
         SearchScope::new(files.iter().map(|f| (*f, None)).collect())
     }
 
@@ -256,8 +271,8 @@ impl SearchScope {
 }
 
 impl IntoIterator for SearchScope {
-    type Item = (FileId, Option<TextRange>);
-    type IntoIter = std::collections::hash_map::IntoIter<FileId, Option<TextRange>>;
+    type Item = (EditionedFileId, Option<TextRange>);
+    type IntoIter = std::collections::hash_map::IntoIter<EditionedFileId, Option<TextRange>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.entries.into_iter()
@@ -333,7 +348,7 @@ impl Definition {
         if let Definition::Macro(macro_def) = self {
             return match macro_def.kind(db) {
                 hir::MacroKind::Declarative => {
-                    if macro_def.attrs(db).by_key("macro_export").exists() {
+                    if macro_def.attrs(db).by_key(&sym::macro_export).exists() {
                         SearchScope::reverse_dependencies(db, module.krate())
                     } else {
                         SearchScope::krate(db, module.krate())
@@ -432,7 +447,412 @@ impl<'a> FindUsages<'a> {
         res
     }
 
-    pub fn search(&self, sink: &mut dyn FnMut(FileId, FileReference) -> bool) {
+    fn scope_files<'b>(
+        db: &'b RootDatabase,
+        scope: &'b SearchScope,
+    ) -> impl Iterator<Item = (Arc<str>, EditionedFileId, TextRange)> + 'b {
+        scope.entries.iter().map(|(&file_id, &search_range)| {
+            let text = db.file_text(file_id.file_id());
+            let search_range =
+                search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
+
+            (text, file_id, search_range)
+        })
+    }
+
+    fn match_indices<'b>(
+        text: &'b str,
+        finder: &'b Finder<'b>,
+        search_range: TextRange,
+    ) -> impl Iterator<Item = TextSize> + 'b {
+        finder.find_iter(text.as_bytes()).filter_map(move |idx| {
+            let offset: TextSize = idx.try_into().unwrap();
+            if !search_range.contains_inclusive(offset) {
+                return None;
+            }
+            // If this is not a word boundary, that means this is only part of an identifier,
+            // so it can't be what we're looking for.
+            // This speeds up short identifiers significantly.
+            if text[..idx]
+                .chars()
+                .next_back()
+                .is_some_and(|ch| matches!(ch, 'A'..='Z' | 'a'..='z' | '_'))
+                || text[idx + finder.needle().len()..]
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| matches!(ch, 'A'..='Z' | 'a'..='z' | '_' | '0'..='9'))
+            {
+                return None;
+            }
+            Some(offset)
+        })
+    }
+
+    fn find_nodes<'b>(
+        sema: &'b Semantics<'_, RootDatabase>,
+        name: &str,
+        node: &syntax::SyntaxNode,
+        offset: TextSize,
+    ) -> impl Iterator<Item = SyntaxNode> + 'b {
+        node.token_at_offset(offset)
+            .find(|it| {
+                // `name` is stripped of raw ident prefix. See the comment on name retrieval below.
+                it.text().trim_start_matches("r#") == name
+            })
+            .into_iter()
+            .flat_map(move |token| {
+                sema.descend_into_macros_exact_if_in_macro(token)
+                    .into_iter()
+                    .filter_map(|it| it.parent())
+            })
+    }
+
+    /// Performs a special fast search for associated functions. This is mainly intended
+    /// to speed up `new()` which can take a long time.
+    ///
+    /// The trick is instead of searching for `func_name` search for `TypeThatContainsContainerName::func_name`.
+    /// We cannot search exactly that (not even in tokens), because `ContainerName` may be aliased.
+    /// Instead, we perform a textual search for `ContainerName`. Then, we look for all cases where
+    /// `ContainerName` may be aliased (that includes `use ContainerName as Xyz` and
+    /// `type Xyz = ContainerName`). We collect a list of all possible aliases of `ContainerName`.
+    /// The list can have false positives (because there may be multiple types named `ContainerName`),
+    /// but it cannot have false negatives. Then, we look for `TypeThatContainsContainerNameOrAnyAlias::func_name`.
+    /// Those that will be found are of high chance to be actual hits (of course, we will need to verify
+    /// that).
+    ///
+    /// Returns true if completed the search.
+    // FIXME: Extend this to other cases, such as associated types/consts/enum variants (note those can be `use`d).
+    fn short_associated_function_fast_search(
+        &self,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
+        search_scope: &SearchScope,
+        name: &str,
+    ) -> bool {
+        if self.scope.is_some() {
+            return false;
+        }
+
+        let _p = tracing::info_span!("short_associated_function_fast_search").entered();
+
+        let container = (|| {
+            let Definition::Function(function) = self.def else {
+                return None;
+            };
+            if function.has_self_param(self.sema.db) {
+                return None;
+            }
+            match function.container(self.sema.db) {
+                // Only freestanding `impl`s qualify; methods from trait
+                // can be called from within subtraits and bounds.
+                ItemContainer::Impl(impl_) => {
+                    let has_trait = impl_.trait_(self.sema.db).is_some();
+                    if has_trait {
+                        return None;
+                    }
+                    let adt = impl_.self_ty(self.sema.db).as_adt()?;
+                    Some(adt)
+                }
+                _ => None,
+            }
+        })();
+        let Some(container) = container else {
+            return false;
+        };
+
+        fn has_any_name(node: &SyntaxNode, mut predicate: impl FnMut(&str) -> bool) -> bool {
+            node.descendants().any(|node| {
+                match_ast! {
+                    match node {
+                        ast::Name(it) => predicate(it.text().trim_start_matches("r#")),
+                        ast::NameRef(it) => predicate(it.text().trim_start_matches("r#")),
+                        _ => false
+                    }
+                }
+            })
+        }
+
+        // This is a fixpoint algorithm with O(number of aliases), but most types have no or few aliases,
+        // so this should stay fast.
+        //
+        /// Returns `(aliases, ranges_where_Self_can_refer_to_our_type)`.
+        fn collect_possible_aliases(
+            sema: &Semantics<'_, RootDatabase>,
+            container: Adt,
+        ) -> Option<(FxHashSet<SmolStr>, Vec<FileRangeWrapper<EditionedFileId>>)> {
+            fn insert_type_alias(
+                db: &RootDatabase,
+                to_process: &mut Vec<(SmolStr, SearchScope)>,
+                alias_name: &str,
+                def: Definition,
+            ) {
+                let alias = alias_name.trim_start_matches("r#").to_smolstr();
+                tracing::debug!("found alias: {alias}");
+                to_process.push((alias, def.search_scope(db)));
+            }
+
+            let _p = tracing::info_span!("collect_possible_aliases").entered();
+
+            let db = sema.db;
+            let container_name = container.name(db).unescaped().display(db).to_smolstr();
+            let search_scope = Definition::from(container).search_scope(db);
+            let mut seen = FxHashSet::default();
+            let mut completed = FxHashSet::default();
+            let mut to_process = vec![(container_name, search_scope)];
+            let mut is_possibly_self = Vec::new();
+            let mut total_files_searched = 0;
+
+            while let Some((current_to_process, current_to_process_search_scope)) = to_process.pop()
+            {
+                let is_alias = |alias: &ast::TypeAlias| {
+                    let def = sema.to_def(alias)?;
+                    let ty = def.ty(db);
+                    let is_alias = ty.as_adt()? == container;
+                    is_alias.then_some(def)
+                };
+
+                let finder = Finder::new(current_to_process.as_bytes());
+                for (file_text, file_id, search_range) in
+                    FindUsages::scope_files(db, &current_to_process_search_scope)
+                {
+                    let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
+
+                    for offset in FindUsages::match_indices(&file_text, &finder, search_range) {
+                        let usages =
+                            FindUsages::find_nodes(sema, &current_to_process, &tree, offset)
+                                .filter(|it| {
+                                    matches!(it.kind(), SyntaxKind::NAME | SyntaxKind::NAME_REF)
+                                });
+                        for usage in usages {
+                            if let Some(alias) = usage.parent().and_then(|it| {
+                                let path = ast::PathSegment::cast(it)?.parent_path();
+                                let use_tree = ast::UseTree::cast(path.syntax().parent()?)?;
+                                use_tree.rename()?.name()
+                            }) {
+                                if seen.insert(InFileWrapper::new(
+                                    file_id,
+                                    alias.syntax().text_range(),
+                                )) {
+                                    tracing::debug!("found alias: {alias}");
+                                    cov_mark::hit!(container_use_rename);
+                                    // FIXME: `use`s have no easy way to determine their search scope, but they are rare.
+                                    to_process.push((
+                                        alias.text().to_smolstr(),
+                                        current_to_process_search_scope.clone(),
+                                    ));
+                                }
+                            } else if let Some(alias) =
+                                usage.ancestors().find_map(ast::TypeAlias::cast)
+                            {
+                                if let Some(name) = alias.name() {
+                                    if seen.insert(InFileWrapper::new(
+                                        file_id,
+                                        name.syntax().text_range(),
+                                    )) {
+                                        if let Some(def) = is_alias(&alias) {
+                                            cov_mark::hit!(container_type_alias);
+                                            insert_type_alias(
+                                                sema.db,
+                                                &mut to_process,
+                                                name.text().as_str(),
+                                                def.into(),
+                                            );
+                                        } else {
+                                            cov_mark::hit!(same_name_different_def_type_alias);
+                                        }
+                                    }
+                                }
+                            }
+
+                            // We need to account for `Self`. It can only refer to our type inside an impl.
+                            let impl_ = 'impl_: {
+                                for ancestor in usage.ancestors() {
+                                    if let Some(parent) = ancestor.parent() {
+                                        if let Some(parent) = ast::Impl::cast(parent) {
+                                            // Only if the GENERIC_PARAM_LIST is directly under impl, otherwise it may be in the self ty.
+                                            if matches!(
+                                                ancestor.kind(),
+                                                SyntaxKind::ASSOC_ITEM_LIST
+                                                    | SyntaxKind::WHERE_CLAUSE
+                                                    | SyntaxKind::GENERIC_PARAM_LIST
+                                            ) {
+                                                break;
+                                            }
+                                            if parent
+                                                .trait_()
+                                                .is_some_and(|trait_| *trait_.syntax() == ancestor)
+                                            {
+                                                break;
+                                            }
+
+                                            // Otherwise, found an impl where its self ty may be our type.
+                                            break 'impl_ Some(parent);
+                                        }
+                                    }
+                                }
+                                None
+                            };
+                            (|| {
+                                let impl_ = impl_?;
+                                is_possibly_self.push(sema.original_range(impl_.syntax()));
+                                let assoc_items = impl_.assoc_item_list()?;
+                                let type_aliases = assoc_items
+                                    .syntax()
+                                    .descendants()
+                                    .filter_map(ast::TypeAlias::cast);
+                                for type_alias in type_aliases {
+                                    let Some(ty) = type_alias.ty() else { continue };
+                                    let Some(name) = type_alias.name() else { continue };
+                                    let contains_self = ty
+                                        .syntax()
+                                        .descendants_with_tokens()
+                                        .any(|node| node.kind() == SyntaxKind::SELF_TYPE_KW);
+                                    if !contains_self {
+                                        continue;
+                                    }
+                                    if seen.insert(InFileWrapper::new(
+                                        file_id,
+                                        name.syntax().text_range(),
+                                    )) {
+                                        if let Some(def) = is_alias(&type_alias) {
+                                            cov_mark::hit!(self_type_alias);
+                                            insert_type_alias(
+                                                sema.db,
+                                                &mut to_process,
+                                                name.text().as_str(),
+                                                def.into(),
+                                            );
+                                        } else {
+                                            cov_mark::hit!(same_name_different_def_type_alias);
+                                        }
+                                    }
+                                }
+                                Some(())
+                            })();
+                        }
+                    }
+                }
+
+                completed.insert(current_to_process);
+
+                total_files_searched += current_to_process_search_scope.entries.len();
+                // FIXME: Maybe this needs to be relative to the project size, or at least to the initial search scope?
+                if total_files_searched > 20_000 && completed.len() > 100 {
+                    // This case is extremely unlikely (even searching for `Vec::new()` on rust-analyzer does not enter
+                    // here - it searches less than 10,000 files, and it does so in five seconds), but if we get here,
+                    // we at a risk of entering an almost-infinite loop of growing the aliases list. So just stop and
+                    // let normal search handle this case.
+                    tracing::info!(aliases_count = %completed.len(), "too much aliases; leaving fast path");
+                    return None;
+                }
+            }
+
+            // Impls can contain each other, so we need to deduplicate their ranges.
+            is_possibly_self.sort_unstable_by_key(|position| {
+                (position.file_id, position.range.start(), Reverse(position.range.end()))
+            });
+            is_possibly_self.dedup_by(|pos2, pos1| {
+                pos1.file_id == pos2.file_id
+                    && pos1.range.start() <= pos2.range.start()
+                    && pos1.range.end() >= pos2.range.end()
+            });
+
+            tracing::info!(aliases_count = %completed.len(), "aliases search completed");
+
+            Some((completed, is_possibly_self))
+        }
+
+        fn search(
+            this: &FindUsages<'_>,
+            finder: &Finder<'_>,
+            name: &str,
+            files: impl Iterator<Item = (Arc<str>, EditionedFileId, TextRange)>,
+            mut container_predicate: impl FnMut(
+                &SyntaxNode,
+                InFileWrapper<EditionedFileId, TextRange>,
+            ) -> bool,
+            sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
+        ) {
+            for (file_text, file_id, search_range) in files {
+                let tree = LazyCell::new(move || this.sema.parse(file_id).syntax().clone());
+
+                for offset in FindUsages::match_indices(&file_text, finder, search_range) {
+                    let usages = FindUsages::find_nodes(this.sema, name, &tree, offset)
+                        .filter_map(ast::NameRef::cast);
+                    for usage in usages {
+                        let found_usage = usage
+                            .syntax()
+                            .parent()
+                            .and_then(ast::PathSegment::cast)
+                            .map(|path_segment| {
+                                container_predicate(
+                                    path_segment.parent_path().syntax(),
+                                    InFileWrapper::new(file_id, usage.syntax().text_range()),
+                                )
+                            })
+                            .unwrap_or(false);
+                        if found_usage {
+                            this.found_name_ref(&usage, sink);
+                        }
+                    }
+                }
+            }
+        }
+
+        let Some((container_possible_aliases, is_possibly_self)) =
+            collect_possible_aliases(self.sema, container)
+        else {
+            return false;
+        };
+
+        cov_mark::hit!(short_associated_function_fast_search);
+
+        // FIXME: If Rust ever gains the ability to `use Struct::method` we'll also need to account for free
+        // functions.
+        let finder = Finder::new(name.as_bytes());
+        // The search for `Self` may return duplicate results with `ContainerName`, so deduplicate them.
+        let mut self_positions = FxHashSet::default();
+        tracing::info_span!("Self_search").in_scope(|| {
+            search(
+                self,
+                &finder,
+                name,
+                is_possibly_self.into_iter().map(|position| {
+                    (
+                        self.sema.db.file_text(position.file_id.file_id()),
+                        position.file_id,
+                        position.range,
+                    )
+                }),
+                |path, name_position| {
+                    let has_self = path
+                        .descendants_with_tokens()
+                        .any(|node| node.kind() == SyntaxKind::SELF_TYPE_KW);
+                    if has_self {
+                        self_positions.insert(name_position);
+                    }
+                    has_self
+                },
+                sink,
+            )
+        });
+        tracing::info_span!("aliases_search").in_scope(|| {
+            search(
+                self,
+                &finder,
+                name,
+                FindUsages::scope_files(self.sema.db, search_scope),
+                |path, name_position| {
+                    has_any_name(path, |name| container_possible_aliases.contains(name))
+                        && !self_positions.contains(&name_position)
+                },
+                sink,
+            )
+        });
+
+        true
+    }
+
+    pub fn search(&self, sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool) {
         let _p = tracing::info_span!("FindUsages:search").entered();
         let sema = self.sema;
 
@@ -456,7 +876,7 @@ impl<'a> FindUsages<'a> {
                 module
                     .krate()
                     .display_name(self.sema.db)
-                    .map(|crate_name| crate_name.crate_name().as_smol_str().clone())
+                    .map(|crate_name| crate_name.crate_name().symbol().as_str().into())
             }
             _ => {
                 let self_kw_refs = || {
@@ -468,72 +888,33 @@ impl<'a> FindUsages<'a> {
                 };
                 // We need to unescape the name in case it is written without "r#" in earlier
                 // editions of Rust where it isn't a keyword.
-                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.unescaped().to_smol_str())
+                self.def
+                    .name(sema.db)
+                    .or_else(self_kw_refs)
+                    .map(|it| it.unescaped().display(sema.db).to_smolstr())
             }
         };
         let name = match &name {
             Some(s) => s.as_str(),
             None => return,
         };
+
+        // FIXME: This should probably depend on the number of the results (specifically, the number of false results).
+        if name.len() <= 7 && self.short_associated_function_fast_search(sink, &search_scope, name)
+        {
+            return;
+        }
+
         let finder = &Finder::new(name);
         let include_self_kw_refs =
             self.include_self_kw_refs.as_ref().map(|ty| (ty, Finder::new("Self")));
 
-        // for<'a> |text: &'a str, name: &'a str, search_range: TextRange| -> impl Iterator<Item = TextSize> + 'a { ... }
-        fn match_indices<'a>(
-            text: &'a str,
-            finder: &'a Finder<'a>,
-            search_range: TextRange,
-        ) -> impl Iterator<Item = TextSize> + 'a {
-            finder.find_iter(text.as_bytes()).filter_map(move |idx| {
-                let offset: TextSize = idx.try_into().unwrap();
-                if !search_range.contains_inclusive(offset) {
-                    return None;
-                }
-                Some(offset)
-            })
-        }
-
-        // for<'a> |scope: &'a SearchScope| -> impl Iterator<Item = (Arc<String>, FileId, TextRange)> + 'a { ... }
-        fn scope_files<'a>(
-            sema: &'a Semantics<'_, RootDatabase>,
-            scope: &'a SearchScope,
-        ) -> impl Iterator<Item = (Arc<str>, FileId, TextRange)> + 'a {
-            scope.entries.iter().map(|(&file_id, &search_range)| {
-                let text = sema.db.file_text(file_id);
-                let search_range =
-                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
-
-                (text, file_id, search_range)
-            })
-        }
-
-        let find_nodes = move |name: &str, node: &syntax::SyntaxNode, offset: TextSize| {
-            node.token_at_offset(offset)
-                .find(|it| {
-                    // `name` is stripped of raw ident prefix. See the comment on name retrieval above.
-                    it.text().trim_start_matches("r#") == name
-                })
-                .into_iter()
-                .flat_map(move |token| {
-                    // FIXME: There should be optimization potential here
-                    // Currently we try to descend everything we find which
-                    // means we call `Semantics::descend_into_macros` on
-                    // every textual hit. That function is notoriously
-                    // expensive even for things that do not get down mapped
-                    // into macros.
-                    sema.descend_into_macros(DescendPreference::None, token)
-                        .into_iter()
-                        .filter_map(|it| it.parent())
-                })
-        };
-
-        for (text, file_id, search_range) in scope_files(sema, &search_scope) {
+        for (text, file_id, search_range) in Self::scope_files(sema.db, &search_scope) {
             self.sema.db.unwind_if_cancelled();
-            let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
+            let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
             // Search for occurrences of the items name
-            for offset in match_indices(&text, finder, search_range) {
+            for offset in Self::match_indices(&text, finder, search_range) {
                 tree.token_at_offset(offset).for_each(|token| {
                     let Some(str_token) = ast::String::cast(token.clone()) else { return };
                     if let Some((range, nameres)) =
@@ -543,7 +924,9 @@ impl<'a> FindUsages<'a> {
                     }
                 });
 
-                for name in find_nodes(name, &tree, offset).filter_map(ast::NameLike::cast) {
+                for name in
+                    Self::find_nodes(sema, name, &tree, offset).filter_map(ast::NameLike::cast)
+                {
                     if match name {
                         ast::NameLike::NameRef(name_ref) => self.found_name_ref(&name_ref, sink),
                         ast::NameLike::Name(name) => self.found_name(&name, sink),
@@ -555,8 +938,9 @@ impl<'a> FindUsages<'a> {
             }
             // Search for occurrences of the `Self` referring to our type
             if let Some((self_ty, finder)) = &include_self_kw_refs {
-                for offset in match_indices(&text, finder, search_range) {
-                    for name_ref in find_nodes("Self", &tree, offset).filter_map(ast::NameRef::cast)
+                for offset in Self::match_indices(&text, finder, search_range) {
+                    for name_ref in
+                        Self::find_nodes(sema, "Self", &tree, offset).filter_map(ast::NameRef::cast)
                     {
                         if self.found_self_ty_name_ref(self_ty, &name_ref, sink) {
                             return;
@@ -574,13 +958,13 @@ impl<'a> FindUsages<'a> {
             let is_crate_root = module.is_crate_root().then(|| Finder::new("crate"));
             let finder = &Finder::new("super");
 
-            for (text, file_id, search_range) in scope_files(sema, &scope) {
+            for (text, file_id, search_range) in Self::scope_files(sema.db, &scope) {
                 self.sema.db.unwind_if_cancelled();
-                let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
+                let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
-                for offset in match_indices(&text, finder, search_range) {
-                    for name_ref in
-                        find_nodes("super", &tree, offset).filter_map(ast::NameRef::cast)
+                for offset in Self::match_indices(&text, finder, search_range) {
+                    for name_ref in Self::find_nodes(sema, "super", &tree, offset)
+                        .filter_map(ast::NameRef::cast)
                     {
                         if self.found_name_ref(&name_ref, sink) {
                             return;
@@ -588,9 +972,9 @@ impl<'a> FindUsages<'a> {
                     }
                 }
                 if let Some(finder) = &is_crate_root {
-                    for offset in match_indices(&text, finder, search_range) {
-                        for name_ref in
-                            find_nodes("crate", &tree, offset).filter_map(ast::NameRef::cast)
+                    for offset in Self::match_indices(&text, finder, search_range) {
+                        for name_ref in Self::find_nodes(sema, "crate", &tree, offset)
+                            .filter_map(ast::NameRef::cast)
                         {
                             if self.found_name_ref(&name_ref, sink) {
                                 return;
@@ -624,15 +1008,16 @@ impl<'a> FindUsages<'a> {
                     return;
                 };
 
-                let text = sema.db.file_text(file_id);
+                let text = sema.db.file_text(file_id.file_id());
                 let search_range =
                     search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 
-                let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
+                let tree = LazyCell::new(|| sema.parse(file_id).syntax().clone());
                 let finder = &Finder::new("self");
 
-                for offset in match_indices(&text, finder, search_range) {
-                    for name_ref in find_nodes("self", &tree, offset).filter_map(ast::NameRef::cast)
+                for offset in Self::match_indices(&text, finder, search_range) {
+                    for name_ref in
+                        Self::find_nodes(sema, "self", &tree, offset).filter_map(ast::NameRef::cast)
                     {
                         if self.found_self_module_name_ref(&name_ref, sink) {
                             return;
@@ -648,11 +1033,18 @@ impl<'a> FindUsages<'a> {
         &self,
         self_ty: &hir::Type,
         name_ref: &ast::NameRef,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
+        // See https://github.com/rust-lang/rust-analyzer/pull/15864/files/e0276dc5ddc38c65240edb408522bb869f15afb4#r1389848845
+        let ty_eq = |ty: hir::Type| match (ty.as_adt(), self_ty.as_adt()) {
+            (Some(ty), Some(self_ty)) => ty == self_ty,
+            (None, None) => ty == *self_ty,
+            _ => false,
+        };
+
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(Definition::SelfType(impl_)))
-                if impl_.self_ty(self.sema.db).as_adt() == self_ty.as_adt() =>
+                if ty_eq(impl_.self_ty(self.sema.db)) =>
             {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {
@@ -669,7 +1061,7 @@ impl<'a> FindUsages<'a> {
     fn found_self_module_name_ref(
         &self,
         name_ref: &ast::NameRef,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(def @ Definition::Module(_))) if def == self.def => {
@@ -692,11 +1084,11 @@ impl<'a> FindUsages<'a> {
 
     fn found_format_args_ref(
         &self,
-        file_id: FileId,
+        file_id: EditionedFileId,
         range: TextRange,
         token: ast::String,
         res: Option<PathResolution>,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match res.map(Definition::from) {
             Some(def) if def == self.def => {
@@ -714,7 +1106,7 @@ impl<'a> FindUsages<'a> {
     fn found_lifetime(
         &self,
         lifetime: &ast::Lifetime,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify_lifetime(self.sema, lifetime) {
             Some(NameRefClass::Definition(def)) if def == self.def => {
@@ -733,7 +1125,7 @@ impl<'a> FindUsages<'a> {
     fn found_name_ref(
         &self,
         name_ref: &ast::NameRef,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(def))
@@ -807,7 +1199,7 @@ impl<'a> FindUsages<'a> {
     fn found_name(
         &self,
         name: &ast::Name,
-        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+        sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameClass::classify(self.sema, name) {
             Some(NameClass::PatFieldShorthand { local_def: _, field_ref })

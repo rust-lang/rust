@@ -3,7 +3,7 @@
 #![allow(incomplete_features)]
 
 mod assert {
-    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    use std::mem::{Assume, TransmuteFrom};
 
     pub fn is_transmutable<
         Src,
@@ -14,7 +14,7 @@ mod assert {
         const ASSUME_VALIDITY: bool,
     >()
     where
-        Dst: BikeshedIntrinsicFrom<
+        Dst: TransmuteFrom<
             Src,
             { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
         >,

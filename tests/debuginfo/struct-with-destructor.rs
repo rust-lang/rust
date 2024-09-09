@@ -1,45 +1,35 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 
 // gdb-command:run
 // gdb-command:print simple
-// gdbg-check:$1 = {x = 10, y = 20}
-// gdbr-check:$1 = struct_with_destructor::WithDestructor {x: 10, y: 20}
+// gdb-check:$1 = struct_with_destructor::WithDestructor {x: 10, y: 20}
 
 // gdb-command:print noDestructor
-// gdbg-check:$2 = {a = {x = 10, y = 20}, guard = -1}
-// gdbr-check:$2 = struct_with_destructor::NoDestructorGuarded {a: struct_with_destructor::NoDestructor {x: 10, y: 20}, guard: -1}
+// gdb-check:$2 = struct_with_destructor::NoDestructorGuarded {a: struct_with_destructor::NoDestructor {x: 10, y: 20}, guard: -1}
 
 // gdb-command:print withDestructor
-// gdbg-check:$3 = {a = {x = 10, y = 20}, guard = -1}
-// gdbr-check:$3 = struct_with_destructor::WithDestructorGuarded {a: struct_with_destructor::WithDestructor {x: 10, y: 20}, guard: -1}
+// gdb-check:$3 = struct_with_destructor::WithDestructorGuarded {a: struct_with_destructor::WithDestructor {x: 10, y: 20}, guard: -1}
 
 // gdb-command:print nested
-// gdbg-check:$4 = {a = {a = {x = 7890, y = 9870}}}
-// gdbr-check:$4 = struct_with_destructor::NestedOuter {a: struct_with_destructor::NestedInner {a: struct_with_destructor::WithDestructor {x: 7890, y: 9870}}}
+// gdb-check:$4 = struct_with_destructor::NestedOuter {a: struct_with_destructor::NestedInner {a: struct_with_destructor::WithDestructor {x: 7890, y: 9870}}}
 
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
 // lldb-command:v simple
-// lldbg-check:[...] { x = 10 y = 20 }
-// lldbr-check:(struct_with_destructor::WithDestructor) simple = { x = 10 y = 20 }
+// lldb-check:[...] { x = 10 y = 20 }
 
 // lldb-command:v noDestructor
-// lldbg-check:[...] { a = { x = 10 y = 20 } guard = -1 }
-// lldbr-check:(struct_with_destructor::NoDestructorGuarded) noDestructor = { a = { x = 10 y = 20 } guard = -1 }
+// lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
 
 // lldb-command:v withDestructor
-// lldbg-check:[...] { a = { x = 10 y = 20 } guard = -1 }
-// lldbr-check:(struct_with_destructor::WithDestructorGuarded) withDestructor = { a = { x = 10 y = 20 } guard = -1 }
+// lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
 
 // lldb-command:v nested
-// lldbg-check:[...] { a = { a = { x = 7890 y = 9870 } } }
-// lldbr-check:(struct_with_destructor::NestedOuter) nested = { a = { a = { x = 7890 y = 9870 } } }
+// lldb-check:[...] { a = { a = { x = 7890 y = 9870 } } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

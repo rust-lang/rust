@@ -1,9 +1,7 @@
 // See core/src/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::marker::ConstParamTy_;
-use crate::marker::StructuralPartialEq;
-use crate::marker::UnsizedConstParamTy;
+use crate::marker::{ConstParamTy_, StructuralPartialEq, UnsizedConstParamTy};
 
 // Recursive macro for implementing n-ary tuple functions and operations
 //
@@ -124,23 +122,29 @@ macro_rules! tuple_impls {
             }
         }
 
-        #[stable(feature = "array_tuple_conv", since = "1.71.0")]
-        impl<T> From<[T; ${count($T)}]> for ($(${ignore($T)} T,)+) {
-            #[inline]
-            #[allow(non_snake_case)]
-            fn from(array: [T; ${count($T)}]) -> Self {
-                let [$($T,)+] = array;
-                ($($T,)+)
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "array_tuple_conv", since = "1.71.0")]
+            impl<T> From<[T; ${count($T)}]> for ($(${ignore($T)} T,)+) {
+                #[inline]
+                #[allow(non_snake_case)]
+                fn from(array: [T; ${count($T)}]) -> Self {
+                    let [$($T,)+] = array;
+                    ($($T,)+)
+                }
             }
         }
 
-        #[stable(feature = "array_tuple_conv", since = "1.71.0")]
-        impl<T> From<($(${ignore($T)} T,)+)> for [T; ${count($T)}] {
-            #[inline]
-            #[allow(non_snake_case)]
-            fn from(tuple: ($(${ignore($T)} T,)+)) -> Self {
-                let ($($T,)+) = tuple;
-                [$($T,)+]
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "array_tuple_conv", since = "1.71.0")]
+            impl<T> From<($(${ignore($T)} T,)+)> for [T; ${count($T)}] {
+                #[inline]
+                #[allow(non_snake_case)]
+                fn from(tuple: ($(${ignore($T)} T,)+)) -> Self {
+                    let ($($T,)+) = tuple;
+                    [$($T,)+]
+                }
             }
         }
     }

@@ -1,11 +1,11 @@
 //! See [`import_on_the_fly`].
-use hir::{ImportPathConfig, ItemInNs, ModuleDef};
+use hir::{ItemInNs, ModuleDef};
 use ide_db::imports::{
     import_assets::{ImportAssets, LocatedImport},
     insert_use::ImportScope,
 };
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode, T};
+use syntax::{ast, AstNode, SyntaxNode, ToSmolStr, T};
 
 use crate::{
     context::{
@@ -256,11 +256,7 @@ fn import_on_the_fly(
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    let import_cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let import_cfg = ctx.config.import_path_config();
 
     import_assets
         .search_for_imports(&ctx.sema, import_cfg, ctx.config.insert_use.prefix_kind)
@@ -306,12 +302,7 @@ fn import_on_the_fly_pat_(
         ItemInNs::Values(def) => matches!(def, hir::ModuleDef::Const(_)),
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
-
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
@@ -353,11 +344,7 @@ fn import_on_the_fly_method(
 
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
@@ -424,7 +411,7 @@ fn compute_fuzzy_completion_order_key(
     cov_mark::hit!(certain_fuzzy_order_test);
     let import_name = match proposed_mod_path.segments().last() {
         // FIXME: nasty alloc, this is a hot path!
-        Some(name) => name.to_smol_str().to_ascii_lowercase(),
+        Some(name) => name.unescaped().display_no_db().to_smolstr().to_ascii_lowercase(),
         None => return usize::MAX,
     };
     match import_name.match_indices(user_input_lowercased).next() {

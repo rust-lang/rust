@@ -4,15 +4,16 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use std::collections::BTreeMap;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diag;
 use rustc_middle::ty::RegionVid;
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
-
-use crate::MirBorrowckCtxt;
+use tracing::debug;
 
 use super::{ErrorConstraintInfo, RegionName, RegionNameSource};
+use crate::MirBorrowckCtxt;
 
 /// The different things we could suggest.
 enum SuggestedConstraint {
@@ -31,7 +32,7 @@ enum SuggestedConstraint {
 ///
 /// Adds a help note suggesting adding a where clause with the needed constraints.
 #[derive(Default)]
-pub struct OutlivesSuggestionBuilder {
+pub(crate) struct OutlivesSuggestionBuilder {
     /// The list of outlives constraints that need to be added. Specifically, we map each free
     /// region to all other regions that it must outlive. I will use the shorthand `fr:
     /// outlived_frs`. Not all of these regions will already have names necessarily. Some could be
@@ -206,8 +207,8 @@ impl OutlivesSuggestionBuilder {
 
         // If there is exactly one suggestable constraints, then just suggest it. Otherwise, emit a
         // list of diagnostics.
-        let mut diag = if suggested.len() == 1 {
-            mbcx.dcx().struct_help(match suggested.last().unwrap() {
+        let mut diag = if let [constraint] = suggested.as_slice() {
+            mbcx.dcx().struct_help(match constraint {
                 SuggestedConstraint::Outlives(a, bs) => {
                     let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
                     format!("add bound `{a}: {}`", bs.join(" + "))

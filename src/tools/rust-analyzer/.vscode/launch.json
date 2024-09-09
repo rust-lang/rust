@@ -18,7 +18,8 @@
       "args": [
         // "--user-data-dir=${workspaceFolder}/target/code",
         "--disable-extensions",
-        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+        "--log rust-lang.rust-analyzer:debug"
       ],
       "outFiles": [
         "${workspaceFolder}/editors/code/out/**/*.js"
@@ -36,7 +37,8 @@
       "runtimeExecutable": "${execPath}",
       "args": [
         "--disable-extensions",
-        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+        "--log rust-lang.rust-analyzer:debug"
       ],
       "outFiles": [
         "${workspaceFolder}/editors/code/out/**/*.js"
@@ -57,7 +59,8 @@
       "runtimeExecutable": "${execPath}",
       "args": [
         "--disable-extensions",
-        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+        "--log rust-lang.rust-analyzer:debug"
       ],
       "outFiles": [
         "${workspaceFolder}/editors/code/out/**/*.js"
@@ -79,7 +82,8 @@
       "runtimeExecutable": "${execPath}",
       "args": [
         "--disable-extension", "rust-lang.rust-analyzer",
-        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+        "--log rust-lang.rust-analyzer:debug"
       ],
       "outFiles": [
         "${workspaceFolder}/editors/code/out/**/*.js"

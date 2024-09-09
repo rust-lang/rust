@@ -60,7 +60,7 @@ jobs:
       - name: clippy (all features)
         run: ./miri clippy --all-features -- -D warnings
       - name: rustdoc
-        run: RUSTDOCFLAGS="-Dwarnings" ./miri cargo doc --document-private-items
+        run: RUSTDOCFLAGS="-Dwarnings" ./miri doc --document-private-items
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a
@@ -123,6 +123,8 @@ jobs:
         run: |
           git config --global user.name 'The Miri Cronjob Bot'
           git config --global user.email 'miri@cron.bot'
+      - name: Install nightly toolchain
+        run: rustup toolchain install nightly --profile minimal
       - name: get changes from rustc
         run: ./miri rustc-pull
       - name: Install rustup-toolchain-install-master

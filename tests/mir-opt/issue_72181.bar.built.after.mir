@@ -9,8 +9,8 @@ fn bar(_1: [(Never, u32); 1]) -> u32 {
 
     bb0: {
         StorageLive(_2);
-        _2 = (_1[0 of 1].1: u32);
-        _0 = _2;
+        _2 = copy (_1[0 of 1].1: u32);
+        _0 = copy _2;
         StorageDead(_2);
         return;
     }

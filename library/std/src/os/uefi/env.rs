@@ -2,8 +2,9 @@
 
 #![unstable(feature = "uefi_std", issue = "100499")]
 
+use crate::ffi::c_void;
+use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
-use crate::{ffi::c_void, ptr::NonNull};
 
 static SYSTEM_TABLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
 static IMAGE_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
@@ -26,7 +27,7 @@ static BOOT_SERVICES_FLAG: AtomicBool = AtomicBool::new(false);
 /// standard library is loaded.
 ///
 /// # SAFETY
-/// Calling this function more than once will panic
+/// Calling this function more than once will panic.
 pub(crate) unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull<c_void>) {
     IMAGE_HANDLE
         .compare_exchange(
@@ -47,23 +48,25 @@ pub(crate) unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull
     BOOT_SERVICES_FLAG.store(true, Ordering::Release)
 }
 
-/// Get the SystemTable Pointer.
+/// Gets the SystemTable Pointer.
+///
 /// If you want to use `BootServices` then please use [`boot_services`] as it performs some
 /// additional checks.
 ///
-/// Note: This function panics if the System Table or Image Handle is not initialized
+/// Note: This function panics if the System Table or Image Handle is not initialized.
 pub fn system_table() -> NonNull<c_void> {
     try_system_table().unwrap()
 }
 
-/// Get the ImageHandle Pointer.
+/// Gets the ImageHandle Pointer.
 ///
-/// Note: This function panics if the System Table or Image Handle is not initialized
+/// Note: This function panics if the System Table or Image Handle is not initialized.
 pub fn image_handle() -> NonNull<c_void> {
     try_image_handle().unwrap()
 }
 
-/// Get the BootServices Pointer.
+/// Gets the BootServices Pointer.
+///
 /// This function also checks if `ExitBootServices` has already been called.
 pub fn boot_services() -> Option<NonNull<c_void>> {
     if BOOT_SERVICES_FLAG.load(Ordering::Acquire) {
@@ -75,14 +78,16 @@ pub fn boot_services() -> Option<NonNull<c_void>> {
     }
 }
 
-/// Get the SystemTable Pointer.
-/// This function is mostly intended for places where panic is not an option
+/// Gets the SystemTable Pointer.
+///
+/// This function is mostly intended for places where panic is not an option.
 pub(crate) fn try_system_table() -> Option<NonNull<c_void>> {
     NonNull::new(SYSTEM_TABLE.load(Ordering::Acquire))
 }
 
-/// Get the SystemHandle Pointer.
-/// This function is mostly intended for places where panicking is not an option
+/// Gets the SystemHandle Pointer.
+///
+/// This function is mostly intended for places where panicking is not an option.
 pub(crate) fn try_image_handle() -> Option<NonNull<c_void>> {
     NonNull::new(IMAGE_HANDLE.load(Ordering::Acquire))
 }

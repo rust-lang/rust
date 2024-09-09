@@ -1,9 +1,9 @@
 use clippy_utils::consts::Constant::{Int, F32, F64};
-use clippy_utils::consts::{constant, constant_simple, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
-    eq_expr_value, get_parent_expr, higher, in_constant, is_inherent_method_call, is_no_std_crate, numeric_literal,
-    peel_blocks, sugg,
+    eq_expr_value, get_parent_expr, higher, is_in_const_context, is_inherent_method_call, is_no_std_crate,
+    numeric_literal, peel_blocks, sugg,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -112,7 +112,7 @@ declare_lint_pass!(FloatingPointArithmetic => [
 // Returns the specialized log method for a given base if base is constant
 // and is one of 2, 10 and e
 fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>) -> Option<&'static str> {
-    if let Some(value) = constant(cx, cx.typeck_results(), base) {
+    if let Some(value) = ConstEvalCtxt::new(cx).eval(base) {
         if F32(2.0) == value || F64(2.0) == value {
             return Some("log2");
         } else if F32(10.0) == value || F64(10.0) == value {
@@ -182,10 +182,8 @@ fn check_ln1p(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
         rhs,
     ) = receiver.kind
     {
-        let recv = match (
-            constant(cx, cx.typeck_results(), lhs),
-            constant(cx, cx.typeck_results(), rhs),
-        ) {
+        let ecx = ConstEvalCtxt::new(cx);
+        let recv = match (ecx.eval(lhs), ecx.eval(rhs)) {
             (Some(value), _) if F32(1.0) == value || F64(1.0) == value => rhs,
             (_, Some(value)) if F32(1.0) == value || F64(1.0) == value => lhs,
             _ => return,
@@ -230,7 +228,7 @@ fn get_integer_from_float_constant(value: &Constant<'_>) -> Option<i32> {
 
 fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
     // Check receiver
-    if let Some(value) = constant(cx, cx.typeck_results(), receiver) {
+    if let Some(value) = ConstEvalCtxt::new(cx).eval(receiver) {
         if let Some(method) = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
             Some("exp")
         } else if F32(2.0) == value || F64(2.0) == value {
@@ -251,7 +249,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
     }
 
     // Check argument
-    if let Some(value) = constant(cx, cx.typeck_results(), &args[0]) {
+    if let Some(value) = ConstEvalCtxt::new(cx).eval(&args[0]) {
         let (lint, help, suggestion) = if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
             (
                 SUBOPTIMAL_FLOPS,
@@ -291,7 +289,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
 }
 
 fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
-    if let Some(value) = constant(cx, cx.typeck_results(), &args[0]) {
+    if let Some(value) = ConstEvalCtxt::new(cx).eval(&args[0]) {
         if value == Int(2) {
             if let Some(parent) = get_parent_expr(cx, expr) {
                 if let Some(grandparent) = get_parent_expr(cx, parent) {
@@ -397,8 +395,9 @@ fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
             ) = &add_rhs.kind
             && lmethod_name.as_str() == "powi"
             && rmethod_name.as_str() == "powi"
-            && let Some(lvalue) = constant(cx, cx.typeck_results(), largs_1)
-            && let Some(rvalue) = constant(cx, cx.typeck_results(), rargs_1)
+            && let ecx = ConstEvalCtxt::new(cx)
+            && let Some(lvalue) = ecx.eval(largs_1)
+            && let Some(rvalue) = ecx.eval(rargs_1)
             && Int(2) == lvalue
             && Int(2) == rvalue
         {
@@ -438,7 +437,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
         rhs,
     ) = expr.kind
         && cx.typeck_results().expr_ty(lhs).is_floating_point()
-        && let Some(value) = constant(cx, cx.typeck_results(), rhs)
+        && let Some(value) = ConstEvalCtxt::new(cx).eval(rhs)
         && (F32(1.0) == value || F64(1.0) == value)
         && let ExprKind::MethodCall(path, self_arg, ..) = &lhs.kind
         && cx.typeck_results().expr_ty(self_arg).is_floating_point()
@@ -552,7 +551,7 @@ fn is_testing_negative(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -
 
 /// Returns true iff expr is some zero literal
 fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match constant_simple(cx, cx.typeck_results(), expr) {
+    match ConstEvalCtxt::new(cx).eval_simple(expr) {
         Some(Int(i)) => i == 0,
         Some(F32(f)) => f == 0.0,
         Some(F64(f)) => f == 0.0,
@@ -696,8 +695,9 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             mul_lhs,
             mul_rhs,
         ) = &div_lhs.kind
-        && let Some(rvalue) = constant(cx, cx.typeck_results(), div_rhs)
-        && let Some(lvalue) = constant(cx, cx.typeck_results(), mul_rhs)
+        && let ecx = ConstEvalCtxt::new(cx)
+        && let Some(rvalue) = ecx.eval(div_rhs)
+        && let Some(lvalue) = ecx.eval(mul_rhs)
     {
         // TODO: also check for constant values near PI/180 or 180/PI
         if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue)
@@ -753,7 +753,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // All of these operations are currently not const and are in std.
-        if in_constant(cx, expr.hir_id) {
+        if is_in_const_context(cx) {
             return;
         }
 

@@ -1,12 +1,13 @@
-use crate::deriving::generic::ty::*;
-use crate::deriving::generic::*;
-use crate::deriving::path_std;
 use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
+
+use crate::deriving::generic::ty::*;
+use crate::deriving::generic::*;
+use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_clone(
     cx: &ExtCtxt<'_>,

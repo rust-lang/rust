@@ -1,35 +1,28 @@
 //! This module analyzes crates to find call sites that can serve as examples in the documentation.
 
-use crate::clean;
-use crate::config;
-use crate::formats;
-use crate::formats::renderer::FormatRenderer;
-use crate::html::render::Context;
+use std::fs;
+use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir::{
-    self as hir,
-    intravisit::{self, Visitor},
-};
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{self as hir};
 use rustc_interface::interface;
 use rustc_macros::{Decodable, Encodable};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_serialize::{
-    opaque::{FileEncoder, MemDecoder},
-    Decodable, Encodable,
-};
+use rustc_serialize::opaque::{FileEncoder, MemDecoder};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_session::getopts;
-use rustc_span::{
-    def_id::{CrateNum, DefPathHash, LOCAL_CRATE},
-    edition::Edition,
-    BytePos, FileName, SourceFile,
-};
+use rustc_span::def_id::{CrateNum, DefPathHash, LOCAL_CRATE};
+use rustc_span::edition::Edition;
+use rustc_span::{BytePos, FileName, SourceFile};
+use tracing::{debug, trace, warn};
 
-use std::fs;
-use std::path::PathBuf;
+use crate::formats::renderer::FormatRenderer;
+use crate::html::render::Context;
+use crate::{clean, config, formats};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ScrapeExamplesOptions {

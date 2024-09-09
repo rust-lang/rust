@@ -1,14 +1,13 @@
 use std::iter;
 
-use super::MirPass;
-use rustc_middle::{
-    bug,
-    mir::{
-        interpret::Scalar, BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement,
-        StatementKind, SwitchTargets, TerminatorKind,
-    },
-    ty::{Ty, TyCtxt},
+use rustc_middle::bug;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::{
+    BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement, StatementKind, SwitchTargets,
+    TerminatorKind,
 };
+use rustc_middle::ty::{Ty, TyCtxt};
+use tracing::trace;
 
 /// Pass to convert `if` conditions on integrals into switches on the integral.
 /// For an example, it turns something like
@@ -26,7 +25,7 @@ use rustc_middle::{
 /// ```
 pub struct SimplifyComparisonIntegral;
 
-impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
+impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

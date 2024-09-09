@@ -9,9 +9,6 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-//@ ignore-msvc
-// Reason: native compilation results in an unresolved external symbol
-
 use run_make_support::{build_native_static_lib, run, rustc};
 
 fn main() {

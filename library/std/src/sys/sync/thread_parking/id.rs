@@ -9,10 +9,8 @@
 
 use crate::cell::UnsafeCell;
 use crate::pin::Pin;
-use crate::sync::atomic::{
-    fence, AtomicI8,
-    Ordering::{Acquire, Relaxed, Release},
-};
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{fence, AtomicI8};
 use crate::sys::thread_parking::{current, park, park_timeout, unpark, ThreadId};
 use crate::time::Duration;
 
@@ -30,7 +28,7 @@ impl Parker {
         Parker { state: AtomicI8::new(EMPTY), tid: UnsafeCell::new(None) }
     }
 
-    /// Create a new thread parker. UNIX requires this to happen in-place.
+    /// Creates a new thread parker. UNIX requires this to happen in-place.
     pub unsafe fn new_in_place(parker: *mut Parker) {
         parker.write(Parker::new())
     }

@@ -375,5 +375,29 @@ LL -         (unit! {} - One)
 LL +         unit! {} - One
    |
 
-error: aborting due to 31 previous errors
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-unnecessary-parens.rs:131:14
+   |
+LL |     let _r = (&x);
+   |              ^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let _r = (&x);
+LL +     let _r = &x;
+   |
+
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-unnecessary-parens.rs:132:14
+   |
+LL |     let _r = (&mut x);
+   |              ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let _r = (&mut x);
+LL +     let _r = &mut x;
+   |
+
+error: aborting due to 33 previous errors
 

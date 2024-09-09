@@ -27,5 +27,6 @@ fn main() {
     //~| ERROR overflow evaluating the requirement `&<() as Foo>::Item well-formed`
     //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
     //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
+    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
     println!("{x}");
 }

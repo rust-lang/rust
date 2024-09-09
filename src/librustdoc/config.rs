@@ -1,38 +1,32 @@
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
-use std::fmt;
-use std::io;
 use std::io::Read;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::{fmt, io};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
-    self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
+    self, get_cmd_lint_options, nightly_options, parse_crate_types_from_list, parse_externs,
+    parse_target_triple, CodegenOptions, CrateType, ErrorOutputType, Externs, Input,
+    JsonUnusedExterns, UnstableOptions,
 };
-use rustc_session::config::{get_cmd_lint_options, nightly_options};
-use rustc_session::config::{CodegenOptions, ErrorOutputType, Externs, Input};
-use rustc_session::config::{JsonUnusedExterns, UnstableOptions};
-use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
-use rustc_session::EarlyDiagCtxt;
+use rustc_session::{getopts, EarlyDiagCtxt};
 use rustc_span::edition::Edition;
 use rustc_span::FileName;
 use rustc_target::spec::TargetTriple;
 
 use crate::core::new_dcx;
 use crate::externalfiles::ExternalHtml;
-use crate::html;
 use crate::html::markdown::IdMap;
 use crate::html::render::StylePath;
 use crate::html::static_files;
-use crate::opts;
 use crate::passes::{self, Condition};
 use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
-use crate::theme;
+use crate::{html, opts, theme};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(crate) enum OutputFormat {
@@ -292,6 +286,9 @@ pub(crate) struct RenderOptions {
     pub(crate) no_emit_shared: bool,
     /// If `true`, HTML source code pages won't be generated.
     pub(crate) html_no_source: bool,
+    /// This field is only used for the JSON output. If it's set to true, no file will be created
+    /// and content will be displayed in stdout directly.
+    pub(crate) output_to_stdout: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -363,20 +360,21 @@ impl Options {
             return None;
         }
 
-        if rustc_driver::describe_flag_categories(early_dcx, &matches) {
+        if rustc_driver::describe_flag_categories(early_dcx, matches) {
             return None;
         }
 
         let color = config::parse_color(early_dcx, matches);
-        let config::JsonConfig { json_rendered, json_unused_externs, .. } =
+        let config::JsonConfig { json_rendered, json_unused_externs, json_color, .. } =
             config::parse_json(early_dcx, matches);
-        let error_format = config::parse_error_format(early_dcx, matches, color, json_rendered);
+        let error_format =
+            config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
         let codegen_options = CodegenOptions::build(early_dcx, matches);
         let unstable_opts = UnstableOptions::build(early_dcx, matches);
 
-        let remap_path_prefix = match parse_remap_path_prefix(&matches) {
+        let remap_path_prefix = match parse_remap_path_prefix(matches) {
             Ok(prefix_mappings) => prefix_mappings,
             Err(err) => {
                 early_dcx.early_fatal(err);
@@ -488,7 +486,7 @@ impl Options {
                 _ => dcx.fatal("too many file operands"),
             }
         };
-        let input = make_input(early_dcx, &input);
+        let input = make_input(early_dcx, input);
 
         let externs = parse_externs(early_dcx, matches, &unstable_opts);
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
@@ -553,16 +551,17 @@ impl Options {
             dcx.fatal("the `--test` flag must be passed to enable `--no-run`");
         }
 
+        let mut output_to_stdout = false;
         let test_builder_wrappers =
             matches.opt_strs("test-builder-wrapper").iter().map(PathBuf::from).collect();
-        let out_dir = matches.opt_str("out-dir").map(|s| PathBuf::from(&s));
-        let output = matches.opt_str("output").map(|s| PathBuf::from(&s));
-        let output = match (out_dir, output) {
+        let output = match (matches.opt_str("out-dir"), matches.opt_str("output")) {
             (Some(_), Some(_)) => {
                 dcx.fatal("cannot use both 'out-dir' and 'output' at once");
             }
-            (Some(out_dir), None) => out_dir,
-            (None, Some(output)) => output,
+            (Some(out_dir), None) | (None, Some(out_dir)) => {
+                output_to_stdout = out_dir == "-";
+                PathBuf::from(out_dir)
+            }
             (None, None) => PathBuf::from("doc"),
         };
 
@@ -738,9 +737,11 @@ impl Options {
         let html_no_source = matches.opt_present("html-no-source");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
-            dcx.fatal(
-                "--generate-link-to-definition option can only be used with HTML output format",
-            );
+            dcx.struct_warn(
+                "`--generate-link-to-definition` option can only be used with HTML output format",
+            )
+            .with_note("`--generate-link-to-definition` option will be ignored")
+            .emit();
         }
 
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
@@ -821,6 +822,7 @@ impl Options {
             call_locations,
             no_emit_shared: false,
             html_no_source,
+            output_to_stdout,
         };
         Some((options, render_options))
     }

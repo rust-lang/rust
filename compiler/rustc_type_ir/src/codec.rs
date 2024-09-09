@@ -1,7 +1,7 @@
-use crate::{Interner, PredicateKind};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::{SpanDecoder, SpanEncoder};
+
+use crate::{Interner, PredicateKind};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.

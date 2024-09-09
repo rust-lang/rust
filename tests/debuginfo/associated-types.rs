@@ -1,15 +1,10 @@
-// Some versions of the non-rust-enabled LLDB print the wrong generic
-// parameter type names in this test.
-//@ needs-rust-lldb
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 // gdb-command:run
 
 // gdb-command:print arg
-// gdbg-check:$1 = {b = -1, b1 = 0}
-// gdbr-check:$1 = associated_types::Struct<i32> {b: -1, b1: 0}
+// gdb-check:$1 = associated_types::Struct<i32> {b: -1, b1: 0}
 // gdb-command:continue
 
 // gdb-command:print inferred
@@ -23,8 +18,7 @@
 // gdb-command:continue
 
 // gdb-command:print arg
-// gdbg-check:$5 = {__0 = 4, __1 = 5}
-// gdbr-check:$5 = (4, 5)
+// gdb-check:$5 = (4, 5)
 // gdb-command:continue
 
 // gdb-command:print a
@@ -43,42 +37,33 @@
 // lldb-command:run
 
 // lldb-command:v arg
-// lldbg-check:[...] { b = -1, b1 = 0 }
-// lldbr-check:(associated_types::Struct<i32>) arg = { b = -1, b1 = 0 }
+// lldb-check:[...] { b = -1 b1 = 0 }
 // lldb-command:continue
 
 // lldb-command:v inferred
-// lldbg-check:[...] 1
-// lldbr-check:(i64) inferred = 1
+// lldb-check:[...] 1
 // lldb-command:v explicitly
-// lldbg-check:[...] 1
-// lldbr-check:(i64) explicitly = 1
+// lldb-check:[...] 1
 // lldb-command:continue
 
 // lldb-command:v arg
-// lldbg-check:[...] 2
-// lldbr-check:(i64) arg = 2
+// lldb-check:[...] 2
 // lldb-command:continue
 
 // lldb-command:v arg
-// lldbg-check:[...] (4, 5)
-// lldbr-check:((i32, i64)) arg = { = 4 = 5 }
+// lldb-check:[...] { 0 = 4 1 = 5 }
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 6
-// lldbr-check:(i32) a = 6
+// lldb-check:[...] 6
 // lldb-command:v b
-// lldbg-check:[...] 7
-// lldbr-check:(i64) b = 7
+// lldb-check:[...] 7
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 8
-// lldbr-check:(i64) a = 8
+// lldb-check:[...] 8
 // lldb-command:v b
-// lldbg-check:[...] 9
-// lldbr-check:(i32) b = 9
+// lldb-check:[...] 9
 // lldb-command:continue
 
 #![allow(unused_variables)]

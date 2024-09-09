@@ -2,29 +2,6 @@
 
 use std::ops::ControlFlow;
 
-use super::specialization_graph;
-use super::translate_args;
-use super::util;
-use super::MismatchedProjectionTypes;
-use super::Obligation;
-use super::ObligationCause;
-use super::PredicateObligation;
-use super::Selection;
-use super::SelectionContext;
-use super::SelectionError;
-use super::{Normalized, NormalizedTerm, ProjectionCacheEntry, ProjectionCacheKey};
-use rustc_infer::traits::ObligationCauseCode;
-use rustc_middle::traits::BuiltinImplSource;
-use rustc_middle::traits::ImplSource;
-use rustc_middle::traits::ImplSourceUserDefinedData;
-use rustc_middle::{bug, span_bug};
-
-use crate::errors::InherentProjectionNormalizationOverflow;
-use crate::infer::{BoundRegionConversionTime, InferOk};
-use crate::traits::normalize::normalize_with_depth;
-use crate::traits::normalize::normalize_with_depth_to;
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
@@ -32,13 +9,28 @@ use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::select::OverflowError;
+pub use rustc_middle::traits::Reveal;
+use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Term, Ty, TyCtxt, Upcast};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
+use tracing::{debug, instrument};
 
-pub use rustc_middle::traits::Reveal;
+use super::{
+    specialization_graph, translate_args, util, MismatchedProjectionTypes, Normalized,
+    NormalizedTerm, Obligation, ObligationCause, PredicateObligation, ProjectionCacheEntry,
+    ProjectionCacheKey, Selection, SelectionContext, SelectionError,
+};
+use crate::errors::InherentProjectionNormalizationOverflow;
+use crate::infer::{BoundRegionConversionTime, InferOk};
+use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::select::ProjectionMatchesProjection;
 
 pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
 
@@ -895,11 +887,18 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     potentially_unnormalized_candidates: bool,
 ) {
     let infcx = selcx.infcx;
+    let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
     for predicate in env_predicates {
         let bound_predicate = predicate.kind();
         if let ty::ClauseKind::Projection(data) = predicate.kind().skip_binder() {
             let data = bound_predicate.rebind(data);
             if data.projection_def_id() != obligation.predicate.def_id {
+                continue;
+            }
+
+            if !drcx
+                .args_may_unify(obligation.predicate.args, data.skip_binder().projection_term.args)
+            {
                 continue;
             }
 
@@ -1120,7 +1119,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Error(_) => false,
                     }
                 } else if tcx.is_lang_item(trait_ref.def_id, LangItem::PointeeTrait) {
-                    let tail = selcx.tcx().struct_tail_with_normalize(
+                    let tail = selcx.tcx().struct_tail_raw(
                         self_ty,
                         |ty| {
                             // We throw away any obligations we get from this, since we normalize
@@ -1159,10 +1158,10 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Never
                         // Extern types have unit metadata, according to RFC 2850
                         | ty::Foreign(_)
-                        // If returned by `struct_tail_without_normalization` this is a unit struct
+                        // If returned by `struct_tail` this is a unit struct
                         // without any fields, or not a struct, and therefore is Sized.
                         | ty::Adt(..)
-                        // If returned by `struct_tail_without_normalization` this is the empty tuple.
+                        // If returned by `struct_tail` this is the empty tuple.
                         | ty::Tuple(..)
                         // Integers and floats are always Sized, and so have unit type metadata.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
@@ -1646,7 +1645,7 @@ fn confirm_fn_pointer_candidate<'cx, 'tcx>(
             .generics_of(def_id)
             .host_effect_index
             .map_or(tcx.consts.true_, |idx| args.const_at(idx)),
-        ty::FnPtr(_) => tcx.consts.true_,
+        ty::FnPtr(..) => tcx.consts.true_,
         _ => unreachable!("only expected FnPtr or FnDef in `confirm_fn_pointer_candidate`"),
     };
 

@@ -1,6 +1,6 @@
 use syntax::{
     ast::{self, make},
-    AstNode,
+    AstNode, ToSmolStr,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -45,8 +45,10 @@ pub(crate) fn fill_record_pattern_fields(acc: &mut Assists, ctx: &AssistContext<
     let new_field_list =
         make::record_pat_field_list(old_field_list.fields(), None).clone_for_update();
     for (f, _) in missing_fields.iter() {
-        let field =
-            make::record_pat_field_shorthand(make::name_ref(&f.name(ctx.sema.db).to_smol_str()));
+        let edition = ctx.sema.scope(record_pat.syntax())?.krate().edition(ctx.db());
+        let field = make::record_pat_field_shorthand(make::name_ref(
+            &f.name(ctx.sema.db).display_no_db(edition).to_smolstr(),
+        ));
         new_field_list.add_field(field.clone_for_update());
     }
 

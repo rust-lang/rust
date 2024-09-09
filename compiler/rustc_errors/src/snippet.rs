@@ -1,16 +1,17 @@
 // Code for annotating snippets.
 
-use crate::{Level, Loc};
 use rustc_macros::{Decodable, Encodable};
 
+use crate::{Level, Loc};
+
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub struct Line {
+pub(crate) struct Line {
     pub line_index: usize,
     pub annotations: Vec<Annotation>,
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Default)]
-pub struct AnnotationColumn {
+pub(crate) struct AnnotationColumn {
     /// the (0-indexed) column for *display* purposes, counted in characters, not utf-8 bytes
     pub display: usize,
     /// the (0-indexed) column in the file, counted in characters, not utf-8 bytes.
@@ -30,13 +31,13 @@ pub struct AnnotationColumn {
 }
 
 impl AnnotationColumn {
-    pub fn from_loc(loc: &Loc) -> AnnotationColumn {
+    pub(crate) fn from_loc(loc: &Loc) -> AnnotationColumn {
         AnnotationColumn { display: loc.col_display, file: loc.col.0 }
     }
 }
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub struct MultilineAnnotation {
+pub(crate) struct MultilineAnnotation {
     pub depth: usize,
     pub line_start: usize,
     pub line_end: usize,
@@ -48,19 +49,19 @@ pub struct MultilineAnnotation {
 }
 
 impl MultilineAnnotation {
-    pub fn increase_depth(&mut self) {
+    pub(crate) fn increase_depth(&mut self) {
         self.depth += 1;
     }
 
     /// Compare two `MultilineAnnotation`s considering only the `Span` they cover.
-    pub fn same_span(&self, other: &MultilineAnnotation) -> bool {
+    pub(crate) fn same_span(&self, other: &MultilineAnnotation) -> bool {
         self.line_start == other.line_start
             && self.line_end == other.line_end
             && self.start_col == other.start_col
             && self.end_col == other.end_col
     }
 
-    pub fn as_start(&self) -> Annotation {
+    pub(crate) fn as_start(&self) -> Annotation {
         Annotation {
             start_col: self.start_col,
             end_col: AnnotationColumn {
@@ -75,7 +76,7 @@ impl MultilineAnnotation {
         }
     }
 
-    pub fn as_end(&self) -> Annotation {
+    pub(crate) fn as_end(&self) -> Annotation {
         Annotation {
             start_col: AnnotationColumn {
                 // these might not correspond to the same place anymore,
@@ -90,7 +91,7 @@ impl MultilineAnnotation {
         }
     }
 
-    pub fn as_line(&self) -> Annotation {
+    pub(crate) fn as_line(&self) -> Annotation {
         Annotation {
             start_col: Default::default(),
             end_col: Default::default(),
@@ -102,7 +103,7 @@ impl MultilineAnnotation {
 }
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub enum AnnotationType {
+pub(crate) enum AnnotationType {
     /// Annotation under a single line of code
     Singleline,
 
@@ -128,7 +129,7 @@ pub enum AnnotationType {
 }
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub struct Annotation {
+pub(crate) struct Annotation {
     /// Start column.
     /// Note that it is important that this field goes
     /// first, so that when we sort, we sort orderings by start
@@ -151,12 +152,12 @@ pub struct Annotation {
 
 impl Annotation {
     /// Whether this annotation is a vertical line placeholder.
-    pub fn is_line(&self) -> bool {
+    pub(crate) fn is_line(&self) -> bool {
         matches!(self.annotation_type, AnnotationType::MultilineLine(_))
     }
 
     /// Length of this annotation as displayed in the stderr output
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         // Account for usize underflows
         if self.end_col.display > self.start_col.display {
             self.end_col.display - self.start_col.display
@@ -165,7 +166,7 @@ impl Annotation {
         }
     }
 
-    pub fn has_label(&self) -> bool {
+    pub(crate) fn has_label(&self) -> bool {
         if let Some(ref label) = self.label {
             // Consider labels with no text as effectively not being there
             // to avoid weird output with unnecessary vertical lines, like:
@@ -183,7 +184,7 @@ impl Annotation {
         }
     }
 
-    pub fn takes_space(&self) -> bool {
+    pub(crate) fn takes_space(&self) -> bool {
         // Multiline annotations always have to keep vertical space.
         matches!(
             self.annotation_type,
@@ -193,7 +194,7 @@ impl Annotation {
 }
 
 #[derive(Debug)]
-pub struct StyledString {
+pub(crate) struct StyledString {
     pub text: String,
     pub style: Style,
 }

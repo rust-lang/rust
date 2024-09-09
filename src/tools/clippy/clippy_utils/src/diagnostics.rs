@@ -330,32 +330,3 @@ pub fn span_lint_and_sugg<T: LintContext>(
         diag.span_suggestion(sp, help.into(), sugg, applicability);
     });
 }
-
-/// Create a suggestion made from several `span → replacement`.
-///
-/// Note: in the JSON format (used by `compiletest_rs`), the help message will
-/// appear once per
-/// replacement. In human-readable format though, it only appears once before
-/// the whole suggestion.
-pub fn multispan_sugg<I>(diag: &mut Diag<'_, ()>, help_msg: impl Into<SubdiagMessage>, sugg: I)
-where
-    I: IntoIterator<Item = (Span, String)>,
-{
-    multispan_sugg_with_applicability(diag, help_msg, Applicability::Unspecified, sugg);
-}
-
-/// Create a suggestion made from several `span → replacement`.
-///
-/// rustfix currently doesn't support the automatic application of suggestions with
-/// multiple spans. This is tracked in issue [rustfix#141](https://github.com/rust-lang/rustfix/issues/141).
-/// Suggestions with multiple spans will be silently ignored.
-pub fn multispan_sugg_with_applicability<I>(
-    diag: &mut Diag<'_, ()>,
-    help_msg: impl Into<SubdiagMessage>,
-    applicability: Applicability,
-    sugg: I,
-) where
-    I: IntoIterator<Item = (Span, String)>,
-{
-    diag.multipart_suggestion(help_msg.into(), sugg.into_iter().collect(), applicability);
-}

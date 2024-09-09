@@ -6,6 +6,6 @@ use std::ptr;
 // null is explicitly called out as UB in the C docs.
 fn main() {
     unsafe {
-        libc::memrchr(ptr::null(), 0, 0); //~ERROR: dangling
+        libc::memrchr(ptr::null(), 0, 0); //~ERROR: null pointer
     }
 }

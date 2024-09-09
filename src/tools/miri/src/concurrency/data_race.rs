@@ -617,9 +617,10 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // the *value* (including the associated provenance if this is an AtomicPtr) at this location.
         // Only metadata on the location itself is used.
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(place))?;
-        this.buffered_atomic_read(place, atomic, scalar, || {
+        let buffered_scalar = this.buffered_atomic_read(place, atomic, scalar, || {
             this.validate_atomic_load(place, atomic)
-        })
+        })?;
+        Ok(buffered_scalar.ok_or_else(|| err_ub!(InvalidUninitBytes(None)))?)
     }
 
     /// Perform an atomic write operation at the memory location.
@@ -632,14 +633,14 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(dest, AtomicAccessType::Store)?;
 
+        // Read the previous value so we can put it in the store buffer later.
+        // The program didn't actually do a read, so suppress the memory access hooks.
+        // This is also a very special exception where we just ignore an error -- if this read
+        // was UB e.g. because the memory is uninitialized, we don't want to know!
+        let old_val = this.run_for_validation(|| this.read_scalar(dest)).ok();
         this.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
         this.validate_atomic_store(dest, atomic)?;
-        // FIXME: it's not possible to get the value before write_scalar. A read_scalar will cause
-        // side effects from a read the program did not perform. So we have to initialise
-        // the store buffer with the value currently being written
-        // ONCE this is fixed please remove the hack in buffered_atomic_write() in weak_memory.rs
-        // https://github.com/rust-lang/miri/issues/2164
-        this.buffered_atomic_write(val, dest, atomic, val)
+        this.buffered_atomic_write(val, dest, atomic, old_val)
     }
 
     /// Perform an atomic RMW operation on a memory location.
@@ -768,7 +769,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             // in the modification order.
             // Since `old` is only a value and not the store element, we need to separately
             // find it in our store buffer and perform load_impl on it.
-            this.perform_read_on_buffered_latest(place, fail, old.to_scalar())?;
+            this.perform_read_on_buffered_latest(place, fail)?;
         }
 
         // Return the old value.
@@ -1180,7 +1181,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // We avoid `get_ptr_alloc` since we do *not* want to run the access hooks -- the actual
         // access will happen later.
         let (alloc_id, _offset, _prov) = this
-            .ptr_try_get_alloc_id(place.ptr())
+            .ptr_try_get_alloc_id(place.ptr(), 0)
             .expect("there are no zero-sized atomic accesses");
         if this.get_alloc_mutability(alloc_id)? == Mutability::Not {
             // See if this is fine.
@@ -1307,7 +1308,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         if let Some(data_race) = &this.machine.data_race {
             if data_race.race_detecting() {
                 let size = place.layout.size;
-                let (alloc_id, base_offset, _prov) = this.ptr_get_alloc_id(place.ptr())?;
+                let (alloc_id, base_offset, _prov) = this.ptr_get_alloc_id(place.ptr(), 0)?;
                 // Load and log the atomic operation.
                 // Note that atomic loads are possible even from read-only allocations, so `get_alloc_extra_mut` is not an option.
                 let alloc_meta = this.get_alloc_extra(alloc_id)?.data_race.as_ref().unwrap();

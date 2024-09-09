@@ -2,10 +2,11 @@ use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::ops::{Bound, RangeBounds};
 
-use super::node::{marker, ForceResult::*, Handle, NodeRef};
-
 use SearchBound::*;
 use SearchResult::*;
+
+use super::node::ForceResult::*;
+use super::node::{marker, Handle, NodeRef};
 
 pub enum SearchBound<T> {
     /// An inclusive bound to look for, just like `Bound::Included(T)`.

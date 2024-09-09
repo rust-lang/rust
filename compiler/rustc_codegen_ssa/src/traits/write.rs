@@ -1,9 +1,9 @@
+use rustc_errors::{DiagCtxtHandle, FatalError};
+use rustc_middle::dep_graph::WorkProduct;
+
 use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use crate::back::write::{CodegenContext, FatLtoInput, ModuleConfig};
 use crate::{CompiledModule, ModuleCodegen};
-
-use rustc_errors::{DiagCtxtHandle, FatalError};
-use rustc_middle::dep_graph::WorkProduct;
 
 pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Module: Send + Sync;

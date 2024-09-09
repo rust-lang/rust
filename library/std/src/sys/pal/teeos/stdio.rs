@@ -1,7 +1,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use crate::io;
 use core::arch::asm;
+
+use crate::io;
 
 pub struct Stdin;
 pub struct Stdout;

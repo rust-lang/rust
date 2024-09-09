@@ -1,7 +1,9 @@
 mod control_flow;
+mod from_residual;
 
-use core::ops::{Bound, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
-use core::ops::{Deref, DerefMut};
+use core::ops::{
+    Bound, Deref, DerefMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
+};
 
 // Test the Range structs and syntax.
 

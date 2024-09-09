@@ -1,25 +1,23 @@
-use crate::dep_graph;
-use crate::dep_graph::DepKind;
-use crate::query::on_disk_cache::CacheEncoder;
-use crate::query::on_disk_cache::EncodedDepNodeIndex;
-use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{
-    DynamicQueries, ExternProviders, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
-};
-use crate::ty::TyCtxt;
+use std::ops::Deref;
+
 use field_offset::FieldOffset;
-use rustc_data_structures::sync::AtomicU64;
-use rustc_data_structures::sync::WorkerLocal;
+use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_macros::HashStable;
-use rustc_query_system::dep_graph::DepNodeIndex;
-use rustc_query_system::dep_graph::SerializedDepNodeIndex;
+use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_query_system::HandleCycleError;
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
-use std::ops::Deref;
+
+use crate::dep_graph;
+use crate::dep_graph::DepKind;
+use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
+use crate::query::{
+    DynamicQueries, ExternProviders, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
+};
+use crate::ty::TyCtxt;
 
 pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub name: &'static str,
@@ -339,6 +337,7 @@ macro_rules! define_callbacks {
                 // Ensure that values grow no larger than 64 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(target_pointer_width = "64")]
+                #[cfg(not(feature = "rustc_randomized_layouts"))]
                 const _: () = {
                     if mem::size_of::<Value<'static>>() > 64 {
                         panic!("{}", concat!(
@@ -574,8 +573,9 @@ macro_rules! define_feedable {
 // as they will raise an fatal error on query cycles instead.
 
 mod sealed {
-    use super::{DefId, LocalDefId, OwnerId};
     use rustc_hir::def_id::{LocalModDefId, ModDefId};
+
+    use super::{DefId, LocalDefId, OwnerId};
 
     /// An analogue of the `Into` trait that's intended only for query parameters.
     ///

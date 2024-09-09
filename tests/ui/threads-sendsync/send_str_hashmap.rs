@@ -1,9 +1,7 @@
 //@ run-pass
-use std::collections::HashMap;
 use std::borrow::Cow;
-
-use std::borrow::Cow::Borrowed as B;
-use std::borrow::Cow::Owned as O;
+use std::borrow::Cow::{Borrowed as B, Owned as O};
+use std::collections::HashMap;
 
 type SendStr = Cow<'static, str>;
 

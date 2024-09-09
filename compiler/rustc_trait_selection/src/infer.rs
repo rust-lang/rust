@@ -1,20 +1,19 @@
-use crate::infer::at::ToTrace;
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt, SelectionContext};
+use std::fmt::Debug;
 
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+pub use rustc_infer::infer::*;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_middle::ty::{GenericArg, Upcast};
+use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_span::DUMMY_SP;
+use tracing::instrument;
 
-use std::fmt::Debug;
-
-pub use rustc_infer::infer::*;
+use crate::infer::at::ToTrace;
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt, SelectionContext};
 
 #[extension(pub trait InferCtxtExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {

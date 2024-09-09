@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
+use clippy_utils::source::{indent_of, reindent_multiline, SourceText, SpanRangeExt};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, MatchSource, Node, StmtKind};
 use rustc_lint::LateContext;
@@ -79,7 +79,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                         && block.expr.is_none()
                         && let Some(last_stmt) = block.stmts.iter().last()
                         && let StmtKind::Semi(last_expr) = last_stmt.kind
-                        && let Some(snip) = snippet_opt(cx, last_expr.span)
+                        && let Some(snip) = last_expr.span.get_source_text(cx)
                     {
                         Some((last_stmt.span, snip))
                     } else {
@@ -90,24 +90,24 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                     db.span_suggestion(
                         span,
                         "remove the semicolon from the last statement in the block",
-                        sugg,
+                        sugg.as_str(),
                         Applicability::MaybeIncorrect,
                     );
                     or = "or ";
                     applicability = Applicability::MaybeIncorrect;
                 });
 
-            let arg_snippets: Vec<String> = args_to_recover
+            let arg_snippets: Vec<_> = args_to_recover
                 .iter()
-                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .filter_map(|arg| arg.span.get_source_text(cx))
                 .collect();
-            let arg_snippets_without_empty_blocks: Vec<String> = args_to_recover
+            let arg_snippets_without_empty_blocks: Vec<_> = args_to_recover
                 .iter()
                 .filter(|arg| !is_empty_block(arg))
-                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .filter_map(|arg| arg.span.get_source_text(cx))
                 .collect();
 
-            if let Some(call_snippet) = snippet_opt(cx, expr.span) {
+            if let Some(call_snippet) = expr.span.get_source_text(cx) {
                 let sugg = fmt_stmts_and_call(
                     cx,
                     expr,
@@ -161,8 +161,8 @@ fn fmt_stmts_and_call(
     cx: &LateContext<'_>,
     call_expr: &Expr<'_>,
     call_snippet: &str,
-    args_snippets: &[impl AsRef<str>],
-    non_empty_block_args_snippets: &[impl AsRef<str>],
+    args_snippets: &[SourceText],
+    non_empty_block_args_snippets: &[SourceText],
 ) -> String {
     let call_expr_indent = indent_of(cx, call_expr.span).unwrap_or(0);
     let call_snippet_with_replacements = args_snippets

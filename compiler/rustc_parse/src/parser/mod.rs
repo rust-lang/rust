@@ -10,18 +10,21 @@ mod path;
 mod stmt;
 mod ty;
 
-use crate::lexer::UnmatchedDelim;
-use attr_wrapper::AttrWrapper;
+use std::assert_matches::debug_assert_matches;
+use std::ops::Range;
+use std::{fmt, mem, slice};
+
+use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use path::PathStyle;
-
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrsTarget, DelimSpacing, DelimSpan, Spacing};
-use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
+use rustc_ast::tokenstream::{
+    AttrsTarget, DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree, TokenTreeCursor,
+};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs,
@@ -32,17 +35,17 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
+use rustc_index::interval::IntervalSet;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use std::ops::Range;
-use std::{fmt, mem, slice};
 use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::errors::{
     self, IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
 };
+use crate::lexer::UnmatchedDelim;
 
 #[cfg(test)]
 mod tests;
@@ -181,7 +184,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(Parser<'_>, 256);
+rustc_data_structures::static_assert_size!(Parser<'_>, 288);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]
@@ -191,24 +194,56 @@ struct ClosureSpans {
     body: Span,
 }
 
-/// Indicates a range of tokens that should be replaced by
-/// the tokens in the provided `AttrsTarget`. This is used in two
-/// places during token collection:
+/// A token range within a `Parser`'s full token stream.
+#[derive(Clone, Debug)]
+struct ParserRange(Range<u32>);
+
+/// A token range within an individual AST node's (lazy) token stream, i.e.
+/// relative to that node's first token. Distinct from `ParserRange` so the two
+/// kinds of range can't be mixed up.
+#[derive(Clone, Debug)]
+struct NodeRange(Range<u32>);
+
+/// Indicates a range of tokens that should be replaced by an `AttrsTarget`
+/// (replacement) or be replaced by nothing (deletion). This is used in two
+/// places during token collection.
 ///
-/// 1. During the parsing of an AST node that may have a `#[derive]`
-/// attribute, we parse a nested AST node that has `#[cfg]` or `#[cfg_attr]`
-/// In this case, we use a `ReplaceRange` to replace the entire inner AST node
-/// with `FlatToken::AttrsTarget`, allowing us to perform eager cfg-expansion
-/// on an `AttrTokenStream`.
+/// 1. Replacement. During the parsing of an AST node that may have a
+///    `#[derive]` attribute, when we parse a nested AST node that has `#[cfg]`
+///    or `#[cfg_attr]`, we replace the entire inner AST node with
+///    `FlatToken::AttrsTarget`. This lets us perform eager cfg-expansion on an
+///    `AttrTokenStream`.
 ///
-/// 2. When we parse an inner attribute while collecting tokens. We
-/// remove inner attributes from the token stream entirely, and
-/// instead track them through the `attrs` field on the AST node.
-/// This allows us to easily manipulate them (for example, removing
-/// the first macro inner attribute to invoke a proc-macro).
-/// When create a `TokenStream`, the inner attributes get inserted
-/// into the proper place in the token stream.
-type ReplaceRange = (Range<u32>, Option<AttrsTarget>);
+/// 2. Deletion. We delete inner attributes from all collected token streams,
+///    and instead track them through the `attrs` field on the AST node. This
+///    lets us manipulate them similarly to outer attributes. When we create a
+///    `TokenStream`, the inner attributes are inserted into the proper place
+///    in the token stream.
+///
+/// Each replacement starts off in `ParserReplacement` form but is converted to
+/// `NodeReplacement` form when it is attached to a single AST node, via
+/// `LazyAttrTokenStreamImpl`.
+type ParserReplacement = (ParserRange, Option<AttrsTarget>);
+
+/// See the comment on `ParserReplacement`.
+type NodeReplacement = (NodeRange, Option<AttrsTarget>);
+
+impl NodeRange {
+    // Converts a range within a parser's tokens to a range within a
+    // node's tokens beginning at `start_pos`.
+    //
+    // For example, imagine a parser with 50 tokens in its token stream, a
+    // function that spans `ParserRange(20..40)` and an inner attribute within
+    // that function that spans `ParserRange(30..35)`. We would find the inner
+    // attribute's range within the function's tokens by subtracting 20, which
+    // is the position of the function's start token. This gives
+    // `NodeRange(10..15)`.
+    fn new(ParserRange(parser_range): ParserRange, start_pos: u32) -> NodeRange {
+        assert!(!parser_range.is_empty());
+        assert!(parser_range.start >= start_pos);
+        NodeRange((parser_range.start - start_pos)..(parser_range.end - start_pos))
+    }
+}
 
 /// Controls how we capture tokens. Capturing can be expensive,
 /// so we try to avoid performing capturing in cases where
@@ -221,12 +256,15 @@ enum Capturing {
     Yes,
 }
 
-// This state is used by `Parser::collect_tokens_trailing_token`.
+// This state is used by `Parser::collect_tokens`.
 #[derive(Clone, Debug)]
 struct CaptureState {
     capturing: Capturing,
-    replace_ranges: Vec<ReplaceRange>,
-    inner_attr_ranges: FxHashMap<AttrId, Range<u32>>,
+    parser_replacements: Vec<ParserReplacement>,
+    inner_attr_parser_ranges: FxHashMap<AttrId, ParserRange>,
+    // `IntervalSet` is good for perf because attrs are mostly added to this
+    // set in contiguous ranges.
+    seen_attrs: IntervalSet<AttrId>,
 }
 
 /// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that
@@ -356,6 +394,12 @@ enum Trailing {
     Yes,
 }
 
+impl From<bool> for Trailing {
+    fn from(b: bool) -> Trailing {
+        if b { Trailing::Yes } else { Trailing::No }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum TokenDescription {
     ReservedIdentifier,
@@ -416,8 +460,9 @@ impl<'a> Parser<'a> {
             subparser_name,
             capture_state: CaptureState {
                 capturing: Capturing::No,
-                replace_ranges: Vec::new(),
-                inner_attr_ranges: Default::default(),
+                parser_replacements: Vec::new(),
+                inner_attr_parser_ranges: Default::default(),
+                seen_attrs: IntervalSet::new(u32::MAX as usize),
             },
             current_closure: None,
             recovery: Recovery::Allowed,
@@ -427,8 +472,8 @@ impl<'a> Parser<'a> {
         parser.bump();
 
         // Change this from 1 back to 0 after the bump. This eases debugging of
-        // `Parser::collect_tokens_trailing_token` nicer because it makes the
-        // token positions 0-indexed which is nicer than 1-indexed.
+        // `Parser::collect_tokens` because 0-indexed token positions are nicer
+        // than 1-indexed token positions.
         parser.num_bump_calls = 0;
 
         parser
@@ -495,7 +540,7 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token.kind) {
             // leave it in the input
             Ok(Recovered::No)
-        } else if self.token.kind != token::Eof
+        } else if self.token != token::Eof
             && self.last_unexpected_token_span == Some(self.token.span)
         {
             FatalError.raise();
@@ -546,6 +591,7 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
+    #[must_use]
     fn check_noexpect(&self, tok: &TokenKind) -> bool {
         self.token == *tok
     }
@@ -555,6 +601,7 @@ impl<'a> Parser<'a> {
     /// the main purpose of this function is to reduce the cluttering of the suggestions list
     /// which using the normal eat method could introduce in some cases.
     #[inline]
+    #[must_use]
     fn eat_noexpect(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.check_noexpect(tok);
         if is_present {
@@ -565,6 +612,7 @@ impl<'a> Parser<'a> {
 
     /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
     #[inline]
+    #[must_use]
     pub fn eat(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.check(tok);
         if is_present {
@@ -576,12 +624,14 @@ impl<'a> Parser<'a> {
     /// If the next token is the given keyword, returns `true` without eating it.
     /// An expectation is also added for diagnostics purposes.
     #[inline]
+    #[must_use]
     fn check_keyword(&mut self, kw: Symbol) -> bool {
         self.expected_tokens.push(TokenType::Keyword(kw));
         self.token.is_keyword(kw)
     }
 
     #[inline]
+    #[must_use]
     fn check_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
         if self.check_keyword(kw) {
             return true;
@@ -599,8 +649,9 @@ impl<'a> Parser<'a> {
 
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
-    // Public for rustfmt usage.
+    // Public for rustc_builtin_macros and rustfmt usage.
     #[inline]
+    #[must_use]
     pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
             self.bump();
@@ -614,6 +665,7 @@ impl<'a> Parser<'a> {
     /// If the case differs (and is ignored) an error is issued.
     /// This is useful for recovery.
     #[inline]
+    #[must_use]
     fn eat_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
         if self.eat_keyword(kw) {
             return true;
@@ -631,8 +683,12 @@ impl<'a> Parser<'a> {
         false
     }
 
+    /// If the next token is the given keyword, eats it and returns `true`.
+    /// Otherwise, returns `false`. No expectation is added.
+    // Public for rustc_builtin_macros usage.
     #[inline]
-    fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
+    #[must_use]
+    pub fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
         if self.token.is_keyword(kw) {
             self.bump();
             true
@@ -644,7 +700,7 @@ impl<'a> Parser<'a> {
     /// If the given word is not a keyword, signals an error.
     /// If the next token is not the given word, signals an error.
     /// Otherwise, eats it.
-    fn expect_keyword(&mut self, kw: Symbol) -> PResult<'a, ()> {
+    pub fn expect_keyword(&mut self, kw: Symbol) -> PResult<'a, ()> {
         if !self.eat_keyword(kw) { self.unexpected() } else { Ok(()) }
     }
 
@@ -713,7 +769,7 @@ impl<'a> Parser<'a> {
     /// compound tokens like multi-character operators in process.
     /// Returns `true` if the token was eaten.
     fn break_and_eat(&mut self, expected: TokenKind) -> bool {
-        if self.token.kind == expected {
+        if self.token == expected {
             self.bump();
             return true;
         }
@@ -839,7 +895,7 @@ impl<'a> Parser<'a> {
                             let token_str = pprust::token_kind_to_string(t);
 
                             match self.current_closure.take() {
-                                Some(closure_spans) if self.token.kind == TokenKind::Semi => {
+                                Some(closure_spans) if self.token == TokenKind::Semi => {
                                     // Finding a semicolon instead of a comma
                                     // after a closure body indicates that the
                                     // closure body may be a block but the user
@@ -867,7 +923,7 @@ impl<'a> Parser<'a> {
                             // If this was a missing `@` in a binding pattern
                             // bail with a suggestion
                             // https://github.com/rust-lang/rust/issues/72373
-                            if self.prev_token.is_ident() && self.token.kind == token::DotDot {
+                            if self.prev_token.is_ident() && self.token == token::DotDot {
                                 let msg = format!(
                                     "if you meant to bind the contents of the rest of the array \
                                      pattern into `{}`, use `@`",
@@ -1021,8 +1077,11 @@ impl<'a> Parser<'a> {
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
-        if matches!(recovered, Recovered::No) {
-            self.eat(ket);
+        if matches!(recovered, Recovered::No) && !self.eat(ket) {
+            self.dcx().span_delayed_bug(
+                self.token.span,
+                "recovered but `parse_seq_to_before_end` did not give us the ket token",
+            );
         }
         Ok((val, trailing))
     }
@@ -1121,10 +1180,12 @@ impl<'a> Parser<'a> {
             match self.token_cursor.tree_cursor.look_ahead(0) {
                 Some(tree) => {
                     // Indexing stayed within the current token tree.
-                    return match tree {
-                        TokenTree::Token(token, _) => looker(token),
-                        TokenTree::Delimited(dspan, _, delim, _) => {
-                            looker(&Token::new(token::OpenDelim(*delim), dspan.open))
+                    match tree {
+                        TokenTree::Token(token, _) => return looker(token),
+                        &TokenTree::Delimited(dspan, _, delim, _) => {
+                            if delim != Delimiter::Invisible {
+                                return looker(&Token::new(token::OpenDelim(delim), dspan.open));
+                            }
                         }
                     };
                 }
@@ -1205,9 +1266,6 @@ impl<'a> Parser<'a> {
         if self.eat_keyword_case(kw::Unsafe, case) {
             Safety::Unsafe(self.prev_token.uninterpolated_span())
         } else if self.eat_keyword_case(kw::Safe, case) {
-            self.psess
-                .gated_spans
-                .gate(sym::unsafe_extern_blocks, self.prev_token.uninterpolated_span());
             Safety::Safe(self.prev_token.uninterpolated_span())
         } else {
             Safety::Default
@@ -1246,7 +1304,7 @@ impl<'a> Parser<'a> {
         if pat {
             self.psess.gated_spans.gate(sym::inline_const_pat, span);
         }
-        self.eat_keyword(kw::Const);
+        self.expect_keyword(kw::Const)?;
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
@@ -1343,7 +1401,7 @@ impl<'a> Parser<'a> {
                     // can capture these tokens if necessary.
                     self.bump();
                     if self.token_cursor.stack.len() == target_depth {
-                        debug_assert!(matches!(self.token.kind, token::CloseDelim(_)));
+                        debug_assert_matches!(self.token.kind, token::CloseDelim(_));
                         break;
                     }
                 }
@@ -1501,11 +1559,9 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, R> {
         // The only reason to call `collect_tokens_no_attrs` is if you want tokens, so use
         // `ForceCollect::Yes`
-        self.collect_tokens_trailing_token(
-            AttrWrapper::empty(),
-            ForceCollect::Yes,
-            |this, _attrs| Ok((f(this)?, false)),
-        )
+        self.collect_tokens(None, AttrWrapper::empty(), ForceCollect::Yes, |this, _attrs| {
+            Ok((f(this)?, Trailing::No, UsePreAttrPos::No))
+        })
     }
 
     /// `::{` or `::*`
@@ -1616,7 +1672,7 @@ enum FlatToken {
 pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
-    Lifetime(Ident),
+    Lifetime(Ident, IdentIsRaw),
 
     /// This case will eventually be removed, along with `Token::Interpolate`.
     Nt(Lrc<Nonterminal>),

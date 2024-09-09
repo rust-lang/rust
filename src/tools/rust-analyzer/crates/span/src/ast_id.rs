@@ -18,7 +18,28 @@ use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// See crates\hir-expand\src\ast_id_map.rs
 /// This is a type erased FileAstId.
-pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ErasedFileAstId(u32);
+
+impl ErasedFileAstId {
+    pub const fn into_raw(self) -> u32 {
+        self.0
+    }
+    pub const fn from_raw(u32: u32) -> Self {
+        Self(u32)
+    }
+}
+
+impl fmt::Display for ErasedFileAstId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+impl fmt::Debug for ErasedFileAstId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 /// `AstId` points to an AST node in a specific file.
 pub struct FileAstId<N: AstIdNode> {
@@ -47,7 +68,7 @@ impl<N: AstIdNode> Hash for FileAstId<N> {
 
 impl<N: AstIdNode> fmt::Debug for FileAstId<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FileAstId::<{}>({})", type_name::<N>(), self.raw.into_raw())
+        write!(f, "FileAstId::<{}>({})", type_name::<N>(), self.raw)
     }
 }
 
@@ -80,13 +101,11 @@ macro_rules! register_ast_id_node {
 }
 register_ast_id_node! {
     impl AstIdNode for
-    Item,
+    Item, AnyHasGenericParams,
         Adt,
             Enum,
                 Variant,
             Struct,
-                RecordField,
-                TupleField,
             Union,
         AssocItem,
             Const,
@@ -104,7 +123,7 @@ register_ast_id_node! {
         Trait,
         TraitAlias,
         Use,
-    BlockExpr, ConstArg, Param, SelfParam
+    BlockExpr, ConstArg
 }
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
@@ -178,7 +197,10 @@ impl AstIdMap {
         let ptr = ptr.syntax_node_ptr();
         let hash = hash_ptr(&ptr);
         match self.map.raw_entry().from_hash(hash, |&idx| self.arena[idx] == ptr) {
-            Some((&raw, &())) => FileAstId { raw, covariant: PhantomData },
+            Some((&raw, &())) => FileAstId {
+                raw: ErasedFileAstId(raw.into_raw().into_u32()),
+                covariant: PhantomData,
+            },
             None => panic!(
                 "Can't find {:?} in AstIdMap:\n{:?}",
                 ptr,
@@ -188,18 +210,19 @@ impl AstIdMap {
     }
 
     pub fn get<N: AstIdNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
-        AstPtr::try_from_raw(self.arena[id.raw]).unwrap()
+        AstPtr::try_from_raw(self.arena[Idx::from_raw(RawIdx::from_u32(id.raw.into_raw()))])
+            .unwrap()
     }
 
     pub fn get_erased(&self, id: ErasedFileAstId) -> SyntaxNodePtr {
-        self.arena[id]
+        self.arena[Idx::from_raw(RawIdx::from_u32(id.into_raw()))]
     }
 
     fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
         let ptr = SyntaxNodePtr::new(item);
         let hash = hash_ptr(&ptr);
         match self.map.raw_entry().from_hash(hash, |&idx| self.arena[idx] == ptr) {
-            Some((&idx, &())) => idx,
+            Some((&idx, &())) => ErasedFileAstId(idx.into_raw().into_u32()),
             None => panic!(
                 "Can't find {:?} in AstIdMap:\n{:?}",
                 item,
@@ -209,7 +232,7 @@ impl AstIdMap {
     }
 
     fn alloc(&mut self, item: &SyntaxNode) -> ErasedFileAstId {
-        self.arena.alloc(SyntaxNodePtr::new(item))
+        ErasedFileAstId(self.arena.alloc(SyntaxNodePtr::new(item)).into_raw().into_u32())
     }
 }
 

@@ -12,11 +12,16 @@
 #![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::marker::PhantomData;
+use std::ops::Deref;
+use std::rc::Rc;
 
+use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::Diag;
@@ -24,40 +29,32 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
+use rustc_infer::infer::{
+    InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
+};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint::builtin::UNUSED_MUT;
-use rustc_span::{Span, Symbol};
-use rustc_target::abi::FieldIdx;
-
-use smallvec::SmallVec;
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::marker::PhantomData;
-use std::ops::Deref;
-use std::rc::Rc;
-
 use rustc_mir_dataflow::impls::{
     EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
 };
-use rustc_mir_dataflow::move_paths::{InitIndex, MoveOutIndex, MovePathIndex};
-use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveData};
+use rustc_mir_dataflow::move_paths::{
+    InitIndex, InitLocation, LookupResult, MoveData, MoveOutIndex, MovePathIndex,
+};
 use rustc_mir_dataflow::Analysis;
-use rustc_mir_dataflow::MoveDataParamEnv;
-
-use crate::session_diagnostics::VarNeedNotMut;
+use rustc_session::lint::builtin::UNUSED_MUT;
+use rustc_span::{Span, Symbol};
+use rustc_target::abi::FieldIdx;
+use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
 use self::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
 use self::location::LocationTable;
-use self::prefixes::PrefixSet;
-use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
-
 use self::path_utils::*;
+use self::prefixes::PrefixSet;
+use crate::session_diagnostics::VarNeedNotMut;
 
 pub mod borrow_set;
 mod borrowck_errors;
@@ -196,9 +193,7 @@ fn do_mir_borrowck<'tcx>(
         .iter_enumerated()
         .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, param_env, |_| true)));
 
-    let mdpe = MoveDataParamEnv { move_data, param_env };
-
-    let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
+    let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint()
@@ -206,7 +201,7 @@ fn do_mir_borrowck<'tcx>(
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def).is_fn_or_closure();
     let borrow_set =
-        Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
+        Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data));
 
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
@@ -224,7 +219,7 @@ fn do_mir_borrowck<'tcx>(
         &location_table,
         param_env,
         &mut flow_inits,
-        &mdpe.move_data,
+        &move_data,
         &borrow_set,
         tcx.closure_captures(def),
         consumer_options,
@@ -232,7 +227,7 @@ fn do_mir_borrowck<'tcx>(
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
-    nll::dump_mir_results(&infcx, body, &regioncx, &opt_closure_req);
+    nll::dump_nll_mir(&infcx, body, &regioncx, &opt_closure_req, &borrow_set);
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
@@ -256,11 +251,11 @@ fn do_mir_borrowck<'tcx>(
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
-    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
+    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
-    let flow_ever_inits = EverInitializedPlaces::new(body, &mdpe)
+    let flow_ever_inits = EverInitializedPlaces::new(body, &move_data)
         .into_engine(tcx, body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
@@ -326,7 +321,7 @@ fn do_mir_borrowck<'tcx>(
         infcx: &infcx,
         param_env,
         body,
-        move_data: &mdpe.move_data,
+        move_data: &move_data,
         location_table: &location_table,
         movable_coroutine,
         locals_are_invalidated_at_exit,
@@ -1246,7 +1241,7 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
                 );
             }
 
-            &Rvalue::AddressOf(mutability, place) => {
+            &Rvalue::RawPtr(mutability, place) => {
                 let access_kind = match mutability {
                     Mutability::Mut => (
                         Deep,
@@ -1648,7 +1643,7 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
                     | ty::Pat(_, _)
                     | ty::Slice(_)
                     | ty::FnDef(_, _)
-                    | ty::FnPtr(_)
+                    | ty::FnPtr(..)
                     | ty::Dynamic(_, _, _)
                     | ty::Closure(_, _)
                     | ty::CoroutineClosure(_, _)
@@ -1693,7 +1688,7 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
                     | ty::RawPtr(_, _)
                     | ty::Ref(_, _, _)
                     | ty::FnDef(_, _)
-                    | ty::FnPtr(_)
+                    | ty::FnPtr(..)
                     | ty::Dynamic(_, _, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
@@ -2448,7 +2443,7 @@ mod diags {
         }
     }
 
-    pub struct BorrowckDiags<'infcx, 'tcx> {
+    pub(crate) struct BorrowckDiags<'infcx, 'tcx> {
         /// This field keeps track of move errors that are to be reported for given move indices.
         ///
         /// There are situations where many errors can be reported for a single move out (see
@@ -2472,7 +2467,7 @@ mod diags {
     }
 
     impl<'infcx, 'tcx> BorrowckDiags<'infcx, 'tcx> {
-        pub fn new() -> Self {
+        pub(crate) fn new() -> Self {
             BorrowckDiags {
                 buffered_move_errors: BTreeMap::new(),
                 buffered_mut_errors: Default::default(),
@@ -2480,25 +2475,25 @@ mod diags {
             }
         }
 
-        pub fn buffer_error(&mut self, diag: Diag<'infcx>) {
+        pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
             self.buffered_diags.push(BufferedDiag::Error(diag));
         }
 
-        pub fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
+        pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
             self.buffered_diags.push(BufferedDiag::NonError(diag));
         }
     }
 
     impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
-        pub fn buffer_error(&mut self, diag: Diag<'infcx>) {
+        pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
             self.diags.buffer_error(diag);
         }
 
-        pub fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
+        pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
             self.diags.buffer_non_error(diag);
         }
 
-        pub fn buffer_move_error(
+        pub(crate) fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
             place_and_err: (PlaceRef<'tcx>, Diag<'infcx>),
@@ -2514,17 +2509,20 @@ mod diags {
             }
         }
 
-        pub fn get_buffered_mut_error(&mut self, span: Span) -> Option<(Diag<'infcx>, usize)> {
+        pub(crate) fn get_buffered_mut_error(
+            &mut self,
+            span: Span,
+        ) -> Option<(Diag<'infcx>, usize)> {
             // FIXME(#120456) - is `swap_remove` correct?
             self.diags.buffered_mut_errors.swap_remove(&span)
         }
 
-        pub fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
+        pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
             self.diags.buffered_mut_errors.insert(span, (diag, count));
         }
 
-        pub fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
-            let mut res = None;
+        pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
+            let mut res = self.infcx.tainted_by_errors();
 
             // Buffer any move errors that we collected and de-duplicated.
             for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
@@ -2557,7 +2555,7 @@ mod diags {
             self.diags.buffered_diags.is_empty()
         }
 
-        pub fn has_move_error(
+        pub(crate) fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
         ) -> Option<&(PlaceRef<'tcx>, Diag<'infcx>)> {

@@ -2,11 +2,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::ascii;
-use crate::intrinsics;
-use crate::mem;
 use crate::str::FromStr;
 use crate::ub_checks::assert_unsafe_precondition;
+use crate::{ascii, intrinsics, mem};
 
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
@@ -43,44 +41,37 @@ mod uint_macros; // import uint_impl!
 
 mod error;
 mod int_log10;
+mod int_sqrt;
 mod nonzero;
 mod overflow_panic;
 mod saturating;
 mod wrapping;
 
-#[stable(feature = "saturating_int_impl", since = "1.74.0")]
-pub use saturating::Saturating;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use wrapping::Wrapping;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
-
+#[stable(feature = "int_error_matching", since = "1.55.0")]
+pub use error::IntErrorKind;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
-
+#[stable(feature = "try_from", since = "1.34.0")]
+pub use error::TryFromIntError;
+#[stable(feature = "generic_nonzero", since = "1.79.0")]
+pub use nonzero::NonZero;
 #[unstable(
     feature = "nonzero_internals",
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
 pub use nonzero::ZeroablePrimitive;
-
-#[stable(feature = "generic_nonzero", since = "1.79.0")]
-pub use nonzero::NonZero;
-
 #[stable(feature = "signed_nonzero", since = "1.34.0")]
 pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize};
-
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use nonzero::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
-
-#[stable(feature = "try_from", since = "1.34.0")]
-pub use error::TryFromIntError;
-
-#[stable(feature = "int_error_matching", since = "1.55.0")]
-pub use error::IntErrorKind;
+#[stable(feature = "saturating_int_impl", since = "1.74.0")]
+pub use saturating::Saturating;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use wrapping::Wrapping;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
     () => {
@@ -483,6 +474,7 @@ impl u8 {
         ActualT = u8,
         SignedT = i8,
         BITS = 8,
+        BITS_MINUS_ONE = 7,
         MAX = 255,
         rot = 2,
         rot_op = "0x82",
@@ -1097,6 +1089,7 @@ impl u16 {
         ActualT = u16,
         SignedT = i16,
         BITS = 16,
+        BITS_MINUS_ONE = 15,
         MAX = 65535,
         rot = 4,
         rot_op = "0xa003",
@@ -1145,6 +1138,7 @@ impl u32 {
         ActualT = u32,
         SignedT = i32,
         BITS = 32,
+        BITS_MINUS_ONE = 31,
         MAX = 4294967295,
         rot = 8,
         rot_op = "0x10000b3",
@@ -1168,6 +1162,7 @@ impl u64 {
         ActualT = u64,
         SignedT = i64,
         BITS = 64,
+        BITS_MINUS_ONE = 63,
         MAX = 18446744073709551615,
         rot = 12,
         rot_op = "0xaa00000000006e1",
@@ -1191,6 +1186,7 @@ impl u128 {
         ActualT = u128,
         SignedT = i128,
         BITS = 128,
+        BITS_MINUS_ONE = 127,
         MAX = 340282366920938463463374607431768211455,
         rot = 16,
         rot_op = "0x13f40000000000000000000000004f76",
@@ -1216,6 +1212,7 @@ impl usize {
         ActualT = u16,
         SignedT = isize,
         BITS = 16,
+        BITS_MINUS_ONE = 15,
         MAX = 65535,
         rot = 4,
         rot_op = "0xa003",
@@ -1240,6 +1237,7 @@ impl usize {
         ActualT = u32,
         SignedT = isize,
         BITS = 32,
+        BITS_MINUS_ONE = 31,
         MAX = 4294967295,
         rot = 8,
         rot_op = "0x10000b3",
@@ -1264,6 +1262,7 @@ impl usize {
         ActualT = u64,
         SignedT = isize,
         BITS = 64,
+        BITS_MINUS_ONE = 63,
         MAX = 18446744073709551615,
         rot = 12,
         rot_op = "0xaa00000000006e1",
@@ -1386,6 +1385,7 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 #[doc(hidden)]
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
+#[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
@@ -1435,7 +1435,7 @@ macro_rules! from_str_radix {
             #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_str_radix(\"A\", 16), Ok(10));")]
             /// ```
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_from_str", issue = "59133")]
+            #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<$int_ty, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
@@ -1565,7 +1565,7 @@ macro_rules! from_str_radix_size_impl {
         #[doc = concat!("assert_eq!(", stringify!($size), "::from_str_radix(\"A\", 16), Ok(10));")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_int_from_str", issue = "59133")]
+        #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
         pub const fn from_str_radix(src: &str, radix: u32) -> Result<$size, ParseIntError> {
             match <$t>::from_str_radix(src, radix) {
                 Ok(x) => Ok(x as $size),

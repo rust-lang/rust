@@ -1,3 +1,5 @@
+use std::{fmt, iter};
+
 use rustc_hir::lang_items::LangItem;
 use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
@@ -5,12 +7,10 @@ use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
-use std::{fmt, iter};
 use tracing::{debug, instrument};
 
 /// The value of an inserted drop flag.
@@ -703,7 +703,7 @@ where
             statements: vec![
                 self.assign(
                     ptr,
-                    Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
+                    Rvalue::RawPtr(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
                 ),
                 self.assign(
                     cur.into(),

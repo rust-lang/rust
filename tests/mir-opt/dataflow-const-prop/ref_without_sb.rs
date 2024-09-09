@@ -24,7 +24,7 @@ fn main() {
     // This should currently not be propagated.
 
     // CHECK-NOT: [[b]] = const
-    // CHECK: [[b]] = [[a]];
+    // CHECK: [[b]] = copy [[a]];
     // CHECK-NOT: [[b]] = const
     let b = a;
 }

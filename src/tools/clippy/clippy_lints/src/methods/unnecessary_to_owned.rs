@@ -2,13 +2,12 @@ use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_opt};
-use clippy_utils::ty::{
-    get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item, peel_mid_ty_refs,
-};
+use clippy_utils::source::{snippet, SpanRangeExt};
+use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
-    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, match_def_path, paths, return_ty,
+    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, match_def_path, paths, peel_middle_ty_refs,
+    return_ty,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -120,8 +119,8 @@ fn check_addr_of_expr(
                 },
             ] = adjustments[..]
         && let receiver_ty = cx.typeck_results().expr_ty(receiver)
-        && let (target_ty, n_target_refs) = peel_mid_ty_refs(*target_ty)
-        && let (receiver_ty, n_receiver_refs) = peel_mid_ty_refs(receiver_ty)
+        && let (target_ty, n_target_refs) = peel_middle_ty_refs(*target_ty)
+        && let (receiver_ty, n_receiver_refs) = peel_middle_ty_refs(receiver_ty)
         // Only flag cases satisfying at least one of the following three conditions:
         // * the referent and receiver types are distinct
         // * the referent/receiver type is a copyable array
@@ -134,7 +133,7 @@ fn check_addr_of_expr(
         && (*referent_ty != receiver_ty
             || (matches!(referent_ty.kind(), ty::Array(..)) && is_copy(cx, *referent_ty))
             || is_cow_into_owned(cx, method_name, method_def_id))
-        && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
+        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
     {
         if receiver_ty == target_ty && n_target_refs >= n_receiver_refs {
             span_lint_and_sugg(
@@ -168,7 +167,7 @@ fn check_addr_of_expr(
                     parent.span,
                     format!("unnecessary use of `{method_name}`"),
                     "use",
-                    receiver_snippet,
+                    receiver_snippet.to_owned(),
                     Applicability::MachineApplicable,
                 );
             } else {
@@ -218,7 +217,7 @@ fn check_into_iter_call_arg(
         && let parent_ty = cx.typeck_results().expr_ty(parent)
         && implements_trait(cx, parent_ty, iterator_trait_id, &[])
         && let Some(item_ty) = get_iterator_item_ty(cx, parent_ty)
-        && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
+        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
     {
         if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
             return true;
@@ -310,8 +309,8 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
     if let Some(parent) = get_parent_expr(cx, expr)
         && let Some((fn_name, argument_expr)) = get_fn_name_and_arg(cx, parent)
         && fn_name.as_str() == "split"
-        && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
-        && let Some(arg_snippet) = snippet_opt(cx, argument_expr.span)
+        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
+        && let Some(arg_snippet) = argument_expr.span.get_source_text(cx)
     {
         // We may end-up here because of an expression like `x.to_string().split(…)` where the type of `x`
         // implements `AsRef<str>` but does not implement `Deref<Target = str>`. In this case, we have to
@@ -382,7 +381,7 @@ fn check_other_call_arg<'tcx>(
         && let fn_sig = cx.tcx.fn_sig(callee_def_id).instantiate_identity().skip_binder()
         && let Some(i) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == maybe_arg.hir_id)
         && let Some(input) = fn_sig.inputs().get(i)
-        && let (input, n_refs) = peel_mid_ty_refs(*input)
+        && let (input, n_refs) = peel_middle_ty_refs(*input)
         && let (trait_predicates, _) = get_input_traits_and_projections(cx, callee_def_id, input)
         && let Some(sized_def_id) = cx.tcx.lang_items().sized_trait()
         && let [trait_predicate] = trait_predicates
@@ -406,7 +405,7 @@ fn check_other_call_arg<'tcx>(
             None
         }
         && can_change_type(cx, maybe_arg, receiver_ty)
-        && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
+        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
     {
         span_lint_and_sugg(
             cx,
@@ -696,7 +695,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
         && let arg_ty = arg_ty.peel_refs()
         // For now we limit this lint to `String` and `Vec`.
         && (is_str_and_string(cx, arg_ty, original_arg_ty) || is_slice_and_vec(cx, arg_ty, original_arg_ty))
-        && let Some(snippet) = snippet_opt(cx, caller.span)
+        && let Some(snippet) = caller.span.get_source_text(cx)
     {
         span_lint_and_sugg(
             cx,
@@ -707,7 +706,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
             if original_arg_ty.is_array() {
                 format!("{snippet}.as_slice()")
             } else {
-                snippet
+                snippet.to_owned()
             },
             Applicability::MaybeIncorrect,
         );

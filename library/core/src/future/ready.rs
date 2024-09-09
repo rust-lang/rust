@@ -34,13 +34,12 @@ impl<T> Ready<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ready_into_inner)]
     /// use std::future;
     ///
     /// let a = future::ready(1);
     /// assert_eq!(a.into_inner(), 1);
     /// ```
-    #[unstable(feature = "ready_into_inner", issue = "101196")]
+    #[stable(feature = "ready_into_inner", since = "1.82.0")]
     #[must_use]
     #[inline]
     pub fn into_inner(self) -> T {

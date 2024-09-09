@@ -1,22 +1,21 @@
-use super::metadata::file_metadata;
-use super::utils::DIB;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 use rustc_codegen_ssa::traits::*;
-
-use crate::common::CodegenCx;
-use crate::llvm;
-use crate::llvm::debuginfo::{DILocation, DIScope};
+use rustc_index::bit_set::BitSet;
+use rustc_index::Idx;
 use rustc_middle::mir::{Body, SourceScope};
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
 
-use rustc_index::bit_set::BitSet;
-use rustc_index::Idx;
+use super::metadata::file_metadata;
+use super::utils::DIB;
+use crate::common::CodegenCx;
+use crate::llvm;
+use crate::llvm::debuginfo::{DILocation, DIScope};
 
 /// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 // FIXME(eddyb) almost all of this should be in `rustc_codegen_ssa::mir::debuginfo`.
-pub fn compute_mir_scopes<'ll, 'tcx>(
+pub(crate) fn compute_mir_scopes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
@@ -89,7 +88,7 @@ fn make_mir_scope<'ll, 'tcx>(
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
     let file_metadata = file_metadata(cx, &loc.file);
 
-    let parent_dbg_scope = match scope_data.inlined {
+    let dbg_scope = match scope_data.inlined {
         Some((callee, _)) => {
             // FIXME(eddyb) this would be `self.monomorphize(&callee)`
             // if this is moved to `rustc_codegen_ssa::mir::debuginfo`.
@@ -103,17 +102,15 @@ fn make_mir_scope<'ll, 'tcx>(
                 cx.dbg_scope_fn(callee, callee_fn_abi, None)
             })
         }
-        None => parent_scope.dbg_scope,
-    };
-
-    let dbg_scope = unsafe {
-        llvm::LLVMRustDIBuilderCreateLexicalBlock(
-            DIB(cx),
-            parent_dbg_scope,
-            file_metadata,
-            loc.line,
-            loc.col,
-        )
+        None => unsafe {
+            llvm::LLVMRustDIBuilderCreateLexicalBlock(
+                DIB(cx),
+                parent_scope.dbg_scope,
+                file_metadata,
+                loc.line,
+                loc.col,
+            )
+        },
     };
 
     let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {

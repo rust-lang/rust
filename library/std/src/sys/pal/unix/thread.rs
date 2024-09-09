@@ -1,16 +1,13 @@
-use crate::cmp;
 use crate::ffi::CStr;
-use crate::io;
 use crate::mem::{self, ManuallyDrop};
 use crate::num::NonZero;
-use crate::ptr;
-use crate::sys::{os, stack_overflow};
-use crate::time::Duration;
-
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
-#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
+#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
+use crate::sys::{os, stack_overflow};
+use crate::time::Duration;
+use crate::{cmp, io, ptr};
 #[cfg(not(any(target_os = "l4re", target_os = "vxworks", target_os = "espidf")))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 #[cfg(target_os = "l4re")]
@@ -215,17 +212,31 @@ impl Thread {
         }
     }
 
+    #[cfg(target_os = "vxworks")]
+    pub fn set_name(name: &CStr) {
+        // FIXME(libc): adding real STATUS, ERROR type eventually.
+        extern "C" {
+            fn taskNameSet(task_id: libc::TASK_ID, task_name: *mut libc::c_char) -> libc::c_int;
+        }
+
+        //  VX_TASK_NAME_LEN is 31 in VxWorks 7.
+        const VX_TASK_NAME_LEN: usize = 31;
+
+        let mut name = truncate_cstr::<{ VX_TASK_NAME_LEN }>(name);
+        let res = unsafe { taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
+        debug_assert_eq!(res, libc::OK);
+    }
+
     #[cfg(any(
         target_env = "newlib",
         target_os = "l4re",
         target_os = "emscripten",
         target_os = "redox",
-        target_os = "vxworks",
         target_os = "hurd",
         target_os = "aix",
     ))]
     pub fn set_name(_name: &CStr) {
-        // Newlib, Emscripten, and VxWorks have no way to set a thread name.
+        // Newlib and Emscripten have no way to set a thread name.
     }
 
     #[cfg(not(target_os = "espidf"))]
@@ -256,14 +267,32 @@ impl Thread {
 
     #[cfg(target_os = "espidf")]
     pub fn sleep(dur: Duration) {
-        let mut micros = dur.as_micros();
-        unsafe {
-            while micros > 0 {
-                let st = if micros > u32::MAX as u128 { u32::MAX } else { micros as u32 };
-                libc::usleep(st);
+        // ESP-IDF does not have `nanosleep`, so we use `usleep` instead.
+        // As per the documentation of `usleep`, it is expected to support
+        // sleep times as big as at least up to 1 second.
+        //
+        // ESP-IDF does support almost up to `u32::MAX`, but due to a potential integer overflow in its
+        // `usleep` implementation
+        // (https://github.com/espressif/esp-idf/blob/d7ca8b94c852052e3bc33292287ef4dd62c9eeb1/components/newlib/time.c#L210),
+        // we limit the sleep time to the maximum one that would not cause the underlying `usleep` implementation to overflow
+        // (`portTICK_PERIOD_MS` can be anything between 1 to 1000, and is 10 by default).
+        const MAX_MICROS: u32 = u32::MAX - 1_000_000 - 1;
 
-                micros -= st as u128;
+        // Add any nanoseconds smaller than a microsecond as an extra microsecond
+        // so as to comply with the `std::thread::sleep` contract which mandates
+        // implementations to sleep for _at least_ the provided `dur`.
+        // We can't overflow `micros` as it is a `u128`, while `Duration` is a pair of
+        // (`u64` secs, `u32` nanos), where the nanos are strictly smaller than 1 second
+        // (i.e. < 1_000_000_000)
+        let mut micros = dur.as_micros() + if dur.subsec_nanos() % 1_000 > 0 { 1 } else { 0 };
+
+        while micros > 0 {
+            let st = if micros > MAX_MICROS as u128 { MAX_MICROS } else { micros as u32 };
+            unsafe {
+                libc::usleep(st);
             }
+
+            micros -= st as u128;
         }
     }
 
@@ -294,6 +323,7 @@ impl Drop for Thread {
     target_os = "nto",
     target_os = "solaris",
     target_os = "illumos",
+    target_os = "vxworks",
     target_vendor = "apple",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
@@ -458,8 +488,20 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
 
                 Ok(NonZero::new_unchecked(sinfo.cpu_count as usize))
             }
+        } else if #[cfg(target_os = "vxworks")] {
+            // Note: there is also `vxCpuConfiguredGet`, closer to _SC_NPROCESSORS_CONF
+            // expectations than the actual cores availability.
+            extern "C" {
+                fn vxCpuEnabledGet() -> libc::cpuset_t;
+            }
+
+            // SAFETY: `vxCpuEnabledGet` always fetches a mask with at least one bit set
+            unsafe{
+                let set = vxCpuEnabledGet();
+                Ok(NonZero::new_unchecked(set.count_ones() as usize))
+            }
         } else {
-            // FIXME: implement on vxWorks, Redox, l4re
+            // FIXME: implement on Redox, l4re
             Err(io::const_io_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))
         }
     }
@@ -475,11 +517,9 @@ mod cgroups {
     use crate::borrow::Cow;
     use crate::ffi::OsString;
     use crate::fs::{exists, File};
-    use crate::io::Read;
-    use crate::io::{BufRead, BufReader};
+    use crate::io::{BufRead, BufReader, Read};
     use crate::os::unix::ffi::OsStringExt;
-    use crate::path::Path;
-    use crate::path::PathBuf;
+    use crate::path::{Path, PathBuf};
     use crate::str::from_utf8;
 
     #[derive(PartialEq)]

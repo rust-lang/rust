@@ -1,7 +1,7 @@
 use hir::{
     db::HirDatabase, HasSource, HasVisibility, HirFileIdExt, ModuleDef, PathResolution, ScopeDef,
 };
-use ide_db::base_db::FileId;
+use ide_db::FileId;
 use syntax::{
     ast::{self, edit_in_place::HasVisibilityEdit, make, HasVisibility as _},
     AstNode, TextRange,
@@ -48,7 +48,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let (_, def) = module
         .scope(ctx.db(), None)
         .into_iter()
-        .find(|(name, _)| name.to_smol_str() == name_ref.text().as_str())?;
+        .find(|(name, _)| name.eq_ident(name_ref.text().as_str()))?;
     let ScopeDef::ModuleDef(def) = def else {
         return None;
     };
@@ -71,7 +71,10 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let assist_label = match target_name {
         None => format!("Change visibility to {missing_visibility}"),
         Some(name) => {
-            format!("Change visibility of {} to {missing_visibility}", name.display(ctx.db()))
+            format!(
+                "Change visibility of {} to {missing_visibility}",
+                name.display(ctx.db(), current_module.krate().edition(ctx.db()))
+            )
         }
     };
 
@@ -92,6 +95,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
     let (record_field_def, _, _) = ctx.sema.resolve_record_field(&record_field)?;
 
     let current_module = ctx.sema.scope(record_field.syntax())?.module();
+    let current_edition = current_module.krate().edition(ctx.db());
     let visibility = record_field_def.visibility(ctx.db());
     if visibility.is_visible_from(ctx.db(), current_module.into()) {
         return None;
@@ -123,12 +127,12 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
     let target_name = record_field_def.name(ctx.db());
     let assist_label = format!(
         "Change visibility of {}.{} to {missing_visibility}",
-        parent_name.display(ctx.db()),
-        target_name.display(ctx.db())
+        parent_name.display(ctx.db(), current_edition),
+        target_name.display(ctx.db(), current_edition)
     );
 
     acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |edit| {
-        edit.edit_file(target_file);
+        edit.edit_file(target_file.file_id());
 
         let vis_owner = edit.make_mut(vis_owner);
         vis_owner.set_visibility(Some(missing_visibility.clone_for_update()));
@@ -155,7 +159,11 @@ fn target_data_for_def(
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;
         let range = in_file_syntax.value.text_range();
-        Some((ast::AnyHasVisibility::new(source.value), range, file_id.original_file(db.upcast())))
+        Some((
+            ast::AnyHasVisibility::new(source.value),
+            range,
+            file_id.original_file(db.upcast()).file_id(),
+        ))
     }
 
     let target_name;
@@ -197,7 +205,7 @@ fn target_data_for_def(
             let in_file_source = m.declaration_source(db)?;
             let file_id = in_file_source.file_id.original_file(db.upcast());
             let range = in_file_source.value.syntax().text_range();
-            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id)
+            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id.file_id())
         }
         // FIXME
         hir::ModuleDef::Macro(_) => return None,

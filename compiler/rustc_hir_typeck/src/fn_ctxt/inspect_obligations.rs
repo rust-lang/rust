@@ -1,12 +1,15 @@
 //! A utility module to inspect currently ambiguous obligations in the current context.
 
-use crate::FnCtxt;
 use rustc_infer::traits::{self, ObligationCause};
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
-use rustc_trait_selection::solve::inspect::ProofTreeInferCtxtExt;
-use rustc_trait_selection::solve::inspect::{InspectConfig, InspectGoal, ProofTreeVisitor};
+use rustc_trait_selection::solve::inspect::{
+    InspectConfig, InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor,
+};
+use tracing::{debug, instrument, trace};
+
+use crate::FnCtxt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a list of all obligations whose self type has been unified

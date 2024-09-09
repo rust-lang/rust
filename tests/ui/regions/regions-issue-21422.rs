@@ -5,7 +5,6 @@
 
 //@ pretty-expanded FIXME #23616
 
-#[allow(dead_code)]
 pub struct P<'a> {
     _ptr: *const &'a u8,
 }

@@ -1,13 +1,13 @@
-use crate::pp::Breaks::Inconsistent;
-use crate::pprust::state::fixup::FixupContext;
-use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
-
 use ast::StaticItem;
 use itertools::{Itertools, Position};
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::ModKind;
 use rustc_span::symbol::Ident;
+
+use crate::pp::Breaks::Inconsistent;
+use crate::pprust::state::fixup::FixupContext;
+use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
 enum DelegationKind<'a> {
     Single,
@@ -783,8 +783,8 @@ impl<'a> State<'a> {
                 }
                 if items.is_empty() {
                     self.word("{}");
-                } else if items.len() == 1 {
-                    self.print_use_tree(&items[0].0);
+                } else if let [(item, _)] = items.as_slice() {
+                    self.print_use_tree(item);
                 } else {
                     self.cbox(INDENT_UNIT);
                     self.word("{");

@@ -1,10 +1,5 @@
 use std::mem;
 
-use super::StructurallyRelateAliases;
-use super::{PredicateEmittingRelation, Relate, RelateResult, TypeRelation};
-use crate::infer::relate;
-use crate::infer::type_variable::TypeVariableValue;
-use crate::infer::{InferCtxt, RegionVariableOrigin};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
@@ -12,9 +7,17 @@ use rustc_middle::bug;
 use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::MaxUniverse;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{AliasRelationDirection, InferConst, Term, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
+};
 use rustc_span::Span;
+use tracing::{debug, instrument, warn};
+
+use super::{
+    PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
+};
+use crate::infer::type_variable::TypeVariableValue;
+use crate::infer::{relate, InferCtxt, RegionVariableOrigin};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// The idea is that we should ensure that the type variable `target_vid`
@@ -117,7 +120,7 @@ impl<'tcx> InferCtxt<'tcx> {
         } else {
             // NOTE: The `instantiation_variance` is not the same variance as
             // used by the relation. When instantiating `b`, `target_is_expected`
-            // is flipped and the `instantion_variance` is also flipped. To
+            // is flipped and the `instantiation_variance` is also flipped. To
             // constrain the `generalized_ty` while using the original relation,
             // we therefore only have to flip the arguments.
             //
@@ -703,7 +706,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
 /// not only the generalized type, but also a bool flag
 /// indicating whether further WF checks are needed.
 #[derive(Debug)]
-pub struct Generalization<T> {
+struct Generalization<T> {
     /// When generalizing `<?0 as Trait>::Assoc` or
     /// `<T as Bar<<?0 as Foo>::Assoc>>::Assoc`
     /// for `?0` generalization returns an inference

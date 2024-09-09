@@ -8,14 +8,16 @@ use hir_def::{
     builtin_type::{BuiltinInt, BuiltinUint},
     resolver::HasResolver,
 };
+use hir_expand::name::Name;
+use intern::sym;
 
 use crate::{
     error_lifetime,
     mir::eval::{
-        name, pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule,
-        HirDisplay, Interned, InternedClosure, Interner, Interval, IntervalAndTy, IntervalOrOwned,
-        ItemContainerId, LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability,
-        Result, Substitution, Ty, TyBuilder, TyExt,
+        pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
+        InternedClosure, Interner, Interval, IntervalAndTy, IntervalOrOwned, ItemContainerId,
+        LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability, Result, Substitution,
+        Ty, TyBuilder, TyExt,
     },
 };
 
@@ -25,6 +27,7 @@ macro_rules! from_bytes {
     ($ty:tt, $value:expr) => {
         ($ty::from_le_bytes(match ($value).try_into() {
             Ok(it) => it,
+            #[allow(unreachable_patterns)]
             Err(_) => return Err(MirEvalError::InternalError("mismatched size".into())),
         }))
     };
@@ -52,19 +55,19 @@ impl Evaluator<'_> {
 
         let function_data = self.db.function_data(def);
         let is_intrinsic = match &function_data.abi {
-            Some(abi) => *abi == Interned::new_str("rust-intrinsic"),
+            Some(abi) => *abi == sym::rust_dash_intrinsic,
             None => match def.lookup(self.db.upcast()).container {
                 hir_def::ItemContainerId::ExternBlockId(block) => {
                     let id = block.lookup(self.db.upcast()).id;
-                    id.item_tree(self.db.upcast())[id.value].abi.as_deref()
-                        == Some("rust-intrinsic")
+                    id.item_tree(self.db.upcast())[id.value].abi.as_ref()
+                        == Some(&sym::rust_dash_intrinsic)
                 }
                 _ => false,
             },
         };
         if is_intrinsic {
             self.exec_intrinsic(
-                function_data.name.as_text().unwrap_or_default().as_str(),
+                function_data.name.as_str(),
                 args,
                 generic_args,
                 destination,
@@ -74,19 +77,19 @@ impl Evaluator<'_> {
             return Ok(true);
         }
         let is_platform_intrinsic = match &function_data.abi {
-            Some(abi) => *abi == Interned::new_str("platform-intrinsic"),
+            Some(abi) => *abi == sym::platform_dash_intrinsic,
             None => match def.lookup(self.db.upcast()).container {
                 hir_def::ItemContainerId::ExternBlockId(block) => {
                     let id = block.lookup(self.db.upcast()).id;
-                    id.item_tree(self.db.upcast())[id.value].abi.as_deref()
-                        == Some("platform-intrinsic")
+                    id.item_tree(self.db.upcast())[id.value].abi.as_ref()
+                        == Some(&sym::platform_dash_intrinsic)
                 }
                 _ => false,
             },
         };
         if is_platform_intrinsic {
             self.exec_platform_intrinsic(
-                function_data.name.as_text().unwrap_or_default().as_str(),
+                function_data.name.as_str(),
                 args,
                 generic_args,
                 destination,
@@ -98,13 +101,13 @@ impl Evaluator<'_> {
         let is_extern_c = match def.lookup(self.db.upcast()).container {
             hir_def::ItemContainerId::ExternBlockId(block) => {
                 let id = block.lookup(self.db.upcast()).id;
-                id.item_tree(self.db.upcast())[id.value].abi.as_deref() == Some("C")
+                id.item_tree(self.db.upcast())[id.value].abi.as_ref() == Some(&sym::C)
             }
             _ => false,
         };
         if is_extern_c {
             self.exec_extern_c(
-                function_data.name.as_text().unwrap_or_default().as_str(),
+                function_data.name.as_str(),
                 args,
                 generic_args,
                 destination,
@@ -117,7 +120,7 @@ impl Evaluator<'_> {
             .attrs
             .iter()
             .filter_map(|it| it.path().as_ident())
-            .filter_map(|it| it.as_str())
+            .map(|it| it.as_str())
             .find(|it| {
                 [
                     "rustc_allocator",
@@ -312,12 +315,12 @@ impl Evaluator<'_> {
         use LangItem::*;
         let attrs = self.db.attrs(def.into());
 
-        if attrs.by_key("rustc_const_panic_str").exists() {
+        if attrs.by_key(&sym::rustc_const_panic_str).exists() {
             // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
             return Some(LangItem::BeginPanic);
         }
 
-        let candidate = attrs.by_key("lang").string_value().and_then(LangItem::from_str)?;
+        let candidate = attrs.lang_item()?;
         // We want to execute these functions with special logic
         // `PanicFmt` is not detected here as it's redirected later.
         if [BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
@@ -853,7 +856,11 @@ impl Evaluator<'_> {
                     Ok(ty_name) => ty_name,
                     // Fallback to human readable display in case of `Err`. Ideally we want to use `display_source_code` to
                     // render full paths.
-                    Err(_) => ty.display(self.db).to_string(),
+                    Err(_) => {
+                        let krate = locals.body.owner.krate(self.db.upcast());
+                        let edition = self.db.crate_graph()[krate].edition;
+                        ty.display(self.db, edition).to_string()
+                    }
                 };
                 let len = ty_name.len();
                 let addr = self.heap_allocate(len, 1)?;
@@ -1274,10 +1281,11 @@ impl Evaluator<'_> {
                     args.push(IntervalAndTy::new(addr, field, self, locals)?);
                 }
                 if let Some(target) = self.db.lang_item(self.crate_id, LangItem::FnOnce) {
-                    if let Some(def) = target
-                        .as_trait()
-                        .and_then(|it| self.db.trait_data(it).method_by_name(&name![call_once]))
-                    {
+                    if let Some(def) = target.as_trait().and_then(|it| {
+                        self.db
+                            .trait_data(it)
+                            .method_by_name(&Name::new_symbol_root(sym::call_once.clone()))
+                    }) {
                         self.exec_fn_trait(
                             def,
                             &args,

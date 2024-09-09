@@ -1,15 +1,16 @@
 //! Least upper bound. See [`lattice`].
 
+use rustc_middle::traits::solve::Goal;
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::Span;
+use tracing::{debug, instrument};
+
 use super::combine::{CombineFields, PredicateEmittingRelation};
 use super::lattice::{self, LatticeDir};
 use super::StructurallyRelateAliases;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
 use crate::traits::ObligationCause;
-
-use rustc_middle::traits::solve::Goal;
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::Span;
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'combine, 'infcx, 'tcx> {

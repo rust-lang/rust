@@ -12,11 +12,10 @@ use std::cell::Cell;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
-use rustc_ast as ast;
+use itertools::Itertools;
 use rustc_attr::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_metadata::creader::{CStore, LoadedMacro};
@@ -25,20 +24,18 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
+use tracing::{debug, trace};
+use {rustc_ast as ast, rustc_hir as hir};
 
-use itertools::Itertools;
-
-use crate::clean::{
-    self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, PrimitiveType,
-};
+use super::url_parts_builder::{estimate_item_path_byte_length, UrlPartsBuilder};
+use crate::clean::types::ExternalLocation;
+use crate::clean::utils::find_nearest_parent_module;
+use crate::clean::{self, ExternalCrate, PrimitiveType};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
-
-use super::url_parts_builder::estimate_item_path_byte_length;
-use super::url_parts_builder::UrlPartsBuilder;
 
 pub(crate) trait Print {
     fn print(self, buffer: &mut Buffer);
@@ -375,7 +372,7 @@ impl clean::Lifetime {
     }
 }
 
-impl clean::Constant {
+impl clean::ConstantKind {
     pub(crate) fn print(&self, tcx: TyCtxt<'_>) -> impl Display + '_ {
         let expr = self.expr(tcx);
         display_fn(
@@ -637,7 +634,7 @@ fn generate_item_def_id_path(
     let module_fqp = to_module_fqp(shortty, &fqp);
     let mut is_remote = false;
 
-    let url_parts = url_parts(cx.cache(), def_id, &module_fqp, &cx.current, &mut is_remote)?;
+    let url_parts = url_parts(cx.cache(), def_id, module_fqp, &cx.current, &mut is_remote)?;
     let (url_parts, shortty, fqp) = make_href(root_path, shortty, url_parts, &fqp, is_remote)?;
     if def_id == original_def_id {
         return Ok((url_parts, shortty, fqp));
@@ -815,7 +812,7 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
         // primitives are documented in a crate, but not actually part of it
         &fqp[fqp.len() - 1..]
     } else {
-        &fqp
+        fqp
     };
     if let &Some(UrlFragment::Item(id)) = fragment {
         write!(buf, "{} ", cx.tcx().def_descr(id));
@@ -824,7 +821,7 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
         }
         write!(buf, "{}", cx.tcx().item_name(id));
     } else if !fqp.is_empty() {
-        let mut fqp_it = fqp.into_iter();
+        let mut fqp_it = fqp.iter();
         write!(buf, "{shortty} {}", fqp_it.next().unwrap());
         for component in fqp_it {
             write!(buf, "::{component}");
@@ -834,13 +831,13 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
 }
 
 /// Used to render a [`clean::Path`].
-fn resolved_path<'cx>(
+fn resolved_path(
     w: &mut fmt::Formatter<'_>,
     did: DefId,
     path: &clean::Path,
     print_all: bool,
     use_absolute: bool,
-    cx: &'cx Context<'_>,
+    cx: &Context<'_>,
 ) -> fmt::Result {
     let last = path.segments.last().unwrap();
 
@@ -992,6 +989,7 @@ pub(crate) fn anchor<'a, 'cx: 'a>(
                 f,
                 r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
                 path = join_with_double_colon(&fqp),
+                text = EscapeBodyText(text.as_str()),
             )
         } else {
             f.write_str(text.as_str())
@@ -999,16 +997,17 @@ pub(crate) fn anchor<'a, 'cx: 'a>(
     })
 }
 
-fn fmt_type<'cx>(
+fn fmt_type(
     t: &clean::Type,
     f: &mut fmt::Formatter<'_>,
     use_absolute: bool,
-    cx: &'cx Context<'_>,
+    cx: &Context<'_>,
 ) -> fmt::Result {
     trace!("fmt_type(t = {t:?})");
 
     match *t {
         clean::Generic(name) => f.write_str(name.as_str()),
+        clean::SelfTy => f.write_str("Self"),
         clean::Type::Path { ref path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             let did = path.def_id();
@@ -1287,59 +1286,92 @@ impl clean::Impl {
             f.write_str(" ")?;
 
             if let Some(ref ty) = self.trait_ {
-                match self.polarity {
-                    ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => {}
-                    ty::ImplPolarity::Negative => write!(f, "!")?,
+                if self.is_negative_trait_impl() {
+                    write!(f, "!")?;
                 }
-                ty.print(cx).fmt(f)?;
+                if self.kind.is_fake_variadic()
+                    && let generics = ty.generics()
+                    && let &[inner_type] = generics.as_ref().map_or(&[][..], |v| &v[..])
+                {
+                    let last = ty.last();
+                    if f.alternate() {
+                        write!(f, "{}<", last)?;
+                        self.print_type(inner_type, f, use_absolute, cx)?;
+                        write!(f, ">")?;
+                    } else {
+                        write!(f, "{}&lt;", anchor(ty.def_id(), last, cx).to_string())?;
+                        self.print_type(inner_type, f, use_absolute, cx)?;
+                        write!(f, "&gt;")?;
+                    }
+                } else {
+                    ty.print(cx).fmt(f)?;
+                }
                 write!(f, " for ")?;
             }
 
-            if let clean::Type::Tuple(types) = &self.for_
-                && let [clean::Type::Generic(name)] = &types[..]
-                && (self.kind.is_fake_variadic() || self.kind.is_auto())
-            {
-                // Hardcoded anchor library/core/src/primitive_docs.rs
-                // Link should match `# Trait implementations`
-                primitive_link_fragment(
-                    f,
-                    PrimitiveType::Tuple,
-                    format_args!("({name}₁, {name}₂, …, {name}ₙ)"),
-                    "#trait-implementations-1",
-                    cx,
-                )?;
-            } else if let clean::BareFunction(bare_fn) = &self.for_
-                && let [clean::Argument { type_: clean::Type::Generic(name), .. }] =
-                    &bare_fn.decl.inputs.values[..]
-                && (self.kind.is_fake_variadic() || self.kind.is_auto())
-            {
-                // Hardcoded anchor library/core/src/primitive_docs.rs
-                // Link should match `# Trait implementations`
-
-                print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
-                bare_fn.safety.print_with_space().fmt(f)?;
-                print_abi_with_space(bare_fn.abi).fmt(f)?;
-                let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
-                primitive_link_fragment(
-                    f,
-                    PrimitiveType::Tuple,
-                    format_args!("fn({name}₁, {name}₂, …, {name}ₙ{ellipsis})"),
-                    "#trait-implementations-1",
-                    cx,
-                )?;
-                // Write output.
-                if !bare_fn.decl.output.is_unit() {
-                    write!(f, " -> ")?;
-                    fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
-                }
-            } else if let Some(ty) = self.kind.as_blanket_ty() {
+            if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
-                fmt_type(&self.for_, f, use_absolute, cx)?;
+                self.print_type(&self.for_, f, use_absolute, cx)?;
             }
 
             print_where_clause(&self.generics, cx, 0, Ending::Newline).fmt(f)
         })
+    }
+    fn print_type<'a, 'tcx: 'a>(
+        &self,
+        type_: &clean::Type,
+        f: &mut fmt::Formatter<'_>,
+        use_absolute: bool,
+        cx: &'a Context<'tcx>,
+    ) -> Result<(), fmt::Error> {
+        if let clean::Type::Tuple(types) = type_
+            && let [clean::Type::Generic(name)] = &types[..]
+            && (self.kind.is_fake_variadic() || self.kind.is_auto())
+        {
+            // Hardcoded anchor library/core/src/primitive_docs.rs
+            // Link should match `# Trait implementations`
+            primitive_link_fragment(
+                f,
+                PrimitiveType::Tuple,
+                format_args!("({name}₁, {name}₂, …, {name}ₙ)"),
+                "#trait-implementations-1",
+                cx,
+            )?;
+        } else if let clean::Type::Array(ty, len) = type_
+            && let clean::Type::Generic(name) = &**ty
+            && &len[..] == "1"
+            && (self.kind.is_fake_variadic() || self.kind.is_auto())
+        {
+            primitive_link(f, PrimitiveType::Array, format_args!("[{name}; N]"), cx)?;
+        } else if let clean::BareFunction(bare_fn) = &type_
+            && let [clean::Argument { type_: clean::Type::Generic(name), .. }] =
+                &bare_fn.decl.inputs.values[..]
+            && (self.kind.is_fake_variadic() || self.kind.is_auto())
+        {
+            // Hardcoded anchor library/core/src/primitive_docs.rs
+            // Link should match `# Trait implementations`
+
+            print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
+            bare_fn.safety.print_with_space().fmt(f)?;
+            print_abi_with_space(bare_fn.abi).fmt(f)?;
+            let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
+            primitive_link_fragment(
+                f,
+                PrimitiveType::Tuple,
+                format_args!("fn({name}₁, {name}₂, …, {name}ₙ{ellipsis})"),
+                "#trait-implementations-1",
+                cx,
+            )?;
+            // Write output.
+            if !bare_fn.decl.output.is_unit() {
+                write!(f, " -> ")?;
+                fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
+            }
+        } else {
+            fmt_type(&type_, f, use_absolute, cx)?;
+        }
+        Ok(())
     }
 }
 
@@ -1455,29 +1487,21 @@ impl clean::FnDecl {
 
         let last_input_index = self.inputs.values.len().checked_sub(1);
         for (i, input) in self.inputs.values.iter().enumerate() {
-            if let Some(selfty) = input.to_self() {
+            if let Some(selfty) = input.to_receiver() {
                 match selfty {
-                    clean::SelfValue => {
+                    clean::SelfTy => {
                         write!(f, "self")?;
                     }
-                    clean::SelfBorrowed(Some(ref lt), mutability) => {
-                        write!(
-                            f,
-                            "{amp}{lifetime} {mutability}self",
-                            lifetime = lt.print(),
-                            mutability = mutability.print_with_space(),
-                        )?;
+                    clean::BorrowedRef { lifetime, mutability, type_: box clean::SelfTy } => {
+                        write!(f, "{amp}")?;
+                        if let Some(lt) = lifetime {
+                            write!(f, "{lt} ", lt = lt.print())?;
+                        }
+                        write!(f, "{mutability}self", mutability = mutability.print_with_space())?;
                     }
-                    clean::SelfBorrowed(None, mutability) => {
-                        write!(
-                            f,
-                            "{amp}{mutability}self",
-                            mutability = mutability.print_with_space(),
-                        )?;
-                    }
-                    clean::SelfExplicit(ref typ) => {
+                    _ => {
                         write!(f, "self: ")?;
-                        typ.print(cx).fmt(f)?;
+                        selfty.print(cx).fmt(f)?;
                     }
                 }
             } else {

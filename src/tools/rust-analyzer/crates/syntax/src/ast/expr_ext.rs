@@ -352,13 +352,22 @@ pub enum BlockModifier {
     Unsafe(SyntaxToken),
     Try(SyntaxToken),
     Const(SyntaxToken),
+    AsyncGen(SyntaxToken),
+    Gen(SyntaxToken),
     Label(ast::Label),
 }
 
 impl ast::BlockExpr {
     pub fn modifier(&self) -> Option<BlockModifier> {
-        self.async_token()
-            .map(BlockModifier::Async)
+        self.gen_token()
+            .map(|v| {
+                if self.async_token().is_some() {
+                    BlockModifier::AsyncGen(v)
+                } else {
+                    BlockModifier::Gen(v)
+                }
+            })
+            .or_else(|| self.async_token().map(BlockModifier::Async))
             .or_else(|| self.unsafe_token().map(BlockModifier::Unsafe))
             .or_else(|| self.try_token().map(BlockModifier::Try))
             .or_else(|| self.const_token().map(BlockModifier::Const))

@@ -11,13 +11,6 @@
 //! * Use define_* family of methods when you might be defining the Value.
 //! * When in doubt, define.
 
-use crate::abi::{FnAbi, FnAbiLlvmExt};
-use crate::attributes;
-use crate::context::CodegenCx;
-use crate::llvm;
-use crate::llvm::AttributePlace::Function;
-use crate::type_::Type;
-use crate::value::Value;
 use itertools::Itertools;
 use rustc_codegen_ssa::traits::TypeMembershipMethods;
 use rustc_data_structures::fx::FxIndexSet;
@@ -25,6 +18,13 @@ use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
 use smallvec::SmallVec;
 use tracing::debug;
+
+use crate::abi::{FnAbi, FnAbiLlvmExt};
+use crate::context::CodegenCx;
+use crate::llvm::AttributePlace::Function;
+use crate::type_::Type;
+use crate::value::Value;
+use crate::{attributes, llvm};
 
 /// Declare a function.
 ///
@@ -65,7 +65,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ///
     /// If there’s a value with the same name already declared, the function will
     /// return its Value instead.
-    pub fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
+    pub(crate) fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
         unsafe { llvm::LLVMRustGetOrInsertGlobal(self.llmod, name.as_ptr().cast(), name.len(), ty) }
     }
@@ -77,7 +77,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ///
     /// If there’s a value with the same name already declared, the function will
     /// update the declaration and return existing Value instead.
-    pub fn declare_cfn(
+    pub(crate) fn declare_cfn(
         &self,
         name: &str,
         unnamed: llvm::UnnamedAddr,
@@ -100,7 +100,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ///
     /// If there’s a value with the same name already declared, the function will
     /// update the declaration and return existing Value instead.
-    pub fn declare_entry_fn(
+    pub(crate) fn declare_entry_fn(
         &self,
         name: &str,
         callconv: llvm::CallConv,
@@ -119,7 +119,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ///
     /// If there’s a value with the same name already declared, the function will
     /// update the declaration and return existing Value instead.
-    pub fn declare_fn(
+    pub(crate) fn declare_fn(
         &self,
         name: &str,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
@@ -137,7 +137,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::Visibility::Default,
             fn_abi.llvm_type(self),
         );
-        fn_abi.apply_attrs_llfn(self, llfn);
+        fn_abi.apply_attrs_llfn(self, llfn, instance);
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {
@@ -199,7 +199,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// return `None` if the name already has a definition associated with it. In that
     /// case an error should be reported to the user, because it usually happens due
     /// to user’s fault (e.g., misuse of `#[no_mangle]` or `#[export_name]` attributes).
-    pub fn define_global(&self, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
+    pub(crate) fn define_global(&self, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
         if self.get_defined_value(name).is_some() {
             None
         } else {
@@ -210,19 +210,19 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// Declare a private global
     ///
     /// Use this function when you intend to define a global without a name.
-    pub fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
+    pub(crate) fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty) }
     }
 
     /// Gets declared value by name.
-    pub fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
+    pub(crate) fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
         debug!("get_declared_value(name={:?})", name);
         unsafe { llvm::LLVMRustGetNamedValue(self.llmod, name.as_ptr().cast(), name.len()) }
     }
 
     /// Gets defined or externally defined (AvailableExternally linkage) value by
     /// name.
-    pub fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
+    pub(crate) fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
         self.get_declared_value(name).and_then(|val| {
             let declaration = unsafe { llvm::LLVMIsDeclaration(val) != 0 };
             if !declaration { Some(val) } else { None }

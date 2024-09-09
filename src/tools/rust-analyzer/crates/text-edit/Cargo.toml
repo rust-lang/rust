@@ -1,7 +1,8 @@
 [package]
 name = "text-edit"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Representation of a `TextEdit` for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

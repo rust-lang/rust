@@ -23,6 +23,7 @@
 // We want to be able to build this crate with a stable compiler,
 // so no `#![feature]` attributes should be added.
 #![deny(unstable_features)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod cursor;
@@ -31,12 +32,12 @@ pub mod unescape;
 #[cfg(test)]
 mod tests;
 
-pub use crate::cursor::Cursor;
+use unicode_properties::UnicodeEmoji;
 
 use self::LiteralKind::*;
 use self::TokenKind::*;
+pub use crate::cursor::Cursor;
 use crate::cursor::EOF_CHAR;
-use unicode_properties::UnicodeEmoji;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -89,6 +90,15 @@ pub enum TokenKind {
     /// (allowed by default) lint, and are treated as regular identifier
     /// tokens.
     UnknownPrefix,
+
+    /// An unknown prefix in a lifetime, like `'foo#`.
+    ///
+    /// Note that like above, only the `'` and prefix are included in the token
+    /// and not the separator.
+    UnknownPrefixLifetime,
+
+    /// `'r#lt`, which in edition < 2021 is split into several tokens: `'r # lt`.
+    RawLifetime,
 
     /// Similar to the above, but *always* an error on every edition. This is used
     /// for emoji identifier recovery, as those are not meant to be ever accepted.
@@ -676,9 +686,17 @@ impl Cursor<'_> {
             return Literal { kind, suffix_start };
         }
 
+        if self.first() == 'r' && self.second() == '#' && is_id_start(self.third()) {
+            // Eat "r" and `#`, and identifier start characters.
+            self.bump();
+            self.bump();
+            self.bump();
+            self.eat_while(is_id_continue);
+            return RawLifetime;
+        }
+
         // Either a lifetime or a character literal with
         // length greater than 1.
-
         let starts_with_number = self.first().is_ascii_digit();
 
         // Skip the literal contents.
@@ -687,15 +705,17 @@ impl Cursor<'_> {
         self.bump();
         self.eat_while(is_id_continue);
 
-        // Check if after skipping literal contents we've met a closing
-        // single quote (which means that user attempted to create a
-        // string with single quotes).
-        if self.first() == '\'' {
-            self.bump();
-            let kind = Char { terminated: true };
-            Literal { kind, suffix_start: self.pos_within_token() }
-        } else {
-            Lifetime { starts_with_number }
+        match self.first() {
+            // Check if after skipping literal contents we've met a closing
+            // single quote (which means that user attempted to create a
+            // string with single quotes).
+            '\'' => {
+                self.bump();
+                let kind = Char { terminated: true };
+                Literal { kind, suffix_start: self.pos_within_token() }
+            }
+            '#' if !starts_with_number => UnknownPrefixLifetime,
+            _ => Lifetime { starts_with_number },
         }
     }
 

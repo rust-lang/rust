@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(raw_ref_op)]
-
 const A: *const i32 = &raw const *&2;
 static B: () = { &raw const *&2; };
 static mut C: *const i32 = &raw const *&2;

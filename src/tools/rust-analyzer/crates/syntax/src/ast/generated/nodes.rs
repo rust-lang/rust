@@ -14,6 +14,8 @@ pub struct Abi {
 impl Abi {
     #[inline]
     pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
+    #[inline]
+    pub fn string_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![string]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -112,6 +114,8 @@ impl AssocTypeArg {
     #[inline]
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     #[inline]
+    pub fn return_type_syntax(&self) -> Option<ReturnTypeSyntax> { support::child(&self.syntax) }
+    #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
@@ -182,6 +186,10 @@ impl BlockExpr {
     #[inline]
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     #[inline]
+    pub fn gen_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![gen]) }
+    #[inline]
+    pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }
+    #[inline]
     pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
@@ -238,13 +246,24 @@ impl CastExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ClosureBinder {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ClosureBinder {
+    #[inline]
+    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    #[inline]
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ClosureExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for ClosureExpr {}
 impl ClosureExpr {
     #[inline]
-    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    pub fn closure_binder(&self) -> Option<ClosureBinder> { support::child(&self.syntax) }
     #[inline]
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     #[inline]
@@ -254,7 +273,7 @@ impl ClosureExpr {
     #[inline]
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     #[inline]
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
+    pub fn gen_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![gen]) }
     #[inline]
     pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }
     #[inline]
@@ -466,6 +485,8 @@ impl Fn {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     #[inline]
     pub fn fn_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![fn]) }
+    #[inline]
+    pub fn gen_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![gen]) }
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
@@ -834,27 +855,6 @@ impl MacroDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MacroEagerInput {
-    pub(crate) syntax: SyntaxNode,
-}
-impl MacroEagerInput {
-    #[inline]
-    pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
-    #[inline]
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    #[inline]
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-    #[inline]
-    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    #[inline]
-    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
-    #[inline]
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    #[inline]
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1050,6 +1050,10 @@ impl NameRef {
     #[inline]
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
     #[inline]
+    pub fn int_number_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![int_number])
+    }
+    #[inline]
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     #[inline]
     pub fn super_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![super]) }
@@ -1220,6 +1224,8 @@ impl PathSegment {
     pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
     #[inline]
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
+    #[inline]
+    pub fn return_type_syntax(&self) -> Option<ReturnTypeSyntax> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
@@ -1483,6 +1489,19 @@ impl ReturnExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     #[inline]
     pub fn return_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![return]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ReturnTypeSyntax {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ReturnTypeSyntax {
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1789,6 +1808,8 @@ pub struct TypeBound {
 }
 impl TypeBound {
     #[inline]
+    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    #[inline]
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
@@ -1798,6 +1819,8 @@ impl TypeBound {
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
     #[inline]
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    #[inline]
+    pub fn use_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![use]) }
     #[inline]
     pub fn tilde_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![~]) }
 }
@@ -2461,6 +2484,20 @@ impl AstNode for CastExpr {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for ClosureBinder {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_BINDER }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for ClosureExpr {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_EXPR }
@@ -3010,20 +3047,6 @@ impl AstNode for MacroCall {
 impl AstNode for MacroDef {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_DEF }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for MacroEagerInput {
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_EAGER_INPUT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -3682,6 +3705,20 @@ impl AstNode for RetType {
 impl AstNode for ReturnExpr {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == RETURN_EXPR }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ReturnTypeSyntax {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RETURN_TYPE_SYNTAX }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -5106,6 +5143,14 @@ impl AstNode for AnyHasArgList {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<CallExpr> for AnyHasArgList {
+    #[inline]
+    fn from(node: CallExpr) -> AnyHasArgList { AnyHasArgList { syntax: node.syntax } }
+}
+impl From<MethodCallExpr> for AnyHasArgList {
+    #[inline]
+    fn from(node: MethodCallExpr) -> AnyHasArgList { AnyHasArgList { syntax: node.syntax } }
+}
 impl AnyHasAttrs {
     #[inline]
     pub fn new<T: ast::HasAttrs>(node: T) -> AnyHasAttrs {
@@ -5198,6 +5243,294 @@ impl AstNode for AnyHasAttrs {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<ArrayExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ArrayExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<AsmExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: AsmExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<AssocItemList> for AnyHasAttrs {
+    #[inline]
+    fn from(node: AssocItemList) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<AwaitExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: AwaitExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<BecomeExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: BecomeExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<BinExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: BinExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<BlockExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: BlockExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<BreakExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: BreakExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<CallExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: CallExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<CastExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: CastExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ClosureExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ClosureExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Const> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Const) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ConstParam> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ConstParam) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ContinueExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ContinueExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Enum> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Enum) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ExternBlock> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ExternBlock) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ExternCrate> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ExternCrate) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ExternItemList> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ExternItemList) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<FieldExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: FieldExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Fn> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Fn) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ForExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ForExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<FormatArgsExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: FormatArgsExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<IdentPat> for AnyHasAttrs {
+    #[inline]
+    fn from(node: IdentPat) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<IfExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: IfExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Impl> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Impl) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<IndexExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: IndexExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ItemList> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ItemList) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<LetExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: LetExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<LetStmt> for AnyHasAttrs {
+    #[inline]
+    fn from(node: LetStmt) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<LifetimeParam> for AnyHasAttrs {
+    #[inline]
+    fn from(node: LifetimeParam) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Literal> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Literal) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<LoopExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: LoopExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<MacroCall> for AnyHasAttrs {
+    #[inline]
+    fn from(node: MacroCall) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<MacroDef> for AnyHasAttrs {
+    #[inline]
+    fn from(node: MacroDef) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<MacroRules> for AnyHasAttrs {
+    #[inline]
+    fn from(node: MacroRules) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<MatchArm> for AnyHasAttrs {
+    #[inline]
+    fn from(node: MatchArm) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<MatchArmList> for AnyHasAttrs {
+    #[inline]
+    fn from(node: MatchArmList) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<MatchExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: MatchExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<MethodCallExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: MethodCallExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Module> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Module) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<OffsetOfExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: OffsetOfExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Param> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Param) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ParenExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ParenExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<PathExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: PathExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<PrefixExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: PrefixExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<RangeExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: RangeExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<RecordExprField> for AnyHasAttrs {
+    #[inline]
+    fn from(node: RecordExprField) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<RecordExprFieldList> for AnyHasAttrs {
+    #[inline]
+    fn from(node: RecordExprFieldList) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<RecordField> for AnyHasAttrs {
+    #[inline]
+    fn from(node: RecordField) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<RecordPatField> for AnyHasAttrs {
+    #[inline]
+    fn from(node: RecordPatField) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<RefExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: RefExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<RestPat> for AnyHasAttrs {
+    #[inline]
+    fn from(node: RestPat) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<ReturnExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: ReturnExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<SelfParam> for AnyHasAttrs {
+    #[inline]
+    fn from(node: SelfParam) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<SourceFile> for AnyHasAttrs {
+    #[inline]
+    fn from(node: SourceFile) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Static> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Static) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<StmtList> for AnyHasAttrs {
+    #[inline]
+    fn from(node: StmtList) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Struct> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Struct) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Trait> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Trait) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<TraitAlias> for AnyHasAttrs {
+    #[inline]
+    fn from(node: TraitAlias) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<TryExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: TryExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<TupleExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: TupleExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<TupleField> for AnyHasAttrs {
+    #[inline]
+    fn from(node: TupleField) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<TypeAlias> for AnyHasAttrs {
+    #[inline]
+    fn from(node: TypeAlias) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<TypeParam> for AnyHasAttrs {
+    #[inline]
+    fn from(node: TypeParam) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<UnderscoreExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: UnderscoreExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Union> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Union) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Use> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Use) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<Variant> for AnyHasAttrs {
+    #[inline]
+    fn from(node: Variant) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<WhileExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: WhileExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<YeetExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: YeetExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<YieldExpr> for AnyHasAttrs {
+    #[inline]
+    fn from(node: YieldExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
 impl AnyHasDocComments {
     #[inline]
     pub fn new<T: ast::HasDocComments>(node: T) -> AnyHasDocComments {
@@ -5239,6 +5572,90 @@ impl AstNode for AnyHasDocComments {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<Const> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Const) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Enum> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Enum) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<ExternBlock> for AnyHasDocComments {
+    #[inline]
+    fn from(node: ExternBlock) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<ExternCrate> for AnyHasDocComments {
+    #[inline]
+    fn from(node: ExternCrate) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Fn> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Fn) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Impl> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Impl) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<MacroCall> for AnyHasDocComments {
+    #[inline]
+    fn from(node: MacroCall) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<MacroDef> for AnyHasDocComments {
+    #[inline]
+    fn from(node: MacroDef) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<MacroRules> for AnyHasDocComments {
+    #[inline]
+    fn from(node: MacroRules) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Module> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Module) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<RecordField> for AnyHasDocComments {
+    #[inline]
+    fn from(node: RecordField) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<SourceFile> for AnyHasDocComments {
+    #[inline]
+    fn from(node: SourceFile) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Static> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Static) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Struct> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Struct) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Trait> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Trait) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<TraitAlias> for AnyHasDocComments {
+    #[inline]
+    fn from(node: TraitAlias) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<TupleField> for AnyHasDocComments {
+    #[inline]
+    fn from(node: TupleField) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<TypeAlias> for AnyHasDocComments {
+    #[inline]
+    fn from(node: TypeAlias) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Union> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Union) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Use> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Use) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
+impl From<Variant> for AnyHasDocComments {
+    #[inline]
+    fn from(node: Variant) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
+}
 impl AnyHasGenericArgs {
     #[inline]
     pub fn new<T: ast::HasGenericArgs>(node: T) -> AnyHasGenericArgs {
@@ -5256,6 +5673,18 @@ impl AstNode for AnyHasGenericArgs {
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl From<AssocTypeArg> for AnyHasGenericArgs {
+    #[inline]
+    fn from(node: AssocTypeArg) -> AnyHasGenericArgs { AnyHasGenericArgs { syntax: node.syntax } }
+}
+impl From<MethodCallExpr> for AnyHasGenericArgs {
+    #[inline]
+    fn from(node: MethodCallExpr) -> AnyHasGenericArgs { AnyHasGenericArgs { syntax: node.syntax } }
+}
+impl From<PathSegment> for AnyHasGenericArgs {
+    #[inline]
+    fn from(node: PathSegment) -> AnyHasGenericArgs { AnyHasGenericArgs { syntax: node.syntax } }
 }
 impl AnyHasGenericParams {
     #[inline]
@@ -5275,6 +5704,38 @@ impl AstNode for AnyHasGenericParams {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<Enum> for AnyHasGenericParams {
+    #[inline]
+    fn from(node: Enum) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
+}
+impl From<Fn> for AnyHasGenericParams {
+    #[inline]
+    fn from(node: Fn) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
+}
+impl From<Impl> for AnyHasGenericParams {
+    #[inline]
+    fn from(node: Impl) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
+}
+impl From<Struct> for AnyHasGenericParams {
+    #[inline]
+    fn from(node: Struct) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
+}
+impl From<Trait> for AnyHasGenericParams {
+    #[inline]
+    fn from(node: Trait) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
+}
+impl From<TraitAlias> for AnyHasGenericParams {
+    #[inline]
+    fn from(node: TraitAlias) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
+}
+impl From<TypeAlias> for AnyHasGenericParams {
+    #[inline]
+    fn from(node: TypeAlias) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
+}
+impl From<Union> for AnyHasGenericParams {
+    #[inline]
+    fn from(node: Union) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
+}
 impl AnyHasLoopBody {
     #[inline]
     pub fn new<T: ast::HasLoopBody>(node: T) -> AnyHasLoopBody {
@@ -5291,6 +5752,18 @@ impl AstNode for AnyHasLoopBody {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<ForExpr> for AnyHasLoopBody {
+    #[inline]
+    fn from(node: ForExpr) -> AnyHasLoopBody { AnyHasLoopBody { syntax: node.syntax } }
+}
+impl From<LoopExpr> for AnyHasLoopBody {
+    #[inline]
+    fn from(node: LoopExpr) -> AnyHasLoopBody { AnyHasLoopBody { syntax: node.syntax } }
+}
+impl From<WhileExpr> for AnyHasLoopBody {
+    #[inline]
+    fn from(node: WhileExpr) -> AnyHasLoopBody { AnyHasLoopBody { syntax: node.syntax } }
+}
 impl AnyHasModuleItem {
     #[inline]
     pub fn new<T: ast::HasModuleItem>(node: T) -> AnyHasModuleItem {
@@ -5306,6 +5779,18 @@ impl AstNode for AnyHasModuleItem {
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl From<ItemList> for AnyHasModuleItem {
+    #[inline]
+    fn from(node: ItemList) -> AnyHasModuleItem { AnyHasModuleItem { syntax: node.syntax } }
+}
+impl From<MacroItems> for AnyHasModuleItem {
+    #[inline]
+    fn from(node: MacroItems) -> AnyHasModuleItem { AnyHasModuleItem { syntax: node.syntax } }
+}
+impl From<SourceFile> for AnyHasModuleItem {
+    #[inline]
+    fn from(node: SourceFile) -> AnyHasModuleItem { AnyHasModuleItem { syntax: node.syntax } }
 }
 impl AnyHasName {
     #[inline]
@@ -5347,6 +5832,86 @@ impl AstNode for AnyHasName {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<Const> for AnyHasName {
+    #[inline]
+    fn from(node: Const) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<ConstParam> for AnyHasName {
+    #[inline]
+    fn from(node: ConstParam) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<Enum> for AnyHasName {
+    #[inline]
+    fn from(node: Enum) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<Fn> for AnyHasName {
+    #[inline]
+    fn from(node: Fn) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<FormatArgsArg> for AnyHasName {
+    #[inline]
+    fn from(node: FormatArgsArg) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<IdentPat> for AnyHasName {
+    #[inline]
+    fn from(node: IdentPat) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<MacroDef> for AnyHasName {
+    #[inline]
+    fn from(node: MacroDef) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<MacroRules> for AnyHasName {
+    #[inline]
+    fn from(node: MacroRules) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<Module> for AnyHasName {
+    #[inline]
+    fn from(node: Module) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<RecordField> for AnyHasName {
+    #[inline]
+    fn from(node: RecordField) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<Rename> for AnyHasName {
+    #[inline]
+    fn from(node: Rename) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<SelfParam> for AnyHasName {
+    #[inline]
+    fn from(node: SelfParam) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<Static> for AnyHasName {
+    #[inline]
+    fn from(node: Static) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<Struct> for AnyHasName {
+    #[inline]
+    fn from(node: Struct) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<Trait> for AnyHasName {
+    #[inline]
+    fn from(node: Trait) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<TraitAlias> for AnyHasName {
+    #[inline]
+    fn from(node: TraitAlias) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<TypeAlias> for AnyHasName {
+    #[inline]
+    fn from(node: TypeAlias) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<TypeParam> for AnyHasName {
+    #[inline]
+    fn from(node: TypeParam) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<Union> for AnyHasName {
+    #[inline]
+    fn from(node: Union) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<Variant> for AnyHasName {
+    #[inline]
+    fn from(node: Variant) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
 impl AnyHasTypeBounds {
     #[inline]
     pub fn new<T: ast::HasTypeBounds>(node: T) -> AnyHasTypeBounds {
@@ -5367,6 +5932,30 @@ impl AstNode for AnyHasTypeBounds {
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl From<AssocTypeArg> for AnyHasTypeBounds {
+    #[inline]
+    fn from(node: AssocTypeArg) -> AnyHasTypeBounds { AnyHasTypeBounds { syntax: node.syntax } }
+}
+impl From<LifetimeParam> for AnyHasTypeBounds {
+    #[inline]
+    fn from(node: LifetimeParam) -> AnyHasTypeBounds { AnyHasTypeBounds { syntax: node.syntax } }
+}
+impl From<Trait> for AnyHasTypeBounds {
+    #[inline]
+    fn from(node: Trait) -> AnyHasTypeBounds { AnyHasTypeBounds { syntax: node.syntax } }
+}
+impl From<TypeAlias> for AnyHasTypeBounds {
+    #[inline]
+    fn from(node: TypeAlias) -> AnyHasTypeBounds { AnyHasTypeBounds { syntax: node.syntax } }
+}
+impl From<TypeParam> for AnyHasTypeBounds {
+    #[inline]
+    fn from(node: TypeParam) -> AnyHasTypeBounds { AnyHasTypeBounds { syntax: node.syntax } }
+}
+impl From<WherePred> for AnyHasTypeBounds {
+    #[inline]
+    fn from(node: WherePred) -> AnyHasTypeBounds { AnyHasTypeBounds { syntax: node.syntax } }
 }
 impl AnyHasVisibility {
     #[inline]
@@ -5405,6 +5994,78 @@ impl AstNode for AnyHasVisibility {
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl From<Const> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Const) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Enum> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Enum) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<ExternCrate> for AnyHasVisibility {
+    #[inline]
+    fn from(node: ExternCrate) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Fn> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Fn) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Impl> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Impl) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<MacroDef> for AnyHasVisibility {
+    #[inline]
+    fn from(node: MacroDef) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<MacroRules> for AnyHasVisibility {
+    #[inline]
+    fn from(node: MacroRules) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Module> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Module) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<RecordField> for AnyHasVisibility {
+    #[inline]
+    fn from(node: RecordField) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Static> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Static) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Struct> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Struct) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Trait> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Trait) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<TraitAlias> for AnyHasVisibility {
+    #[inline]
+    fn from(node: TraitAlias) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<TupleField> for AnyHasVisibility {
+    #[inline]
+    fn from(node: TupleField) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<TypeAlias> for AnyHasVisibility {
+    #[inline]
+    fn from(node: TypeAlias) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Union> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Union) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Use> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Use) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
+}
+impl From<Variant> for AnyHasVisibility {
+    #[inline]
+    fn from(node: Variant) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
 }
 impl std::fmt::Display for Adt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -5537,6 +6198,11 @@ impl std::fmt::Display for CallExpr {
     }
 }
 impl std::fmt::Display for CastExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ClosureBinder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -5737,11 +6403,6 @@ impl std::fmt::Display for MacroCall {
     }
 }
 impl std::fmt::Display for MacroDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for MacroEagerInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -5977,6 +6638,11 @@ impl std::fmt::Display for RetType {
     }
 }
 impl std::fmt::Display for ReturnExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ReturnTypeSyntax {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

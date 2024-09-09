@@ -9,7 +9,8 @@ use hir_expand::{
     name::{AsName, Name},
     AstId,
 };
-use intern::Interned;
+use intern::{sym, Interned, Symbol};
+use span::Edition;
 use syntax::ast::{self, HasGenericArgs, HasName, IsString};
 
 use crate::{
@@ -121,10 +122,10 @@ pub enum TypeRef {
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
     Fn(
-        Vec<(Option<Name>, TypeRef)>,
-        bool,                  /*varargs*/
-        bool,                  /*is_unsafe*/
-        Option<Interned<str>>, /* abi */
+        Box<[(Option<Name>, TypeRef)]>,
+        bool,           /*varargs*/
+        bool,           /*is_unsafe*/
+        Option<Symbol>, /* abi */
     ),
     ImplTrait(Vec<Interned<TypeBound>>),
     DynTrait(Vec<Interned<TypeBound>>),
@@ -228,19 +229,19 @@ impl TypeRef {
                         })
                         .collect()
                 } else {
-                    Vec::new()
+                    Vec::with_capacity(1)
                 };
-                fn lower_abi(abi: ast::Abi) -> Interned<str> {
+                fn lower_abi(abi: ast::Abi) -> Symbol {
                     match abi.abi_string() {
-                        Some(tok) => Interned::new_str(tok.text_without_quotes()),
+                        Some(tok) => Symbol::intern(tok.text_without_quotes()),
                         // `extern` default to be `extern "C"`.
-                        _ => Interned::new_str("C"),
+                        _ => sym::C.clone(),
                     }
                 }
 
                 let abi = inner.abi().map(lower_abi);
                 params.push((None, ret_ty));
-                TypeRef::Fn(params, is_varargs, inner.unsafe_token().is_some(), abi)
+                TypeRef::Fn(params.into(), is_varargs, inner.unsafe_token().is_some(), abi)
             }
             // for types are close enough for our purposes to the inner type for now...
             ast::Type::ForType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
@@ -379,6 +380,7 @@ impl TypeBound {
                     None => TypeBound::Error,
                 }
             }
+            ast::TypeBoundKind::Use(_) => TypeBound::Error,
             ast::TypeBoundKind::Lifetime(lifetime) => {
                 TypeBound::Lifetime(LifetimeRef::new(&lifetime))
             }
@@ -396,7 +398,7 @@ impl TypeBound {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConstRef {
-    Scalar(LiteralConstRef),
+    Scalar(Box<LiteralConstRef>),
     Path(Name),
     Complex(AstId<ast::ConstArg>),
 }
@@ -408,7 +410,7 @@ impl ConstRef {
                 return Self::from_expr(expr, Some(lower_ctx.ast_id(&arg)));
             }
         }
-        Self::Scalar(LiteralConstRef::Unknown)
+        Self::Scalar(Box::new(LiteralConstRef::Unknown))
     }
 
     pub(crate) fn from_const_param(
@@ -418,18 +420,22 @@ impl ConstRef {
         param.default_val().map(|default| Self::from_const_arg(lower_ctx, Some(default)))
     }
 
-    pub fn display<'a>(&'a self, db: &'a dyn ExpandDatabase) -> impl fmt::Display + 'a {
-        struct Display<'a>(&'a dyn ExpandDatabase, &'a ConstRef);
+    pub fn display<'a>(
+        &'a self,
+        db: &'a dyn ExpandDatabase,
+        edition: Edition,
+    ) -> impl fmt::Display + 'a {
+        struct Display<'a>(&'a dyn ExpandDatabase, &'a ConstRef, Edition);
         impl fmt::Display for Display<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self.1 {
                     ConstRef::Scalar(s) => s.fmt(f),
-                    ConstRef::Path(n) => n.display(self.0).fmt(f),
+                    ConstRef::Path(n) => n.display(self.0, self.2).fmt(f),
                     ConstRef::Complex(_) => f.write_str("{const}"),
                 }
             }
         }
-        Display(db, self)
+        Display(db, self, edition)
     }
 
     // We special case literals and single identifiers, to speed up things.
@@ -452,10 +458,10 @@ impl ConstRef {
             ast::Expr::PathExpr(p) if is_path_ident(&p) => {
                 match p.path().and_then(|it| it.segment()).and_then(|it| it.name_ref()) {
                     Some(it) => Self::Path(it.as_name()),
-                    None => Self::Scalar(LiteralConstRef::Unknown),
+                    None => Self::Scalar(Box::new(LiteralConstRef::Unknown)),
                 }
             }
-            ast::Expr::Literal(literal) => Self::Scalar(match literal.kind() {
+            ast::Expr::Literal(literal) => Self::Scalar(Box::new(match literal.kind() {
                 ast::LiteralKind::IntNumber(num) => {
                     num.value().map(LiteralConstRef::UInt).unwrap_or(LiteralConstRef::Unknown)
                 }
@@ -464,12 +470,12 @@ impl ConstRef {
                 }
                 ast::LiteralKind::Bool(f) => LiteralConstRef::Bool(f),
                 _ => LiteralConstRef::Unknown,
-            }),
+            })),
             _ => {
                 if let Some(ast_id) = ast_id {
                     Self::Complex(ast_id)
                 } else {
-                    Self::Scalar(LiteralConstRef::Unknown)
+                    Self::Scalar(Box::new(LiteralConstRef::Unknown))
                 }
             }
         }

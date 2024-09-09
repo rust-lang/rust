@@ -17,7 +17,7 @@ use crate::{
     ted, NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
 
-use super::{RangeItem, RangeOp};
+use super::{GenericParam, RangeItem, RangeOp};
 
 impl ast::Lifetime {
     pub fn text(&self) -> TokenText<'_> {
@@ -794,6 +794,8 @@ pub enum TypeBoundKind {
     PathType(ast::PathType),
     /// for<'a> ...
     ForType(ast::ForType),
+    /// use
+    Use(ast::GenericParamList),
     /// 'a
     Lifetime(ast::Lifetime),
 }
@@ -804,6 +806,8 @@ impl ast::TypeBound {
             TypeBoundKind::PathType(path_type)
         } else if let Some(for_type) = support::children(self.syntax()).next() {
             TypeBoundKind::ForType(for_type)
+        } else if let Some(generic_param_list) = self.generic_param_list() {
+            TypeBoundKind::Use(generic_param_list)
         } else if let Some(lifetime) = self.lifetime() {
             TypeBoundKind::Lifetime(lifetime)
         } else {
@@ -816,6 +820,15 @@ impl ast::TypeBound {
 pub enum TypeOrConstParam {
     Type(ast::TypeParam),
     Const(ast::ConstParam),
+}
+
+impl From<TypeOrConstParam> for GenericParam {
+    fn from(value: TypeOrConstParam) -> Self {
+        match value {
+            TypeOrConstParam::Type(it) => GenericParam::TypeParam(it),
+            TypeOrConstParam::Const(it) => GenericParam::ConstParam(it),
+        }
+    }
 }
 
 impl TypeOrConstParam {
@@ -1124,24 +1137,6 @@ impl From<ast::Item> for ast::AnyHasAttrs {
 
 impl From<ast::AssocItem> for ast::AnyHasAttrs {
     fn from(node: ast::AssocItem) -> Self {
-        Self::new(node)
-    }
-}
-
-impl From<ast::Variant> for ast::AnyHasAttrs {
-    fn from(node: ast::Variant) -> Self {
-        Self::new(node)
-    }
-}
-
-impl From<ast::RecordField> for ast::AnyHasAttrs {
-    fn from(node: ast::RecordField) -> Self {
-        Self::new(node)
-    }
-}
-
-impl From<ast::TupleField> for ast::AnyHasAttrs {
-    fn from(node: ast::TupleField) -> Self {
         Self::new(node)
     }
 }

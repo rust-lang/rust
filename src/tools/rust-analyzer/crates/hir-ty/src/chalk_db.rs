@@ -3,6 +3,9 @@
 use core::ops;
 use std::{iter, ops::ControlFlow, sync::Arc};
 
+use hir_expand::name::Name;
+use intern::sym;
+use span::Edition;
 use tracing::debug;
 
 use chalk_ir::{cast::Caster, fold::shift::Shift, CanonicalVarKinds};
@@ -16,7 +19,6 @@ use hir_def::{
     AssocItemId, BlockId, CallableDefId, GenericDefId, HasModule, ItemContainerId, Lookup,
     TypeAliasId, VariantId,
 };
-use hir_expand::name::name;
 
 use crate::{
     db::{HirDatabase, InternedCoroutine},
@@ -274,7 +276,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 };
                 chalk_ir::Binders::new(binders, bound)
             }
-            crate::ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+            crate::ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                 let datas = self
                     .db
                     .type_alias_impl_traits(alias)
@@ -288,15 +290,16 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 chalk_ir::Binders::new(binders, bound)
             }
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
-                if let Some((future_trait, future_output)) = self
-                    .db
-                    .lang_item(self.krate, LangItem::Future)
-                    .and_then(|item| item.as_trait())
-                    .and_then(|trait_| {
-                        let alias =
-                            self.db.trait_data(trait_).associated_type_by_name(&name![Output])?;
-                        Some((trait_, alias))
-                    })
+                if let Some((future_trait, future_output)) =
+                    self.db
+                        .lang_item(self.krate, LangItem::Future)
+                        .and_then(|item| item.as_trait())
+                        .and_then(|trait_| {
+                            let alias = self.db.trait_data(trait_).associated_type_by_name(
+                                &Name::new_symbol_root(sym::Output.clone()),
+                            )?;
+                            Some((trait_, alias))
+                        })
                 {
                     // Making up Symbol’s value as variable is void: AsyncBlock<T>:
                     //
@@ -422,18 +425,19 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
 
     fn trait_name(&self, trait_id: chalk_ir::TraitId<Interner>) -> String {
         let id = from_chalk_trait_id(trait_id);
-        self.db.trait_data(id).name.display(self.db.upcast()).to_string()
+        self.db.trait_data(id).name.display(self.db.upcast(), self.edition()).to_string()
     }
     fn adt_name(&self, chalk_ir::AdtId(adt_id): AdtId) -> String {
+        let edition = self.edition();
         match adt_id {
             hir_def::AdtId::StructId(id) => {
-                self.db.struct_data(id).name.display(self.db.upcast()).to_string()
+                self.db.struct_data(id).name.display(self.db.upcast(), edition).to_string()
             }
             hir_def::AdtId::EnumId(id) => {
-                self.db.enum_data(id).name.display(self.db.upcast()).to_string()
+                self.db.enum_data(id).name.display(self.db.upcast(), edition).to_string()
             }
             hir_def::AdtId::UnionId(id) => {
-                self.db.union_data(id).name.display(self.db.upcast()).to_string()
+                self.db.union_data(id).name.display(self.db.upcast(), edition).to_string()
             }
         }
     }
@@ -443,7 +447,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     }
     fn assoc_type_name(&self, assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
         let id = self.db.associated_ty_data(assoc_ty_id).name;
-        self.db.type_alias_data(id).name.display(self.db.upcast()).to_string()
+        self.db.type_alias_data(id).name.display(self.db.upcast(), self.edition()).to_string()
     }
     fn opaque_type_name(&self, opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
         format!("Opaque_{}", opaque_ty_id.0)
@@ -517,6 +521,10 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
 }
 
 impl<'a> ChalkContext<'a> {
+    fn edition(&self) -> Edition {
+        self.db.crate_graph()[self.krate].edition
+    }
+
     fn for_trait_impls(
         &self,
         trait_id: hir_def::TraitId,
@@ -841,7 +849,7 @@ fn impl_def_datum(
         "impl {:?}: {}{} where {:?}",
         chalk_id,
         if negative { "!" } else { "" },
-        trait_ref.display(db),
+        trait_ref.display(db, db.crate_graph()[krate].edition),
         where_clauses
     );
 

@@ -10,8 +10,9 @@
 //@ needs-profiler-support
 //@ ignore-cross-compile
 
-use run_make_support::{llvm_filecheck, llvm_profdata, rfs, run_with_args, rustc};
 use std::path::Path;
+
+use run_make_support::{llvm_filecheck, llvm_profdata, rfs, run_with_args, rustc};
 
 fn main() {
     let path_prof_data_dir = Path::new("prof_data_dir");
@@ -34,5 +35,8 @@ fn main() {
         .codegen_units(1)
         .emit("llvm-ir")
         .run();
-    llvm_filecheck().patterns("filecheck-patterns.txt").stdin(rfs::read("interesting.ll")).run();
+    llvm_filecheck()
+        .patterns("filecheck-patterns.txt")
+        .stdin_buf(rfs::read("interesting.ll"))
+        .run();
 }

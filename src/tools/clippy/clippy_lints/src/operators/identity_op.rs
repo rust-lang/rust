@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant_full_int, constant_simple, Constant, FullInt};
+use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{clip, peel_hir_expr_refs, unsext};
@@ -184,14 +184,13 @@ fn is_allowed(cx: &LateContext<'_>, cmp: BinOpKind, left: &Expr<'_>, right: &Exp
         && cx.typeck_results().expr_ty(right).peel_refs().is_integral()
         // `1 << 0` is a common pattern in bit manipulation code
         && !(cmp == BinOpKind::Shl
-            && constant_simple(cx, cx.typeck_results(), right) == Some(Constant::Int(0))
-            && constant_simple(cx, cx.typeck_results(), left) == Some(Constant::Int(1)))
+            && ConstEvalCtxt::new(cx).eval_simple(right) == Some(Constant::Int(0))
+            && ConstEvalCtxt::new(cx).eval_simple(left) == Some(Constant::Int(1)))
 }
 
 fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span: Span, arg: Span) {
-    let lhs_const = constant_full_int(cx, cx.typeck_results(), left);
-    let rhs_const = constant_full_int(cx, cx.typeck_results(), right);
-    if match (lhs_const, rhs_const) {
+    let ecx = ConstEvalCtxt::new(cx);
+    if match (ecx.eval_full_int(left), ecx.eval_full_int(right)) {
         (Some(FullInt::S(lv)), Some(FullInt::S(rv))) => lv.abs() < rv.abs(),
         (Some(FullInt::U(lv)), Some(FullInt::U(rv))) => lv < rv,
         _ => return,
@@ -201,7 +200,7 @@ fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span
 }
 
 fn check_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, parens: Parens, is_erased: bool) -> bool {
-    if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e).map(Constant::peel_refs) {
+    if let Some(Constant::Int(v)) = ConstEvalCtxt::new(cx).eval_simple(e).map(Constant::peel_refs) {
         let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
             ty::Uint(uty) => clip(cx.tcx, !0, uty),

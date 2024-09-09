@@ -3,7 +3,7 @@ use rustc_span::Span;
 
 #[derive(Diagnostic)]
 #[diag(infer_opaque_hidden_type)]
-pub struct OpaqueHiddenTypeDiag {
+pub(crate) struct OpaqueHiddenTypeDiag {
     #[primary_span]
     #[label]
     pub span: Span,

@@ -1,9 +1,7 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
-use crate::array;
 use crate::ops::Range;
-use crate::ptr;
-use crate::ub_checks;
+use crate::{array, ptr, ub_checks};
 
 /// Forms a slice from a pointer and a length.
 ///
@@ -13,13 +11,13 @@ use crate::ub_checks;
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `data` must be [valid] for reads for `len * mem::size_of::<T>()` many bytes,
+/// * `data` must be non-null, [valid] for reads for `len * mem::size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
 ///       Slices can never span across multiple allocated objects. See [below](#incorrect-usage)
 ///       for an example incorrectly not taking this into account.
-///     * `data` must be non-null and aligned even for zero-length slices. One
+///     * `data` must be non-null and aligned even for zero-length slices or slices of ZSTs. One
 ///       reason for this is that enum layout optimizations may rely on references
 ///       (including slices of any length) being aligned and non-null to distinguish
 ///       them from other data. You can obtain a pointer that is usable as `data`
@@ -148,12 +146,12 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `data` must be [valid] for both reads and writes for `len * mem::size_of::<T>()` many bytes,
+/// * `data` must be non-null, [valid] for both reads and writes for `len * mem::size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
 ///       Slices can never span across multiple allocated objects.
-///     * `data` must be non-null and aligned even for zero-length slices. One
+///     * `data` must be non-null and aligned even for zero-length slices or slices of ZSTs. One
 ///       reason for this is that enum layout optimizations may rely on references
 ///       (including slices of any length) being aligned and non-null to distinguish
 ///       them from other data. You can obtain a pointer that is usable as `data`
@@ -221,7 +219,7 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * The `start` pointer of the range must be a [valid] and properly aligned pointer
+/// * The `start` pointer of the range must be a non-null, [valid] and properly aligned pointer
 ///   to the first element of a slice.
 ///
 /// * The `end` pointer must be a [valid] and properly aligned pointer to *one past*
@@ -237,7 +235,7 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///   of lifetime `'a`, except inside an `UnsafeCell`.
 ///
 /// * The total length of the range must be no larger than `isize::MAX`,
-///   and adding that size to `data` must not "wrap around" the address space.
+///   and adding that size to `start` must not "wrap around" the address space.
 ///   See the safety documentation of [`pointer::offset`].
 ///
 /// Note that a range created from [`slice::as_ptr_range`] fulfills these requirements.
@@ -290,7 +288,7 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * The `start` pointer of the range must be a [valid] and properly aligned pointer
+/// * The `start` pointer of the range must be a non-null, [valid] and properly aligned pointer
 ///   to the first element of a slice.
 ///
 /// * The `end` pointer must be a [valid] and properly aligned pointer to *one past*
@@ -307,7 +305,7 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///   Both read and write accesses are forbidden.
 ///
 /// * The total length of the range must be no larger than `isize::MAX`,
-///   and adding that size to `data` must not "wrap around" the address space.
+///   and adding that size to `start` must not "wrap around" the address space.
 ///   See the safety documentation of [`pointer::offset`].
 ///
 /// Note that a range created from [`slice::as_mut_ptr_range`] fulfills these requirements.

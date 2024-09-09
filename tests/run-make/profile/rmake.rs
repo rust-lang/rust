@@ -8,15 +8,14 @@
 //@ ignore-cross-compile
 //@ needs-profiler-support
 
-use run_make_support::{run, rustc};
-use std::path::Path;
+use run_make_support::{path, run, rustc};
 
 fn main() {
     rustc().arg("-g").arg("-Zprofile").input("test.rs").run();
     run("test");
-    assert!(Path::new("test.gcno").exists(), "no .gcno file");
-    assert!(Path::new("test.gcda").exists(), "no .gcda file");
+    assert!(path("test.gcno").exists(), "no .gcno file");
+    assert!(path("test.gcda").exists(), "no .gcda file");
     rustc().arg("-g").arg("-Zprofile").arg("-Zprofile-emit=abc/abc.gcda").input("test.rs").run();
     run("test");
-    assert!(Path::new("abc/abc.gcda").exists(), "gcda file not emitted to defined path");
+    assert!(path("abc/abc.gcda").exists(), "gcda file not emitted to defined path");
 }

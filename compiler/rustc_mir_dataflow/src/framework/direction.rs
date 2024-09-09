@@ -1,7 +1,8 @@
+use std::ops::RangeInclusive;
+
 use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Location, SwitchTargets, TerminatorEdges,
 };
-use std::ops::RangeInclusive;
 
 use super::visitor::{ResultsVisitable, ResultsVisitor};
 use super::{Analysis, Effect, EffectIndex, GenKillAnalysis, GenKillSet, SwitchIntTarget};

@@ -1,16 +1,19 @@
 //! Detects links that are not linkified, e.g., in Markdown such as `Go to https://example.com/.`
 //! Suggests wrapping the link with angle brackets: `Go to <https://example.com/>.` to linkify it.
 
-use crate::clean::*;
-use crate::core::DocContext;
-use crate::html::markdown::main_body_opts;
 use core::ops::Range;
+use std::mem;
+use std::sync::LazyLock;
+
 use pulldown_cmark::{Event, Parser, Tag};
 use regex::Regex;
 use rustc_errors::Applicability;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
-use std::mem;
-use std::sync::LazyLock;
+use tracing::trace;
+
+use crate::clean::*;
+use crate::core::DocContext;
+use crate::html::markdown::main_body_opts;
 
 pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item) {
     let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id) else {

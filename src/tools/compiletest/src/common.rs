@@ -1,18 +1,17 @@
-pub use self::Mode::*;
-
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
-use std::fmt;
-use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::OnceLock;
+use std::{fmt, iter};
 
-use crate::util::{add_dylib_path, PathBufExt};
 use build_helper::git::GitConfig;
 use serde::de::{Deserialize, Deserializer, Error as _};
-use std::collections::{HashMap, HashSet};
 use test::{ColorConfig, OutputFormat};
+
+pub use self::Mode::*;
+use crate::util::{add_dylib_path, PathBufExt};
 
 macro_rules! string_enum {
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
@@ -275,6 +274,9 @@ pub struct Config {
     /// Flags to pass to the compiler when building for the target
     pub target_rustcflags: Vec<String>,
 
+    /// Whether the compiler and stdlib has been built with randomized struct layouts
+    pub rust_randomized_layout: bool,
+
     /// Whether tests should be optimized by default. Individual test-suites and test files may
     /// override this setting.
     pub optimize_tests: bool,
@@ -297,14 +299,8 @@ pub struct Config {
     /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
     pub gdb_version: Option<u32>,
 
-    /// Whether GDB has native rust support
-    pub gdb_native_rust: bool,
-
     /// Version of LLDB
     pub lldb_version: Option<u32>,
-
-    /// Whether LLDB has native rust support
-    pub lldb_native_rust: bool,
 
     /// Version of LLVM
     pub llvm_version: Option<u32>,

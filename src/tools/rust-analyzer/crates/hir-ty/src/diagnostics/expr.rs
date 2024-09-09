@@ -4,20 +4,27 @@
 
 use std::fmt;
 
+use base_db::CrateId;
+use chalk_solve::rust_ir::AdtKind;
 use either::Either;
-use hir_def::lang_item::LangItem;
-use hir_def::{resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId, HasModule};
-use hir_def::{ItemContainerId, Lookup};
-use hir_expand::name;
+use hir_def::{
+    lang_item::LangItem,
+    resolver::{HasResolver, ValueNs},
+    AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
+};
+use intern::sym;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::constructor::Constructor;
-use syntax::{ast, AstNode};
+use span::Edition;
+use syntax::{
+    ast::{self, UnaryOp},
+    AstNode,
+};
 use tracing::debug;
 use triomphe::Arc;
 use typed_arena::Arena;
 
-use crate::Interner;
 use crate::{
     db::HirDatabase,
     diagnostics::match_check::{
@@ -25,7 +32,7 @@ use crate::{
         pat_analysis::{self, DeconstructedPat, MatchCheckCtx, WitnessPat},
     },
     display::HirDisplay,
-    InferenceResult, Ty, TyExt,
+    Adjust, InferenceResult, Interner, Ty, TyExt, TyKind,
 };
 
 pub(crate) use hir_def::{
@@ -117,7 +124,7 @@ impl ExprValidator {
                 Expr::If { .. } => {
                     self.check_for_unnecessary_else(id, expr, db);
                 }
-                Expr::Block { .. } => {
+                Expr::Block { .. } | Expr::Async { .. } | Expr::Unsafe { .. } => {
                     self.validate_block(db, expr);
                 }
                 _ => {}
@@ -236,7 +243,12 @@ impl ExprValidator {
             return;
         }
 
-        let report = match cx.compute_match_usefulness(m_arms.as_slice(), scrut_ty.clone()) {
+        let known_valid_scrutinee = Some(self.is_known_valid_scrutinee(scrutinee_expr, db));
+        let report = match cx.compute_match_usefulness(
+            m_arms.as_slice(),
+            scrut_ty.clone(),
+            known_valid_scrutinee,
+        ) {
             Ok(report) => report,
             Err(()) => return,
         };
@@ -248,13 +260,63 @@ impl ExprValidator {
         if !witnesses.is_empty() {
             self.diagnostics.push(BodyValidationDiagnostic::MissingMatchArms {
                 match_expr,
-                uncovered_patterns: missing_match_arms(&cx, scrut_ty, witnesses, m_arms.is_empty()),
+                uncovered_patterns: missing_match_arms(
+                    &cx,
+                    scrut_ty,
+                    witnesses,
+                    m_arms.is_empty(),
+                    self.owner.krate(db.upcast()),
+                ),
             });
         }
     }
 
+    // [rustc's `is_known_valid_scrutinee`](https://github.com/rust-lang/rust/blob/c9bd03cb724e13cca96ad320733046cbdb16fbbe/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L288)
+    //
+    // While the above function in rustc uses thir exprs, r-a doesn't have them.
+    // So, the logic here is getting same result as "hir lowering + match with lowered thir"
+    // with "hir only"
+    fn is_known_valid_scrutinee(&self, scrutinee_expr: ExprId, db: &dyn HirDatabase) -> bool {
+        if self
+            .infer
+            .expr_adjustments
+            .get(&scrutinee_expr)
+            .is_some_and(|adjusts| adjusts.iter().any(|a| matches!(a.kind, Adjust::Deref(..))))
+        {
+            return false;
+        }
+
+        match &self.body[scrutinee_expr] {
+            Expr::UnaryOp { op: UnaryOp::Deref, .. } => false,
+            Expr::Path(path) => {
+                let value_or_partial = self
+                    .owner
+                    .resolver(db.upcast())
+                    .resolve_path_in_value_ns_fully(db.upcast(), path);
+                value_or_partial.map_or(true, |v| !matches!(v, ValueNs::StaticId(_)))
+            }
+            Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind(Interner) {
+                TyKind::Adt(adt, ..)
+                    if db.adt_datum(self.owner.krate(db.upcast()), *adt).kind == AdtKind::Union =>
+                {
+                    false
+                }
+                _ => self.is_known_valid_scrutinee(*expr, db),
+            },
+            Expr::Index { base, .. } => self.is_known_valid_scrutinee(*base, db),
+            Expr::Cast { expr, .. } => self.is_known_valid_scrutinee(*expr, db),
+            Expr::Missing => false,
+            _ => true,
+        }
+    }
+
     fn validate_block(&mut self, db: &dyn HirDatabase, expr: &Expr) {
-        let Expr::Block { statements, .. } = expr else { return };
+        let (Expr::Block { statements, .. }
+        | Expr::Async { statements, .. }
+        | Expr::Unsafe { statements, .. }) = expr
+        else {
+            return;
+        };
         let pattern_arena = Arena::new();
         let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db);
         for stmt in &**statements {
@@ -280,7 +342,7 @@ impl ExprValidator {
                 has_guard: false,
                 arm_data: (),
             };
-            let report = match cx.compute_match_usefulness(&[match_arm], ty.clone()) {
+            let report = match cx.compute_match_usefulness(&[match_arm], ty.clone(), None) {
                 Ok(v) => v,
                 Err(e) => {
                     debug!(?e, "match usefulness error");
@@ -291,7 +353,13 @@ impl ExprValidator {
             if !witnesses.is_empty() {
                 self.diagnostics.push(BodyValidationDiagnostic::NonExhaustiveLet {
                     pat,
-                    uncovered_patterns: missing_match_arms(&cx, ty, witnesses, false),
+                    uncovered_patterns: missing_match_arms(
+                        &cx,
+                        ty,
+                        witnesses,
+                        false,
+                        self.owner.krate(db.upcast()),
+                    ),
                 });
             }
         }
@@ -423,7 +491,9 @@ impl FilterMapNextChecker {
                     ItemContainerId::TraitId(iterator_trait_id) => {
                         let iterator_trait_items = &db.trait_data(iterator_trait_id).items;
                         iterator_trait_items.iter().find_map(|(name, it)| match it {
-                            &AssocItemId::FunctionId(id) if *name == name![filter_map] => Some(id),
+                            &AssocItemId::FunctionId(id) if *name == sym::filter_map.clone() => {
+                                Some(id)
+                            }
                             _ => None,
                         })
                     }
@@ -560,24 +630,26 @@ fn missing_match_arms<'p>(
     scrut_ty: &Ty,
     witnesses: Vec<WitnessPat<'p>>,
     arms_is_empty: bool,
+    krate: CrateId,
 ) -> String {
-    struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>);
+    struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>, Edition);
     impl fmt::Display for DisplayWitness<'_, '_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let DisplayWitness(witness, cx) = *self;
+            let DisplayWitness(witness, cx, edition) = *self;
             let pat = cx.hoist_witness_pat(witness);
-            write!(f, "{}", pat.display(cx.db))
+            write!(f, "{}", pat.display(cx.db, edition))
         }
     }
 
+    let edition = cx.db.crate_graph()[krate].edition;
     let non_empty_enum = match scrut_ty.as_adt() {
         Some((AdtId::EnumId(e), _)) => !cx.db.enum_data(e).variants.is_empty(),
         _ => false,
     };
     if arms_is_empty && !non_empty_enum {
-        format!("type `{}` is non-empty", scrut_ty.display(cx.db))
+        format!("type `{}` is non-empty", scrut_ty.display(cx.db, edition))
     } else {
-        let pat_display = |witness| DisplayWitness(witness, cx);
+        let pat_display = |witness| DisplayWitness(witness, cx, edition);
         const LIMIT: usize = 3;
         match &*witnesses {
             [witness] => format!("`{}` not covered", pat_display(witness)),

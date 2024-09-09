@@ -1,10 +1,6 @@
 use rustc_middle::{
     mir::{Mutability, RetagKind},
-    ty::{
-        self,
-        layout::{HasParamEnv, HasTyCtxt},
-        Ty,
-    },
+    ty::{self, layout::HasParamEnv, Ty},
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Abi, Size};
@@ -141,8 +137,14 @@ impl<'tcx> NewPermission {
     ) -> Option<Self> {
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.param_env());
         let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.param_env());
+        let is_protected = kind == RetagKind::FnEntry;
+        // As demonstrated by `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
+        // interior mutability and protectors interact poorly.
+        // To eliminate the case of Protected Reserved IM we override interior mutability
+        // in the case of a protected reference: protected references are always considered
+        // "freeze" in their reservation phase.
         let initial_state = match mutability {
-            Mutability::Mut if ty_is_unpin => Permission::new_reserved(ty_is_freeze),
+            Mutability::Mut if ty_is_unpin => Permission::new_reserved(ty_is_freeze, is_protected),
             Mutability::Not if ty_is_freeze => Permission::new_frozen(),
             // Raw pointers never enter this function so they are not handled.
             // However raw pointers are not the only pointers that take the parent
@@ -151,7 +153,7 @@ impl<'tcx> NewPermission {
             _ => return None,
         };
 
-        let protector = (kind == RetagKind::FnEntry).then_some(ProtectorKind::StrongProtector);
+        let protector = is_protected.then_some(ProtectorKind::StrongProtector);
         Some(Self { zero_size: false, initial_state, protector })
     }
 
@@ -169,10 +171,12 @@ impl<'tcx> NewPermission {
             // Regular `Unpin` box, give it `noalias` but only a weak protector
             // because it is valid to deallocate it within the function.
             let ty_is_freeze = ty.is_freeze(*cx.tcx, cx.param_env());
+            let protected = kind == RetagKind::FnEntry;
+            let initial_state = Permission::new_reserved(ty_is_freeze, protected);
             Self {
                 zero_size,
-                initial_state: Permission::new_reserved(ty_is_freeze),
-                protector: (kind == RetagKind::FnEntry).then_some(ProtectorKind::WeakProtector),
+                initial_state,
+                protector: protected.then_some(ProtectorKind::WeakProtector),
             }
         })
     }
@@ -216,7 +220,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         trace!("Reborrow of size {:?}", ptr_size);
-        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr()) {
+        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr(), 0) {
             Ok(data) => {
                 // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
                 // After all, the pointer may be lazily initialized outside this initial range.
@@ -514,11 +518,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn tb_protect_place(&mut self, place: &MPlaceTy<'tcx>) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let this = self.eval_context_mut();
 
+        // Note: if we were to inline `new_reserved` below we would find out that
+        // `ty_is_freeze` is eventually unused because it appears in a `ty_is_freeze || true`.
+        // We are nevertheless including it here for clarity.
+        let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.param_env());
         // Retag it. With protection! That is the entire point.
         let new_perm = NewPermission {
-            initial_state: Permission::new_reserved(
-                place.layout.ty.is_freeze(this.tcx(), this.param_env()),
-            ),
+            initial_state: Permission::new_reserved(ty_is_freeze, /* protected */ true),
             zero_size: false,
             protector: Some(ProtectorKind::StrongProtector),
         };

@@ -92,7 +92,7 @@ where
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 // FIXME: This can be made crate-private once `EvalCtxt` also lives in this crate.
-pub struct NestedGoals<I: Interner> {
+struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation
     /// loop. In each iteration we take the RHS of the projection, replace it with
     /// a fresh inference variable, and only after evaluating that goal do we
@@ -109,11 +109,11 @@ pub struct NestedGoals<I: Interner> {
 }
 
 impl<I: Interner> NestedGoals<I> {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self { normalizes_to_goals: Vec::new(), goals: Vec::new() }
     }
 
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.normalizes_to_goals.is_empty() && self.goals.is_empty()
     }
 }

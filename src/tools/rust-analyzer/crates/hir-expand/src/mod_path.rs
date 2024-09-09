@@ -8,12 +8,13 @@ use std::{
 use crate::{
     db::ExpandDatabase,
     hygiene::{marks_rev, SyntaxContextExt, Transparency},
-    name::{known, AsName, Name},
+    name::{AsName, Name},
     tt,
 };
 use base_db::CrateId;
+use intern::sym;
 use smallvec::SmallVec;
-use span::SyntaxContextId;
+use span::{Edition, SyntaxContextId};
 use syntax::{ast, AstNode};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -106,10 +107,7 @@ impl ModPath {
             PathKind::Abs => 0,
             PathKind::DollarCrate(_) => "$crate".len(),
         };
-        self.segments()
-            .iter()
-            .map(|segment| segment.as_str().map_or(0, str::len))
-            .fold(base, core::ops::Add::add)
+        self.segments().iter().map(|segment| segment.as_str().len()).fold(base, core::ops::Add::add)
     }
 
     pub fn is_ident(&self) -> bool {
@@ -123,7 +121,7 @@ impl ModPath {
     #[allow(non_snake_case)]
     pub fn is_Self(&self) -> bool {
         self.kind == PathKind::Plain
-            && matches!(&*self.segments, [name] if *name == known::SELF_TYPE)
+            && matches!(&*self.segments, [name] if *name == sym::Self_.clone())
     }
 
     /// If this path is a single identifier, like `foo`, return its name.
@@ -142,8 +140,12 @@ impl ModPath {
         UnescapedModPath(self)
     }
 
-    pub fn display<'a>(&'a self, db: &'a dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
-        Display { db, path: self }
+    pub fn display<'a>(
+        &'a self,
+        db: &'a dyn crate::db::ExpandDatabase,
+        edition: Edition,
+    ) -> impl fmt::Display + 'a {
+        Display { db, path: self, edition }
     }
 }
 
@@ -156,11 +158,12 @@ impl Extend<Name> for ModPath {
 struct Display<'a> {
     db: &'a dyn ExpandDatabase,
     path: &'a ModPath,
+    edition: Edition,
 }
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_fmt_path(self.db, self.path, f, true)
+        display_fmt_path(self.db, self.path, f, Escape::IfNeeded(self.edition))
     }
 }
 
@@ -171,7 +174,7 @@ struct UnescapedDisplay<'a> {
 
 impl fmt::Display for UnescapedDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_fmt_path(self.db, self.path.0, f, false)
+        display_fmt_path(self.db, self.path.0, f, Escape::No)
     }
 }
 
@@ -180,11 +183,17 @@ impl From<Name> for ModPath {
         ModPath::from_segments(PathKind::Plain, iter::once(name))
     }
 }
+
+enum Escape {
+    No,
+    IfNeeded(Edition),
+}
+
 fn display_fmt_path(
     db: &dyn ExpandDatabase,
     path: &ModPath,
     f: &mut fmt::Formatter<'_>,
-    escaped: bool,
+    escaped: Escape,
 ) -> fmt::Result {
     let mut first_segment = true;
     let mut add_segment = |s| -> fmt::Result {
@@ -212,10 +221,9 @@ fn display_fmt_path(
             f.write_str("::")?;
         }
         first_segment = false;
-        if escaped {
-            segment.display(db).fmt(f)?;
-        } else {
-            segment.unescaped().display(db).fmt(f)?;
+        match escaped {
+            Escape::IfNeeded(edition) => segment.display(db, edition).fmt(f)?,
+            Escape::No => segment.unescaped().display(db).fmt(f)?,
         }
     }
     Ok(())
@@ -265,9 +273,10 @@ fn convert_path(
                 res
             }
         }
-        ast::PathSegmentKind::SelfTypeKw => {
-            ModPath::from_segments(PathKind::Plain, Some(known::SELF_TYPE))
-        }
+        ast::PathSegmentKind::SelfTypeKw => ModPath::from_segments(
+            PathKind::Plain,
+            Some(Name::new_symbol(sym::Self_.clone(), SyntaxContextId::ROOT)),
+        ),
         ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
         ast::PathSegmentKind::SelfKw => handle_super_kw(0)?,
         ast::PathSegmentKind::SuperKw => handle_super_kw(1)?,
@@ -317,30 +326,32 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModP
             tt::Leaf::Punct(tt::Punct { char: ':', .. }) => PathKind::Abs,
             _ => return None,
         },
-        tt::Leaf::Ident(tt::Ident { text, span }) if text == "$crate" => {
+        tt::Leaf::Ident(tt::Ident { sym: text, span, .. }) if *text == sym::dollar_crate => {
             resolve_crate_root(db, span.ctx).map(PathKind::DollarCrate).unwrap_or(PathKind::Crate)
         }
-        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "self" => PathKind::SELF,
-        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "super" => {
+        tt::Leaf::Ident(tt::Ident { sym: text, .. }) if *text == sym::self_ => PathKind::SELF,
+        tt::Leaf::Ident(tt::Ident { sym: text, .. }) if *text == sym::super_ => {
             let mut deg = 1;
-            while let Some(tt::Leaf::Ident(tt::Ident { text, .. })) = leaves.next() {
-                if text != "super" {
-                    segments.push(Name::new_text_dont_use(text.clone()));
+            while let Some(tt::Leaf::Ident(tt::Ident { sym: text, span, is_raw: _ })) =
+                leaves.next()
+            {
+                if *text != sym::super_ {
+                    segments.push(Name::new_symbol(text.clone(), span.ctx));
                     break;
                 }
                 deg += 1;
             }
             PathKind::Super(deg)
         }
-        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "crate" => PathKind::Crate,
+        tt::Leaf::Ident(tt::Ident { sym: text, .. }) if *text == sym::crate_ => PathKind::Crate,
         tt::Leaf::Ident(ident) => {
-            segments.push(Name::new_text_dont_use(ident.text.clone()));
+            segments.push(Name::new_symbol(ident.sym.clone(), ident.span.ctx));
             PathKind::Plain
         }
         _ => return None,
     };
     segments.extend(leaves.filter_map(|leaf| match leaf {
-        ::tt::Leaf::Ident(ident) => Some(Name::new_text_dont_use(ident.text.clone())),
+        ::tt::Leaf::Ident(ident) => Some(Name::new_symbol(ident.sym.clone(), ident.span.ctx)),
         _ => None,
     }));
     Some(ModPath { kind, segments })
@@ -385,6 +396,8 @@ macro_rules! __known_path {
     (core::ops::RangeInclusive) => {};
     (core::future::Future) => {};
     (core::future::IntoFuture) => {};
+    (core::fmt::Debug) => {};
+    (std::fmt::format) => {};
     (core::ops::Try) => {};
     ($path:path) => {
         compile_error!("Please register your known path in the path module")
@@ -396,7 +409,7 @@ macro_rules! __path {
     ($start:ident $(:: $seg:ident)*) => ({
         $crate::__known_path!($start $(:: $seg)*);
         $crate::mod_path::ModPath::from_segments($crate::mod_path::PathKind::Abs, vec![
-            $crate::mod_path::__name![$start], $($crate::mod_path::__name![$seg],)*
+            $crate::name::Name::new_symbol_root(intern::sym::$start.clone()), $($crate::name::Name::new_symbol_root(intern::sym::$seg.clone()),)*
         ])
     });
 }

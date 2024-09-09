@@ -1,7 +1,7 @@
-use crate::base::ast::NestedMetaItem;
-use crate::errors;
-use crate::expand::{self, AstFragment, Invocation};
-use crate::module::DirOwnership;
+use std::default::Default;
+use std::iter;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::ptr::P;
@@ -15,9 +15,11 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
-use rustc_parse::{parser::Parser, MACRO_ARGUMENTS};
+use rustc_parse::parser::Parser;
+use rustc_parse::MACRO_ARGUMENTS;
 use rustc_session::config::CollapseMacroDebuginfo;
-use rustc_session::{parse::ParseSess, Limit, Session};
+use rustc_session::parse::ParseSess;
+use rustc_session::{Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
@@ -25,11 +27,12 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
-use std::default::Default;
-use std::iter;
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use thin_vec::ThinVec;
+
+use crate::base::ast::NestedMetaItem;
+use crate::errors;
+use crate::expand::{self, AstFragment, Invocation};
+use crate::module::DirOwnership;
 
 // When adding new variants, make sure to
 // adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`
@@ -1303,12 +1306,12 @@ pub fn parse_macro_name_and_helper_attrs(
     // that it's of the form `#[proc_macro_derive(Foo)]` or
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
     let list = attr.meta_item_list()?;
-    if list.len() != 1 && list.len() != 2 {
+    let ([trait_attr] | [trait_attr, _]) = list.as_slice() else {
         dcx.emit_err(errors::AttrNoArguments { span: attr.span });
         return None;
-    }
-    let Some(trait_attr) = list[0].meta_item() else {
-        dcx.emit_err(errors::NotAMetaItem { span: list[0].span() });
+    };
+    let Some(trait_attr) = trait_attr.meta_item() else {
+        dcx.emit_err(errors::NotAMetaItem { span: trait_attr.span() });
         return None;
     };
     let trait_ident = match trait_attr.ident() {
@@ -1395,8 +1398,6 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) {
         };
 
         if crate_matches {
-            // FIXME: make this translatable
-            #[allow(rustc::untranslatable_diagnostic)]
             sess.dcx().emit_fatal(errors::ProcMacroBackCompat {
                 crate_name: "rental".to_string(),
                 fixed_version: "0.5.6".to_string(),

@@ -5,7 +5,7 @@ test $DIR/issue-81662-shortness.rs - foo (line 8) ... FAILED
 failures:
 
 ---- $DIR/issue-81662-shortness.rs - foo (line 8) stdout ----
-$DIR/issue-81662-shortness.rs:9:1: error[E0425]: cannot find function `foo` in this scope
+$DIR/issue-81662-shortness.rs:9:1: error[E0425]: cannot find function `foo` in this scope: not found in this scope
 error: aborting due to 1 previous error
 Couldn't compile the test.
 

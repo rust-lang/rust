@@ -37,19 +37,19 @@
           _4 = [const 0_i32, const 1_i32, const 2_i32, const 3_i32, const 4_i32, const 5_i32];
           StorageLive(_5);
           _5 = const 3_usize;
-          _6 = Len(_4);
-          _7 = Lt(_5, _6);
-          assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, _5) -> [success: bb2, unwind unreachable];
+          _6 = const 6_usize;
+          _7 = Lt(copy _5, copy _6);
+          assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, copy _5) -> [success: bb2, unwind unreachable];
       }
   
       bb2: {
-          _3 = _4[_5];
+          _3 = copy _4[_5];
           StorageDead(_5);
           StorageDead(_4);
           StorageLive(_8);
 -         StorageLive(_9);
 -         _9 = Point { x: const 12_u32, y: const 42_u32 };
--         _8 = (_9.1: u32);
+-         _8 = copy (_9.1: u32);
 -         StorageDead(_9);
 +         StorageLive(_10);
 +         StorageLive(_11);
@@ -57,7 +57,7 @@
 +         _10 = const 12_u32;
 +         _11 = const 42_u32;
 +         nop;
-+         _8 = _11;
++         _8 = copy _11;
 +         StorageDead(_10);
 +         StorageDead(_11);
 +         nop;

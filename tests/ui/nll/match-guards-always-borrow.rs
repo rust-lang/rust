@@ -1,6 +1,5 @@
 #![feature(if_let_guard)]
 #![allow(unused_mut)]
-//@ run-rustfix
 
 // Here is arielb1's basic example from rust-lang/rust#27282
 // that AST borrowck is flummoxed by:

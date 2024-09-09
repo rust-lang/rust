@@ -1,13 +1,11 @@
-#[cfg(feature = "nightly")]
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-
 use std::borrow::{Borrow, BorrowMut};
-use std::fmt;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, RangeBounds};
-use std::slice;
-use std::vec;
+use std::{fmt, slice, vec};
+
+#[cfg(feature = "nightly")]
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::{Idx, IndexSlice};
 
@@ -189,6 +187,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
         let min_new_len = elem.index() + 1;
         self.raw.resize_with(min_new_len, fill_value);
+    }
+
+    #[inline]
+    pub fn append(&mut self, other: &mut Self) {
+        self.raw.append(&mut other.raw);
     }
 }
 

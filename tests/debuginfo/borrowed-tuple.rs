@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -7,16 +5,13 @@
 // gdb-command:run
 
 // gdb-command:print *stack_val_ref
-// gdbg-check:$1 = {__0 = -14, __1 = -19}
-// gdbr-check:$1 = (-14, -19)
+// gdb-check:$1 = (-14, -19)
 
 // gdb-command:print *ref_to_unnamed
-// gdbg-check:$2 = {__0 = -15, __1 = -20}
-// gdbr-check:$2 = (-15, -20)
+// gdb-check:$2 = (-15, -20)
 
 // gdb-command:print *unique_val_ref
-// gdbg-check:$3 = {__0 = -17, __1 = -22}
-// gdbr-check:$3 = (-17, -22)
+// gdb-check:$3 = (-17, -22)
 
 
 // === LLDB TESTS ==================================================================================
@@ -24,16 +19,13 @@
 // lldb-command:run
 
 // lldb-command:v *stack_val_ref
-// lldbg-check:[...] { 0 = -14 1 = -19 }
-// lldbr-check:((i16, f32)) *stack_val_ref = { 0 = -14 1 = -19 }
+// lldb-check:[...] { 0 = -14 1 = -19 }
 
 // lldb-command:v *ref_to_unnamed
-// lldbg-check:[...] { 0 = -15 1 = -20 }
-// lldbr-check:((i16, f32)) *ref_to_unnamed = { 0 = -15 1 = -20 }
+// lldb-check:[...] { 0 = -15 1 = -20 }
 
 // lldb-command:v *unique_val_ref
-// lldbg-check:[...] { 0 = -17 1 = -22 }
-// lldbr-check:((i16, f32)) *unique_val_ref = { 0 = -17 1 = -22 }
+// lldb-check:[...] { 0 = -17 1 = -22 }
 
 
 #![allow(unused_variables)]

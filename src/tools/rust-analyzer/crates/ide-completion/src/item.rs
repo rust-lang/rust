@@ -10,7 +10,7 @@ use ide_db::{
 use itertools::Itertools;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
-use syntax::{format_smolstr, SmolStr, TextRange, TextSize};
+use syntax::{format_smolstr, Edition, SmolStr, TextRange, TextSize};
 use text_edit::TextEdit;
 
 use crate::{
@@ -400,6 +400,7 @@ impl CompletionItem {
         kind: impl Into<CompletionItemKind>,
         source_range: TextRange,
         label: impl Into<SmolStr>,
+        edition: Edition,
     ) -> Builder {
         let label = label.into();
         Builder {
@@ -419,6 +420,7 @@ impl CompletionItem {
             ref_match: None,
             imports_to_add: Default::default(),
             doc_aliases: vec![],
+            edition,
         }
     }
 
@@ -464,6 +466,7 @@ pub(crate) struct Builder {
     trigger_call_info: bool,
     relevance: CompletionRelevance,
     ref_match: Option<(Mutability, TextSize)>,
+    edition: Edition,
 }
 
 impl Builder {
@@ -517,7 +520,7 @@ impl Builder {
             label_detail.replace(format_smolstr!(
                 "{} (use {})",
                 label_detail.as_deref().unwrap_or_default(),
-                import_edit.import_path.display(db)
+                import_edit.import_path.display(db, self.edition)
             ));
         } else if let Some(trait_name) = self.trait_name {
             label_detail.replace(format_smolstr!(
@@ -536,8 +539,8 @@ impl Builder {
             .into_iter()
             .filter_map(|import| {
                 Some((
-                    import.import_path.display(db).to_string(),
-                    import.import_path.segments().last()?.display(db).to_string(),
+                    import.import_path.display(db, self.edition).to_string(),
+                    import.import_path.segments().last()?.display(db, self.edition).to_string(),
                 ))
             })
             .collect();
@@ -664,7 +667,7 @@ mod tests {
     /// If provided vec![vec![a], vec![b, c], vec![d]], then this will assert:
     ///     a.score < b.score == c.score < d.score
     fn check_relevance_score_ordered(expected_relevance_order: Vec<Vec<CompletionRelevance>>) {
-        let expected = format!("{:#?}", &expected_relevance_order);
+        let expected = format!("{expected_relevance_order:#?}");
 
         let actual_relevance_order = expected_relevance_order
             .into_iter()
@@ -685,7 +688,7 @@ mod tests {
             )
             .1;
 
-        let actual = format!("{:#?}", &actual_relevance_order);
+        let actual = format!("{actual_relevance_order:#?}");
 
         assert_eq_text!(&expected, &actual);
     }

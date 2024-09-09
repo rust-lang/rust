@@ -2,31 +2,12 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
-use self::EvaluationResult::*;
-use self::SelectionCandidate::*;
+use std::cell::{Cell, RefCell};
+use std::fmt::{self, Display};
+use std::ops::ControlFlow;
+use std::{cmp, iter};
 
-use super::coherence::{self, Conflict};
-use super::const_evaluatable;
-use super::project;
-use super::project::ProjectionTermObligation;
-use super::util;
-use super::util::closure_trait_ref_and_return_type;
-use super::wf;
-use super::{
-    ImplDerivedCause, Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow,
-    PolyTraitObligation, PredicateObligation, Selection, SelectionError, SelectionResult,
-    TraitQueryMode,
-};
-
-use crate::error_reporting::InferCtxtErrorExt;
-use crate::infer::{InferCtxt, InferCtxtExt, InferOk, TypeFreshener};
-use crate::solve::InferCtxtSelectExt as _;
-use crate::traits::normalize::normalize_with_depth;
-use crate::traits::normalize::normalize_with_depth_to;
-use crate::traits::project::ProjectAndUnifyResult;
-use crate::traits::project::ProjectionCacheKeyExt;
-use crate::traits::ProjectionCacheKey;
-use crate::traits::Unimplemented;
+use hir::def::DefKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
@@ -34,31 +15,40 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::infer::relate::TypeRelation;
-use rustc_infer::infer::BoundRegionConversionTime;
-use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
+use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::TraitObligation;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::dep_kinds;
-use rustc_middle::dep_graph::DepNodeIndex;
+use rustc_middle::dep_graph::{dep_kinds, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
+pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, PolyProjectionPredicate, Upcast};
-use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
+use rustc_middle::ty::{
+    self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
+    Upcast,
+};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
+use tracing::{debug, instrument, trace};
 
-use std::cell::{Cell, RefCell};
-use std::cmp;
-use std::fmt::{self, Display};
-use std::iter;
-use std::ops::ControlFlow;
-
-pub use rustc_middle::traits::select::*;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use self::EvaluationResult::*;
+use self::SelectionCandidate::*;
+use super::coherence::{self, Conflict};
+use super::project::ProjectionTermObligation;
+use super::util::closure_trait_ref_and_return_type;
+use super::{
+    const_evaluatable, project, util, wf, ImplDerivedCause, Normalized, Obligation,
+    ObligationCause, ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation,
+    Selection, SelectionError, SelectionResult, TraitQueryMode,
+};
+use crate::error_reporting::InferCtxtErrorExt;
+use crate::infer::{InferCtxt, InferCtxtExt, InferOk, TypeFreshener};
+use crate::solve::InferCtxtSelectExt as _;
+use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
+use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
+use crate::traits::{ProjectionCacheKey, Unimplemented};
 
 mod _match;
 mod candidate_assembly;
@@ -1001,7 +991,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     };
 
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        // Only really excercised by generic_const_exprs
+                        // Only really exercised by generic_const_exprs
                         DefineOpaqueTypes::Yes,
                         ct_ty,
                         ty,
@@ -2124,7 +2114,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -2181,7 +2171,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
         match *self_ty.kind() {
-            ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Where(ty::Binder::dummy(Vec::new())),
+            ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Where(ty::Binder::dummy(Vec::new())),
 
             ty::Uint(_)
             | ty::Int(_)
@@ -2262,8 +2252,21 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            // FIXME(async_closures): These are never clone, for now.
-            ty::CoroutineClosure(_, _) => None,
+            ty::CoroutineClosure(_, args) => {
+                // (*) binder moved here
+                let ty = self.infcx.shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty());
+                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
+                    // Not yet resolved.
+                    Ambiguous
+                } else {
+                    Where(
+                        obligation
+                            .predicate
+                            .rebind(args.as_coroutine_closure().upvar_tys().to_vec()),
+                    )
+                }
+            }
+
             // `Copy` and `Clone` are automatically implemented for an anonymous adt
             // if all of its fields are `Copy` and `Clone`
             ty::Adt(adt, args) if adt.is_anonymous() => {
@@ -2330,7 +2333,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
@@ -2797,6 +2800,26 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             });
         }
 
+        // Register any outlives obligations from the trait here, cc #124336.
+        if matches!(tcx.def_kind(def_id), DefKind::Impl { of_trait: true }) {
+            for clause in tcx.impl_super_outlives(def_id).iter_instantiated(tcx, args) {
+                let clause = normalize_with_depth_to(
+                    self,
+                    param_env,
+                    cause.clone(),
+                    recursion_depth,
+                    clause,
+                    &mut obligations,
+                );
+                obligations.push(Obligation {
+                    cause: cause.clone(),
+                    recursion_depth,
+                    param_env,
+                    predicate: clause.as_predicate(),
+                });
+            }
+        }
+
         obligations
     }
 }
@@ -3104,7 +3127,7 @@ impl<'o, 'tcx> fmt::Debug for TraitObligationStack<'o, 'tcx> {
     }
 }
 
-pub enum ProjectionMatchesProjection {
+pub(crate) enum ProjectionMatchesProjection {
     Yes,
     Ambiguous,
     No,

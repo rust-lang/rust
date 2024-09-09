@@ -9,7 +9,7 @@
 //!  - or-fun-call
 //!  - option-if-let-else
 
-use crate::consts::{constant, FullInt};
+use crate::consts::{ConstEvalCtxt, FullInt};
 use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
@@ -206,7 +206,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 },
 
                 // `-i32::MIN` panics with overflow checks
-                ExprKind::Unary(UnOp::Neg, right) if constant(self.cx, self.cx.typeck_results(), right).is_none() => {
+                ExprKind::Unary(UnOp::Neg, right) if ConstEvalCtxt::new(self.cx).eval(right).is_none() => {
                     self.eagerness |= NoChange;
                 },
 
@@ -232,7 +232,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 // Thus, we would realistically only delay the lint.
                 ExprKind::Binary(op, _, right)
                     if matches!(op.node, BinOpKind::Shl | BinOpKind::Shr)
-                        && constant(self.cx, self.cx.typeck_results(), right).is_none() =>
+                        && ConstEvalCtxt::new(self.cx).eval(right).is_none() =>
                 {
                     self.eagerness |= NoChange;
                 },
@@ -240,9 +240,9 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::Binary(op, left, right)
                     if matches!(op.node, BinOpKind::Div | BinOpKind::Rem)
                         && let right_ty = self.cx.typeck_results().expr_ty(right)
-                        && let left = constant(self.cx, self.cx.typeck_results(), left)
-                        && let right = constant(self.cx, self.cx.typeck_results(), right)
-                            .and_then(|c| c.int_value(self.cx, right_ty))
+                        && let ecx = ConstEvalCtxt::new(self.cx)
+                        && let left = ecx.eval(left)
+                        && let right = ecx.eval(right).and_then(|c| c.int_value(self.cx.tcx, right_ty))
                         && matches!(
                             (left, right),
                             // `1 / x`: x might be zero
@@ -261,8 +261,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::Binary(op, left, right)
                     if matches!(op.node, BinOpKind::Add | BinOpKind::Sub | BinOpKind::Mul)
                         && !self.cx.typeck_results().expr_ty(e).is_floating_point()
-                        && (constant(self.cx, self.cx.typeck_results(), left).is_none()
-                            || constant(self.cx, self.cx.typeck_results(), right).is_none()) =>
+                        && let ecx = ConstEvalCtxt::new(self.cx)
+                        && (ecx.eval(left).is_none() || ecx.eval(right).is_none()) =>
                 {
                     self.eagerness |= NoChange;
                 },

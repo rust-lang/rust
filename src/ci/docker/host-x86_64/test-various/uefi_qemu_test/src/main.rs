@@ -5,6 +5,7 @@
 #![no_std]
 
 use core::{panic, ptr};
+
 use r_efi::efi::{Char16, Handle, Status, SystemTable, RESET_SHUTDOWN};
 
 #[panic_handler]

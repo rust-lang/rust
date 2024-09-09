@@ -8,7 +8,9 @@
 //
 //   //          -- comment
 //   Name =      -- non-terminal definition
-//   'ident'     -- token (terminal)
+//   'ident'     -- keyword or punct token (terminal)
+//   '#ident'    -- generic token (terminal)
+//   '@ident'    -- literal token (terminal)
 //   A B         -- sequence
 //   A | B       -- alternation
 //   A*          -- zero or more repetition
@@ -17,17 +19,17 @@
 //   label:A     -- suggested name for field of AST node
 
 //*************************//
-// Names, Paths and Macros //
+//         Paths           //
 //*************************//
 
 Name =
-  'ident' | 'self'
+  '#ident' | 'self'
 
 NameRef =
-  'ident' | 'int_number' | 'self' | 'super' | 'crate' | 'Self'
+  '#ident' | '@int_number' | 'self' | 'super' | 'crate' | 'Self'
 
 Lifetime =
-  'lifetime_ident'
+  '#lifetime_ident'
 
 Path =
   (qualifier:Path '::')? segment:PathSegment
@@ -36,7 +38,16 @@ PathSegment =
   '::'? NameRef
 | NameRef GenericArgList?
 | NameRef ParamList RetType?
+| NameRef ReturnTypeSyntax
 | '<' Type ('as' PathType)? '>'
+
+ReturnTypeSyntax =
+  '(' '..' ')'
+
+
+//*************************//
+//        Generics         //
+//*************************//
 
 GenericArgList =
   '::'? '<' (GenericArg (',' GenericArg)* ','?)? '>'
@@ -52,7 +63,7 @@ TypeArg =
 
 AssocTypeArg =
   NameRef
-  (GenericArgList | ParamList RetType?)?
+  (GenericArgList | ParamList RetType? | ReturnTypeSyntax)?
   (':' TypeBoundList | ('=' Type | ConstArg))
 
 LifetimeArg =
@@ -60,6 +71,36 @@ LifetimeArg =
 
 ConstArg =
   Expr
+
+GenericParamList =
+  '<' (GenericParam (',' GenericParam)* ','?)? '>'
+
+GenericParam =
+  ConstParam
+| LifetimeParam
+| TypeParam
+
+TypeParam =
+  Attr* Name (':' TypeBoundList?)?
+  ('=' default_type:Type)?
+
+ConstParam =
+  Attr* 'const' Name ':' Type
+  ('=' default_val:ConstArg)?
+
+LifetimeParam =
+  Attr* Lifetime (':' TypeBoundList?)?
+
+WhereClause =
+  'where' predicates:(WherePred (',' WherePred)* ','?)
+
+WherePred =
+  ('for' GenericParamList)?  (Lifetime | Type) ':' TypeBoundList?
+
+
+//*************************//
+//          Macro          //
+//*************************//
 
 MacroCall =
   Attr* Path '!' TokenTree ';'?
@@ -72,22 +113,23 @@ TokenTree =
 MacroItems =
   Item*
 
-MacroEagerInput =
-  '(' (Expr (',' Expr)* ','?)? ')'
-| '{' (Expr (',' Expr)* ','?)? '}'
-| '[' (Expr (',' Expr)* ','?)? ']'
-
-
 MacroStmts =
   statements:Stmt*
   Expr?
+
+Attr =
+  '#' '!'? '[' Meta ']'
+
+Meta =
+  'unsafe' '(' Path ('=' Expr | TokenTree)? ')'
+| Path ('=' Expr | TokenTree)?
 
 //*************************//
 //          Items          //
 //*************************//
 
 SourceFile =
-  'shebang'?
+  '#shebang'?
   Attr*
   Item*
 
@@ -148,12 +190,12 @@ UseTreeList =
 
 Fn =
  Attr* Visibility?
- 'default'? 'const'? 'async'? 'unsafe'? Abi?
+ 'default'? 'const'? 'async'? 'gen'? 'unsafe'? Abi?
  'fn' Name GenericParamList? ParamList RetType? WhereClause?
  (body:BlockExpr | ';')
 
 Abi =
-  'extern' 'string'?
+  'extern' '@string'?
 
 ParamList =
   '('(
@@ -282,40 +324,8 @@ ExternItem =
 | Static
 | TypeAlias
 
-GenericParamList =
-  '<' (GenericParam (',' GenericParam)* ','?)? '>'
-
-GenericParam =
-  ConstParam
-| LifetimeParam
-| TypeParam
-
-TypeParam =
-  Attr* Name (':' TypeBoundList?)?
-  ('=' default_type:Type)?
-
-ConstParam =
-  Attr* 'const' Name ':' Type
-  ('=' default_val:ConstArg)?
-
-LifetimeParam =
-  Attr* Lifetime (':' TypeBoundList?)?
-
-WhereClause =
-  'where' predicates:(WherePred (',' WherePred)* ','?)
-
-WherePred =
-  ('for' GenericParamList)?  (Lifetime | Type) ':' TypeBoundList?
-
 Visibility =
   'pub' ('(' 'in'? Path ')')?
-
-Attr =
-  '#' '!'? '[' Meta ']'
-
-Meta =
-  'unsafe' '(' Path ('=' Expr | TokenTree)? ')'
-| Path ('=' Expr | TokenTree)?
 
 
 //****************************//
@@ -398,11 +408,12 @@ MacroExpr =
 
 Literal =
   Attr* value:(
-    'int_number' | 'float_number'
-  | 'string' | 'raw_string'
-  | 'byte_string' | 'raw_byte_string'
+    '@int_number' | '@float_number'
+  | '@string' | '@raw_string'
+  | '@byte_string' | '@raw_byte_string'
+  | '@c_string' | '@raw_c_string'
+  | '@char' | '@byte'
   | 'true' | 'false'
-  | 'char' | 'byte'
   )
 
 PathExpr =
@@ -422,7 +433,7 @@ TryExpr =
   Attr* Expr '?'
 
 BlockExpr =
-  Attr* Label? ('try' | 'unsafe' | 'async' | 'const') StmtList
+  Attr* Label? ('try' | 'unsafe' | ('async' 'move'?) | ('gen' 'move'?) | 'const') StmtList
 
 PrefixExpr =
   Attr* op:('-' | '!' | '*') Expr
@@ -482,8 +493,11 @@ FieldExpr =
   Attr* Expr '.' NameRef
 
 ClosureExpr =
-  Attr* ('for' GenericParamList)? 'const'? 'static'? 'async'? 'move'?  ParamList RetType?
+  Attr* ClosureBinder? 'const'? 'static'? 'async'? 'gen'? 'move'?  ParamList RetType?
   body:Expr
+
+ClosureBinder =
+  'for' GenericParamList
 
 IfExpr =
   Attr* 'if' condition:Expr then_branch:BlockExpr
@@ -617,6 +631,7 @@ TypeBoundList =
 TypeBound =
   Lifetime
 | ('~' 'const' | 'const')? 'async'? '?'? Type
+| 'use' GenericParamList
 
 //************************//
 //        Patterns        //

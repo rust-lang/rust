@@ -9,9 +9,8 @@ LL | |         Some("foo")
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^
+   | |_____^ help: try: `foo().then(||  { println!("true!"); "foo" })`
    |
-   = help: consider using `bool::then` like: `foo().then(|| { /* snippet */ "foo" })`
    = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
 
@@ -26,25 +25,19 @@ LL | |         Some(matches!(true, false))
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^
-   |
-   = help: consider using `bool::then` like: `matches!(true, true).then(|| { /* snippet */ matches!(true, false) })`
+   | |_____^ help: try: `matches!(true, true).then(||  { println!("true!"); matches!(true, false) })`
 
 error: this could be simplified with `bool::then_some`
   --> tests/ui/if_then_some_else_none.rs:25:28
    |
 LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using `bool::then_some` like: `(o < 32).then_some(o)`
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(o < 32).then_some(o)`
 
 error: this could be simplified with `bool::then_some`
   --> tests/ui/if_then_some_else_none.rs:30:13
    |
 LL |     let _ = if !x { Some(0) } else { None };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using `bool::then_some` like: `(!x).then_some(0)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(!x).then_some(0)`
 
 error: this could be simplified with `bool::then`
   --> tests/ui/if_then_some_else_none.rs:86:13
@@ -57,9 +50,7 @@ LL | |         Some(150)
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^
-   |
-   = help: consider using `bool::then` like: `foo().then(|| { /* snippet */ 150 })`
+   | |_____^ help: try: `foo().then(||  { println!("true!"); 150 })`
 
 error: aborting due to 5 previous errors
 

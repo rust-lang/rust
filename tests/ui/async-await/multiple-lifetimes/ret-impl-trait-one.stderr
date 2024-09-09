@@ -26,10 +26,10 @@ LL | |     (a, b)
 LL | | }
    | |_^
    |
-help: to declare that `impl Trait<'a>` captures `'b`, you can add an explicit `'b` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'b`
    |
-LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
-   |                                                                                ++++
+LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + use<'a, 'b> {
+   |                                                                                +++++++++++++
 
 error: aborting due to 2 previous errors
 

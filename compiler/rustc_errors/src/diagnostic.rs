@@ -1,16 +1,3 @@
-use crate::snippet::Style;
-use crate::{
-    CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
-    MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
-};
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
-use rustc_error_messages::FluentValue;
-use rustc_lint_defs::{Applicability, LintExpectationId};
-use rustc_macros::{Decodable, Encodable};
-use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
@@ -18,7 +5,21 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic;
 use std::thread::panicking;
+
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_error_messages::{fluent_value_from_str_list_sep_by_and, FluentValue};
+use rustc_lint_defs::{Applicability, LintExpectationId};
+use rustc_macros::{Decodable, Encodable};
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::Symbol;
+use rustc_span::{AttrId, Span, DUMMY_SP};
 use tracing::debug;
+
+use crate::snippet::Style;
+use crate::{
+    CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
+    MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
+};
 
 /// Error type for `DiagInner`'s `suggestions` field, indicating that
 /// `.disable_suggestions()` was called on the `DiagInner`.
@@ -203,7 +204,7 @@ pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
-pub struct DiagLocation {
+pub(crate) struct DiagLocation {
     file: Cow<'static, str>,
     line: u32,
     col: u32,
@@ -355,24 +356,19 @@ impl DiagInner {
 
     pub(crate) fn update_unstable_expectation_id(
         &mut self,
-        unstable_to_stable: &FxIndexMap<LintExpectationId, LintExpectationId>,
+        unstable_to_stable: &FxIndexMap<AttrId, LintExpectationId>,
     ) {
         if let Level::Expect(expectation_id) | Level::ForceWarning(Some(expectation_id)) =
             &mut self.level
+            && let LintExpectationId::Unstable { attr_id, lint_index } = *expectation_id
         {
-            if expectation_id.is_stable() {
-                return;
-            }
-
             // The unstable to stable map only maps the unstable `AttrId` to a stable `HirId` with an attribute index.
             // The lint index inside the attribute is manually transferred here.
-            let lint_index = expectation_id.get_lint_index();
-            expectation_id.set_lint_index(None);
-            let mut stable_id = unstable_to_stable
-                .get(expectation_id)
-                .expect("each unstable `LintExpectationId` must have a matching stable id")
-                .normalize();
+            let Some(stable_id) = unstable_to_stable.get(&attr_id) else {
+                panic!("{expectation_id:?} must have a matching stable id")
+            };
 
+            let mut stable_id = *stable_id;
             stable_id.set_lint_index(lint_index);
             *expectation_id = stable_id;
         }
@@ -483,7 +479,7 @@ pub struct Subdiag {
 /// - The `EmissionGuarantee`, which determines the type returned from `emit`.
 ///
 /// Each constructed `Diag` must be consumed by a function such as `emit`,
-/// `cancel`, `delay_as_bug`, or `into_diag`. A panic occurrs if a `Diag`
+/// `cancel`, `delay_as_bug`, or `into_diag`. A panic occurs if a `Diag`
 /// is dropped without being consumed by one of these functions.
 ///
 /// If there is some state in a downstream crate you would like to access in
@@ -740,6 +736,16 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     }
 
+    #[rustc_lint_diagnostics]
+    pub fn highlighted_span_note(
+        &mut self,
+        span: impl Into<MultiSpan>,
+        msg: Vec<StringPart>,
+    ) -> &mut Self {
+        self.sub_with_highlights(Level::Note, msg, span.into());
+        self
+    }
+
     /// This is like [`Diag::note()`], but it's only printed once.
     #[rustc_lint_diagnostics]
     pub fn note_once(&mut self, msg: impl Into<SubdiagMessage>) -> &mut Self {
@@ -811,6 +817,17 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     pub fn highlighted_help(&mut self, msg: Vec<StringPart>) -> &mut Self {
         self.sub_with_highlights(Level::Help, msg, MultiSpan::new());
+        self
+    }
+
+    /// Add a help message attached to this diagnostic with a customizable highlighted message.
+    #[rustc_lint_diagnostics]
+    pub fn highlighted_span_help(
+        &mut self,
+        span: impl Into<MultiSpan>,
+        msg: Vec<StringPart>,
+    ) -> &mut Self {
+        self.sub_with_highlights(Level::Help, msg, span.into());
         self
     }
 
@@ -898,8 +915,8 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
-        suggestion.sort_unstable();
-        suggestion.dedup_by(|(s1, m1), (s2, m2)| s1.source_equal(*s2) && m1 == m2);
+        let mut seen = crate::FxHashSet::default();
+        suggestion.retain(|(span, msg)| seen.insert((span.lo(), span.hi(), msg.clone())));
 
         let parts = suggestion
             .into_iter()

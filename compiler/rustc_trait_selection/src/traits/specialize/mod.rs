@@ -10,28 +10,27 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 pub mod specialization_graph;
-use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::ty::print::PrintTraitRefExt as _;
-use specialization_graph::GraphExt;
 
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_middle::bug;
+use rustc_middle::query::LocalCrate;
+use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::{self, GenericArgsRef, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
+use rustc_session::lint::builtin::{COHERENCE_LEAK_CHECK, ORDER_DEPENDENT_TRAIT_OBJECTS};
+use rustc_span::{sym, ErrorGuaranteed, Span, DUMMY_SP};
+use specialization_graph::GraphExt;
+use tracing::{debug, instrument};
+
+use super::{util, SelectionContext};
 use crate::error_reporting::traits::to_pretty_impl_header;
 use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt};
-use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{codes::*, Diag, EmissionGuarantee};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::bug;
-use rustc_middle::query::LocalCrate;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
-use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
-use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
-use rustc_span::{sym, ErrorGuaranteed, Span, DUMMY_SP};
-
-use super::util;
-use super::SelectionContext;
 
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]

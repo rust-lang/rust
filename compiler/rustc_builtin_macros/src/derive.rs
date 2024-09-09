@@ -1,8 +1,5 @@
-use crate::cfg_eval::cfg_eval;
-use crate::errors;
-
 use rustc_ast as ast;
-use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, Safety, StmtKind};
+use rustc_ast::{GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier,
 };
@@ -11,6 +8,9 @@ use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span};
+
+use crate::cfg_eval::cfg_eval;
+use crate::errors;
 
 pub(crate) struct Expander {
     pub is_const: bool,
@@ -43,6 +43,7 @@ impl MultiItemModifier for Expander {
                     ast::AttrStyle::Outer,
                     sym::derive,
                     template,
+                    true,
                 );
 
                 let mut resolutions = match &meta_item.kind {
@@ -60,7 +61,6 @@ impl MultiItemModifier for Expander {
                                 // Reject `#[derive(Debug = "value", Debug(abc))]`, but recover the
                                 // paths.
                                 report_path_args(sess, meta);
-                                report_unsafe_args(sess, meta);
                                 meta.path.clone()
                             })
                             .map(|path| DeriveResolution {
@@ -158,15 +158,5 @@ fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
         MetaItemKind::NameValue(..) => {
             sess.dcx().emit_err(errors::DerivePathArgsValue { span });
         }
-    }
-}
-
-fn report_unsafe_args(sess: &Session, meta: &ast::MetaItem) {
-    match meta.unsafety {
-        Safety::Unsafe(span) => {
-            sess.dcx().emit_err(errors::DeriveUnsafePath { span });
-        }
-        Safety::Default => {}
-        Safety::Safe(_) => unreachable!(),
     }
 }

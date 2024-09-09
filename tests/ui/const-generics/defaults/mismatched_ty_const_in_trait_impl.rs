@@ -3,7 +3,7 @@ trait Trait {
 }
 impl Trait for () {
     fn foo<const M: u64>() {}
-    //~^ error: method `foo` has an incompatible generic parameter for trait
+    //~^ error: associated function `foo` has an incompatible generic parameter for trait
 }
 
 trait Other {
@@ -11,7 +11,7 @@ trait Other {
 }
 impl Other for () {
     fn bar<T>() {}
-    //~^ error: method `bar` has an incompatible generic parameter for trait
+    //~^ error: associated function `bar` has an incompatible generic parameter for trait
 }
 
 trait Uwu {
@@ -19,7 +19,7 @@ trait Uwu {
 }
 impl Uwu for () {
     fn baz<const N: i32>() {}
-    //~^ error: method `baz` has an incompatible generic parameter for trait
+    //~^ error: associated function `baz` has an incompatible generic parameter for trait
 }
 
 trait Aaaaaa {
@@ -27,7 +27,7 @@ trait Aaaaaa {
 }
 impl Aaaaaa for () {
     fn bbbb<T, const N: u32>() {}
-    //~^ error: method `bbbb` has an incompatible generic parameter for trait
+    //~^ error: associated function `bbbb` has an incompatible generic parameter for trait
 }
 
 trait Names {
@@ -35,7 +35,7 @@ trait Names {
 }
 impl Names for () {
     fn abcd<const N: u32, T>() {}
-    //~^ error: method `abcd` has an incompatible generic parameter for trait
+    //~^ error: associated function `abcd` has an incompatible generic parameter for trait
 }
 
 fn main() {}

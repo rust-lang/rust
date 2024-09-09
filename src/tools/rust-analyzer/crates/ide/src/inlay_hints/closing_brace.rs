@@ -4,20 +4,21 @@
 //! } /* fn g */
 //! ```
 use hir::{HirDisplay, Semantics};
-use ide_db::{base_db::FileRange, RootDatabase};
+use ide_db::{FileRange, RootDatabase};
+use span::EditionedFileId;
 use syntax::{
-    ast::{self, AstNode, HasName},
+    ast::{self, AstNode, HasLoopBody, HasName},
     match_ast, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{FileId, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
+use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
-    file_id: FileId,
-    node: SyntaxNode,
+    file_id: EditionedFileId,
+    mut node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
@@ -35,8 +36,12 @@ pub(super) fn hints(
                     let ty = imp.self_ty(sema.db);
                     let trait_ = imp.trait_(sema.db);
                     let hint_text = match trait_ {
-                        Some(tr) => format!("impl {} for {}", tr.name(sema.db).display(sema.db), ty.display_truncated(sema.db, config.max_length)),
-                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length)),
+                        Some(tr) => format!(
+                            "impl {} for {}",
+                            tr.name(sema.db).display(sema.db, file_id.edition()),
+                            ty.display_truncated(sema.db, config.max_length, file_id.edition(),
+                        )),
+                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, file_id.edition())),
                     };
                     (hint_text, None)
                 },
@@ -51,6 +56,30 @@ pub(super) fn hints(
 
         let module = ast::Module::cast(list.syntax().parent()?)?;
         (format!("mod {}", module.name()?), module.name().map(name))
+    } else if let Some(label) = ast::Label::cast(node.clone()) {
+        // in this case, `ast::Label` could be seen as a part of `ast::BlockExpr`
+        // the actual number of lines in this case should be the line count of the parent BlockExpr,
+        // which the `min_lines` config cares about
+        node = node.parent()?;
+
+        let parent = label.syntax().parent()?;
+        let block;
+        match_ast! {
+            match parent {
+                ast::BlockExpr(block_expr) => {
+                    block = block_expr.stmt_list()?;
+                },
+                ast::AnyHasLoopBody(loop_expr) => {
+                    block = loop_expr.loop_body()?.stmt_list()?;
+                },
+                _ => return None,
+            }
+        }
+        closing_token = block.r_curly_token()?;
+
+        let lifetime = label.lifetime().map_or_else(String::new, |it| it.to_string());
+
+        (lifetime, Some(label.syntax().text_range()))
     } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {
         closing_token = block.stmt_list()?.r_curly_token()?;
 
@@ -107,7 +136,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let linked_location = name_range.map(|range| FileRange { file_id, range });
+    let linked_location = name_range.map(|range| FileRange { file_id: file_id.into(), range });
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,
@@ -188,6 +217,42 @@ fn f() {
     ];
   }
 //^ fn f
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_closing_brace_for_block_expr() {
+        check_with_config(
+            InlayHintsConfig { closing_brace_hints_min_lines: Some(2), ..DISABLED_CONFIG },
+            r#"
+fn test() {
+    'end: {
+        'do_a: {
+            'do_b: {
+
+            }
+          //^ 'do_b
+            break 'end;
+        }
+      //^ 'do_a
+    }
+  //^ 'end
+
+    'a: loop {
+        'b: for i in 0..5 {
+            'c: while true {
+
+
+            }
+          //^ 'c
+        }
+      //^ 'b
+    }
+  //^ 'a
+
+  }
+//^ fn test
 "#,
         );
     }

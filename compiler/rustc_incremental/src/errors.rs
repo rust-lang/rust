@@ -1,10 +1,12 @@
-use rustc_macros::Diagnostic;
-use rustc_span::{symbol::Ident, Span, Symbol};
 use std::path::{Path, PathBuf};
+
+use rustc_macros::Diagnostic;
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(incremental_unrecognized_depnode)]
-pub struct UnrecognizedDepNode {
+pub(crate) struct UnrecognizedDepNode {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
@@ -12,28 +14,28 @@ pub struct UnrecognizedDepNode {
 
 #[derive(Diagnostic)]
 #[diag(incremental_missing_depnode)]
-pub struct MissingDepNode {
+pub(crate) struct MissingDepNode {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_missing_if_this_changed)]
-pub struct MissingIfThisChanged {
+pub(crate) struct MissingIfThisChanged {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_ok)]
-pub struct Ok {
+pub(crate) struct Ok {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_no_path)]
-pub struct NoPath {
+pub(crate) struct NoPath {
     #[primary_span]
     pub span: Span,
     pub target: Symbol,
@@ -42,7 +44,7 @@ pub struct NoPath {
 
 #[derive(Diagnostic)]
 #[diag(incremental_assertion_auto)]
-pub struct AssertionAuto<'a> {
+pub(crate) struct AssertionAuto<'a> {
     #[primary_span]
     pub span: Span,
     pub name: &'a str,
@@ -51,7 +53,7 @@ pub struct AssertionAuto<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_undefined_clean_dirty_assertions_item)]
-pub struct UndefinedCleanDirtyItem {
+pub(crate) struct UndefinedCleanDirtyItem {
     #[primary_span]
     pub span: Span,
     pub kind: String,
@@ -59,7 +61,7 @@ pub struct UndefinedCleanDirtyItem {
 
 #[derive(Diagnostic)]
 #[diag(incremental_undefined_clean_dirty_assertions)]
-pub struct UndefinedCleanDirty {
+pub(crate) struct UndefinedCleanDirty {
     #[primary_span]
     pub span: Span,
     pub kind: String,
@@ -67,7 +69,7 @@ pub struct UndefinedCleanDirty {
 
 #[derive(Diagnostic)]
 #[diag(incremental_repeated_depnode_label)]
-pub struct RepeatedDepNodeLabel<'a> {
+pub(crate) struct RepeatedDepNodeLabel<'a> {
     #[primary_span]
     pub span: Span,
     pub label: &'a str,
@@ -75,7 +77,7 @@ pub struct RepeatedDepNodeLabel<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_unrecognized_depnode_label)]
-pub struct UnrecognizedDepNodeLabel<'a> {
+pub(crate) struct UnrecognizedDepNodeLabel<'a> {
     #[primary_span]
     pub span: Span,
     pub label: &'a str,
@@ -83,7 +85,7 @@ pub struct UnrecognizedDepNodeLabel<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_not_dirty)]
-pub struct NotDirty<'a> {
+pub(crate) struct NotDirty<'a> {
     #[primary_span]
     pub span: Span,
     pub dep_node_str: &'a str,
@@ -91,7 +93,7 @@ pub struct NotDirty<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_not_clean)]
-pub struct NotClean<'a> {
+pub(crate) struct NotClean<'a> {
     #[primary_span]
     pub span: Span,
     pub dep_node_str: &'a str,
@@ -99,7 +101,7 @@ pub struct NotClean<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_not_loaded)]
-pub struct NotLoaded<'a> {
+pub(crate) struct NotLoaded<'a> {
     #[primary_span]
     pub span: Span,
     pub dep_node_str: &'a str,
@@ -107,7 +109,7 @@ pub struct NotLoaded<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_unknown_item)]
-pub struct UnknownItem {
+pub(crate) struct UnknownItem {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
@@ -115,14 +117,14 @@ pub struct UnknownItem {
 
 #[derive(Diagnostic)]
 #[diag(incremental_no_cfg)]
-pub struct NoCfg {
+pub(crate) struct NoCfg {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_associated_value_expected_for)]
-pub struct AssociatedValueExpectedFor {
+pub(crate) struct AssociatedValueExpectedFor {
     #[primary_span]
     pub span: Span,
     pub ident: Ident,
@@ -130,21 +132,21 @@ pub struct AssociatedValueExpectedFor {
 
 #[derive(Diagnostic)]
 #[diag(incremental_associated_value_expected)]
-pub struct AssociatedValueExpected {
+pub(crate) struct AssociatedValueExpected {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_unchecked_clean)]
-pub struct UncheckedClean {
+pub(crate) struct UncheckedClean {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_delete_old)]
-pub struct DeleteOld<'a> {
+pub(crate) struct DeleteOld<'a> {
     pub name: &'a str,
     pub path: PathBuf,
     pub err: std::io::Error,
@@ -152,7 +154,7 @@ pub struct DeleteOld<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_create_new)]
-pub struct CreateNew<'a> {
+pub(crate) struct CreateNew<'a> {
     pub name: &'a str,
     pub path: PathBuf,
     pub err: std::io::Error,
@@ -160,7 +162,7 @@ pub struct CreateNew<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_write_new)]
-pub struct WriteNew<'a> {
+pub(crate) struct WriteNew<'a> {
     pub name: &'a str,
     pub path: PathBuf,
     pub err: std::io::Error,
@@ -168,14 +170,14 @@ pub struct WriteNew<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_canonicalize_path)]
-pub struct CanonicalizePath {
+pub(crate) struct CanonicalizePath {
     pub path: PathBuf,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_create_incr_comp_dir)]
-pub struct CreateIncrCompDir<'a> {
+pub(crate) struct CreateIncrCompDir<'a> {
     pub tag: &'a str,
     pub path: &'a Path,
     pub err: std::io::Error,
@@ -183,103 +185,96 @@ pub struct CreateIncrCompDir<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_create_lock)]
-pub struct CreateLock<'a> {
+pub(crate) struct CreateLock<'a> {
     pub lock_err: std::io::Error,
     pub session_dir: &'a Path,
     #[note(incremental_lock_unsupported)]
-    pub is_unsupported_lock: Option<()>,
+    pub is_unsupported_lock: bool,
     #[help(incremental_cargo_help_1)]
     #[help(incremental_cargo_help_2)]
-    pub is_cargo: Option<()>,
+    pub is_cargo: bool,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_delete_lock)]
-pub struct DeleteLock<'a> {
+pub(crate) struct DeleteLock<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_hard_link_failed)]
-pub struct HardLinkFailed<'a> {
+pub(crate) struct HardLinkFailed<'a> {
     pub path: &'a Path,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_delete_partial)]
-pub struct DeletePartial<'a> {
+pub(crate) struct DeletePartial<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_delete_full)]
-pub struct DeleteFull<'a> {
+pub(crate) struct DeleteFull<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_finalize)]
-pub struct Finalize<'a> {
+pub(crate) struct Finalize<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_invalid_gc_failed)]
-pub struct InvalidGcFailed<'a> {
+pub(crate) struct InvalidGcFailed<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_finalized_gc_failed)]
-pub struct FinalizedGcFailed<'a> {
+pub(crate) struct FinalizedGcFailed<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_session_gc_failed)]
-pub struct SessionGcFailed<'a> {
+pub(crate) struct SessionGcFailed<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_assert_not_loaded)]
-pub struct AssertNotLoaded;
+pub(crate) struct AssertNotLoaded;
 
 #[derive(Diagnostic)]
 #[diag(incremental_assert_loaded)]
-pub struct AssertLoaded;
+pub(crate) struct AssertLoaded;
 
 #[derive(Diagnostic)]
 #[diag(incremental_delete_incompatible)]
-pub struct DeleteIncompatible {
+pub(crate) struct DeleteIncompatible {
     pub path: PathBuf,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_load_dep_graph)]
-pub struct LoadDepGraph {
+pub(crate) struct LoadDepGraph {
     pub path: PathBuf,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_write_dep_graph)]
-pub struct WriteDepGraph<'a> {
-    pub path: &'a Path,
-    pub err: std::io::Error,
-}
-
-#[derive(Diagnostic)]
 #[diag(incremental_move_dep_graph)]
-pub struct MoveDepGraph<'a> {
+pub(crate) struct MoveDepGraph<'a> {
     pub from: &'a Path,
     pub to: &'a Path,
     pub err: std::io::Error,
@@ -287,14 +282,14 @@ pub struct MoveDepGraph<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_create_dep_graph)]
-pub struct CreateDepGraph<'a> {
+pub(crate) struct CreateDepGraph<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_copy_workproduct_to_cache)]
-pub struct CopyWorkProductToCache<'a> {
+pub(crate) struct CopyWorkProductToCache<'a> {
     pub from: &'a Path,
     pub to: &'a Path,
     pub err: std::io::Error,
@@ -302,13 +297,13 @@ pub struct CopyWorkProductToCache<'a> {
 
 #[derive(Diagnostic)]
 #[diag(incremental_delete_workproduct)]
-pub struct DeleteWorkProduct<'a> {
+pub(crate) struct DeleteWorkProduct<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(incremental_corrupt_file)]
-pub struct CorruptFile<'a> {
+pub(crate) struct CorruptFile<'a> {
     pub path: &'a Path,
 }

@@ -14,11 +14,14 @@ extern crate tracing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
+extern crate rustc_hir_analysis;
 extern crate rustc_interface;
 extern crate rustc_log;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
+extern crate rustc_span;
+extern crate rustc_target;
 
 use std::env::{self, VarError};
 use std::num::NonZero;
@@ -29,7 +32,9 @@ use tracing::debug;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
+use rustc_hir_analysis::check::check_function_signature;
 use rustc_interface::interface::Config;
 use rustc_middle::{
     middle::{
@@ -37,14 +42,17 @@ use rustc_middle::{
         exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel},
     },
     query::LocalCrate,
-    ty::TyCtxt,
+    traits::{ObligationCause, ObligationCauseCode},
+    ty::{self, Ty, TyCtxt},
     util::Providers,
 };
-use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
+use rustc_session::config::{CrateType, EntryFnType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
+use rustc_span::def_id::DefId;
+use rustc_target::spec::abi::Abi;
 
-use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
+use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields, ValidationMode};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -82,11 +90,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 tcx.dcx().fatal("miri only makes sense on bin crates");
             }
 
-            let (entry_def_id, entry_type) = if let Some(entry_def) = tcx.entry_fn(()) {
-                entry_def
-            } else {
-                tcx.dcx().fatal("miri can only run programs that have a main function");
-            };
+            let (entry_def_id, entry_type) = entry_fn(tcx);
             let mut config = self.miri_config.clone();
 
             // Add filename to `miri` arguments.
@@ -351,6 +355,56 @@ fn jemalloc_magic() {
     }
 }
 
+fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
+    if let Some(entry_def) = tcx.entry_fn(()) {
+        return entry_def;
+    }
+    // Look for a symbol in the local crate named `miri_start`, and treat that as the entry point.
+    let sym = tcx.exported_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
+        if sym.symbol_name_for_local_instance(tcx).name == "miri_start" { Some(sym) } else { None }
+    });
+    if let Some(ExportedSymbol::NonGeneric(id)) = sym {
+        let start_def_id = id.expect_local();
+        let start_span = tcx.def_span(start_def_id);
+
+        let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+            [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
+            tcx.types.isize,
+            false,
+            hir::Safety::Safe,
+            Abi::Rust,
+        ));
+
+        let correct_func_sig = check_function_signature(
+            tcx,
+            ObligationCause::new(start_span, start_def_id, ObligationCauseCode::Misc),
+            *id,
+            expected_sig,
+        )
+        .is_ok();
+
+        if correct_func_sig {
+            (*id, EntryFnType::Start)
+        } else {
+            tcx.dcx().fatal(
+                "`miri_start` must have the following signature:\n\
+                        fn miri_start(argc: isize, argv: *const *const u8) -> isize",
+            );
+        }
+    } else {
+        tcx.dcx().fatal(
+            "Miri can only run programs that have a main function.\n\
+            Alternatively, you can export a `miri_start` function:\n\
+            \n\
+            #[cfg(miri)]\n\
+            #[no_mangle]\n\
+            fn miri_start(argc: isize, argv: *const *const u8) -> isize {\
+            \n    // Call the actual start function that your project implements, based on your target's conventions.\n\
+            }"
+        );
+    }
+}
+
 fn main() {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     jemalloc_magic();
@@ -421,7 +475,9 @@ fn main() {
         } else if arg == "--" {
             after_dashdash = true;
         } else if arg == "-Zmiri-disable-validation" {
-            miri_config.validate = false;
+            miri_config.validation = ValidationMode::No;
+        } else if arg == "-Zmiri-recursive-validation" {
+            miri_config.validation = ValidationMode::Deep;
         } else if arg == "-Zmiri-disable-stacked-borrows" {
             miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-tree-borrows" {
@@ -525,17 +581,6 @@ fn main() {
                     show_error!("-Zmiri-track-pointer-tag requires nonzero arguments");
                 }
             }
-        } else if let Some(param) = arg.strip_prefix("-Zmiri-track-call-id=") {
-            let ids: Vec<u64> = parse_comma_list(param).unwrap_or_else(|err| {
-                show_error!("-Zmiri-track-call-id requires a comma separated list of valid `u64` arguments: {err}")
-            });
-            for id in ids.into_iter().map(miri::CallId::new) {
-                if let Some(id) = id {
-                    miri_config.tracked_call_ids.insert(id);
-                } else {
-                    show_error!("-Zmiri-track-call-id requires a nonzero argument");
-                }
-            }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
             let ids = parse_comma_list::<NonZero<u64>>(param).unwrap_or_else(|err| {
                 show_error!("-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {err}")
@@ -618,6 +663,14 @@ fn main() {
     {
         show_error!(
             "-Zmiri-unique-is-unique only has an effect when -Zmiri-tree-borrows is also used"
+        );
+    }
+    // Tree Borrows + permissive provenance does not work.
+    if miri_config.provenance_mode == ProvenanceMode::Permissive
+        && matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows))
+    {
+        show_error!(
+            "Tree Borrows does not support integer-to-pointer casts, and is hence not compatible with permissive provenance"
         );
     }
 

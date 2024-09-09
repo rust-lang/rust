@@ -5,7 +5,7 @@
 
 // FIXME: This test isn't comprehensive and isn't covering all possible combinations.
 
-use run_make_support::{assert_contains, cmd, llvm_readobj, run_in_tmpdir, rustc};
+use run_make_support::{assert_contains, llvm_readobj, run_in_tmpdir, rustc};
 
 fn check_compression(compression: &str, to_find: &str) {
     run_in_tmpdir(|| {

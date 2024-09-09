@@ -12,7 +12,7 @@ fn unchecked_shr_signed_bigger(_1: i64, _2: u32) -> i64 {
     }
 
     bb0: {
-        _0 = ShrUnchecked(_1, _2);
+        _0 = ShrUnchecked(copy _1, copy _2);
         return;
     }
 }

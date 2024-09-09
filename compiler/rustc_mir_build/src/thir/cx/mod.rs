@@ -2,9 +2,6 @@
 //! structures into the THIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
-use crate::thir::pattern::pat_from_hir;
-use crate::thir::util::UserAnnotatedTyHelpers;
-
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -12,12 +9,14 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::HirId;
-use rustc_hir::Node;
 use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 use tracing::instrument;
+
+use crate::thir::pattern::pat_from_hir;
+use crate::thir::util::UserAnnotatedTyHelpers;
 
 pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
@@ -111,11 +110,7 @@ impl<'tcx> Cx<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Box<Pat<'tcx>> {
-        let p = match self.tcx.hir_node(p.hir_id) {
-            Node::Pat(p) => p,
-            node => bug!("pattern became {:?}", node),
-        };
+    fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)
     }
 

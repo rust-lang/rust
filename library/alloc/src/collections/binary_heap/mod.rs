@@ -144,12 +144,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::alloc::Allocator;
-use core::fmt;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
-use core::ptr;
+use core::{fmt, ptr};
 
 use crate::alloc::Global;
 use crate::collections::TryReserveError;
@@ -965,6 +964,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     }
 
     /// Returns an iterator which retrieves elements in heap order.
+    ///
     /// This method consumes the original heap.
     ///
     /// # Examples
@@ -1361,7 +1361,7 @@ struct Hole<'a, T: 'a> {
 }
 
 impl<'a, T> Hole<'a, T> {
-    /// Create a new `Hole` at index `pos`.
+    /// Creates a new `Hole` at index `pos`.
     ///
     /// Unsafe because pos must be within the data slice.
     #[inline]
@@ -1431,6 +1431,20 @@ impl<T> Drop for Hole<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
+}
+
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
+impl<T> Default for Iter<'_, T> {
+    /// Creates an empty `binary_heap::Iter`.
+    ///
+    /// ```
+    /// # use std::collections::binary_heap;
+    /// let iter: binary_heap::Iter<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Iter { iter: Default::default() }
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]

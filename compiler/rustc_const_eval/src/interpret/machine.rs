@@ -8,10 +8,9 @@ use std::hash::Hash;
 
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::{mir, ty};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
@@ -20,7 +19,7 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use super::{
     throw_unsup, throw_unsup_format, AllocBytes, AllocId, AllocKind, AllocRange, Allocation,
     ConstAllocation, CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy,
-    MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance,
+    MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance, CTFE_ALLOC_SALT,
 };
 
 /// Data returned by [`Machine::after_stack_pop`], and consumed by
@@ -38,7 +37,7 @@ pub enum ReturnAction {
     /// took care of everything.
     NoJump,
 
-    /// Returned by [`InterpCx::pop_stack_frame`] when no cleanup should be done.
+    /// Returned by [`InterpCx::pop_stack_frame_raw`] when no cleanup should be done.
     NoCleanup,
 }
 
@@ -166,10 +165,12 @@ pub trait Machine<'tcx>: Sized {
 
     /// Whether to enforce the validity invariant for a specific layout.
     fn enforce_validity(ecx: &InterpCx<'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool;
-
-    /// Whether function calls should be [ABI](CallAbi)-checked.
-    fn enforce_abi(_ecx: &InterpCx<'tcx, Self>) -> bool {
-        true
+    /// Whether to enforce the validity invariant *recursively*.
+    fn enforce_validity_recursively(
+        _ecx: &InterpCx<'tcx, Self>,
+        _layout: TyAndLayout<'tcx>,
+    ) -> bool {
+        false
     }
 
     /// Whether Assert(OverflowNeg) and Assert(Overflow) MIR terminators should actually
@@ -232,6 +233,13 @@ pub trait Machine<'tcx>: Sized {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>>;
 
+    /// Check whether the given function may be executed on the current machine, in terms of the
+    /// target features is requires.
+    fn check_fn_target_features(
+        _ecx: &InterpCx<'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+    ) -> InterpResult<'tcx>;
+
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
     fn assert_panic(
         ecx: &mut InterpCx<'tcx, Self>,
@@ -273,6 +281,9 @@ pub trait Machine<'tcx>: Sized {
     fn before_terminator(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
+
+    /// Determines the result of a `NullaryOp::UbChecks` invocation.
+    fn ub_checks(_ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool>;
 
     /// Called when the interpreter encounters a `StatementKind::ConstEvalCounter` instruction.
     /// You can use this to detect long or endlessly running programs.
@@ -322,15 +333,21 @@ pub trait Machine<'tcx>: Sized {
         ptr: Pointer<Self::Provenance>,
     ) -> InterpResult<'tcx>;
 
-    /// Convert a pointer with provenance into an allocation-offset pair
-    /// and extra provenance info.
+    /// Convert a pointer with provenance into an allocation-offset pair and extra provenance info.
+    /// `size` says how many bytes of memory are expected at that pointer. The *sign* of `size` can
+    /// be used to disambiguate situations where a wildcard pointer sits right in between two
+    /// allocations.
     ///
-    /// The returned `AllocId` must be the same as `ptr.provenance.get_alloc_id()`.
+    /// If `ptr.provenance.get_alloc_id()` is `Some(p)`, the returned `AllocId` must be `p`.
+    /// The resulting `AllocId` will just be used for that one step and the forgotten again
+    /// (i.e., we'll never turn the data returned here back into a `Pointer` that might be
+    /// stored in machine state).
     ///
     /// When this fails, that means the pointer does not point to a live allocation.
     fn ptr_get_alloc(
         ecx: &InterpCx<'tcx, Self>,
         ptr: Pointer<Self::Provenance>,
+        size: i64,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)>;
 
     /// Called to adjust global allocations to the Provenance and AllocExtra of this machine.
@@ -345,17 +362,7 @@ pub trait Machine<'tcx>: Sized {
         ecx: &InterpCx<'tcx, Self>,
         id: AllocId,
         alloc: &'b Allocation,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
-    {
-        // The default implementation does a copy; CTFE machines have a more efficient implementation
-        // based on their particular choice for `Provenance`, `AllocExtra`, and `Bytes`.
-        let kind = Self::GLOBAL_KIND
-            .expect("if GLOBAL_KIND is None, adjust_global_allocation must be overwritten");
-        let alloc = alloc.adjust_from_tcx(&ecx.tcx, |ptr| ecx.global_root_pointer(ptr))?;
-        let extra =
-            Self::init_alloc_extra(ecx, id, MemoryKind::Machine(kind), alloc.size(), alloc.align)?;
-        Ok(Cow::Owned(alloc.with_extra(extra)))
-    }
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
 
     /// Initialize the extra state of an allocation.
     ///
@@ -563,6 +570,14 @@ pub trait Machine<'tcx>: Sized {
     {
         eval(ecx, val, span, layout)
     }
+
+    /// Returns the salt to be used for a deduplicated global alloation.
+    /// If the allocation is for a function, the instance is provided as well
+    /// (this lets Miri ensure unique addresses for some functions).
+    fn get_global_alloc_salt(
+        ecx: &InterpCx<'tcx, Self>,
+        instance: Option<ty::Instance<'tcx>>,
+    ) -> usize;
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
@@ -595,6 +610,16 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     }
 
     #[inline(always)]
+    fn check_fn_target_features(
+        _ecx: &InterpCx<$tcx, Self>,
+        _instance: ty::Instance<$tcx>,
+    ) -> InterpResult<$tcx> {
+        // For now we don't do any checking here. We can't use `tcx.sess` because that can differ
+        // between crates, and we need to ensure that const-eval always behaves the same.
+        Ok(())
+    }
+
+    #[inline(always)]
     fn call_extra_fn(
         _ecx: &mut InterpCx<$tcx, Self>,
         fn_val: !,
@@ -605,6 +630,13 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {
         match fn_val {}
+    }
+
+    #[inline(always)]
+    fn ub_checks(_ecx: &InterpCx<$tcx, Self>) -> InterpResult<$tcx, bool> {
+        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
+        // unsound differences in evaluating the same constant at different instantiation sites.
+        Ok(true)
     }
 
     #[inline(always)]
@@ -659,9 +691,18 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     fn ptr_get_alloc(
         _ecx: &InterpCx<$tcx, Self>,
         ptr: Pointer<CtfeProvenance>,
+        _size: i64,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
         // We know `offset` is relative to the allocation, so we can use `into_parts`.
         let (prov, offset) = ptr.into_parts();
         Some((prov.alloc_id(), offset, prov.immutable()))
+    }
+
+    #[inline(always)]
+    fn get_global_alloc_salt(
+        _ecx: &InterpCx<$tcx, Self>,
+        _instance: Option<ty::Instance<$tcx>>,
+    ) -> usize {
+        CTFE_ALLOC_SALT
     }
 }

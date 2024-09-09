@@ -124,7 +124,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         "Add `::<>`",
         ident.text_range(),
         |edit| {
-            edit.trigger_signature_help();
+            edit.trigger_parameter_hints();
 
             let new_arg_list = match turbofish_target {
                 Either::Left(path_segment) => {

@@ -1,19 +1,4 @@
-use super::abi::AbiBuilderMethods;
-use super::asm::AsmBuilderMethods;
-use super::consts::ConstMethods;
-use super::coverageinfo::CoverageInfoBuilderMethods;
-use super::debuginfo::DebugInfoBuilderMethods;
-use super::intrinsic::IntrinsicCallMethods;
-use super::misc::MiscMethods;
-use super::type_::{ArgAbiMethods, BaseTypeMethods, LayoutTypeMethods};
-use super::{HasCodegen, StaticBuilderMethods};
-
-use crate::common::{
-    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
-};
-use crate::mir::operand::{OperandRef, OperandValue};
-use crate::mir::place::{PlaceRef, PlaceValue};
-use crate::MemFlags;
+use std::assert_matches::assert_matches;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
@@ -24,7 +9,23 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
 use rustc_target::spec::HasTargetSpec;
 
-#[derive(Copy, Clone)]
+use super::abi::AbiBuilderMethods;
+use super::asm::AsmBuilderMethods;
+use super::consts::ConstMethods;
+use super::coverageinfo::CoverageInfoBuilderMethods;
+use super::debuginfo::DebugInfoBuilderMethods;
+use super::intrinsic::IntrinsicCallMethods;
+use super::misc::MiscMethods;
+use super::type_::{ArgAbiMethods, BaseTypeMethods, LayoutTypeMethods};
+use super::{HasCodegen, StaticBuilderMethods};
+use crate::common::{
+    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
+};
+use crate::mir::operand::{OperandRef, OperandValue};
+use crate::mir::place::{PlaceRef, PlaceValue};
+use crate::MemFlags;
+
+#[derive(Copy, Clone, Debug)]
 pub enum OverflowOp {
     Add,
     Sub,
@@ -255,10 +256,10 @@ pub trait BuilderMethods<'a, 'tcx>:
         } else {
             (in_ty, dest_ty)
         };
-        assert!(matches!(
+        assert_matches!(
             self.cx().type_kind(float_ty),
             TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::FP128
-        ));
+        );
         assert_eq!(self.cx().type_kind(int_ty), TypeKind::Integer);
 
         if let Some(false) = self.cx().sess().opts.unstable_opts.saturating_float_casts {

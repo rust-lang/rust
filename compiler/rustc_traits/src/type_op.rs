@@ -1,27 +1,23 @@
+use std::fmt;
+
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{Clause, ParamEnvAnd};
-use rustc_middle::ty::{FnSig, PolyFnSig, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{Clause, FnSig, ParamEnvAnd, PolyFnSig, Ty, TyCtxt, TypeFoldable};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::query::type_op::ascribe_user_type::{
     type_op_ascribe_user_type_with_span, AscribeUserType,
 };
-use rustc_trait_selection::traits::query::type_op::eq::Eq;
 use rustc_trait_selection::traits::query::type_op::normalize::Normalize;
 use rustc_trait_selection::traits::query::type_op::prove_predicate::ProvePredicate;
-use rustc_trait_selection::traits::query::type_op::subtype::Subtype;
 use rustc_trait_selection::traits::{Normalized, Obligation, ObligationCause, ObligationCtxt};
-use std::fmt;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
         type_op_ascribe_user_type,
-        type_op_eq,
         type_op_prove_predicate,
-        type_op_subtype,
         type_op_normalize_ty,
         type_op_normalize_clause,
         type_op_normalize_fn_sig,
@@ -36,16 +32,6 @@ fn type_op_ascribe_user_type<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |ocx, key| {
         type_op_ascribe_user_type_with_span(ocx, key, None)
-    })
-}
-
-fn type_op_eq<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Eq<'tcx>>>,
-) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |ocx, key| {
-        let (param_env, Eq { a, b }) = key.into_parts();
-        Ok(ocx.eq(&ObligationCause::dummy(), param_env, a, b)?)
     })
 }
 
@@ -89,16 +75,6 @@ fn type_op_normalize_poly_fn_sig<'tcx>(
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<PolyFnSig<'tcx>>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, PolyFnSig<'tcx>>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
-}
-
-fn type_op_subtype<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Subtype<'tcx>>>,
-) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |ocx, key| {
-        let (param_env, Subtype { sub, sup }) = key.into_parts();
-        Ok(ocx.sup(&ObligationCause::dummy(), param_env, sup, sub)?)
-    })
 }
 
 fn type_op_prove_predicate<'tcx>(

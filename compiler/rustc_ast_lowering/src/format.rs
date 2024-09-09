@@ -1,16 +1,15 @@
-use super::LoweringContext;
 use core::ops::ControlFlow;
-use rustc_ast as ast;
+use std::borrow::Cow;
+
 use rustc_ast::visit::Visitor;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
-use rustc_span::{
-    sym,
-    symbol::{kw, Ident},
-    Span, Symbol,
-};
-use std::borrow::Cow;
+use rustc_session::config::FmtDebug;
+use rustc_span::symbol::{kw, Ident};
+use rustc_span::{sym, Span, Symbol};
+
+use super::LoweringContext;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
@@ -245,7 +244,10 @@ fn make_argument<'hir>(
         hir::LangItem::FormatArgument,
         match ty {
             Format(Display) => sym::new_display,
-            Format(Debug) => sym::new_debug,
+            Format(Debug) => match ctx.tcx.sess.opts.unstable_opts.fmt_debug {
+                FmtDebug::Full | FmtDebug::Shallow => sym::new_debug,
+                FmtDebug::None => sym::new_debug_noop,
+            },
             Format(LowerExp) => sym::new_lower_exp,
             Format(UpperExp) => sym::new_upper_exp,
             Format(Octal) => sym::new_octal,

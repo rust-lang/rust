@@ -4,7 +4,10 @@ error[E0432]: unresolved import `inner`
 LL |     pub use inner::S;
    |             ^^^^^ you might be missing crate `inner`
    |
-   = help: consider adding `extern crate inner` to use the `inner` crate
+help: consider importing the `inner` crate
+   |
+LL + extern crate inner;
+   |
 
 error: aborting due to 1 previous error
 

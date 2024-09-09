@@ -24,11 +24,13 @@
 //! CFG_RELEASE="0.0.0" cargo +nightly expand > /tmp/rustc_span.rs
 //! ```
 
+use std::collections::HashMap;
+
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use std::collections::HashMap;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{braced, punctuated::Punctuated, Expr, Ident, Lit, LitStr, Macro, Token};
+use syn::punctuated::Punctuated;
+use syn::{braced, Expr, Ident, Lit, LitStr, Macro, Token};
 
 #[cfg(test)]
 mod tests;
@@ -129,7 +131,7 @@ impl Errors {
     }
 }
 
-pub fn symbols(input: TokenStream) -> TokenStream {
+pub(super) fn symbols(input: TokenStream) -> TokenStream {
     let (mut output, errors) = symbols_with_errors(input);
 
     // If we generated any errors, then report them as compiler_error!() macro calls.

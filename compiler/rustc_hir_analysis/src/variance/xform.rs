@@ -1,6 +1,6 @@
 use rustc_middle::ty;
 
-pub fn glb(v1: ty::Variance, v2: ty::Variance) -> ty::Variance {
+pub(crate) fn glb(v1: ty::Variance, v2: ty::Variance) -> ty::Variance {
     // Greatest lower bound of the variance lattice as
     // defined in The Paper:
     //

@@ -1,15 +1,16 @@
-use crate::infer::InferCtxt;
-use crate::traits::{ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::InferOk;
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
 use rustc_middle::span_bug;
+pub use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;
+use tracing::{debug, instrument};
 
-pub use rustc_middle::traits::query::OutlivesBound;
+use crate::infer::InferCtxt;
+use crate::traits::{ObligationCause, ObligationCtxt};
 
 pub type BoundsCompat<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
 pub type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;

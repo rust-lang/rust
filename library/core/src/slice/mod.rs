@@ -7,16 +7,13 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::fmt;
-use crate::hint;
-use crate::intrinsics::{exact_div, unchecked_sub};
+use crate::intrinsics::{exact_div, select_unpredictable, unchecked_sub};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{Bound, OneSidedRange, Range, RangeBounds};
-use crate::ptr;
 use crate::simd::{self, Simd};
-use crate::slice;
 use crate::ub_checks::assert_unsafe_precondition;
+use crate::{fmt, hint, ptr, slice};
 
 #[unstable(
     feature = "slice_internals",
@@ -31,6 +28,7 @@ pub mod memchr;
     issue = "none",
     reason = "exposed from core to be reused in std;"
 )]
+#[doc(hidden)]
 pub mod sort;
 
 mod ascii;
@@ -44,52 +42,38 @@ mod specialize;
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 pub use ascii::is_ascii_simple;
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use iter::{Chunks, ChunksMut, Windows};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use iter::{Iter, IterMut};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use iter::{RSplitN, RSplitNMut, Split, SplitMut, SplitN, SplitNMut};
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-pub use iter::{RSplit, RSplitMut};
-
-#[stable(feature = "chunks_exact", since = "1.31.0")]
-pub use iter::{ChunksExact, ChunksExactMut};
-
-#[stable(feature = "rchunks", since = "1.31.0")]
-pub use iter::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-pub use iter::{ArrayChunks, ArrayChunksMut};
-
-#[unstable(feature = "array_windows", issue = "75027")]
-pub use iter::ArrayWindows;
-
-#[stable(feature = "slice_group_by", since = "1.77.0")]
-pub use iter::{ChunkBy, ChunkByMut};
-
-#[stable(feature = "split_inclusive", since = "1.51.0")]
-pub use iter::{SplitInclusive, SplitInclusiveMut};
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use raw::{from_raw_parts, from_raw_parts_mut};
-
-#[stable(feature = "from_ref", since = "1.28.0")]
-pub use raw::{from_mut, from_ref};
-
-#[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-pub use raw::{from_mut_ptr_range, from_ptr_range};
-
-#[stable(feature = "slice_get_slice", since = "1.28.0")]
-pub use index::SliceIndex;
-
-#[unstable(feature = "slice_range", issue = "76393")]
-pub use index::{range, try_range};
-
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use ascii::EscapeAscii;
+#[stable(feature = "slice_get_slice", since = "1.28.0")]
+pub use index::SliceIndex;
+#[unstable(feature = "slice_range", issue = "76393")]
+pub use index::{range, try_range};
+#[unstable(feature = "array_windows", issue = "75027")]
+pub use iter::ArrayWindows;
+#[unstable(feature = "array_chunks", issue = "74985")]
+pub use iter::{ArrayChunks, ArrayChunksMut};
+#[stable(feature = "slice_group_by", since = "1.77.0")]
+pub use iter::{ChunkBy, ChunkByMut};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use iter::{Chunks, ChunksMut, Windows};
+#[stable(feature = "chunks_exact", since = "1.31.0")]
+pub use iter::{ChunksExact, ChunksExactMut};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use iter::{Iter, IterMut};
+#[stable(feature = "rchunks", since = "1.31.0")]
+pub use iter::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
+pub use iter::{RSplit, RSplitMut};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use iter::{RSplitN, RSplitNMut, Split, SplitMut, SplitN, SplitNMut};
+#[stable(feature = "split_inclusive", since = "1.51.0")]
+pub use iter::{SplitInclusive, SplitInclusiveMut};
+#[stable(feature = "from_ref", since = "1.28.0")]
+pub use raw::{from_mut, from_ref};
+#[unstable(feature = "slice_from_ptr_range", issue = "89792")]
+pub use raw::{from_mut_ptr_range, from_ptr_range};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use raw::{from_raw_parts, from_raw_parts_mut};
 
 /// Calculates the direction and split point of a one-sided range.
 ///
@@ -321,7 +305,7 @@ impl<T> [T] {
         if let [.., last] = self { Some(last) } else { None }
     }
 
-    /// Return an array reference to the first `N` items in the slice.
+    /// Returns an array reference to the first `N` items in the slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -350,7 +334,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return a mutable array reference to the first `N` items in the slice.
+    /// Returns a mutable array reference to the first `N` items in the slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -381,7 +365,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return an array reference to the first `N` items in the slice and the remaining slice.
+    /// Returns an array reference to the first `N` items in the slice and the remaining slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -413,7 +397,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return a mutable array reference to the first `N` items in the slice and the remaining
+    /// Returns a mutable array reference to the first `N` items in the slice and the remaining
     /// slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
@@ -451,7 +435,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return an array reference to the last `N` items in the slice and the remaining slice.
+    /// Returns an array reference to the last `N` items in the slice and the remaining slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -483,7 +467,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return a mutable array reference to the last `N` items in the slice and the remaining
+    /// Returns a mutable array reference to the last `N` items in the slice and the remaining
     /// slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
@@ -521,7 +505,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return an array reference to the last `N` items in the slice.
+    /// Returns an array reference to the last `N` items in the slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -539,7 +523,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_first_last_chunk", since = "1.77.0")]
-    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "1.77.0")]
+    #[rustc_const_stable(feature = "const_slice_last_chunk", since = "1.80.0")]
     pub const fn last_chunk<const N: usize>(&self) -> Option<&[T; N]> {
         if self.len() < N {
             None
@@ -554,7 +538,7 @@ impl<T> [T] {
         }
     }
 
-    /// Return a mutable array reference to the last `N` items in the slice.
+    /// Returns a mutable array reference to the last `N` items in the slice.
     ///
     /// If the slice is not at least `N` in length, this will return `None`.
     ///
@@ -726,7 +710,7 @@ impl<T> [T] {
     /// Returns a raw pointer to the slice's buffer.
     ///
     /// The caller must ensure that the slice outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     ///
     /// The caller must also ensure that the memory the pointer (non-transitively) points to
     /// is never written to (except inside an `UnsafeCell`) using this pointer or any pointer
@@ -761,7 +745,7 @@ impl<T> [T] {
     /// Returns an unsafe mutable pointer to the slice's buffer.
     ///
     /// The caller must ensure that the slice outlives the pointer this
-    /// function returns, or else it will end up pointing to garbage.
+    /// function returns, or else it will end up dangling.
     ///
     /// Modifying the container referenced by this slice may cause its buffer
     /// to be reallocated, which would also make any pointers to it invalid.
@@ -828,7 +812,7 @@ impl<T> [T] {
         //   - Both pointers are part of the same object, as pointing directly
         //     past the object also counts.
         //
-        //   - The size of the slice is never larger than isize::MAX bytes, as
+        //   - The size of the slice is never larger than `isize::MAX` bytes, as
         //     noted here:
         //       - https://github.com/rust-lang/unsafe-code-guidelines/issues/102#issuecomment-473340447
         //       - https://doc.rust-lang.org/reference/behavior-considered-undefined.html
@@ -839,7 +823,7 @@ impl<T> [T] {
         //   - There is no wrapping around involved, as slices do not wrap past
         //     the end of the address space.
         //
-        // See the documentation of pointer::add.
+        // See the documentation of [`pointer::add`].
         let end = unsafe { start.add(self.len()) };
         start..end
     }
@@ -2787,41 +2771,54 @@ impl<T> [T] {
     where
         F: FnMut(&'a T) -> Ordering,
     {
-        // INVARIANTS:
-        // - 0 <= left <= left + size = right <= self.len()
-        // - f returns Less for everything in self[..left]
-        // - f returns Greater for everything in self[right..]
         let mut size = self.len();
-        let mut left = 0;
-        let mut right = size;
-        while left < right {
-            let mid = left + size / 2;
+        if size == 0 {
+            return Err(0);
+        }
+        let mut base = 0usize;
 
-            // SAFETY: the while condition means `size` is strictly positive, so
-            // `size/2 < size`. Thus `left + size/2 < left + size`, which
-            // coupled with the `left + size <= self.len()` invariant means
-            // we have `left + size/2 < self.len()`, and this is in-bounds.
+        // This loop intentionally doesn't have an early exit if the comparison
+        // returns Equal. We want the number of loop iterations to depend *only*
+        // on the size of the input slice so that the CPU can reliably predict
+        // the loop count.
+        while size > 1 {
+            let half = size / 2;
+            let mid = base + half;
+
+            // SAFETY: the call is made safe by the following inconstants:
+            // - `mid >= 0`: by definition
+            // - `mid < size`: `mid = size / 2 + size / 4 + size / 8 ...`
             let cmp = f(unsafe { self.get_unchecked(mid) });
 
-            // This control flow produces conditional moves, which results in
-            // fewer branches and instructions than if/else or matching on
-            // cmp::Ordering.
-            // This is x86 asm for u8: https://rust.godbolt.org/z/698eYffTx.
-            left = if cmp == Less { mid + 1 } else { left };
-            right = if cmp == Greater { mid } else { right };
-            if cmp == Equal {
-                // SAFETY: same as the `get_unchecked` above
-                unsafe { hint::assert_unchecked(mid < self.len()) };
-                return Ok(mid);
-            }
+            // Binary search interacts poorly with branch prediction, so force
+            // the compiler to use conditional moves if supported by the target
+            // architecture.
+            base = select_unpredictable(cmp == Greater, base, mid);
 
-            size = right - left;
+            // This is imprecise in the case where `size` is odd and the
+            // comparison returns Greater: the mid element still gets included
+            // by `size` even though it's known to be larger than the element
+            // being searched for.
+            //
+            // This is fine though: we gain more performance by keeping the
+            // loop iteration count invariant (and thus predictable) than we
+            // lose from considering one additional element.
+            size -= half;
         }
 
-        // SAFETY: directly true from the overall invariant.
-        // Note that this is `<=`, unlike the assume in the `Ok` path.
-        unsafe { hint::assert_unchecked(left <= self.len()) };
-        Err(left)
+        // SAFETY: base is always in [0, size) because base <= mid.
+        let cmp = f(unsafe { self.get_unchecked(base) });
+        if cmp == Equal {
+            // SAFETY: same as the `get_unchecked` above.
+            unsafe { hint::assert_unchecked(base < self.len()) };
+            Ok(base)
+        } else {
+            let result = base + (cmp == Less) as usize;
+            // SAFETY: same as the `get_unchecked` above.
+            // Note that this is `<=`, unlike the assume in the `Ok` path.
+            unsafe { hint::assert_unchecked(result <= self.len()) };
+            Err(result)
+        }
     }
 
     /// Binary searches this slice with a key extraction function.
@@ -2884,9 +2881,19 @@ impl<T> [T] {
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
     ///
-    /// If `T: Ord` does not implement a total order the resulting order is unspecified. All
-    /// original elements will remain in the slice and any possible modifications via interior
-    /// mutability are observed in the input. Same is true if `T: Ord` panics.
+    /// If the implementation of [`Ord`] for `T` does not implement a [total order] the resulting
+    /// order of elements in the slice is unspecified. All original elements will remain in the
+    /// slice and any possible modifications via interior mutability are observed in the input. Same
+    /// is true if the implementation of [`Ord`] for `T` panics.
+    ///
+    /// Sorting types that only implement [`PartialOrd`] such as [`f32`] and [`f64`] require
+    /// additional precautions. For example, `f32::NAN != f32::NAN`, which doesn't fulfill the
+    /// reflexivity requirement of [`Ord`]. By using an alternative comparison function with
+    /// `slice::sort_unstable_by` such as [`f32::total_cmp`] or [`f64::total_cmp`] that defines a
+    /// [total order] users can sort slices containing floating-point values. Alternatively, if all
+    /// values in the slice are guaranteed to be in a subset for which [`PartialOrd::partial_cmp`]
+    /// forms a [total order], it's possible to sort the slice with `sort_unstable_by(|a, b|
+    /// a.partial_cmp(b).unwrap())`.
     ///
     /// # Current implementation
     ///
@@ -2898,18 +2905,21 @@ impl<T> [T] {
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice is partially sorted.
     ///
-    /// If `T: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `T` does not implement a [total order].
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5, 4, 1, -3, 2];
+    /// let mut v = [4, -5, 1, -3, 2];
     ///
     /// v.sort_unstable();
-    /// assert!(v == [-5, -3, 1, 2, 4]);
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
     /// ```
     ///
     /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
     pub fn sort_unstable(&mut self)
@@ -2919,31 +2929,20 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut T::lt);
     }
 
-    /// Sorts the slice with a comparator function, **without** preserving the initial order of
+    /// Sorts the slice with a comparison function, **without** preserving the initial order of
     /// equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
     ///
-    /// The comparator function should define a total ordering for the elements in the slice. If the
-    /// ordering is not total, the order of the elements is unspecified.
+    /// If the comparison function `compare` does not implement a [total order] the resulting order
+    /// of elements in the slice is unspecified. All original elements will remain in the slice and
+    /// any possible modifications via interior mutability are observed in the input. Same is true
+    /// if `compare` panics.
     ///
-    /// If the comparator function does not implement a total order the resulting order is
-    /// unspecified. All original elements will remain in the slice and any possible modifications
-    /// via interior mutability are observed in the input. Same is true if the comparator function
-    /// panics. A total order (for all `a`, `b` and `c`):
-    ///
-    /// * total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is true, and
-    /// * transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
-    ///
-    /// For example, while [`f64`] doesn't implement [`Ord`] because `NaN != NaN`, we can use
-    /// `partial_cmp` as our sort function when we know the slice doesn't contain a `NaN`.
-    ///
-    /// ```
-    /// let mut floats = [5f64, 4.0, 1.0, 3.0, 2.0];
-    /// floats.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-    /// assert_eq!(floats, [1.0, 2.0, 3.0, 4.0, 5.0]);
-    /// ```
+    /// For example `|a, b| (a - b).cmp(a)` is a comparison function that is neither transitive nor
+    /// reflexive nor total, `a < b < c < a` with `a = 1, b = 2, c = 3`. For more information and
+    /// examples see the [`Ord`] documentation.
     ///
     /// # Current implementation
     ///
@@ -2955,21 +2954,24 @@ impl<T> [T] {
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice is partially sorted.
     ///
-    /// If `T: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if `compare` does not implement a [total order].
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut v = [5, 4, 1, 3, 2];
+    /// let mut v = [4, -5, 1, -3, 2];
     /// v.sort_unstable_by(|a, b| a.cmp(b));
-    /// assert!(v == [1, 2, 3, 4, 5]);
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
     ///
     /// // reverse sorting
     /// v.sort_unstable_by(|a, b| b.cmp(a));
-    /// assert!(v == [5, 4, 3, 2, 1]);
+    /// assert_eq!(v, [4, 2, 1, -3, -5]);
     /// ```
     ///
     /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
     pub fn sort_unstable_by<F>(&mut self, mut compare: F)
@@ -2985,9 +2987,10 @@ impl<T> [T] {
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
     ///
-    /// If `K: Ord` does not implement a total order the resulting order is unspecified.
-    /// All original elements will remain in the slice and any possible modifications via interior
-    /// mutability are observed in the input. Same is true if `K: Ord` panics.
+    /// If the implementation of [`Ord`] for `K` does not implement a [total order] the resulting
+    /// order of elements in the slice is unspecified. All original elements will remain in the
+    /// slice and any possible modifications via interior mutability are observed in the input. Same
+    /// is true if the implementation of [`Ord`] for `K` panics.
     ///
     /// # Current implementation
     ///
@@ -2999,18 +3002,21 @@ impl<T> [T] {
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice is partially sorted.
     ///
-    /// If `K: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `K` does not implement a [total order].
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5i32, 4, 1, -3, 2];
+    /// let mut v = [4i32, -5, 1, -3, 2];
     ///
     /// v.sort_unstable_by_key(|k| k.abs());
-    /// assert!(v == [1, 2, -3, 4, -5]);
+    /// assert_eq!(v, [1, 2, -3, 4, -5]);
     /// ```
     ///
     /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
     pub fn sort_unstable_by_key<K, F>(&mut self, mut f: F)
@@ -3021,7 +3027,7 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| f(a).lt(&f(b)));
     }
 
-    /// Reorder the slice such that the element at `index` after the reordering is at its final
+    /// Reorders the slice such that the element at `index` after the reordering is at its final
     /// sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
@@ -3042,14 +3048,13 @@ impl<T> [T] {
     /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
     /// for all inputs.
     ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
-    /// slice is nearly fully sorted, where `slice::sort` may be faster.
-    ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
     /// # Panics
     ///
     /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// May panic if the implementation of [`Ord`] for `T` does not implement a [total order].
     ///
     /// # Examples
     ///
@@ -3073,6 +3078,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
     pub fn select_nth_unstable(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
@@ -3082,7 +3088,7 @@ impl<T> [T] {
         sort::select::partition_at_index(self, index, T::lt)
     }
 
-    /// Reorder the slice with a comparator function such that the element at `index` after the
+    /// Reorders the slice with a comparator function such that the element at `index` after the
     /// reordering is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
@@ -3103,14 +3109,13 @@ impl<T> [T] {
     /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
     /// for all inputs.
     ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
-    /// slice is nearly fully sorted, where `slice::sort` may be faster.
-    ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
     /// # Panics
     ///
     /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// May panic if `compare` does not implement a [total order].
     ///
     /// # Examples
     ///
@@ -3134,6 +3139,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
     pub fn select_nth_unstable_by<F>(
@@ -3147,7 +3153,7 @@ impl<T> [T] {
         sort::select::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
-    /// Reorder the slice with a key extraction function such that the element at `index` after the
+    /// Reorders the slice with a key extraction function such that the element at `index` after the
     /// reordering is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
@@ -3168,14 +3174,13 @@ impl<T> [T] {
     /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
     /// for all inputs.
     ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
-    /// slice is nearly fully sorted, where `slice::sort` may be faster.
-    ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
     /// # Panics
     ///
     /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// May panic if `K: Ord` does not implement a total order.
     ///
     /// # Examples
     ///
@@ -3199,6 +3204,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
     pub fn select_nth_unstable_by_key<K, F>(
@@ -3405,8 +3411,10 @@ impl<T> [T] {
 
     /// Rotates the slice in-place such that the first `mid` elements of the
     /// slice move to the end while the last `self.len() - mid` elements move to
-    /// the front. After calling `rotate_left`, the element previously at index
-    /// `mid` will become the first element in the slice.
+    /// the front.
+    ///
+    /// After calling `rotate_left`, the element previously at index `mid` will
+    /// become the first element in the slice.
     ///
     /// # Panics
     ///
@@ -3448,8 +3456,10 @@ impl<T> [T] {
 
     /// Rotates the slice in-place such that the first `self.len() - k`
     /// elements of the slice move to the end while the last `k` elements move
-    /// to the front. After calling `rotate_right`, the element previously at
-    /// index `self.len() - k` will become the first element in the slice.
+    /// to the front.
+    ///
+    /// After calling `rotate_right`, the element previously at index
+    /// `self.len() - k` will become the first element in the slice.
     ///
     /// # Panics
     ///
@@ -3657,8 +3667,8 @@ impl<T> [T] {
     {
         // The panic code path was put into a cold function to not bloat the
         // call site.
-        #[inline(never)]
-        #[cold]
+        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+        #[cfg_attr(feature = "panic_immediate_abort", inline)]
         #[track_caller]
         fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
             panic!(
@@ -3819,7 +3829,7 @@ impl<T> [T] {
         (us_len, ts_len)
     }
 
-    /// Transmute the slice to a slice of another type, ensuring alignment of the types is
+    /// Transmutes the slice to a slice of another type, ensuring alignment of the types is
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
@@ -3884,7 +3894,7 @@ impl<T> [T] {
         }
     }
 
-    /// Transmute the mutable slice to a mutable slice of another type, ensuring alignment of the
+    /// Transmutes the mutable slice to a mutable slice of another type, ensuring alignment of the
     /// types is maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
@@ -3957,7 +3967,7 @@ impl<T> [T] {
         }
     }
 
-    /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
+    /// Splits a slice into a prefix, a middle of aligned SIMD types, and a suffix.
     ///
     /// This is a safe wrapper around [`slice::align_to`], so inherits the same
     /// guarantees as that method.
@@ -4021,7 +4031,7 @@ impl<T> [T] {
         unsafe { self.align_to() }
     }
 
-    /// Split a mutable slice into a mutable prefix, a middle of aligned SIMD types,
+    /// Splits a mutable slice into a mutable prefix, a middle of aligned SIMD types,
     /// and a mutable suffix.
     ///
     /// This is a safe wrapper around [`slice::align_to_mut`], so inherits the same
@@ -4069,7 +4079,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
     /// let empty: [i32; 0] = [];
     ///
     /// assert!([1, 2, 2, 9].is_sorted());
@@ -4079,7 +4088,7 @@ impl<T> [T] {
     /// assert!(![0.0, 1.0, f32::NAN].is_sorted());
     /// ```
     #[inline]
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[must_use]
     pub fn is_sorted(&self) -> bool
     where
@@ -4096,8 +4105,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
-    ///
     /// assert!([1, 2, 2, 9].is_sorted_by(|a, b| a <= b));
     /// assert!(![1, 2, 2, 9].is_sorted_by(|a, b| a < b));
     ///
@@ -4108,7 +4115,7 @@ impl<T> [T] {
     /// assert!(empty.is_sorted_by(|a, b| false));
     /// assert!(empty.is_sorted_by(|a, b| true));
     /// ```
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[must_use]
     pub fn is_sorted_by<'a, F>(&'a self, mut compare: F) -> bool
     where
@@ -4128,13 +4135,11 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_sorted)]
-    ///
     /// assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
     /// assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     /// ```
     #[inline]
-    #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[must_use]
     pub fn is_sorted_by_key<'a, F, K>(&'a self, f: F) -> bool
     where

@@ -48,10 +48,10 @@ LL |     const STATIC: &str = "";
    = note: expected reference `&'static _`
               found reference `&_`
 note: the anonymous lifetime as defined here...
-  --> $DIR/elided-lifetime.rs:15:18
+  --> $DIR/elided-lifetime.rs:16:19
    |
-LL | impl Bar for Foo<'_> {
-   |                  ^^
+LL |     const STATIC: &str = "";
+   |                   ^
    = note: ...does not necessarily outlive the static lifetime
 
 error: aborting due to 3 previous errors

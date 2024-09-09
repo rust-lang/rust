@@ -6,6 +6,15 @@ LL | fn bug<const N: Nat>(&self)
    |
    = note: associated functions are those in `impl` or `trait` definitions
 
+error[E0403]: the name `N` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/ice-predicates-of-no-entry-found-for-key-119275.rs:10:15
+   |
+LL | fn bug<const N: Nat>(&self)
+   |              - first use of `N`
+...
+LL |     for<const N: usize = 3, T = u32> [(); COT::BYTES]:,
+   |               ^ already used
+
 error[E0412]: cannot find type `Nat` in this scope
   --> $DIR/ice-predicates-of-no-entry-found-for-key-119275.rs:6:17
    |
@@ -40,7 +49,7 @@ error[E0433]: failed to resolve: use of undeclared type `COT`
 LL |     for<const N: usize = 3, T = u32> [(); COT::BYTES]:,
    |                                           ^^^ use of undeclared type `COT`
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0412, E0433, E0658.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0403, E0412, E0433, E0658.
+For more information about an error, try `rustc --explain E0403`.

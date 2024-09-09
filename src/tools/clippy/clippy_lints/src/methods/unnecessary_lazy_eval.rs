@@ -64,9 +64,9 @@ pub(super) fn check<'tcx>(
                 // but prefer to avoid changing the signature of the function itself.
                 if let hir::ExprKind::MethodCall(.., span) = expr.kind {
                     span_lint_and_then(cx, UNNECESSARY_LAZY_EVALUATIONS, expr.span, msg, |diag| {
-                        diag.span_suggestion(
+                        diag.span_suggestion_verbose(
                             span,
-                            format!("use `{simplify_using}(..)` instead"),
+                            format!("use `{simplify_using}` instead"),
                             format!("{simplify_using}({})", snippet(cx, body_expr.span, "..")),
                             applicability,
                         );

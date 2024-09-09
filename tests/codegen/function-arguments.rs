@@ -50,7 +50,7 @@ pub fn maybeuninit_enum_bool(x: MaybeUninit<MyBool>) -> MaybeUninit<MyBool> {
     x
 }
 
-// CHECK: noundef i32 @char(i32 noundef %x)
+// CHECK: noundef{{( range\(i32 0, 1114112\))?}} i32 @char(i32 noundef{{( range\(i32 0, 1114112\))?}} %x)
 #[no_mangle]
 pub fn char(x: char) -> char {
     x
@@ -68,7 +68,7 @@ pub fn int(x: u64) -> u64 {
     x
 }
 
-// CHECK: noundef i64 @nonzero_int(i64 noundef %x)
+// CHECK: noundef{{( range\(i64 1, 0\))?}} i64 @nonzero_int(i64 noundef{{( range\(i64 1, 0\))?}} %x)
 #[no_mangle]
 pub fn nonzero_int(x: NonZero<u64>) -> NonZero<u64> {
     x
@@ -250,7 +250,7 @@ pub fn return_slice(x: &[u16]) -> &[u16] {
     x
 }
 
-// CHECK: { i16, i16 } @enum_id_1(i16 noundef %x.0, i16 %x.1)
+// CHECK: { i16, i16 } @enum_id_1(i16 noundef{{( range\(i16 0, 3\))?}} %x.0, i16 %x.1)
 #[no_mangle]
 pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
     x

@@ -3,7 +3,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ only-64bit
 
-#![feature(raw_ref_op)]
 #![feature(rustc_attrs)]
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]
@@ -21,91 +20,91 @@ struct S<T>(T);
 fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     // CHECK-LABEL: fn subexpression_elimination(
 
-    // CHECK: [[add:_.*]] = Add(_1, _2);
-    // CHECK: opaque::<u64>([[add]])
+    // CHECK: [[add:_.*]] = Add(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[add]])
     opaque(x + y);
-    // CHECK: [[mul:_.*]] = Mul(_1, _2);
-    // CHECK: opaque::<u64>([[mul]])
+    // CHECK: [[mul:_.*]] = Mul(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[mul]])
     opaque(x * y);
-    // CHECK: [[sub:_.*]] = Sub(_1, _2);
-    // CHECK: opaque::<u64>([[sub]])
+    // CHECK: [[sub:_.*]] = Sub(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[sub]])
     opaque(x - y);
-    // CHECK: [[div:_.*]] = Div(_1, _2);
-    // CHECK: opaque::<u64>([[div]])
+    // CHECK: [[div:_.*]] = Div(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[div]])
     opaque(x / y);
-    // CHECK: [[rem:_.*]] = Rem(_1, _2);
-    // CHECK: opaque::<u64>([[rem]])
+    // CHECK: [[rem:_.*]] = Rem(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[rem]])
     opaque(x % y);
-    // CHECK: [[and:_.*]] = BitAnd(_1, _2);
-    // CHECK: opaque::<u64>([[and]])
+    // CHECK: [[and:_.*]] = BitAnd(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[and]])
     opaque(x & y);
-    // CHECK: [[or:_.*]] = BitOr(_1, _2);
-    // CHECK: opaque::<u64>([[or]])
+    // CHECK: [[or:_.*]] = BitOr(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[or]])
     opaque(x | y);
-    // CHECK: [[xor:_.*]] = BitXor(_1, _2);
-    // CHECK: opaque::<u64>([[xor]])
+    // CHECK: [[xor:_.*]] = BitXor(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[xor]])
     opaque(x ^ y);
-    // CHECK: [[shl:_.*]] = Shl(_1, _2);
-    // CHECK: opaque::<u64>([[shl]])
+    // CHECK: [[shl:_.*]] = Shl(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[shl]])
     opaque(x << y);
-    // CHECK: [[shr:_.*]] = Shr(_1, _2);
-    // CHECK: opaque::<u64>([[shr]])
+    // CHECK: [[shr:_.*]] = Shr(copy _1, copy _2);
+    // CHECK: opaque::<u64>(copy [[shr]])
     opaque(x >> y);
-    // CHECK: [[int:_.*]] = _1 as u32 (IntToInt);
-    // CHECK: opaque::<u32>([[int]])
+    // CHECK: [[int:_.*]] = copy _1 as u32 (IntToInt);
+    // CHECK: opaque::<u32>(copy [[int]])
     opaque(x as u32);
-    // CHECK: [[float:_.*]] = _1 as f32 (IntToFloat);
-    // CHECK: opaque::<f32>([[float]])
+    // CHECK: [[float:_.*]] = copy _1 as f32 (IntToFloat);
+    // CHECK: opaque::<f32>(copy [[float]])
     opaque(x as f32);
-    // CHECK: [[wrap:_.*]] = S::<u64>(_1);
-    // CHECK: opaque::<S<u64>>([[wrap]])
+    // CHECK: [[wrap:_.*]] = S::<u64>(copy _1);
+    // CHECK: opaque::<S<u64>>(copy [[wrap]])
     opaque(S(x));
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(S(x).0);
 
     // Those are duplicates to substitute somehow.
-    // CHECK: opaque::<u64>([[add]])
+    // CHECK: opaque::<u64>(copy [[add]])
     opaque(x + y);
-    // CHECK: opaque::<u64>([[mul]])
+    // CHECK: opaque::<u64>(copy [[mul]])
     opaque(x * y);
-    // CHECK: opaque::<u64>([[sub]])
+    // CHECK: opaque::<u64>(copy [[sub]])
     opaque(x - y);
-    // CHECK: opaque::<u64>([[div]])
+    // CHECK: opaque::<u64>(copy [[div]])
     opaque(x / y);
-    // CHECK: opaque::<u64>([[rem]])
+    // CHECK: opaque::<u64>(copy [[rem]])
     opaque(x % y);
-    // CHECK: opaque::<u64>([[and]])
+    // CHECK: opaque::<u64>(copy [[and]])
     opaque(x & y);
-    // CHECK: opaque::<u64>([[or]])
+    // CHECK: opaque::<u64>(copy [[or]])
     opaque(x | y);
-    // CHECK: opaque::<u64>([[xor]])
+    // CHECK: opaque::<u64>(copy [[xor]])
     opaque(x ^ y);
-    // CHECK: opaque::<u64>([[shl]])
+    // CHECK: opaque::<u64>(copy [[shl]])
     opaque(x << y);
-    // CHECK: opaque::<u64>([[shr]])
+    // CHECK: opaque::<u64>(copy [[shr]])
     opaque(x >> y);
-    // CHECK: opaque::<u32>([[int]])
+    // CHECK: opaque::<u32>(copy [[int]])
     opaque(x as u32);
-    // CHECK: opaque::<f32>([[float]])
+    // CHECK: opaque::<f32>(copy [[float]])
     opaque(x as f32);
-    // CHECK: opaque::<S<u64>>([[wrap]])
+    // CHECK: opaque::<S<u64>>(copy [[wrap]])
     opaque(S(x));
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(S(x).0);
 
     // We can substitute through a complex expression.
-    // CHECK: [[compound:_.*]] = Sub([[mul]], _2);
-    // CHECK: opaque::<u64>([[compound]])
-    // CHECK: opaque::<u64>([[compound]])
+    // CHECK: [[compound:_.*]] = Sub(copy [[mul]], copy _2);
+    // CHECK: opaque::<u64>(copy [[compound]])
+    // CHECK: opaque::<u64>(copy [[compound]])
     opaque((x * y) - y);
     opaque((x * y) - y);
 
     // We can substitute through an immutable reference too.
     // CHECK: [[ref:_.*]] = &_3;
-    // CHECK: [[deref:_.*]] = (*[[ref]]);
-    // CHECK: [[addref:_.*]] = Add([[deref]], _1);
-    // CHECK: opaque::<u64>([[addref]])
-    // CHECK: opaque::<u64>([[addref]])
+    // CHECK: [[deref:_.*]] = copy (*[[ref]]);
+    // CHECK: [[addref:_.*]] = Add(copy [[deref]], copy _1);
+    // CHECK: opaque::<u64>(copy [[addref]])
+    // CHECK: opaque::<u64>(copy [[addref]])
     let a = &z;
     opaque(*a + x);
     opaque(*a + x);
@@ -141,10 +140,10 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     // We can substitute again, but not with the earlier computations.
     // Important: `e` is not `a`!
     // CHECK: [[ref2:_.*]] = &_3;
-    // CHECK: [[deref2:_.*]] = (*[[ref2]]);
-    // CHECK: [[addref2:_.*]] = Add([[deref2]], _1);
-    // CHECK: opaque::<u64>([[addref2]])
-    // CHECK: opaque::<u64>([[addref2]])
+    // CHECK: [[deref2:_.*]] = copy (*[[ref2]]);
+    // CHECK: [[addref2:_.*]] = Add(copy [[deref2]], copy _1);
+    // CHECK: opaque::<u64>(copy [[addref2]])
+    // CHECK: opaque::<u64>(copy [[addref2]])
     let e = &z;
     opaque(*e + x);
     opaque(*e + x);
@@ -152,9 +151,9 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
 
 fn wrap_unwrap<T: Copy>(x: T) -> T {
     // CHECK-LABEL: fn wrap_unwrap(
-    // CHECK: [[some:_.*]] = Option::<T>::Some(_1);
+    // CHECK: [[some:_.*]] = Option::<T>::Some(copy _1);
     // CHECK: switchInt(const 1_isize)
-    // CHECK: _0 = _1;
+    // CHECK: _0 = copy _1;
     match Some(x) {
         Some(y) => y,
         None => panic!(),
@@ -163,35 +162,35 @@ fn wrap_unwrap<T: Copy>(x: T) -> T {
 
 fn repeated_index<T: Copy, const N: usize>(x: T, idx: usize) {
     // CHECK-LABEL: fn repeated_index(
-    // CHECK: [[a:_.*]] = [_1; N];
+    // CHECK: [[a:_.*]] = [copy _1; N];
     let a = [x; N];
-    // CHECK: opaque::<T>(_1)
+    // CHECK: opaque::<T>(copy _1)
     opaque(a[0]);
-    // CHECK: opaque::<T>(_1)
+    // CHECK: opaque::<T>(copy _1)
     opaque(a[idx]);
 }
 
 fn unary(x: i64) {
     // CHECK-LABEL: fn unary(
-    // CHECK: opaque::<i64>(_1)
+    // CHECK: opaque::<i64>(copy _1)
     opaque(--x); // This is `x`.
 
-    // CHECK: [[b:_.*]] = Lt(_1, const 13_i64);
-    // CHECK: opaque::<bool>([[b]])
+    // CHECK: [[b:_.*]] = Lt(copy _1, const 13_i64);
+    // CHECK: opaque::<bool>(copy [[b]])
     let b = x < 13;
     opaque(!!b); // This is `b`.
 
     // Both lines should test the same thing.
-    // CHECK: [[c:_.*]] = Ne(_1, const 15_i64);
-    // CHECK: opaque::<bool>([[c]])
-    // CHECK: opaque::<bool>([[c]])
+    // CHECK: [[c:_.*]] = Ne(copy _1, const 15_i64);
+    // CHECK: opaque::<bool>(copy [[c]])
+    // CHECK: opaque::<bool>(copy [[c]])
     opaque(x != 15);
     opaque(!(x == 15));
 
     // Both lines should test the same thing.
-    // CHECK: [[d:_.*]] = Eq(_1, const 35_i64);
-    // CHECK: opaque::<bool>([[d]])
-    // CHECK: opaque::<bool>([[d]])
+    // CHECK: [[d:_.*]] = Eq(copy _1, const 35_i64);
+    // CHECK: opaque::<bool>(copy [[d]])
+    // CHECK: opaque::<bool>(copy [[d]])
     opaque(x == 35);
     opaque(!(x != 35));
 }
@@ -199,53 +198,53 @@ fn unary(x: i64) {
 /// Verify symbolic integer arithmetic simplifications.
 fn arithmetic(x: u64) {
     // CHECK-LABEL: fn arithmetic(
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x + 0);
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x - 0);
     // CHECK: opaque::<u64>(const 0_u64)
     opaque(x - x);
     // CHECK: opaque::<u64>(const 0_u64)
     opaque(x * 0);
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x * 1);
     // CHECK: assert(!const true, "attempt to divide `{}` by zero",
-    // CHECK: [[div0:_.*]] = Div(_1, const 0_u64);
+    // CHECK: [[div0:_.*]] = Div(copy _1, const 0_u64);
     // CHECK: opaque::<u64>(move [[div0]])
     opaque(x / 0);
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x / 1);
     // CHECK: opaque::<u64>(const 0_u64)
     opaque(0 / x);
-    // CHECK: [[odiv:_.*]] = Div(const 1_u64, _1);
+    // CHECK: [[odiv:_.*]] = Div(const 1_u64, copy _1);
     // CHECK: opaque::<u64>(move [[odiv]])
     opaque(1 / x);
     // CHECK: assert(!const true, "attempt to calculate the remainder of `{}` with a divisor of zero"
-    // CHECK: [[rem0:_.*]] = Rem(_1, const 0_u64);
+    // CHECK: [[rem0:_.*]] = Rem(copy _1, const 0_u64);
     // CHECK: opaque::<u64>(move [[rem0]])
     opaque(x % 0);
     // CHECK: opaque::<u64>(const 0_u64)
     opaque(x % 1);
     // CHECK: opaque::<u64>(const 0_u64)
     opaque(0 % x);
-    // CHECK: [[orem:_.*]] = Rem(const 1_u64, _1);
+    // CHECK: [[orem:_.*]] = Rem(const 1_u64, copy _1);
     // CHECK: opaque::<u64>(move [[orem]])
     opaque(1 % x);
     // CHECK: opaque::<u64>(const 0_u64)
     opaque(x & 0);
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x & u64::MAX);
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x | 0);
     // CHECK: opaque::<u64>(const u64::MAX)
     opaque(x | u64::MAX);
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x ^ 0);
     // CHECK: opaque::<u64>(const 0_u64)
     opaque(x ^ x);
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x >> 0);
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x << 0);
 }
 
@@ -255,10 +254,10 @@ fn comparison(x: u64, y: u64) {
     opaque(x == x);
     // CHECK: opaque::<bool>(const false)
     opaque(x != x);
-    // CHECK: [[eqxy:_.*]] = Eq(_1, _2);
+    // CHECK: [[eqxy:_.*]] = Eq(copy _1, copy _2);
     // CHECK: opaque::<bool>(move [[eqxy]])
     opaque(x == y);
-    // CHECK: [[nexy:_.*]] = Ne(_1, _2);
+    // CHECK: [[nexy:_.*]] = Ne(copy _1, copy _2);
     // CHECK: opaque::<bool>(move [[nexy]])
     opaque(x != y);
 }
@@ -268,10 +267,10 @@ fn comparison(x: u64, y: u64) {
 fn arithmetic_checked(x: u64) {
     // CHECK-LABEL: fn arithmetic_checked(
     // CHECK: assert(!const false,
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x + 0);
     // CHECK: assert(!const false,
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x - 0);
     // CHECK: assert(!const false,
     // CHECK: opaque::<u64>(const 0_u64)
@@ -280,39 +279,39 @@ fn arithmetic_checked(x: u64) {
     // CHECK: opaque::<u64>(const 0_u64)
     opaque(x * 0);
     // CHECK: assert(!const false,
-    // CHECK: opaque::<u64>(_1)
+    // CHECK: opaque::<u64>(copy _1)
     opaque(x * 1);
 }
 
 /// Verify that we do not apply arithmetic simplifications on floats.
 fn arithmetic_float(x: f64) {
     // CHECK-LABEL: fn arithmetic_float(
-    // CHECK: [[add:_.*]] = Add(_1, const 0f64);
+    // CHECK: [[add:_.*]] = Add(copy _1, const 0f64);
     // CHECK: opaque::<f64>(move [[add]])
     opaque(x + 0.);
-    // CHECK: [[sub:_.*]] = Sub(_1, const 0f64);
+    // CHECK: [[sub:_.*]] = Sub(copy _1, const 0f64);
     // CHECK: opaque::<f64>(move [[sub]])
     opaque(x - 0.);
-    // CHECK: [[mul:_.*]] = Mul(_1, const 0f64);
+    // CHECK: [[mul:_.*]] = Mul(copy _1, const 0f64);
     // CHECK: opaque::<f64>(move [[mul]])
     opaque(x * 0.);
-    // CHECK: [[div0:_.*]] = Div(_1, const 0f64);
+    // CHECK: [[div0:_.*]] = Div(copy _1, const 0f64);
     // CHECK: opaque::<f64>(move [[div0]])
     opaque(x / 0.);
-    // CHECK: [[zdiv:_.*]] = Div(const 0f64, _1);
+    // CHECK: [[zdiv:_.*]] = Div(const 0f64, copy _1);
     // CHECK: opaque::<f64>(move [[zdiv]])
     opaque(0. / x);
-    // CHECK: [[rem0:_.*]] = Rem(_1, const 0f64);
+    // CHECK: [[rem0:_.*]] = Rem(copy _1, const 0f64);
     // CHECK: opaque::<f64>(move [[rem0]])
     opaque(x % 0.);
-    // CHECK: [[zrem:_.*]] = Rem(const 0f64, _1);
+    // CHECK: [[zrem:_.*]] = Rem(const 0f64, copy _1);
     // CHECK: opaque::<f64>(move [[zrem]])
     opaque(0. % x);
     // Those are not simplifiable to `true`/`false`, thanks to NaNs.
-    // CHECK: [[eq:_.*]] = Eq(_1, _1);
+    // CHECK: [[eq:_.*]] = Eq(copy _1, copy _1);
     // CHECK: opaque::<bool>(move [[eq]])
     opaque(x == x);
-    // CHECK: [[ne:_.*]] = Ne(_1, _1);
+    // CHECK: [[ne:_.*]] = Ne(copy _1, copy _1);
     // CHECK: opaque::<bool>(move [[ne]])
     opaque(x != x);
 }
@@ -386,36 +385,36 @@ fn cast() {
 
 fn multiple_branches(t: bool, x: u8, y: u8) {
     // CHECK-LABEL: fn multiple_branches(
-    // CHECK: switchInt(_1) -> [0: [[bbf:bb.*]], otherwise: [[bbt:bb.*]]];
+    // CHECK: switchInt(copy _1) -> [0: [[bbf:bb.*]], otherwise: [[bbt:bb.*]]];
     if t {
         // CHECK: [[bbt]]: {
-        // CHECK: [[a:_.*]] = Add(_2, _3);
-        // CHECK: opaque::<u8>([[a]])
-        // CHECK: opaque::<u8>([[a]])
+        // CHECK: [[a:_.*]] = Add(copy _2, copy _3);
+        // CHECK: opaque::<u8>(copy [[a]])
+        // CHECK: opaque::<u8>(copy [[a]])
         // CHECK: goto -> [[bbc:bb.*]];
         opaque(x + y);
         opaque(x + y);
     } else {
         // CHECK: [[bbf]]: {
-        // CHECK: [[b:_.*]] = Add(_2, _3);
-        // CHECK: opaque::<u8>([[b]])
-        // CHECK: opaque::<u8>([[b]])
+        // CHECK: [[b:_.*]] = Add(copy _2, copy _3);
+        // CHECK: opaque::<u8>(copy [[b]])
+        // CHECK: opaque::<u8>(copy [[b]])
         // CHECK: goto -> [[bbc:bb.*]];
         opaque(x + y);
         opaque(x + y);
     }
     // Neither `a` nor `b` dominate `c`, so we cannot reuse any of them.
     // CHECK: [[bbc]]: {
-    // CHECK: [[c:_.*]] = Add(_2, _3);
-    // CHECK: opaque::<u8>([[c]])
+    // CHECK: [[c:_.*]] = Add(copy _2, copy _3);
+    // CHECK: opaque::<u8>(copy [[c]])
     opaque(x + y);
 
     // `c` dominates both calls, so we can reuse it.
     if t {
-        // CHECK: opaque::<u8>([[c]])
+        // CHECK: opaque::<u8>(copy [[c]])
         opaque(x + y);
     } else {
-        // CHECK: opaque::<u8>([[c]])
+        // CHECK: opaque::<u8>(copy [[c]])
         opaque(x + y);
     }
 }
@@ -469,18 +468,18 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
     // CHECK-LABEL: fn dereferences(
 
     // Do not reuse dereferences of `&mut`.
-    // CHECK: [[st1:_.*]] = (*_1);
+    // CHECK: [[st1:_.*]] = copy (*_1);
     // CHECK: opaque::<u32>(move [[st1]])
-    // CHECK: [[st2:_.*]] = (*_1);
+    // CHECK: [[st2:_.*]] = copy (*_1);
     // CHECK: opaque::<u32>(move [[st2]])
     opaque(*t);
     opaque(*t);
 
     // Do not reuse dereferences of `*const`.
     // CHECK: [[raw:_.*]] = &raw const (*_1);
-    // CHECK: [[st3:_.*]] = (*[[raw]]);
+    // CHECK: [[st3:_.*]] = copy (*[[raw]]);
     // CHECK: opaque::<u32>(move [[st3]])
-    // CHECK: [[st4:_.*]] = (*[[raw]]);
+    // CHECK: [[st4:_.*]] = copy (*[[raw]]);
     // CHECK: opaque::<u32>(move [[st4]])
     let z = &raw const *t;
     unsafe { opaque(*z) };
@@ -488,9 +487,9 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
 
     // Do not reuse dereferences of `*mut`.
     // CHECK: [[ptr:_.*]] = &raw mut (*_1);
-    // CHECK: [[st5:_.*]] = (*[[ptr]]);
+    // CHECK: [[st5:_.*]] = copy (*[[ptr]]);
     // CHECK: opaque::<u32>(move [[st5]])
-    // CHECK: [[st6:_.*]] = (*[[ptr]]);
+    // CHECK: [[st6:_.*]] = copy (*[[ptr]]);
     // CHECK: opaque::<u32>(move [[st6]])
     let z = &raw mut *t;
     unsafe { opaque(*z) };
@@ -498,9 +497,9 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
 
     // We can reuse dereferences of `&Freeze`.
     // CHECK: [[ref:_.*]] = &(*_1);
-    // CHECK: [[st7:_.*]] = (*[[ref]]);
-    // CHECK: opaque::<u32>([[st7]])
-    // CHECK: opaque::<u32>([[st7]])
+    // CHECK: [[st7:_.*]] = copy (*[[ref]]);
+    // CHECK: opaque::<u32>(copy [[st7]])
+    // CHECK: opaque::<u32>(copy [[st7]])
     let z = &*t;
     opaque(*z);
     opaque(*z);
@@ -510,17 +509,17 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
     opaque(&*z);
 
     // `*u` is not Freeze, so we cannot reuse.
-    // CHECK: [[st8:_.*]] = (*_2);
+    // CHECK: [[st8:_.*]] = copy (*_2);
     // CHECK: opaque::<impl Copy>(move [[st8]])
-    // CHECK: [[st9:_.*]] = (*_2);
+    // CHECK: [[st9:_.*]] = copy (*_2);
     // CHECK: opaque::<impl Copy>(move [[st9]])
     opaque(*u);
     opaque(*u);
 
-    // `*s` is not Copy, by `(*s).0` is, so we can reuse.
-    // CHECK: [[st10:_.*]] = ((*_3).0: u32);
-    // CHECK: opaque::<u32>([[st10]])
-    // CHECK: opaque::<u32>([[st10]])
+    // `*s` is not Copy, but `(*s).0` is, so we can reuse.
+    // CHECK: [[st10:_.*]] = copy ((*_3).0: u32);
+    // CHECK: opaque::<u32>(copy [[st10]])
+    // CHECK: opaque::<u32>(copy [[st10]])
     opaque(s.0);
     opaque(s.0);
 }
@@ -551,38 +550,38 @@ fn duplicate_slice() -> (bool, bool) {
         let d: &str;
         {
             // CHECK: [[a:_.*]] = (const "a",);
-            // CHECK: [[au:_.*]] = ([[a]].0: &str) as u128 (Transmute);
+            // CHECK: [[au:_.*]] = copy ([[a]].0: &str) as u128 (Transmute);
             let a = ("a",);
             Call(au = transmute::<_, u128>(a.0), ReturnTo(bb1), UnwindContinue())
         }
         bb1 = {
-            // CHECK: [[c:_.*]] = identity::<&str>(([[a]].0: &str))
+            // CHECK: [[c:_.*]] = identity::<&str>(copy ([[a]].0: &str))
             Call(c = identity(a.0), ReturnTo(bb2), UnwindContinue())
         }
         bb2 = {
-            // CHECK: [[cu:_.*]] = [[c]] as u128 (Transmute);
+            // CHECK: [[cu:_.*]] = copy [[c]] as u128 (Transmute);
             Call(cu = transmute::<_, u128>(c), ReturnTo(bb3), UnwindContinue())
         }
         bb3 = {
             // This slice is different from `a.0`. Hence `bu` is not `au`.
             // CHECK: [[b:_.*]] = const "a";
-            // CHECK: [[bu:_.*]] = [[b]] as u128 (Transmute);
+            // CHECK: [[bu:_.*]] = copy [[b]] as u128 (Transmute);
             let b = "a";
             Call(bu = transmute::<_, u128>(b), ReturnTo(bb4), UnwindContinue())
         }
         bb4 = {
             // This returns a copy of `b`, which is not `a`.
-            // CHECK: [[d:_.*]] = identity::<&str>([[b]])
+            // CHECK: [[d:_.*]] = identity::<&str>(copy [[b]])
             Call(d = identity(b), ReturnTo(bb5), UnwindContinue())
         }
         bb5 = {
-            // CHECK: [[du:_.*]] = [[d]] as u128 (Transmute);
+            // CHECK: [[du:_.*]] = copy [[d]] as u128 (Transmute);
             Call(du = transmute::<_, u128>(d), ReturnTo(bb6), UnwindContinue())
         }
         bb6 = {
             // `direct` must not fold to `true`, as `indirect` will not.
-            // CHECK: = Eq([[au]], [[bu]]);
-            // CHECK: = Eq([[cu]], [[du]]);
+            // CHECK: = Eq(copy [[au]], copy [[bu]]);
+            // CHECK: = Eq(copy [[cu]], copy [[du]]);
             let direct = au == bu;
             let indirect = cu == du;
             RET = (direct, indirect);
@@ -602,21 +601,21 @@ fn repeat() {
 fn fn_pointers() {
     // CHECK-LABEL: fn fn_pointers(
     // CHECK: [[f:_.*]] = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer
-    // CHECK: opaque::<fn(u8) -> u8>([[f]])
+    // CHECK: opaque::<fn(u8) -> u8>(copy [[f]])
     let f = identity as fn(u8) -> u8;
     opaque(f);
     // CHECK: [[g:_.*]] = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer
-    // CHECK: opaque::<fn(u8) -> u8>([[g]])
+    // CHECK: opaque::<fn(u8) -> u8>(copy [[g]])
     let g = identity as fn(u8) -> u8;
     opaque(g);
 
     // CHECK: [[cf:_.*]] = const {{.*}} as fn() (PointerCoercion(ClosureFnPointer
-    // CHECK: opaque::<fn()>([[cf]])
+    // CHECK: opaque::<fn()>(copy [[cf]])
     let closure = || {};
     let cf = closure as fn();
     opaque(cf);
     // CHECK: [[cg:_.*]] = const {{.*}} as fn() (PointerCoercion(ClosureFnPointer
-    // CHECK: opaque::<fn()>([[cg]])
+    // CHECK: opaque::<fn()>(copy [[cg]])
     let cg = closure as fn();
     opaque(cg);
 }
@@ -642,9 +641,9 @@ fn constant_index_overflow<T: Copy>(x: &[T]) {
     // CHECK: debug b => [[b:_.*]];
     // CHECK: [[a]] = const usize::MAX;
     // CHECK-NOT: = (*_1)[{{.*}} of 0];
-    // CHECK: [[b]] = (*_1)[[[a]]];
+    // CHECK: [[b]] = copy (*_1)[[[a]]];
     // CHECK-NOT: = (*_1)[{{.*}} of 0];
-    // CHECK: [[b]] = (*_1)[0 of 1];
+    // CHECK: [[b]] = copy (*_1)[0 of 1];
     // CHECK-NOT: = (*_1)[{{.*}} of 0];
     let a = u64::MAX as usize;
     let b = if a < x.len() { x[a] } else { x[0] };
@@ -657,22 +656,22 @@ fn wide_ptr_provenance() {
     let a: *const dyn Send = &1 as &dyn Send;
     let b: *const dyn Send = &1 as &dyn Send;
 
-    // CHECK: [[eqp:_.*]] = Eq([[a:_.*]], [[b:_.*]]);
+    // CHECK: [[eqp:_.*]] = Eq(copy [[a:_.*]], copy [[b:_.*]]);
     // CHECK: opaque::<bool>(move [[eqp]])
     opaque(a == b);
-    // CHECK: [[nep:_.*]] = Ne([[a]], [[b]]);
+    // CHECK: [[nep:_.*]] = Ne(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[nep]])
     opaque(a != b);
-    // CHECK: [[ltp:_.*]] = Lt([[a]], [[b]]);
+    // CHECK: [[ltp:_.*]] = Lt(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[ltp]])
     opaque(a < b);
-    // CHECK: [[lep:_.*]] = Le([[a]], [[b]]);
+    // CHECK: [[lep:_.*]] = Le(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[lep]])
     opaque(a <= b);
-    // CHECK: [[gtp:_.*]] = Gt([[a]], [[b]]);
+    // CHECK: [[gtp:_.*]] = Gt(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[gtp]])
     opaque(a > b);
-    // CHECK: [[gep:_.*]] = Ge([[a]], [[b]]);
+    // CHECK: [[gep:_.*]] = Ge(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[gep]])
     opaque(a >= b);
 }
@@ -684,22 +683,22 @@ fn wide_ptr_same_provenance() {
     let a: *const dyn Send = &slice[0] as &dyn Send;
     let b: *const dyn Send = &slice[1] as &dyn Send;
 
-    // CHECK: [[eqp:_.*]] = Eq([[a:_.*]], [[b:_.*]]);
+    // CHECK: [[eqp:_.*]] = Eq(copy [[a:_.*]], copy [[b:_.*]]);
     // CHECK: opaque::<bool>(move [[eqp]])
     opaque(a == b);
-    // CHECK: [[nep:_.*]] = Ne([[a]], [[b]]);
+    // CHECK: [[nep:_.*]] = Ne(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[nep]])
     opaque(a != b);
-    // CHECK: [[ltp:_.*]] = Lt([[a]], [[b]]);
+    // CHECK: [[ltp:_.*]] = Lt(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[ltp]])
     opaque(a < b);
-    // CHECK: [[lep:_.*]] = Le([[a]], [[b]]);
+    // CHECK: [[lep:_.*]] = Le(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[lep]])
     opaque(a <= b);
-    // CHECK: [[gtp:_.*]] = Gt([[a]], [[b]]);
+    // CHECK: [[gtp:_.*]] = Gt(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[gtp]])
     opaque(a > b);
-    // CHECK: [[gep:_.*]] = Ge([[a]], [[b]]);
+    // CHECK: [[gep:_.*]] = Ge(copy [[a]], copy [[b]]);
     // CHECK: opaque::<bool>(move [[gep]])
     opaque(a >= b);
 }
@@ -731,13 +730,13 @@ fn wide_ptr_integer() {
 fn borrowed<T: Copy + Freeze>(x: T) {
     // CHECK-LABEL: fn borrowed(
     // CHECK: bb0: {
-    // CHECK-NEXT: _2 = _1;
+    // CHECK-NEXT: _2 = copy _1;
     // CHECK-NEXT: _3 = &_1;
-    // CHECK-NEXT: _0 = opaque::<&T>(_3)
+    // CHECK-NEXT: _0 = opaque::<&T>(copy _3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<T>(_1)
+    // CHECK-NEXT: _0 = opaque::<T>(copy _1)
     // CHECK: bb2: {
-    // CHECK-NEXT: _0 = opaque::<T>(_1)
+    // CHECK-NEXT: _0 = opaque::<T>(copy _1)
     mir! {
         {
             let a = x;
@@ -761,13 +760,13 @@ fn borrowed<T: Copy + Freeze>(x: T) {
 fn non_freeze<T: Copy>(x: T) {
     // CHECK-LABEL: fn non_freeze(
     // CHECK: bb0: {
-    // CHECK-NEXT: _2 = _1;
+    // CHECK-NEXT: _2 = copy _1;
     // CHECK-NEXT: _3 = &_1;
-    // CHECK-NEXT: _0 = opaque::<&T>(_3)
+    // CHECK-NEXT: _0 = opaque::<&T>(copy _3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<T>(_2)
+    // CHECK-NEXT: _0 = opaque::<T>(copy _2)
     // CHECK: bb2: {
-    // CHECK-NEXT: _0 = opaque::<T>((*_3))
+    // CHECK-NEXT: _0 = opaque::<T>(copy (*_3))
     mir! {
         {
             let a = x;
@@ -789,7 +788,7 @@ fn non_freeze<T: Copy>(x: T) {
 // Check that we can const-prop into `from_raw_parts`
 fn slice_const_length(x: &[i32]) -> *const [i32] {
     // CHECK-LABEL: fn slice_const_length(
-    // CHECK: _0 = *const [i32] from ({{_[0-9]+}}, const 123_usize);
+    // CHECK: _0 = *const [i32] from (copy {{_[0-9]+}}, const 123_usize);
     let ptr = x.as_ptr();
     let len = 123;
     std::intrinsics::aggregate_raw_ptr(ptr, len)
@@ -804,15 +803,15 @@ fn meta_of_ref_to_slice(x: *const i32) -> usize {
 
 fn slice_from_raw_parts_as_ptr(x: *const u16, n: usize) -> (*const u16, *const f32) {
     // CHECK-LABEL: fn slice_from_raw_parts_as_ptr
-    // CHECK: _8 = _1 as *const f32 (PtrToPtr);
-    // CHECK: _0 = (_1, move _8);
+    // CHECK: _8 = copy _1 as *const f32 (PtrToPtr);
+    // CHECK: _0 = (copy _1, move _8);
     let ptr: *const [u16] = std::intrinsics::aggregate_raw_ptr(x, n);
     (ptr as *const u16, ptr as *const f32)
 }
 
 fn casts_before_aggregate_raw_ptr(x: *const u32) -> *const [u8] {
     // CHECK-LABEL: fn casts_before_aggregate_raw_ptr
-    // CHECK: _0 = *const [u8] from (_1, const 4_usize);
+    // CHECK: _0 = *const [u8] from (copy _1, const 4_usize);
     let x = x as *const [u8; 4];
     let x = x as *const u8;
     let x = x as *const ();
@@ -821,7 +820,7 @@ fn casts_before_aggregate_raw_ptr(x: *const u32) -> *const [u8] {
 
 fn manual_slice_mut_len(x: &mut [i32]) -> usize {
     // CHECK-LABEL: fn manual_slice_mut_len
-    // CHECK: _0 = PtrMetadata(_1);
+    // CHECK: _0 = PtrMetadata(copy _1);
     let x: *mut [i32] = x;
     let x: *const [i32] = x;
     std::intrinsics::ptr_metadata(x)
@@ -844,38 +843,38 @@ fn generic_cast_metadata<T, A: ?Sized, B: ?Sized>(ps: *const [T], pa: *const A, 
             // when the pointee metadata do or don't match, respectively.
 
             // Metadata usize -> (), do not optimize.
-            // CHECK: [[T:_.+]] = _1 as
-            // CHECK-NEXT: PtrMetadata([[T]])
+            // CHECK: [[T:_.+]] = copy _1 as
+            // CHECK-NEXT: PtrMetadata(copy [[T]])
             let t1 = CastPtrToPtr::<_, *const T>(ps);
             let m1 = PtrMetadata(t1);
 
             // `(&A, [T])` has `usize` metadata, same as `[T]`, yes optimize.
-            // CHECK: [[T:_.+]] = _1 as
-            // CHECK-NEXT: PtrMetadata(_1)
+            // CHECK: [[T:_.+]] = copy _1 as
+            // CHECK-NEXT: PtrMetadata(copy _1)
             let t2 = CastPtrToPtr::<_, *const (&A, [T])>(ps);
             let m2 = PtrMetadata(t2);
 
             // Tail `A` and tail `B`, do not optimize.
-            // CHECK: [[T:_.+]] = _2 as
-            // CHECK-NEXT: PtrMetadata([[T]])
+            // CHECK: [[T:_.+]] = copy _2 as
+            // CHECK-NEXT: PtrMetadata(copy [[T]])
             let t3 = CastPtrToPtr::<_, *const (T, B)>(pa);
             let m3 = PtrMetadata(t3);
 
             // Both have tail `A`, yes optimize.
-            // CHECK: [[T:_.+]] = _2 as
-            // CHECK-NEXT: PtrMetadata(_2)
+            // CHECK: [[T:_.+]] = copy _2 as
+            // CHECK-NEXT: PtrMetadata(copy _2)
             let t4 = CastPtrToPtr::<_, *const (T, A)>(pa);
             let m4 = PtrMetadata(t4);
 
             // Tail `B` and tail `A`, do not optimize.
-            // CHECK: [[T:_.+]] = _3 as
-            // CHECK-NEXT: PtrMetadata([[T]])
+            // CHECK: [[T:_.+]] = copy _3 as
+            // CHECK-NEXT: PtrMetadata(copy [[T]])
             let t5 = CastPtrToPtr::<_, *mut A>(pb);
             let m5 = PtrMetadata(t5);
 
             // Both have tail `B`, yes optimize.
-            // CHECK: [[T:_.+]] = _3 as
-            // CHECK-NEXT: PtrMetadata(_3)
+            // CHECK: [[T:_.+]] = copy _3 as
+            // CHECK-NEXT: PtrMetadata(copy _3)
             let t6 = CastPtrToPtr::<_, *mut B>(pb);
             let m6 = PtrMetadata(t6);
 
@@ -891,21 +890,21 @@ fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
     // CHECK: debug p3 => [[P3:_3]];
     // CHECK: debug p4 => [[P4:_4]];
 
-    // CHECK: [[M1:_.+]] = [[P1]] as *const u32 (PtrToPtr);
-    // CHECK: [[M2:_.+]] = [[P2]] as *const u32 (PtrToPtr);
-    // CHECK: [[M3:_.+]] = [[P3]] as *const u32 (PtrToPtr);
-    // CHECK: [[M4:_.+]] = [[P4]] as *const u32 (PtrToPtr);
+    // CHECK: [[M1:_.+]] = copy [[P1]] as *const u32 (PtrToPtr);
+    // CHECK: [[M2:_.+]] = copy [[P2]] as *const u32 (PtrToPtr);
+    // CHECK: [[M3:_.+]] = copy [[P3]] as *const u32 (PtrToPtr);
+    // CHECK: [[M4:_.+]] = copy [[P4]] as *const u32 (PtrToPtr);
     let m1 = p1 as *const u32;
     let m2 = p2 as *const u32;
     let m3 = p3 as *const u32;
     let m4 = p4 as *const u32;
 
     // CHECK-NOT: Eq
-    // CHECK: Eq([[M1]], [[M2]])
+    // CHECK: Eq(copy [[M1]], copy [[M2]])
     // CHECK-NOT: Eq
-    // CHECK: Eq([[P2]], [[P3]])
+    // CHECK: Eq(copy [[P2]], copy [[P3]])
     // CHECK-NOT: Eq
-    // CHECK: Eq([[M3]], [[M4]])
+    // CHECK: Eq(copy [[M3]], copy [[M4]])
     // CHECK-NOT: Eq
     let eq_different_thing = m1 == m2;
     let eq_optimize = m2 == m3;
@@ -918,11 +917,11 @@ fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
 unsafe fn cast_pointer_then_transmute(thin: *mut u32, fat: *mut [u8]) {
     // CHECK-LABEL: fn cast_pointer_then_transmute
 
-    // CHECK: [[UNUSED:_.+]] = _1 as *const () (PtrToPtr);
-    // CHECK: = _1 as usize (Transmute);
+    // CHECK: [[UNUSED:_.+]] = copy _1 as *const () (PtrToPtr);
+    // CHECK: = copy _1 as usize (Transmute);
     let thin_addr: usize = std::intrinsics::transmute(thin as *const ());
 
-    // CHECK: [[TEMP2:_.+]] = _2 as *const () (PtrToPtr);
+    // CHECK: [[TEMP2:_.+]] = copy _2 as *const () (PtrToPtr);
     // CHECK: = move [[TEMP2]] as usize (Transmute);
     let fat_addr: usize = std::intrinsics::transmute(fat as *const ());
 }
@@ -935,11 +934,11 @@ fn remove_casts_must_change_both_sides(mut_a: &*mut u8, mut_b: *mut u8) -> bool 
         // to be locals, so make sure we don't change one without the other, as
         // that would be a type error.
         {
-            // CHECK: [[A:_.+]] = (*_1) as *const u8 (PtrToPtr);
+            // CHECK: [[A:_.+]] = copy (*_1) as *const u8 (PtrToPtr);
             let a = *mut_a as *const u8;
-            // CHECK: [[B:_.+]] = _2 as *const u8 (PtrToPtr);
+            // CHECK: [[B:_.+]] = copy _2 as *const u8 (PtrToPtr);
             let b = mut_b as *const u8;
-            // CHECK: _0 = Eq([[A]], [[B]]);
+            // CHECK: _0 = Eq(copy [[A]], copy [[B]]);
             RET = a == b;
             Return()
         }

@@ -16,6 +16,12 @@ error: unused variable: `a`
 LL |         a: i32,
    |         ^ help: if this is intentional, prefix it with an underscore: `_a`
 
+error: unused variable: `a`
+  --> $DIR/lint-unused-variables.rs:68:9
+   |
+LL |         a: i32,
+   |         ^ help: if this is intentional, prefix it with an underscore: `_a`
+
 error: unused variable: `b`
   --> $DIR/lint-unused-variables.rs:14:5
    |
@@ -57,12 +63,6 @@ error: unused variable: `b`
    |
 LL |         b: i32,
    |         ^ help: if this is intentional, prefix it with an underscore: `_b`
-
-error: unused variable: `a`
-  --> $DIR/lint-unused-variables.rs:68:9
-   |
-LL |         a: i32,
-   |         ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
   --> $DIR/lint-unused-variables.rs:74:9

@@ -1,6 +1,5 @@
-use super::*;
-
 use super::super::tests::TestGraph;
+use super::*;
 
 #[test]
 fn diamond() {

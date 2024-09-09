@@ -1,6 +1,7 @@
 //! Applies structured search replace rules from the command line.
 
 use anyhow::Context;
+use ide_db::{base_db::SourceDatabase, EditionedFileId};
 use ide_ssr::MatchFinder;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 use project_model::{CargoConfig, RustLibSource};
@@ -9,7 +10,6 @@ use crate::cli::flags;
 
 impl flags::Ssr {
     pub fn run(self) -> anyhow::Result<()> {
-        use ide_db::base_db::SourceDatabaseExt;
         let cargo_config =
             CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let load_cargo_config = LoadCargoConfig {
@@ -45,7 +45,7 @@ impl flags::Search {
     /// `debug_snippet`. This is intended for debugging and probably isn't in it's current form useful
     /// for much else.
     pub fn run(self) -> anyhow::Result<()> {
-        use ide_db::base_db::SourceDatabaseExt;
+        use ide_db::base_db::SourceRootDatabase;
         use ide_db::symbol_index::SymbolsDatabase;
         let cargo_config = CargoConfig::default();
         let load_cargo_config = LoadCargoConfig {
@@ -67,7 +67,10 @@ impl flags::Search {
             for &root in db.local_roots().iter() {
                 let sr = db.source_root(root);
                 for file_id in sr.iter() {
-                    for debug_info in match_finder.debug_where_text_equal(file_id, debug_snippet) {
+                    for debug_info in match_finder.debug_where_text_equal(
+                        EditionedFileId::current_edition(file_id),
+                        debug_snippet,
+                    ) {
                         println!("{debug_info:#?}");
                     }
                 }

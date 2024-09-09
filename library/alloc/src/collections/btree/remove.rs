@@ -1,6 +1,9 @@
-use super::map::MIN_LEN;
-use super::node::{marker, ForceResult::*, Handle, LeftOrRight::*, NodeRef};
 use core::alloc::Allocator;
+
+use super::map::MIN_LEN;
+use super::node::ForceResult::*;
+use super::node::LeftOrRight::*;
+use super::node::{marker, Handle, NodeRef};
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
     /// Removes a key-value pair from the tree, and returns that pair, as well as

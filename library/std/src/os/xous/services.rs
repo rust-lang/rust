@@ -1,5 +1,6 @@
-use crate::os::xous::ffi::Connection;
 use core::sync::atomic::{AtomicU32, Ordering};
+
+use crate::os::xous::ffi::Connection;
 
 mod dns;
 pub(crate) use dns::*;
@@ -83,7 +84,7 @@ mod ns {
     }
 }
 
-/// Attempt to connect to a server by name. If the server does not exist, this will
+/// Attempts to connect to a server by name. If the server does not exist, this will
 /// block until the server is created.
 ///
 /// Note that this is different from connecting to a server by address. Server
@@ -94,7 +95,7 @@ pub fn connect(name: &str) -> Option<Connection> {
     ns::connect_with_name(name)
 }
 
-/// Attempt to connect to a server by name. If the server does not exist, this will
+/// Attempts to connect to a server by name. If the server does not exist, this will
 /// immediately return `None`.
 ///
 /// Note that this is different from connecting to a server by address. Server
@@ -107,7 +108,7 @@ pub fn try_connect(name: &str) -> Option<Connection> {
 
 static NAME_SERVER_CONNECTION: AtomicU32 = AtomicU32::new(0);
 
-/// Return a `Connection` to the name server. If the name server has not been started,
+/// Returns a `Connection` to the name server. If the name server has not been started,
 /// then this call will block until the name server has been started. The `Connection`
 /// will be shared among all connections in a process, so it is safe to call this
 /// multiple times.

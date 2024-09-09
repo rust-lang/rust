@@ -15,7 +15,7 @@ impl<T: ::std::fmt::Display> Foo<T> {
     }
 }
 
-trait Tr {
+trait Tr { //~ WARN trait `Tr` is never used
     type U;
 }
 

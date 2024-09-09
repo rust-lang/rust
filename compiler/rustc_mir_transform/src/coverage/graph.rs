@@ -1,3 +1,7 @@
+use std::cmp::Ordering;
+use std::collections::VecDeque;
+use std::ops::{Index, IndexMut};
+
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{self, Dominators};
@@ -6,10 +10,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
-
-use std::cmp::Ordering;
-use std::collections::VecDeque;
-use std::ops::{Index, IndexMut};
+use tracing::debug;
 
 /// A coverage-specific simplification of the MIR control flow graph (CFG). The `CoverageGraph`s
 /// nodes are `BasicCoverageBlock`s, which encompass one or more MIR `BasicBlock`s.
@@ -350,8 +351,8 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
         // An inline asm terminator can normally be chained, except when it diverges or uses asm
         // goto.
         InlineAsm { ref targets, .. } => {
-            if targets.len() == 1 {
-                CoverageSuccessors::Chainable(targets[0])
+            if let [target] = targets[..] {
+                CoverageSuccessors::Chainable(target)
             } else {
                 CoverageSuccessors::NotChainable(targets)
             }

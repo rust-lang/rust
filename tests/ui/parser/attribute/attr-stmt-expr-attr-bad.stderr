@@ -359,11 +359,6 @@ LL | #[cfg(FALSE)] fn s() { #[attr] #![attr] foo!(); }
    |                        previous outer attribute
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-help: to annotate the item macro invocation, change the attribute from inner to outer style
-   |
-LL - #[cfg(FALSE)] fn s() { #[attr] #![attr] foo!(); }
-LL + #[cfg(FALSE)] fn s() { #[attr] #[attr] foo!(); }
-   |
 
 error: an inner attribute is not permitted following an outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:77:32
@@ -375,11 +370,6 @@ LL | #[cfg(FALSE)] fn s() { #[attr] #![attr] foo![]; }
    |                        previous outer attribute
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-help: to annotate the item macro invocation, change the attribute from inner to outer style
-   |
-LL - #[cfg(FALSE)] fn s() { #[attr] #![attr] foo![]; }
-LL + #[cfg(FALSE)] fn s() { #[attr] #[attr] foo![]; }
-   |
 
 error: an inner attribute is not permitted following an outer attribute
   --> $DIR/attr-stmt-expr-attr-bad.rs:79:32
@@ -391,11 +381,6 @@ LL | #[cfg(FALSE)] fn s() { #[attr] #![attr] foo!{}; }
    |                        previous outer attribute
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-help: to annotate the item macro invocation, change the attribute from inner to outer style
-   |
-LL - #[cfg(FALSE)] fn s() { #[attr] #![attr] foo!{}; }
-LL + #[cfg(FALSE)] fn s() { #[attr] #[attr] foo!{}; }
-   |
 
 error[E0586]: inclusive range with no end
   --> $DIR/attr-stmt-expr-attr-bad.rs:85:35

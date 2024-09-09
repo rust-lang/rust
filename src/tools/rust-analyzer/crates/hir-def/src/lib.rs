@@ -46,7 +46,6 @@ pub mod body;
 pub mod resolver;
 
 pub mod nameres;
-mod trace;
 
 pub mod child_by_source;
 pub mod src;
@@ -76,9 +75,7 @@ use base_db::{
     CrateId,
 };
 use hir_expand::{
-    builtin_attr_macro::BuiltinAttrExpander,
-    builtin_derive_macro::BuiltinDeriveExpander,
-    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
+    builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
     impl_intern_lookup,
@@ -108,7 +105,7 @@ use crate::{
 
 type FxIndexMap<K, V> =
     indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
-/// A wrapper around two booleans, [`ImportPathConfig::prefer_no_std`] and [`ImportPathConfig::prefer_prelude`].
+/// A wrapper around three booleans
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub struct ImportPathConfig {
     /// If true, prefer to unconditionally use imports of the `core` and `alloc` crate
@@ -244,7 +241,7 @@ pub type StaticLoc = AssocItemLoc<Static>;
 impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
 impl_loc!(StaticLoc, id: Static, container: ItemContainerId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TraitId(salsa::InternId);
 pub type TraitLoc = ItemLoc<Trait>;
 impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
@@ -862,7 +859,7 @@ impl GeneralConstId {
                 .const_data(const_id)
                 .name
                 .as_ref()
-                .and_then(|it| it.as_str())
+                .map(|it| it.as_str())
                 .unwrap_or("_")
                 .to_owned(),
             GeneralConstId::ConstBlockId(id) => format!("{{anonymous const {id:?}}}"),
@@ -1437,7 +1434,10 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         });
 
         let Some((call_site, path)) = path else {
-            return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
+            return Ok(ExpandResult::only_err(ExpandError::other(
+                span_map.span_for_range(self.value.syntax().text_range()),
+                "malformed macro invocation",
+            )));
         };
 
         macro_call_as_call_id_with_eager(

@@ -1,4 +1,4 @@
-//@ test-mir-pass: InstSimplify
+//@ test-mir-pass: InstSimplify-after-simplifycfg
 //@ compile-flags: -C panic=abort
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
@@ -7,7 +7,7 @@
 use std::intrinsics::mir::*;
 use std::mem::{transmute, ManuallyDrop, MaybeUninit};
 
-// EMIT_MIR combine_transmutes.identity_transmutes.InstSimplify.diff
+// EMIT_MIR combine_transmutes.identity_transmutes.InstSimplify-after-simplifycfg.diff
 pub unsafe fn identity_transmutes() {
     // CHECK-LABEL: fn identity_transmutes(
     // CHECK-NOT: as i32 (Transmute);
@@ -19,7 +19,7 @@ pub unsafe fn identity_transmutes() {
 }
 
 #[custom_mir(dialect = "runtime", phase = "initial")]
-// EMIT_MIR combine_transmutes.integer_transmutes.InstSimplify.diff
+// EMIT_MIR combine_transmutes.integer_transmutes.InstSimplify-after-simplifycfg.diff
 pub unsafe fn integer_transmutes() {
     // CHECK-LABEL: fn integer_transmutes(
     // CHECK-NOT: _i32 as u32 (Transmute);
@@ -43,7 +43,7 @@ pub unsafe fn integer_transmutes() {
     }
 }
 
-// EMIT_MIR combine_transmutes.adt_transmutes.InstSimplify.diff
+// EMIT_MIR combine_transmutes.adt_transmutes.InstSimplify-after-simplifycfg.diff
 pub unsafe fn adt_transmutes() {
     // CHECK-LABEL: fn adt_transmutes(
     // CHECK: as u8 (Transmute);

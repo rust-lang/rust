@@ -571,6 +571,19 @@ class TestEnvironment:
         )
 
         # Start repository server
+        # Note that we must first enable the repository server daemon.
+        check_call_with_logging(
+            [
+                ffx_path,
+                "config",
+                "set",
+                "repository.server.enabled",
+                "true",
+            ],
+            env=ffx_env,
+            stdout_handler=self.subprocess_logger.debug,
+            stderr_handler=self.subprocess_logger.debug,
+        )
         check_call_with_logging(
             [
                 ffx_path,

@@ -1,4 +1,4 @@
-error[E0049]: method `a` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `a` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/specializing-constness-2.rs:9:1
    |
 LL | #[const_trait]
@@ -7,7 +7,7 @@ LL | pub trait A {
 LL |     fn a() -> u32;
    |         - expected 0 const parameters
 
-error[E0049]: method `a` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `a` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/specializing-constness-2.rs:9:1
    |
 LL | #[const_trait]

@@ -1,12 +1,10 @@
+use rustc_hir::{Expr, ExprKind, HirId, Stmt, StmtKind};
+use rustc_middle::query::Key;
+use rustc_middle::ty::{self, Ty};
+use rustc_session::{declare_lint, declare_lint_pass};
+
 use crate::lints::MappingToUnit;
 use crate::{LateContext, LateLintPass, LintContext};
-
-use rustc_hir::{Expr, ExprKind, HirId, Stmt, StmtKind};
-use rustc_middle::{
-    query::Key,
-    ty::{self, Ty},
-};
-use rustc_session::{declare_lint, declare_lint_pass};
 
 declare_lint! {
     /// The `map_unit_fn` lint checks for `Iterator::map` receive

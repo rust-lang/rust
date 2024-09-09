@@ -5,10 +5,11 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use super::*;
 use itertools::Itertools;
 use rustc_graphviz as dot;
 use rustc_middle::ty::UniverseIndex;
+
+use super::*;
 
 fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> String {
     match constraint.locations {
@@ -45,7 +46,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         dot::render(&RawConstraints { regioncx: self }, &mut w)
     }
 
-    /// Write out the region constraint graph.
+    /// Write out the region constraint SCC graph.
     pub(crate) fn dump_graphviz_scc_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
         let mut nodes_per_scc: IndexVec<ConstraintSccIndex, _> =
             self.constraint_sccs.all_sccs().map(|_| Vec::new()).collect();

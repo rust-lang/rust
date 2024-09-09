@@ -1,9 +1,8 @@
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_middle::bug;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, VariantIdx};
 use tracing::{debug, instrument, trace};
@@ -13,10 +12,9 @@ use super::machine::CompileTimeInterpCx;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::const_eval::CanAccessMutGlobal;
 use crate::errors::MaxNumNodesInConstErr;
-use crate::interpret::MPlaceTy;
 use crate::interpret::{
-    intern_const_alloc_recursive, ImmTy, Immediate, InternKind, MemPlaceMeta, MemoryKind, PlaceTy,
-    Projectable, Scalar,
+    intern_const_alloc_recursive, ImmTy, Immediate, InternKind, MPlaceTy, MemPlaceMeta, MemoryKind,
+    PlaceTy, Projectable, Scalar,
 };
 
 #[instrument(skip(ecx), level = "debug")]
@@ -134,7 +132,7 @@ fn const_to_valtree_inner<'tcx>(
 
         // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
         // agree with runtime equality tests.
-        ty::FnPtr(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
+        ty::FnPtr(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
         ty::Ref(_, _, _)  => {
             let derefd_place = ecx.deref_pointer(place)?;
@@ -197,7 +195,7 @@ fn reconstruct_place_meta<'tcx>(
 
     let mut last_valtree = valtree;
     // Traverse the type, and update `last_valtree` as we go.
-    let tail = tcx.struct_tail_with_normalize(
+    let tail = tcx.struct_tail_raw(
         layout.ty,
         |ty| ty,
         || {
@@ -355,7 +353,7 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::Str
         | ty::Slice(_)
         | ty::Dynamic(..) => bug!("no ValTree should have been created for type {:?}", ty.kind()),

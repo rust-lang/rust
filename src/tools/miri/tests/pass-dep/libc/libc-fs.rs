@@ -37,6 +37,7 @@ fn main() {
     test_sync_file_range();
     test_isatty();
     test_read_and_uninit();
+    test_nofollow_not_symlink();
 }
 
 fn test_file_open_unix_allow_two_args() {
@@ -422,4 +423,12 @@ fn test_read_and_uninit() {
         }
         remove_file(&path).unwrap();
     }
+}
+
+fn test_nofollow_not_symlink() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("test_nofollow_not_symlink.txt", bytes);
+    let cpath = CString::new(path.as_os_str().as_bytes()).unwrap();
+    let ret = unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) };
+    assert!(ret >= 0);
 }

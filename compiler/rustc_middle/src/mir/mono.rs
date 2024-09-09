@@ -1,9 +1,8 @@
-use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
-use crate::ty::{GenericArgs, Instance, InstanceKind, SymbolName, TyCtxt};
+use std::fmt;
+use std::hash::Hash;
+
 use rustc_attr::InlineAttr;
-use rustc_data_structures::base_n::BaseNString;
-use rustc_data_structures::base_n::ToBaseN;
-use rustc_data_structures::base_n::CASE_INSENSITIVE;
+use rustc_data_structures::base_n::{BaseNString, ToBaseN, CASE_INSENSITIVE};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher, ToStableHashKey};
@@ -16,9 +15,10 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
-use std::fmt;
-use std::hash::Hash;
 use tracing::debug;
+
+use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
+use crate::ty::{GenericArgs, Instance, InstanceKind, SymbolName, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]
@@ -396,7 +396,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
@@ -415,7 +415,6 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::Virtual(..)
                             | InstanceKind::ClosureOnceShim { .. }
                             | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                            | InstanceKind::CoroutineKindShim { .. }
                             | InstanceKind::DropGlue(..)
                             | InstanceKind::CloneShim(..)
                             | InstanceKind::ThreadLocalShim(..)

@@ -100,7 +100,10 @@ pub fn setup(
         // for target crates.
         let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
         if env::var_os("RUSTC_STAGE").is_some() {
-            assert!(env::var_os("RUSTC").is_some());
+            assert!(
+                env::var_os("RUSTC").is_some() && env::var_os("RUSTC_WRAPPER").is_some(),
+                "cargo-miri setup is running inside rustc bootstrap but RUSTC or RUST_WRAPPER is not set"
+            );
             command.env("RUSTC_REAL", &cargo_miri_path);
         } else {
             command.env("RUSTC", &cargo_miri_path);

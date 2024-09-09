@@ -1,7 +1,6 @@
-use crate::spec::crt_objects;
-use crate::spec::{base, LinkSelfContainedDefault, TargetOptions};
+use crate::spec::{base, crt_objects, LinkSelfContainedDefault, TargetOptions};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut base = base::linux::opts();
 
     base.env = "musl".into();

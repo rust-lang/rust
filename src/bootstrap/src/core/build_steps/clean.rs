@@ -11,7 +11,7 @@ use std::path::Path;
 
 use crate::core::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
 use crate::utils::helpers::t;
-use crate::{Build, Compiler, Mode, Subcommand};
+use crate::{Build, Compiler, Kind, Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CleanAll {}
@@ -66,7 +66,7 @@ macro_rules! clean_crate_tree {
             fn run(self, builder: &Builder<'_>) -> Self::Output {
                 let compiler = self.compiler;
                 let target = compiler.host;
-                let mut cargo = builder.bare_cargo(compiler, $mode, target, "clean");
+                let mut cargo = builder.bare_cargo(compiler, $mode, target, Kind::Clean);
 
                 // Since https://github.com/rust-lang/rust/pull/111076 enables
                 // unstable cargo feature (`public-dependency`), we need to ensure
@@ -121,7 +121,7 @@ fn clean(build: &Build, all: bool, stage: Option<u32>) {
 
 fn clean_specific_stage(build: &Build, stage: u32) {
     for host in &build.hosts {
-        let entries = match build.out.join(host.triple).read_dir() {
+        let entries = match build.out.join(host).read_dir() {
             Ok(iter) => iter,
             Err(_) => continue,
         };
@@ -148,7 +148,7 @@ fn clean_default(build: &Build) {
     rm_rf(&build.out.join("bootstrap-shims-dump"));
     rm_rf(&build.out.join("rustfmt.stamp"));
 
-    let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t.triple)).collect();
+    let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t)).collect();
     // After cross-compilation, artifacts of the host architecture (which may differ from build.host)
     // might not get removed.
     // Adding its path (linked one for easier accessibility) will solve this problem.

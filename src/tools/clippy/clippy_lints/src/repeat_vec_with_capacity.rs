@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::macros::matching_root_macro_call;
@@ -69,7 +69,7 @@ fn check_vec_macro(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let Some(VecArgs::Repeat(repeat_expr, len_expr)) = VecArgs::hir(cx, expr)
         && fn_def_id(cx, repeat_expr).is_some_and(|did| match_def_path(cx, did, &paths::VEC_WITH_CAPACITY))
         && !len_expr.span.from_expansion()
-        && let Some(Constant::Int(2..)) = constant(cx, cx.typeck_results(), expr_or_init(cx, len_expr))
+        && let Some(Constant::Int(2..)) = ConstEvalCtxt::new(cx).eval(expr_or_init(cx, len_expr))
     {
         emit_lint(
             cx,

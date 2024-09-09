@@ -22,7 +22,7 @@ pub(crate) fn unsized_info<'tcx>(
     old_info: Option<Value>,
 ) -> Value {
     let (source, target) =
-        fx.tcx.struct_lockstep_tails_erasing_lifetimes(source, target, ParamEnv::reveal_all());
+        fx.tcx.struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
     match (&source.kind(), &target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => fx
             .bcx

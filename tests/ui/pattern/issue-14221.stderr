@@ -19,7 +19,7 @@ LL |             A => "A",
    |             - matches any value
 LL |
 LL |             B => "B",
-   |             ^ unreachable pattern
+   |             ^ no value can reach this
    |
 note: the lint level is defined here
   --> $DIR/issue-14221.rs:1:9

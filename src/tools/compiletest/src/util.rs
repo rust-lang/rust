@@ -1,10 +1,11 @@
-use crate::common::Config;
 use std::env;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use tracing::*;
+
+use crate::common::Config;
 
 #[cfg(test)]
 mod tests;

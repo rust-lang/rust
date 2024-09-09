@@ -8,10 +8,8 @@ pub mod solve;
 pub mod specialization_graph;
 mod structural_impls;
 
-use crate::mir::ConstraintCategory;
-use crate::ty::abstract_const::NotConstEvaluatable;
-use crate::ty::GenericArgsRef;
-use crate::ty::{self, AdtKind, Ty};
+use std::borrow::Cow;
+use std::hash::{Hash, Hasher};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
@@ -24,14 +22,14 @@ use rustc_macros::{
 use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
-
-use std::borrow::Cow;
-use std::hash::{Hash, Hasher};
-
-pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 // FIXME: Remove this import and import via `solve::`
 pub use rustc_type_ir::solve::{BuiltinImplSource, Reveal};
+use smallvec::{smallvec, SmallVec};
+
+pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
+use crate::mir::ConstraintCategory;
+use crate::ty::abstract_const::NotConstEvaluatable;
+use crate::ty::{self, AdtKind, GenericArgsRef, Ty};
 
 /// The reason why we incurred this obligation; used for error reporting.
 ///
@@ -355,7 +353,7 @@ pub enum ObligationCauseCode<'tcx> {
     ReturnValue(HirId),
 
     /// Opaque return type of this function
-    OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
+    OpaqueReturnType(Option<(Ty<'tcx>, HirId)>),
 
     /// Block implicit return
     BlockTailExpression(HirId, hir::MatchSource),

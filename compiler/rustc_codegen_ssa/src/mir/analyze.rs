@@ -1,19 +1,19 @@
 //! An analysis to determine which locals require allocas and
 //! which do not.
 
-use super::FunctionCx;
-use crate::traits::*;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind};
+use rustc_middle::mir::{self, traversal, DefLocation, Location, TerminatorKind};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{bug, span_bug};
 use tracing::debug;
 
-pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+use super::FunctionCx;
+use crate::traits::*;
+
+pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
 ) -> BitSet<mir::Local> {
     let mir = fx.mir;
@@ -220,14 +220,14 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 | MutatingUseContext::SetDiscriminant
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow
-                | MutatingUseContext::AddressOf
+                | MutatingUseContext::RawBorrow
                 | MutatingUseContext::Projection,
             )
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::FakeBorrow
-                | NonMutatingUseContext::AddressOf
+                | NonMutatingUseContext::RawBorrow
                 | NonMutatingUseContext::Projection,
             ) => {
                 self.locals[local] = LocalKind::Memory;
@@ -251,14 +251,14 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum CleanupKind {
+pub(crate) enum CleanupKind {
     NotCleanup,
     Funclet,
     Internal { funclet: mir::BasicBlock },
 }
 
 impl CleanupKind {
-    pub fn funclet_bb(self, for_bb: mir::BasicBlock) -> Option<mir::BasicBlock> {
+    pub(crate) fn funclet_bb(self, for_bb: mir::BasicBlock) -> Option<mir::BasicBlock> {
         match self {
             CleanupKind::NotCleanup => None,
             CleanupKind::Funclet => Some(for_bb),
@@ -270,7 +270,7 @@ impl CleanupKind {
 /// MSVC requires unwinding code to be split to a tree of *funclets*, where each funclet can only
 /// branch to itself or to its parent. Luckily, the code we generates matches this pattern.
 /// Recover that structure in an analyze pass.
-pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
+pub(crate) fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(
         result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
         mir: &mir::Body<'tcx>,

@@ -4,7 +4,7 @@ fn assume_local(_1: bool) -> () {
     let mut _0: ();
 
     bb0: {
-        assume(_1);
+        assume(copy _1);
         return;
     }
 }
