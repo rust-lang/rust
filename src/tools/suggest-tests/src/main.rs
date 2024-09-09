@@ -8,6 +8,7 @@ fn main() -> ExitCode {
         &GitConfig {
             git_repository: &env("SUGGEST_TESTS_GIT_REPOSITORY"),
             nightly_branch: &env("SUGGEST_TESTS_NIGHTLY_BRANCH"),
+            git_merge_commit_email: &env("SUGGEST_TESTS_MERGE_COMMIT_EMAIL"),
         },
         None,
         &Vec::new(),
