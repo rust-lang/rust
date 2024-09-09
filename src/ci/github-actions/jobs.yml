@@ -24,6 +24,10 @@ runners:
     os: macos-14
     <<: *base-job
 
+  - &job-windows
+    os: windows-2022
+    <<: *base-job
+
   - &job-windows-8c
     os: windows-2022-8core-32gb
     <<: *base-job
@@ -383,7 +387,7 @@ auto:
         python x.py miri --stage 2 library/alloc --test-args notest &&
         python x.py miri --stage 2 library/std --test-args notest
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
-    <<: *job-windows-8c
+    <<: *job-windows
 
   # 32/64-bit MinGW builds.
   #
