@@ -1216,13 +1216,23 @@ impl Config {
         }
     }
 
+    pub(crate) fn get_builder_toml(&self, build_name: &str) -> Result<TomlConfig, toml::de::Error> {
+        if self.dry_run() {
+            return Ok(TomlConfig::default());
+        }
+
+        let builder_config_path =
+            self.out.join(self.build.triple).join(build_name).join(BUILDER_CONFIG_FILENAME);
+        Self::get_toml(&builder_config_path)
+    }
+
     #[cfg(test)]
-    fn get_toml(_: &Path) -> Result<TomlConfig, toml::de::Error> {
+    pub(crate) fn get_toml(_: &Path) -> Result<TomlConfig, toml::de::Error> {
         Ok(TomlConfig::default())
     }
 
     #[cfg(not(test))]
-    fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+    pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
         let contents =
             t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
         // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
@@ -1908,34 +1918,9 @@ impl Config {
                         "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
                     );
                 }
-
-                // None of the LLVM options, except assertions, are supported
-                // when using downloaded LLVM. We could just ignore these but
-                // that's potentially confusing, so force them to not be
-                // explicitly set. The defaults and CI defaults don't
-                // necessarily match but forcing people to match (somewhat
-                // arbitrary) CI configuration locally seems bad/hard.
-                check_ci_llvm!(optimize_toml);
-                check_ci_llvm!(thin_lto);
-                check_ci_llvm!(release_debuginfo);
-                check_ci_llvm!(targets);
-                check_ci_llvm!(experimental_targets);
-                check_ci_llvm!(clang_cl);
-                check_ci_llvm!(version_suffix);
-                check_ci_llvm!(cflags);
-                check_ci_llvm!(cxxflags);
-                check_ci_llvm!(ldflags);
-                check_ci_llvm!(use_libcxx);
-                check_ci_llvm!(use_linker);
-                check_ci_llvm!(allow_old_toolchain);
-                check_ci_llvm!(polly);
-                check_ci_llvm!(clang);
-                check_ci_llvm!(build_config);
-                check_ci_llvm!(plugins);
             }
 
-            // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
-            if config.llvm_thin_lto && link_shared.is_none() {
+            if !config.llvm_from_ci && config.llvm_thin_lto && link_shared.is_none() {
                 // If we're building with ThinLTO on, by default we want to link
                 // to LLVM shared, to avoid re-doing ThinLTO (which happens in
                 // the link step) with each stage.
@@ -2374,10 +2359,7 @@ impl Config {
                     self.download_ci_rustc(commit);
 
                     if let Some(config_path) = &self.config {
-                        let builder_config_path =
-                            self.out.join(self.build.triple).join("ci-rustc").join(BUILDER_CONFIG_FILENAME);
-
-                        let ci_config_toml = match Self::get_toml(&builder_config_path) {
+                        let ci_config_toml = match self.get_builder_toml("ci-rustc") {
                             Ok(ci_config_toml) => ci_config_toml,
                             Err(e) if e.to_string().contains("unknown field") => {
                                 println!("WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled.");
@@ -2385,7 +2367,7 @@ impl Config {
                                 return None;
                             },
                             Err(e) => {
-                                eprintln!("ERROR: Failed to parse CI rustc config at '{}': {e}", builder_config_path.display());
+                                eprintln!("ERROR: Failed to parse CI rustc config.toml: {e}");
                                 exit!(2);
                             },
                         };
@@ -2844,6 +2826,109 @@ impl Config {
 
         Some(commit.to_string())
     }
+}
+
+/// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.
+/// It does this by destructuring the `Llvm` instance to make sure every `Llvm` field is covered and not missing.
+#[cfg(not(feature = "bootstrap-self-test"))]
+pub(crate) fn check_incompatible_options_for_ci_llvm(
+    current_config_toml: TomlConfig,
+    ci_config_toml: TomlConfig,
+) -> Result<(), String> {
+    macro_rules! err {
+        ($current:expr, $expected:expr) => {
+            if let Some(current) = &$current {
+                if Some(current) != $expected.as_ref() {
+                    return Err(format!(
+                        "ERROR: Setting `llvm.{}` is incompatible with `llvm.download-ci-llvm`. \
+                        Current value: {:?}, Expected value(s): {}{:?}",
+                        stringify!($expected).replace("_", "-"),
+                        $current,
+                        if $expected.is_some() { "None/" } else { "" },
+                        $expected,
+                    ));
+                };
+            };
+        };
+    }
+
+    macro_rules! warn {
+        ($current:expr, $expected:expr) => {
+            if let Some(current) = &$current {
+                if Some(current) != $expected.as_ref() {
+                    println!(
+                        "WARNING: `llvm.{}` has no effect with `llvm.download-ci-llvm`. \
+                        Current value: {:?}, Expected value(s): {}{:?}",
+                        stringify!($expected).replace("_", "-"),
+                        $current,
+                        if $expected.is_some() { "None/" } else { "" },
+                        $expected,
+                    );
+                };
+            };
+        };
+    }
+
+    let (Some(current_llvm_config), Some(ci_llvm_config)) =
+        (current_config_toml.llvm, ci_config_toml.llvm)
+    else {
+        return Ok(());
+    };
+
+    let Llvm {
+        optimize,
+        thin_lto,
+        release_debuginfo,
+        assertions: _,
+        tests: _,
+        plugins,
+        ccache: _,
+        static_libstdcpp: _,
+        libzstd,
+        ninja: _,
+        targets,
+        experimental_targets,
+        link_jobs: _,
+        link_shared: _,
+        version_suffix,
+        clang_cl,
+        cflags,
+        cxxflags,
+        ldflags,
+        use_libcxx,
+        use_linker,
+        allow_old_toolchain,
+        polly,
+        clang,
+        enable_warnings,
+        download_ci_llvm: _,
+        build_config,
+        enzyme,
+    } = ci_llvm_config;
+
+    err!(current_llvm_config.optimize, optimize);
+    err!(current_llvm_config.thin_lto, thin_lto);
+    err!(current_llvm_config.release_debuginfo, release_debuginfo);
+    err!(current_llvm_config.libzstd, libzstd);
+    err!(current_llvm_config.targets, targets);
+    err!(current_llvm_config.experimental_targets, experimental_targets);
+    err!(current_llvm_config.clang_cl, clang_cl);
+    err!(current_llvm_config.version_suffix, version_suffix);
+    err!(current_llvm_config.cflags, cflags);
+    err!(current_llvm_config.cxxflags, cxxflags);
+    err!(current_llvm_config.ldflags, ldflags);
+    err!(current_llvm_config.use_libcxx, use_libcxx);
+    err!(current_llvm_config.use_linker, use_linker);
+    err!(current_llvm_config.allow_old_toolchain, allow_old_toolchain);
+    err!(current_llvm_config.polly, polly);
+    err!(current_llvm_config.clang, clang);
+    err!(current_llvm_config.build_config, build_config);
+    err!(current_llvm_config.plugins, plugins);
+    err!(current_llvm_config.enzyme, enzyme);
+
+    warn!(current_llvm_config.enable_warnings, enable_warnings);
+
+    Ok(())
 }
 
 /// Compares the current Rust options against those in the CI rustc builder and detects any incompatible options.
