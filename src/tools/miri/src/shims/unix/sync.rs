@@ -213,11 +213,22 @@ fn rwlock_get_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     rwlock_op: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, RwLockId> {
-    ecx.rwlock_get_or_create_id(
+    let address = ecx.read_pointer(rwlock_op)?.addr().bytes();
+
+    let id = ecx.rwlock_get_or_create_id(
         rwlock_op,
         ecx.libc_ty_layout("pthread_rwlock_t"),
         rwlock_id_offset(ecx)?,
-    )
+        |_| Ok(Some(AdditionalRwLockData { address })),
+    )?;
+
+    // Check that the rwlock has not been moved since last use.
+    let data = ecx.rwlock_get_data(id).expect("data should be always exist for pthreads");
+    if data.address != address {
+        throw_ub_format!("pthread_rwlock_t can't be moved after first use")
+    }
+
+    Ok(id)
 }
 
 // pthread_condattr_t.

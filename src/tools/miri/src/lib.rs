@@ -134,8 +134,8 @@ pub use crate::concurrency::{
     data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
     init_once::{EvalContextExt as _, InitOnceId},
     sync::{
-        AdditionalMutexData, CondvarId, EvalContextExt as _, MutexId, MutexKind, RwLockId,
-        SynchronizationObjects,
+        AdditionalMutexData, AdditionalRwLockData, CondvarId, EvalContextExt as _, MutexId,
+        MutexKind, RwLockId, SynchronizationObjects,
     },
     thread::{
         BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager,
