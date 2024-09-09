@@ -4,6 +4,8 @@ use span::{MacroCallId, Span};
 
 use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallKind};
 
+use super::quote;
+
 macro_rules! register_builtin {
     ($(($name:ident, $variant:ident) => $expand:ident),* ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -52,15 +54,15 @@ impl BuiltinAttrExpander {
 }
 
 register_builtin! {
-    (bench, Bench) => dummy_attr_expand,
+    (bench, Bench) => dummy_gate_test_expand,
     (cfg_accessible, CfgAccessible) => dummy_attr_expand,
     (cfg_eval, CfgEval) => dummy_attr_expand,
     (derive, Derive) => derive_expand,
     // derive const is equivalent to derive for our proposes.
     (derive_const, DeriveConst) => derive_expand,
     (global_allocator, GlobalAllocator) => dummy_attr_expand,
-    (test, Test) => dummy_attr_expand,
-    (test_case, TestCase) => dummy_attr_expand
+    (test, Test) => dummy_gate_test_expand,
+    (test_case, TestCase) => dummy_gate_test_expand
 }
 
 pub fn find_builtin_attr(ident: &name::Name) -> Option<BuiltinAttrExpander> {
@@ -74,6 +76,19 @@ fn dummy_attr_expand(
     _span: Span,
 ) -> ExpandResult<tt::Subtree> {
     ExpandResult::ok(tt.clone())
+}
+
+fn dummy_gate_test_expand(
+    _db: &dyn ExpandDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+    span: Span,
+) -> ExpandResult<tt::Subtree> {
+    let result = quote::quote! { span=>
+        #[cfg(test)]
+        #tt
+    };
+    ExpandResult::ok(result)
 }
 
 /// We generate a very specific expansion here, as we do not actually expand the `#[derive]` attribute

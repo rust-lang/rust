@@ -70,6 +70,7 @@ impl Tester {
         let cargo_config = CargoConfig {
             sysroot: Some(RustLibSource::Discover),
             all_targets: true,
+            set_test: true,
             ..Default::default()
         };
 
@@ -85,6 +86,7 @@ impl Tester {
                 file: ManifestPath::try_from(tmp_file).unwrap(),
                 cargo: None,
                 cargo_config_extra_env: Default::default(),
+                set_test: true,
             },
             sysroot,
             rustc_cfg: vec![],
@@ -96,7 +98,6 @@ impl Tester {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
-            set_test: true,
         };
         let (db, _vfs, _proc_macro) =
             load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;

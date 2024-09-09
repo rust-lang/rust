@@ -13,13 +13,13 @@ impl flags::Ssr {
         let cargo_config = CargoConfig {
             sysroot: Some(RustLibSource::Discover),
             all_targets: true,
+            set_test: true,
             ..Default::default()
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
-            set_test: true,
         };
         let (ref db, vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,
@@ -51,12 +51,12 @@ impl flags::Search {
     pub fn run(self) -> anyhow::Result<()> {
         use ide_db::base_db::SourceRootDatabase;
         use ide_db::symbol_index::SymbolsDatabase;
-        let cargo_config = CargoConfig { all_targets: true, ..CargoConfig::default() };
+        let cargo_config =
+            CargoConfig { all_targets: true, set_test: true, ..CargoConfig::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
-            set_test: true,
         };
         let (ref db, _vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,

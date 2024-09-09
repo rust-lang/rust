@@ -100,6 +100,7 @@ pub struct CargoConfig {
     pub invocation_strategy: InvocationStrategy,
     /// Optional path to use instead of `target` when building
     pub target_dir: Option<Utf8PathBuf>,
+    pub set_test: bool,
 }
 
 pub type Package = Idx<PackageData>;

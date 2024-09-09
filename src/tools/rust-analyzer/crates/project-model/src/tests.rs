@@ -35,6 +35,7 @@ fn load_cargo_with_overrides(
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
             error: None,
+            set_test: true,
         },
         cfg_overrides,
         sysroot: Sysroot::empty(),
@@ -136,7 +137,6 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacro
             }
         },
         &Default::default(),
-        true,
     )
 }
 
@@ -243,6 +243,7 @@ fn smoke_test_real_sysroot_cargo() {
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
             error: None,
+            set_test: true,
         },
         sysroot,
         rustc_cfg: Vec::new(),
@@ -258,6 +259,5 @@ fn smoke_test_real_sysroot_cargo() {
             }
         },
         &Default::default(),
-        true,
     );
 }

@@ -30,7 +30,6 @@ pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
     pub with_proc_macro_server: ProcMacroServerChoice,
     pub prefill_caches: bool,
-    pub set_test: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,7 +99,6 @@ pub fn load_workspace(
             vfs.file_id(&path)
         },
         extra_env,
-        load_config.set_test,
     );
     let proc_macros = {
         let proc_macro_server = match &proc_macro_server {
@@ -528,12 +526,11 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let cargo_config = CargoConfig::default();
+        let cargo_config = CargoConfig { set_test: true, ..CargoConfig::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,
             prefill_caches: false,
-            set_test: true,
         };
         let (db, _vfs, _proc_macro) =
             load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {}).unwrap();

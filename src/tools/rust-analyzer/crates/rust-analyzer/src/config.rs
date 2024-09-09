@@ -1861,7 +1861,12 @@ impl Config {
             extra_args: self.cargo_extraArgs(source_root).clone(),
             extra_env: self.cargo_extraEnv(source_root).clone(),
             target_dir: self.target_dir_from_config(source_root),
+            set_test: *self.cfg_setTest(source_root),
         }
+    }
+
+    pub fn cfg_set_test(&self, source_root: Option<SourceRootId>) -> bool {
+        *self.cfg_setTest(source_root)
     }
 
     pub(crate) fn completion_snippets_default() -> FxHashMap<String, SnippetDef> {

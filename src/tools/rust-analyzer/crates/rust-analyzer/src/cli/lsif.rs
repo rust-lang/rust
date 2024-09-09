@@ -277,6 +277,7 @@ impl flags::Lsif {
         let cargo_config = &CargoConfig {
             sysroot: Some(RustLibSource::Discover),
             all_targets: true,
+            set_test: true,
             ..Default::default()
         };
         let no_progress = &|_| ();
@@ -284,7 +285,6 @@ impl flags::Lsif {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
-            set_test: true,
         };
         let path = AbsPathBuf::assert_utf8(env::current_dir()?.join(self.path));
         let root = ProjectManifest::discover_single(&path)?;
