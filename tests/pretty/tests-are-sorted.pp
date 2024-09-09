@@ -83,6 +83,7 @@ pub const a_test: test::TestDescAndFn =
 fn a_test() {}
 #[rustc_main]
 #[coverage(off)]
+#[allow(missing_docs)]
 pub fn main() -> () {
     extern crate test;
     test::test_main_static(&[&a_test, &m_test, &z_test])
