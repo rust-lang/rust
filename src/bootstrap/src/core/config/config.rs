@@ -1600,6 +1600,9 @@ impl Config {
 
         config.verbose = cmp::max(config.verbose, flags.verbose as usize);
 
+        // Verbose flag is a good default for `rust.verbose-tests`.
+        config.verbose_tests = config.is_verbose();
+
         if let Some(install) = toml.install {
             let Install { prefix, sysconfdir, docdir, bindir, libdir, mandir, datadir } = install;
             config.prefix = prefix.map(PathBuf::from);
