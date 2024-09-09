@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 pub struct GitConfig<'a> {
@@ -96,16 +96,44 @@ pub fn updated_master_branch(
     Err("Cannot find any suitable upstream master branch".to_owned())
 }
 
-pub fn get_git_merge_base(
-    config: &GitConfig<'_>,
-    git_dir: Option<&Path>,
-) -> Result<String, String> {
+fn get_git_merge_base(config: &GitConfig<'_>, git_dir: Option<&Path>) -> Result<String, String> {
     let updated_master = updated_master_branch(config, git_dir)?;
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {
         git.current_dir(git_dir);
     }
     Ok(output_result(git.arg("merge-base").arg(&updated_master).arg("HEAD"))?.trim().to_owned())
+}
+
+/// Resolves the closest merge commit by the given `author` and `target_paths`.
+///
+/// If it fails to find the commit from upstream using `git merge-base`, fallbacks to HEAD.
+pub fn get_closest_merge_commit(
+    git_dir: Option<&Path>,
+    config: &GitConfig<'_>,
+    target_paths: &[PathBuf],
+) -> Result<String, String> {
+    let mut git = Command::new("git");
+
+    if let Some(git_dir) = git_dir {
+        git.current_dir(git_dir);
+    }
+
+    let merge_base = get_git_merge_base(config, git_dir).unwrap_or_else(|_| "HEAD".into());
+
+    git.args([
+        "rev-list",
+        &format!("--author={}", config.git_merge_commit_email),
+        "-n1",
+        "--first-parent",
+        &merge_base,
+    ]);
+
+    if !target_paths.is_empty() {
+        git.arg("--").args(target_paths);
+    }
+
+    Ok(output_result(&mut git)?.trim().to_owned())
 }
 
 /// Returns the files that have been modified in the current branch compared to the master branch.
@@ -117,7 +145,7 @@ pub fn get_git_modified_files(
     git_dir: Option<&Path>,
     extensions: &[&str],
 ) -> Result<Option<Vec<String>>, String> {
-    let merge_base = get_git_merge_base(config, git_dir)?;
+    let merge_base = get_closest_merge_commit(git_dir, config, &[])?;
 
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {
