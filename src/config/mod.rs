@@ -448,7 +448,7 @@ pub fn load_config<O: CliOptions>(
     })
 }
 
-// Check for the presence of known config file names (`rustfmt.toml, `.rustfmt.toml`) in `dir`
+// Check for the presence of known config file names (`rustfmt.toml`, `.rustfmt.toml`) in `dir`
 //
 // Return the path if a config file exists, empty if no file exists, and Error for IO errors
 fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
