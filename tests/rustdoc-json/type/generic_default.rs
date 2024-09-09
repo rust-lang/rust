@@ -25,7 +25,7 @@ pub struct MyError {}
 //@ has    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path"
 //@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.id" $result
 //@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.name" \"Result\"
-//@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.args.angle_bracketed.bindings" []
+//@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.args.angle_bracketed.constraints" []
 //@ has    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.generic"
 //@ has    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[1].type.generic"
 //@ is    "$.index[*][?(@.name=='MyResult')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.generic" \"T\"

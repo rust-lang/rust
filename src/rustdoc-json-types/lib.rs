@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 33;
+pub const FORMAT_VERSION: u32 = 34;
 
 /// The root of the emitted JSON blob.
 ///
@@ -194,7 +194,7 @@ pub enum GenericArgs {
         /// ```
         args: Vec<GenericArg>,
         /// Associated type or constant bindings (e.g. `Item=i32` or `Item: Clone`) for this type.
-        bindings: Vec<TypeBinding>,
+        constraints: Vec<AssocItemConstraint>,
     },
     /// `Fn(A, B) -> C`
     Parenthesized {
@@ -258,19 +258,19 @@ pub struct Constant {
 ///              ^^^^^^^^^^  ^^^^^^^^^^^^^^^
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TypeBinding {
+pub struct AssocItemConstraint {
     /// The name of the associated type/constant.
     pub name: String,
     /// Arguments provided to the associated type/constant.
     pub args: GenericArgs,
     /// The kind of bound applied to the associated type/constant.
-    pub binding: TypeBindingKind,
+    pub binding: AssocItemConstraintKind,
 }
 
 /// The way in which an associate type/constant is bound.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum TypeBindingKind {
+pub enum AssocItemConstraintKind {
     /// The required value/type is specified exactly. e.g.
     /// ```text
     /// Iterator<Item = u32, IntoIter: DoubleEndedIterator>
@@ -311,7 +311,7 @@ pub enum ItemKind {
     /// A crate imported via the `extern crate` syntax.
     ExternCrate,
     /// An import of 1 or more items into scope, using the `use` keyword.
-    Import,
+    Use,
     /// A `struct` declaration.
     Struct,
     /// A field of a struct.
@@ -341,7 +341,7 @@ pub enum ItemKind {
     /// `type`s from an `extern` block.
     ///
     /// See [the tracking issue](https://github.com/rust-lang/rust/issues/43467)
-    ForeignType,
+    ExternType,
     /// A macro declaration.
     ///
     /// Corresponds to either `ItemEnum::Macro(_)`
@@ -386,7 +386,7 @@ pub enum ItemEnum {
         rename: Option<String>,
     },
     /// An import of 1 or more items into scope, using the `use` keyword.
-    Import(Import),
+    Use(Use),
 
     /// A `union` declaration.
     Union(Union),
@@ -429,7 +429,7 @@ pub enum ItemEnum {
     /// `type`s from an `extern` block.
     ///
     /// See [the tracking issue](https://github.com/rust-lang/rust/issues/43467)
-    ForeignType,
+    ExternType,
 
     /// A macro_rules! declarative macro. Contains a single string with the source
     /// representation of the macro with the patterns stripped.
@@ -447,12 +447,19 @@ pub enum ItemEnum {
         /// The type of the constant.
         #[serde(rename = "type")]
         type_: Type,
-        /// The stringified expression for the default value, if provided, e.g.
+        /// Inside a trait declaration, this is the default value for the associated constant,
+        /// if provided.
+        /// Inside an `impl` block, this is the value assigned to the associated constant,
+        /// and will always be present.
+        ///
+        /// The representation is implementation-defined and not guaranteed to be representative of
+        /// either the resulting value or of the source code.
+        ///
         /// ```rust
         /// const X: usize = 640 * 1024;
         /// //               ^^^^^^^^^^
         /// ```
-        default: Option<String>,
+        value: Option<String>,
     },
     /// An associated type of a trait or a type.
     AssocType {
@@ -467,12 +474,16 @@ pub enum ItemEnum {
         /// }
         /// ```
         bounds: Vec<GenericBound>,
-        /// The default for this type, if provided, e.g.
+        /// Inside a trait declaration, this is the default for the associated type, if provided.
+        /// Inside an impl block, this is the type assigned to the associated type, and will always
+        /// be present.
+        ///
         /// ```rust
         /// type X = usize;
         /// //       ^^^^^
         /// ```
-        default: Option<Type>,
+        #[serde(rename = "type")]
+        type_: Option<Type>,
     },
 }
 
@@ -497,7 +508,7 @@ pub struct Union {
     /// The generic parameters and where clauses on this union.
     pub generics: Generics,
     /// Whether any fields have been removed from the result, due to being private or hidden.
-    pub fields_stripped: bool,
+    pub has_stripped_fields: bool,
     /// The list of fields in the union.
     ///
     /// All of the corresponding [`Item`]s are of kind [`ItemEnum::StructField`].
@@ -554,7 +565,7 @@ pub enum StructKind {
         /// All of the corresponding [`Item`]s are of kind [`ItemEnum::StructField`].
         fields: Vec<Id>,
         /// Whether any fields have been removed from the result, due to being private or hidden.
-        fields_stripped: bool,
+        has_stripped_fields: bool,
     },
 }
 
@@ -564,7 +575,7 @@ pub struct Enum {
     /// Information about the type parameters and `where` clauses of the enum.
     pub generics: Generics,
     /// Whether any variants have been removed from the result, due to being private or hidden.
-    pub variants_stripped: bool,
+    pub has_stripped_variants: bool,
     /// The list of variants in the enum.
     ///
     /// All of the corresponding [`Item`]s are of kind [`ItemEnum::Variant`]
@@ -621,7 +632,7 @@ pub enum VariantKind {
         /// All of the corresponding [`Item`]s are of kind [`ItemEnum::Variant`].
         fields: Vec<Id>,
         /// Whether any variants have been removed from the result, due to being private or hidden.
-        fields_stripped: bool,
+        has_stripped_fields: bool,
     },
 }
 
@@ -645,16 +656,13 @@ pub struct Discriminant {
 
 /// A set of fundamental properties of a function.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Header {
+pub struct FunctionHeader {
     /// Is this function marked as `const`?
-    #[serde(rename = "const")]
-    pub const_: bool,
+    pub is_const: bool,
     /// Is this function unsafe?
-    #[serde(rename = "unsafe")]
-    pub unsafe_: bool,
+    pub is_unsafe: bool,
     /// Is this function async?
-    #[serde(rename = "async")]
-    pub async_: bool,
+    pub is_async: bool,
     /// The ABI used by the function.
     pub abi: Abi,
 }
@@ -697,11 +705,11 @@ pub enum Abi {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Function {
     /// Information about the function signature, or declaration.
-    pub decl: FnDecl,
+    pub sig: FunctionSignature,
     /// Information about the function’s type parameters and `where` clauses.
     pub generics: Generics,
     /// Information about core properties of the function, e.g. whether it's `const`, its ABI, etc.
-    pub header: Header,
+    pub header: FunctionHeader,
     /// Whether the function has a body, i.e. an implementation.
     pub has_body: bool,
 }
@@ -784,7 +792,7 @@ pub enum GenericParamDefKind {
         /// In this example, the generic parameter named `impl Trait` (and which
         /// is bound by `Trait`) is synthetic, because it was not originally in
         /// the Rust source text.
-        synthetic: bool,
+        is_synthetic: bool,
     },
 
     /// Denotes a constant parameter.
@@ -894,7 +902,7 @@ pub enum TraitBoundModifier {
 }
 
 /// Either a type or a constant, usually stored as the right-hand side of an equation in places like
-/// [`TypeBinding`]
+/// [`AssocItemConstraint`]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Term {
@@ -963,7 +971,7 @@ pub enum Type {
     /// A raw pointer type, e.g. `*mut u32`, `*const u8`, etc.
     RawPointer {
         /// This is `true` for `*mut _` and `false` for `*const _`.
-        mutable: bool,
+        is_mutable: bool,
         /// The type of the pointee.
         #[serde(rename = "type")]
         type_: Box<Type>,
@@ -973,7 +981,7 @@ pub enum Type {
         /// The name of the lifetime of the reference, if provided.
         lifetime: Option<String>,
         /// This is `true` for `&mut i32` and `false` for `&i32`
-        mutable: bool,
+        is_mutable: bool,
         /// The type of the pointee, e.g. the `i32` in `&'a mut i32`
         #[serde(rename = "type")]
         type_: Box<Type>,
@@ -1036,7 +1044,7 @@ pub struct Path {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FunctionPointer {
     /// The signature of the function.
-    pub decl: FnDecl,
+    pub sig: FunctionSignature,
     /// Used for Higher-Rank Trait Bounds (HRTBs)
     ///
     /// ```ignore (incomplete expression)
@@ -1045,12 +1053,12 @@ pub struct FunctionPointer {
     /// ```
     pub generic_params: Vec<GenericParamDef>,
     /// The core properties of the function, such as the ABI it conforms to, whether it's unsafe, etc.
-    pub header: Header,
+    pub header: FunctionHeader,
 }
 
 /// The signature of a function.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct FnDecl {
+pub struct FunctionSignature {
     /// List of argument names and their type.
     ///
     /// Note that not all names will be valid identifiers, as some of
@@ -1063,7 +1071,7 @@ pub struct FnDecl {
     /// ```ignore (incomplete code)
     /// fn printf(fmt: &str, ...);
     /// ```
-    pub c_variadic: bool,
+    pub is_c_variadic: bool,
 }
 
 /// A `trait` declaration.
@@ -1127,10 +1135,10 @@ pub struct Impl {
     /// The list of associated items contained in this impl block.
     pub items: Vec<Id>,
     /// Whether this is a negative impl (e.g. `!Sized` or `!Send`).
-    pub negative: bool,
+    pub is_negative: bool,
     /// Whether this is an impl that’s implied by the compiler
     /// (for autotraits, e.g. `Send` or `Sync`).
-    pub synthetic: bool,
+    pub is_synthetic: bool,
     // FIXME: document this
     pub blanket_impl: Option<Type>,
 }
@@ -1138,7 +1146,7 @@ pub struct Impl {
 /// A `use` statement.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub struct Import {
+pub struct Use {
     /// The full path being imported.
     pub source: String,
     /// May be different from the last segment of `source` when renaming imports:
@@ -1150,7 +1158,7 @@ pub struct Import {
     /// ```
     pub id: Option<Id>,
     /// Whether this statement is a wildcard `use`, e.g. `use source::*;`
-    pub glob: bool,
+    pub is_glob: bool,
 }
 
 /// A procedural macro.
@@ -1205,7 +1213,7 @@ pub struct Static {
     #[serde(rename = "type")]
     pub type_: Type,
     /// This is `true` for mutable statics, declared as `static mut X: T = f();`
-    pub mutable: bool,
+    pub is_mutable: bool,
     /// The stringified expression for the initial value.
     ///
     /// It's not guaranteed that it'll match the actual source code for the initial value.

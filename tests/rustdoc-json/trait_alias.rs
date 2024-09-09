@@ -7,12 +7,12 @@
 //@ is "$.index[*][?(@.name=='StrLike')].span.filename" $FILE
 pub trait StrLike = AsRef<str>;
 
-//@ is "$.index[*][?(@.name=='f')].inner.function.decl.output.impl_trait[0].trait_bound.trait.id" $StrLike
+//@ is "$.index[*][?(@.name=='f')].inner.function.sig.output.impl_trait[0].trait_bound.trait.id" $StrLike
 pub fn f() -> impl StrLike {
     "heya"
 }
 
-//@ !is "$.index[*][?(@.name=='g')].inner.function.decl.output.impl_trait[0].trait_bound.trait.id" $StrLike
+//@ !is "$.index[*][?(@.name=='g')].inner.function.sig.output.impl_trait[0].trait_bound.trait.id" $StrLike
 pub fn g() -> impl AsRef<str> {
     "heya"
 }

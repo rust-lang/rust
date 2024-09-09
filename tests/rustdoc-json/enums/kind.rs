@@ -5,7 +5,7 @@ pub enum Foo {
     //@ is "$.index[*][?(@.name=='Unit')].inner.variant.kind" '"plain"'
     Unit,
     //@ set Named = "$.index[*][?(@.name=='Named')].id"
-    //@ is "$.index[*][?(@.name=='Named')].inner.variant.kind.struct" '{"fields": [], "fields_stripped": false}'
+    //@ is "$.index[*][?(@.name=='Named')].inner.variant.kind.struct" '{"fields": [], "has_stripped_fields": false}'
     Named {},
     //@ set Tuple = "$.index[*][?(@.name=='Tuple')].id"
     //@ is "$.index[*][?(@.name=='Tuple')].inner.variant.kind.tuple" []
@@ -13,7 +13,7 @@ pub enum Foo {
     //@ set NamedField = "$.index[*][?(@.name=='NamedField')].id"
     //@ set x = "$.index[*][?(@.name=='x' && @.inner.struct_field)].id"
     //@ is "$.index[*][?(@.name=='NamedField')].inner.variant.kind.struct.fields[*]" $x
-    //@ is "$.index[*][?(@.name=='NamedField')].inner.variant.kind.struct.fields_stripped" false
+    //@ is "$.index[*][?(@.name=='NamedField')].inner.variant.kind.struct.has_stripped_fields" false
     NamedField { x: i32 },
     //@ set TupleField = "$.index[*][?(@.name=='TupleField')].id"
     //@ set tup_field = "$.index[*][?(@.name=='0' && @.inner.struct_field)].id"
