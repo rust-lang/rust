@@ -574,6 +574,9 @@ config_data! {
         /// set to a path relative to the workspace to use that path.
         cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = None,
 
+        /// Set `cfg(test)` for local crates. Defaults to true.
+        cfg_setTest: bool = true,
+
         /// Run the check command for diagnostics on save.
         checkOnSave | checkOnSave_enable: bool                         = true,
 
@@ -695,7 +698,6 @@ config_data! {
         workspace_symbol_search_limit: usize = 128,
         /// Workspace symbol search scope.
         workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = WorkspaceSymbolSearchScopeDef::Workspace,
-
     }
 }
 

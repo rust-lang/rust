@@ -703,7 +703,12 @@ impl GlobalState {
                 vfs.file_id(&vfs_path)
             };
 
-            ws_to_crate_graph(&self.workspaces, self.config.extra_env(None), load)
+            ws_to_crate_graph(
+                &self.workspaces,
+                self.config.extra_env(None),
+                load,
+                self.config.cfg_set_test(None),
+            )
         };
         let mut change = ChangeWithProcMacros::new();
         if self.config.expand_proc_macros() {
@@ -856,12 +861,13 @@ pub fn ws_to_crate_graph(
     workspaces: &[ProjectWorkspace],
     extra_env: &FxHashMap<String, String>,
     mut load: impl FnMut(&AbsPath) -> Option<vfs::FileId>,
+    set_test: bool,
 ) -> (CrateGraph, Vec<ProcMacroPaths>, FxHashMap<CrateId, Arc<CrateWorkspaceData>>) {
     let mut crate_graph = CrateGraph::default();
     let mut proc_macro_paths = Vec::default();
     let mut ws_data = FxHashMap::default();
     for ws in workspaces {
-        let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
+        let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env, set_test);
         let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
         let mapping = crate_graph.extend(other, &mut crate_proc_macros);

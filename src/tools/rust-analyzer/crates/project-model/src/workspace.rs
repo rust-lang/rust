@@ -728,6 +728,7 @@ impl ProjectWorkspace {
         &self,
         load: FileLoader<'_>,
         extra_env: &FxHashMap<String, String>,
+        set_test: bool,
     ) -> (CrateGraph, ProcMacroPaths) {
         let _p = tracing::info_span!("ProjectWorkspace::to_crate_graph").entered();
 
@@ -741,6 +742,7 @@ impl ProjectWorkspace {
                     sysroot,
                     extra_env,
                     cfg_overrides,
+                    set_test,
                 ),
                 sysroot,
             ),
@@ -759,6 +761,7 @@ impl ProjectWorkspace {
                     rustc_cfg.clone(),
                     cfg_overrides,
                     build_scripts,
+                    set_test,
                 ),
                 sysroot,
             ),
@@ -772,6 +775,7 @@ impl ProjectWorkspace {
                         rustc_cfg.clone(),
                         cfg_overrides,
                         build_scripts,
+                        set_test,
                     )
                 } else {
                     detached_file_to_crate_graph(
@@ -780,6 +784,7 @@ impl ProjectWorkspace {
                         file,
                         sysroot,
                         cfg_overrides,
+                        set_test,
                     )
                 },
                 sysroot,
@@ -870,11 +875,12 @@ fn project_json_to_crate_graph(
     sysroot: &Sysroot,
     extra_env: &FxHashMap<String, String>,
     override_cfg: &CfgOverrides,
+    set_test: bool,
 ) -> (CrateGraph, ProcMacroPaths) {
     let mut res = (CrateGraph::default(), ProcMacroPaths::default());
     let (crate_graph, proc_macros) = &mut res;
     let (public_deps, libproc_macro) =
-        sysroot_to_crate_graph(crate_graph, sysroot, rustc_cfg.clone(), load);
+        sysroot_to_crate_graph(crate_graph, sysroot, rustc_cfg.clone(), load, set_test);
 
     let r_a_cfg_flag = CfgAtom::Flag(sym::rust_analyzer.clone());
     let mut cfg_cache: FxHashMap<&str, Vec<CfgAtom>> = FxHashMap::default();
@@ -987,13 +993,14 @@ fn cargo_to_crate_graph(
     rustc_cfg: Vec<CfgAtom>,
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
+    set_test: bool,
 ) -> (CrateGraph, ProcMacroPaths) {
     let _p = tracing::info_span!("cargo_to_crate_graph").entered();
     let mut res = (CrateGraph::default(), ProcMacroPaths::default());
     let crate_graph = &mut res.0;
     let proc_macros = &mut res.1;
     let (public_deps, libproc_macro) =
-        sysroot_to_crate_graph(crate_graph, sysroot, rustc_cfg.clone(), load);
+        sysroot_to_crate_graph(crate_graph, sysroot, rustc_cfg.clone(), load, set_test);
 
     let cfg_options = CfgOptions::from_iter(rustc_cfg);
 
@@ -1011,8 +1018,10 @@ fn cargo_to_crate_graph(
             let mut cfg_options = cfg_options.clone();
 
             if cargo[pkg].is_local {
-                // Add test cfg for local crates
-                cfg_options.insert_atom(sym::test.clone());
+                if set_test {
+                    // Add test cfg for local crates
+                    cfg_options.insert_atom(sym::test.clone());
+                }
                 cfg_options.insert_atom(sym::rust_analyzer.clone());
             }
 
@@ -1173,14 +1182,17 @@ fn detached_file_to_crate_graph(
     detached_file: &ManifestPath,
     sysroot: &Sysroot,
     override_cfg: &CfgOverrides,
+    set_test: bool,
 ) -> (CrateGraph, ProcMacroPaths) {
     let _p = tracing::info_span!("detached_file_to_crate_graph").entered();
     let mut crate_graph = CrateGraph::default();
     let (public_deps, _libproc_macro) =
-        sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load);
+        sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load, set_test);
 
     let mut cfg_options = CfgOptions::from_iter(rustc_cfg);
-    cfg_options.insert_atom(sym::test.clone());
+    if set_test {
+        cfg_options.insert_atom(sym::test.clone());
+    }
     cfg_options.insert_atom(sym::rust_analyzer.clone());
     override_cfg.apply(&mut cfg_options, "");
     let cfg_options = Arc::new(cfg_options);
@@ -1404,6 +1416,7 @@ fn sysroot_to_crate_graph(
     sysroot: &Sysroot,
     rustc_cfg: Vec<CfgAtom>,
     load: FileLoader<'_>,
+    set_test: bool,
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let _p = tracing::info_span!("sysroot_to_crate_graph").entered();
     match sysroot.mode() {
@@ -1426,6 +1439,7 @@ fn sysroot_to_crate_graph(
                     ..Default::default()
                 },
                 &WorkspaceBuildScripts::default(),
+                set_test,
             );
 
             let mut pub_deps = vec![];

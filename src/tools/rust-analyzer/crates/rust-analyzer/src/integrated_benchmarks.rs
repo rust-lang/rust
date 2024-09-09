@@ -36,12 +36,14 @@ fn integrated_highlighting_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: false,
+        set_test: true,
     };
 
     let (db, vfs, _proc_macro) = {
@@ -102,12 +104,14 @@ fn integrated_completion_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: true,
+        set_test: true,
     };
 
     let (db, vfs, _proc_macro) = {
@@ -279,12 +283,14 @@ fn integrated_diagnostics_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::Sysroot,
         prefill_caches: true,
+        set_test: true,
     };
 
     let (db, vfs, _proc_macro) = {

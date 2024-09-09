@@ -84,6 +84,7 @@ impl flags::AnalysisStats {
                 ProcMacroServerChoice::Sysroot
             },
             prefill_caches: false,
+            set_test: true,
         };
 
         let build_scripts_time = if self.disable_build_scripts {

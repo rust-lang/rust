@@ -136,6 +136,7 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacro
             }
         },
         &Default::default(),
+        true,
     )
 }
 
@@ -257,5 +258,6 @@ fn smoke_test_real_sysroot_cargo() {
             }
         },
         &Default::default(),
+        true,
     );
 }
