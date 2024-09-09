@@ -108,10 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
                 ExprKind::Block(Block { stmts: [.., last_stmt], .. }, _) => self
                     .nested_calls
                     .push(LifetimeExtension::Disable { until_exit: last_stmt.hir_id }),
-                _ => {
-                    tracing::debug!(skip = ?cx.sess().source_map().span_to_snippet(expr.span));
-                    return;
-                }
+                _ => return,
             }
         }
 
@@ -126,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
     }
 
     fn check_expr_post(&mut self, _: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        self.nested_calls.pop_if(|pos| match pos {
+        while let Some(_) = self.nested_calls.pop_if(|pos| match pos {
             LifetimeExtension::Enable { until_exit }
             | LifetimeExtension::Disable { until_exit } => expr.hir_id == *until_exit,
 
@@ -136,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
                 };
                 false
             }
-        });
+        }) {}
     }
 }
 
