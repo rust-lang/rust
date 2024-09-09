@@ -1,3 +1,4 @@
+use crate::config::ShouldMerge;
 use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
 use crate::html::render::sorted_template::{Html, SortedTemplate};
 use crate::html::render::write_shared::*;
@@ -192,16 +193,17 @@ fn read_template_test() {
     let path = path.path().join("file.html");
     let make_blank = || SortedTemplate::<Html>::from_before_after("<div>", "</div>");
 
-    let template = read_template_or_blank(make_blank, &path).unwrap();
+    let should_merge = ShouldMerge { read_rendered_cci: true, write_rendered_cci: true };
+    let template = read_template_or_blank(make_blank, &path, &should_merge).unwrap();
     assert_eq!(but_last_line(&template.to_string()), "<div></div>");
     fs::write(&path, template.to_string()).unwrap();
-    let mut template = read_template_or_blank(make_blank, &path).unwrap();
+    let mut template = read_template_or_blank(make_blank, &path, &should_merge).unwrap();
     template.append("<img/>".to_string());
     fs::write(&path, template.to_string()).unwrap();
-    let mut template = read_template_or_blank(make_blank, &path).unwrap();
+    let mut template = read_template_or_blank(make_blank, &path, &should_merge).unwrap();
     template.append("<br/>".to_string());
     fs::write(&path, template.to_string()).unwrap();
-    let template = read_template_or_blank(make_blank, &path).unwrap();
+    let template = read_template_or_blank(make_blank, &path, &should_merge).unwrap();
 
     assert_eq!(but_last_line(&template.to_string()), "<div><br/><img/></div>");
 }
