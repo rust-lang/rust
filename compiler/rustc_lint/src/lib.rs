@@ -50,6 +50,7 @@ mod context;
 mod deref_into_dyn_supertrait;
 mod drop_forget_useless;
 mod early;
+mod elided;
 mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
@@ -91,6 +92,7 @@ use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
+use elided::ElidedNamedLifetimes;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
@@ -243,6 +245,7 @@ late_lint_methods!(
             NonLocalDefinitions: NonLocalDefinitions::default(),
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             TailExprDropOrder: TailExprDropOrder,
+            ElidedNamedLifetimes: ElidedNamedLifetimes::default(),
         ]
     ]
 );

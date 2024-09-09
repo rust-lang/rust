@@ -105,16 +105,6 @@ help: consider using the `'a` lifetime
 LL | fn l<'a>(_: &'a str, _: &'a str) -> &'a str { "" }
    |                                      ++
 
-warning: elided lifetime has a name
-  --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:49:29
-   |
-LL | fn m<'a>(_: &'a Foo<'a>) -> &str { "" }
-   |      --                     ^ this elided lifetime gets resolved as `'a`
-   |      |
-   |      lifetime `'a` declared here
-   |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
-
-error: aborting due to 7 previous errors; 1 warning emitted
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0106`.

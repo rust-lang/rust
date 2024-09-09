@@ -34,6 +34,7 @@ macro_rules! late_lint_methods {
                 d: rustc_span::Span,
                 e: rustc_span::def_id::LocalDefId);
             fn check_trait_item(a: &'tcx rustc_hir::TraitItem<'tcx>);
+            fn check_trait_item_post(a: &'tcx rustc_hir::TraitItem<'tcx>);
             fn check_impl_item(a: &'tcx rustc_hir::ImplItem<'tcx>);
             fn check_impl_item_post(a: &'tcx rustc_hir::ImplItem<'tcx>);
             fn check_struct_def(a: &'tcx rustc_hir::VariantData<'tcx>);
@@ -43,6 +44,7 @@ macro_rules! late_lint_methods {
             fn check_attribute(a: &'tcx rustc_ast::Attribute);
             fn check_attributes(a: &'tcx [rustc_ast::Attribute]);
             fn check_attributes_post(a: &'tcx [rustc_ast::Attribute]);
+            fn check_lifetime(lt: &'tcx rustc_hir::Lifetime);
         ]);
     )
 }

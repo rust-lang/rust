@@ -7,9 +7,9 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
     EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
 };
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, MissingLifetimeKind};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
@@ -2624,16 +2624,23 @@ pub(crate) struct ElidedLifetimesInPaths {
     pub subdiag: ElidedLifetimeInPathSubdiag,
 }
 
+#[allow(unused)]
 pub(crate) struct ElidedNamedLifetime {
     pub span: Span,
-    pub kind: MissingLifetimeKind,
     pub name: Symbol,
     pub declaration: Option<Span>,
+    pub sugg: ElidedNamedLifetimeSuggestion,
+}
+
+pub(crate) struct ElidedNamedLifetimeSuggestion {
+    pub span: Span,
+    pub code: String,
 }
 
 impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
     fn decorate_lint(self, diag: &mut rustc_errors::Diag<'_, G>) {
-        let Self { span, kind, name, declaration } = self;
+        let Self { span, name, declaration, sugg } = self;
+        diag.span(span);
         diag.primary_message(fluent::lint_elided_named_lifetime);
         diag.arg("name", name);
         diag.span_label(span, fluent::lint_label_elided);
@@ -2647,32 +2654,12 @@ impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
         if name != rustc_span::symbol::kw::StaticLifetime {
             return;
         }
-        match kind {
-            MissingLifetimeKind::Underscore => diag.span_suggestion_verbose(
-                span,
-                fluent::lint_suggestion,
-                format!("{name}"),
-                Applicability::MachineApplicable,
-            ),
-            MissingLifetimeKind::Ampersand => diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                fluent::lint_suggestion,
-                format!("{name} "),
-                Applicability::MachineApplicable,
-            ),
-            MissingLifetimeKind::Comma => diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                fluent::lint_suggestion,
-                format!("{name}, "),
-                Applicability::MachineApplicable,
-            ),
-            MissingLifetimeKind::Brackets => diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                fluent::lint_suggestion,
-                format!("<{name}>"),
-                Applicability::MachineApplicable,
-            ),
-        };
+        diag.span_suggestion_verbose(
+            sugg.span,
+            fluent::lint_suggestion,
+            sugg.code,
+            Applicability::MachineApplicable,
+        );
     }
 }
 

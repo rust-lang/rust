@@ -286,6 +286,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
             cx.with_param_env(trait_item.owner_id, |cx| {
                 lint_callback!(cx, check_trait_item, trait_item);
                 hir_visit::walk_trait_item(cx, trait_item);
+                lint_callback!(cx, check_trait_item_post, trait_item);
             });
         });
         self.context.generics = generics;
@@ -305,6 +306,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
+        lint_callback!(self, check_lifetime, lt);
         hir_visit::walk_lifetime(self, lt);
     }
 

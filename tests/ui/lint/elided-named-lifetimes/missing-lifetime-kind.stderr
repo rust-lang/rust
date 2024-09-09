@@ -1,8 +1,8 @@
 error: elided lifetime has a name
-  --> $DIR/missing-lifetime-kind.rs:3:32
+  --> $DIR/missing-lifetime-kind.rs:3:33
    |
 LL | fn ampersand<'a>(x: &'a u8) -> &u8 {
-   |              --                ^ this elided lifetime gets resolved as `'a`
+   |              --                 ^ this elided lifetime gets resolved as `'a`
    |              |
    |              lifetime `'a` declared here
    |
@@ -21,10 +21,10 @@ LL | fn brackets<'a>(x: &'a u8) -> Brackets {
    |             lifetime `'a` declared here
 
 error: elided lifetime has a name
-  --> $DIR/missing-lifetime-kind.rs:17:33
+  --> $DIR/missing-lifetime-kind.rs:17:34
    |
 LL | fn comma<'a>(x: &'a u8) -> Comma<u8> {
-   |          --                     ^ this elided lifetime gets resolved as `'a`
+   |          --                      ^ this elided lifetime gets resolved as `'a`
    |          |
    |          lifetime `'a` declared here
 

@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
-use rustc_hir::{HashStableContext, HirId, MissingLifetimeKind};
+use rustc_hir::{HashStableContext, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
@@ -556,12 +556,6 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-#[derive(Debug)]
-pub enum ElidedLifetimeResolution {
-    Static,
-    Param(Symbol, Span),
-}
-
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
@@ -574,10 +568,6 @@ pub enum BuiltinLintDiag {
     },
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
-    ElidedNamedLifetimes {
-        elided: (Span, MissingLifetimeKind),
-        resolution: ElidedLifetimeResolution,
-    },
     UnknownCrateTypes {
         span: Span,
         candidate: Option<Symbol>,
