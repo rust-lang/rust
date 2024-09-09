@@ -25,6 +25,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // struct S {
 //    field: i32
 // }
+// ```
 
 enum WrapUnwrapOption {
     WrapDerive { derive: TextRange, attr: ast::Attr },
