@@ -872,9 +872,9 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     storage_conflicts
 }
 
-struct StorageConflictVisitor<'mir, 'tcx, 's> {
-    body: &'mir Body<'tcx>,
-    saved_locals: &'s CoroutineSavedLocals,
+struct StorageConflictVisitor<'a, 'tcx> {
+    body: &'a Body<'tcx>,
+    saved_locals: &'a CoroutineSavedLocals,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for coroutines.
     local_conflicts: BitMatrix<Local, Local>,
@@ -882,8 +882,8 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
     eligible_storage_live: BitSet<Local>,
 }
 
-impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
-    for StorageConflictVisitor<'mir, 'tcx, '_>
+impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
+    for StorageConflictVisitor<'a, 'tcx>
 {
     type FlowState = BitSet<Local>;
 
@@ -891,7 +891,7 @@ impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
         &mut self,
         _results: &mut R,
         state: &Self::FlowState,
-        _statement: &'mir Statement<'tcx>,
+        _statement: &'a Statement<'tcx>,
         loc: Location,
     ) {
         self.apply_state(state, loc);
@@ -901,14 +901,14 @@ impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
         &mut self,
         _results: &mut R,
         state: &Self::FlowState,
-        _terminator: &'mir Terminator<'tcx>,
+        _terminator: &'a Terminator<'tcx>,
         loc: Location,
     ) {
         self.apply_state(state, loc);
     }
 }
 
-impl StorageConflictVisitor<'_, '_, '_> {
+impl StorageConflictVisitor<'_, '_> {
     fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
         if let TerminatorKind::Unreachable = self.body.basic_blocks[loc.block].terminator().kind {
