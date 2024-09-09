@@ -15,7 +15,6 @@ impl char {
     /// for you:
     ///
     /// ```
-    /// #![feature(char_min)]
     /// let dist = u32::from(char::MAX) - u32::from(char::MIN);
     /// let size = (char::MIN..=char::MAX).count() as u32;
     /// assert!(size < dist);
@@ -29,7 +28,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(char_min)]
     /// # fn something_which_returns_char() -> char { 'a' }
     /// let c: char = something_which_returns_char();
     /// assert!(char::MIN <= c);
@@ -37,7 +35,7 @@ impl char {
     /// let value_at_min = u32::from(char::MIN);
     /// assert_eq!(char::from_u32(value_at_min), Some('\0'));
     /// ```
-    #[unstable(feature = "char_min", issue = "114298")]
+    #[stable(feature = "char_min", since = "CURRENT_RUSTC_VERSION")]
     pub const MIN: char = '\0';
 
     /// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
@@ -48,7 +46,6 @@ impl char {
     /// for you:
     ///
     /// ```
-    /// #![feature(char_min)]
     /// let dist = u32::from(char::MAX) - u32::from(char::MIN);
     /// let size = (char::MIN..=char::MAX).count() as u32;
     /// assert!(size < dist);
