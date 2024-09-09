@@ -90,7 +90,6 @@ pub fn find(build: &Build) {
     let targets: HashSet<_> = match build.config.cmd {
         // We don't need to check cross targets for these commands.
         crate::Subcommand::Clean { .. }
-        | crate::Subcommand::Check { .. }
         | crate::Subcommand::Suggest { .. }
         | crate::Subcommand::Format { .. }
         | crate::Subcommand::Setup { .. } => {
