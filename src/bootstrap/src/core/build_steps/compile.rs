@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::{env, fs, str};
 
+use build_helper::git::get_closest_merge_commit;
 use serde_derive::Deserialize;
 
 use crate::core::build_steps::tool::SourceType;
@@ -26,8 +27,7 @@ use crate::core::builder::{
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    self, exe, get_clang_cl_resource_dir, get_closest_merge_base_commit, is_debug_info, is_dylib,
-    symlink_dir, t, up_to_date,
+    self, exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode, LLVM_TOOLS};
 
@@ -127,13 +127,9 @@ impl Step for Std {
         // the `rust.download-rustc=true` option.
         let force_recompile =
             if builder.rust_info().is_managed_git_subrepository() && builder.download_rustc() {
-                let closest_merge_commit = get_closest_merge_base_commit(
-                    Some(&builder.src),
-                    &builder.config.git_config(),
-                    &builder.config.stage0_metadata.config.git_merge_commit_email,
-                    &[],
-                )
-                .unwrap();
+                let closest_merge_commit =
+                    get_closest_merge_commit(Some(&builder.src), &builder.config.git_config(), &[])
+                        .unwrap();
 
                 // Check if `library` has changes (returns false otherwise)
                 !t!(helpers::git(Some(&builder.src))
