@@ -11,7 +11,7 @@ use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use tracing::{debug, instrument};
 
-pub struct ScalarReplacementOfAggregates;
+pub(super) struct ScalarReplacementOfAggregates;
 
 impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

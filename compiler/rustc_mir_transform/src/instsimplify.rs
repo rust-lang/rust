@@ -13,13 +13,13 @@ use rustc_target::spec::abi::Abi;
 use crate::simplify::simplify_duplicate_switch_targets;
 use crate::take_array;
 
-pub enum InstSimplify {
+pub(super) enum InstSimplify {
     BeforeInline,
     AfterSimplifyCfg,
 }
 
 impl InstSimplify {
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             InstSimplify::BeforeInline => "InstSimplify-before-inline",
             InstSimplify::AfterSimplifyCfg => "InstSimplify-after-simplifycfg",

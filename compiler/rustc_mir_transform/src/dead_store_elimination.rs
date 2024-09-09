@@ -28,7 +28,7 @@ use crate::util::is_within_packed;
 ///
 /// The `borrowed` set must be a `BitSet` of all the locals that are ever borrowed in this body. It
 /// can be generated via the [`borrowed_locals`] function.
-pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let borrowed_locals = borrowed_locals(body);
 
     // If the user requests complete debuginfo, mark the locals that appear in it as live, so
@@ -127,7 +127,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     }
 }
 
-pub enum DeadStoreElimination {
+pub(super) enum DeadStoreElimination {
     Initial,
     Final,
 }

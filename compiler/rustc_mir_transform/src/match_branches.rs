@@ -10,7 +10,7 @@ use rustc_type_ir::TyKind::*;
 
 use super::simplify::simplify_cfg;
 
-pub struct MatchBranchSimplification;
+pub(super) struct MatchBranchSimplification;
 
 impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

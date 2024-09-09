@@ -423,8 +423,8 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 }
 
-struct UniversalRegionsBuilder<'cx, 'tcx> {
-    infcx: &'cx BorrowckInferCtxt<'tcx>,
+struct UniversalRegionsBuilder<'infcx, 'tcx> {
+    infcx: &'infcx BorrowckInferCtxt<'tcx>,
     mir_def: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 }
