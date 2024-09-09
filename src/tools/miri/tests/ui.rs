@@ -36,20 +36,21 @@ fn build_native_lib() -> PathBuf {
     // Create the directory if it does not already exist.
     std::fs::create_dir_all(&so_target_dir)
         .expect("Failed to create directory for shared object file");
-    let so_file_path = so_target_dir.join("native-lib.so");
+    // We use a platform-neutral file extension to avoid having to hard-code alternatives.
+    let native_lib_path = so_target_dir.join("native-lib.module");
     let cc_output = Command::new(cc)
         .args([
             "-shared",
+            "-fPIC",
+            // We hide all symbols by default and export just the ones we need
+            // This is to future-proof against a more complex shared object which eg defines its own malloc
+            // (but we wouldn't want miri to call that, as it would if it was exported).
+            "-fvisibility=hidden",
             "-o",
-            so_file_path.to_str().unwrap(),
+            native_lib_path.to_str().unwrap(),
             // FIXME: Automate gathering of all relevant C source files in the directory.
             "tests/native-lib/scalar_arguments.c",
             "tests/native-lib/ptr_read_access.c",
-            // Only add the functions specified in libcode.version to the shared object file.
-            // This is to avoid automatically adding `malloc`, etc.
-            // Source: https://anadoxin.org/blog/control-over-symbol-exports-in-gcc.html/
-            "-fPIC",
-            "-Wl,--version-script=tests/native-lib/native-lib.map",
             // Ensure we notice serious problems in the C code.
             "-Wall",
             "-Wextra",
@@ -64,7 +65,7 @@ fn build_native_lib() -> PathBuf {
             String::from_utf8_lossy(&cc_output.stderr),
         );
     }
-    so_file_path
+    native_lib_path
 }
 
 /// Does *not* set any args or env vars, since it is shared between the test runner and
@@ -300,7 +301,7 @@ fn main() -> Result<()> {
         WithDependencies,
         tmpdir.path(),
     )?;
-    if cfg!(target_os = "linux") {
+    if cfg!(unix) {
         ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(
             Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },

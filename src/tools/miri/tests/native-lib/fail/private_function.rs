@@ -5,11 +5,11 @@
 //@normalize-stderr-test: "OS `.*`" -> "$$OS"
 
 extern "C" {
-    fn foo();
+    fn not_exported();
 }
 
 fn main() {
     unsafe {
-        foo(); //~ ERROR: unsupported operation: can't call foreign function `foo`
+        not_exported(); //~ ERROR: unsupported operation: can't call foreign function `not_exported`
     }
 }

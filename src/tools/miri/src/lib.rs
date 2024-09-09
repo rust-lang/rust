@@ -133,7 +133,10 @@ pub use crate::concurrency::{
     cpu_affinity::MAX_CPUS,
     data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
     init_once::{EvalContextExt as _, InitOnceId},
-    sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SynchronizationObjects},
+    sync::{
+        AdditionalMutexData, CondvarId, EvalContextExt as _, MutexId, MutexKind, RwLockId,
+        SynchronizationObjects,
+    },
     thread::{
         BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager,
         TimeoutAnchor, TimeoutClock, UnblockCallback,
