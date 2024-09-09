@@ -14,9 +14,9 @@ intrinsics! {
         not(feature = "no-asm")
     ))]
     pub unsafe extern "C" fn __chkstk() {
-        core::arch::asm!(
+        core::arch::naked_asm!(
             "jmp __alloca", // Jump to __alloca since fallthrough may be unreliable"
-            options(noreturn, att_syntax)
+            options(att_syntax)
         );
     }
 
@@ -27,7 +27,7 @@ intrinsics! {
     ))]
     pub unsafe extern "C" fn _alloca() {
         // __chkstk and _alloca are the same function
-        core::arch::asm!(
+        core::arch::naked_asm!(
             "push   %ecx",
             "cmp    $0x1000,%eax",
             "lea    8(%esp),%ecx", // esp before calling this routine -> ecx
@@ -47,7 +47,7 @@ intrinsics! {
             "push   (%eax)",        // push return address onto the stack
             "sub    %esp,%eax",     // restore the original value in eax
             "ret",
-            options(noreturn, att_syntax)
+            options(att_syntax)
         );
     }
 }
