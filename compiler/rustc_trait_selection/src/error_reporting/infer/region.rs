@@ -625,11 +625,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let ObligationCauseCode::WhereClause(_, span)
                 | ObligationCauseCode::WhereClauseInExpr(_, span, ..) =
                     &trace.cause.code().peel_derives()
-                    && !span.is_dummy()
                 {
                     let span = *span;
-                    self.report_concrete_failure(generic_param_scope, placeholder_origin, sub, sup)
-                        .with_span_note(span, "the lifetime requirement is introduced here")
+                    let mut err = self.report_concrete_failure(
+                        generic_param_scope,
+                        placeholder_origin,
+                        sub,
+                        sup,
+                    );
+                    if !span.is_dummy() {
+                        err =
+                            err.with_span_note(span, "the lifetime requirement is introduced here");
+                    }
+                    err
                 } else {
                     unreachable!(
                         "control flow ensures we have a `BindingObligation` or `WhereClauseInExpr` here..."
