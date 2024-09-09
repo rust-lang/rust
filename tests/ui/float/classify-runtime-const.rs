@@ -6,7 +6,6 @@
 
 #![feature(f16_const)]
 #![feature(f128_const)]
-#![feature(const_float_classify)]
 
 use std::hint::black_box;
 use std::num::FpCategory::*;
