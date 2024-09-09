@@ -1535,11 +1535,17 @@ impl<T, E> Result<&T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_copied", since = "1.59.0")]
-    pub fn copied(self) -> Result<T, E>
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn copied(self) -> Result<T, E>
     where
         T: Copy,
     {
-        self.map(|&t| t)
+        // FIXME(const-hack): this implementation, which sidesteps using `Result::map` since it's not const
+        // ready yet, should be reverted when possible to avoid code repetition
+        match self {
+            Ok(&v) => Ok(v),
+            Err(e) => Err(e),
+        }
     }
 
     /// Maps a `Result<&T, E>` to a `Result<T, E>` by cloning the contents of the
@@ -1579,11 +1585,17 @@ impl<T, E> Result<&mut T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_copied", since = "1.59.0")]
-    pub fn copied(self) -> Result<T, E>
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn copied(self) -> Result<T, E>
     where
         T: Copy,
     {
-        self.map(|&mut t| t)
+        // FIXME(const-hack): this implementation, which sidesteps using `Result::map` since it's not const
+        // ready yet, should be reverted when possible to avoid code repetition
+        match self {
+            Ok(&mut v) => Ok(v),
+            Err(e) => Err(e),
+        }
     }
 
     /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by cloning the contents of the
