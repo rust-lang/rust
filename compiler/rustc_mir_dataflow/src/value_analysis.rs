@@ -923,14 +923,14 @@ impl<'tcx> Map<'tcx> {
     }
 }
 
-struct PlaceCollector<'a, 'b, 'tcx> {
+struct PlaceCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body: &'b Body<'tcx>,
+    body: &'a Body<'tcx>,
     map: &'a mut Map<'tcx>,
     assignments: FxIndexSet<(PlaceIndex, PlaceIndex)>,
 }
 
-impl<'tcx> PlaceCollector<'_, '_, 'tcx> {
+impl<'tcx> PlaceCollector<'_, 'tcx> {
     #[tracing::instrument(level = "trace", skip(self))]
     fn register_place(&mut self, place: Place<'tcx>) -> Option<PlaceIndex> {
         // Create a place for this projection.
@@ -967,7 +967,7 @@ impl<'tcx> PlaceCollector<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for PlaceCollector<'_, '_, 'tcx> {
+impl<'tcx> Visitor<'tcx> for PlaceCollector<'_, 'tcx> {
     #[tracing::instrument(level = "trace", skip(self))]
     fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, _: Location) {
         if !ctxt.is_use() {
