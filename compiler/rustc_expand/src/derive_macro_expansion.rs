@@ -1,5 +1,5 @@
 use std::cell::Cell;
-use std::ptr;
+use std::ptr::{self, NonNull};
 
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::svh::Svh;
@@ -56,21 +56,14 @@ thread_local! {
     static TLV: Cell<(*mut (), Option<CLIENT>)> = const { Cell::new((ptr::null_mut(), None)) };
 }
 
+/// Sets `context` as the new current `CONTEXT` for the duration of the function `f`.
 #[inline]
-fn erase(context: &mut ExtCtxt<'_>) -> *mut () {
-    context as *mut _ as *mut ()
-}
-
-#[inline]
-unsafe fn downcast<'a>(context: *mut ()) -> &'a mut ExtCtxt<'a> {
-    unsafe { &mut *(context as *mut ExtCtxt<'a>) }
-}
-
-#[inline]
-fn enter_context_erased<F, R>(erased: (*mut (), Option<CLIENT>), f: F) -> R
+pub(crate) fn enter_context<'a, F, R>(context: (&mut ExtCtxt<'a>, CLIENT), f: F) -> R
 where
     F: FnOnce() -> R,
 {
+    let (ectx, client) = context;
+    let erased = (ectx as *mut _ as *mut (), Some(client));
     TLV.with(|tlv| {
         let old = tlv.replace(erased);
         let _reset = rustc_data_structures::defer(move || tlv.set(old));
@@ -78,48 +71,32 @@ where
     })
 }
 
-/// Sets `context` as the new current `CONTEXT` for the duration of the function `f`.
-#[inline]
-pub fn enter_context<'a, F, R>(context: (&mut ExtCtxt<'a>, CLIENT), f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    let (ectx, client) = context;
-    let erased = (erase(ectx), Some(client));
-    enter_context_erased(erased, f)
-}
-
-/// Allows access to the current `CONTEXT` in a closure if one is available.
-#[inline]
-#[track_caller]
-pub fn with_context_opt<F, R>(f: F) -> R
-where
-    F: for<'a, 'b> FnOnce(Option<&'b mut (&mut ExtCtxt<'a>, CLIENT)>) -> R,
-{
-    let (ectx, client_opt) = TLV.get();
-    if ectx.is_null() {
-        f(None)
-    } else {
-        // We could get an `CONTEXT` pointer from another thread.
-        // Ensure that `CONTEXT` is `DynSync`.
-        // FIXME(pr-time): we should not be able to?
-        // sync::assert_dyn_sync::<CONTEXT<'_>>();
-
-        // prevent double entering, as that would allow creating two `&mut ExtCtxt`s
-        // FIXME(pr-time): probably use a RefCell instead (which checks this properly)?
-        enter_context_erased((ptr::null_mut(), None), || unsafe {
-            let ectx = downcast(ectx);
-            f(Some(&mut (ectx, client_opt.unwrap())))
-        })
-    }
-}
-
 /// Allows access to the current `CONTEXT`.
 /// Panics if there is no `CONTEXT` available.
 #[inline]
-pub fn with_context<F, R>(f: F) -> R
+#[track_caller]
+fn with_context<F, R>(f: F) -> R
 where
     F: for<'a, 'b> FnOnce(&'b mut (&mut ExtCtxt<'a>, CLIENT)) -> R,
 {
-    with_context_opt(|opt_context| f(opt_context.expect("no CONTEXT stored in tls")))
+    let (ectx, client_opt) = TLV.get();
+    let ectx = NonNull::new(ectx).expect("no CONTEXT stored in tls");
+
+    // We could get an `CONTEXT` pointer from another thread.
+    // Ensure that `CONTEXT` is `DynSync`.
+    // FIXME(pr-time): we should not be able to?
+    // sync::assert_dyn_sync::<CONTEXT<'_>>();
+
+    // prevent double entering, as that would allow creating two `&mut ExtCtxt`s
+    // FIXME(pr-time): probably use a RefCell instead (which checks this properly)?
+    TLV.with(|tlv| {
+        let old = tlv.replace((ptr::null_mut(), None));
+        let _reset = rustc_data_structures::defer(move || tlv.set(old));
+        let ectx = {
+            let mut casted = ectx.cast::<ExtCtxt<'_>>();
+            unsafe { casted.as_mut() }
+        };
+
+        f(&mut (ectx, client_opt.unwrap()))
+    })
 }
