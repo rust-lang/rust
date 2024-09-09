@@ -51,7 +51,7 @@ impl EpollEventInstance {
 #[derive(Clone, Debug)]
 pub struct EpollEventInterest {
     /// The file descriptor value of the file description registered.
-    file_descriptor: i32,
+    fd_num: i32,
     /// The events bitmask retrieved from `epoll_event`.
     events: u32,
     /// The data retrieved from `epoll_event`.
@@ -62,7 +62,7 @@ pub struct EpollEventInterest {
     /// Ready list of the epoll instance under which this EpollEventInterest is registered.
     ready_list: Rc<RefCell<BTreeMap<(FdId, i32), EpollEventInstance>>>,
     /// The file descriptor value that this EpollEventInterest is registered under.
-    epfd: i32,
+    epfd_num: i32,
 }
 
 /// EpollReadyEvents reflects the readiness of a file description.
@@ -339,11 +339,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Create an epoll_interest.
             let interest = Rc::new(RefCell::new(EpollEventInterest {
-                file_descriptor: fd,
+                fd_num: fd,
                 events,
                 data,
                 ready_list: Rc::clone(ready_list),
-                epfd: epfd_value,
+                epfd_num: epfd_value,
             }));
 
             if op == epoll_ctl_add {
@@ -553,7 +553,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     if is_updated {
                         // Edge-triggered notification only notify one thread even if there are
                         // multiple threads block on the same epfd.
-                        let epfd = this.machine.fds.get(epoll_interest.borrow().epfd).unwrap();
+                        let epfd = this.machine.fds.get(epoll_interest.borrow().epfd_num).unwrap();
 
                         // This unwrap can never fail because if the current epoll instance were
                         // closed and its epfd value reused, the upgrade of weak_epoll_interest
@@ -615,7 +615,7 @@ fn check_and_update_one_event_interest<'tcx>(
     // If there is any event that we are interested in being specified as ready,
     // insert an epoll_return to the ready list.
     if flags != 0 {
-        let epoll_key = (id, epoll_event_interest.file_descriptor);
+        let epoll_key = (id, epoll_event_interest.fd_num);
         let ready_list = &mut epoll_event_interest.ready_list.borrow_mut();
         let event_instance = EpollEventInstance::new(flags, epoll_event_interest.data);
         // Triggers the notification by inserting it to the ready list.
