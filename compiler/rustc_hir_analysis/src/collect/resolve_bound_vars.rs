@@ -1191,23 +1191,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                                     (generics.span, "<'a>".to_owned())
                                 };
 
-                            let lifetime_sugg = match lifetime_ref.suggestion_position() {
-                                (hir::LifetimeSuggestionPosition::Normal, span) => {
-                                    (span, "'a".to_owned())
-                                }
-                                (hir::LifetimeSuggestionPosition::Ampersand, span) => {
-                                    (span, "'a ".to_owned())
-                                }
-                                (hir::LifetimeSuggestionPosition::ElidedPath, span) => {
-                                    (span, "<'a>".to_owned())
-                                }
-                                (hir::LifetimeSuggestionPosition::ElidedPathArgument, span) => {
-                                    (span, "'a, ".to_owned())
-                                }
-                                (hir::LifetimeSuggestionPosition::ObjectDefault, span) => {
-                                    (span, "+ 'a".to_owned())
-                                }
-                            };
+                            let lifetime_sugg = lifetime_ref.suggestion("'a");
                             let suggestions = vec![lifetime_sugg, new_param_sugg];
 
                             diag.span_label(

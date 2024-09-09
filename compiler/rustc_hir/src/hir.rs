@@ -168,6 +168,19 @@ impl Lifetime {
             (LifetimeSuggestionPosition::Normal, self.ident.span)
         }
     }
+
+    pub fn suggestion(&self, new_lifetime: &str) -> (Span, String) {
+        debug_assert!(new_lifetime.starts_with('\''));
+        let (pos, span) = self.suggestion_position();
+        let code = match pos {
+            LifetimeSuggestionPosition::Normal => format!("{new_lifetime}"),
+            LifetimeSuggestionPosition::Ampersand => format!("{new_lifetime} "),
+            LifetimeSuggestionPosition::ElidedPath => format!("<{new_lifetime}>"),
+            LifetimeSuggestionPosition::ElidedPathArgument => format!("{new_lifetime}, "),
+            LifetimeSuggestionPosition::ObjectDefault => format!("+ {new_lifetime}"),
+        };
+        (span, code)
+    }
 }
 
 /// A `Path` is essentially Rust's notion of a name; for instance,
