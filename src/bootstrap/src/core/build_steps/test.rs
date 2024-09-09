@@ -2098,6 +2098,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let git_config = builder.config.git_config();
         cmd.arg("--git-repository").arg(git_config.git_repository);
         cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
+        cmd.arg("--git-merge-commit-email").arg(git_config.git_merge_commit_email);
         cmd.force_coloring_in_ci();
 
         #[cfg(feature = "build-metrics")]
