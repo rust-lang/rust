@@ -121,7 +121,6 @@
 #![feature(const_cell_into_inner)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
-#![feature(const_float_classify)]
 #![feature(const_fmt_arguments_new)]
 #![feature(const_hash)]
 #![feature(const_heap)]
