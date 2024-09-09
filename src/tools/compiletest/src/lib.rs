@@ -812,6 +812,7 @@ fn make_test(
                 && is_up_to_date(&config, testpaths, &early_props, revision, inputs)
             {
                 desc.ignore = true;
+                // Keep this in sync with the "up-to-date" message detected by bootstrap.
                 desc.ignore_message = Some("up-to-date");
             }
             test::TestDescAndFn {
