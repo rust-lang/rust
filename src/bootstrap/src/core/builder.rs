@@ -2463,15 +2463,7 @@ impl Cargo {
         cmd_kind: Kind,
     ) -> Cargo {
         let mut cargo = builder.cargo(compiler, mode, source_type, target, cmd_kind);
-
-        match cmd_kind {
-            // No need to configure the target linker for these command types.
-            Kind::Clean | Kind::Check | Kind::Suggest | Kind::Format | Kind::Setup => {}
-            _ => {
-                cargo.configure_linker(builder);
-            }
-        }
-
+        cargo.configure_linker(builder);
         cargo
     }
 
