@@ -113,7 +113,6 @@
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_write)]
 #![feature(const_option)]
-#![feature(const_pin)]
 #![feature(const_size_of_val)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
