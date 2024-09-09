@@ -641,7 +641,7 @@
 #stack-protector = "none"
 
 # Prints each test name as it is executed, to help debug issues in the test harness itself.
-#verbose-tests = false
+#verbose-tests = if is_verbose { true } else { false }
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag).
 #optimize-tests = true
