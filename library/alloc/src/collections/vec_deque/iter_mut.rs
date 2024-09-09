@@ -64,7 +64,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         match self.i1.advance_by(n) {
-            Ok(()) => return Ok(()),
+            Ok(()) => Ok(()),
             Err(remaining) => {
                 mem::swap(&mut self.i1, &mut self.i2);
                 self.i1.advance_by(remaining.get())
@@ -135,7 +135,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         match self.i2.advance_back_by(n) {
-            Ok(()) => return Ok(()),
+            Ok(()) => Ok(()),
             Err(remaining) => {
                 mem::swap(&mut self.i1, &mut self.i2);
                 self.i2.advance_back_by(remaining.get())

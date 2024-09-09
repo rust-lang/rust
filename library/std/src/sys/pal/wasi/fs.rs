@@ -265,7 +265,7 @@ impl OpenOptions {
     pub fn new() -> OpenOptions {
         let mut base = OpenOptions::default();
         base.dirflags = wasi::LOOKUPFLAGS_SYMLINK_FOLLOW;
-        return base;
+        base
     }
 
     pub fn read(&mut self, read: bool) {
@@ -382,7 +382,7 @@ impl OpenOptions {
         base |= wasi::RIGHTS_PATH_UNLINK_FILE;
         base |= wasi::RIGHTS_POLL_FD_READWRITE;
 
-        return base;
+        base
     }
 
     fn rights_inheriting(&self) -> wasi::Rights {
