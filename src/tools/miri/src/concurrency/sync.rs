@@ -105,6 +105,13 @@ struct Mutex {
 
 declare_id!(RwLockId);
 
+#[derive(Debug)]
+/// Additional data that may be used by shim implementations.
+pub struct AdditionalRwLockData {
+    /// The address of the rwlock.
+    pub address: u64,
+}
+
 /// The read-write lock state.
 #[derive(Default, Debug)]
 struct RwLock {
@@ -137,6 +144,9 @@ struct RwLock {
     /// locks.
     /// This is only relevant when there is an active reader.
     clock_current_readers: VClock,
+
+    /// Additional data that can be set by shim implementations.
+    data: Option<AdditionalRwLockData>,
 }
 
 declare_id!(CondvarId);
@@ -343,6 +353,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         lock_op: &OpTy<'tcx>,
         lock_layout: TyAndLayout<'tcx>,
         offset: u64,
+        initialize_data: impl for<'a> FnOnce(
+            &'a mut MiriInterpCx<'tcx>,
+        )
+            -> InterpResult<'tcx, Option<AdditionalRwLockData>>,
     ) -> InterpResult<'tcx, RwLockId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
@@ -350,9 +364,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             lock_layout,
             offset,
             |ecx| &mut ecx.machine.sync.rwlocks,
-            |_| Ok(Default::default()),
+            |ecx| initialize_data(ecx).map(|data| RwLock { data, ..Default::default() }),
         )?
         .ok_or_else(|| err_ub_format!("rwlock has invalid ID").into())
+    }
+
+    /// Retrieve the additional data stored for a rwlock.
+    fn rwlock_get_data<'a>(&'a mut self, id: RwLockId) -> Option<&'a AdditionalRwLockData>
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_ref();
+        this.machine.sync.rwlocks[id].data.as_ref()
     }
 
     fn condvar_get_or_create_id(
