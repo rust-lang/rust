@@ -4,12 +4,12 @@
 //@ is "$.index[*][?(@.name=='IntVec')].span.filename" $FILE
 pub type IntVec = Vec<u32>;
 
-//@ is "$.index[*][?(@.name=='f')].inner.function.decl.output.resolved_path.id" $IntVec
+//@ is "$.index[*][?(@.name=='f')].inner.function.sig.output.resolved_path.id" $IntVec
 pub fn f() -> IntVec {
     vec![0; 32]
 }
 
-//@ !is "$.index[*][?(@.name=='g')].inner.function.decl.output.resolved_path.id" $IntVec
+//@ !is "$.index[*][?(@.name=='g')].inner.function.sig.output.resolved_path.id" $IntVec
 pub fn g() -> Vec<u32> {
     vec![0; 32]
 }
