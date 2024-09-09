@@ -57,7 +57,7 @@ impl crate::doctest::DocTestVisitor for Tests {
 pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
     if !cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
         || matches!(
-            *item.kind,
+            item.kind,
             clean::StructFieldItem(_)
                 | clean::VariantItem(_)
                 | clean::AssocConstItem(..)
