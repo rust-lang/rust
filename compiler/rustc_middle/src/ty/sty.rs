@@ -1136,6 +1136,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
+    /// `Box` is *not* considered a pointer here!
     #[inline]
     pub fn is_any_ptr(self) -> bool {
         self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
