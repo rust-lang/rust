@@ -8803,7 +8803,7 @@ fn test_hover_function_with_pat_param() {
             ```
 
             ```rust
-            fn test_4(Point { x: x, y: y, }: Point)
+            fn test_4(Point { x, y }: Point)
             ```
         "#]],
     );
@@ -8851,7 +8851,7 @@ fn test_hover_function_with_pat_param() {
             ```
 
             ```rust
-            fn test_7((x, Foo { a: a, b: b, }): (i32, Foo))
+            fn test_7((x, Foo { a, b }): (i32, Foo))
             ```
         "#]],
     );
@@ -8868,6 +8868,54 @@ fn test_hover_function_with_pat_param() {
 
             ```rust
             fn test_8((MyEnum::A(x) | MyEnum::B(x)): MyEnum)
+            ```
+        "#]],
+    );
+
+    // Test case with a pattern as a function parameter
+    check(
+        r#"struct Foo { a: i32, b: i32 } fn test_9$0(Foo { a, b }: Foo) {}"#,
+        expect![[r#"
+            *test_9*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_9(Foo { a, b }: Foo)
+            ```
+        "#]],
+    );
+
+    // Test case with a pattern as a function parameter with a different name
+    check(
+        r#"struct Foo { a: i32, b: i32 } fn test_10$0(Foo { a, b: b1 }: Foo) {}"#,
+        expect![[r#"
+            *test_10*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_10(Foo { a, b: b1 }: Foo)
+            ```
+        "#]],
+    );
+
+    // Test case with a pattern as a function parameter with annotations
+    check(
+        r#"struct Foo { a: i32, b: i32 } fn test_10$0(Foo { a, b: mut b }: Foo) {}"#,
+        expect![[r#"
+            *test_10*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_10(Foo { a, b: mut b }: Foo)
             ```
         "#]],
     );

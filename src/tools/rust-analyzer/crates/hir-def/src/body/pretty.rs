@@ -616,12 +616,37 @@ impl Printer<'_> {
 
                 w!(self, " {{");
                 let edition = self.edition;
+                let oneline = matches!(self.line_format, LineFormat::Oneline);
                 self.indented(|p| {
-                    for arg in args.iter() {
-                        w!(p, "{}: ", arg.name.display(self.db.upcast(), edition));
-                        p.print_pat(arg.pat);
-                        wln!(p, ",");
+                    for (idx, arg) in args.iter().enumerate() {
+                        let field_name = arg.name.display(self.db.upcast(), edition).to_string();
+
+                        let mut same_name = false;
+                        if let Pat::Bind { id, subpat: None } = &self.body[arg.pat] {
+                            if let Binding { name, mode: BindingAnnotation::Unannotated, .. } =
+                                &self.body.bindings[*id]
+                            {
+                                if name.as_str() == field_name {
+                                    same_name = true;
+                                }
+                            }
+                        }
+
+                        w!(p, "{}", field_name);
+
+                        if !same_name {
+                            w!(p, ": ");
+                            p.print_pat(arg.pat);
+                        }
+
+                        // Do not print the extra comma if the line format is oneline
+                        if oneline && idx == args.len() - 1 {
+                            w!(p, " ");
+                        } else {
+                            wln!(p, ",");
+                        }
                     }
+
                     if *ellipsis {
                         wln!(p, "..");
                     }
