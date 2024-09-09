@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Run rustfmt
         run: cargo fmt --all -- --check
 
@@ -46,7 +46,7 @@ jobs:
           - wasm32-unknown-unknown
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
       - name: Run Clippy
@@ -84,7 +84,7 @@ jobs:
           # avx512vl, but occasionally doesn't.  Maybe one day we can enable it.
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
@@ -139,7 +139,7 @@ jobs:
           - aarch64-apple-darwin
           - x86_64-apple-darwin
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
@@ -167,7 +167,7 @@ jobs:
           - { name: default, RUSTFLAGS: "" }
           - { name: simd128, RUSTFLAGS: "-C target-feature=+simd128" }
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Test (debug)
@@ -211,7 +211,7 @@ jobs:
           # - { target: riscv64gc-unknown-linux-gnu, target_feature: "+v,+zvl128b" }
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
@@ -253,6 +253,6 @@ jobs:
     env:
       PROPTEST_CASES: 16
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Test (Miri)
         run: cargo miri test
