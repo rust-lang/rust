@@ -156,7 +156,7 @@ impl<T> [T] {
         if let [first, ..] = self { Some(first) } else { None }
     }
 
-    /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
+    /// Returns a mutable reference to the first element of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
