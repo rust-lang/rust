@@ -71,15 +71,15 @@ v("llvm-libunwind", "rust.llvm-libunwind", "use LLVM libunwind")
 
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.
-o("optimize-llvm", "llvm.optimize", "build optimized LLVM")
-o("llvm-assertions", "llvm.assertions", "build LLVM with assertions")
-o("llvm-enzyme", "llvm.enzyme", "build LLVM with enzyme")
-o("llvm-plugins", "llvm.plugins", "build LLVM with plugin interface")
-o("debug-assertions", "rust.debug-assertions", "build with debugging assertions")
-o("debug-assertions-std", "rust.debug-assertions-std", "build the standard library with debugging assertions")
-o("overflow-checks", "rust.overflow-checks", "build with overflow checks")
-o("overflow-checks-std", "rust.overflow-checks-std", "build the standard library with overflow checks")
-o("llvm-release-debuginfo", "llvm.release-debuginfo", "build LLVM with debugger metadata")
+o("optimize-llvm", "llvm.optimize", "build optimized LLVM", default=True)
+o("llvm-assertions", "llvm.assertions", "build LLVM with assertions", default=False)
+o("llvm-enzyme", "llvm.enzyme", "build LLVM with enzyme", default=False)
+o("llvm-plugins", "llvm.plugins", "build LLVM with plugin interface", default=False)
+o("debug-assertions", "rust.debug-assertions", "build with debugging assertions", default=False)
+o("debug-assertions-std", "rust.debug-assertions-std", "build the standard library with debugging assertions", default=False)
+o("overflow-checks", "rust.overflow-checks", "build with overflow checks", default=True)
+o("overflow-checks-std", "rust.overflow-checks-std", "build the standard library with overflow checks", default=False)
+o("llvm-release-debuginfo", "llvm.release-debuginfo", "build LLVM with debugger metadata", default=False)
 v("debuginfo-level", "rust.debuginfo-level", "debuginfo level for Rust code")
 v("debuginfo-level-rustc", "rust.debuginfo-level-rustc", "debuginfo level for the compiler")
 v("debuginfo-level-std", "rust.debuginfo-level-std", "debuginfo level for the standard library")
@@ -153,9 +153,9 @@ v("default-linker", "rust.default-linker", "the default linker")
 
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).
-o("manage-submodules", "build.submodules", "let the build manage the git submodules")
-o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two (not recommended except for testing reproducible builds)")
-o("extended", "build.extended", "build an extended rust tool set")
+o("manage-submodules", "build.submodules", "let the build manage the git submodules", default=False)
+o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two (not recommended except for testing reproducible builds)", default=False)
+o("extended", "build.extended", "build an extended rust tool set", default=False)
 
 v("bootstrap-cache-path", None, "use provided path for the bootstrap cache")
 v("tools", None, "List of extended tools will be installed")
@@ -165,8 +165,8 @@ v("host", None, "List of GNUs ./configure syntax LLVM host triples")
 v("target", None, "List of GNUs ./configure syntax LLVM target triples")
 
 # Options specific to this configure script
-o("option-checking", None, "complain about unrecognized options in this configure script")
-o("verbose-configure", None, "don't truncate options when printing them in this configure script")
+o("option-checking", None, "complain about unrecognized options in this configure script", default=False)
+o("verbose-configure", None, "don't truncate options when printing them in this configure script", default=False)
 v("set", None, "set arbitrary key/value pairs in TOML configuration")
 
 
