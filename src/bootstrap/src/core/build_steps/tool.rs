@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
+use build_helper::git::get_closest_merge_commit;
+
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::builder;
@@ -8,7 +10,7 @@ use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun,
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{command, BootstrapCommand};
-use crate::utils::helpers::{add_dylib_path, exe, get_closest_merge_base_commit, git, t};
+use crate::utils::helpers::{add_dylib_path, exe, git, t};
 use crate::{gha, Compiler, Kind, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -576,10 +578,9 @@ impl Step for Rustdoc {
             && target_compiler.stage > 0
             && builder.rust_info().is_managed_git_subrepository()
         {
-            let commit = get_closest_merge_base_commit(
+            let commit = get_closest_merge_commit(
                 Some(&builder.config.src),
                 &builder.config.git_config(),
-                &builder.config.stage0_metadata.config.git_merge_commit_email,
                 &[],
             )
             .unwrap();
