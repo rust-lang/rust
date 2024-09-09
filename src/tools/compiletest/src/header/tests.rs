@@ -148,6 +148,7 @@ impl ConfigBuilder {
             self.target.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
             "--git-repository=",
             "--nightly-branch=",
+            "--git-merge-commit-email=",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 
