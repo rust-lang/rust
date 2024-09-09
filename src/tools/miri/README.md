@@ -187,7 +187,7 @@ Here is an example job for GitHub Actions:
     name: "Miri"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install Miri
         run: |
           rustup toolchain install nightly --component miri
