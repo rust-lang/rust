@@ -171,10 +171,10 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
                 "Metadata at offset {offset} with size {len} is beyond .info section"
             ));
         }
-        return Ok(&info_data[offset..(offset + len)]);
+        Ok(&info_data[offset..(offset + len)])
     } else {
-        return Err(format!("Unable to find symbol {AIX_METADATA_SYMBOL_NAME}"));
-    };
+        Err(format!("Unable to find symbol {AIX_METADATA_SYMBOL_NAME}"))
+    }
 }
 
 pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {
@@ -413,7 +413,7 @@ fn macho_object_build_version_for_target(target: &Target) -> object::write::Mach
 
 /// Is Apple's CPU subtype `arm64e`s
 fn macho_is_arm64e(target: &Target) -> bool {
-    return target.llvm_target.starts_with("arm64e");
+    target.llvm_target.starts_with("arm64e")
 }
 
 pub enum MetadataPosition {

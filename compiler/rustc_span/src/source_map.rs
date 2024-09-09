@@ -779,7 +779,7 @@ impl SourceMap {
                     return Ok(false);
                 }
             }
-            return Ok(true);
+            Ok(true)
         })
         .is_ok_and(|is_accessible| is_accessible)
     }

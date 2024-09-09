@@ -2007,7 +2007,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ));
             }
         }
-        return None;
+        None
     }
 
     /// Checks if the bound region is in Impl Item.

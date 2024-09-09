@@ -1240,5 +1240,5 @@ pub fn parse_confusables(attr: &Attribute) -> Option<Vec<Symbol>> {
         candidates.push(meta_lit.symbol);
     }
 
-    return Some(candidates);
+    Some(candidates)
 }
