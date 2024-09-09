@@ -15,7 +15,7 @@ use rustc_session::Session;
 ///
 /// Thus after this pass, all the successors of a block are later than it in the
 /// `IndexVec`, unless that successor is a back-edge (such as from a loop).
-pub struct ReorderBasicBlocks;
+pub(super) struct ReorderBasicBlocks;
 
 impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
     fn is_enabled(&self, _session: &Session) -> bool {
@@ -43,7 +43,7 @@ impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
 /// assigned or referenced will have a smaller number.
 ///
 /// (Does not reorder arguments nor the [`RETURN_PLACE`].)
-pub struct ReorderLocals;
+pub(super) struct ReorderLocals;
 
 impl<'tcx> crate::MirPass<'tcx> for ReorderLocals {
     fn is_enabled(&self, _session: &Session) -> bool {
@@ -135,8 +135,8 @@ impl<'tcx> Visitor<'tcx> for LocalFinder {
 }
 
 struct LocalUpdater<'tcx> {
-    pub map: IndexVec<Local, Local>,
-    pub tcx: TyCtxt<'tcx>,
+    map: IndexVec<Local, Local>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {

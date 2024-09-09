@@ -5,7 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-pub struct LowerSliceLenCalls;
+pub(super) struct LowerSliceLenCalls;
 
 impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
@@ -17,7 +17,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
     }
 }
 
-pub fn lower_slice_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn lower_slice_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let language_items = tcx.lang_items();
     let Some(slice_len_fn_item_def_id) = language_items.slice_len_fn() else {
         // there is no lang item to compare to :)

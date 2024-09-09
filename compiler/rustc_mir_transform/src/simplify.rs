@@ -35,7 +35,7 @@ use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, trace};
 
-pub enum SimplifyCfg {
+pub(super) enum SimplifyCfg {
     Initial,
     PromoteConsts,
     RemoveFalseEdges,
@@ -50,7 +50,7 @@ pub enum SimplifyCfg {
 }
 
 impl SimplifyCfg {
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             SimplifyCfg::Initial => "SimplifyCfg-initial",
             SimplifyCfg::PromoteConsts => "SimplifyCfg-promote-consts",
@@ -66,7 +66,7 @@ impl SimplifyCfg {
     }
 }
 
-pub(crate) fn simplify_cfg(body: &mut Body<'_>) {
+pub(super) fn simplify_cfg(body: &mut Body<'_>) {
     CfgSimplifier::new(body).simplify();
     remove_dead_blocks(body);
 
@@ -85,13 +85,13 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
     }
 }
 
-pub struct CfgSimplifier<'a, 'tcx> {
+struct CfgSimplifier<'a, 'tcx> {
     basic_blocks: &'a mut IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     pred_count: IndexVec<BasicBlock, u32>,
 }
 
 impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
-    pub fn new(body: &'a mut Body<'tcx>) -> Self {
+    fn new(body: &'a mut Body<'tcx>) -> Self {
         let mut pred_count = IndexVec::from_elem(0u32, &body.basic_blocks);
 
         // we can't use mir.predecessors() here because that counts
@@ -111,7 +111,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         CfgSimplifier { basic_blocks, pred_count }
     }
 
-    pub fn simplify(mut self) {
+    fn simplify(mut self) {
         self.strip_nops();
 
         // Vec of the blocks that should be merged. We store the indices here, instead of the
@@ -280,7 +280,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-pub fn simplify_duplicate_switch_targets(terminator: &mut Terminator<'_>) {
+pub(super) fn simplify_duplicate_switch_targets(terminator: &mut Terminator<'_>) {
     if let TerminatorKind::SwitchInt { targets, .. } = &mut terminator.kind {
         let otherwise = targets.otherwise();
         if targets.iter().any(|t| t.1 == otherwise) {
@@ -292,7 +292,7 @@ pub fn simplify_duplicate_switch_targets(terminator: &mut Terminator<'_>) {
     }
 }
 
-pub(crate) fn remove_dead_blocks(body: &mut Body<'_>) {
+pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
     let should_deduplicate_unreachable = |bbdata: &BasicBlockData<'_>| {
         // CfgSimplifier::simplify leaves behind some unreachable basic blocks without a
         // terminator. Those blocks will be deleted by remove_dead_blocks, but we run just
@@ -360,7 +360,7 @@ pub(crate) fn remove_dead_blocks(body: &mut Body<'_>) {
     }
 }
 
-pub enum SimplifyLocals {
+pub(super) enum SimplifyLocals {
     BeforeConstProp,
     AfterGVN,
     Final,
@@ -385,7 +385,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
     }
 }
 
-pub fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
+pub(super) fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
     // First, we're going to get a count of *actual* uses for every `Local`.
     let mut used_locals = UsedLocals::new(body);
 
@@ -397,7 +397,7 @@ pub fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
     remove_unused_definitions_helper(&mut used_locals, body);
 }
 
-pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
+fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     // First, we're going to get a count of *actual* uses for every `Local`.
     let mut used_locals = UsedLocals::new(body);
 

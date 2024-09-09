@@ -19,7 +19,7 @@ use rustc_middle::ty::TyCtxt;
 ///
 /// It also removes *never*-used constants, since it had all the information
 /// needed to do that too, including updating the debug info.
-pub struct SingleUseConsts;
+pub(super) struct SingleUseConsts;
 
 impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

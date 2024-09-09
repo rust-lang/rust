@@ -64,7 +64,7 @@ impl<'a, P: std::fmt::Debug> LintDiagnostic<'a, ()> for AssertLint<P> {
 }
 
 impl AssertLintKind {
-    pub fn lint(&self) -> &'static Lint {
+    pub(crate) fn lint(&self) -> &'static Lint {
         match self {
             AssertLintKind::ArithmeticOverflow => lint::builtin::ARITHMETIC_OVERFLOW,
             AssertLintKind::UnconditionalPanic => lint::builtin::UNCONDITIONAL_PANIC,
