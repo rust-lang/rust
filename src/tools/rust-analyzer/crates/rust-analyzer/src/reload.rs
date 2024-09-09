@@ -875,16 +875,7 @@ pub fn ws_to_crate_graph(
         let num_toolchains = toolchains.len();
         let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
-        let mapping = crate_graph.extend(
-            other,
-            &mut crate_proc_macros,
-            |(cg_id, cg_data), (_o_id, o_data)| {
-                // if the newly created crate graph's layout is equal to the crate of the merged graph, then
-                // we can merge the crates.
-                let id = cg_id.into_raw().into_u32() as usize;
-                layouts[id] == *target_layout && toolchains[id] == *toolchain && cg_data == o_data
-            },
-        );
+        let mapping = crate_graph.extend(other, &mut crate_proc_macros);
         // Populate the side tables for the newly merged crates
         mapping.values().for_each(|val| {
             let idx = val.into_raw().into_u32() as usize;
