@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_target::abi::Size;
 
 use super::init_once::InitOnce;
 use super::vector_clock::VClock;
@@ -206,21 +206,21 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn get_or_create_id<Id: SyncId + Idx, T>(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
         get_objs: impl for<'a> Fn(&'a mut MiriInterpCx<'tcx>) -> &'a mut IndexVec<Id, T>,
         create_obj: impl for<'a> FnOnce(&'a mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
     ) -> InterpResult<'tcx, Option<Id>> {
         let this = self.eval_context_mut();
-        let value_place =
-            this.deref_pointer_and_offset(lock_op, offset, lock_layout, this.machine.layouts.u32)?;
+        let offset = Size::from_bytes(offset);
+        assert!(lock.layout.size >= offset + this.machine.layouts.u32.size);
+        let id_place = lock.offset(offset, this.machine.layouts.u32, this)?;
         let next_index = get_objs(this).next_index();
 
         // Since we are lazy, this update has to be atomic.
         let (old, success) = this
             .atomic_compare_exchange_scalar(
-                &value_place,
+                &id_place,
                 &ImmTy::from_uint(0u32, this.machine.layouts.u32),
                 Scalar::from_u32(next_index.to_u32()),
                 AtomicRwOrd::Relaxed, // deliberately *no* synchronization
@@ -258,18 +258,18 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// - `obj` must be the new sync object.
     fn create_id<Id: SyncId + Idx, T>(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
         get_objs: impl for<'a> Fn(&'a mut MiriInterpCx<'tcx>) -> &'a mut IndexVec<Id, T>,
         obj: T,
     ) -> InterpResult<'tcx, Id> {
         let this = self.eval_context_mut();
-        let value_place =
-            this.deref_pointer_and_offset(lock_op, offset, lock_layout, this.machine.layouts.u32)?;
+        let offset = Size::from_bytes(offset);
+        assert!(lock.layout.size >= offset + this.machine.layouts.u32.size);
+        let id_place = lock.offset(offset, this.machine.layouts.u32, this)?;
 
         let new_index = get_objs(this).push(obj);
-        this.write_scalar(Scalar::from_u32(new_index.to_u32()), &value_place)?;
+        this.write_scalar(Scalar::from_u32(new_index.to_u32()), &id_place)?;
         Ok(new_index)
     }
 
@@ -302,15 +302,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Eagerly create and initialize a new mutex.
     fn mutex_create(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
         data: Option<AdditionalMutexData>,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
         this.create_id(
-            lock_op,
-            lock_layout,
+            lock,
             offset,
             |ecx| &mut ecx.machine.sync.mutexes,
             Mutex { data, ..Default::default() },
@@ -321,8 +319,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// `initialize_data` must return any additional data that a user wants to associate with the mutex.
     fn mutex_get_or_create_id(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
         initialize_data: impl for<'a> FnOnce(
             &'a mut MiriInterpCx<'tcx>,
@@ -330,8 +327,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
-            lock_op,
-            lock_layout,
+            lock,
             offset,
             |ecx| &mut ecx.machine.sync.mutexes,
             |ecx| initialize_data(ecx).map(|data| Mutex { data, ..Default::default() }),
@@ -350,8 +346,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn rwlock_get_or_create_id(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
         initialize_data: impl for<'a> FnOnce(
             &'a mut MiriInterpCx<'tcx>,
@@ -360,8 +355,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, RwLockId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
-            lock_op,
-            lock_layout,
+            lock,
             offset,
             |ecx| &mut ecx.machine.sync.rwlocks,
             |ecx| initialize_data(ecx).map(|data| RwLock { data, ..Default::default() }),
@@ -380,14 +374,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn condvar_get_or_create_id(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
     ) -> InterpResult<'tcx, CondvarId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
-            lock_op,
-            lock_layout,
+            lock,
             offset,
             |ecx| &mut ecx.machine.sync.condvars,
             |_| Ok(Default::default()),
