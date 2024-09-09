@@ -349,10 +349,14 @@ impl Build {
         };
         let Some(initial_libdir) = find_initial_libdir() else {
             panic!(
-                "couldn't determine `initial_libdir` \
-                from target dir {initial_target_dir:?} \
-                and sysroot {initial_sysroot:?}"
-            )
+                "couldn't determine `initial_libdir`:
+- config.initial_rustc:      {rustc:?}
+- initial_target_libdir_str: {initial_target_libdir_str:?}
+- initial_target_dir:        {initial_target_dir:?}
+- initial_sysroot:           {initial_sysroot:?}
+",
+                rustc = config.initial_rustc,
+            );
         };
 
         let version = std::fs::read_to_string(src.join("src").join("version"))
