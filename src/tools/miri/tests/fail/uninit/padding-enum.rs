@@ -18,6 +18,6 @@ fn main() { unsafe {
     // Turns out the discriminant is (currently) stored
     // in the 2nd pointer, so the first half is padding.
     let c = &p as *const _ as *const u8;
-    let _val = *c.add(0); // Get the padding byte.
+    let _val = *c.add(0); // Get a padding byte.
     //~^ERROR: uninitialized
 } }
