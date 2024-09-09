@@ -4,7 +4,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
-pub struct RemovePlaceMention;
+pub(super) struct RemovePlaceMention;
 
 impl<'tcx> crate::MirPass<'tcx> for RemovePlaceMention {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

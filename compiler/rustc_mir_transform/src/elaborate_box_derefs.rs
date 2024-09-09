@@ -11,7 +11,7 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::FieldIdx;
 
 /// Constructs the types used when accessing a Box's pointer
-pub fn build_ptr_tys<'tcx>(
+fn build_ptr_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     pointee: Ty<'tcx>,
     unique_did: DefId,
@@ -26,7 +26,7 @@ pub fn build_ptr_tys<'tcx>(
 }
 
 /// Constructs the projection needed to access a Box's pointer
-pub fn build_projection<'tcx>(
+pub(super) fn build_projection<'tcx>(
     unique_ty: Ty<'tcx>,
     nonnull_ty: Ty<'tcx>,
     ptr_ty: Ty<'tcx>,
@@ -88,68 +88,65 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
     }
 }
 
-pub struct ElaborateBoxDerefs;
+pub(super) struct ElaborateBoxDerefs;
 
 impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if let Some(def_id) = tcx.lang_items().owned_box() {
-            let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::ZERO].did;
+        // If box is not present, this pass doesn't need to do anything.
+        let Some(def_id) = tcx.lang_items().owned_box() else { return };
 
-            let Some(nonnull_def) = tcx.type_of(unique_did).instantiate_identity().ty_adt_def()
-            else {
-                span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
-            };
+        let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::ZERO].did;
 
-            let nonnull_did = nonnull_def.non_enum_variant().fields[FieldIdx::ZERO].did;
+        let Some(nonnull_def) = tcx.type_of(unique_did).instantiate_identity().ty_adt_def() else {
+            span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
+        };
 
-            let patch = MirPatch::new(body);
+        let nonnull_did = nonnull_def.non_enum_variant().fields[FieldIdx::ZERO].did;
 
-            let local_decls = &mut body.local_decls;
+        let patch = MirPatch::new(body);
 
-            let mut visitor =
-                ElaborateBoxDerefVisitor { tcx, unique_did, nonnull_did, local_decls, patch };
+        let local_decls = &mut body.local_decls;
 
-            for (block, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
-                visitor.visit_basic_block_data(block, data);
-            }
+        let mut visitor =
+            ElaborateBoxDerefVisitor { tcx, unique_did, nonnull_did, local_decls, patch };
 
-            visitor.patch.apply(body);
+        for (block, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
+            visitor.visit_basic_block_data(block, data);
+        }
 
-            for debug_info in body.var_debug_info.iter_mut() {
-                if let VarDebugInfoContents::Place(place) = &mut debug_info.value {
-                    let mut new_projections: Option<Vec<_>> = None;
+        visitor.patch.apply(body);
 
-                    for (base, elem) in place.iter_projections() {
-                        let base_ty = base.ty(&body.local_decls, tcx).ty;
+        for debug_info in body.var_debug_info.iter_mut() {
+            if let VarDebugInfoContents::Place(place) = &mut debug_info.value {
+                let mut new_projections: Option<Vec<_>> = None;
 
-                        if let PlaceElem::Deref = elem
-                            && let Some(boxed_ty) = base_ty.boxed_ty()
-                        {
-                            // Clone the projections before us, since now we need to mutate them.
-                            let new_projections =
-                                new_projections.get_or_insert_with(|| base.projection.to_vec());
+                for (base, elem) in place.iter_projections() {
+                    let base_ty = base.ty(&body.local_decls, tcx).ty;
 
-                            let (unique_ty, nonnull_ty, ptr_ty) =
-                                build_ptr_tys(tcx, boxed_ty, unique_did, nonnull_did);
+                    if let PlaceElem::Deref = elem
+                        && let Some(boxed_ty) = base_ty.boxed_ty()
+                    {
+                        // Clone the projections before us, since now we need to mutate them.
+                        let new_projections =
+                            new_projections.get_or_insert_with(|| base.projection.to_vec());
 
-                            new_projections.extend_from_slice(&build_projection(
-                                unique_ty, nonnull_ty, ptr_ty,
-                            ));
-                            new_projections.push(PlaceElem::Deref);
-                        } else if let Some(new_projections) = new_projections.as_mut() {
-                            // Keep building up our projections list once we've started it.
-                            new_projections.push(elem);
-                        }
-                    }
+                        let (unique_ty, nonnull_ty, ptr_ty) =
+                            build_ptr_tys(tcx, boxed_ty, unique_did, nonnull_did);
 
-                    // Store the mutated projections if we actually changed something.
-                    if let Some(new_projections) = new_projections {
-                        place.projection = tcx.mk_place_elems(&new_projections);
+                        new_projections
+                            .extend_from_slice(&build_projection(unique_ty, nonnull_ty, ptr_ty));
+                        new_projections.push(PlaceElem::Deref);
+                    } else if let Some(new_projections) = new_projections.as_mut() {
+                        // Keep building up our projections list once we've started it.
+                        new_projections.push(elem);
                     }
                 }
+
+                // Store the mutated projections if we actually changed something.
+                if let Some(new_projections) = new_projections {
+                    place.projection = tcx.mk_place_elems(&new_projections);
+                }
             }
-        } else {
-            // box is not present, this pass doesn't need to do anything
         }
     }
 }

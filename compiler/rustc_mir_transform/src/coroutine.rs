@@ -53,7 +53,7 @@
 mod by_move_body;
 use std::{iter, ops};
 
-pub use by_move_body::coroutine_by_move_body_def_id;
+pub(super) use by_move_body::coroutine_by_move_body_def_id;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -85,7 +85,7 @@ use tracing::{debug, instrument, trace};
 use crate::deref_separator::deref_finder;
 use crate::{abort_unwinding_calls, errors, pass_manager as pm, simplify};
 
-pub struct StateTransform;
+pub(super) struct StateTransform;
 
 struct RenameLocalVisitor<'tcx> {
     from: Local,
@@ -1199,7 +1199,7 @@ fn insert_panic_block<'tcx>(
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks.len());
-    let term = TerminatorKind::Assert {
+    let kind = TerminatorKind::Assert {
         cond: Operand::Constant(Box::new(ConstOperand {
             span: body.span,
             user_ty: None,
@@ -1211,14 +1211,7 @@ fn insert_panic_block<'tcx>(
         unwind: UnwindAction::Continue,
     };
 
-    let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind: term }),
-        is_cleanup: false,
-    });
-
-    assert_block
+    insert_term_block(body, kind)
 }
 
 fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {

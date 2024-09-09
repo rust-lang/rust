@@ -47,7 +47,7 @@ use crate::deref_separator::deref_finder;
 ///     }
 /// }
 /// ```
-pub struct ElaborateDrops;
+pub(super) struct ElaborateDrops;
 
 impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
     #[instrument(level = "trace", skip(self, tcx, body))]

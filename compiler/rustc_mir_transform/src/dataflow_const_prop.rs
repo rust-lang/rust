@@ -26,7 +26,7 @@ use tracing::{debug, debug_span, instrument};
 const BLOCK_LIMIT: usize = 100;
 const PLACE_LIMIT: usize = 100;
 
-pub struct DataflowConstProp;
+pub(super) struct DataflowConstProp;
 
 impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
@@ -332,7 +332,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
 }
 
 impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: Map<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: Map<'tcx>) -> Self {
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         Self {
             map,

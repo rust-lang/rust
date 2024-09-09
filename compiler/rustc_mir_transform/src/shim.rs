@@ -26,7 +26,7 @@ use crate::{
 
 mod async_destructor_ctor;
 
-pub fn provide(providers: &mut Providers) {
+pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
@@ -331,7 +331,7 @@ fn new_body<'tcx>(
     body
 }
 
-pub struct DropShimElaborator<'a, 'tcx> {
+pub(super) struct DropShimElaborator<'a, 'tcx> {
     pub body: &'a Body<'tcx>,
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'tcx>,
@@ -913,7 +913,7 @@ fn build_call_shim<'tcx>(
     body
 }
 
-pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
+pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
     let param_env = tcx.param_env_reveal_all_normalized(ctor_id);

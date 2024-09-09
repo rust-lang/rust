@@ -4,7 +4,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub struct RevealAll;
+pub(super) struct RevealAll;
 
 impl<'tcx> crate::MirPass<'tcx> for RevealAll {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
