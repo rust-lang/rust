@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::{hash_map::Entry, VecDeque};
 use std::ops::Not;
 use std::time::Duration;
@@ -66,27 +67,6 @@ pub(super) use declare_id;
 
 declare_id!(MutexId);
 
-/// The mutex kind.
-#[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
-pub enum MutexKind {
-    Invalid,
-    Normal,
-    Default,
-    Recursive,
-    ErrorCheck,
-}
-
-#[derive(Debug)]
-/// Additional data that may be used by shim implementations.
-pub struct AdditionalMutexData {
-    /// The mutex kind, used by some mutex implementations like pthreads mutexes.
-    pub kind: MutexKind,
-
-    /// The address of the mutex.
-    pub address: u64,
-}
-
 /// The mutex state.
 #[derive(Default, Debug)]
 struct Mutex {
@@ -100,17 +80,10 @@ struct Mutex {
     clock: VClock,
 
     /// Additional data that can be set by shim implementations.
-    data: Option<AdditionalMutexData>,
+    data: Option<Box<dyn Any>>,
 }
 
 declare_id!(RwLockId);
-
-#[derive(Debug)]
-/// Additional data that may be used by shim implementations.
-pub struct AdditionalRwLockData {
-    /// The address of the rwlock.
-    pub address: u64,
-}
 
 /// The read-write lock state.
 #[derive(Default, Debug)]
@@ -146,7 +119,7 @@ struct RwLock {
     clock_current_readers: VClock,
 
     /// Additional data that can be set by shim implementations.
-    data: Option<AdditionalRwLockData>,
+    data: Option<Box<dyn Any>>,
 }
 
 declare_id!(CondvarId);
@@ -304,7 +277,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         lock: &MPlaceTy<'tcx>,
         offset: u64,
-        data: Option<AdditionalMutexData>,
+        data: Option<Box<dyn Any>>,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
         this.create_id(
@@ -323,7 +296,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         offset: u64,
         initialize_data: impl for<'a> FnOnce(
             &'a mut MiriInterpCx<'tcx>,
-        ) -> InterpResult<'tcx, Option<AdditionalMutexData>>,
+        ) -> InterpResult<'tcx, Option<Box<dyn Any>>>,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
@@ -336,12 +309,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Retrieve the additional data stored for a mutex.
-    fn mutex_get_data<'a>(&'a mut self, id: MutexId) -> Option<&'a AdditionalMutexData>
+    fn mutex_get_data<'a, T: 'static>(&'a mut self, id: MutexId) -> Option<&'a T>
     where
         'tcx: 'a,
     {
         let this = self.eval_context_ref();
-        this.machine.sync.mutexes[id].data.as_ref()
+        this.machine.sync.mutexes[id].data.as_deref().and_then(|p| p.downcast_ref::<T>())
     }
 
     fn rwlock_get_or_create_id(
@@ -350,8 +323,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         offset: u64,
         initialize_data: impl for<'a> FnOnce(
             &'a mut MiriInterpCx<'tcx>,
-        )
-            -> InterpResult<'tcx, Option<AdditionalRwLockData>>,
+        ) -> InterpResult<'tcx, Option<Box<dyn Any>>>,
     ) -> InterpResult<'tcx, RwLockId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
@@ -364,12 +336,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Retrieve the additional data stored for a rwlock.
-    fn rwlock_get_data<'a>(&'a mut self, id: RwLockId) -> Option<&'a AdditionalRwLockData>
+    fn rwlock_get_data<'a, T: 'static>(&'a mut self, id: RwLockId) -> Option<&'a T>
     where
         'tcx: 'a,
     {
         let this = self.eval_context_ref();
-        this.machine.sync.rwlocks[id].data.as_ref()
+        this.machine.sync.rwlocks[id].data.as_deref().and_then(|p| p.downcast_ref::<T>())
     }
 
     fn condvar_get_or_create_id(

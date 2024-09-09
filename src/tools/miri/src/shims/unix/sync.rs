@@ -59,6 +59,25 @@ fn is_mutex_kind_normal<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResu
     Ok(kind == (mutex_normal_kind | PTHREAD_MUTEX_NORMAL_FLAG))
 }
 
+/// The mutex kind.
+#[derive(Debug, Clone, Copy)]
+pub enum MutexKind {
+    Normal,
+    Default,
+    Recursive,
+    ErrorCheck,
+}
+
+#[derive(Debug)]
+/// Additional data that we attach with each mutex instance.
+pub struct AdditionalMutexData {
+    /// The mutex kind, used by some mutex implementations like pthreads mutexes.
+    pub kind: MutexKind,
+
+    /// The address of the mutex.
+    pub address: u64,
+}
+
 // pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
 // We ignore the platform layout and store our own fields:
 // - id: u32
@@ -100,8 +119,8 @@ fn mutex_create<'tcx>(
     let mutex = ecx.deref_pointer(mutex_ptr)?;
     let address = mutex.ptr().addr().bytes();
     let kind = translate_kind(ecx, kind)?;
-    let data = Some(AdditionalMutexData { address, kind });
-    ecx.mutex_create(&mutex, mutex_id_offset(ecx)?, data)?;
+    let data = Box::new(AdditionalMutexData { address, kind });
+    ecx.mutex_create(&mutex, mutex_id_offset(ecx)?, Some(data))?;
     Ok(())
 }
 
@@ -121,11 +140,13 @@ fn mutex_get_id<'tcx>(
         // an ID yet. We have to determine the mutex kind from the static initializer.
         let kind = kind_from_static_initializer(ecx, &mutex)?;
 
-        Ok(Some(AdditionalMutexData { kind, address }))
+        Ok(Some(Box::new(AdditionalMutexData { kind, address })))
     })?;
 
     // Check that the mutex has not been moved since last use.
-    let data = ecx.mutex_get_data(id).expect("data should be always exist for pthreads");
+    let data = ecx
+        .mutex_get_data::<AdditionalMutexData>(id)
+        .expect("data should always exist for pthreads");
     if data.address != address {
         throw_ub_format!("pthread_mutex_t can't be moved after first use")
     }
@@ -171,6 +192,13 @@ fn translate_kind<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResult<'tc
 // We ignore the platform layout and store our own fields:
 // - id: u32
 
+#[derive(Debug)]
+/// Additional data that may be used by shim implementations.
+pub struct AdditionalRwLockData {
+    /// The address of the rwlock.
+    pub address: u64,
+}
+
 fn rwlock_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
         "linux" | "illumos" | "solaris" => 0,
@@ -205,11 +233,13 @@ fn rwlock_get_id<'tcx>(
     let address = rwlock.ptr().addr().bytes();
 
     let id = ecx.rwlock_get_or_create_id(&rwlock, rwlock_id_offset(ecx)?, |_| {
-        Ok(Some(AdditionalRwLockData { address }))
+        Ok(Some(Box::new(AdditionalRwLockData { address })))
     })?;
 
     // Check that the rwlock has not been moved since last use.
-    let data = ecx.rwlock_get_data(id).expect("data should be always exist for pthreads");
+    let data = ecx
+        .rwlock_get_data::<AdditionalRwLockData>(id)
+        .expect("data should always exist for pthreads");
     if data.address != address {
         throw_ub_format!("pthread_rwlock_t can't be moved after first use")
     }
@@ -473,8 +503,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let id = mutex_get_id(this, mutex_op)?;
-        let kind =
-            this.mutex_get_data(id).expect("data should always exist for pthread mutexes").kind;
+        let kind = this
+            .mutex_get_data::<AdditionalMutexData>(id)
+            .expect("data should always exist for pthread mutexes")
+            .kind;
 
         let ret = if this.mutex_is_locked(id) {
             let owner_thread = this.mutex_get_owner(id);
@@ -492,10 +524,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.mutex_lock(id);
                         0
                     }
-                    _ =>
-                        throw_unsup_format!(
-                            "called pthread_mutex_lock on an unsupported type of mutex"
-                        ),
                 }
             }
         } else {
@@ -511,8 +539,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let id = mutex_get_id(this, mutex_op)?;
-        let kind =
-            this.mutex_get_data(id).expect("data should always exist for pthread mutexes").kind;
+        let kind = this
+            .mutex_get_data::<AdditionalMutexData>(id)
+            .expect("data should always exist for pthread mutexes")
+            .kind;
 
         Ok(Scalar::from_i32(if this.mutex_is_locked(id) {
             let owner_thread = this.mutex_get_owner(id);
@@ -526,10 +556,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.mutex_lock(id);
                         0
                     }
-                    _ =>
-                        throw_unsup_format!(
-                            "called pthread_mutex_trylock on an unsupported type of mutex"
-                        ),
                 }
             }
         } else {
@@ -543,8 +569,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let id = mutex_get_id(this, mutex_op)?;
-        let kind =
-            this.mutex_get_data(id).expect("data should always exist for pthread mutexes").kind;
+        let kind = this
+            .mutex_get_data::<AdditionalMutexData>(id)
+            .expect("data should always exist for pthread mutexes")
+            .kind;
 
         if let Some(_old_locked_count) = this.mutex_unlock(id)? {
             // The mutex was locked by the current thread.
@@ -564,10 +592,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ),
                 MutexKind::ErrorCheck | MutexKind::Recursive =>
                     Ok(Scalar::from_i32(this.eval_libc_i32("EPERM"))),
-                _ =>
-                    throw_unsup_format!(
-                        "called pthread_mutex_unlock on an unsupported type of mutex"
-                    ),
             }
         }
     }
