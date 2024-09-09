@@ -2512,6 +2512,7 @@ impl Config {
         GitConfig {
             git_repository: &self.stage0_metadata.config.git_repository,
             nightly_branch: &self.stage0_metadata.config.nightly_branch,
+            git_merge_commit_email: &self.stage0_metadata.config.git_merge_commit_email,
         }
     }
 
