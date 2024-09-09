@@ -35,8 +35,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         offset: u64,
     ) -> InterpResult<'tcx, InitOnceId> {
         let this = self.eval_context_mut();
-        this.get_or_create_id(lock_op, lock_layout, offset, |ecx| &mut ecx.machine.sync.init_onces)?
-            .ok_or_else(|| err_ub_format!("init_once has invalid ID").into())
+        this.get_or_create_id(
+            lock_op,
+            lock_layout,
+            offset,
+            |ecx| &mut ecx.machine.sync.init_onces,
+            |_| Ok(Default::default()),
+        )?
+        .ok_or_else(|| err_ub_format!("init_once has invalid ID").into())
     }
 
     #[inline]

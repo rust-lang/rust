@@ -1912,7 +1912,7 @@ impl Step for Assemble {
         // delegates to the `rust-lld` binary for linking and then runs
         // logic to create the final binary. This is used by the
         // `wasm32-wasip2` target of Rust.
-        if builder.build_wasm_component_ld() {
+        if builder.tool_enabled("wasm-component-ld") {
             let wasm_component_ld_exe =
                 builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
                     compiler: build_compiler,

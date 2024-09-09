@@ -1,4 +1,6 @@
-//@only-target-linux
+// Only works on Unix targets
+//@ignore-target-windows
+//@ignore-target-wasm
 //@only-on-host
 //@normalize-stderr-test: "OS `.*`" -> "$$OS"
 

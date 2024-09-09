@@ -115,7 +115,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
         let len = mem::size_of_val(&ret);
         wasi::random_get(base, len).expect("random_get failure");
     }
-    return ret;
+    ret
 }
 
 #[inline]

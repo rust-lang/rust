@@ -473,7 +473,7 @@ impl Step for Rustc {
                     );
                 }
             }
-            if builder.build_wasm_component_ld() {
+            if builder.tool_enabled("wasm-component-ld") {
                 let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
                 let ld = exe("wasm-component-ld", compiler.host);
                 builder.copy_link(&src_dir.join(&ld), &dst_dir.join(&ld));
