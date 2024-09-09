@@ -220,6 +220,10 @@ pub struct RangeSet(Vec<(Size, Size)>);
 
 impl RangeSet {
     fn add_range(&mut self, offset: Size, size: Size) {
+        if size.bytes() == 0 {
+            // No need to track empty ranges.
+            return;
+        }
         let v = &mut self.0;
         // We scan for a partition point where the left partition is all the elements that end
         // strictly before we start. Those are elements that are too "low" to merge with us.
@@ -938,42 +942,53 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         let layout_cx = LayoutCx { tcx: *ecx.tcx, param_env: ecx.param_env };
         return M::cached_union_data_range(ecx, layout.ty, || {
             let mut out = RangeSet(Vec::new());
-            union_data_range_(&layout_cx, layout, Size::ZERO, &mut out);
+            union_data_range_uncached(&layout_cx, layout, Size::ZERO, &mut out);
             out
         });
 
         /// Helper for recursive traversal: add data ranges of the given type to `out`.
-        fn union_data_range_<'tcx>(
+        fn union_data_range_uncached<'tcx>(
             cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
             layout: TyAndLayout<'tcx>,
             base_offset: Size,
             out: &mut RangeSet,
         ) {
+            // If this is a ZST, we don't contain any data. In particular, this helps us to quickly
+            // skip over huge arrays of ZST.
+            if layout.is_zst() {
+                return;
+            }
             // Just recursively add all the fields of everything to the output.
             match &layout.fields {
                 FieldsShape::Primitive => {
                     out.add_range(base_offset, layout.size);
                 }
                 &FieldsShape::Union(fields) => {
-                    // Currently, all fields start at offset 0.
+                    // Currently, all fields start at offset 0 (relative to `base_offset`).
                     for field in 0..fields.get() {
                         let field = layout.field(cx, field);
-                        union_data_range_(cx, field, base_offset, out);
+                        union_data_range_uncached(cx, field, base_offset, out);
                     }
                 }
                 &FieldsShape::Array { stride, count } => {
                     let elem = layout.field(cx, 0);
-                    for idx in 0..count {
-                        // This repeats the same computation for every array elements... but the alternative
-                        // is to allocate temporary storage for a dedicated `out` set for the array element,
-                        // and replicating that N times. Is that better?
-                        union_data_range_(cx, elem, base_offset + idx * stride, out);
+
+                    // Fast-path for large arrays of simple types that do not contain any padding.
+                    if elem.abi.is_scalar() {
+                        out.add_range(base_offset, elem.size * count);
+                    } else {
+                        for idx in 0..count {
+                            // This repeats the same computation for every array element... but the alternative
+                            // is to allocate temporary storage for a dedicated `out` set for the array element,
+                            // and replicating that N times. Is that better?
+                            union_data_range_uncached(cx, elem, base_offset + idx * stride, out);
+                        }
                     }
                 }
                 FieldsShape::Arbitrary { offsets, .. } => {
                     for (field, &offset) in offsets.iter_enumerated() {
                         let field = layout.field(cx, field.as_usize());
-                        union_data_range_(cx, field, base_offset + offset, out);
+                        union_data_range_uncached(cx, field, base_offset + offset, out);
                     }
                 }
             }
@@ -985,7 +1000,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 Variants::Multiple { variants, .. } => {
                     for variant in variants.indices() {
                         let variant = layout.for_variant(cx, variant);
-                        union_data_range_(cx, variant, base_offset, out);
+                        union_data_range_uncached(cx, variant, base_offset, out);
                     }
                 }
             }
@@ -1185,7 +1200,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // This is the size in bytes of the whole array. (This checks for overflow.)
                 let size = layout.size * len;
                 // If the size is 0, there is nothing to check.
-                // (`size` can only be 0 of `len` is 0, and empty arrays are always valid.)
+                // (`size` can only be 0 if `len` is 0, and empty arrays are always valid.)
                 if size == Size::ZERO {
                     return Ok(());
                 }
