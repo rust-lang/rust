@@ -13,7 +13,7 @@ pub(crate) struct PidFd(FileDesc);
 
 impl PidFd {
     pub fn kill(&self) -> io::Result<()> {
-        return cvt(unsafe {
+        cvt(unsafe {
             libc::syscall(
                 libc::SYS_pidfd_send_signal,
                 self.0.as_raw_fd(),
@@ -22,7 +22,7 @@ impl PidFd {
                 0,
             )
         })
-        .map(drop);
+        .map(drop)
     }
 
     pub fn wait(&self) -> io::Result<ExitStatus> {
@@ -30,7 +30,7 @@ impl PidFd {
         cvt(unsafe {
             libc::waitid(libc::P_PIDFD, self.0.as_raw_fd() as u32, &mut siginfo, libc::WEXITED)
         })?;
-        return Ok(ExitStatus::from_waitid_siginfo(siginfo));
+        Ok(ExitStatus::from_waitid_siginfo(siginfo))
     }
 
     pub fn try_wait(&self) -> io::Result<Option<ExitStatus>> {
@@ -45,9 +45,10 @@ impl PidFd {
             )
         })?;
         if unsafe { siginfo.si_pid() } == 0 {
-            return Ok(None);
+            Ok(None)
+        } else {
+            Ok(Some(ExitStatus::from_waitid_siginfo(siginfo)))
         }
-        return Ok(Some(ExitStatus::from_waitid_siginfo(siginfo)));
     }
 }
 
