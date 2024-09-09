@@ -72,8 +72,11 @@ fn is_valid_cmse_inputs<'tcx>(
     let mut span = None;
     let mut accum = 0u64;
 
-    for (index, arg_def) in fn_sig.inputs().iter().enumerate() {
-        let layout = tcx.layout_of(ParamEnv::reveal_all().and(*arg_def.skip_binder()))?;
+    // this type is only used for layout computation, which does not rely on regions
+    let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
+
+    for (index, ty) in fn_sig.inputs().iter().enumerate() {
+        let layout = tcx.layout_of(ParamEnv::reveal_all().and(*ty))?;
 
         let align = layout.layout.align().abi.bytes();
         let size = layout.layout.size().bytes();
@@ -98,7 +101,10 @@ fn is_valid_cmse_output<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_sig: ty::PolyFnSig<'tcx>,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
-    let mut ret_ty = fn_sig.output().skip_binder();
+    // this type is only used for layout computation, which does not rely on regions
+    let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
+
+    let mut ret_ty = fn_sig.output();
     let layout = tcx.layout_of(ParamEnv::reveal_all().and(ret_ty))?;
     let size = layout.layout.size().bytes();
 
