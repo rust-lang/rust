@@ -13,7 +13,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self as ty, Ty, TyCtxt};
+use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
 use rustc_span::symbol::Ident;
@@ -607,13 +607,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 tcx.param_env(did.to_def_id()).and(*ty),
                 &mut additional_tf,
             )
-        }
-        // FIXME(struct_target_features): is this really necessary?
-        if !additional_tf.is_empty() && sig.skip_binder().abi() != abi::Abi::Rust {
-            tcx.dcx().span_err(
-                tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
-                "cannot use a struct with target features in a function with non-Rust ABI",
-            );
         }
         if !additional_tf.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
             tcx.dcx().span_err(
