@@ -54,30 +54,34 @@ check-aux:
 		src/etc/test-float-parse \
 		$(BOOTSTRAP_ARGS)
 	# Run standard library tests in Miri.
-	$(Q)BOOTSTRAP_SKIP_TARGET_SANITY=1 \
-		$(BOOTSTRAP) miri --stage 2 \
+	$(Q)$(BOOTSTRAP) miri --stage 2 \
 		library/core \
 		library/alloc \
+		$(BOOTSTRAP_ARGS) \
 		--no-doc
 	# Some doctests use file system operations to demonstrate dealing with `Result`.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 \
 		library/core \
 		library/alloc \
+		$(BOOTSTRAP_ARGS) \
 		--doc
 	# In `std` we cannot test everything, so we skip some modules.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 library/std \
+		$(BOOTSTRAP_ARGS) \
 		--no-doc -- \
 		--skip fs:: --skip net:: --skip process:: --skip sys::pal::
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 library/std \
+		$(BOOTSTRAP_ARGS) \
 		--doc -- \
 		--skip fs:: --skip net:: --skip process:: --skip sys::pal::
 	# Also test some very target-specific modules on other targets
 	# (making sure to cover an i686 target as well).
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
 		$(BOOTSTRAP) miri --stage 2 library/std \
+		$(BOOTSTRAP_ARGS) \
 		--target aarch64-apple-darwin,i686-pc-windows-msvc \
 		--no-doc -- \
 		time:: sync:: thread:: env::
