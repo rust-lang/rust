@@ -572,6 +572,9 @@ pub struct MiriMachine<'tcx> {
     /// Invariant: the promised alignment will never be less than the native alignment of the
     /// allocation.
     pub(crate) symbolic_alignment: RefCell<FxHashMap<AllocId, (Size, Align)>>,
+
+    /// A cache of "data range" computations for unions (i.e., the offsets of non-padding bytes).
+    union_data_ranges: FxHashMap<Ty<'tcx>, RangeSet>,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -714,6 +717,7 @@ impl<'tcx> MiriMachine<'tcx> {
             allocation_spans: RefCell::new(FxHashMap::default()),
             const_cache: RefCell::new(FxHashMap::default()),
             symbolic_alignment: RefCell::new(FxHashMap::default()),
+            union_data_ranges: FxHashMap::default(),
         }
     }
 
@@ -826,6 +830,7 @@ impl VisitProvenance for MiriMachine<'_> {
             allocation_spans: _,
             const_cache: _,
             symbolic_alignment: _,
+            union_data_ranges: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -1626,5 +1631,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         } else {
             ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL
         }
+    }
+
+    fn cached_union_data_range<'e>(
+        ecx: &'e mut InterpCx<'tcx, Self>,
+        ty: Ty<'tcx>,
+        compute_range: impl FnOnce() -> RangeSet,
+    ) -> Cow<'e, RangeSet> {
+        Cow::Borrowed(ecx.machine.union_data_ranges.entry(ty).or_insert_with(compute_range))
     }
 }

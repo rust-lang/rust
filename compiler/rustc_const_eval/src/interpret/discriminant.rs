@@ -7,7 +7,7 @@ use rustc_target::abi::{self, TagEncoding, VariantIdx, Variants};
 use tracing::{instrument, trace};
 
 use super::{
-    err_ub, throw_ub, ImmTy, InterpCx, InterpResult, Machine, Readable, Scalar, Writeable,
+    err_ub, throw_ub, ImmTy, InterpCx, InterpResult, Machine, Projectable, Scalar, Writeable,
 };
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
@@ -60,7 +60,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     #[instrument(skip(self), level = "trace")]
     pub fn read_discriminant(
         &self,
-        op: &impl Readable<'tcx, M::Provenance>,
+        op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, VariantIdx> {
         let ty = op.layout().ty;
         trace!("read_discriminant_value {:#?}", op.layout());
