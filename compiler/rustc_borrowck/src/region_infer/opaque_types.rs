@@ -213,8 +213,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Special handling of higher-ranked regions.
                 if !self.scc_universe(scc).is_root() {
-                    let annotation = self.constraint_sccs.annotation(scc);
-                    if annotation.representative_is_placeholder && vid == annotation.representative
+                    if self
+                        .constraint_sccs
+                        .annotation(scc)
+                        .placeholder_representative()
+                        .is_some_and(|scc_placeholder| vid == scc_placeholder)
                     {
                         // FIXME: somehow construct the right type out of the representative!
                         return region;
