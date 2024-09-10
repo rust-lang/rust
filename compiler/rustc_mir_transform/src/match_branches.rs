@@ -57,8 +57,9 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
 }
 
 trait SimplifyMatch<'tcx> {
-    /// Simplifies a match statement, returning true if the simplification succeeds, false otherwise.
-    /// Generic code is written here, and we generally don't need a custom implementation.
+    /// Simplifies a match statement, returning true if the simplification succeeds, false
+    /// otherwise. Generic code is written here, and we generally don't need a custom
+    /// implementation.
     fn simplify(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -240,7 +241,8 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
                         // Same value in both blocks. Use statement as is.
                         patch.add_statement(parent_end, f.kind.clone());
                     } else {
-                        // Different value between blocks. Make value conditional on switch condition.
+                        // Different value between blocks. Make value conditional on switch
+                        // condition.
                         let size = tcx.layout_of(param_env.and(discr_ty)).unwrap().size;
                         let const_cmp = Operand::const_from_scalar(
                             tcx,
@@ -394,14 +396,16 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
             return None;
         }
 
-        // We first compare the two branches, and then the other branches need to fulfill the same conditions.
+        // We first compare the two branches, and then the other branches need to fulfill the same
+        // conditions.
         let mut expected_transform_kinds = Vec::new();
         for (f, s) in iter::zip(first_stmts, second_stmts) {
             let compare_type = match (&f.kind, &s.kind) {
                 // If two statements are exactly the same, we can optimize.
                 (f_s, s_s) if f_s == s_s => ExpectedTransformKind::Same(f_s),
 
-                // If two statements are assignments with the match values to the same place, we can optimize.
+                // If two statements are assignments with the match values to the same place, we
+                // can optimize.
                 (
                     StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
                     StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),

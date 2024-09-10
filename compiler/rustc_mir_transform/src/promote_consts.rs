@@ -1,16 +1,14 @@
 //! A pass that promotes borrows of constant rvalues.
 //!
-//! The rvalues considered constant are trees of temps,
-//! each with exactly one initialization, and holding
-//! a constant value with no interior mutability.
-//! They are placed into a new MIR constant body in
-//! `promoted` and the borrow rvalue is replaced with
-//! a `Literal::Promoted` using the index into `promoted`
-//! of that constant MIR.
+//! The rvalues considered constant are trees of temps, each with exactly one
+//! initialization, and holding a constant value with no interior mutability.
+//! They are placed into a new MIR constant body in `promoted` and the borrow
+//! rvalue is replaced with a `Literal::Promoted` using the index into
+//! `promoted` of that constant MIR.
 //!
-//! This pass assumes that every use is dominated by an
-//! initialization and can otherwise silence errors, if
-//! move analysis runs after promotion on broken MIR.
+//! This pass assumes that every use is dominated by an initialization and can
+//! otherwise silence errors, if move analysis runs after promotion on broken
+//! MIR.
 
 use std::assert_matches::assert_matches;
 use std::cell::Cell;
@@ -38,6 +36,7 @@ use tracing::{debug, instrument};
 /// newly created `Constant`.
 #[derive(Default)]
 pub(super) struct PromoteTemps<'tcx> {
+    // Must use `Cell` because `run_pass` takes `&self`, not `&mut self`.
     pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
 }
 
@@ -386,7 +385,8 @@ impl<'tcx> Validator<'_, 'tcx> {
     fn validate_ref(&mut self, kind: BorrowKind, place: &Place<'tcx>) -> Result<(), Unpromotable> {
         match kind {
             // Reject these borrow types just to be safe.
-            // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a usecase.
+            // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a
+            // usecase.
             BorrowKind::Fake(_) | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {
                 return Err(Unpromotable);
             }
@@ -468,7 +468,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
 
                 if let ty::RawPtr(_, _) | ty::FnPtr(..) = lhs_ty.kind() {
-                    // Raw and fn pointer operations are not allowed inside consts and thus not promotable.
+                    // Raw and fn pointer operations are not allowed inside consts and thus not
+                    // promotable.
                     assert_matches!(
                         op,
                         BinOp::Eq
@@ -498,7 +499,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 Some(x) if x != 0 => {}        // okay
                                 _ => return Err(Unpromotable), // value not known or 0 -- not okay
                             }
-                            // Furthermore, for signed division, we also have to exclude `int::MIN / -1`.
+                            // Furthermore, for signed division, we also have to exclude `int::MIN /
+                            // -1`.
                             if lhs_ty.is_signed() {
                                 match rhs_val.map(|x| x.to_int(sz)) {
                                     Some(-1) | None => {
@@ -512,8 +514,11 @@ impl<'tcx> Validator<'_, 'tcx> {
                                         };
                                         let lhs_min = sz.signed_int_min();
                                         match lhs_val.map(|x| x.to_int(sz)) {
-                                            Some(x) if x != lhs_min => {}  // okay
-                                            _ => return Err(Unpromotable), // value not known or int::MIN -- not okay
+                                            // okay
+                                            Some(x) if x != lhs_min => {}
+
+                                            // value not known or int::MIN -- not okay
+                                            _ => return Err(Unpromotable),
                                         }
                                     }
                                     _ => {}
@@ -815,8 +820,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 TerminatorKind::Call {
                     mut func, mut args, call_source: desugar, fn_span, ..
                 } => {
-                    // This promoted involves a function call, so it may fail to evaluate.
-                    // Let's make sure it is added to `required_consts` so that failure cannot get lost.
+                    // This promoted involves a function call, so it may fail to evaluate. Let's
+                    // make sure it is added to `required_consts` so that failure cannot get lost.
                     self.add_to_required = true;
 
                     self.visit_operand(&mut func, loc);

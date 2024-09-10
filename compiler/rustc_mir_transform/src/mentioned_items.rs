@@ -10,7 +10,7 @@ pub(super) struct MentionedItems;
 struct MentionedItemsVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
-    mentioned_items: &'a mut Vec<Spanned<MentionedItem<'tcx>>>,
+    mentioned_items: Vec<Spanned<MentionedItem<'tcx>>>,
 }
 
 impl<'tcx> crate::MirPass<'tcx> for MentionedItems {
@@ -23,9 +23,9 @@ impl<'tcx> crate::MirPass<'tcx> for MentionedItems {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
-        let mut mentioned_items = Vec::new();
-        MentionedItemsVisitor { tcx, body, mentioned_items: &mut mentioned_items }.visit_body(body);
-        body.set_mentioned_items(mentioned_items);
+        let mut visitor = MentionedItemsVisitor { tcx, body, mentioned_items: Vec::new() };
+        visitor.visit_body(body);
+        body.set_mentioned_items(visitor.mentioned_items);
     }
 }
 
@@ -82,7 +82,9 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                     source_ty.builtin_deref(true).map(|t| t.kind()),
                     target_ty.builtin_deref(true).map(|t| t.kind()),
                 ) {
-                    (Some(ty::Array(..)), Some(ty::Str | ty::Slice(..))) => false, // &str/&[T] unsizing
+                    // &str/&[T] unsizing
+                    (Some(ty::Array(..)), Some(ty::Str | ty::Slice(..))) => false,
+
                     _ => true,
                 };
                 if may_involve_vtable {

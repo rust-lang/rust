@@ -568,7 +568,8 @@ impl<'tcx> Inliner<'tcx> {
                 // if the no-attribute function ends up with the same instruction set anyway.
                 return Err("Cannot move inline-asm across instruction sets");
             } else if let TerminatorKind::TailCall { .. } = term.kind {
-                // FIXME(explicit_tail_calls): figure out how exactly functions containing tail calls can be inlined (and if they even should)
+                // FIXME(explicit_tail_calls): figure out how exactly functions containing tail
+                // calls can be inlined (and if they even should)
                 return Err("can't inline functions with tail calls");
             } else {
                 work_list.extend(term.successors())
