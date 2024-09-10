@@ -1261,10 +1261,6 @@ rustc_queries! {
         desc { |tcx| "computing target features for struct `{}`", tcx.def_path_str(def_id) }
     }
 
-    query struct_reachable_target_features(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx [TargetFeature] {
-        desc { |tcx| "computing target features reachable from {}", env.value }
-    }
-
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
