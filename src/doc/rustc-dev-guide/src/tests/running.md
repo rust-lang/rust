@@ -357,14 +357,14 @@ $ apt install libgccjit-12-dev
 Now you can run the following command:
 
 ```bash
-$ ./x.py test compiler/rustc_codegen_gcc/
+$ ./x test compiler/rustc_codegen_gcc/
 ```
 
 If it cannot find the `.so` library (if you installed it with `apt` for example), you
 need to pass the library file path with `LIBRARY_PATH`:
 
 ```bash
-$ LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12/ ./x.py test compiler/rustc_codegen_gcc/
+$ LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12/ ./x test compiler/rustc_codegen_gcc/
 ```
 
 If you encounter bugs or problems, don't hesitate to open issues on
