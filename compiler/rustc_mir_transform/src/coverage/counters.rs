@@ -288,7 +288,7 @@ impl<'a> MakeBcbCounters<'a> {
     ) {
         // First, ensure that this node has a counter of some kind.
         // We might also use that counter to compute one of the out-edge counters.
-        let from_bcb_operand = self.get_or_make_counter_operand(from_bcb);
+        let node_counter = self.get_or_make_node_counter(from_bcb);
 
         let successors = self.basic_coverage_blocks.successors[from_bcb].as_slice();
 
@@ -324,7 +324,7 @@ impl<'a> MakeBcbCounters<'a> {
                 .filter(|&to_bcb| to_bcb != expression_to_bcb)
                 .fold(None, |accum, to_bcb| {
                     let _span = debug_span!("to_bcb", ?accum, ?to_bcb).entered();
-                    let edge_counter = self.get_or_make_edge_counter_operand(from_bcb, to_bcb);
+                    let edge_counter = self.get_or_make_edge_counter(from_bcb, to_bcb);
                     Some(self.coverage_counters.make_sum_expression(accum, edge_counter))
                 })
                 .expect("there must be at least one other out-edge")
@@ -333,7 +333,7 @@ impl<'a> MakeBcbCounters<'a> {
         // Now create an expression for the chosen edge, by taking the counter
         // for its source node and subtracting the sum of its sibling out-edges.
         let expression = self.coverage_counters.make_expression(
-            from_bcb_operand,
+            node_counter,
             Op::Subtract,
             sum_of_all_other_out_edges,
         );
@@ -347,7 +347,7 @@ impl<'a> MakeBcbCounters<'a> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn get_or_make_counter_operand(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
+    fn get_or_make_node_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
         // If the BCB already has a counter, return it.
         if let Some(counter_kind) = self.coverage_counters.bcb_counters[bcb] {
             debug!("{bcb:?} already has a counter: {counter_kind:?}");
@@ -384,7 +384,7 @@ impl<'a> MakeBcbCounters<'a> {
                 .copied()
                 .fold(None, |accum, from_bcb| {
                     let _span = debug_span!("from_bcb", ?accum, ?from_bcb).entered();
-                    let edge_counter = self.get_or_make_edge_counter_operand(from_bcb, bcb);
+                    let edge_counter = self.get_or_make_edge_counter(from_bcb, bcb);
                     Some(self.coverage_counters.make_sum_expression(accum, edge_counter))
                 })
                 .expect("there must be at least one in-edge")
@@ -395,7 +395,7 @@ impl<'a> MakeBcbCounters<'a> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn get_or_make_edge_counter_operand(
+    fn get_or_make_edge_counter(
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
@@ -404,13 +404,13 @@ impl<'a> MakeBcbCounters<'a> {
         // a node counter instead, since it will have the same value.
         if !self.basic_coverage_blocks.bcb_has_multiple_in_edges(to_bcb) {
             assert_eq!([from_bcb].as_slice(), self.basic_coverage_blocks.predecessors[to_bcb]);
-            return self.get_or_make_counter_operand(to_bcb);
+            return self.get_or_make_node_counter(to_bcb);
         }
 
         // If the source BCB has only one successor (assumed to be the given target), an edge
         // counter is unnecessary. Just get or make a counter for the source BCB.
         if self.bcb_successors(from_bcb).len() == 1 {
-            return self.get_or_make_counter_operand(from_bcb);
+            return self.get_or_make_node_counter(from_bcb);
         }
 
         // If the edge already has a counter, return it.
