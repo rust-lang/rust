@@ -45,42 +45,18 @@ use crate::{
 };
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
-    match op {
-        BinOp::Eq => IntPredicate::IntEQ,
-        BinOp::Ne => IntPredicate::IntNE,
-        BinOp::Lt => {
-            if signed {
-                IntPredicate::IntSLT
-            } else {
-                IntPredicate::IntULT
-            }
-        }
-        BinOp::Le => {
-            if signed {
-                IntPredicate::IntSLE
-            } else {
-                IntPredicate::IntULE
-            }
-        }
-        BinOp::Gt => {
-            if signed {
-                IntPredicate::IntSGT
-            } else {
-                IntPredicate::IntUGT
-            }
-        }
-        BinOp::Ge => {
-            if signed {
-                IntPredicate::IntSGE
-            } else {
-                IntPredicate::IntUGE
-            }
-        }
-        op => bug!(
-            "comparison_op_to_icmp_predicate: expected comparison operator, \
-             found {:?}",
-            op
-        ),
+    match (op, signed) {
+        (BinOp::Eq, _) => IntPredicate::IntEQ,
+        (BinOp::Ne, _) => IntPredicate::IntNE,
+        (BinOp::Lt, true) => IntPredicate::IntSLT,
+        (BinOp::Lt, false) => IntPredicate::IntULT,
+        (BinOp::Le, true) => IntPredicate::IntSLE,
+        (BinOp::Le, false) => IntPredicate::IntULE,
+        (BinOp::Gt, true) => IntPredicate::IntSGT,
+        (BinOp::Gt, false) => IntPredicate::IntUGT,
+        (BinOp::Ge, true) => IntPredicate::IntSGE,
+        (BinOp::Ge, false) => IntPredicate::IntUGE,
+        op => bug!("bin_op_to_icmp_predicate: expected comparison operator, found {:?}", op),
     }
 }
 
@@ -92,13 +68,7 @@ pub(crate) fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
         BinOp::Le => RealPredicate::RealOLE,
         BinOp::Gt => RealPredicate::RealOGT,
         BinOp::Ge => RealPredicate::RealOGE,
-        op => {
-            bug!(
-                "comparison_op_to_fcmp_predicate: expected comparison operator, \
-                 found {:?}",
-                op
-            );
-        }
+        op => bug!("bin_op_to_fcmp_predicate: expected comparison operator, found {:?}", op),
     }
 }
 
