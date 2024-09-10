@@ -889,6 +889,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
     const PANIC_ON_ALLOC_FAIL: bool = false;
 
+    const RESET_PROVENANCE_AND_PADDING: bool = true;
+
     #[inline(always)]
     fn enforce_alignment(ecx: &MiriInterpCx<'tcx>) -> bool {
         ecx.machine.check_alignment != AlignmentCheck::None

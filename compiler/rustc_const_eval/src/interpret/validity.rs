@@ -272,7 +272,8 @@ struct ValidityVisitor<'rt, 'tcx, M: Machine<'tcx>> {
     ctfe_mode: Option<CtfeValidationMode>,
     ecx: &'rt mut InterpCx<'tcx, M>,
     /// Whether provenance should be reset outside of pointers (emulating the effect of a typed
-    /// copy).
+    /// copy). If this is `true`, then `M::RESET_PROVENANCE_AND_PADDING` is true, but not vice
+    /// versa since we don't want to reset adding for recursive validation.
     reset_provenance_and_padding: bool,
     /// This tracks which byte ranges in this value contain data; the remaining bytes are padding.
     /// The ideal representation here would be pointer-length pairs, but to keep things more compact
@@ -416,7 +417,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         let imm = self.read_immediate(val, expected)?;
         // Reset provenance: ensure slice tail metadata does not preserve provenance,
         // and ensure all pointers do not preserve partial provenance.
-        if self.reset_provenance_and_padding {
+        if self.reset_provenance_and_padding() {
             if matches!(imm.layout.abi, Abi::Scalar(..)) {
                 // A thin pointer. If it has provenance, we don't have to do anything.
                 // If it does not, ensure we clear the provenance in memory.
@@ -676,7 +677,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         value: format!("{scalar:x}"),
                     }
                 );
-                if self.reset_provenance_and_padding {
+                if self.reset_provenance_and_padding() {
                     self.ecx.clear_provenance(value)?;
                     self.add_data_range_place(value);
                 }
@@ -691,7 +692,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         value: format!("{scalar:x}"),
                     }
                 );
-                if self.reset_provenance_and_padding {
+                if self.reset_provenance_and_padding() {
                     self.ecx.clear_provenance(value)?;
                     self.add_data_range_place(value);
                 }
@@ -708,7 +709,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         ExpectedKind::Int
                     },
                 )?;
-                if self.reset_provenance_and_padding {
+                if self.reset_provenance_and_padding() {
                     self.ecx.clear_provenance(value)?;
                     self.add_data_range_place(value);
                 }
@@ -744,7 +745,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         throw_validation_failure!(self.path, NullFnPtr);
                     }
                 }
-                if self.reset_provenance_and_padding {
+                if self.reset_provenance_and_padding() {
                     // Make sure we do not preserve partial provenance. This matches the thin
                     // pointer handling in `deref_pointer`.
                     if matches!(scalar, Scalar::Int(..)) {
@@ -847,6 +848,13 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         }
     }
 
+    #[inline(always)]
+    fn reset_provenance_and_padding(&self) -> bool {
+        // Make sure this becomes a constant `false` when `M::RESET_PADDING_AND_PROVENANCE` is `false`.
+        // This way, all the padding/provenance reset code paths can be removed in the CTFE machine.
+        M::RESET_PROVENANCE_AND_PADDING && self.reset_provenance_and_padding
+    }
+
     /// Add the given pointer-length pair to the "data" range of this visit.
     fn add_data_range(&mut self, ptr: Pointer<Option<M::Provenance>>, size: Size) {
         if let Some(data_bytes) = self.data_bytes.as_mut() {
@@ -882,6 +890,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     }
 
     fn reset_padding(&mut self, place: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+        if !M::RESET_PROVENANCE_AND_PADDING {
+            return Ok(());
+        }
         let Some(data_bytes) = self.data_bytes.as_mut() else { return Ok(()) };
         // Our value must be in memory, otherwise we would not have set up `data_bytes`.
         let mplace = self.ecx.force_allocation(place)?;
@@ -1122,7 +1133,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 }
             }
         }
-        if self.reset_provenance_and_padding
+        if self.reset_provenance_and_padding()
             && let Some(data_bytes) = self.data_bytes.as_mut()
         {
             let base_offset = Self::data_range_offset(self.ecx, val);
@@ -1255,7 +1266,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
 
                 // Don't forget that these are all non-pointer types, and thus do not preserve
                 // provenance.
-                if self.reset_provenance_and_padding {
+                if self.reset_provenance_and_padding() {
                     // We can't share this with above as above, we might be looking at read-only memory.
                     let mut alloc = self.ecx.get_ptr_alloc_mut(mplace.ptr(), size)?.expect("we already excluded size 0");
                     alloc.clear_provenance()?;
@@ -1346,6 +1357,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Run the visitor.
         match self.run_for_validation(|ecx| {
+            if reset_provenance_and_padding {
+                // Check the invariant relating `reset_provenance_and_padding` to this constant.
+                assert!(M::RESET_PROVENANCE_AND_PADDING);
+            }
             let reset_padding = reset_provenance_and_padding && {
                 // Check if `val` is actually stored in memory. If not, padding is not even
                 // represented and we need not reset it.
@@ -1409,7 +1424,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             path,
             Some(ref_tracking),
             Some(ctfe_mode),
-            /*reset_provenance*/ false,
+            /*reset_provenance_and_padding*/ false,
         )
     }
 
@@ -1421,7 +1436,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         val: &PlaceTy<'tcx, M::Provenance>,
         recursive: bool,
-        reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
@@ -1432,7 +1446,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 vec![],
                 None,
                 None,
-                reset_provenance_and_padding,
+                M::RESET_PROVENANCE_AND_PADDING,
             );
         }
         // Do a recursive check.
@@ -1442,7 +1456,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             vec![],
             Some(&mut ref_tracking),
             None,
-            reset_provenance_and_padding,
+            M::RESET_PROVENANCE_AND_PADDING,
         )?;
         while let Some((mplace, path)) = ref_tracking.todo.pop() {
             // Things behind reference do *not* have the provenance reset.

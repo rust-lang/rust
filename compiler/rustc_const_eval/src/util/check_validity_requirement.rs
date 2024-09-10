@@ -67,13 +67,7 @@ fn check_validity_requirement_strict<'tcx>(
     // due to this.
     // The value we are validating is temporary and discarded at the end of this function, so
     // there is no point in reseting provenance and padding.
-    Ok(cx
-        .validate_operand(
-            &allocated.into(),
-            /*recursive*/ false,
-            /*reset_provenance_and_padding*/ false,
-        )
-        .is_ok())
+    Ok(cx.validate_operand(&allocated.into(), /*recursive*/ false).is_ok())
 }
 
 /// Implements the 'lax' (default) version of the [`check_validity_requirement`] checks; see that

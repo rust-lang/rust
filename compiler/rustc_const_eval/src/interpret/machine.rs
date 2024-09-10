@@ -148,6 +148,10 @@ pub trait Machine<'tcx>: Sized {
     /// already been checked before.
     const ALL_CONSTS_ARE_PRECHECKED: bool = true;
 
+    /// Whether *validated* typed copies should reset padding and provenance.
+    /// Has no effect when `enforce_validity` returns `false`!
+    const RESET_PROVENANCE_AND_PADDING: bool = false;
+
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'tcx, Self>) -> bool;
 

@@ -608,7 +608,6 @@ where
             self.validate_operand(
                 &dest.to_place(),
                 M::enforce_validity_recursively(self, dest.layout()),
-                /*reset_provenance_and_padding*/ true,
             )?;
         }
 
@@ -821,14 +820,9 @@ where
                 self.validate_operand(
                     &dest.transmute(src.layout(), self)?,
                     M::enforce_validity_recursively(self, src.layout()),
-                    /*reset_provenance_and_padding*/ true,
                 )?;
             }
-            self.validate_operand(
-                &dest,
-                M::enforce_validity_recursively(self, dest.layout()),
-                /*reset_provenance_and_padding*/ true,
-            )?;
+            self.validate_operand(&dest, M::enforce_validity_recursively(self, dest.layout()))?;
         }
 
         Ok(())
