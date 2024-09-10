@@ -272,7 +272,6 @@ fn fat_lto(
             }*/
         }
     };
-    let mut serialized_bitcode = Vec::new();
     {
         info!("using {:?} as a base module", module.name);
 
@@ -317,7 +316,6 @@ fn fat_lto(
                     unimplemented!("from uncompressed file")
                 }
             }
-            serialized_bitcode.push(bc_decoded);
         }
         save_temp_bitcode(cgcx, &module, "lto.input");
 
@@ -337,7 +335,7 @@ fn fat_lto(
     // of now.
     module.module_llvm.temp_dir = Some(tmp_path);
 
-    Ok(LtoModuleCodegen::Fat { module, _serialized_bitcode: serialized_bitcode })
+    Ok(LtoModuleCodegen::Fat(module))
 }
 
 pub struct ModuleBuffer(PathBuf);
