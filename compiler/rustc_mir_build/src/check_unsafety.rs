@@ -476,7 +476,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     // Implicit target features are OK because they are either a consequence of some
                     // explicit target feature (which is checked to be present in the caller) or
                     // come from a witness argument.
-                    let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
+                    let callee_features = &self.tcx.codegen_fn_attrs(func_did).def_target_features;
                     if !self.tcx.sess.target.options.is_like_wasm
                         && !callee_features.iter().all(|feature| {
                             feature.implied
@@ -1143,7 +1143,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
             SafetyContext::Safe
         }
     });
-    let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).target_features;
+    let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).def_target_features;
     let mut warnings = Vec::new();
     let mut visitor = UnsafetyVisitor {
         tcx,

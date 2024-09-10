@@ -364,7 +364,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn has_target_features(self, def_id: DefId) -> bool {
-        !self.codegen_fn_attrs(def_id).target_features.is_empty()
+        !self.codegen_fn_attrs(def_id).def_target_features.is_empty()
     }
 
     fn require_lang_item(self, lang_item: TraitSolverLangItem) -> DefId {

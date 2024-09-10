@@ -926,7 +926,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         && self
                             .tcx
                             .codegen_fn_attrs(def_id)
-                            .target_features
+                            .def_target_features
                             .iter()
                             .any(|x| !x.implied)
                     {

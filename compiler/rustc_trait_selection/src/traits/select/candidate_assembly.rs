@@ -482,7 +482,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::FnDef(def_id, _) => {
                 let tcx = self.tcx();
                 if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
-                    && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                    && tcx.codegen_fn_attrs(def_id).def_target_features.is_empty()
                 {
                     candidates.vec.push(AsyncClosureCandidate);
                 }
@@ -551,7 +551,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::FnDef(def_id, args) => {
                 let tcx = self.tcx();
                 if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
-                    && !tcx.codegen_fn_attrs(def_id).target_features.iter().any(|x| !x.implied)
+                    && !tcx.codegen_fn_attrs(def_id).def_target_features.iter().any(|x| !x.implied)
                 {
                     candidates.vec.push(FnPointerCandidate {
                         fn_host_effect: tcx

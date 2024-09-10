@@ -10,6 +10,7 @@ use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_hir::{LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, TargetFeature,
+    extend_with_struct_target_features,
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
@@ -293,7 +294,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     tcx,
                     attr,
                     supported_target_features,
-                    &mut codegen_fn_attrs.target_features,
+                    &mut codegen_fn_attrs.def_target_features,
                     Some(&mut codegen_fn_attrs.target_features_from_args),
                 );
             }
@@ -600,8 +601,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         let owner_id = tcx.parent(did.to_def_id());
         if tcx.def_kind(owner_id).has_codegen_attrs() {
             codegen_fn_attrs
-                .target_features
-                .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied());
+                .def_target_features
+                .extend(tcx.codegen_fn_attrs(owner_id).def_target_features.iter().copied());
         }
     }
 
@@ -623,7 +624,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             );
         }
         codegen_fn_attrs
-            .target_features
+            .def_target_features
             .extend(additional_tf.iter().map(|tf| TargetFeature { implied: true, ..*tf }));
     }
 
@@ -631,7 +632,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
-    if !codegen_fn_attrs.target_features.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always
+    if !codegen_fn_attrs.def_target_features.is_empty()
+        && codegen_fn_attrs.inline == InlineAttr::Always
     {
         if let Some(span) = inline_span {
             tcx.dcx().span_err(
@@ -697,7 +699,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     if let Some(features) = check_tied_features(
         tcx.sess,
         &codegen_fn_attrs
-            .target_features
+            .def_target_features
             .iter()
             .map(|features| (features.name.as_str(), true))
             .collect(),
@@ -817,30 +819,6 @@ fn struct_target_features(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[TargetFeatur
         from_target_feature(tcx, attr, supported_features, &mut features, None);
     }
     tcx.arena.alloc_slice(&features)
-}
-
-fn extend_with_struct_target_features<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-    target_features: &mut Vec<TargetFeature>,
-) {
-    // Collect target features from types reachable from `env.value` by dereferencing a certain
-    // number of references and resolving aliases.
-
-    let mut ty = env.value;
-    if matches!(ty.kind(), ty::Alias(..)) {
-        ty = match tcx.try_normalize_erasing_regions(env.param_env, ty) {
-            Ok(ty) => ty,
-            Err(_) => return,
-        };
-    }
-    while let ty::Ref(_, inner, _) = ty.kind() {
-        ty = *inner;
-    }
-
-    if let ty::Adt(adt_def, ..) = ty.kind() {
-        target_features.extend_from_slice(&tcx.struct_target_features(adt_def.did()));
-    }
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

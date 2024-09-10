@@ -137,7 +137,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
     let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
-        target_features.extend(attrs.target_features.iter().map(|feature| feature.name));
+        target_features.extend(attrs.def_target_features.iter().map(|feature| feature.name));
         match attrs.instruction_set {
             None => {}
             Some(InstructionSetAttr::ArmA32) => {
