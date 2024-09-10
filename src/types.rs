@@ -2,23 +2,23 @@ use std::ops::Deref;
 
 use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
 use rustc_ast::ptr;
-use rustc_span::{symbol::kw, BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span, symbol::kw};
 use tracing::debug;
 
 use crate::comment::{combine_strs_with_missing_comments, contains_comment};
 use crate::config::lists::*;
-use crate::config::{IndentStyle, TypeDensity, Version};
+use crate::config::{IndentStyle, StyleEdition, TypeDensity};
 use crate::expr::{
-    format_expr, rewrite_assign_rhs, rewrite_call, rewrite_tuple, rewrite_unary_prefix, ExprType,
-    RhsAssignKind,
+    ExprType, RhsAssignKind, format_expr, rewrite_assign_rhs, rewrite_call, rewrite_tuple,
+    rewrite_unary_prefix,
 };
 use crate::lists::{
-    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+    ListFormatting, ListItem, Separator, definitive_tactic, itemize_list, write_list,
 };
-use crate::macros::{rewrite_macro, MacroPosition};
+use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
-use crate::pairs::{rewrite_pair, PairParts};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::pairs::{PairParts, rewrite_pair};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -41,7 +41,7 @@ pub(crate) fn rewrite_path(
     qself: &Option<ptr::P<ast::QSelf>>,
     path: &ast::Path,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     let skip_count = qself.as_ref().map_or(0, |x| x.position);
 
     // 32 covers almost all path lengths measured when compiling core, and there isn't a big
@@ -57,7 +57,7 @@ pub(crate) fn rewrite_path(
     if let Some(qself) = qself {
         result.push('<');
 
-        let fmt_ty = qself.ty.rewrite(context, shape)?;
+        let fmt_ty = qself.ty.rewrite_result(context, shape)?;
         result.push_str(&fmt_ty);
 
         if skip_count > 0 {
@@ -67,7 +67,7 @@ pub(crate) fn rewrite_path(
             }
 
             // 3 = ">::".len()
-            let shape = shape.sub_width(3)?;
+            let shape = shape.sub_width(3).max_width_error(shape.width, path.span)?;
 
             result = rewrite_path_segments(
                 PathContext::Type,
@@ -103,7 +103,7 @@ fn rewrite_path_segments<'a, I>(
     span_hi: BytePos,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String>
+) -> RewriteResult
 where
     I: Iterator<Item = &'a ast::PathSegment>,
 {
@@ -122,7 +122,9 @@ where
         }
 
         let extra_offset = extra_offset(&buffer, shape);
-        let new_shape = shape.shrink_left(extra_offset)?;
+        let new_shape = shape
+            .shrink_left(extra_offset)
+            .max_width_error(shape.width, mk_sp(span_lo, span_hi))?;
         let segment_string = rewrite_segment(
             path_context,
             segment,
@@ -135,7 +137,7 @@ where
         buffer.push_str(&segment_string);
     }
 
-    Some(buffer)
+    Ok(buffer)
 }
 
 #[derive(Debug)]
@@ -169,19 +171,27 @@ impl<'a> Spanned for SegmentParam<'a> {
 
 impl<'a> Rewrite for SegmentParam<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match *self {
-            SegmentParam::Const(const_) => const_.rewrite(context, shape),
-            SegmentParam::LifeTime(lt) => lt.rewrite(context, shape),
-            SegmentParam::Type(ty) => ty.rewrite(context, shape),
-            SegmentParam::Binding(atc) => atc.rewrite(context, shape),
+            SegmentParam::Const(const_) => const_.rewrite_result(context, shape),
+            SegmentParam::LifeTime(lt) => lt.rewrite_result(context, shape),
+            SegmentParam::Type(ty) => ty.rewrite_result(context, shape),
+            SegmentParam::Binding(atc) => atc.rewrite_result(context, shape),
         }
     }
 }
 
 impl Rewrite for ast::PreciseCapturingArg {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self {
-            ast::PreciseCapturingArg::Lifetime(lt) => lt.rewrite(context, shape),
+            ast::PreciseCapturingArg::Lifetime(lt) => lt.rewrite_result(context, shape),
             ast::PreciseCapturingArg::Arg(p, _) => {
                 rewrite_path(context, PathContext::Type, &None, p, shape)
             }
@@ -191,13 +201,20 @@ impl Rewrite for ast::PreciseCapturingArg {
 
 impl Rewrite for ast::AssocItemConstraint {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         use ast::AssocItemConstraintKind::{Bound, Equality};
 
         let mut result = String::with_capacity(128);
         result.push_str(rewrite_ident(context, self.ident));
 
         if let Some(ref gen_args) = self.gen_args {
-            let budget = shape.width.checked_sub(result.len())?;
+            let budget = shape
+                .width
+                .checked_sub(result.len())
+                .max_width_error(shape.width, self.span)?;
             let shape = Shape::legacy(budget, shape.indent + result.len());
             let gen_str = rewrite_generic_args(gen_args, context, shape, gen_args.span())?;
             result.push_str(&gen_str);
@@ -210,23 +227,30 @@ impl Rewrite for ast::AssocItemConstraint {
         };
         result.push_str(infix);
 
-        let budget = shape.width.checked_sub(result.len())?;
+        let budget = shape
+            .width
+            .checked_sub(result.len())
+            .max_width_error(shape.width, self.span)?;
         let shape = Shape::legacy(budget, shape.indent + result.len());
-        let rewrite = self.kind.rewrite(context, shape)?;
+        let rewrite = self.kind.rewrite_result(context, shape)?;
         result.push_str(&rewrite);
 
-        Some(result)
+        Ok(result)
     }
 }
 
 impl Rewrite for ast::AssocItemConstraintKind {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self {
             ast::AssocItemConstraintKind::Equality { term } => match term {
-                Term::Ty(ty) => ty.rewrite(context, shape),
-                Term::Const(c) => c.rewrite(context, shape),
+                Term::Ty(ty) => ty.rewrite_result(context, shape),
+                Term::Const(c) => c.rewrite_result(context, shape),
             },
-            ast::AssocItemConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
+            ast::AssocItemConstraintKind::Bound { bounds } => bounds.rewrite_result(context, shape),
         }
     }
 }
@@ -248,16 +272,17 @@ fn rewrite_segment(
     span_hi: BytePos,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     let mut result = String::with_capacity(128);
     result.push_str(rewrite_ident(context, segment.ident));
 
     let ident_len = result.len();
     let shape = if context.use_block_indent() {
-        shape.offset_left(ident_len)?
+        shape.offset_left(ident_len)
     } else {
-        shape.shrink_left(ident_len)?
-    };
+        shape.shrink_left(ident_len)
+    }
+    .max_width_error(shape.width, mk_sp(*span_lo, span_hi))?;
 
     if let Some(ref args) = segment.args {
         let generics_str = rewrite_generic_args(args, context, shape, mk_sp(*span_lo, span_hi))?;
@@ -288,7 +313,7 @@ fn rewrite_segment(
         result.push_str(&generics_str)
     }
 
-    Some(result)
+    Ok(result)
 }
 
 fn format_function_type<'a, I>(
@@ -298,7 +323,7 @@ fn format_function_type<'a, I>(
     span: Span,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String>
+) -> RewriteResult
 where
     I: ExactSizeIterator,
     <I as Iterator>::Item: Deref,
@@ -308,12 +333,12 @@ where
 
     let ty_shape = match context.config.indent_style() {
         // 4 = " -> "
-        IndentStyle::Block => shape.offset_left(4)?,
-        IndentStyle::Visual => shape.block_left(4)?,
+        IndentStyle::Block => shape.offset_left(4).max_width_error(shape.width, span)?,
+        IndentStyle::Visual => shape.block_left(4).max_width_error(shape.width, span)?,
     };
     let output = match *output {
         FnRetTy::Ty(ref ty) => {
-            let type_str = ty.rewrite(context, ty_shape)?;
+            let type_str = ty.rewrite_result(context, ty_shape)?;
             format!(" -> {type_str}")
         }
         FnRetTy::Default(..) => String::new(),
@@ -326,7 +351,10 @@ where
         )
     } else {
         // 2 for ()
-        let budget = shape.width.checked_sub(2)?;
+        let budget = shape
+            .width
+            .checked_sub(2)
+            .max_width_error(shape.width, span)?;
         // 1 for (
         let offset = shape.indent + 1;
         Shape::legacy(budget, offset)
@@ -339,7 +367,8 @@ where
         let list_hi = context.snippet_provider.span_before(span, ")");
         let comment = context
             .snippet_provider
-            .span_to_snippet(mk_sp(list_lo, list_hi))?
+            .span_to_snippet(mk_sp(list_lo, list_hi))
+            .unknown_error()?
             .trim();
         let comment = if comment.starts_with("//") {
             format!(
@@ -360,7 +389,7 @@ where
             ",",
             |arg| arg.span().lo(),
             |arg| arg.span().hi(),
-            |arg| arg.rewrite(context, list_shape),
+            |arg| arg.rewrite_result(context, list_shape),
             list_lo,
             span.hi(),
             false,
@@ -396,9 +425,9 @@ where
         )
     };
     if output.is_empty() || last_line_width(&args) + first_line_width(&output) <= shape.width {
-        Some(format!("{args}{output}"))
+        Ok(format!("{args}{output}"))
     } else {
-        Some(format!(
+        Ok(format!(
             "{}\n{}{}",
             args,
             list_shape.indent.to_string(context.config),
@@ -429,6 +458,10 @@ fn get_tactics(item_vec: &[ListItem], output: &str, shape: Shape) -> DefinitiveL
 
 impl Rewrite for ast::WherePredicate {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         // FIXME: dead spans?
         let result = match *self {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
@@ -437,7 +470,7 @@ impl Rewrite for ast::WherePredicate {
                 ref bounds,
                 ..
             }) => {
-                let type_str = bounded_ty.rewrite(context, shape)?;
+                let type_str = bounded_ty.rewrite_result(context, shape)?;
                 let colon = type_bound_colon(context).trim_end();
                 let lhs = if let Some(binder_str) =
                     rewrite_bound_params(context, shape, bound_generic_params)
@@ -452,28 +485,34 @@ impl Rewrite for ast::WherePredicate {
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 ref lifetime,
                 ref bounds,
-                ..
-            }) => rewrite_bounded_lifetime(lifetime, bounds, context, shape)?,
+                span,
+            }) => rewrite_bounded_lifetime(lifetime, bounds, span, context, shape)?,
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                 ref lhs_ty,
                 ref rhs_ty,
                 ..
             }) => {
-                let lhs_ty_str = lhs_ty.rewrite(context, shape).map(|lhs| lhs + " =")?;
+                let lhs_ty_str = lhs_ty
+                    .rewrite_result(context, shape)
+                    .map(|lhs| lhs + " =")?;
                 rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)?
             }
         };
 
-        Some(result)
+        Ok(result)
     }
 }
 
 impl Rewrite for ast::GenericArg {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match *self {
-            ast::GenericArg::Lifetime(ref lt) => lt.rewrite(context, shape),
-            ast::GenericArg::Type(ref ty) => ty.rewrite(context, shape),
-            ast::GenericArg::Const(ref const_) => const_.rewrite(context, shape),
+            ast::GenericArg::Lifetime(ref lt) => lt.rewrite_result(context, shape),
+            ast::GenericArg::Type(ref ty) => ty.rewrite_result(context, shape),
+            ast::GenericArg::Const(ref const_) => const_.rewrite_result(context, shape),
         }
     }
 }
@@ -483,11 +522,11 @@ fn rewrite_generic_args(
     context: &RewriteContext<'_>,
     shape: Shape,
     span: Span,
-) -> Option<String> {
+) -> RewriteResult {
     match gen_args {
         ast::GenericArgs::AngleBracketed(ref data) => {
             if data.args.is_empty() {
-                Some("".to_owned())
+                Ok("".to_owned())
             } else {
                 let args = data
                     .args
@@ -513,47 +552,63 @@ fn rewrite_generic_args(
             context,
             shape,
         ),
-        ast::GenericArgs::ParenthesizedElided(..) => Some("(..)".to_owned()),
+        ast::GenericArgs::ParenthesizedElided(..) => Ok("(..)".to_owned()),
     }
 }
 
 fn rewrite_bounded_lifetime(
     lt: &ast::Lifetime,
     bounds: &[ast::GenericBound],
+    span: Span,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
-    let result = lt.rewrite(context, shape)?;
+) -> RewriteResult {
+    let result = lt.rewrite_result(context, shape)?;
 
     if bounds.is_empty() {
-        Some(result)
+        Ok(result)
     } else {
         let colon = type_bound_colon(context);
         let overhead = last_line_width(&result) + colon.len();
+        let shape = shape
+            .sub_width(overhead)
+            .max_width_error(shape.width, span)?;
         let result = format!(
             "{}{}{}",
             result,
             colon,
-            join_bounds(context, shape.sub_width(overhead)?, bounds, true)?
+            join_bounds(context, shape, bounds, true)?
         );
-        Some(result)
+        Ok(result)
     }
 }
 
 impl Rewrite for ast::AnonConst {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         format_expr(&self.value, ExprType::SubExpression, context, shape)
     }
 }
 
 impl Rewrite for ast::Lifetime {
-    fn rewrite(&self, context: &RewriteContext<'_>, _: Shape) -> Option<String> {
-        Some(context.snippet(self.ident.span).to_owned())
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, _: Shape) -> RewriteResult {
+        Ok(context.snippet(self.ident.span).to_owned())
     }
 }
 
 impl Rewrite for ast::GenericBound {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match *self {
             ast::GenericBound::Trait(
                 ref poly_trait_ref,
@@ -574,24 +629,30 @@ impl Rewrite for ast::GenericBound {
                     asyncness.push(' ');
                 }
                 let polarity = polarity.as_str();
-                let shape = shape.offset_left(constness.len() + polarity.len())?;
+                let shape = shape
+                    .offset_left(constness.len() + polarity.len())
+                    .max_width_error(shape.width, self.span())?;
                 poly_trait_ref
-                    .rewrite(context, shape)
+                    .rewrite_result(context, shape)
                     .map(|s| format!("{constness}{asyncness}{polarity}{s}"))
                     .map(|s| if has_paren { format!("({})", s) } else { s })
             }
             ast::GenericBound::Use(ref args, span) => {
                 overflow::rewrite_with_angle_brackets(context, "use", args.iter(), shape, span)
             }
-            ast::GenericBound::Outlives(ref lifetime) => lifetime.rewrite(context, shape),
+            ast::GenericBound::Outlives(ref lifetime) => lifetime.rewrite_result(context, shape),
         }
     }
 }
 
 impl Rewrite for ast::GenericBounds {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         if self.is_empty() {
-            return Some(String::new());
+            return Ok(String::new());
         }
 
         join_bounds(context, shape, self, true)
@@ -600,8 +661,15 @@ impl Rewrite for ast::GenericBounds {
 
 impl Rewrite for ast::GenericParam {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         // FIXME: If there are more than one attributes, this will force multiline.
-        let mut result = self.attrs.rewrite(context, shape).unwrap_or(String::new());
+        let mut result = self
+            .attrs
+            .rewrite_result(context, shape)
+            .unwrap_or(String::new());
         let has_attrs = !result.is_empty();
 
         let mut param = String::with_capacity(128);
@@ -615,15 +683,19 @@ impl Rewrite for ast::GenericParam {
             param.push_str("const ");
             param.push_str(rewrite_ident(context, self.ident));
             param.push_str(": ");
-            param.push_str(&ty.rewrite(context, shape)?);
+            param.push_str(&ty.rewrite_result(context, shape)?);
             if let Some(default) = default {
                 let eq_str = match context.config.type_punctuation_density() {
                     TypeDensity::Compressed => "=",
                     TypeDensity::Wide => " = ",
                 };
                 param.push_str(eq_str);
-                let budget = shape.width.checked_sub(param.len())?;
-                let rewrite = default.rewrite(context, Shape::legacy(budget, shape.indent))?;
+                let budget = shape
+                    .width
+                    .checked_sub(param.len())
+                    .max_width_error(shape.width, self.span())?;
+                let rewrite =
+                    default.rewrite_result(context, Shape::legacy(budget, shape.indent))?;
                 param.push_str(&rewrite);
             }
             kw_span.lo()
@@ -634,7 +706,7 @@ impl Rewrite for ast::GenericParam {
 
         if !self.bounds.is_empty() {
             param.push_str(type_bound_colon(context));
-            param.push_str(&self.bounds.rewrite(context, shape)?)
+            param.push_str(&self.bounds.rewrite_result(context, shape)?)
         }
         if let ast::GenericParamKind::Type {
             default: Some(ref def),
@@ -645,9 +717,12 @@ impl Rewrite for ast::GenericParam {
                 TypeDensity::Wide => " = ",
             };
             param.push_str(eq_str);
-            let budget = shape.width.checked_sub(param.len())?;
+            let budget = shape
+                .width
+                .checked_sub(param.len())
+                .max_width_error(shape.width, self.span())?;
             let rewrite =
-                def.rewrite(context, Shape::legacy(budget, shape.indent + param.len()))?;
+                def.rewrite_result(context, Shape::legacy(budget, shape.indent + param.len()))?;
             param.push_str(&rewrite);
         }
 
@@ -673,44 +748,67 @@ impl Rewrite for ast::GenericParam {
             result.push_str(&param);
         }
 
-        Some(result)
+        Ok(result)
     }
 }
 
 impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         if let Some(lifetime_str) = rewrite_bound_params(context, shape, &self.bound_generic_params)
         {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
-            let path_str = self
-                .trait_ref
-                .rewrite(context, shape.offset_left(extra_offset)?)?;
+            let shape = shape
+                .offset_left(extra_offset)
+                .max_width_error(shape.width, self.span)?;
+            let path_str = self.trait_ref.rewrite_result(context, shape)?;
 
-            Some(format!("for<{lifetime_str}> {path_str}"))
+            Ok(format!("for<{lifetime_str}> {path_str}"))
         } else {
-            self.trait_ref.rewrite(context, shape)
+            self.trait_ref.rewrite_result(context, shape)
         }
     }
 }
 
 impl Rewrite for ast::TraitRef {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         rewrite_path(context, PathContext::Type, &None, &self.path, shape)
     }
 }
 
 impl Rewrite for ast::Ty {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self.kind {
             ast::TyKind::TraitObject(ref bounds, tobj_syntax) => {
                 // we have to consider 'dyn' keyword is used or not!!!
                 let (shape, prefix) = match tobj_syntax {
-                    ast::TraitObjectSyntax::Dyn => (shape.offset_left(4)?, "dyn "),
-                    ast::TraitObjectSyntax::DynStar => (shape.offset_left(5)?, "dyn* "),
+                    ast::TraitObjectSyntax::Dyn => {
+                        let shape = shape
+                            .offset_left(4)
+                            .max_width_error(shape.width, self.span())?;
+                        (shape, "dyn ")
+                    }
+                    ast::TraitObjectSyntax::DynStar => {
+                        let shape = shape
+                            .offset_left(5)
+                            .max_width_error(shape.width, self.span())?;
+                        (shape, "dyn* ")
+                    }
                     ast::TraitObjectSyntax::None => (shape, ""),
                 };
-                let mut res = bounds.rewrite(context, shape)?;
+                let mut res = bounds.rewrite_result(context, shape)?;
                 // We may have falsely removed a trailing `+` inside macro call.
                 if context.inside_macro()
                     && bounds.len() == 1
@@ -719,7 +817,7 @@ impl Rewrite for ast::Ty {
                 {
                     res.push('+');
                 }
-                Some(format!("{prefix}{res}"))
+                Ok(format!("{prefix}{res}"))
             }
             ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
@@ -738,8 +836,11 @@ impl Rewrite for ast::Ty {
                 let mut cmnt_lo = ref_hi;
 
                 if let Some(ref lifetime) = *lifetime {
-                    let lt_budget = shape.width.checked_sub(2 + mut_len)?;
-                    let lt_str = lifetime.rewrite(
+                    let lt_budget = shape
+                        .width
+                        .checked_sub(2 + mut_len)
+                        .max_width_error(shape.width, self.span())?;
+                    let lt_str = lifetime.rewrite_result(
                         context,
                         Shape::legacy(lt_budget, shape.indent + 2 + mut_len),
                     )?;
@@ -783,39 +884,46 @@ impl Rewrite for ast::Ty {
                     result = combine_strs_with_missing_comments(
                         context,
                         result.trim_end(),
-                        &mt.ty.rewrite(context, shape)?,
+                        &mt.ty.rewrite_result(context, shape)?,
                         before_ty_span,
                         shape,
                         true,
                     )?;
                 } else {
                     let used_width = last_line_width(&result);
-                    let budget = shape.width.checked_sub(used_width)?;
-                    let ty_str = mt
-                        .ty
-                        .rewrite(context, Shape::legacy(budget, shape.indent + used_width))?;
+                    let budget = shape
+                        .width
+                        .checked_sub(used_width)
+                        .max_width_error(shape.width, self.span())?;
+                    let ty_str = mt.ty.rewrite_result(
+                        context,
+                        Shape::legacy(budget, shape.indent + used_width),
+                    )?;
                     result.push_str(&ty_str);
                 }
 
-                Some(result)
+                Ok(result)
             }
             // FIXME: we drop any comments here, even though it's a silly place to put
             // comments.
             ast::TyKind::Paren(ref ty) => {
-                if context.config.version() == Version::One
+                if context.config.style_edition() <= StyleEdition::Edition2021
                     || context.config.indent_style() == IndentStyle::Visual
                 {
-                    let budget = shape.width.checked_sub(2)?;
+                    let budget = shape
+                        .width
+                        .checked_sub(2)
+                        .max_width_error(shape.width, self.span())?;
                     return ty
-                        .rewrite(context, Shape::legacy(budget, shape.indent + 1))
+                        .rewrite_result(context, Shape::legacy(budget, shape.indent + 1))
                         .map(|ty_str| format!("({})", ty_str));
                 }
 
                 // 2 = ()
                 if let Some(sh) = shape.sub_width(2) {
-                    if let Some(ref s) = ty.rewrite(context, sh) {
+                    if let Ok(ref s) = ty.rewrite_result(context, sh) {
                         if !s.contains('\n') {
-                            return Some(format!("({s})"));
+                            return Ok(format!("({s})"));
                         }
                     }
                 }
@@ -824,8 +932,8 @@ impl Rewrite for ast::Ty {
                 let shape = shape
                     .block_indent(context.config.tab_spaces())
                     .with_max_width(context.config);
-                let rw = ty.rewrite(context, shape)?;
-                Some(format!(
+                let rw = ty.rewrite_result(context, shape)?;
+                Ok(format!(
                     "({}{}{})",
                     shape.to_string_with_newline(context.config),
                     rw,
@@ -833,15 +941,18 @@ impl Rewrite for ast::Ty {
                 ))
             }
             ast::TyKind::Slice(ref ty) => {
-                let budget = shape.width.checked_sub(4)?;
-                ty.rewrite(context, Shape::legacy(budget, shape.indent + 1))
+                let budget = shape
+                    .width
+                    .checked_sub(4)
+                    .max_width_error(shape.width, self.span())?;
+                ty.rewrite_result(context, Shape::legacy(budget, shape.indent + 1))
                     .map(|ty_str| format!("[{}]", ty_str))
             }
             ast::TyKind::Tup(ref items) => {
                 rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
             }
-            ast::TyKind::AnonStruct(..) => Some(context.snippet(self.span).to_owned()),
-            ast::TyKind::AnonUnion(..) => Some(context.snippet(self.span).to_owned()),
+            ast::TyKind::AnonStruct(..) => Ok(context.snippet(self.span).to_owned()),
+            ast::TyKind::AnonUnion(..) => Ok(context.snippet(self.span).to_owned()),
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self, path, shape)
             }
@@ -855,24 +966,27 @@ impl Rewrite for ast::Ty {
             ),
             ast::TyKind::Infer => {
                 if shape.width >= 1 {
-                    Some("_".to_owned())
+                    Ok("_".to_owned())
                 } else {
-                    None
+                    Err(RewriteError::ExceedsMaxWidth {
+                        configured_width: shape.width,
+                        span: self.span(),
+                    })
                 }
             }
             ast::TyKind::BareFn(ref bare_fn) => rewrite_bare_fn(bare_fn, self.span, context, shape),
-            ast::TyKind::Never => Some(String::from("!")),
+            ast::TyKind::Never => Ok(String::from("!")),
             ast::TyKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
             }
-            ast::TyKind::ImplicitSelf => Some(String::from("")),
+            ast::TyKind::ImplicitSelf => Ok(String::from("")),
             ast::TyKind::ImplTrait(_, ref it) => {
                 // Empty trait is not a parser error.
                 if it.is_empty() {
-                    return Some("impl".to_owned());
+                    return Ok("impl".to_owned());
                 }
-                let rw = if context.config.version() == Version::One {
-                    it.rewrite(context, shape)
+                let rw = if context.config.style_edition() <= StyleEdition::Edition2021 {
+                    it.rewrite_result(context, shape)
                 } else {
                     join_bounds(context, shape, it, false)
                 };
@@ -881,8 +995,8 @@ impl Rewrite for ast::Ty {
                     format!("impl{}{}", space, it_str)
                 })
             }
-            ast::TyKind::CVarArgs => Some("...".to_owned()),
-            ast::TyKind::Dummy | ast::TyKind::Err(_) => Some(context.snippet(self.span).to_owned()),
+            ast::TyKind::CVarArgs => Ok("...".to_owned()),
+            ast::TyKind::Dummy | ast::TyKind::Err(_) => Ok(context.snippet(self.span).to_owned()),
             ast::TyKind::Typeof(ref anon_const) => rewrite_call(
                 context,
                 "typeof",
@@ -891,9 +1005,9 @@ impl Rewrite for ast::Ty {
                 shape,
             ),
             ast::TyKind::Pat(ref ty, ref pat) => {
-                let ty = ty.rewrite(context, shape)?;
-                let pat = pat.rewrite(context, shape)?;
-                Some(format!("{ty} is {pat}"))
+                let ty = ty.rewrite_result(context, shape)?;
+                let pat = pat.rewrite_result(context, shape)?;
+                Ok(format!("{ty} is {pat}"))
             }
         }
     }
@@ -904,7 +1018,7 @@ fn rewrite_bare_fn(
     span: Span,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     debug!("rewrite_bare_fn {:#?}", shape);
 
     let mut result = String::with_capacity(128);
@@ -928,9 +1042,14 @@ fn rewrite_bare_fn(
     result.push_str("fn");
 
     let func_ty_shape = if context.use_block_indent() {
-        shape.offset_left(result.len())?
+        shape
+            .offset_left(result.len())
+            .max_width_error(shape.width, span)?
     } else {
-        shape.visual_indent(result.len()).sub_width(result.len())?
+        shape
+            .visual_indent(result.len())
+            .sub_width(result.len())
+            .max_width_error(shape.width, span)?
     };
 
     let rewrite = format_function_type(
@@ -944,7 +1063,7 @@ fn rewrite_bare_fn(
 
     result.push_str(&rewrite);
 
-    Some(result)
+    Ok(result)
 }
 
 fn is_generic_bounds_in_order(generic_bounds: &[ast::GenericBound]) -> bool {
@@ -968,7 +1087,7 @@ fn join_bounds(
     shape: Shape,
     items: &[ast::GenericBound],
     need_indent: bool,
-) -> Option<String> {
+) -> RewriteResult {
     join_bounds_inner(context, shape, items, need_indent, false)
 }
 
@@ -978,7 +1097,7 @@ fn join_bounds_inner(
     items: &[ast::GenericBound],
     need_indent: bool,
     force_newline: bool,
-) -> Option<String> {
+) -> RewriteResult {
     debug_assert!(!items.is_empty());
 
     let generic_bounds_in_order = is_generic_bounds_in_order(items);
@@ -1073,10 +1192,10 @@ fn join_bounds_inner(
             };
 
             let (extendable, trailing_str) = if i == 0 {
-                let bound_str = item.rewrite(context, shape)?;
+                let bound_str = item.rewrite_result(context, shape)?;
                 (is_bound_extendable(&bound_str, item), bound_str)
             } else {
-                let bound_str = &item.rewrite(context, shape)?;
+                let bound_str = &item.rewrite_result(context, shape)?;
                 match leading_span {
                     Some(ls) if has_leading_comment => (
                         is_bound_extendable(bound_str, item),
@@ -1100,7 +1219,7 @@ fn join_bounds_inner(
                     true,
                 )
                 .map(|v| (v, trailing_span, extendable)),
-                _ => Some((strs + &trailing_str, trailing_span, extendable)),
+                _ => Ok((strs + &trailing_str, trailing_span, extendable)),
             }
         },
     )?;
@@ -1110,22 +1229,22 @@ fn join_bounds_inner(
     //   and either there is more than one item;
     //       or the single item is of type `Trait`,
     //          and any of the internal arrays contains more than one item;
-    let retry_with_force_newline = match context.config.version() {
-        Version::One => {
+    let retry_with_force_newline = match context.config.style_edition() {
+        style_edition @ _ if style_edition <= StyleEdition::Edition2021 => {
             !force_newline
                 && items.len() > 1
                 && (result.0.contains('\n') || result.0.len() > shape.width)
         }
-        Version::Two if force_newline => false,
-        Version::Two if (!result.0.contains('\n') && result.0.len() <= shape.width) => false,
-        Version::Two if items.len() > 1 => true,
-        Version::Two => is_item_with_multi_items_array(&items[0]),
+        _ if force_newline => false,
+        _ if (!result.0.contains('\n') && result.0.len() <= shape.width) => false,
+        _ if items.len() > 1 => true,
+        _ => is_item_with_multi_items_array(&items[0]),
     };
 
     if retry_with_force_newline {
         join_bounds_inner(context, shape, items, need_indent, true)
     } else {
-        Some(result.0)
+        Ok(result.0)
     }
 }
 
