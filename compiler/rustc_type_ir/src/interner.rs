@@ -137,6 +137,8 @@ pub trait Interner:
         f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
     ) -> R;
 
+    fn evaluation_is_concurrent(&self) -> bool;
+
     fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
     type GenericsOf: GenericsOf<Self>;
@@ -403,5 +405,8 @@ impl<I: Interner> search_graph::Cx for I {
         f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
     ) -> R {
         I::with_global_cache(self, mode, f)
+    }
+    fn evaluation_is_concurrent(&self) -> bool {
+        self.evaluation_is_concurrent()
     }
 }
