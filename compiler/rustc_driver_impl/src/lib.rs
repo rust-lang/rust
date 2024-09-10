@@ -7,7 +7,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-#![cfg_attr(bootstrap, feature(unsafe_extern_blocks))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(decl_macro)]
@@ -862,9 +861,9 @@ fn print_crate_info(
                 use rustc_target::spec::current_apple_deployment_target;
 
                 if sess.target.is_like_osx {
-                    let (major, minor) = current_apple_deployment_target(&sess.target)
-                        .expect("unknown Apple target OS");
-                    println_info!("deployment_target={}", format!("{major}.{minor}"))
+                    let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+                    let patch = if patch != 0 { format!(".{patch}") } else { String::new() };
+                    println_info!("deployment_target={major}.{minor}{patch}")
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")

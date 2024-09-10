@@ -85,7 +85,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                         // document primitive items in an arbitrary crate by using
                         // `rustc_doc_primitive`.
                         let mut is_primitive_impl = false;
-                        if let clean::types::ItemKind::ImplItem(ref impl_) = *item.kind
+                        if let clean::types::ItemKind::ImplItem(ref impl_) = item.kind
                             && impl_.trait_.is_none()
                             && let clean::types::Type::Primitive(_) = impl_.for_
                         {
@@ -164,7 +164,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
         // Flatten items that recursively store other items. We include orphaned items from
         // stripped modules and etc that are otherwise reachable.
-        if let ItemKind::StrippedItem(inner) = &*item.kind {
+        if let ItemKind::StrippedItem(inner) = &item.kind {
             inner.inner_items().for_each(|i| self.item(i.clone()).unwrap());
         }
 
@@ -197,7 +197,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
                 types::ItemEnum::Function(_)
                 | types::ItemEnum::Module(_)
-                | types::ItemEnum::Import(_)
+                | types::ItemEnum::Use(_)
                 | types::ItemEnum::AssocConst { .. }
                 | types::ItemEnum::AssocType { .. } => true,
                 types::ItemEnum::ExternCrate { .. }
@@ -208,7 +208,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::TypeAlias(_)
                 | types::ItemEnum::Constant { .. }
                 | types::ItemEnum::Static(_)
-                | types::ItemEnum::ForeignType
+                | types::ItemEnum::ExternType
                 | types::ItemEnum::Macro(_)
                 | types::ItemEnum::ProcMacro(_) => false,
             };

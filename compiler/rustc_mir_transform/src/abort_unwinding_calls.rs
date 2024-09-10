@@ -20,7 +20,7 @@ use rustc_target::spec::PanicStrategy;
 /// This forces all unwinds, in panic=abort mode happening in foreign code, to
 /// trigger a process abort.
 #[derive(PartialEq)]
-pub struct AbortUnwindingCalls;
+pub(super) struct AbortUnwindingCalls;
 
 impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -50,9 +50,7 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
         // with a function call, and whose function we're calling may unwind.
         // This will filter to functions with `extern "C-unwind"` ABIs, for
         // example.
-        let mut calls_to_terminate = Vec::new();
-        let mut cleanups_to_remove = Vec::new();
-        for (id, block) in body.basic_blocks.iter_enumerated() {
+        for block in body.basic_blocks.as_mut() {
             if block.is_cleanup {
                 continue;
             }
@@ -61,7 +59,7 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
 
             let call_can_unwind = match &terminator.kind {
                 TerminatorKind::Call { func, .. } => {
-                    let ty = func.ty(body, tcx);
+                    let ty = func.ty(&body.local_decls, tcx);
                     let sig = ty.fn_sig(tcx);
                     let fn_def_id = match ty.kind() {
                         ty::FnPtr(..) => None,
@@ -86,31 +84,20 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
                 _ => continue,
             };
 
-            // If this function call can't unwind, then there's no need for it
-            // to have a landing pad. This means that we can remove any cleanup
-            // registered for it.
             if !call_can_unwind {
-                cleanups_to_remove.push(id);
-                continue;
+                // If this function call can't unwind, then there's no need for it
+                // to have a landing pad. This means that we can remove any cleanup
+                // registered for it.
+                let cleanup = block.terminator_mut().unwind_mut().unwrap();
+                *cleanup = UnwindAction::Unreachable;
+            } else if !body_can_unwind {
+                // Otherwise if this function can unwind, then if the outer function
+                // can also unwind there's nothing to do. If the outer function
+                // can't unwind, however, we need to change the landing pad for this
+                // function call to one that aborts.
+                let cleanup = block.terminator_mut().unwind_mut().unwrap();
+                *cleanup = UnwindAction::Terminate(UnwindTerminateReason::Abi);
             }
-
-            // Otherwise if this function can unwind, then if the outer function
-            // can also unwind there's nothing to do. If the outer function
-            // can't unwind, however, we need to change the landing pad for this
-            // function call to one that aborts.
-            if !body_can_unwind {
-                calls_to_terminate.push(id);
-            }
-        }
-
-        for id in calls_to_terminate {
-            let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
-            *cleanup = UnwindAction::Terminate(UnwindTerminateReason::Abi);
-        }
-
-        for id in cleanups_to_remove {
-            let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
-            *cleanup = UnwindAction::Unreachable;
         }
 
         // We may have invalidated some `cleanup` blocks so clean those up now.

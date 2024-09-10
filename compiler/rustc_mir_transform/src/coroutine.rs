@@ -53,7 +53,7 @@
 mod by_move_body;
 use std::{iter, ops};
 
-pub use by_move_body::coroutine_by_move_body_def_id;
+pub(super) use by_move_body::coroutine_by_move_body_def_id;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -85,7 +85,7 @@ use tracing::{debug, instrument, trace};
 use crate::deref_separator::deref_finder;
 use crate::{abort_unwinding_calls, errors, pass_manager as pm, simplify};
 
-pub struct StateTransform;
+pub(super) struct StateTransform;
 
 struct RenameLocalVisitor<'tcx> {
     from: Local,
@@ -872,9 +872,9 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     storage_conflicts
 }
 
-struct StorageConflictVisitor<'mir, 'tcx, 's> {
-    body: &'mir Body<'tcx>,
-    saved_locals: &'s CoroutineSavedLocals,
+struct StorageConflictVisitor<'a, 'tcx> {
+    body: &'a Body<'tcx>,
+    saved_locals: &'a CoroutineSavedLocals,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for coroutines.
     local_conflicts: BitMatrix<Local, Local>,
@@ -882,8 +882,8 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
     eligible_storage_live: BitSet<Local>,
 }
 
-impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
-    for StorageConflictVisitor<'mir, 'tcx, '_>
+impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
+    for StorageConflictVisitor<'a, 'tcx>
 {
     type FlowState = BitSet<Local>;
 
@@ -891,7 +891,7 @@ impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
         &mut self,
         _results: &mut R,
         state: &Self::FlowState,
-        _statement: &'mir Statement<'tcx>,
+        _statement: &'a Statement<'tcx>,
         loc: Location,
     ) {
         self.apply_state(state, loc);
@@ -901,14 +901,14 @@ impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
         &mut self,
         _results: &mut R,
         state: &Self::FlowState,
-        _terminator: &'mir Terminator<'tcx>,
+        _terminator: &'a Terminator<'tcx>,
         loc: Location,
     ) {
         self.apply_state(state, loc);
     }
 }
 
-impl StorageConflictVisitor<'_, '_, '_> {
+impl StorageConflictVisitor<'_, '_> {
     fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
         if let TerminatorKind::Unreachable = self.body.basic_blocks[loc.block].terminator().kind {
@@ -1199,7 +1199,7 @@ fn insert_panic_block<'tcx>(
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks.len());
-    let term = TerminatorKind::Assert {
+    let kind = TerminatorKind::Assert {
         cond: Operand::Constant(Box::new(ConstOperand {
             span: body.span,
             user_ty: None,
@@ -1211,14 +1211,7 @@ fn insert_panic_block<'tcx>(
         unwind: UnwindAction::Continue,
     };
 
-    let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind: term }),
-        is_cleanup: false,
-    });
-
-    assert_block
+    insert_term_block(body, kind)
 }
 
 fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {

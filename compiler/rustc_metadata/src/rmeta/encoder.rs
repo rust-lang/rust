@@ -9,6 +9,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdSet, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
@@ -797,9 +798,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
-struct AnalyzeAttrState {
+struct AnalyzeAttrState<'a> {
     is_exported: bool,
     is_doc_hidden: bool,
+    features: &'a Features,
 }
 
 /// Returns whether an attribute needs to be recorded in metadata, that is, if it's usable and
@@ -812,7 +814,7 @@ struct AnalyzeAttrState {
 /// visibility: this is a piece of data that can be computed once per defid, and not once per
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
-fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
+fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState<'_>) -> bool {
     let mut should_encode = false;
     if !rustc_feature::encode_cross_crate(attr.name_or_empty()) {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
@@ -837,6 +839,9 @@ fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
                 }
             }
         }
+    } else if attr.path().starts_with(&[sym::diagnostic]) && attr.path().len() == 2 {
+        should_encode =
+            rustc_feature::is_stable_diagnostic_attribute(attr.path()[1], state.features);
     } else {
         should_encode = true;
     }
@@ -1343,6 +1348,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut state = AnalyzeAttrState {
             is_exported: tcx.effective_visibilities(()).is_exported(def_id),
             is_doc_hidden: false,
+            features: &tcx.features(),
         };
         let attr_iter = tcx
             .hir()
@@ -2033,7 +2039,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let simplified_self_ty = fast_reject::simplify_type(
                     self.tcx,
                     trait_ref.self_ty(),
-                    TreatParams::AsCandidateKey,
+                    TreatParams::InstantiateWithInfer,
                 );
                 trait_impls
                     .entry(trait_ref.def_id)

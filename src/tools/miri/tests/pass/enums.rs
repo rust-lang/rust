@@ -132,6 +132,43 @@ fn overaligned_casts() {
     assert_eq!(aligned as u8, 0);
 }
 
+// This hits a corner case in the logic for clearing padding on typed copies.
+fn padding_clear_corner_case() {
+    #[allow(unused)]
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    pub struct Decoded {
+        /// The scaled mantissa.
+        pub mant: u64,
+        /// The lower error range.
+        pub minus: u64,
+        /// The upper error range.
+        pub plus: u64,
+        /// The shared exponent in base 2.
+        pub exp: i16,
+        /// True when the error range is inclusive.
+        ///
+        /// In IEEE 754, this is true when the original mantissa was even.
+        pub inclusive: bool,
+    }
+
+    #[allow(unused)]
+    #[derive(Copy, Clone)]
+    pub enum FullDecoded {
+        /// Not-a-number.
+        Nan,
+        /// Infinities, either positive or negative.
+        Infinite,
+        /// Zero, either positive or negative.
+        Zero,
+        /// Finite numbers with further decoded fields.
+        Finite(Decoded),
+    }
+
+    let val = FullDecoded::Finite(Decoded { mant: 0, minus: 0, plus: 0, exp: 0, inclusive: false });
+    let _val2 = val; // trigger typed copy
+}
+
 fn main() {
     test(MyEnum::MyEmptyVariant);
     test(MyEnum::MyNewtypeVariant(42));
@@ -141,4 +178,5 @@ fn main() {
     discriminant_overflow();
     more_discriminant_overflow();
     overaligned_casts();
+    padding_clear_corner_case();
 }

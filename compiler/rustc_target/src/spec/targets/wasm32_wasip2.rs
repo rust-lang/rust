@@ -1,6 +1,6 @@
 //! The `wasm32-wasip2` target is the next evolution of the
 //! wasm32-wasi target. While the wasi specification is still under
-//! active development, the {review 2 iteration is considered an "island
+//! active development, the preview 2 iteration is considered an "island
 //! of stability" that should allow users to rely on it indefinitely.
 //!
 //! The `wasi` target is a proposal to define a standardized set of WebAssembly

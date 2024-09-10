@@ -288,11 +288,11 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
         // Safety: `len` is larger than the array size. Copy a fixed amount here to fully initialize
         // the array.
-        return unsafe {
+        unsafe {
             ptr::copy_nonoverlapping(self.ptr.as_ptr(), raw_ary.as_mut_ptr() as *mut T, N);
             self.ptr = self.ptr.add(N);
             Ok(raw_ary.transpose().assume_init())
-        };
+        }
     }
 
     fn fold<B, F>(mut self, mut accum: B, mut f: F) -> B

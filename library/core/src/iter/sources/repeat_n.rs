@@ -56,7 +56,7 @@ use crate::num::NonZero;
 /// assert_eq!(None, it.next());
 /// ```
 #[inline]
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
     let mut element = ManuallyDrop::new(element);
 
@@ -75,7 +75,7 @@ pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
 /// This `struct` is created by the [`repeat_n()`] function.
 /// See its documentation for more.
 #[derive(Clone, Debug)]
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 pub struct RepeatN<A> {
     count: usize,
     // Invariant: has been dropped iff count == 0.
@@ -99,14 +99,14 @@ impl<A> RepeatN<A> {
     }
 }
 
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A> Drop for RepeatN<A> {
     fn drop(&mut self) {
         self.take_element();
     }
 }
 
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> Iterator for RepeatN<A> {
     type Item = A;
 
@@ -154,14 +154,14 @@ impl<A: Clone> Iterator for RepeatN<A> {
     }
 }
 
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> ExactSizeIterator for RepeatN<A> {
     fn len(&self) -> usize {
         self.count
     }
 }
 
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -179,12 +179,12 @@ impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     }
 }
 
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> FusedIterator for RepeatN<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: Clone> TrustedLen for RepeatN<A> {}
-#[stable(feature = "iter_repeat_n", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> UncheckedIterator for RepeatN<A> {
     #[inline]
     unsafe fn next_unchecked(&mut self) -> Self::Item {

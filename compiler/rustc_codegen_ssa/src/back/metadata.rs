@@ -372,27 +372,42 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     Some(file)
 }
 
-/// Since Xcode 15 Apple's LD requires object files to contain information about what they were
-/// built for (LC_BUILD_VERSION): the platform (macOS/watchOS etc), minimum OS version, and SDK
-/// version. This returns a `MachOBuildVersion` for the target.
+/// Mach-O files contain information about:
+/// - The platform/OS they were built for (macOS/watchOS/Mac Catalyst/iOS simulator etc).
+/// - The minimum OS version / deployment target.
+/// - The version of the SDK they were targetting.
+///
+/// In the past, this was accomplished using the LC_VERSION_MIN_MACOSX, LC_VERSION_MIN_IPHONEOS,
+/// LC_VERSION_MIN_TVOS or LC_VERSION_MIN_WATCHOS load commands, which each contain information
+/// about the deployment target and SDK version, and implicitly, by their presence, which OS they
+/// target. Simulator targets were determined if the architecture was x86_64, but there was e.g. a
+/// LC_VERSION_MIN_IPHONEOS present.
+///
+/// This is of course brittle and limited, so modern tooling emit the LC_BUILD_VERSION load
+/// command (which contains all three pieces of information in one) when the deployment target is
+/// high enough, or the target is something that wouldn't be encodable with the old load commands
+/// (such as Mac Catalyst, or Aarch64 iOS simulator).
+///
+/// Since Xcode 15, Apple's LD apparently requires object files to use this load command, so this
+/// returns the `MachOBuildVersion` for the target to do so.
 fn macho_object_build_version_for_target(target: &Target) -> object::write::MachOBuildVersion {
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
-    fn pack_version((major, minor): (u32, u32)) -> u32 {
-        (major << 16) | (minor << 8)
+    fn pack_version((major, minor, patch): (u16, u8, u8)) -> u32 {
+        let (major, minor, patch) = (major as u32, minor as u32, patch as u32);
+        (major << 16) | (minor << 8) | patch
     }
 
     let platform =
         rustc_target::spec::current_apple_platform(target).expect("unknown Apple target OS");
-    let min_os = rustc_target::spec::current_apple_deployment_target(target)
-        .expect("unknown Apple target OS");
-    let sdk =
+    let min_os = rustc_target::spec::current_apple_deployment_target(target);
+    let (sdk_major, sdk_minor) =
         rustc_target::spec::current_apple_sdk_version(platform).expect("unknown Apple target OS");
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;
     build_version.minos = pack_version(min_os);
-    build_version.sdk = pack_version(sdk);
+    build_version.sdk = pack_version((sdk_major, sdk_minor, 0));
     build_version
 }
 

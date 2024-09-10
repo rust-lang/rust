@@ -931,7 +931,12 @@ impl Step for Rustc {
         // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
         if builder.download_rustc() && compiler.stage != 0 {
-            builder.ensure(Sysroot { compiler, force_recompile: false });
+            let sysroot = builder.ensure(Sysroot { compiler, force_recompile: false });
+            cp_rustc_component_to_ci_sysroot(
+                builder,
+                &sysroot,
+                builder.config.ci_rustc_dev_contents(),
+            );
             return compiler.stage;
         }
 
@@ -983,7 +988,7 @@ impl Step for Rustc {
             Kind::Build,
         );
 
-        rustc_cargo(builder, &mut cargo, target, &compiler);
+        rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
 
         // NB: all RUSTFLAGS should be added to `rustc_cargo()` so they will be
         // consistently applied by check/doc/test modes too.
@@ -1042,10 +1047,11 @@ pub fn rustc_cargo(
     cargo: &mut Cargo,
     target: TargetSelection,
     compiler: &Compiler,
+    crates: &[String],
 ) {
     cargo
         .arg("--features")
-        .arg(builder.rustc_features(builder.kind, target))
+        .arg(builder.rustc_features(builder.kind, target, crates))
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
 
@@ -1187,6 +1193,10 @@ pub fn rustc_cargo_env(
 
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
+    }
+
+    if builder.config.llvm_enzyme {
+        cargo.rustflag("--cfg=llvm_enzyme");
     }
 
     // Note that this is disabled if LLVM itself is disabled or we're in a check
@@ -1784,6 +1794,24 @@ impl Step for Assemble {
         //        use that to bootstrap this compiler forward.
         let mut build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
 
+        // Build enzyme
+        let enzyme_install = if builder.config.llvm_enzyme {
+            Some(builder.ensure(llvm::Enzyme { target: build_compiler.host }))
+        } else {
+            None
+        };
+
+        if let Some(enzyme_install) = enzyme_install {
+            let lib_ext = std::env::consts::DLL_EXTENSION;
+            let src_lib = enzyme_install.join("build/Enzyme/libEnzyme-19").with_extension(lib_ext);
+            let libdir = builder.sysroot_libdir(build_compiler, build_compiler.host);
+            let target_libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
+            let dst_lib = libdir.join("libEnzyme-19").with_extension(lib_ext);
+            let target_dst_lib = target_libdir.join("libEnzyme-19").with_extension(lib_ext);
+            builder.copy_link(&src_lib, &dst_lib);
+            builder.copy_link(&src_lib, &target_dst_lib);
+        }
+
         // Build the libraries for this compiler to link to (i.e., the libraries
         // it uses at runtime). NOTE: Crates the target compiler compiles don't
         // link to these. (FIXME: Is that correct? It seems to be correct most
@@ -1884,7 +1912,7 @@ impl Step for Assemble {
         // delegates to the `rust-lld` binary for linking and then runs
         // logic to create the final binary. This is used by the
         // `wasm32-wasip2` target of Rust.
-        if builder.build_wasm_component_ld() {
+        if builder.tool_enabled("wasm-component-ld") {
             let wasm_component_ld_exe =
                 builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
                     compiler: build_compiler,

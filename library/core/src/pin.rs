@@ -1084,7 +1084,7 @@ use crate::{cmp, fmt};
 #[lang = "pin"]
 #[fundamental]
 #[repr(transparent)]
-#[cfg_attr(not(bootstrap), rustc_pub_transparent)]
+#[rustc_pub_transparent]
 #[derive(Copy, Clone)]
 pub struct Pin<Ptr> {
     // FIXME(#93176): this field is made `#[unstable] #[doc(hidden)] pub` to:

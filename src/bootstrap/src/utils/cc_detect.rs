@@ -87,15 +87,28 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
 }
 
 pub fn find(build: &Build) {
-    // For all targets we're going to need a C compiler for building some shims
-    // and such as well as for being a linker for Rust code.
-    let targets = build
-        .targets
-        .iter()
-        .chain(&build.hosts)
-        .cloned()
-        .chain(iter::once(build.build))
-        .collect::<HashSet<_>>();
+    let targets: HashSet<_> = match build.config.cmd {
+        // We don't need to check cross targets for these commands.
+        crate::Subcommand::Clean { .. }
+        | crate::Subcommand::Suggest { .. }
+        | crate::Subcommand::Format { .. }
+        | crate::Subcommand::Setup { .. } => {
+            build.hosts.iter().cloned().chain(iter::once(build.build)).collect()
+        }
+
+        _ => {
+            // For all targets we're going to need a C compiler for building some shims
+            // and such as well as for being a linker for Rust code.
+            build
+                .targets
+                .iter()
+                .chain(&build.hosts)
+                .cloned()
+                .chain(iter::once(build.build))
+                .collect()
+        }
+    };
+
     for target in targets.into_iter() {
         find_target(build, target);
     }

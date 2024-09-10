@@ -657,7 +657,7 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
     }
     const typeFilter = parserState.typeFilter;
     parserState.typeFilter = null;
-    if (name === "!") {
+    if (name.trim() === "!") {
         if (typeFilter !== null && typeFilter !== "primitive") {
             throw [
                 "Invalid search type: primitive never type ",
@@ -1795,6 +1795,7 @@ class DocSearch {
                 // Total number of elements (includes generics).
                 totalElems: 0,
                 literalSearch: false,
+                hasReturnArrow: false,
                 error: null,
                 correction: null,
                 proposeCorrectionFrom: null,
@@ -1823,6 +1824,7 @@ class DocSearch {
                         continue;
                     } else if (c === "-" || c === ">") {
                         if (isReturnArrow(parserState)) {
+                            query.hasReturnArrow = true;
                             break;
                         }
                         throw ["Unexpected ", c, " (did you mean ", "->", "?)"];
@@ -1889,9 +1891,7 @@ class DocSearch {
                     // Get returned elements.
                     getItemsBefore(query, parserState, query.returned, "");
                     // Nothing can come afterward!
-                    if (query.returned.length === 0) {
-                        throw ["Expected at least one item after ", "->"];
-                    }
+                    query.hasReturnArrow = true;
                     break;
                 } else {
                     parserState.pos += 1;
@@ -3249,7 +3249,7 @@ class DocSearch {
                 this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint, fps);
             }
 
-            if (parsedQuery.foundElems === 1 && parsedQuery.returned.length === 0) {
+            if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
                 if (parsedQuery.elems.length === 1) {
                     const elem = parsedQuery.elems[0];
                     const length = this.searchIndex.length;

@@ -473,7 +473,7 @@ impl Step for Rustc {
                     );
                 }
             }
-            if builder.build_wasm_component_ld() {
+            if builder.tool_enabled("wasm-component-ld") {
                 let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
                 let ld = exe("wasm-component-ld", compiler.host);
                 builder.copy_link(&src_dir.join(&ld), &dst_dir.join(&ld));
@@ -1348,18 +1348,9 @@ impl Step for CodegenBackend {
             return None;
         }
 
-        if self.backend == "cranelift" {
-            if !target_supports_cranelift_backend(self.compiler.host) {
-                builder.info("target not supported by rustc_codegen_cranelift. skipping");
-                return None;
-            }
-
-            if self.compiler.host.is_windows() {
-                builder.info(
-                    "dist currently disabled for windows by rustc_codegen_cranelift. skipping",
-                );
-                return None;
-            }
+        if self.backend == "cranelift" && !target_supports_cranelift_backend(self.compiler.host) {
+            builder.info("target not supported by rustc_codegen_cranelift. skipping");
+            return None;
         }
 
         let compiler = self.compiler;

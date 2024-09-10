@@ -88,6 +88,9 @@ struct Renderer<'a> {
     builder: &'a Builder<'a>,
     tests_count: Option<usize>,
     executed_tests: usize,
+    /// Number of tests that were skipped due to already being up-to-date
+    /// (i.e. no relevant changes occurred since they last ran).
+    up_to_date_tests: usize,
     terse_tests_in_line: usize,
 }
 
@@ -100,6 +103,7 @@ impl<'a> Renderer<'a> {
             builder,
             tests_count: None,
             executed_tests: 0,
+            up_to_date_tests: 0,
             terse_tests_in_line: 0,
         }
     }
@@ -127,6 +131,12 @@ impl<'a> Renderer<'a> {
                 }
             }
         }
+
+        if self.up_to_date_tests > 0 {
+            let n = self.up_to_date_tests;
+            let s = if n > 1 { "s" } else { "" };
+            println!("help: ignored {n} up-to-date test{s}; use `--force-rerun` to prevent this\n");
+        }
     }
 
     /// Renders the stdout characters one by one
@@ -148,6 +158,11 @@ impl<'a> Renderer<'a> {
 
     fn render_test_outcome(&mut self, outcome: Outcome<'_>, test: &TestOutcome) {
         self.executed_tests += 1;
+
+        // Keep this in sync with the "up-to-date" ignore message inserted by compiletest.
+        if let Outcome::Ignored { reason: Some("up-to-date") } = outcome {
+            self.up_to_date_tests += 1;
+        }
 
         #[cfg(feature = "build-metrics")]
         self.builder.metrics.record_test(

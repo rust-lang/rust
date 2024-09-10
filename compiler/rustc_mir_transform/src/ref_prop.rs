@@ -70,7 +70,7 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 ///
 /// For immutable borrows, we do not need to preserve such uniqueness property,
 /// so we perform all the possible instantiations without removing the `_1 = &_2` statement.
-pub struct ReferencePropagation;
+pub(super) struct ReferencePropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

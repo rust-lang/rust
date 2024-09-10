@@ -1136,6 +1136,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
+    /// `Box` is *not* considered a pointer here!
     #[inline]
     pub fn is_any_ptr(self) -> bool {
         self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
@@ -1170,12 +1171,17 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Panics if called on any type other than `Box<T>`.
-    pub fn boxed_ty(self) -> Ty<'tcx> {
+    pub fn boxed_ty(self) -> Option<Ty<'tcx>> {
         match self.kind() {
-            Adt(def, args) if def.is_box() => args.type_at(0),
-            _ => bug!("`boxed_ty` is called on non-box type {:?}", self),
+            Adt(def, args) if def.is_box() => Some(args.type_at(0)),
+            _ => None,
         }
+    }
+
+    /// Panics if called on any type other than `Box<T>`.
+    pub fn expect_boxed_ty(self) -> Ty<'tcx> {
+        self.boxed_ty()
+            .unwrap_or_else(|| bug!("`expect_boxed_ty` is called on non-box type {:?}", self))
     }
 
     /// A scalar type is one that denotes an atomic datum, with no sub-components.
@@ -1323,7 +1329,7 @@ impl<'tcx> Ty<'tcx> {
     /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'tcx>> {
         match *self.kind() {
-            Adt(def, _) if def.is_box() => Some(self.boxed_ty()),
+            _ if let Some(boxed) = self.boxed_ty() => Some(boxed),
             Ref(_, ty, _) => Some(ty),
             RawPtr(ty, _) if explicit => Some(ty),
             _ => None,

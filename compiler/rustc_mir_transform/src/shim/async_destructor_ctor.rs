@@ -23,7 +23,7 @@ use tracing::debug;
 
 use super::{local_decls_for_sig, new_body};
 
-pub fn build_async_destructor_ctor_shim<'tcx>(
+pub(super) fn build_async_destructor_ctor_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     ty: Option<Ty<'tcx>>,

@@ -798,6 +798,7 @@ impl<'a> Builder<'a> {
                 tool::Miri,
                 tool::CargoMiri,
                 llvm::Lld,
+                llvm::Enzyme,
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
@@ -1586,6 +1587,12 @@ impl<'a> Builder<'a> {
             // so it has no way of knowing the sysroot.
             rustflags.arg("--sysroot");
             rustflags.arg(sysroot_str);
+        }
+
+        // https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp/topic/.E2.9C.94.20link.20new.20library.20into.20stage1.2Frustc
+        if self.config.llvm_enzyme {
+            rustflags.arg("-l");
+            rustflags.arg("Enzyme-19");
         }
 
         let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
@@ -2456,7 +2463,16 @@ impl Cargo {
         cmd_kind: Kind,
     ) -> Cargo {
         let mut cargo = builder.cargo(compiler, mode, source_type, target, cmd_kind);
-        cargo.configure_linker(builder);
+
+        match cmd_kind {
+            // No need to configure the target linker for these command types,
+            // as they don't invoke rustc at all.
+            Kind::Clean | Kind::Suggest | Kind::Format | Kind::Setup => {}
+            _ => {
+                cargo.configure_linker(builder);
+            }
+        }
+
         cargo
     }
 

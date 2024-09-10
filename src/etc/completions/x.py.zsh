@@ -33,7 +33,6 @@ _x.py() {
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -84,7 +83,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -127,7 +125,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -175,7 +172,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -221,7 +217,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -264,7 +259,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -309,7 +303,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -360,7 +353,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -411,7 +403,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -458,7 +449,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -501,7 +491,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -545,7 +534,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -588,7 +576,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -632,7 +619,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -675,7 +661,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -719,7 +704,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -764,7 +748,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
@@ -808,7 +791,6 @@ _arguments "${_arguments_options[@]}" : \
 '--warnings=[if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour]:deny|warn:(deny warn default)' \
 '--error-format=[rustc error format]:FORMAT:( )' \
 '--color=[whether to use color in cargo and rustc output]:STYLE:(always never auto)' \
-'--llvm-skip-rebuild=[whether rebuilding llvm should be skipped, overriding \`skip-rebuld\` in config.toml]:VALUE:(true false)' \
 '--rust-profile-generate=[generate PGO profile with rustc build]:PROFILE:_files' \
 '--rust-profile-use=[use PGO profile for rustc build]:PROFILE:_files' \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \

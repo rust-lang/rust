@@ -2277,6 +2277,14 @@ impl<F: FnPtr> fmt::Debug for F {
 /// `addr_of!(expr)` is equivalent to `&raw const expr`. The macro is *soft-deprecated*;
 /// use `&raw const` instead.
 ///
+/// It is still an open question under which conditions writing through an `addr_of!`-created
+/// pointer is permitted. If the place `expr` evaluates to is based on a raw pointer, then the
+/// result of `addr_of!` inherits all permissions from that raw pointer. However, if the place is
+/// based on a reference, local variable, or `static`, then until all details are decided, the same
+/// rules as for shared references apply: it is UB to write through a pointer created with this
+/// operation, except for bytes located inside an `UnsafeCell`. Use `&raw mut` (or [`addr_of_mut`])
+/// to create a raw pointer that definitely permits mutation.
+///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,
 /// raw pointers should be used instead. However, `&expr as *const _` creates a reference

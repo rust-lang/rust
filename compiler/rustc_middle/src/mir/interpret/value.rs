@@ -307,6 +307,13 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
         }
     }
 
+    pub fn clear_provenance(&mut self) -> InterpResult<'tcx> {
+        if matches!(self, Scalar::Ptr(..)) {
+            *self = self.to_scalar_int()?.into();
+        }
+        Ok(())
+    }
+
     #[inline(always)]
     pub fn to_scalar_int(self) -> InterpResult<'tcx, ScalarInt> {
         self.try_to_scalar_int().map_err(|_| err_unsup!(ReadPointerAsInt(None)).into())

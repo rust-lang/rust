@@ -157,9 +157,6 @@ mod imp {
             // going to be cross-lang LTOed anyway. However, using expose is shorter and
             // requires less unsafe.
             let addr: usize = ptr.expose_provenance();
-            #[cfg(bootstrap)]
-            let image_base = unsafe { addr_of!(__ImageBase) }.addr();
-            #[cfg(not(bootstrap))]
             let image_base = addr_of!(__ImageBase).addr();
             let offset: usize = addr - image_base;
             Self(offset as u32)
@@ -253,9 +250,6 @@ extern "C" {
 // This is fine since the MSVC runtime uses string comparison on the type name
 // to match TypeDescriptors rather than pointer equality.
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
-    #[cfg(bootstrap)]
-    pVFTable: unsafe { addr_of!(TYPE_INFO_VTABLE) } as *const _,
-    #[cfg(not(bootstrap))]
     pVFTable: addr_of!(TYPE_INFO_VTABLE) as *const _,
     spare: core::ptr::null_mut(),
     name: TYPE_NAME,

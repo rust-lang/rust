@@ -16,7 +16,7 @@ pub(super) fn derefs_to_slice<'tcx>(
     fn may_slice<'a>(cx: &LateContext<'a>, ty: Ty<'a>) -> bool {
         match ty.kind() {
             ty::Slice(_) => true,
-            ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
+            ty::Adt(..) if let Some(boxed) = ty.boxed_ty() => may_slice(cx, boxed),
             ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym::Vec),
             ty::Array(_, size) => size.try_eval_target_usize(cx.tcx, cx.param_env).is_some(),
             ty::Ref(_, inner, _) => may_slice(cx, *inner),
@@ -33,7 +33,7 @@ pub(super) fn derefs_to_slice<'tcx>(
     } else {
         match ty.kind() {
             ty::Slice(_) => Some(expr),
-            ty::Adt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => Some(expr),
+            _ if ty.boxed_ty().is_some_and(|boxed| may_slice(cx, boxed)) => Some(expr),
             ty::Ref(_, inner, _) => {
                 if may_slice(cx, *inner) {
                     Some(expr)

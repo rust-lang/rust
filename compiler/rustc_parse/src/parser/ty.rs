@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, FnRetTy, GenericBound,
@@ -1285,8 +1285,9 @@ impl<'a> Parser<'a> {
 
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
-        if let Some(ident) = self.token.lifetime() {
-            if ident.without_first_quote().is_reserved()
+        if let Some((ident, is_raw)) = self.token.lifetime() {
+            if matches!(is_raw, IdentIsRaw::No)
+                && ident.without_first_quote().is_reserved()
                 && ![kw::UnderscoreLifetime, kw::StaticLifetime].contains(&ident.name)
             {
                 self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });

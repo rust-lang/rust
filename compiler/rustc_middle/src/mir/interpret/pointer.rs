@@ -80,14 +80,23 @@ pub trait Provenance: Copy + fmt::Debug + 'static {
 }
 
 /// The type of provenance in the compile-time interpreter.
-/// This is a packed representation of an `AllocId` and an `immutable: bool`.
+/// This is a packed representation of:
+/// - an `AllocId` (non-zero)
+/// - an `immutable: bool`
+/// - a `shared_ref: bool`
+///
+/// with the extra invariant that if `immutable` is `true`, then so
+/// is `shared_ref`.
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CtfeProvenance(NonZero<u64>);
 
 impl From<AllocId> for CtfeProvenance {
     fn from(value: AllocId) -> Self {
         let prov = CtfeProvenance(value.0);
-        assert!(!prov.immutable(), "`AllocId` with the highest bit set cannot be used in CTFE");
+        assert!(
+            prov.alloc_id() == value,
+            "`AllocId` with the highest bits set cannot be used in CTFE"
+        );
         prov
     }
 }
@@ -103,12 +112,14 @@ impl fmt::Debug for CtfeProvenance {
 }
 
 const IMMUTABLE_MASK: u64 = 1 << 63; // the highest bit
+const SHARED_REF_MASK: u64 = 1 << 62;
+const ALLOC_ID_MASK: u64 = u64::MAX & !IMMUTABLE_MASK & !SHARED_REF_MASK;
 
 impl CtfeProvenance {
     /// Returns the `AllocId` of this provenance.
     #[inline(always)]
     pub fn alloc_id(self) -> AllocId {
-        AllocId(NonZero::new(self.0.get() & !IMMUTABLE_MASK).unwrap())
+        AllocId(NonZero::new(self.0.get() & ALLOC_ID_MASK).unwrap())
     }
 
     /// Returns whether this provenance is immutable.
@@ -117,10 +128,38 @@ impl CtfeProvenance {
         self.0.get() & IMMUTABLE_MASK != 0
     }
 
+    /// Returns whether this provenance is derived from a shared reference.
+    #[inline]
+    pub fn shared_ref(self) -> bool {
+        self.0.get() & SHARED_REF_MASK != 0
+    }
+
+    pub fn into_parts(self) -> (AllocId, bool, bool) {
+        (self.alloc_id(), self.immutable(), self.shared_ref())
+    }
+
+    pub fn from_parts((alloc_id, immutable, shared_ref): (AllocId, bool, bool)) -> Self {
+        let prov = CtfeProvenance::from(alloc_id);
+        if immutable {
+            // This sets both flags, so we don't even have to check `shared_ref`.
+            prov.as_immutable()
+        } else if shared_ref {
+            prov.as_shared_ref()
+        } else {
+            prov
+        }
+    }
+
     /// Returns an immutable version of this provenance.
     #[inline]
     pub fn as_immutable(self) -> Self {
-        CtfeProvenance(self.0 | IMMUTABLE_MASK)
+        CtfeProvenance(self.0 | IMMUTABLE_MASK | SHARED_REF_MASK)
+    }
+
+    /// Returns a "shared reference" (but not necessarily immutable!) version of this provenance.
+    #[inline]
+    pub fn as_shared_ref(self) -> Self {
+        CtfeProvenance(self.0 | SHARED_REF_MASK)
     }
 }
 

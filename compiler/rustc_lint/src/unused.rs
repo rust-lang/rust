@@ -283,9 +283,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             }
 
             match *ty.kind() {
-                ty::Adt(..) if ty.is_box() => {
-                    let boxed_ty = ty.boxed_ty();
-                    is_ty_must_use(cx, boxed_ty, expr, span)
+                ty::Adt(..) if let Some(boxed) = ty.boxed_ty() => {
+                    is_ty_must_use(cx, boxed, expr, span)
                         .map(|inner| MustUsePath::Boxed(Box::new(inner)))
                 }
                 ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::Pin) => {

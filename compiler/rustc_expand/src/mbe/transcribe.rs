@@ -283,9 +283,9 @@ pub(super) fn transcribe<'a>(
                             let kind = token::NtIdent(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
-                        MatchedSingle(ParseNtResult::Lifetime(ident)) => {
+                        MatchedSingle(ParseNtResult::Lifetime(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
-                            let kind = token::NtLifetime(*ident);
+                            let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
                         MatchedSingle(ParseNtResult::Nt(nt)) => {

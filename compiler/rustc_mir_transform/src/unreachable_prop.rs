@@ -10,7 +10,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::Size;
 
-pub struct UnreachablePropagation;
+pub(super) struct UnreachablePropagation;
 
 impl crate::MirPass<'_> for UnreachablePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

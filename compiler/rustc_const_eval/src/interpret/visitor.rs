@@ -5,6 +5,7 @@ use std::num::NonZero;
 
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::InterpResult;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
 use tracing::trace;
@@ -82,6 +83,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
         self.visit_value(new_val)
     }
 
+    /// Traversal logic; should not be overloaded.
     fn walk_value(&mut self, v: &Self::V) -> InterpResult<'tcx> {
         let ty = v.layout().ty;
         trace!("walk_value: type: {ty}");
@@ -104,6 +106,17 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 // DynStar types. Very different from a dyn type (but strangely part of the
                 // same variant in `TyKind`): These are pairs where the 2nd component is the
                 // vtable, and the first component is the data (which must be ptr-sized).
+
+                // First make sure the vtable can be read at its type.
+                // The type of this vtable is fake, it claims to be a reference to some actual memory but that isn't true.
+                // So we transmute it to a raw pointer.
+                let raw_ptr_ty = Ty::new_mut_ptr(*self.ecx().tcx, self.ecx().tcx.types.unit);
+                let raw_ptr_ty = self.ecx().layout_of(raw_ptr_ty)?;
+                let vtable_field =
+                    self.ecx().project_field(v, 1)?.transmute(raw_ptr_ty, self.ecx())?;
+                self.visit_field(v, 1, &vtable_field)?;
+
+                // Then unpack the first field, and continue.
                 let data = self.ecx().unpack_dyn_star(v, data)?;
                 return self.visit_field(v, 0, &data);
             }

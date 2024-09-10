@@ -255,6 +255,7 @@ lint_duplicate_matcher_binding = duplicate matcher binding
 lint_elided_named_lifetime = elided lifetime has a name
     .label_elided = this elided lifetime gets resolved as `{$name}`
     .label_named = lifetime `{$name}` declared here
+    .suggestion = consider specifying it explicitly
 
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
@@ -699,10 +700,17 @@ lint_ptr_null_checks_ref = references are not nullable, so checking them for nul
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
+lint_query_untracked = `{$method}` accesses information that is not tracked by the query system
+    .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
 lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
 
 lint_range_use_inclusive_range = use an inclusive range instead
 
+
+lint_raw_prefix = prefix `'r` is reserved
+    .label = reserved prefix
+    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
 
 lint_reason_must_be_string_literal = reason must be a string literal
 

@@ -9,6 +9,10 @@ note: the lint level is defined here
    |
 LL | #![deny(elided_named_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
+help: consider specifying it explicitly
+   |
+LL |     pub fn get_mut(&'static self, x: &mut u8) -> &'static mut u8 {
+   |                                                   +++++++
 
 error: aborting due to 1 previous error
 

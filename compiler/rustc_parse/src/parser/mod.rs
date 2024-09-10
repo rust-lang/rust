@@ -35,6 +35,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
+use rustc_index::interval::IntervalSet;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -183,7 +184,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(Parser<'_>, 256);
+rustc_data_structures::static_assert_size!(Parser<'_>, 288);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]
@@ -238,7 +239,8 @@ impl NodeRange {
     // is the position of the function's start token. This gives
     // `NodeRange(10..15)`.
     fn new(ParserRange(parser_range): ParserRange, start_pos: u32) -> NodeRange {
-        assert!(parser_range.start >= start_pos && parser_range.end >= start_pos);
+        assert!(!parser_range.is_empty());
+        assert!(parser_range.start >= start_pos);
         NodeRange((parser_range.start - start_pos)..(parser_range.end - start_pos))
     }
 }
@@ -260,6 +262,9 @@ struct CaptureState {
     capturing: Capturing,
     parser_replacements: Vec<ParserReplacement>,
     inner_attr_parser_ranges: FxHashMap<AttrId, ParserRange>,
+    // `IntervalSet` is good for perf because attrs are mostly added to this
+    // set in contiguous ranges.
+    seen_attrs: IntervalSet<AttrId>,
 }
 
 /// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that
@@ -457,6 +462,7 @@ impl<'a> Parser<'a> {
                 capturing: Capturing::No,
                 parser_replacements: Vec::new(),
                 inner_attr_parser_ranges: Default::default(),
+                seen_attrs: IntervalSet::new(u32::MAX as usize),
             },
             current_closure: None,
             recovery: Recovery::Allowed,
@@ -1666,7 +1672,7 @@ enum FlatToken {
 pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
-    Lifetime(Ident),
+    Lifetime(Ident, IdentIsRaw),
 
     /// This case will eventually be removed, along with `Token::Interpolate`.
     Nt(Lrc<Nonterminal>),

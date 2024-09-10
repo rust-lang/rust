@@ -23,8 +23,8 @@ use crate::mem::{self, ManuallyDrop};
 use crate::panic::{BacktraceStyle, PanicHookInfo};
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{PoisonError, RwLock};
-use crate::sys::backtrace;
 use crate::sys::stdio::panic_output;
+use crate::sys::{backtrace, dbg};
 use crate::{fmt, intrinsics, process, thread};
 
 // Binary interface to the panic runtime that the standard library depends on.
@@ -859,6 +859,14 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 #[cfg(not(feature = "panic_immediate_abort"))]
 fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
+    // Break into the debugger if it is attached.
+    // The return value is not currently used.
+    //
+    // This function isn't used anywhere else, and
+    // using inside `#[panic_handler]` doesn't seem
+    // to count, so a warning is issued.
+    let _ = dbg::breakpoint_if_debugging();
+
     let code = unsafe { __rust_start_panic(msg) };
     rtabort!("failed to initiate panic, error {code}")
 }
@@ -866,6 +874,14 @@ fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 #[cfg(feature = "panic_immediate_abort")]
 fn rust_panic(_: &mut dyn PanicPayload) -> ! {
+    // Break into the debugger if it is attached.
+    // The return value is not currently used.
+    //
+    // This function isn't used anywhere else, and
+    // using inside `#[panic_handler]` doesn't seem
+    // to count, so a warning is issued.
+    let _ = dbg::breakpoint_if_debugging();
+
     unsafe {
         crate::intrinsics::abort();
     }

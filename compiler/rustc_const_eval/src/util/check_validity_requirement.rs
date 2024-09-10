@@ -4,7 +4,7 @@ use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
 
 use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeMachine};
-use crate::interpret::{InterpCx, MemoryKind, OpTy};
+use crate::interpret::{InterpCx, MemoryKind};
 
 /// Determines if this type permits "raw" initialization by just transmuting some memory into an
 /// instance of `T`.
@@ -32,15 +32,15 @@ pub fn check_validity_requirement<'tcx>(
 
     let layout_cx = LayoutCx { tcx, param_env: param_env_and_ty.param_env };
     if kind == ValidityRequirement::Uninit || tcx.sess.opts.unstable_opts.strict_init_checks {
-        might_permit_raw_init_strict(layout, &layout_cx, kind)
+        check_validity_requirement_strict(layout, &layout_cx, kind)
     } else {
-        might_permit_raw_init_lax(layout, &layout_cx, kind)
+        check_validity_requirement_lax(layout, &layout_cx, kind)
     }
 }
 
-/// Implements the 'strict' version of the `might_permit_raw_init` checks; see that function for
-/// details.
-fn might_permit_raw_init_strict<'tcx>(
+/// Implements the 'strict' version of the [`check_validity_requirement`] checks; see that function
+/// for details.
+fn check_validity_requirement_strict<'tcx>(
     ty: TyAndLayout<'tcx>,
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     kind: ValidityRequirement,
@@ -61,18 +61,24 @@ fn might_permit_raw_init_strict<'tcx>(
         .expect("failed to write bytes for zero valid check");
     }
 
-    let ot: OpTy<'_, _> = allocated.into();
-
     // Assume that if it failed, it's a validation failure.
     // This does *not* actually check that references are dereferenceable, but since all types that
     // require dereferenceability also require non-null, we don't actually get any false negatives
     // due to this.
-    Ok(cx.validate_operand(&ot, /*recursive*/ false).is_ok())
+    // The value we are validating is temporary and discarded at the end of this function, so
+    // there is no point in reseting provenance and padding.
+    Ok(cx
+        .validate_operand(
+            &allocated.into(),
+            /*recursive*/ false,
+            /*reset_provenance_and_padding*/ false,
+        )
+        .is_ok())
 }
 
-/// Implements the 'lax' (default) version of the `might_permit_raw_init` checks; see that function for
-/// details.
-fn might_permit_raw_init_lax<'tcx>(
+/// Implements the 'lax' (default) version of the [`check_validity_requirement`] checks; see that
+/// function for details.
+fn check_validity_requirement_lax<'tcx>(
     this: TyAndLayout<'tcx>,
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     init_kind: ValidityRequirement,
@@ -137,7 +143,7 @@ fn might_permit_raw_init_lax<'tcx>(
         }
         FieldsShape::Arbitrary { offsets, .. } => {
             for idx in 0..offsets.len() {
-                if !might_permit_raw_init_lax(this.field(cx, idx), cx, init_kind)? {
+                if !check_validity_requirement_lax(this.field(cx, idx), cx, init_kind)? {
                     // We found a field that is unhappy with this kind of initialization.
                     return Ok(false);
                 }

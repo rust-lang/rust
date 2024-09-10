@@ -39,7 +39,7 @@ fn is_item_reachable(
 
 impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match *i.kind {
+        match i.kind {
             clean::StrippedItem(..) => {
                 // We need to recurse into stripped modules to strip things
                 // like impl methods but when doing so we must not add any
@@ -130,7 +130,7 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             clean::KeywordItem => {}
         }
 
-        let fastreturn = match *i.kind {
+        let fastreturn = match i.kind {
             // nothing left to do for traits (don't want to filter their
             // methods out, visibility controlled by the trait)
             clean::TraitItem(..) => true,
@@ -195,7 +195,7 @@ impl<'a> ImplStripper<'a, '_> {
 
 impl<'a> DocFolder for ImplStripper<'a, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        if let clean::ImplItem(ref imp) = *i.kind {
+        if let clean::ImplItem(ref imp) = i.kind {
             // Impl blocks can be skipped if they are: empty; not a trait impl; and have no
             // documentation.
             //
@@ -272,7 +272,7 @@ impl<'tcx> ImportStripper<'tcx> {
 
 impl<'tcx> DocFolder for ImportStripper<'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match *i.kind {
+        match &i.kind {
             clean::ImportItem(imp)
                 if !self.document_hidden && self.import_should_be_hidden(&i, &imp) =>
             {

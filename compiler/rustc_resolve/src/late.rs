@@ -2062,7 +2062,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 lint::builtin::ELIDED_NAMED_LIFETIMES,
                                 missing.id_for_lint,
                                 missing.span,
-                                BuiltinLintDiag::ElidedIsStatic { elided: missing.span },
+                                BuiltinLintDiag::ElidedNamedLifetimes {
+                                    elided: (missing.span, missing.kind),
+                                    resolution: lint::ElidedLifetimeResolution::Static,
+                                },
                             );
                         }
                     }
@@ -2072,9 +2075,12 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                             lint::builtin::ELIDED_NAMED_LIFETIMES,
                             missing.id_for_lint,
                             missing.span,
-                            BuiltinLintDiag::ElidedIsParam {
-                                elided: missing.span,
-                                param: (tcx.item_name(param.into()), tcx.source_span(param)),
+                            BuiltinLintDiag::ElidedNamedLifetimes {
+                                elided: (missing.span, missing.kind),
+                                resolution: lint::ElidedLifetimeResolution::Param(
+                                    tcx.item_name(param.into()),
+                                    tcx.source_span(param),
+                                ),
                             },
                         );
                     }

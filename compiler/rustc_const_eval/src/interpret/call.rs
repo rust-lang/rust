@@ -189,7 +189,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ty::Ref(_, ty, _) => *ty,
                 ty::RawPtr(ty, _) => *ty,
                 // We only accept `Box` with the default allocator.
-                _ if ty.is_box_global(*self.tcx) => ty.boxed_ty(),
+                _ if ty.is_box_global(*self.tcx) => ty.expect_boxed_ty(),
                 _ => return Ok(None),
             }))
         };

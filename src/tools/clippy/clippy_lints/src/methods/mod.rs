@@ -5187,8 +5187,8 @@ impl SelfKind {
         fn matches_value<'a>(cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
             if ty == parent_ty {
                 true
-            } else if ty.is_box() {
-                ty.boxed_ty() == parent_ty
+            } else if let Some(boxed_ty) = ty.boxed_ty() {
+                boxed_ty == parent_ty
             } else if is_type_diagnostic_item(cx, ty, sym::Rc) || is_type_diagnostic_item(cx, ty, sym::Arc) {
                 if let ty::Adt(_, args) = ty.kind() {
                     args.types().next().map_or(false, |t| t == parent_ty)

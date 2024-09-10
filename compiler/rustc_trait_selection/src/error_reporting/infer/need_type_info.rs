@@ -1296,6 +1296,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
             && self.tecx.tcx.trait_of_item(def_id).is_some()
             && !has_impl_trait(def_id)
+            // FIXME(fn_delegation): In delegation item argument spans are equal to last path
+            // segment. This leads to ICE's when emitting `multipart_suggestion`.
+            && tcx.hir().opt_delegation_sig_id(expr.hir_id.owner.def_id).is_none()
         {
             let successor =
                 method_args.get(0).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));
