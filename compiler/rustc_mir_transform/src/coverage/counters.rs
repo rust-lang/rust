@@ -74,12 +74,11 @@ pub(super) struct CoverageCounters {
 }
 
 impl CoverageCounters {
-    /// Makes [`BcbCounter`] `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
-    /// indirectly associated with coverage spans, and accumulates additional `Expression`s
-    /// representing intermediate values.
+    /// Ensures that each BCB node needing a counter has one, by creating physical
+    /// counters or counter expressions for nodes and edges as required.
     pub(super) fn make_bcb_counters(
         basic_coverage_blocks: &CoverageGraph,
-        bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
+        bcb_needs_counter: impl Fn(BasicCoverageBlock) -> bool,
     ) -> Self {
         let num_bcbs = basic_coverage_blocks.num_nodes();
 
@@ -91,8 +90,7 @@ impl CoverageCounters {
             expressions_memo: FxHashMap::default(),
         };
 
-        MakeBcbCounters::new(&mut this, basic_coverage_blocks)
-            .make_bcb_counters(bcb_has_coverage_spans);
+        MakeBcbCounters::new(&mut this, basic_coverage_blocks).make_bcb_counters(bcb_needs_counter);
 
         this
     }
@@ -241,10 +239,7 @@ impl CoverageCounters {
     }
 }
 
-/// Traverse the `CoverageGraph` and add either a `Counter` or `Expression` to every BCB, to be
-/// injected with coverage spans. `Expressions` have no runtime overhead, so if a viable expression
-/// (adding or subtracting two other counters or expressions) can compute the same result as an
-/// embedded counter, an `Expression` should be used.
+/// Helper struct that allows counter creation to inspect the BCB graph.
 struct MakeBcbCounters<'a> {
     coverage_counters: &'a mut CoverageCounters,
     basic_coverage_blocks: &'a CoverageGraph,
@@ -264,30 +259,21 @@ impl<'a> MakeBcbCounters<'a> {
     /// One way to predict which branch executes the least is by considering loops. A loop is exited
     /// at a branch, so the branch that jumps to a `BasicCoverageBlock` outside the loop is almost
     /// always executed less than the branch that does not exit the loop.
-    fn make_bcb_counters(&mut self, bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool) {
+    fn make_bcb_counters(&mut self, bcb_needs_counter: impl Fn(BasicCoverageBlock) -> bool) {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
 
-        // Walk the `CoverageGraph`. For each `BasicCoverageBlock` node with an associated
-        // coverage span, add a counter. If the `BasicCoverageBlock` branches, add a counter or
-        // expression to each branch `BasicCoverageBlock` (if the branch BCB has only one incoming
-        // edge) or edge from the branching BCB to the branch BCB (if the branch BCB has multiple
-        // incoming edges).
+        // Traverse the coverage graph, ensuring that every node that needs a
+        // coverage counter has one.
         //
-        // The `TraverseCoverageGraphWithLoops` traversal ensures that, when a loop is encountered,
-        // all `BasicCoverageBlock` nodes in the loop are visited before visiting any node outside
-        // the loop. The `traversal` state includes a `context_stack`, providing a way to know if
-        // the current BCB is in one or more nested loops or not.
+        // The traversal tries to ensure that, when a loop is encountered, all
+        // nodes within the loop are visited before visiting any nodes outside
+        // the loop. It also keeps track of which loop(s) the traversal is
+        // currently inside.
         let mut traversal = TraverseCoverageGraphWithLoops::new(self.basic_coverage_blocks);
         while let Some(bcb) = traversal.next() {
-            if bcb_has_coverage_spans(bcb) {
-                debug!("{:?} has at least one coverage span. Get or make its counter", bcb);
+            let _span = debug_span!("traversal", ?bcb).entered();
+            if bcb_needs_counter(bcb) {
                 self.make_node_and_branch_counters(&traversal, bcb);
-            } else {
-                debug!(
-                    "{:?} does not have any coverage spans. A counter will only be added if \
-                    and when a covered BCB has an expression dependency.",
-                    bcb,
-                );
             }
         }
 
@@ -298,6 +284,7 @@ impl<'a> MakeBcbCounters<'a> {
         );
     }
 
+    #[instrument(level = "debug", skip(self, traversal))]
     fn make_node_and_branch_counters(
         &mut self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
