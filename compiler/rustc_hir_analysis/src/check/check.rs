@@ -1064,20 +1064,29 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
             return;
         }
-        let e = fields[FieldIdx::ZERO].ty(tcx, args);
-        if !fields.iter().all(|f| f.ty(tcx, args) == e) {
-            struct_span_code_err!(tcx.dcx(), sp, E0076, "SIMD vector should be homogeneous")
-                .with_span_label(sp, "SIMD elements must have the same type")
+
+        let array_field = &fields[FieldIdx::ZERO];
+        let array_ty = array_field.ty(tcx, args);
+        let ty::Array(element_ty, len_const) = array_ty.kind() else {
+            struct_span_code_err!(
+                tcx.dcx(),
+                sp,
+                E0076,
+                "SIMD vector's only field must be an array"
+            )
+            .with_span_label(tcx.def_span(array_field.did), "not an array")
+            .emit();
+            return;
+        };
+
+        if let Some(second_field) = fields.get(FieldIdx::from_u32(1)) {
+            struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot have multiple fields")
+                .with_span_label(tcx.def_span(second_field.did), "excess field")
                 .emit();
             return;
         }
 
-        let len = if let ty::Array(_ty, c) = e.kind() {
-            c.try_eval_target_usize(tcx, tcx.param_env(def.did()))
-        } else {
-            Some(fields.len() as u64)
-        };
-        if let Some(len) = len {
+        if let Some(len) = len_const.try_eval_target_usize(tcx, tcx.param_env(def.did())) {
             if len == 0 {
                 struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
                 return;
@@ -1097,16 +1106,9 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         // These are scalar types which directly match a "machine" type
         // Yes: Integers, floats, "thin" pointers
         // No: char, "fat" pointers, compound types
-        match e.kind() {
-            ty::Param(_) => (), // pass struct<T>(T, T, T, T) through, let monomorphization catch errors
-            ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _) => (), // struct(u8, u8, u8, u8) is ok
-            ty::Array(t, _) if matches!(t.kind(), ty::Param(_)) => (), // pass struct<T>([T; N]) through, let monomorphization catch errors
-            ty::Array(t, _clen)
-                if matches!(
-                    t.kind(),
-                    ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _)
-                ) =>
-            { /* struct([f32; 4]) is ok */ }
+        match element_ty.kind() {
+            ty::Param(_) => (), // pass struct<T>([T; 4]) through, let monomorphization catch errors
+            ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _) => (), // struct([u8; 4]) is ok
             _ => {
                 struct_span_code_err!(
                     tcx.dcx(),
