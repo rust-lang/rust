@@ -31,7 +31,7 @@ where we can access the MIR dialect for type checking or other purposes:
 ## Implementing and registering a pass
 
 A `MirPass` is some bit of code that processes the MIR, typically transforming it along the way
-somehow. But it may also do other things like lingint (e.g., [`CheckPackedRef`][lint1],
+somehow. But it may also do other things like linting (e.g., [`CheckPackedRef`][lint1],
 [`CheckConstItemMutation`][lint2], [`FunctionItemReferences`][lint3], which implement `MirLint`) or
 optimization (e.g., [`SimplifyCfg`][opt1], [`RemoveUnneededDrops`][opt2]). While most MIR passes
 are defined in the [`rustc_mir_transform`][mirtransform] crate, the `MirPass` trait itself is
