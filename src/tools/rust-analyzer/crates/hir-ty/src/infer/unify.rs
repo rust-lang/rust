@@ -902,6 +902,10 @@ impl<'a> InferenceTable<'a> {
 
     /// Check if given type is `Sized` or not
     pub(crate) fn is_sized(&mut self, ty: &Ty) -> bool {
+        // Early return for some obvious types
+        if matches!(ty.kind(Interner), TyKind::Scalar(..) | TyKind::Ref(..) | TyKind::Raw(..)) {
+            return true;
+        }
         if let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
             let struct_data = self.db.struct_data(id);
             if let Some((last_field, _)) = struct_data.variant_data.fields().iter().last() {

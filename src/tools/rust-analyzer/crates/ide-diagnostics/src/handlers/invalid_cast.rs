@@ -556,6 +556,7 @@ fn unprincipled<'a, 'b>(x: *mut (dyn Send + 'a)) -> *mut (dyn Sync + 'b) {
         );
     }
 
+    #[ignore = "issue #18047"]
     #[test]
     fn ptr_to_trait_obj_wrap_upcast() {
         check_diagnostics(
@@ -1002,6 +1003,101 @@ fn _slice(bar: &[i32]) -> bool {
 }
 "#,
             &["E0308"],
+        );
+    }
+
+    #[test]
+    fn trait_upcasting() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized, dispatch_from_dyn
+#![feature(trait_upcasting)]
+trait Foo {}
+trait Bar: Foo {}
+
+impl dyn Bar {
+    fn bar(&self) {
+        _ = self as &dyn Foo;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn issue_18047() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized, dispatch_from_dyn
+trait LocalFrom<T> {
+    fn from(_: T) -> Self;
+}
+trait LocalInto<T> {
+    fn into(self) -> T;
+}
+
+impl<T, U> LocalInto<U> for T
+where
+    U: LocalFrom<T>,
+{
+    fn into(self) -> U {
+        U::from(self)
+    }
+}
+
+impl<T> LocalFrom<T> for T {
+    fn from(t: T) -> T {
+        t
+    }
+}
+
+trait Foo {
+    type ErrorType;
+    type Assoc;
+}
+
+trait Bar {
+    type ErrorType;
+}
+
+struct ErrorLike;
+
+impl<E> LocalFrom<E> for ErrorLike
+where
+    E: Trait + 'static,
+{
+    fn from(_: E) -> Self {
+        loop {}
+    }
+}
+
+trait Baz {
+    type Assoc: Bar;
+    type Error: LocalInto<ErrorLike>;
+}
+
+impl<T, U> Baz for T
+where
+    T: Foo<Assoc = U>,
+    T::ErrorType: LocalInto<ErrorLike>,
+    U: Bar,
+    <U as Bar>::ErrorType: LocalInto<ErrorLike>,
+{
+    type Assoc = U;
+    type Error = T::ErrorType;
+}
+struct S;
+trait Trait {}
+impl Trait for S {}
+
+fn test<T>()
+where
+    T: Baz,
+    T::Assoc: 'static,
+{
+    let _ = &S as &dyn Trait;
+}
+"#,
         );
     }
 }

@@ -120,6 +120,13 @@ impl CastCheck {
             });
         }
 
+        // Chalk doesn't support trait upcasting and fails to solve some obvious goals
+        // when the trait environment contains some recursive traits (See issue #18047)
+        // We skip cast checks for such cases for now, until the next-gen solver.
+        if contains_dyn_trait(&self.cast_ty) {
+            return Ok(());
+        }
+
         if let Ok((adj, _)) = table.coerce(&self.expr_ty, &self.cast_ty) {
             apply_adjustments(self.source_expr, adj);
             set_coercion_cast(self.source_expr);
@@ -409,4 +416,36 @@ fn pointer_kind(ty: &Ty, table: &mut InferenceTable<'_>) -> Result<Option<Pointe
             Err(())
         }
     }
+}
+
+fn contains_dyn_trait(ty: &Ty) -> bool {
+    use std::ops::ControlFlow;
+
+    use chalk_ir::{
+        visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
+        DebruijnIndex,
+    };
+
+    struct DynTraitVisitor;
+
+    impl TypeVisitor<Interner> for DynTraitVisitor {
+        type BreakTy = ();
+
+        fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
+            self
+        }
+
+        fn interner(&self) -> Interner {
+            Interner
+        }
+
+        fn visit_ty(&mut self, ty: &Ty, outer_binder: DebruijnIndex) -> ControlFlow<Self::BreakTy> {
+            match ty.kind(Interner) {
+                TyKind::Dyn(_) => ControlFlow::Break(()),
+                _ => ty.super_visit_with(self.as_dyn(), outer_binder),
+            }
+        }
+    }
+
+    ty.visit_with(DynTraitVisitor.as_dyn(), DebruijnIndex::INNERMOST).is_break()
 }
