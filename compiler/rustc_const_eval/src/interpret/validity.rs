@@ -4,6 +4,7 @@
 //! That's useful because it means other passes (e.g. promotion) can rely on `const`s
 //! to be const-safe.
 
+use std::borrow::Cow;
 use std::fmt::Write;
 use std::hash::Hash;
 use std::num::NonZero;
@@ -16,22 +17,22 @@ use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::ValidationErrorKind::{self, *};
 use rustc_middle::mir::interpret::{
-    ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
+    alloc_range, ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
     UnsupportedOpInfo, ValidationErrorInfo,
 };
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
-    Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
+    Abi, FieldIdx, FieldsShape, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
 use tracing::trace;
 
 use super::machine::AllocMap;
 use super::{
     err_ub, format_interp_error, throw_ub, AllocId, AllocKind, CheckInAllocMsg, GlobalAlloc, ImmTy,
-    Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Pointer, Projectable,
-    Scalar, ValueVisitor,
+    Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, PlaceTy, Pointer,
+    Projectable, Scalar, ValueVisitor,
 };
 
 // for the validation errors
@@ -125,6 +126,7 @@ pub enum PathElem {
     EnumTag,
     CoroutineTag,
     DynDowncast,
+    Vtable,
 }
 
 /// Extra things to check for during validation of CTFE results.
@@ -163,22 +165,22 @@ impl<T: Clone + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH>
     pub fn empty() -> Self {
         RefTracking { seen: FxHashSet::default(), todo: vec![] }
     }
-    pub fn new(op: T) -> Self {
+    pub fn new(val: T) -> Self {
         let mut ref_tracking_for_consts =
-            RefTracking { seen: FxHashSet::default(), todo: vec![(op.clone(), PATH::default())] };
-        ref_tracking_for_consts.seen.insert(op);
+            RefTracking { seen: FxHashSet::default(), todo: vec![(val.clone(), PATH::default())] };
+        ref_tracking_for_consts.seen.insert(val);
         ref_tracking_for_consts
     }
     pub fn next(&mut self) -> Option<(T, PATH)> {
         self.todo.pop()
     }
 
-    fn track(&mut self, op: T, path: impl FnOnce() -> PATH) {
-        if self.seen.insert(op.clone()) {
-            trace!("Recursing below ptr {:#?}", op);
+    fn track(&mut self, val: T, path: impl FnOnce() -> PATH) {
+        if self.seen.insert(val.clone()) {
+            trace!("Recursing below ptr {:#?}", val);
             let path = path();
             // Remember to come back to this later.
-            self.todo.push((op, path));
+            self.todo.push((val, path));
         }
     }
 }
@@ -204,8 +206,59 @@ fn write_path(out: &mut String, path: &[PathElem]) {
             // not the root.
             Deref => write!(out, ".<deref>"),
             DynDowncast => write!(out, ".<dyn-downcast>"),
+            Vtable => write!(out, ".<vtable>"),
         }
         .unwrap()
+    }
+}
+
+/// Represents a set of `Size` values as a sorted list of ranges.
+// These are (offset, length) pairs, and they are sorted and mutually disjoint,
+// and never adjacent (i.e. there's always a gap between two of them).
+#[derive(Debug, Clone)]
+pub struct RangeSet(Vec<(Size, Size)>);
+
+impl RangeSet {
+    fn add_range(&mut self, offset: Size, size: Size) {
+        if size.bytes() == 0 {
+            // No need to track empty ranges.
+            return;
+        }
+        let v = &mut self.0;
+        // We scan for a partition point where the left partition is all the elements that end
+        // strictly before we start. Those are elements that are too "low" to merge with us.
+        let idx =
+            v.partition_point(|&(other_offset, other_size)| other_offset + other_size < offset);
+        // Now we want to either merge with the first element of the second partition, or insert ourselves before that.
+        if let Some(&(other_offset, other_size)) = v.get(idx)
+            && offset + size >= other_offset
+        {
+            // Their end is >= our start (otherwise it would not be in the 2nd partition) and
+            // our end is >= their start. This means we can merge the ranges.
+            let new_start = other_offset.min(offset);
+            let mut new_end = (other_offset + other_size).max(offset + size);
+            // We grew to the right, so merge with overlapping/adjacent elements.
+            // (We also may have grown to the left, but that can never make us adjacent with
+            // anything there since we selected the first such candidate via `partition_point`.)
+            let mut scan_right = 1;
+            while let Some(&(next_offset, next_size)) = v.get(idx + scan_right)
+                && new_end >= next_offset
+            {
+                // Increase our size to absorb the next element.
+                new_end = new_end.max(next_offset + next_size);
+                // Look at the next element.
+                scan_right += 1;
+            }
+            // Update the element we grew.
+            v[idx] = (new_start, new_end - new_start);
+            // Remove the elements we absorbed (if any).
+            if scan_right > 1 {
+                drop(v.drain((idx + 1)..(idx + scan_right)));
+            }
+        } else {
+            // Insert new element.
+            v.insert(idx, (offset, size));
+        }
     }
 }
 
@@ -217,7 +270,17 @@ struct ValidityVisitor<'rt, 'tcx, M: Machine<'tcx>> {
     ref_tracking: Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>>,
     /// `None` indicates this is not validating for CTFE (but for runtime).
     ctfe_mode: Option<CtfeValidationMode>,
-    ecx: &'rt InterpCx<'tcx, M>,
+    ecx: &'rt mut InterpCx<'tcx, M>,
+    /// Whether provenance should be reset outside of pointers (emulating the effect of a typed
+    /// copy).
+    reset_provenance_and_padding: bool,
+    /// This tracks which byte ranges in this value contain data; the remaining bytes are padding.
+    /// The ideal representation here would be pointer-length pairs, but to keep things more compact
+    /// we only store a (range) set of offsets -- the base pointer is the same throughout the entire
+    /// visit, after all.
+    /// If this is `Some`, then `reset_provenance_and_padding` must be true (but not vice versa:
+    /// we might not track data vs padding bytes if the operand isn't stored in memory anyway).
+    data_bytes: Option<RangeSet>,
 }
 
 impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
@@ -287,8 +350,14 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             // arrays/slices
             ty::Array(..) | ty::Slice(..) => PathElem::ArrayElem(field),
 
+            // dyn* vtables
+            ty::Dynamic(_, _, ty::DynKind::DynStar) if field == 1 => PathElem::Vtable,
+
             // dyn traits
-            ty::Dynamic(..) => PathElem::DynDowncast,
+            ty::Dynamic(..) => {
+                assert_eq!(field, 0);
+                PathElem::DynDowncast
+            }
 
             // nothing else has an aggregate layout
             _ => bug!("aggregate_field_path_elem: got non-aggregate type {:?}", layout.ty),
@@ -314,11 +383,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
 
     fn read_immediate(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        val: &PlaceTy<'tcx, M::Provenance>,
         expected: ExpectedKind,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         Ok(try_validation!(
-            self.ecx.read_immediate(op),
+            self.ecx.read_immediate(val),
             self.path,
             Ub(InvalidUninitBytes(None)) =>
                 Uninit { expected },
@@ -332,10 +401,40 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
 
     fn read_scalar(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        val: &PlaceTy<'tcx, M::Provenance>,
         expected: ExpectedKind,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
-        Ok(self.read_immediate(op, expected)?.to_scalar())
+        Ok(self.read_immediate(val, expected)?.to_scalar())
+    }
+
+    fn deref_pointer(
+        &mut self,
+        val: &PlaceTy<'tcx, M::Provenance>,
+        expected: ExpectedKind,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
+        // Not using `ecx.deref_pointer` since we want to use our `read_immediate` wrapper.
+        let imm = self.read_immediate(val, expected)?;
+        // Reset provenance: ensure slice tail metadata does not preserve provenance,
+        // and ensure all pointers do not preserve partial provenance.
+        if self.reset_provenance_and_padding {
+            if matches!(imm.layout.abi, Abi::Scalar(..)) {
+                // A thin pointer. If it has provenance, we don't have to do anything.
+                // If it does not, ensure we clear the provenance in memory.
+                if matches!(imm.to_scalar(), Scalar::Int(..)) {
+                    self.ecx.clear_provenance(val)?;
+                }
+            } else {
+                // A wide pointer. This means we have to worry both about the pointer itself and the
+                // metadata. We do the lazy thing and just write back the value we got. Just
+                // clearing provenance in a targeted manner would be more efficient, but unless this
+                // is a perf hotspot it's just not worth the effort.
+                self.ecx.write_immediate_no_validate(*imm, val)?;
+            }
+            // The entire thing is data, not padding.
+            self.add_data_range_place(val);
+        }
+        // Now turn it into a place.
+        self.ecx.ref_to_mplace(&imm)
     }
 
     fn check_wide_ptr_meta(
@@ -376,11 +475,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     /// Check a reference or `Box`.
     fn check_safe_pointer(
         &mut self,
-        value: &OpTy<'tcx, M::Provenance>,
+        value: &PlaceTy<'tcx, M::Provenance>,
         ptr_kind: PointerKind,
     ) -> InterpResult<'tcx> {
-        // Not using `deref_pointer` since we want to use our `read_immediate` wrapper.
-        let place = self.ecx.ref_to_mplace(&self.read_immediate(value, ptr_kind.into())?)?;
+        let place = self.deref_pointer(value, ptr_kind.into())?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
         if place.layout.is_unsized() {
@@ -564,31 +662,39 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     /// Note that not all of these have `FieldsShape::Primitive`, e.g. wide references.
     fn try_visit_primitive(
         &mut self,
-        value: &OpTy<'tcx, M::Provenance>,
+        value: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, bool> {
         // Go over all the primitive types
         let ty = value.layout.ty;
         match ty.kind() {
             ty::Bool => {
-                let value = self.read_scalar(value, ExpectedKind::Bool)?;
+                let scalar = self.read_scalar(value, ExpectedKind::Bool)?;
                 try_validation!(
-                    value.to_bool(),
+                    scalar.to_bool(),
                     self.path,
                     Ub(InvalidBool(..)) => ValidationErrorKind::InvalidBool {
-                        value: format!("{value:x}"),
+                        value: format!("{scalar:x}"),
                     }
                 );
+                if self.reset_provenance_and_padding {
+                    self.ecx.clear_provenance(value)?;
+                    self.add_data_range_place(value);
+                }
                 Ok(true)
             }
             ty::Char => {
-                let value = self.read_scalar(value, ExpectedKind::Char)?;
+                let scalar = self.read_scalar(value, ExpectedKind::Char)?;
                 try_validation!(
-                    value.to_char(),
+                    scalar.to_char(),
                     self.path,
                     Ub(InvalidChar(..)) => ValidationErrorKind::InvalidChar {
-                        value: format!("{value:x}"),
+                        value: format!("{scalar:x}"),
                     }
                 );
+                if self.reset_provenance_and_padding {
+                    self.ecx.clear_provenance(value)?;
+                    self.add_data_range_place(value);
+                }
                 Ok(true)
             }
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
@@ -602,11 +708,14 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         ExpectedKind::Int
                     },
                 )?;
+                if self.reset_provenance_and_padding {
+                    self.ecx.clear_provenance(value)?;
+                    self.add_data_range_place(value);
+                }
                 Ok(true)
             }
             ty::RawPtr(..) => {
-                let place =
-                    self.ecx.ref_to_mplace(&self.read_immediate(value, ExpectedKind::RawPtr)?)?;
+                let place = self.deref_pointer(value, ExpectedKind::RawPtr)?;
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
@@ -617,11 +726,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 Ok(true)
             }
             ty::FnPtr(..) => {
-                let value = self.read_scalar(value, ExpectedKind::FnPtr)?;
+                let scalar = self.read_scalar(value, ExpectedKind::FnPtr)?;
 
                 // If we check references recursively, also check that this points to a function.
                 if let Some(_) = self.ref_tracking {
-                    let ptr = value.to_pointer(self.ecx)?;
+                    let ptr = scalar.to_pointer(self.ecx)?;
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,
@@ -631,9 +740,17 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     // FIXME: Check if the signature matches
                 } else {
                     // Otherwise (for standalone Miri), we have to still check it to be non-null.
-                    if self.ecx.scalar_may_be_null(value)? {
+                    if self.ecx.scalar_may_be_null(scalar)? {
                         throw_validation_failure!(self.path, NullFnPtr);
                     }
+                }
+                if self.reset_provenance_and_padding {
+                    // Make sure we do not preserve partial provenance. This matches the thin
+                    // pointer handling in `deref_pointer`.
+                    if matches!(scalar, Scalar::Int(..)) {
+                        self.ecx.clear_provenance(value)?;
+                    }
+                    self.add_data_range_place(value);
                 }
                 Ok(true)
             }
@@ -716,13 +833,178 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         }
     }
 
-    fn in_mutable_memory(&self, op: &OpTy<'tcx, M::Provenance>) -> bool {
-        if let Some(mplace) = op.as_mplace_or_imm().left() {
+    fn in_mutable_memory(&self, val: &PlaceTy<'tcx, M::Provenance>) -> bool {
+        if let Some(mplace) = val.as_mplace_or_local().left() {
             if let Some(alloc_id) = mplace.ptr().provenance.and_then(|p| p.get_alloc_id()) {
-                return mutability(self.ecx, alloc_id).is_mut();
+                mutability(self.ecx, alloc_id).is_mut()
+            } else {
+                // No memory at all.
+                false
+            }
+        } else {
+            // A local variable -- definitely mutable.
+            true
+        }
+    }
+
+    /// Add the given pointer-length pair to the "data" range of this visit.
+    fn add_data_range(&mut self, ptr: Pointer<Option<M::Provenance>>, size: Size) {
+        if let Some(data_bytes) = self.data_bytes.as_mut() {
+            // We only have to store the offset, the rest is the same for all pointers here.
+            let (_prov, offset) = ptr.into_parts();
+            // Add this.
+            data_bytes.add_range(offset, size);
+        };
+    }
+
+    /// Add the entire given place to the "data" range of this visit.
+    fn add_data_range_place(&mut self, place: &PlaceTy<'tcx, M::Provenance>) {
+        // Only sized places can be added this way.
+        debug_assert!(place.layout.abi.is_sized());
+        if let Some(data_bytes) = self.data_bytes.as_mut() {
+            let offset = Self::data_range_offset(self.ecx, place);
+            data_bytes.add_range(offset, place.layout.size);
+        }
+    }
+
+    /// Convert a place into the offset it starts at, for the purpose of data_range tracking.
+    /// Must only be called if `data_bytes` is `Some(_)`.
+    fn data_range_offset(ecx: &InterpCx<'tcx, M>, place: &PlaceTy<'tcx, M::Provenance>) -> Size {
+        // The presence of `data_bytes` implies that our place is in memory.
+        let ptr = ecx
+            .place_to_op(place)
+            .expect("place must be in memory")
+            .as_mplace_or_imm()
+            .expect_left("place must be in memory")
+            .ptr();
+        let (_prov, offset) = ptr.into_parts();
+        offset
+    }
+
+    fn reset_padding(&mut self, place: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+        let Some(data_bytes) = self.data_bytes.as_mut() else { return Ok(()) };
+        // Our value must be in memory, otherwise we would not have set up `data_bytes`.
+        let mplace = self.ecx.force_allocation(place)?;
+        // Determine starting offset and size.
+        let (_prov, start_offset) = mplace.ptr().into_parts();
+        let (size, _align) = self
+            .ecx
+            .size_and_align_of_mplace(&mplace)?
+            .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
+        // If there is no padding at all, we can skip the rest: check for
+        // a single data range covering the entire value.
+        if data_bytes.0 == &[(start_offset, size)] {
+            return Ok(());
+        }
+        // Get a handle for the allocation. Do this only once, to avoid looking up the same
+        // allocation over and over again. (Though to be fair, iterating the value already does
+        // exactly that.)
+        let Some(mut alloc) = self.ecx.get_ptr_alloc_mut(mplace.ptr(), size)? else {
+            // A ZST, no padding to clear.
+            return Ok(());
+        };
+        // Add a "finalizer" data range at the end, so that the iteration below finds all gaps
+        // between ranges.
+        data_bytes.0.push((start_offset + size, Size::ZERO));
+        // Iterate, and reset gaps.
+        let mut padding_cleared_until = start_offset;
+        for &(offset, size) in data_bytes.0.iter() {
+            assert!(
+                offset >= padding_cleared_until,
+                "reset_padding on {}: previous field ended at offset {}, next field starts at {} (and has a size of {} bytes)",
+                mplace.layout.ty,
+                (padding_cleared_until - start_offset).bytes(),
+                (offset - start_offset).bytes(),
+                size.bytes(),
+            );
+            if offset > padding_cleared_until {
+                // We found padding. Adjust the range to be relative to `alloc`, and make it uninit.
+                let padding_start = padding_cleared_until - start_offset;
+                let padding_size = offset - padding_cleared_until;
+                let range = alloc_range(padding_start, padding_size);
+                trace!("reset_padding on {}: resetting padding range {range:?}", mplace.layout.ty);
+                alloc.write_uninit(range)?;
+            }
+            padding_cleared_until = offset + size;
+        }
+        assert!(padding_cleared_until == start_offset + size);
+        Ok(())
+    }
+
+    /// Computes the data range of this union type:
+    /// which bytes are inside a field (i.e., not padding.)
+    fn union_data_range<'e>(
+        ecx: &'e mut InterpCx<'tcx, M>,
+        layout: TyAndLayout<'tcx>,
+    ) -> Cow<'e, RangeSet> {
+        assert!(layout.ty.is_union());
+        assert!(layout.abi.is_sized(), "there are no unsized unions");
+        let layout_cx = LayoutCx { tcx: *ecx.tcx, param_env: ecx.param_env };
+        return M::cached_union_data_range(ecx, layout.ty, || {
+            let mut out = RangeSet(Vec::new());
+            union_data_range_uncached(&layout_cx, layout, Size::ZERO, &mut out);
+            out
+        });
+
+        /// Helper for recursive traversal: add data ranges of the given type to `out`.
+        fn union_data_range_uncached<'tcx>(
+            cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+            layout: TyAndLayout<'tcx>,
+            base_offset: Size,
+            out: &mut RangeSet,
+        ) {
+            // If this is a ZST, we don't contain any data. In particular, this helps us to quickly
+            // skip over huge arrays of ZST.
+            if layout.is_zst() {
+                return;
+            }
+            // Just recursively add all the fields of everything to the output.
+            match &layout.fields {
+                FieldsShape::Primitive => {
+                    out.add_range(base_offset, layout.size);
+                }
+                &FieldsShape::Union(fields) => {
+                    // Currently, all fields start at offset 0 (relative to `base_offset`).
+                    for field in 0..fields.get() {
+                        let field = layout.field(cx, field);
+                        union_data_range_uncached(cx, field, base_offset, out);
+                    }
+                }
+                &FieldsShape::Array { stride, count } => {
+                    let elem = layout.field(cx, 0);
+
+                    // Fast-path for large arrays of simple types that do not contain any padding.
+                    if elem.abi.is_scalar() {
+                        out.add_range(base_offset, elem.size * count);
+                    } else {
+                        for idx in 0..count {
+                            // This repeats the same computation for every array element... but the alternative
+                            // is to allocate temporary storage for a dedicated `out` set for the array element,
+                            // and replicating that N times. Is that better?
+                            union_data_range_uncached(cx, elem, base_offset + idx * stride, out);
+                        }
+                    }
+                }
+                FieldsShape::Arbitrary { offsets, .. } => {
+                    for (field, &offset) in offsets.iter_enumerated() {
+                        let field = layout.field(cx, field.as_usize());
+                        union_data_range_uncached(cx, field, base_offset + offset, out);
+                    }
+                }
+            }
+            // Don't forget potential other variants.
+            match &layout.variants {
+                Variants::Single { .. } => {
+                    // Fully handled above.
+                }
+                Variants::Multiple { variants, .. } => {
+                    for variant in variants.indices() {
+                        let variant = layout.for_variant(cx, variant);
+                        union_data_range_uncached(cx, variant, base_offset, out);
+                    }
+                }
             }
         }
-        false
     }
 }
 
@@ -774,7 +1056,7 @@ fn mutability<'tcx>(ecx: &InterpCx<'tcx, impl Machine<'tcx>>, alloc_id: AllocId)
 }
 
 impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt, 'tcx, M> {
-    type V = OpTy<'tcx, M::Provenance>;
+    type V = PlaceTy<'tcx, M::Provenance>;
 
     #[inline(always)]
     fn ecx(&self) -> &InterpCx<'tcx, M> {
@@ -783,11 +1065,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
 
     fn read_discriminant(
         &mut self,
-        op: &OpTy<'tcx, M::Provenance>,
+        val: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, VariantIdx> {
         self.with_elem(PathElem::EnumTag, move |this| {
             Ok(try_validation!(
-                this.ecx.read_discriminant(op),
+                this.ecx.read_discriminant(val),
                 this.path,
                 Ub(InvalidTag(val)) => InvalidEnumTag {
                     value: format!("{val:x}"),
@@ -802,42 +1084,52 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
     #[inline]
     fn visit_field(
         &mut self,
-        old_op: &OpTy<'tcx, M::Provenance>,
+        old_val: &PlaceTy<'tcx, M::Provenance>,
         field: usize,
-        new_op: &OpTy<'tcx, M::Provenance>,
+        new_val: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        let elem = self.aggregate_field_path_elem(old_op.layout, field);
-        self.with_elem(elem, move |this| this.visit_value(new_op))
+        let elem = self.aggregate_field_path_elem(old_val.layout, field);
+        self.with_elem(elem, move |this| this.visit_value(new_val))
     }
 
     #[inline]
     fn visit_variant(
         &mut self,
-        old_op: &OpTy<'tcx, M::Provenance>,
+        old_val: &PlaceTy<'tcx, M::Provenance>,
         variant_id: VariantIdx,
-        new_op: &OpTy<'tcx, M::Provenance>,
+        new_val: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        let name = match old_op.layout.ty.kind() {
+        let name = match old_val.layout.ty.kind() {
             ty::Adt(adt, _) => PathElem::Variant(adt.variant(variant_id).name),
             // Coroutines also have variants
             ty::Coroutine(..) => PathElem::CoroutineState(variant_id),
-            _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
+            _ => bug!("Unexpected type with variant: {:?}", old_val.layout.ty),
         };
-        self.with_elem(name, move |this| this.visit_value(new_op))
+        self.with_elem(name, move |this| this.visit_value(new_val))
     }
 
     #[inline(always)]
     fn visit_union(
         &mut self,
-        op: &OpTy<'tcx, M::Provenance>,
+        val: &PlaceTy<'tcx, M::Provenance>,
         _fields: NonZero<usize>,
     ) -> InterpResult<'tcx> {
         // Special check for CTFE validation, preventing `UnsafeCell` inside unions in immutable memory.
         if self.ctfe_mode.is_some_and(|c| !c.allow_immutable_unsafe_cell()) {
-            if !op.layout.is_zst() && !op.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.param_env) {
-                if !self.in_mutable_memory(op) {
+            if !val.layout.is_zst() && !val.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.param_env) {
+                if !self.in_mutable_memory(val) {
                     throw_validation_failure!(self.path, UnsafeCellInImmutable);
                 }
+            }
+        }
+        if self.reset_provenance_and_padding
+            && let Some(data_bytes) = self.data_bytes.as_mut()
+        {
+            let base_offset = Self::data_range_offset(self.ecx, val);
+            // Determine and add data range for this union.
+            let union_data_range = Self::union_data_range(self.ecx, val.layout);
+            for &(offset, size) in union_data_range.0.iter() {
+                data_bytes.add_range(base_offset + offset, size);
             }
         }
         Ok(())
@@ -847,39 +1139,41 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
     fn visit_box(
         &mut self,
         _box_ty: Ty<'tcx>,
-        op: &OpTy<'tcx, M::Provenance>,
+        val: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.check_safe_pointer(op, PointerKind::Box)?;
+        self.check_safe_pointer(val, PointerKind::Box)?;
         Ok(())
     }
 
     #[inline]
-    fn visit_value(&mut self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
-        trace!("visit_value: {:?}, {:?}", *op, op.layout);
+    fn visit_value(&mut self, val: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+        trace!("visit_value: {:?}, {:?}", *val, val.layout);
 
         // Check primitive types -- the leaves of our recursive descent.
+        // This is called even for enum discriminants (which are "fields" of their enum),
+        // so for integer-typed discriminants the provenance reset will happen here.
         // We assume that the Scalar validity range does not restrict these values
         // any further than `try_visit_primitive` does!
-        if self.try_visit_primitive(op)? {
+        if self.try_visit_primitive(val)? {
             return Ok(());
         }
 
         // Special check preventing `UnsafeCell` in the inner part of constants
         if self.ctfe_mode.is_some_and(|c| !c.allow_immutable_unsafe_cell()) {
-            if !op.layout.is_zst()
-                && let Some(def) = op.layout.ty.ty_adt_def()
+            if !val.layout.is_zst()
+                && let Some(def) = val.layout.ty.ty_adt_def()
                 && def.is_unsafe_cell()
             {
-                if !self.in_mutable_memory(op) {
+                if !self.in_mutable_memory(val) {
                     throw_validation_failure!(self.path, UnsafeCellInImmutable);
                 }
             }
         }
 
         // Recursively walk the value at its type. Apply optimizations for some large types.
-        match op.layout.ty.kind() {
+        match val.layout.ty.kind() {
             ty::Str => {
-                let mplace = op.assert_mem_place(); // strings are unsized and hence never immediate
+                let mplace = val.assert_mem_place(); // strings are unsized and hence never immediate
                 let len = mplace.len(self.ecx)?;
                 try_validation!(
                     self.ecx.read_bytes_ptr_strip_provenance(mplace.ptr(), Size::from_bytes(len)),
@@ -889,11 +1183,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
-                // This optimization applies for types that can hold arbitrary bytes (such as
-                // integer and floating point types) or for structs or tuples with no fields.
-                // FIXME(wesleywiser) This logic could be extended further to arbitrary structs
-                // or tuples made up of integer/floating point types or inhabited ZSTs with no
-                // padding.
+                // This optimization applies for types that can hold arbitrary non-provenance bytes (such as
+                // integer and floating point types).
+                // FIXME(wesleywiser) This logic could be extended further to arbitrary structs or
+                // tuples made up of integer/floating point types or inhabited ZSTs with no padding.
                 if matches!(tys.kind(), ty::Int(..) | ty::Uint(..) | ty::Float(..))
                 =>
             {
@@ -901,18 +1194,19 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // Optimized handling for arrays of integer/float type.
 
                 // This is the length of the array/slice.
-                let len = op.len(self.ecx)?;
+                let len = val.len(self.ecx)?;
                 // This is the element type size.
                 let layout = self.ecx.layout_of(*tys)?;
                 // This is the size in bytes of the whole array. (This checks for overflow.)
                 let size = layout.size * len;
                 // If the size is 0, there is nothing to check.
-                // (`size` can only be 0 of `len` is 0, and empty arrays are always valid.)
+                // (`size` can only be 0 if `len` is 0, and empty arrays are always valid.)
                 if size == Size::ZERO {
                     return Ok(());
                 }
-                // Now that we definitely have a non-ZST array, we know it lives in memory.
-                let mplace = match op.as_mplace_or_imm() {
+                // Now that we definitely have a non-ZST array, we know it lives in memory -- except it may
+                // be an uninitialized local variable, those are also "immediate".
+                let mplace = match val.to_op(self.ecx)?.as_mplace_or_imm() {
                     Left(mplace) => mplace,
                     Right(imm) => match *imm {
                         Immediate::Uninit =>
@@ -958,20 +1252,30 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                         }
                     }
                 }
+
+                // Don't forget that these are all non-pointer types, and thus do not preserve
+                // provenance.
+                if self.reset_provenance_and_padding {
+                    // We can't share this with above as above, we might be looking at read-only memory.
+                    let mut alloc = self.ecx.get_ptr_alloc_mut(mplace.ptr(), size)?.expect("we already excluded size 0");
+                    alloc.clear_provenance()?;
+                    // Also, mark this as containing data, not padding.
+                    self.add_data_range(mplace.ptr(), size);
+                }
             }
             // Fast path for arrays and slices of ZSTs. We only need to check a single ZST element
             // of an array and not all of them, because there's only a single value of a specific
             // ZST type, so either validation fails for all elements or none.
             ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(*tys)?.is_zst() => {
                 // Validate just the first element (if any).
-                if op.len(self.ecx)? > 0 {
-                    self.visit_field(op, 0, &self.ecx.project_index(op, 0)?)?;
+                if val.len(self.ecx)? > 0 {
+                    self.visit_field(val, 0, &self.ecx.project_index(val, 0)?)?;
                 }
             }
             _ => {
                 // default handler
                 try_validation!(
-                    self.walk_value(op),
+                    self.walk_value(val),
                     self.path,
                     // It's not great to catch errors here, since we can't give a very good path,
                     // but it's better than ICEing.
@@ -992,15 +1296,15 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         // FIXME: We could avoid some redundant checks here. For newtypes wrapping
         // scalars, we do the same check on every "level" (e.g., first we check
         // MyNewtype and then the scalar in there).
-        match op.layout.abi {
+        match val.layout.abi {
             Abi::Uninhabited => {
-                let ty = op.layout.ty;
+                let ty = val.layout.ty;
                 throw_validation_failure!(self.path, UninhabitedVal { ty });
             }
             Abi::Scalar(scalar_layout) => {
                 if !scalar_layout.is_uninit_valid() {
                     // There is something to check here.
-                    let scalar = self.read_scalar(op, ExpectedKind::InitScalar)?;
+                    let scalar = self.read_scalar(val, ExpectedKind::InitScalar)?;
                     self.visit_scalar(scalar, scalar_layout)?;
                 }
             }
@@ -1010,7 +1314,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // the other must be init.
                 if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
                     let (a, b) =
-                        self.read_immediate(op, ExpectedKind::InitScalar)?.to_scalar_pair();
+                        self.read_immediate(val, ExpectedKind::InitScalar)?.to_scalar_pair();
                     self.visit_scalar(a, a_layout)?;
                     self.visit_scalar(b, b_layout)?;
                 }
@@ -1031,19 +1335,34 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn validate_operand_internal(
-        &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        &mut self,
+        val: &PlaceTy<'tcx, M::Provenance>,
         path: Vec<PathElem>,
         ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>>,
         ctfe_mode: Option<CtfeValidationMode>,
+        reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
-        trace!("validate_operand_internal: {:?}, {:?}", *op, op.layout.ty);
+        trace!("validate_operand_internal: {:?}, {:?}", *val, val.layout.ty);
 
-        // Construct a visitor
-        let mut visitor = ValidityVisitor { path, ref_tracking, ctfe_mode, ecx: self };
-
-        // Run it.
-        match self.run_for_validation(|| visitor.visit_value(op)) {
+        // Run the visitor.
+        match self.run_for_validation(|ecx| {
+            let reset_padding = reset_provenance_and_padding && {
+                // Check if `val` is actually stored in memory. If not, padding is not even
+                // represented and we need not reset it.
+                ecx.place_to_op(val)?.as_mplace_or_imm().is_left()
+            };
+            let mut v = ValidityVisitor {
+                path,
+                ref_tracking,
+                ctfe_mode,
+                ecx,
+                reset_provenance_and_padding,
+                data_bytes: reset_padding.then_some(RangeSet(Vec::new())),
+            };
+            v.visit_value(val)?;
+            v.reset_padding(val)?;
+            InterpResult::Ok(())
+        }) {
             Ok(()) => Ok(()),
             // Pass through validation failures and "invalid program" issues.
             Err(err)
@@ -1079,13 +1398,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// - no `UnsafeCell` or non-ZST `&mut`.
     #[inline(always)]
     pub(crate) fn const_validate_operand(
-        &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        &mut self,
+        val: &PlaceTy<'tcx, M::Provenance>,
         path: Vec<PathElem>,
         ref_tracking: &mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Vec<PathElem>>,
         ctfe_mode: CtfeValidationMode,
     ) -> InterpResult<'tcx> {
-        self.validate_operand_internal(op, path, Some(ref_tracking), Some(ctfe_mode))
+        self.validate_operand_internal(
+            val,
+            path,
+            Some(ref_tracking),
+            Some(ctfe_mode),
+            /*reset_provenance*/ false,
+        )
     }
 
     /// This function checks the data at `op` to be runtime-valid.
@@ -1093,21 +1418,41 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// It will error if the bits at the destination do not match the ones described by the layout.
     #[inline(always)]
     pub fn validate_operand(
-        &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        &mut self,
+        val: &PlaceTy<'tcx, M::Provenance>,
         recursive: bool,
+        reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
         // value, it rules out things like `UnsafeCell` in awkward places.
         if !recursive {
-            return self.validate_operand_internal(op, vec![], None, None);
+            return self.validate_operand_internal(
+                val,
+                vec![],
+                None,
+                None,
+                reset_provenance_and_padding,
+            );
         }
         // Do a recursive check.
         let mut ref_tracking = RefTracking::empty();
-        self.validate_operand_internal(op, vec![], Some(&mut ref_tracking), None)?;
+        self.validate_operand_internal(
+            val,
+            vec![],
+            Some(&mut ref_tracking),
+            None,
+            reset_provenance_and_padding,
+        )?;
         while let Some((mplace, path)) = ref_tracking.todo.pop() {
-            self.validate_operand_internal(&mplace.into(), path, Some(&mut ref_tracking), None)?;
+            // Things behind reference do *not* have the provenance reset.
+            self.validate_operand_internal(
+                &mplace.into(),
+                path,
+                Some(&mut ref_tracking),
+                None,
+                /*reset_provenance_and_padding*/ false,
+            )?;
         }
         Ok(())
     }

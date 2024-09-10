@@ -1,16 +1,17 @@
 #![feature(core_intrinsics)]
 
-use std::mem;
+use std::mem::{self, MaybeUninit};
 
 fn main() {
-    let x: Option<Box<[u8]>> = unsafe {
+    // This constructs a `(usize, bool)` pair: 9 bytes initialized, the rest not.
+    // Ensure that these 9 bytes are indeed initialized, and the rest is indeed not.
+    let x: MaybeUninit<Box<[u8]>> = unsafe {
         let z = std::intrinsics::add_with_overflow(0usize, 0usize);
-        std::mem::transmute::<(usize, bool), Option<Box<[u8]>>>(z)
+        std::mem::transmute::<(usize, bool), MaybeUninit<Box<[u8]>>>(z)
     };
-    let y = &x;
     // Now read this bytewise. There should be (`ptr_size + 1`) def bytes followed by
     // (`ptr_size - 1`) undef bytes (the padding after the bool) in there.
-    let z: *const u8 = y as *const _ as *const _;
+    let z: *const u8 = &x as *const _ as *const _;
     let first_undef = mem::size_of::<usize>() as isize + 1;
     for i in 0..first_undef {
         let byte = unsafe { *z.offset(i) };
