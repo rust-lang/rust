@@ -37,3 +37,15 @@ pub fn add_fma_combined(_: &Avx, _: &Fma, v: __m256) -> (__m256, __m256) {
     let r2 = unsafe { _mm256_fmadd_ps(v, v, v) };
     (r1, r2)
 }
+
+#[target_feature(from_args)]
+fn add_generic<S>(_: S, v: __m256) -> __m256 {
+    // CHECK-NOT: call
+    // CHECK: vaddps
+    unsafe { _mm256_add_ps(v, v) }
+}
+
+pub fn add_using_generic(v: __m256) -> __m256 {
+    assert!(is_x86_feature_detected!("avx"));
+    add_generic(unsafe { Avx {} }, v)
+}
