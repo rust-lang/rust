@@ -426,12 +426,6 @@ impl MissingDoc {
         article: &'static str,
         desc: &'static str,
     ) {
-        // If we're building a test harness, then warning about
-        // documentation is probably not really relevant right now.
-        if cx.sess().opts.test {
-            return;
-        }
-
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
         // have a `NodeId`).

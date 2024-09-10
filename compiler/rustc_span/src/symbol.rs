@@ -1236,6 +1236,7 @@ symbols! {
         mir_unwind_unreachable,
         mir_variant,
         miri,
+        missing_docs,
         mmx_reg,
         modifiers,
         module,
