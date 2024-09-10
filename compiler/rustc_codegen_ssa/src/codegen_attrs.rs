@@ -600,26 +600,30 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     }
 
     if let Some(sig) = fn_sig_outer() {
+        let mut additional_tf = vec![];
         for ty in sig.skip_binder().inputs().skip_binder() {
-            let additional_tf =
-                tcx.struct_reachable_target_features(tcx.param_env(did.to_def_id()).and(*ty));
-            // FIXME(struct_target_features): is this really necessary?
-            if !additional_tf.is_empty() && sig.skip_binder().abi() != abi::Abi::Rust {
-                tcx.dcx().span_err(
-                    tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
-                    "cannot use a struct with target features in a function with non-Rust ABI",
-                );
-            }
-            if !additional_tf.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
-                tcx.dcx().span_err(
-                    tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
-                    "cannot use a struct with target features in a #[inline(always)] function",
-                );
-            }
-            codegen_fn_attrs
-                .target_features
-                .extend(additional_tf.iter().map(|tf| TargetFeature { implied: true, ..*tf }));
+            extend_with_struct_target_features(
+                tcx,
+                tcx.param_env(did.to_def_id()).and(*ty),
+                &mut additional_tf,
+            )
         }
+        // FIXME(struct_target_features): is this really necessary?
+        if !additional_tf.is_empty() && sig.skip_binder().abi() != abi::Abi::Rust {
+            tcx.dcx().span_err(
+                tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
+                "cannot use a struct with target features in a function with non-Rust ABI",
+            );
+        }
+        if !additional_tf.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
+            tcx.dcx().span_err(
+                tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
+                "cannot use a struct with target features in a #[inline(always)] function",
+            );
+        }
+        codegen_fn_attrs
+            .target_features
+            .extend(additional_tf.iter().map(|tf| TargetFeature { implied: true, ..*tf }));
     }
 
     // If a function uses non-default target_features it can't be inlined into general
@@ -814,10 +818,11 @@ fn struct_target_features(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[TargetFeatur
     tcx.arena.alloc_slice(&features)
 }
 
-fn struct_reachable_target_features<'tcx>(
+fn extend_with_struct_target_features<'tcx>(
     tcx: TyCtxt<'tcx>,
     env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> &'tcx [TargetFeature] {
+    target_features: &mut Vec<TargetFeature>,
+) {
     // Collect target features from types reachable from `env.value` by dereferencing a certain
     // number of references and resolving aliases.
 
@@ -825,19 +830,16 @@ fn struct_reachable_target_features<'tcx>(
     if matches!(ty.kind(), ty::Alias(..)) {
         ty = match tcx.try_normalize_erasing_regions(env.param_env, ty) {
             Ok(ty) => ty,
-            Err(_) => return tcx.arena.alloc_slice(&[]),
+            Err(_) => return,
         };
     }
     while let ty::Ref(_, inner, _) = ty.kind() {
         ty = *inner;
     }
 
-    let tf = if let ty::Adt(adt_def, ..) = ty.kind() {
-        tcx.struct_target_features(adt_def.did())
-    } else {
-        &[]
-    };
-    tcx.arena.alloc_slice(tf)
+    if let ty::Adt(adt_def, ..) = ty.kind() {
+        target_features.extend_from_slice(&tcx.struct_target_features(adt_def.did()));
+    }
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -845,7 +847,6 @@ pub(crate) fn provide(providers: &mut Providers) {
         codegen_fn_attrs,
         should_inherit_track_caller,
         struct_target_features,
-        struct_reachable_target_features,
         ..*providers
     };
 }
