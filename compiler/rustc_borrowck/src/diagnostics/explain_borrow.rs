@@ -333,7 +333,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     }
                 }
 
-                if let ConstraintCategory::Cast { unsize_to: Some(unsize_ty) } = category {
+                if let ConstraintCategory::Cast { is_coercion: true, unsize_to: Some(unsize_ty) } =
+                    category
+                {
                     self.add_object_lifetime_default_note(tcx, err, unsize_ty);
                 }
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);

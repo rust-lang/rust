@@ -234,7 +234,9 @@ pub enum ConstraintCategory<'tcx> {
     UseAsStatic,
     TypeAnnotation,
     Cast {
-        /// Whether this is an unsizing cast and if yes, this contains the target type.
+        /// Whether this cast is a coercion.
+        is_coercion: bool,
+        /// Whether this is an unsizing coercion and if yes, this contains the target type.
         /// Region variables are erased to ReErased.
         #[derive_where(skip)]
         unsize_to: Option<Ty<'tcx>>,

@@ -138,7 +138,7 @@ error: lifetime may not live long enough
 LL | fn extend_to_static<'a>(ptr: *const dyn Trait<'a>) {
    |                     -- lifetime `'a` defined here
 LL |     require_static(ptr as _)
-   |                    ^^^ cast requires that `'a` must outlive `'static`
+   |                    ^^^^^^^^ cast requires that `'a` must outlive `'static`
 
 error: aborting due to 9 previous errors
 
