@@ -404,8 +404,7 @@ fn build_thread_local_shim<'tcx>(
     let span = tcx.def_span(def_id);
     let source_info = SourceInfo::outermost(span);
 
-    let mut blocks = IndexVec::with_capacity(1);
-    blocks.push(BasicBlockData {
+    let blocks = IndexVec::from_raw(vec![BasicBlockData {
         statements: vec![Statement {
             source_info,
             kind: StatementKind::Assign(Box::new((
@@ -415,7 +414,7 @@ fn build_thread_local_shim<'tcx>(
         }],
         terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
         is_cleanup: false,
-    });
+    }]);
 
     new_body(
         MirSource::from_instance(instance),
@@ -1003,7 +1002,8 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
     let locals = local_decls_for_sig(&sig, span);
 
     let source_info = SourceInfo::outermost(span);
-    // FIXME: use `expose_provenance` once we figure out whether function pointers have meaningful provenance.
+    // FIXME: use `expose_provenance` once we figure out whether function pointers have meaningful
+    // provenance.
     let rvalue = Rvalue::Cast(
         CastKind::FnPtrToPtr,
         Operand::Move(Place::from(Local::new(1))),

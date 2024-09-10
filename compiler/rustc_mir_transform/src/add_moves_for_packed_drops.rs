@@ -40,35 +40,34 @@ pub(super) struct AddMovesForPackedDrops;
 impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", body.source, body.span);
-        add_moves_for_packed_drops(tcx, body);
-    }
-}
 
-fn add_moves_for_packed_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let patch = add_moves_for_packed_drops_patch(tcx, body);
-    patch.apply(body);
-}
+        let def_id = body.source.def_id();
+        let mut patch = MirPatch::new(body);
+        let param_env = tcx.param_env(def_id);
 
-fn add_moves_for_packed_drops_patch<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> MirPatch<'tcx> {
-    let def_id = body.source.def_id();
-    let mut patch = MirPatch::new(body);
-    let param_env = tcx.param_env(def_id);
+        for (bb, data) in body.basic_blocks.iter_enumerated() {
+            let loc = Location { block: bb, statement_index: data.statements.len() };
+            let terminator = data.terminator();
 
-    for (bb, data) in body.basic_blocks.iter_enumerated() {
-        let loc = Location { block: bb, statement_index: data.statements.len() };
-        let terminator = data.terminator();
-
-        match terminator.kind {
-            TerminatorKind::Drop { place, .. }
-                if util::is_disaligned(tcx, body, param_env, place) =>
-            {
-                add_move_for_packed_drop(tcx, body, &mut patch, terminator, loc, data.is_cleanup);
+            match terminator.kind {
+                TerminatorKind::Drop { place, .. }
+                    if util::is_disaligned(tcx, body, param_env, place) =>
+                {
+                    add_move_for_packed_drop(
+                        tcx,
+                        body,
+                        &mut patch,
+                        terminator,
+                        loc,
+                        data.is_cleanup,
+                    );
+                }
+                _ => {}
             }
-            _ => {}
         }
-    }
 
-    patch
+        patch.apply(body);
+    }
 }
 
 fn add_move_for_packed_drop<'tcx>(

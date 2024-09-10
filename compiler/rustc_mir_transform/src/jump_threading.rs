@@ -78,18 +78,16 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
         }
 
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
-        let map = Map::new(tcx, body, Some(MAX_PLACES));
-        let loop_headers = loop_headers(body);
 
-        let arena = DroplessArena::default();
+        let arena = &DroplessArena::default();
         let mut finder = TOFinder {
             tcx,
             param_env,
             ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
             body,
-            arena: &arena,
-            map: &map,
-            loop_headers: &loop_headers,
+            arena,
+            map: Map::new(tcx, body, Some(MAX_PLACES)),
+            loop_headers: loop_headers(body),
             opportunities: Vec::new(),
         };
 
@@ -105,7 +103,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
 
         // Verify that we do not thread through a loop header.
         for to in opportunities.iter() {
-            assert!(to.chain.iter().all(|&block| !loop_headers.contains(block)));
+            assert!(to.chain.iter().all(|&block| !finder.loop_headers.contains(block)));
         }
         OpportunitySet::new(body, opportunities).apply(body);
     }
@@ -124,8 +122,8 @@ struct TOFinder<'tcx, 'a> {
     param_env: ty::ParamEnv<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
     body: &'a Body<'tcx>,
-    map: &'a Map<'tcx>,
-    loop_headers: &'a BitSet<BasicBlock>,
+    map: Map<'tcx>,
+    loop_headers: BitSet<BasicBlock>,
     /// We use an arena to avoid cloning the slices when cloning `state`.
     arena: &'a DroplessArena,
     opportunities: Vec<ThreadingOpportunity>,
@@ -223,7 +221,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             }))
         };
         let conds = ConditionSet(conds);
-        state.insert_value_idx(discr, conds, self.map);
+        state.insert_value_idx(discr, conds, &self.map);
 
         self.find_opportunity(bb, state, cost, 0);
     }
@@ -264,7 +262,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             //   _1 = 5 // Whatever happens here, it won't change the result of a `SwitchInt`.
             //   _1 = 6
             if let Some((lhs, tail)) = self.mutated_statement(stmt) {
-                state.flood_with_tail_elem(lhs.as_ref(), tail, self.map, ConditionSet::BOTTOM);
+                state.flood_with_tail_elem(lhs.as_ref(), tail, &self.map, ConditionSet::BOTTOM);
             }
         }
 
@@ -370,7 +368,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             self.opportunities.push(ThreadingOpportunity { chain: vec![bb], target: c.target })
         };
 
-        if let Some(conditions) = state.try_get_idx(lhs, self.map)
+        if let Some(conditions) = state.try_get_idx(lhs, &self.map)
             && let Immediate::Scalar(Scalar::Int(int)) = *rhs
         {
             conditions.iter_matches(int).for_each(register_opportunity);
@@ -406,7 +404,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 }
             },
             &mut |place, op| {
-                if let Some(conditions) = state.try_get_idx(place, self.map)
+                if let Some(conditions) = state.try_get_idx(place, &self.map)
                     && let Ok(imm) = self.ecx.read_immediate_raw(op)
                     && let Some(imm) = imm.right()
                     && let Immediate::Scalar(Scalar::Int(int)) = *imm
@@ -441,7 +439,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             // Transfer the conditions on the copied rhs.
             Operand::Move(rhs) | Operand::Copy(rhs) => {
                 let Some(rhs) = self.map.find(rhs.as_ref()) else { return };
-                state.insert_place_idx(rhs, lhs, self.map);
+                state.insert_place_idx(rhs, lhs, &self.map);
             }
         }
     }
@@ -461,7 +459,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             Rvalue::CopyForDeref(rhs) => self.process_operand(bb, lhs, &Operand::Copy(*rhs), state),
             Rvalue::Discriminant(rhs) => {
                 let Some(rhs) = self.map.find_discr(rhs.as_ref()) else { return };
-                state.insert_place_idx(rhs, lhs, self.map);
+                state.insert_place_idx(rhs, lhs, &self.map);
             }
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
             Rvalue::Aggregate(box ref kind, ref operands) => {
@@ -492,10 +490,10 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             }
             // Transfer the conditions on the copy rhs, after inversing polarity.
             Rvalue::UnaryOp(UnOp::Not, Operand::Move(place) | Operand::Copy(place)) => {
-                let Some(conditions) = state.try_get_idx(lhs, self.map) else { return };
+                let Some(conditions) = state.try_get_idx(lhs, &self.map) else { return };
                 let Some(place) = self.map.find(place.as_ref()) else { return };
                 let conds = conditions.map(self.arena, Condition::inv);
-                state.insert_value_idx(place, conds, self.map);
+                state.insert_value_idx(place, conds, &self.map);
             }
             // We expect `lhs ?= A`. We found `lhs = Eq(rhs, B)`.
             // Create a condition on `rhs ?= B`.
@@ -504,7 +502,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 box (Operand::Move(place) | Operand::Copy(place), Operand::Constant(value))
                 | box (Operand::Constant(value), Operand::Move(place) | Operand::Copy(place)),
             ) => {
-                let Some(conditions) = state.try_get_idx(lhs, self.map) else { return };
+                let Some(conditions) = state.try_get_idx(lhs, &self.map) else { return };
                 let Some(place) = self.map.find(place.as_ref()) else { return };
                 let equals = match op {
                     BinOp::Eq => ScalarInt::TRUE,
@@ -528,7 +526,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                     polarity: if c.matches(equals) { Polarity::Eq } else { Polarity::Ne },
                     ..c
                 });
-                state.insert_value_idx(place, conds, self.map);
+                state.insert_value_idx(place, conds, &self.map);
             }
 
             _ => {}
@@ -583,7 +581,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(
                 Operand::Copy(place) | Operand::Move(place),
             )) => {
-                let Some(conditions) = state.try_get(place.as_ref(), self.map) else { return };
+                let Some(conditions) = state.try_get(place.as_ref(), &self.map) else { return };
                 conditions.iter_matches(ScalarInt::TRUE).for_each(register_opportunity);
             }
             StatementKind::Assign(box (lhs_place, rhs)) => {
@@ -631,7 +629,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         // We can recurse through this terminator.
         let mut state = state();
         if let Some(place_to_flood) = place_to_flood {
-            state.flood_with(place_to_flood.as_ref(), self.map, ConditionSet::BOTTOM);
+            state.flood_with(place_to_flood.as_ref(), &self.map, ConditionSet::BOTTOM);
         }
         self.find_opportunity(bb, state, cost.clone(), depth + 1);
     }
@@ -650,7 +648,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         let Some(discr) = discr.place() else { return };
         let discr_ty = discr.ty(self.body, self.tcx).ty;
         let Ok(discr_layout) = self.ecx.layout_of(discr_ty) else { return };
-        let Some(conditions) = state.try_get(discr.as_ref(), self.map) else { return };
+        let Some(conditions) = state.try_get(discr.as_ref(), &self.map) else { return };
 
         if let Some((value, _)) = targets.iter().find(|&(_, target)| target == target_bb) {
             let Some(value) = ScalarInt::try_from_uint(value, discr_layout.size) else { return };

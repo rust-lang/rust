@@ -13,22 +13,18 @@ impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        lower_slice_len_calls(tcx, body)
-    }
-}
+        let language_items = tcx.lang_items();
+        let Some(slice_len_fn_item_def_id) = language_items.slice_len_fn() else {
+            // there is no lang item to compare to :)
+            return;
+        };
 
-fn lower_slice_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let language_items = tcx.lang_items();
-    let Some(slice_len_fn_item_def_id) = language_items.slice_len_fn() else {
-        // there is no lang item to compare to :)
-        return;
-    };
-
-    // The one successor remains unchanged, so no need to invalidate
-    let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
-    for block in basic_blocks {
-        // lower `<[_]>::len` calls
-        lower_slice_len_call(block, slice_len_fn_item_def_id);
+        // The one successor remains unchanged, so no need to invalidate
+        let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
+        for block in basic_blocks {
+            // lower `<[_]>::len` calls
+            lower_slice_len_call(block, slice_len_fn_item_def_id);
+        }
     }
 }
 
