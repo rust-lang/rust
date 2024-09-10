@@ -234,7 +234,7 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Creates a new `Context` from a [`&Waker`](Waker).
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
     #[must_use]
     #[inline]
     pub const fn from_waker(waker: &'a Waker) -> Self {
@@ -245,7 +245,7 @@ impl<'a> Context<'a> {
     #[inline]
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const fn waker(&self) -> &'a Waker {
         &self.waker
     }
@@ -321,7 +321,7 @@ impl<'a> ContextBuilder<'a> {
     /// Creates a ContextBuilder from a Waker.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
-    #[rustc_const_stable(feature = "const_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const fn from_waker(waker: &'a Waker) -> Self {
         // SAFETY: LocalWaker is just Waker without thread safety
         let local_waker = unsafe { transmute(waker) };
@@ -379,7 +379,7 @@ impl<'a> ContextBuilder<'a> {
     /// Builds the `Context`.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
-    #[rustc_const_stable(feature = "const_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const fn build(self) -> Context<'a> {
         let ContextBuilder { waker, local_waker, ext, _marker, _marker2 } = self;
         Context { waker, local_waker, ext: AssertUnwindSafe(ext), _marker, _marker2 }
@@ -538,7 +538,7 @@ impl Waker {
     #[inline]
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker { waker }
     }

@@ -143,9 +143,6 @@ pub struct Flags {
     /// Unless you know exactly what you are doing, you probably don't need this.
     pub bypass_bootstrap_lock: bool,
 
-    /// whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml
-    #[arg(global = true, long, value_name = "VALUE")]
-    pub llvm_skip_rebuild: Option<bool>,
     /// generate PGO profile with rustc build
     #[arg(global = true, value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
     pub rust_profile_generate: Option<String>,

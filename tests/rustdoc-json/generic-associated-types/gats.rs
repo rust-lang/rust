@@ -13,10 +13,10 @@ pub trait LendingIterator {
     where
         Self: 'a;
 
-    //@ count "$.index[*][?(@.name=='lending_next')].inner.function.decl.output.qualified_path.args.angle_bracketed.args[*]" 1
-    //@ count "$.index[*][?(@.name=='lending_next')].inner.function.decl.output.qualified_path.args.angle_bracketed.bindings[*]" 0
-    //@ is "$.index[*][?(@.name=='lending_next')].inner.function.decl.output.qualified_path.self_type.generic" \"Self\"
-    //@ is "$.index[*][?(@.name=='lending_next')].inner.function.decl.output.qualified_path.name" \"LendingItem\"
+    //@ count "$.index[*][?(@.name=='lending_next')].inner.function.sig.output.qualified_path.args.angle_bracketed.args[*]" 1
+    //@ count "$.index[*][?(@.name=='lending_next')].inner.function.sig.output.qualified_path.args.angle_bracketed.bindings[*]" 0
+    //@ is "$.index[*][?(@.name=='lending_next')].inner.function.sig.output.qualified_path.self_type.generic" \"Self\"
+    //@ is "$.index[*][?(@.name=='lending_next')].inner.function.sig.output.qualified_path.name" \"LendingItem\"
     fn lending_next<'a>(&'a self) -> Self::LendingItem<'a>;
 }
 
@@ -26,9 +26,9 @@ pub trait Iterator {
     //@ count "$.index[*][?(@.name=='Item')].inner.assoc_type.bounds[*]" 1
     type Item: Display;
 
-    //@ count "$.index[*][?(@.name=='next')].inner.function.decl.output.qualified_path.args.angle_bracketed.args[*]" 0
-    //@ count "$.index[*][?(@.name=='next')].inner.function.decl.output.qualified_path.args.angle_bracketed.bindings[*]" 0
-    //@ is "$.index[*][?(@.name=='next')].inner.function.decl.output.qualified_path.self_type.generic" \"Self\"
-    //@ is "$.index[*][?(@.name=='next')].inner.function.decl.output.qualified_path.name" \"Item\"
+    //@ count "$.index[*][?(@.name=='next')].inner.function.sig.output.qualified_path.args.angle_bracketed.args[*]" 0
+    //@ count "$.index[*][?(@.name=='next')].inner.function.sig.output.qualified_path.args.angle_bracketed.bindings[*]" 0
+    //@ is "$.index[*][?(@.name=='next')].inner.function.sig.output.qualified_path.self_type.generic" \"Self\"
+    //@ is "$.index[*][?(@.name=='next')].inner.function.sig.output.qualified_path.name" \"Item\"
     fn next<'a>(&'a self) -> Self::Item;
 }

@@ -87,8 +87,6 @@ where
     pub(crate) fn from_tree(tree: Tree<!, R>) -> Result<Self, Uninhabited> {
         Ok(match tree {
             Tree::Byte(b) => Self::from_byte(b),
-            #[cfg(bootstrap)]
-            Tree::Def(..) => unreachable!(),
             Tree::Ref(r) => Self::from_ref(r),
             Tree::Alt(alts) => {
                 let mut alts = alts.into_iter().map(Self::from_tree);

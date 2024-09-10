@@ -625,11 +625,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let ObligationCauseCode::WhereClause(_, span)
                 | ObligationCauseCode::WhereClauseInExpr(_, span, ..) =
                     &trace.cause.code().peel_derives()
-                    && !span.is_dummy()
                 {
                     let span = *span;
-                    self.report_concrete_failure(generic_param_scope, placeholder_origin, sub, sup)
-                        .with_span_note(span, "the lifetime requirement is introduced here")
+                    let mut err = self.report_concrete_failure(
+                        generic_param_scope,
+                        placeholder_origin,
+                        sub,
+                        sup,
+                    );
+                    if !span.is_dummy() {
+                        err =
+                            err.with_span_note(span, "the lifetime requirement is introduced here");
+                    }
+                    err
                 } else {
                     unreachable!(
                         "control flow ensures we have a `BindingObligation` or `WhereClauseInExpr` here..."
@@ -1018,7 +1026,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let var_description = match var_origin {
             infer::MiscVariable(_) => String::new(),
             infer::PatternRegion(_) => " for pattern".to_string(),
-            infer::AddrOfRegion(_) => " for borrow expression".to_string(),
+            infer::BorrowRegion(_) => " for borrow expression".to_string(),
             infer::Autoref(_) => " for autoref".to_string(),
             infer::Coercion(_) => " for automatic coercion".to_string(),
             infer::BoundRegion(_, br, infer::FnCall) => {

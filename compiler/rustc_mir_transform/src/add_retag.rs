@@ -8,7 +8,7 @@ use rustc_hir::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub struct AddRetag;
+pub(super) struct AddRetag;
 
 /// Determine whether this type may contain a reference (or box), and thus needs retagging.
 /// We will only recurse `depth` times into Tuples/ADTs to bound the cost of this.

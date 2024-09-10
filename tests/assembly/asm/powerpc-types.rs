@@ -4,6 +4,7 @@
 //@[powerpc] needs-llvm-components: powerpc
 //@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
 //@[powerpc64] needs-llvm-components: powerpc
+//@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
 #![crate_type = "rlib"]
@@ -43,16 +44,9 @@ extern "C" {
     static extern_static: u8;
 }
 
-// Hack to avoid function merging
-extern "Rust" {
-    fn dont_merge(s: &str);
-}
-
 macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
     #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
         let y;
         asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
         y
@@ -62,8 +56,6 @@ macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
 macro_rules! check_reg { ($func:ident, $ty:ty, $rego:tt, $regc:tt, $mov:literal) => {
     #[no_mangle]
     pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
         let y;
         asm!(concat!($mov, " ", $rego, ", ", $rego), lateout($regc) y, in($regc) x);
         y

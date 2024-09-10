@@ -4,6 +4,7 @@
 //@ [aarch64] needs-llvm-components: aarch64
 //@ [arm64ec] compile-flags: --target arm64ec-pc-windows-msvc
 //@ [arm64ec] needs-llvm-components: aarch64
+//@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch, f16, f128)]
 #![crate_type = "rlib"]
@@ -132,12 +133,6 @@ macro_rules! check {
         // LLVM issue: <https://github.com/llvm/llvm-project/issues/94434>
         #[no_mangle]
         pub unsafe fn $func(inp: &$ty, out: &mut $ty) {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let x = *inp;
             let y;
             asm!(
@@ -155,12 +150,6 @@ macro_rules! check_reg {
         // FIXME(f16_f128): See FIXME in `check!`
         #[no_mangle]
         pub unsafe fn $func(inp: &$ty, out: &mut $ty) {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let x = *inp;
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);

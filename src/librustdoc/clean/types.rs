@@ -320,14 +320,28 @@ pub(crate) struct Item {
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
     pub(crate) name: Option<Symbol>,
-    pub(crate) attrs: Box<Attributes>,
+    pub(crate) inner: Box<ItemInner>,
+    pub(crate) item_id: ItemId,
+    /// This is the `LocalDefId` of the `use` statement if the item was inlined.
+    /// The crate metadata doesn't hold this information, so the `use` statement
+    /// always belongs to the current crate.
+    pub(crate) inline_stmt_id: Option<LocalDefId>,
+    pub(crate) cfg: Option<Arc<Cfg>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct ItemInner {
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
-    pub(crate) kind: Box<ItemKind>,
-    pub(crate) item_id: ItemId,
-    /// This is the `DefId` of the `use` statement if the item was inlined.
-    pub(crate) inline_stmt_id: Option<DefId>,
-    pub(crate) cfg: Option<Arc<Cfg>>,
+    pub(crate) kind: ItemKind,
+    pub(crate) attrs: Attributes,
+}
+
+impl std::ops::Deref for Item {
+    type Target = ItemInner;
+    fn deref(&self) -> &ItemInner {
+        &*self.inner
+    }
 }
 
 /// NOTE: this does NOT unconditionally print every item, to avoid thousands of lines of logs.
@@ -389,9 +403,9 @@ impl Item {
     }
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
-        let kind = match &*self.kind {
-            ItemKind::StrippedItem(k) => k,
-            _ => &*self.kind,
+        let kind = match &self.kind {
+            ItemKind::StrippedItem(k) => &*k,
+            _ => &self.kind,
         };
         match kind {
             ItemKind::ModuleItem(Module { span, .. }) => Some(*span),
@@ -436,7 +450,7 @@ impl Item {
             def_id,
             name,
             kind,
-            Box::new(Attributes::from_ast(ast_attrs)),
+            Attributes::from_ast(ast_attrs),
             ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     }
@@ -445,16 +459,15 @@ impl Item {
         def_id: DefId,
         name: Option<Symbol>,
         kind: ItemKind,
-        attrs: Box<Attributes>,
+        attrs: Attributes,
         cfg: Option<Arc<Cfg>>,
     ) -> Item {
         trace!("name={name:?}, def_id={def_id:?} cfg={cfg:?}");
 
         Item {
             item_id: def_id.into(),
-            kind: Box::new(kind),
+            inner: Box::new(ItemInner { kind, attrs }),
             name,
-            attrs,
             cfg,
             inline_stmt_id: None,
         }
@@ -522,16 +535,16 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(&*self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
+        matches!(self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
     }
     pub(crate) fn is_ty_associated_type(&self) -> bool {
-        matches!(&*self.kind, TyAssocTypeItem(..) | StrippedItem(box TyAssocTypeItem(..)))
+        matches!(self.kind, TyAssocTypeItem(..) | StrippedItem(box TyAssocTypeItem(..)))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(&*self.kind, AssocConstItem(..) | StrippedItem(box AssocConstItem(..)))
+        matches!(self.kind, AssocConstItem(..) | StrippedItem(box AssocConstItem(..)))
     }
     pub(crate) fn is_ty_associated_const(&self) -> bool {
-        matches!(&*self.kind, TyAssocConstItem(..) | StrippedItem(box TyAssocConstItem(..)))
+        matches!(self.kind, TyAssocConstItem(..) | StrippedItem(box TyAssocConstItem(..)))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -555,14 +568,14 @@ impl Item {
         self.type_() == ItemType::Keyword
     }
     pub(crate) fn is_stripped(&self) -> bool {
-        match *self.kind {
+        match self.kind {
             StrippedItem(..) => true,
             ImportItem(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
     pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
-        match *self.kind {
+        match self.kind {
             StructItem(ref struct_) => Some(struct_.has_stripped_entries()),
             UnionItem(ref union_) => Some(union_.has_stripped_entries()),
             EnumItem(ref enum_) => Some(enum_.has_stripped_entries()),
@@ -605,7 +618,7 @@ impl Item {
     }
 
     pub(crate) fn is_default(&self) -> bool {
-        match *self.kind {
+        match self.kind {
             ItemKind::MethodItem(_, Some(defaultness)) => {
                 defaultness.has_value() && !defaultness.is_final()
             }
@@ -633,7 +646,7 @@ impl Item {
             };
             hir::FnHeader { safety: sig.safety(), abi: sig.abi(), constness, asyncness }
         }
-        let header = match *self.kind {
+        let header = match self.kind {
             ItemKind::ForeignFunctionItem(_, safety) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
@@ -672,7 +685,7 @@ impl Item {
             ItemId::DefId(def_id) => def_id,
         };
 
-        match *self.kind {
+        match self.kind {
             // Primitives and Keywords are written in the source code as private modules.
             // The modules need to be private so that nobody actually uses them, but the
             // keywords and primitives that they are documenting are public.
@@ -702,7 +715,7 @@ impl Item {
             _ => {}
         }
         let def_id = match self.inline_stmt_id {
-            Some(inlined) => inlined,
+            Some(inlined) => inlined.to_def_id(),
             None => def_id,
         };
         Some(tcx.visibility(def_id))
@@ -2559,13 +2572,13 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(Crate, 64); // frequently moved by-value
+    static_assert_size!(Crate, 56); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
-    static_assert_size!(Item, 56);
+    static_assert_size!(Item, 48);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 40);
     static_assert_size!(Type, 32);

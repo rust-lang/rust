@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::env;
+use std::num::ParseIntError;
 
 use crate::spec::{
     add_link_args, add_link_args_iter, cvs, Cc, DebuginfoKind, FramePointer, LinkArgs,
@@ -34,6 +35,25 @@ impl Arch {
             Arm64_32 => "arm64_32",
             I386 => "i386",
             I686 => "i686",
+            X86_64 => "x86_64",
+            X86_64h => "x86_64h",
+        }
+    }
+
+    /// The architecture name to forward to the linker.
+    fn ld_arch(self) -> &'static str {
+        // Supported architecture names can be found in the source:
+        // https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/src/abstraction/MachOFileAbstraction.hpp#L578-L648
+        match self {
+            Armv7k => "armv7k",
+            Armv7s => "armv7s",
+            Arm64 => "arm64",
+            Arm64e => "arm64e",
+            Arm64_32 => "arm64_32",
+            // ld64 doesn't understand i686, so fall back to i386 instead
+            //
+            // Same story when linking with cc, since that ends up invoking ld64.
+            I386 | I686 => "i386",
             X86_64 => "x86_64",
             X86_64h => "x86_64h",
         }
@@ -97,53 +117,85 @@ impl TargetAbi {
 }
 
 fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
+    // From the man page for ld64 (`man ld`):
+    // > The linker accepts universal (multiple-architecture) input files,
+    // > but always creates a "thin" (single-architecture), standard Mach-O
+    // > output file. The architecture for the output file is specified using
+    // > the -arch option.
+    //
+    // The linker has heuristics to determine the desired architecture, but to
+    // be safe, and to avoid a warning, we set the architecture explicitly.
+    let mut args =
+        TargetOptions::link_args(LinkerFlavor::Darwin(Cc::No, Lld::No), &["-arch", arch.ld_arch()]);
+
+    // From the man page for ld64 (`man ld`):
+    // > This is set to indicate the platform, oldest supported version of
+    // > that platform that output is to be used on, and the SDK that the
+    // > output was built against. platform [...] may be one of the following
+    // > strings:
+    // > - macos
+    // > - ios
+    // > - tvos
+    // > - watchos
+    // > - bridgeos
+    // > - visionos
+    // > - xros
+    // > - mac-catalyst
+    // > - ios-simulator
+    // > - tvos-simulator
+    // > - watchos-simulator
+    // > - visionos-simulator
+    // > - xros-simulator
+    // > - driverkit
+    //
+    // Like with `-arch`, the linker can figure out the platform versions
+    // itself from the binaries being linked, but to be safe, we specify the
+    // desired versions here explicitly.
     let platform_name: StaticCow<str> = match abi {
         TargetAbi::Normal => os.into(),
         TargetAbi::Simulator => format!("{os}-simulator").into(),
         TargetAbi::MacCatalyst => "mac-catalyst".into(),
     };
-
     let min_version: StaticCow<str> = {
-        let (major, minor) = match os {
-            "ios" => ios_deployment_target(arch, abi.target_abi()),
-            "tvos" => tvos_deployment_target(),
-            "watchos" => watchos_deployment_target(),
-            "visionos" => visionos_deployment_target(),
-            "macos" => macos_deployment_target(arch),
-            _ => unreachable!(),
-        };
-        format!("{major}.{minor}").into()
+        let (major, minor, patch) = deployment_target(os, arch, abi);
+        format!("{major}.{minor}.{patch}").into()
     };
+    // Lie about the SDK version, we don't know it here
     let sdk_version = min_version.clone();
-
-    let mut args = TargetOptions::link_args(
-        LinkerFlavor::Darwin(Cc::No, Lld::No),
-        &["-arch", arch.target_name(), "-platform_version"],
-    );
     add_link_args_iter(
         &mut args,
         LinkerFlavor::Darwin(Cc::No, Lld::No),
-        [platform_name, min_version, sdk_version].into_iter(),
+        ["-platform_version".into(), platform_name, min_version, sdk_version].into_iter(),
     );
+
     if abi != TargetAbi::MacCatalyst {
+        // CC forwards the `-arch` to the linker, so we use the same value
+        // here intentionally.
         add_link_args(
             &mut args,
             LinkerFlavor::Darwin(Cc::Yes, Lld::No),
-            &["-arch", arch.target_name()],
+            &["-arch", arch.ld_arch()],
         );
     } else {
         add_link_args_iter(
             &mut args,
             LinkerFlavor::Darwin(Cc::Yes, Lld::No),
-            ["-target".into(), mac_catalyst_llvm_target(arch).into()].into_iter(),
+            ["-target".into(), llvm_target(os, arch, abi)].into_iter(),
         );
     }
 
     args
 }
 
-pub(crate) fn opts(os: &'static str, arch: Arch, abi: TargetAbi) -> TargetOptions {
-    TargetOptions {
+/// Get the base target options, LLVM target and `target_arch` from the three
+/// things that uniquely identify Rust's Apple targets: The OS, the
+/// architecture, and the ABI.
+pub(crate) fn base(
+    os: &'static str,
+    arch: Arch,
+    abi: TargetAbi,
+) -> (TargetOptions, StaticCow<str>, StaticCow<str>) {
+    let opts = TargetOptions {
         abi: abi.target_abi().into(),
         os: os.into(),
         cpu: arch.target_cpu(abi).into(),
@@ -193,10 +245,11 @@ pub(crate) fn opts(os: &'static str, arch: Arch, abi: TargetAbi) -> TargetOption
         link_env: Cow::Borrowed(&[(Cow::Borrowed("ZERO_AR_DATE"), Cow::Borrowed("1"))]),
 
         ..Default::default()
-    }
+    };
+    (opts, llvm_target(os, arch, abi), arch.target_arch())
 }
 
-pub fn sdk_version(platform: u32) -> Option<(u32, u32)> {
+pub fn sdk_version(platform: u32) -> Option<(u16, u8)> {
     // NOTE: These values are from an arbitrary point in time but shouldn't make it into the final
     // binary since the final link command will have the current SDK version passed to it.
     match platform {
@@ -230,58 +283,108 @@ pub fn platform(target: &Target) -> Option<u32> {
     })
 }
 
-pub fn deployment_target(target: &Target) -> Option<(u32, u32)> {
-    let (major, minor) = match &*target.os {
-        "macos" => {
-            // This does not need to be specific. It just needs to handle x86 vs M1.
-            let arch = match target.arch.as_ref() {
-                "x86" | "x86_64" => X86_64,
-                "arm64e" => Arm64e,
-                _ => Arm64,
-            };
-            macos_deployment_target(arch)
-        }
-        "ios" => {
-            let arch = match target.arch.as_ref() {
-                "arm64e" => Arm64e,
-                _ => Arm64,
-            };
-            ios_deployment_target(arch, &target.abi)
-        }
-        "watchos" => watchos_deployment_target(),
-        "tvos" => tvos_deployment_target(),
-        "visionos" => visionos_deployment_target(),
-        _ => return None,
+/// Hack for calling `deployment_target` outside of this module.
+pub fn deployment_target_for_target(target: &Target) -> (u16, u8, u8) {
+    let arch = if target.llvm_target.starts_with("arm64e") {
+        Arch::Arm64e
+    } else if target.arch == "aarch64" {
+        Arch::Arm64
+    } else {
+        // Dummy architecture, only used by `deployment_target` anyhow
+        Arch::X86_64
+    };
+    let abi = match &*target.abi {
+        "macabi" => TargetAbi::MacCatalyst,
+        "sim" => TargetAbi::Simulator,
+        "" => TargetAbi::Normal,
+        abi => unreachable!("invalid abi '{abi}' for Apple target"),
+    };
+    deployment_target(&target.os, arch, abi)
+}
+
+/// Get the deployment target based on the standard environment variables, or
+/// fall back to a sane default.
+fn deployment_target(os: &str, arch: Arch, abi: TargetAbi) -> (u16, u8, u8) {
+    // When bumping a version in here, remember to update the platform-support
+    // docs too.
+    //
+    // NOTE: If you are looking for the default deployment target, prefer
+    // `rustc --print deployment-target`, as the default here may change in
+    // future `rustc` versions.
+
+    // Minimum operating system versions currently supported by `rustc`.
+    let os_min = match os {
+        "macos" => (10, 12, 0),
+        "ios" => (10, 0, 0),
+        "tvos" => (10, 0, 0),
+        "watchos" => (5, 0, 0),
+        "visionos" => (1, 0, 0),
+        _ => unreachable!("tried to get deployment target for non-Apple platform"),
     };
 
-    Some((major, minor))
-}
+    // On certain targets it makes sense to raise the minimum OS version.
+    let min = match (os, arch, abi) {
+        // Use 11.0 on Aarch64 as that's the earliest version with M1 support.
+        ("macos", Arch::Arm64 | Arch::Arm64e, _) => (11, 0, 0),
+        ("ios", Arch::Arm64e, _) => (14, 0, 0),
+        // Mac Catalyst defaults to 13.1 in Clang.
+        ("ios", _, TargetAbi::MacCatalyst) => (13, 1, 0),
+        _ => os_min,
+    };
 
-fn from_set_deployment_target(var_name: &str) -> Option<(u32, u32)> {
-    let deployment_target = env::var(var_name).ok()?;
-    let (unparsed_major, unparsed_minor) = deployment_target.split_once('.')?;
-    let (major, minor) = (unparsed_major.parse().ok()?, unparsed_minor.parse().ok()?);
+    // The environment variable used to fetch the deployment target.
+    let env_var = match os {
+        "macos" => "MACOSX_DEPLOYMENT_TARGET",
+        "ios" => "IPHONEOS_DEPLOYMENT_TARGET",
+        "watchos" => "WATCHOS_DEPLOYMENT_TARGET",
+        "tvos" => "TVOS_DEPLOYMENT_TARGET",
+        "visionos" => "XROS_DEPLOYMENT_TARGET",
+        _ => unreachable!("tried to get deployment target env var for non-Apple platform"),
+    };
 
-    Some((major, minor))
-}
-
-fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
-    match arch {
-        Arm64 | Arm64e => (11, 0),
-        _ => (10, 12),
+    if let Ok(deployment_target) = env::var(env_var) {
+        match parse_version(&deployment_target) {
+            // It is common that the deployment target is set too low, e.g. on
+            // macOS Aarch64 to also target older x86_64, the user may set a
+            // lower deployment target than supported.
+            //
+            // To avoid such issues, we silently raise the deployment target
+            // here.
+            // FIXME: We want to show a warning when `version < os_min`.
+            Ok(version) => version.max(min),
+            // FIXME: Report erroneous environment variable to user.
+            Err(_) => min,
+        }
+    } else {
+        min
     }
 }
 
-fn macos_deployment_target(arch: Arch) -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    // Note: If bumping this version, remember to update it in the rustc/platform-support docs.
-    from_set_deployment_target("MACOSX_DEPLOYMENT_TARGET")
-        .unwrap_or_else(|| macos_default_deployment_target(arch))
-}
-
-pub(crate) fn macos_llvm_target(arch: Arch) -> String {
-    let (major, minor) = macos_deployment_target(arch);
-    format!("{}-apple-macosx{}.{}.0", arch.target_name(), major, minor)
+/// Generate the target triple that we need to pass to LLVM and/or Clang.
+fn llvm_target(os: &str, arch: Arch, abi: TargetAbi) -> StaticCow<str> {
+    // The target triple depends on the deployment target, and is required to
+    // enable features such as cross-language LTO, and for picking the right
+    // Mach-O commands.
+    //
+    // Certain optimizations also depend on the deployment target.
+    let (major, minor, patch) = deployment_target(os, arch, abi);
+    let arch = arch.target_name();
+    // Convert to the "canonical" OS name used by LLVM:
+    // https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L236-L282
+    let os = match os {
+        "macos" => "macosx",
+        "ios" => "ios",
+        "watchos" => "watchos",
+        "tvos" => "tvos",
+        "visionos" => "xros",
+        _ => unreachable!("tried to get LLVM target OS for non-Apple platform"),
+    };
+    let environment = match abi {
+        TargetAbi::Normal => "",
+        TargetAbi::MacCatalyst => "-macabi",
+        TargetAbi::Simulator => "-simulator",
+    };
+    format!("{arch}-apple-{os}{major}.{minor}.{patch}{environment}").into()
 }
 
 fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
@@ -321,83 +424,19 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
     }
 }
 
-fn ios_deployment_target(arch: Arch, abi: &str) -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    // Note: If bumping this version, remember to update it in the rustc/platform-support docs.
-    let (major, minor) = match (arch, abi) {
-        (Arm64e, _) => (14, 0),
-        // Mac Catalyst defaults to 13.1 in Clang.
-        (_, "macabi") => (13, 1),
-        _ => (10, 0),
-    };
-    from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((major, minor))
-}
-
-pub(crate) fn ios_llvm_target(arch: Arch) -> String {
-    // Modern iOS tooling extracts information about deployment target
-    // from LC_BUILD_VERSION. This load command will only be emitted when
-    // we build with a version specific `llvm_target`, with the version
-    // set high enough. Luckily one LC_BUILD_VERSION is enough, for Xcode
-    // to pick it up (since std and core are still built with the fallback
-    // of version 7.0 and hence emit the old LC_IPHONE_MIN_VERSION).
-    let (major, minor) = ios_deployment_target(arch, "");
-    format!("{}-apple-ios{}.{}.0", arch.target_name(), major, minor)
-}
-
-pub(crate) fn mac_catalyst_llvm_target(arch: Arch) -> String {
-    let (major, minor) = ios_deployment_target(arch, "macabi");
-    format!("{}-apple-ios{}.{}.0-macabi", arch.target_name(), major, minor)
-}
-
-pub(crate) fn ios_sim_llvm_target(arch: Arch) -> String {
-    let (major, minor) = ios_deployment_target(arch, "sim");
-    format!("{}-apple-ios{}.{}.0-simulator", arch.target_name(), major, minor)
-}
-
-fn tvos_deployment_target() -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    // Note: If bumping this version, remember to update it in the rustc platform-support docs.
-    from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
-}
-
-pub(crate) fn tvos_llvm_target(arch: Arch) -> String {
-    let (major, minor) = tvos_deployment_target();
-    format!("{}-apple-tvos{}.{}.0", arch.target_name(), major, minor)
-}
-
-pub(crate) fn tvos_sim_llvm_target(arch: Arch) -> String {
-    let (major, minor) = tvos_deployment_target();
-    format!("{}-apple-tvos{}.{}.0-simulator", arch.target_name(), major, minor)
-}
-
-fn watchos_deployment_target() -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    // Note: If bumping this version, remember to update it in the rustc platform-support docs.
-    from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
-}
-
-pub(crate) fn watchos_llvm_target(arch: Arch) -> String {
-    let (major, minor) = watchos_deployment_target();
-    format!("{}-apple-watchos{}.{}.0", arch.target_name(), major, minor)
-}
-
-pub(crate) fn watchos_sim_llvm_target(arch: Arch) -> String {
-    let (major, minor) = watchos_deployment_target();
-    format!("{}-apple-watchos{}.{}.0-simulator", arch.target_name(), major, minor)
-}
-
-fn visionos_deployment_target() -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    // Note: If bumping this version, remember to update it in the rustc platform-support docs.
-    from_set_deployment_target("XROS_DEPLOYMENT_TARGET").unwrap_or((1, 0))
-}
-
-pub(crate) fn visionos_llvm_target(arch: Arch) -> String {
-    let (major, minor) = visionos_deployment_target();
-    format!("{}-apple-visionos{}.{}.0", arch.target_name(), major, minor)
-}
-
-pub(crate) fn visionos_sim_llvm_target(arch: Arch) -> String {
-    let (major, minor) = visionos_deployment_target();
-    format!("{}-apple-visionos{}.{}.0-simulator", arch.target_name(), major, minor)
+/// Parse an OS version triple (SDK version or deployment target).
+///
+/// The size of the returned numbers here are limited by Mach-O's
+/// `LC_BUILD_VERSION`.
+fn parse_version(version: &str) -> Result<(u16, u8, u8), ParseIntError> {
+    if let Some((major, minor)) = version.split_once('.') {
+        let major = major.parse()?;
+        if let Some((minor, patch)) = minor.split_once('.') {
+            Ok((major, minor.parse()?, patch.parse()?))
+        } else {
+            Ok((major, minor.parse()?, 0))
+        }
+    } else {
+        Ok((version.parse()?, 0, 0))
+    }
 }

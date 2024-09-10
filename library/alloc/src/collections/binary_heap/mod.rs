@@ -1433,7 +1433,7 @@ pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
-#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_sequel", since = "1.82.0")]
 impl<T> Default for Iter<'_, T> {
     /// Creates an empty `binary_heap::Iter`.
     ///

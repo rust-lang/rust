@@ -52,7 +52,7 @@ impl<'tcx> UniverseInfo<'tcx> {
 
     pub(crate) fn report_error(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, '_, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
         error_element: RegionElement,
         cause: ObligationCause<'tcx>,
@@ -151,7 +151,7 @@ trait TypeOpInfo<'tcx> {
 
     fn nice_error<'infcx>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
@@ -160,7 +160,7 @@ trait TypeOpInfo<'tcx> {
     #[instrument(level = "debug", skip(self, mbcx))]
     fn report_error(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, '_, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
         error_element: RegionElement,
         cause: ObligationCause<'tcx>,
@@ -233,7 +233,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
 
     fn nice_error<'infcx>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
@@ -277,7 +277,7 @@ where
 
     fn nice_error<'infcx>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
@@ -324,7 +324,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
 
     fn nice_error<'infcx>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
@@ -357,7 +357,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
 
     fn nice_error<'infcx>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
         _cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,

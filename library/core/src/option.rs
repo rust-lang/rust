@@ -667,7 +667,7 @@ impl<T> Option<T> {
     /// ```
     #[must_use]
     #[inline]
-    #[stable(feature = "is_none_or", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_none_or", since = "1.82.0")]
     pub fn is_none_or(self, f: impl FnOnce(T) -> bool) -> bool {
         match self {
             None => true,
@@ -1338,9 +1338,8 @@ impl<T> Option<T> {
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
-    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn iter(&self) -> Iter<'_, T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter { inner: Item { opt: self.as_ref() } }
     }
 
@@ -1894,7 +1893,7 @@ impl<T> Option<&T> {
     where
         T: Copy,
     {
-        // FIXME: this implementation, which sidesteps using `Option::map` since it's not const
+        // FIXME(const-hack): this implementation, which sidesteps using `Option::map` since it's not const
         // ready yet, should be reverted when possible to avoid code repetition
         match self {
             Some(&v) => Some(v),
@@ -1942,7 +1941,7 @@ impl<T> Option<&mut T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn copied(self) -> Option<T>
     where
         T: Copy,

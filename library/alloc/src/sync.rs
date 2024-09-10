@@ -520,7 +520,7 @@ impl<T> Arc<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
@@ -1115,7 +1115,7 @@ impl<T> Arc<[T]> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe { Arc::from_ptr(Arc::allocate_for_slice(len)) }
@@ -1262,7 +1262,7 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<T, A> {
@@ -1303,7 +1303,7 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<[T], A> {

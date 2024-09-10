@@ -91,8 +91,6 @@ pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
     fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         match self.try_fold_with(folder) {
             Ok(t) => t,
-            #[cfg(bootstrap)]
-            Err(e) => match e {},
         }
     }
 }
@@ -116,8 +114,6 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
     fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         match self.try_super_fold_with(folder) {
             Ok(t) => t,
-            #[cfg(bootstrap)]
-            Err(e) => match e {},
         }
     }
 }

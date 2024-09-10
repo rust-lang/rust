@@ -208,7 +208,7 @@ declare_features! (
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (unstable, link_cfg, "1.14.0", None),
     /// Allows using `?Trait` trait bounds in more contexts.
-    (internal, more_maybe_bounds, "CURRENT_RUSTC_VERSION", None),
+    (internal, more_maybe_bounds, "1.82.0", None),
     /// Allows the `multiple_supertrait_upcastable` lint.
     (unstable, multiple_supertrait_upcastable, "1.69.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
@@ -302,7 +302,7 @@ declare_features! (
     // FIXME: Document these and merge with the list below.
 
     // Unstable `#[target_feature]` directives.
-    (unstable, aarch64_unstable_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (unstable, aarch64_unstable_target_feature, "1.82.0", Some(44839)),
     (unstable, aarch64_ver_target_feature, "1.27.0", Some(44839)),
     (unstable, arm_target_feature, "1.27.0", Some(44839)),
     (unstable, avx512_target_feature, "1.27.0", Some(44839)),
@@ -317,7 +317,7 @@ declare_features! (
     (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
     (unstable, rtm_target_feature, "1.35.0", Some(44839)),
-    (unstable, s390x_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (unstable, s390x_target_feature, "1.82.0", Some(44839)),
     (unstable, sse4a_target_feature, "1.27.0", Some(44839)),
     (unstable, tbm_target_feature, "1.27.0", Some(44839)),
     (unstable, wasm_target_feature, "1.30.0", Some(44839)),
@@ -474,7 +474,7 @@ declare_features! (
     /// Allows the use of `#[ffi_pure]` on foreign functions.
     (unstable, ffi_pure, "1.45.0", Some(58329)),
     /// Controlling the behavior of fmt::Debug
-    (unstable, fmt_debug, "CURRENT_RUSTC_VERSION", Some(129709)),
+    (unstable, fmt_debug, "1.82.0", Some(129709)),
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
@@ -586,8 +586,8 @@ declare_features! (
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
-    (unstable, sha512_sm_x86, "CURRENT_RUSTC_VERSION", Some(126624)),
-    /// Shorten the tail expression lifetime
+    (unstable, sha512_sm_x86, "1.82.0", Some(126624)),
+    /// Shortern the tail expression lifetime
     (unstable, shorter_tail_lifetimes, "1.79.0", Some(123739)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),
@@ -625,7 +625,7 @@ declare_features! (
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
-    (incomplete, unsized_const_params, "CURRENT_RUSTC_VERSION", Some(95174)),
+    (incomplete, unsized_const_params, "1.82.0", Some(95174)),
     /// Allows unsized fn parameters.
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.

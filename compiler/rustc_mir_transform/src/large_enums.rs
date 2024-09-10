@@ -23,7 +23,7 @@ use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};
 /// In summary, what this does is at runtime determine which enum variant is active,
 /// and instead of copying all the bytes of the largest possible variant,
 /// copy only the bytes for the currently active variant.
-pub struct EnumSizeOpt {
+pub(super) struct EnumSizeOpt {
     pub(crate) discrepancy: u64,
 }
 

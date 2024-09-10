@@ -115,17 +115,19 @@ fn synthesize_auto_trait_impl<'tcx>(
 
     Some(clean::Item {
         name: None,
-        attrs: Default::default(),
+        inner: Box::new(clean::ItemInner {
+            attrs: Default::default(),
+            kind: clean::ImplItem(Box::new(clean::Impl {
+                safety: hir::Safety::Safe,
+                generics,
+                trait_: Some(clean_trait_ref_with_constraints(cx, trait_ref, ThinVec::new())),
+                for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),
+                items: Vec::new(),
+                polarity,
+                kind: clean::ImplKind::Auto,
+            })),
+        }),
         item_id: clean::ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
-        kind: Box::new(clean::ImplItem(Box::new(clean::Impl {
-            safety: hir::Safety::Safe,
-            generics,
-            trait_: Some(clean_trait_ref_with_constraints(cx, trait_ref, ThinVec::new())),
-            for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),
-            items: Vec::new(),
-            polarity,
-            kind: clean::ImplKind::Auto,
-        }))),
         cfg: None,
         inline_stmt_id: None,
     })

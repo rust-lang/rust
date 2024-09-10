@@ -116,7 +116,7 @@ mod relate_tys;
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `elements` -- MIR region map
-pub(crate) fn type_check<'mir, 'tcx>(
+pub(crate) fn type_check<'a, 'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
@@ -125,7 +125,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<DenseLocationMap>,
     upvars: &[&ty::CapturedPlace<'tcx>],
@@ -1979,19 +1979,76 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 match cast_kind {
                     CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                        let src_sig = op.ty(body, tcx).fn_sig(tcx);
+
+                        // HACK: This shouldn't be necessary... We can remove this when we actually
+                        // get binders with where clauses, then elaborate implied bounds into that
+                        // binder, and implement a higher-ranked subtyping algorithm that actually
+                        // respects these implied bounds.
+                        //
+                        // This protects against the case where we are casting from a higher-ranked
+                        // fn item to a non-higher-ranked fn pointer, where the cast throws away
+                        // implied bounds that would've needed to be checked at the call site. This
+                        // only works when we're casting to a non-higher-ranked fn ptr, since
+                        // placeholders in the target signature could have untracked implied
+                        // bounds, resulting in incorrect errors.
+                        //
+                        // We check that this signature is WF before subtyping the signature with
+                        // the target fn sig.
+                        if src_sig.has_bound_regions()
+                            && let ty::FnPtr(target_fn_tys, target_hdr) = *ty.kind()
+                            && let target_sig = target_fn_tys.with(target_hdr)
+                            && let Some(target_sig) = target_sig.no_bound_vars()
+                        {
+                            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
+                                span,
+                                BoundRegionConversionTime::HigherRankedType,
+                                src_sig,
+                            );
+                            let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
+                            self.prove_predicate(
+                                ty::ClauseKind::WellFormed(src_ty.into()),
+                                location.to_locations(),
+                                ConstraintCategory::Cast { unsize_to: None },
+                            );
+
+                            let src_ty = self.normalize(src_ty, location);
+                            if let Err(terr) = self.sub_types(
+                                src_ty,
+                                *ty,
+                                location.to_locations(),
+                                ConstraintCategory::Cast { unsize_to: None },
+                            ) {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "equating {:?} with {:?} yields {:?}",
+                                    target_sig,
+                                    src_sig,
+                                    terr
+                                );
+                            };
+                        }
+
+                        let src_ty = Ty::new_fn_ptr(tcx, src_sig);
+                        // HACK: We want to assert that the signature of the source fn is
+                        // well-formed, because we don't enforce that via the WF of FnDef
+                        // types normally. This should be removed when we improve the tracking
+                        // of implied bounds of fn signatures.
+                        self.prove_predicate(
+                            ty::ClauseKind::WellFormed(src_ty.into()),
+                            location.to_locations(),
+                            ConstraintCategory::Cast { unsize_to: None },
+                        );
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
                         // function definition. When we extract the
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
-                        let fn_sig = self.normalize(fn_sig, location);
-
-                        let ty_fn_ptr_from = Ty::new_fn_ptr(tcx, fn_sig);
-
+                        let src_ty = self.normalize(src_ty, location);
                         if let Err(terr) = self.sub_types(
-                            ty_fn_ptr_from,
+                            src_ty,
                             *ty,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
@@ -2000,7 +2057,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 self,
                                 rvalue,
                                 "equating {:?} with {:?} yields {:?}",
-                                ty_fn_ptr_from,
+                                src_ty,
                                 ty,
                                 terr
                             );

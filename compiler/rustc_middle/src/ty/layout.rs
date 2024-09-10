@@ -1075,11 +1075,13 @@ where
                 // the raw pointer, so size and align are set to the boxed type, but `pointee.safe`
                 // will still be `None`.
                 if let Some(ref mut pointee) = result {
-                    if offset.bytes() == 0 && this.ty.is_box() {
+                    if offset.bytes() == 0
+                        && let Some(boxed_ty) = this.ty.boxed_ty()
+                    {
                         debug_assert!(pointee.safe.is_none());
                         let optimize = tcx.sess.opts.optimize != OptLevel::No;
                         pointee.safe = Some(PointerKind::Box {
-                            unpin: optimize && this.ty.boxed_ty().is_unpin(tcx, cx.param_env()),
+                            unpin: optimize && boxed_ty.is_unpin(tcx, cx.param_env()),
                             global: this.ty.is_box_global(tcx),
                         });
                     }

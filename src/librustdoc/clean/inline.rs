@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, DefIdSet, LocalModDefId};
+use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModDefId};
 use rustc_hir::Mutability;
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -43,7 +43,7 @@ pub(crate) fn try_inline(
     cx: &mut DocContext<'_>,
     res: Res,
     name: Symbol,
-    attrs: Option<(&[ast::Attribute], Option<DefId>)>,
+    attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
     visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
@@ -152,14 +152,8 @@ pub(crate) fn try_inline(
     };
 
     cx.inlined.insert(did.into());
-    let mut item = crate::clean::generate_item_with_correct_attrs(
-        cx,
-        kind,
-        did,
-        name,
-        import_def_id.and_then(|def_id| def_id.as_local()),
-        None,
-    );
+    let mut item =
+        crate::clean::generate_item_with_correct_attrs(cx, kind, did, name, import_def_id, None);
     // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
     item.inline_stmt_id = import_def_id;
     ret.push(item);
@@ -198,7 +192,7 @@ pub(crate) fn try_inline_glob(
                 visited,
                 inlined_names,
                 Some(&reexports),
-                Some((attrs, Some(import.owner_id.def_id.to_def_id()))),
+                Some((attrs, Some(import.owner_id.def_id))),
             );
             items.retain(|item| {
                 if let Some(name) = item.name {
@@ -372,7 +366,7 @@ fn build_type_alias(
 pub(crate) fn build_impls(
     cx: &mut DocContext<'_>,
     did: DefId,
-    attrs: Option<(&[ast::Attribute], Option<DefId>)>,
+    attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
     ret: &mut Vec<clean::Item>,
 ) {
     let _prof_timer = cx.tcx.sess.prof.generic_activity("build_inherent_impls");
@@ -405,7 +399,7 @@ pub(crate) fn build_impls(
 pub(crate) fn merge_attrs(
     cx: &mut DocContext<'_>,
     old_attrs: &[ast::Attribute],
-    new_attrs: Option<(&[ast::Attribute], Option<DefId>)>,
+    new_attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
 ) -> (clean::Attributes, Option<Arc<clean::cfg::Cfg>>) {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
@@ -416,7 +410,7 @@ pub(crate) fn merge_attrs(
         both.extend_from_slice(old_attrs);
         (
             if let Some(item_id) = item_id {
-                Attributes::from_ast_with_additional(old_attrs, (inner, item_id))
+                Attributes::from_ast_with_additional(old_attrs, (inner, item_id.to_def_id()))
             } else {
                 Attributes::from_ast(&both)
             },
@@ -431,7 +425,7 @@ pub(crate) fn merge_attrs(
 pub(crate) fn build_impl(
     cx: &mut DocContext<'_>,
     did: DefId,
-    attrs: Option<(&[ast::Attribute], Option<DefId>)>,
+    attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
     ret: &mut Vec<clean::Item>,
 ) {
     if !cx.inlined.insert(did.into()) {
@@ -623,7 +617,7 @@ pub(crate) fn build_impl(
                 ImplKind::Normal
             },
         })),
-        Box::new(merged_attrs),
+        merged_attrs,
         cfg,
     ));
 }
@@ -641,7 +635,7 @@ fn build_module_items(
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
     allowed_def_ids: Option<&DefIdSet>,
-    attrs: Option<(&[ast::Attribute], Option<DefId>)>,
+    attrs: Option<(&[ast::Attribute], Option<LocalDefId>)>,
 ) -> Vec<clean::Item> {
     let mut items = Vec::new();
 
@@ -673,27 +667,29 @@ fn build_module_items(
                 let prim_ty = clean::PrimitiveType::from(p);
                 items.push(clean::Item {
                     name: None,
-                    attrs: Box::default(),
                     // We can use the item's `DefId` directly since the only information ever used
                     // from it is `DefId.krate`.
                     item_id: ItemId::DefId(did),
-                    kind: Box::new(clean::ImportItem(clean::Import::new_simple(
-                        item.ident.name,
-                        clean::ImportSource {
-                            path: clean::Path {
-                                res,
-                                segments: thin_vec![clean::PathSegment {
-                                    name: prim_ty.as_sym(),
-                                    args: clean::GenericArgs::AngleBracketed {
-                                        args: Default::default(),
-                                        constraints: ThinVec::new(),
-                                    },
-                                }],
+                    inner: Box::new(clean::ItemInner {
+                        attrs: Default::default(),
+                        kind: clean::ImportItem(clean::Import::new_simple(
+                            item.ident.name,
+                            clean::ImportSource {
+                                path: clean::Path {
+                                    res,
+                                    segments: thin_vec![clean::PathSegment {
+                                        name: prim_ty.as_sym(),
+                                        args: clean::GenericArgs::AngleBracketed {
+                                            args: Default::default(),
+                                            constraints: ThinVec::new(),
+                                        },
+                                    }],
+                                },
+                                did: None,
                             },
-                            did: None,
-                        },
-                        true,
-                    ))),
+                            true,
+                        )),
+                    }),
                     cfg: None,
                     inline_stmt_id: None,
                 });
@@ -745,7 +741,7 @@ fn build_macro(
     cx: &mut DocContext<'_>,
     def_id: DefId,
     name: Symbol,
-    import_def_id: Option<DefId>,
+    import_def_id: Option<LocalDefId>,
     macro_kind: MacroKind,
     is_doc_hidden: bool,
 ) -> clean::ItemKind {
@@ -753,7 +749,8 @@ fn build_macro(
         LoadedMacro::MacroDef(item_def, _) => match macro_kind {
             MacroKind::Bang => {
                 if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
-                    let vis = cx.tcx.visibility(import_def_id.unwrap_or(def_id));
+                    let vis =
+                        cx.tcx.visibility(import_def_id.map(|d| d.to_def_id()).unwrap_or(def_id));
                     clean::MacroItem(clean::Macro {
                         source: utils::display_macro_source(
                             cx,

@@ -106,22 +106,29 @@ def _download(path, url, probably_big, verbose, exception):
 
     try:
         if (probably_big or verbose) and "GITHUB_ACTIONS" not in os.environ:
-            option = "-#"
+            option = "--progress-bar"
         else:
-            option = "-s"
+            option = "--silent"
         # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32())
         extra_flags = []
         if curl_version() > (7, 70):
             extra_flags = [ "--retry-all-errors" ]
+        # options should be kept in sync with
+        # src/bootstrap/src/core/download.rs
+        # for consistency.
+        # they are also more compreprensivly explained in that file.
         run(["curl", option] + extra_flags + [
-            "-L", # Follow redirect.
-            "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
-            "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
-            "-o", path,
+            # Follow redirect.
+            "--location",
+            # timeout if speed is < 10 bytes/sec for > 30 seconds
+            "--speed-time", "30", "--speed-limit", "10",
+            # timeout if cannot connect within 30 seconds
+            "--connect-timeout", "30",
+            "--output", path,
             "--continue-at", "-",
-            "--retry", "3", "-SRf", url],
+            "--retry", "3", "--show-error", "--remote-time", "--fail", url],
             verbose=verbose,
             exception=True, # Will raise RuntimeError on failure
         )

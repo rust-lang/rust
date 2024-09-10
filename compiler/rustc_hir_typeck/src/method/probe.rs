@@ -715,7 +715,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_inherent_candidates_for_incoherent_ty(&mut self, self_ty: Ty<'tcx>) {
-        let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsCandidateKey) else {
+        let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::InstantiateWithInfer) else {
             bug!("unexpected incoherent type: {:?}", self_ty)
         };
         for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter().flatten() {
@@ -1485,8 +1485,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                         // Some trait methods are excluded for boxed slices before 2024.
                         // (`boxed_slice.into_iter()` wants a slice iterator for compatibility.)
-                        if self_ty.is_box()
-                            && self_ty.boxed_ty().is_slice()
+                        if self_ty.boxed_ty().is_some_and(Ty::is_slice)
                             && !method_name.span.at_least_rust_2024()
                         {
                             let trait_def = self.tcx.trait_def(poly_trait_ref.def_id());

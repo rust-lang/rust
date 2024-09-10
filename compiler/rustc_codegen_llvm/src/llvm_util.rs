@@ -353,9 +353,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
                 None
             }
         })
-        .filter(|feature| {
-            RUSTC_SPECIAL_FEATURES.contains(feature) || features.contains(&Symbol::intern(feature))
-        })
+        .filter(|feature| features.contains(&Symbol::intern(feature)))
         .map(|feature| Symbol::intern(feature))
         .collect()
 }

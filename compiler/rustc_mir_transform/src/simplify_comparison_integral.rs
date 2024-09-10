@@ -23,7 +23,7 @@ use tracing::trace;
 /// ```ignore (MIR)
 /// switchInt(_4) -> [43i32: bb3, otherwise: bb2];
 /// ```
-pub struct SimplifyComparisonIntegral;
+pub(super) struct SimplifyComparisonIntegral;
 
 impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

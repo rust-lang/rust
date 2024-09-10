@@ -1,16 +1,16 @@
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
 use std::ops::ControlFlow;
 
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, LangItem, CRATE_HIR_ID};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -24,8 +24,8 @@ use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, compile_time_machine, err_ub, throw_exhaust, throw_inval, throw_ub_custom, throw_unsup,
     throw_unsup_format, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
-    StackPopCleanup,
+    GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic,
+    RangeSet, Scalar, StackPopCleanup,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -65,6 +65,9 @@ pub struct CompileTimeMachine<'tcx> {
     /// storing the result in the given `AllocId`.
     /// Used to prevent reads from a static's base allocation, as that may allow for self-initialization loops.
     pub(crate) static_root_ids: Option<(AllocId, LocalDefId)>,
+
+    /// A cache of "data range" computations for unions (i.e., the offsets of non-padding bytes).
+    union_data_ranges: FxHashMap<Ty<'tcx>, RangeSet>,
 }
 
 #[derive(Copy, Clone)]
@@ -99,6 +102,7 @@ impl<'tcx> CompileTimeMachine<'tcx> {
             can_access_mut_global,
             check_alignment,
             static_root_ids: None,
+            union_data_ranges: FxHashMap::default(),
         }
     }
 }
@@ -714,16 +718,29 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         _kind: mir::RetagKind,
         val: &ImmTy<'tcx, CtfeProvenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, CtfeProvenance>> {
-        // If it's a frozen shared reference that's not already immutable, make it immutable.
+        // If it's a frozen shared reference that's not already immutable, potentially make it immutable.
         // (Do nothing on `None` provenance, that cannot store immutability anyway.)
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
             && *mutbl == Mutability::Not
-            && val.to_scalar_and_meta().0.to_pointer(ecx)?.provenance.is_some_and(|p| !p.immutable())
-            // That next check is expensive, that's why we have all the guards above.
-            && ty.is_freeze(*ecx.tcx, ecx.param_env)
+            && val
+                .to_scalar_and_meta()
+                .0
+                .to_pointer(ecx)?
+                .provenance
+                .is_some_and(|p| !p.immutable())
         {
+            // That next check is expensive, that's why we have all the guards above.
+            let is_immutable = ty.is_freeze(*ecx.tcx, ecx.param_env);
             let place = ecx.ref_to_mplace(val)?;
-            let new_place = place.map_provenance(CtfeProvenance::as_immutable);
+            let new_place = if is_immutable {
+                place.map_provenance(CtfeProvenance::as_immutable)
+            } else {
+                // Even if it is not immutable, remember that it is a shared reference.
+                // This allows it to become part of the final value of the constant.
+                // (See <https://github.com/rust-lang/rust/pull/128543> for why we allow this
+                // even when there is interior mutability.)
+                place.map_provenance(CtfeProvenance::as_shared_ref)
+            };
             Ok(ImmTy::from_immediate(new_place.to_ref(ecx), val.layout))
         } else {
             Ok(val.clone())
@@ -765,6 +782,19 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             }
         }
         Ok(())
+    }
+
+    fn cached_union_data_range<'e>(
+        ecx: &'e mut InterpCx<'tcx, Self>,
+        ty: Ty<'tcx>,
+        compute_range: impl FnOnce() -> RangeSet,
+    ) -> Cow<'e, RangeSet> {
+        if ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks {
+            Cow::Borrowed(ecx.machine.union_data_ranges.entry(ty).or_insert_with(compute_range))
+        } else {
+            // Don't bother caching, we're only doing one validation at the end anyway.
+            Cow::Owned(compute_range())
+        }
     }
 }
 

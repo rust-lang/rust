@@ -47,3 +47,7 @@
 	path = src/tools/rustc-perf
 	url = https://github.com/rust-lang/rustc-perf.git
 	shallow = true
+[submodule "src/tools/enzyme"]
+	path = src/tools/enzyme
+	url = https://github.com/EnzymeAD/Enzyme.git
+	shallow = true

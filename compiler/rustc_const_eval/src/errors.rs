@@ -35,13 +35,10 @@ pub(crate) struct NestedStaticInThreadLocal {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(const_eval_mutable_ptr_in_final)]
 pub(crate) struct MutablePtrInFinal {
-    // rust-lang/rust#122153: This was marked as `#[primary_span]` under
-    // `derive(Diagnostic)`. Since we expect we may hard-error in future, we are
-    // keeping the field (and skipping it under `derive(LintDiagnostic)`).
-    #[skip_arg]
+    #[primary_span]
     pub span: Span,
     pub kind: InternKind,
 }

@@ -37,5 +37,53 @@ error: transmute from a `f64` to a `u64`
 LL |     let _: u64 = unsafe { std::mem::transmute(-1.0) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(-1.0f64).to_bits()`
 
-error: aborting due to 6 previous errors
+error: transmute from a `f16` to a `i16`
+  --> tests/ui/transmute_float_to_int.rs:23:35
+   |
+LL |     const VALUE16: i16 = unsafe { std::mem::transmute(1f16) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1f16.to_bits() as i16`
+
+error: transmute from a `f32` to a `i32`
+  --> tests/ui/transmute_float_to_int.rs:25:35
+   |
+LL |     const VALUE32: i32 = unsafe { std::mem::transmute(1f32) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1f32.to_bits() as i32`
+
+error: transmute from a `f64` to a `u64`
+  --> tests/ui/transmute_float_to_int.rs:27:35
+   |
+LL |     const VALUE64: u64 = unsafe { std::mem::transmute(1f64) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1f64.to_bits()`
+
+error: transmute from a `f128` to a `u128`
+  --> tests/ui/transmute_float_to_int.rs:29:37
+   |
+LL |     const VALUE128: u128 = unsafe { std::mem::transmute(1f128) };
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1f128.to_bits()`
+
+error: transmute from a `f16` to a `u16`
+  --> tests/ui/transmute_float_to_int.rs:33:18
+   |
+LL |         unsafe { std::mem::transmute(v) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `v.to_bits()`
+
+error: transmute from a `f32` to a `u32`
+  --> tests/ui/transmute_float_to_int.rs:38:18
+   |
+LL |         unsafe { std::mem::transmute(v) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `v.to_bits()`
+
+error: transmute from a `f64` to a `i64`
+  --> tests/ui/transmute_float_to_int.rs:43:18
+   |
+LL |         unsafe { std::mem::transmute(v) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `v.to_bits() as i64`
+
+error: transmute from a `f128` to a `i128`
+  --> tests/ui/transmute_float_to_int.rs:48:18
+   |
+LL |         unsafe { std::mem::transmute(v) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `v.to_bits() as i128`
+
+error: aborting due to 14 previous errors
 

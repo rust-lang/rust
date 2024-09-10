@@ -482,11 +482,11 @@ impl TokenStream {
             token::NtIdent(ident, is_raw) => {
                 TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
             }
-            token::NtLifetime(ident) => TokenTree::Delimited(
+            token::NtLifetime(ident, is_raw) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 DelimSpacing::new(Spacing::JointHidden, spacing),
                 Delimiter::Invisible,
-                TokenStream::token_alone(token::Lifetime(ident.name), ident.span),
+                TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span),
             ),
             token::Interpolated(ref nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),

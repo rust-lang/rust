@@ -10,7 +10,7 @@ use rustc_span::sym;
 
 use crate::{inline, pass_manager as pm};
 
-pub fn provide(providers: &mut Providers) {
+pub(super) fn provide(providers: &mut Providers) {
     providers.cross_crate_inlinable = cross_crate_inlinable;
 }
 

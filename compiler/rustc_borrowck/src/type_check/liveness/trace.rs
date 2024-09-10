@@ -37,11 +37,11 @@ use crate::type_check::{NormalizeLocation, TypeChecker};
 /// DROP-LIVE set are to the liveness sets for regions found in the
 /// `dropck_outlives` result of the variable's type (in particular,
 /// this respects `#[may_dangle]` annotations).
-pub(super) fn trace<'mir, 'tcx>(
+pub(super) fn trace<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &Rc<DenseLocationMap>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
@@ -99,29 +99,29 @@ pub(super) fn trace<'mir, 'tcx>(
 }
 
 /// Contextual state for the type-liveness coroutine.
-struct LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx> {
+struct LivenessContext<'a, 'typeck, 'b, 'tcx> {
     /// Current type-checker, giving us our inference context etc.
-    typeck: &'me mut TypeChecker<'typeck, 'tcx>,
+    typeck: &'a mut TypeChecker<'typeck, 'tcx>,
 
     /// Defines the `PointIndex` mapping
-    elements: &'me DenseLocationMap,
+    elements: &'a DenseLocationMap,
 
     /// MIR we are analyzing.
-    body: &'me Body<'tcx>,
+    body: &'a Body<'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
-    move_data: &'me MoveData<'tcx>,
+    move_data: &'a MoveData<'tcx>,
 
     /// Cache for the results of `dropck_outlives` query.
     drop_data: FxIndexMap<Ty<'tcx>, DropData<'tcx>>,
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: &'me mut ResultsCursor<'flow, 'tcx, MaybeInitializedPlaces<'a, 'flow, 'tcx>>,
+    flow_inits: &'a mut ResultsCursor<'b, 'tcx, MaybeInitializedPlaces<'b, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
-    local_use_map: &'me LocalUseMap,
+    local_use_map: &'a LocalUseMap,
 }
 
 struct DropData<'tcx> {
@@ -129,8 +129,8 @@ struct DropData<'tcx> {
     region_constraint_data: Option<&'tcx QueryRegionConstraints<'tcx>>,
 }
 
-struct LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
-    cx: LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx>,
+struct LivenessResults<'a, 'typeck, 'b, 'tcx> {
+    cx: LivenessContext<'a, 'typeck, 'b, 'tcx>,
 
     /// Set of points that define the current local.
     defs: BitSet<PointIndex>,
@@ -151,8 +151,8 @@ struct LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
     stack: Vec<PointIndex>,
 }
 
-impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
-    fn new(cx: LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx>) -> Self {
+impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
+    fn new(cx: LivenessContext<'a, 'typeck, 'b, 'tcx>) -> Self {
         let num_points = cx.elements.num_points();
         LivenessResults {
             cx,
@@ -505,7 +505,7 @@ impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tc
     }
 }
 
-impl<'tcx> LivenessContext<'_, '_, '_, '_, 'tcx> {
+impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     /// Returns `true` if the local variable (or some part of it) is initialized at the current
     /// cursor position. Callers should call one of the `seek` methods immediately before to point
     /// the cursor to the desired location.

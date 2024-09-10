@@ -9,7 +9,7 @@ pub mod inner {
 }
 
 //@ set import_id = "$.index[*][?(@.docs=='Outer')].id"
-//@ is "$.index[*][?(@.docs=='Outer')].inner.import.source" \"inner::Public\"
+//@ is "$.index[*][?(@.docs=='Outer')].inner.use.source" \"inner::Public\"
 /// Outer
 pub use inner::Public;
 

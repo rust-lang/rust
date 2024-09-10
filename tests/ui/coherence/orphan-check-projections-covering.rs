@@ -5,9 +5,6 @@
 // first which would've lead to real-word regressions.
 
 //@ check-pass
-//@ revisions: classic next
-//@[next] compile-flags: -Znext-solver
-
 //@ aux-crate:foreign=parametrized-trait.rs
 //@ edition:2021
 

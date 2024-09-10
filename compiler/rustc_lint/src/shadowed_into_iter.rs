@@ -94,12 +94,9 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
         fn is_ref_to_array(ty: Ty<'_>) -> bool {
             if let ty::Ref(_, pointee_ty, _) = *ty.kind() { pointee_ty.is_array() } else { false }
         }
-        fn is_boxed_slice(ty: Ty<'_>) -> bool {
-            ty.is_box() && ty.boxed_ty().is_slice()
-        }
         fn is_ref_to_boxed_slice(ty: Ty<'_>) -> bool {
             if let ty::Ref(_, pointee_ty, _) = *ty.kind() {
-                is_boxed_slice(pointee_ty)
+                pointee_ty.boxed_ty().is_some_and(Ty::is_slice)
             } else {
                 false
             }
@@ -119,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
                     .iter()
                     .copied()
                     .take_while(|ty| !is_ref_to_boxed_slice(*ty))
-                    .position(|ty| is_boxed_slice(ty))
+                    .position(|ty| ty.boxed_ty().is_some_and(Ty::is_slice))
             {
                 (BOXED_SLICE_INTO_ITER, "Box<[T]>", "2024", idx == 0)
             } else {

@@ -16,7 +16,7 @@ impl Range for TwoDigits {
 
 const fn digits(x: u8) -> usize {
     match x {
-        TwoDigits::FIRST..=TwoDigits::LAST => 0,
+        TwoDigits::FIRST..=TwoDigits::LAST => 0, //~ ERROR: could not evaluate constant pattern
         0..=9 | 100..=255 => panic!(),
     }
 }

@@ -13,7 +13,6 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
-use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use tracing::debug;
@@ -188,9 +187,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     preceded_by_whitespace = true;
                     continue;
                 }
-                rustc_lexer::TokenKind::Ident => {
-                    self.ident(start)
-                }
+                rustc_lexer::TokenKind::Ident => self.ident(start),
                 rustc_lexer::TokenKind::RawIdent => {
                     let sym = nfc_normalize(self.str_from(start + BytePos(2)));
                     let span = self.mk_sp(start, self.pos);
@@ -205,20 +202,31 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     self.report_unknown_prefix(start);
                     self.ident(start)
                 }
-                rustc_lexer::TokenKind::InvalidIdent
-                | rustc_lexer::TokenKind::InvalidPrefix
+                rustc_lexer::TokenKind::UnknownPrefixLifetime => {
+                    self.report_unknown_prefix(start);
+                    // Include the leading `'` in the real identifier, for macro
+                    // expansion purposes. See #12512 for the gory details of why
+                    // this is necessary.
+                    let lifetime_name = self.str_from(start);
+                    self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
+                    let ident = Symbol::intern(lifetime_name);
+                    token::Lifetime(ident, IdentIsRaw::No)
+                }
+                rustc_lexer::TokenKind::InvalidIdent | rustc_lexer::TokenKind::InvalidPrefix
                     // Do not recover an identifier with emoji if the codepoint is a confusable
                     // with a recoverable substitution token, like `➖`.
-                    if !UNICODE_ARRAY
-                        .iter()
-                        .any(|&(c, _, _)| {
-                            let sym = self.str_from(start);
-                            sym.chars().count() == 1 && c == sym.chars().next().unwrap()
-                        }) =>
+                    if !UNICODE_ARRAY.iter().any(|&(c, _, _)| {
+                        let sym = self.str_from(start);
+                        sym.chars().count() == 1 && c == sym.chars().next().unwrap()
+                    }) =>
                 {
                     let sym = nfc_normalize(self.str_from(start));
                     let span = self.mk_sp(start, self.pos);
-                    self.psess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default()
+                    self.psess
+                        .bad_unicode_identifiers
+                        .borrow_mut()
+                        .entry(sym)
+                        .or_default()
                         .push(span);
                     token::Ident(sym, IdentIsRaw::No)
                 }
@@ -249,9 +257,9 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let suffix = if suffix_start < self.pos {
                         let string = self.str_from(suffix_start);
                         if string == "_" {
-                            self
-                                .dcx()
-                                .emit_err(errors::UnderscoreLiteralSuffix { span: self.mk_sp(suffix_start, self.pos) });
+                            self.dcx().emit_err(errors::UnderscoreLiteralSuffix {
+                                span: self.mk_sp(suffix_start, self.pos),
+                            });
                             None
                         } else {
                             Some(Symbol::intern(string))
@@ -269,12 +277,47 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
-                        self.dcx().struct_err("lifetimes cannot start with a number")
+                        self.dcx()
+                            .struct_err("lifetimes cannot start with a number")
                             .with_span(span)
                             .stash(span, StashKey::LifetimeIsChar);
                     }
                     let ident = Symbol::intern(lifetime_name);
-                    token::Lifetime(ident)
+                    token::Lifetime(ident, IdentIsRaw::No)
+                }
+                rustc_lexer::TokenKind::RawLifetime => {
+                    self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
+
+                    let ident_start = start + BytePos(3);
+                    let prefix_span = self.mk_sp(start, ident_start);
+
+                    if prefix_span.at_least_rust_2021() {
+                        let lifetime_name_without_tick = self.str_from(ident_start);
+                        // Put the `'` back onto the lifetime name.
+                        let mut lifetime_name = String::with_capacity(lifetime_name_without_tick.len() + 1);
+                        lifetime_name.push('\'');
+                        lifetime_name += lifetime_name_without_tick;
+                        let sym = Symbol::intern(&lifetime_name);
+
+                        token::Lifetime(sym, IdentIsRaw::Yes)
+                    } else {
+                        // Otherwise, this should be parsed like `'r`. Warn about it though.
+                        self.psess.buffer_lint(
+                            RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
+                            prefix_span,
+                            ast::CRATE_NODE_ID,
+                            BuiltinLintDiag::RawPrefix(prefix_span),
+                        );
+
+                        // Reset the state so we just lex the `'r`.
+                        let lt_start = start + BytePos(2);
+                        self.pos = lt_start;
+                        self.cursor = Cursor::new(&str_before[2 as usize..]);
+
+                        let lifetime_name = self.str_from(start);
+                        let ident = Symbol::intern(lifetime_name);
+                        token::Lifetime(ident, IdentIsRaw::No)
+                    }
                 }
                 rustc_lexer::TokenKind::Semi => token::Semi,
                 rustc_lexer::TokenKind::Comma => token::Comma,
@@ -331,16 +374,19 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     // first remove compound tokens like `<<` from `rustc_lexer`, and then add
                     // fancier error recovery to it, as there will be less overall work to do this
                     // way.
-                    let (token, sugg) = unicode_chars::check_for_substitution(self, start, c, repeats+1);
+                    let (token, sugg) =
+                        unicode_chars::check_for_substitution(self, start, c, repeats + 1);
                     self.dcx().emit_err(errors::UnknownTokenStart {
                         span: self.mk_sp(start, self.pos + Pos::from_usize(repeats * c.len_utf8())),
                         escaped: escaped_char(c),
                         sugg,
-                        null: if c == '\x00' {Some(errors::UnknownTokenNull)} else {None},
+                        null: if c == '\x00' { Some(errors::UnknownTokenNull) } else { None },
                         repeat: if repeats > 0 {
                             swallow_next_invalid = repeats;
                             Some(errors::UnknownTokenRepeat { repeats })
-                        } else {None}
+                        } else {
+                            None
+                        },
                     });
 
                     if let Some(token) = token {
@@ -699,7 +745,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
         let expn_data = prefix_span.ctxt().outer_expn_data();
 
-        if expn_data.edition >= Edition::Edition2021 {
+        if expn_data.edition.at_least_rust_2021() {
             // In Rust 2021, this is a hard error.
             let sugg = if prefix == "rb" {
                 Some(errors::UnknownPrefixSugg::UseBr(prefix_span))

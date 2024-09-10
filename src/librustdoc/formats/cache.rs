@@ -216,7 +216,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
         // If this is a stripped module,
         // we don't want it or its children in the search index.
-        let orig_stripped_mod = match *item.kind {
+        let orig_stripped_mod = match item.kind {
             clean::StrippedItem(box clean::ModuleItem(..)) => {
                 mem::replace(&mut self.cache.stripped_mod, true)
             }
@@ -232,7 +232,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
-        if let clean::ImplItem(ref i) = *item.kind
+        if let clean::ImplItem(ref i) = item.kind
             && (self.cache.masked_crates.contains(&item.item_id.krate())
                 || i.trait_
                     .as_ref()
@@ -246,9 +246,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
         // Propagate a trait method's documentation to all implementors of the
         // trait.
-        if let clean::TraitItem(ref t) = *item.kind {
+        if let clean::TraitItem(ref t) = item.kind {
             self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| (**t).clone());
-        } else if let clean::ImplItem(ref i) = *item.kind
+        } else if let clean::ImplItem(ref i) = item.kind
             && let Some(trait_) = &i.trait_
             && !i.kind.is_blanket()
         {
@@ -263,7 +263,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Index this method for searching later on.
         let search_name = if !item.is_stripped() {
             item.name.or_else(|| {
-                if let clean::ImportItem(ref i) = *item.kind
+                if let clean::ImportItem(ref i) = item.kind
                     && let clean::ImportKind::Simple(s) = i.kind
                 {
                     Some(s)
@@ -287,7 +287,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             _ => false,
         };
 
-        match *item.kind {
+        match item.kind {
             clean::StructItem(..)
             | clean::EnumItem(..)
             | clean::TypeAliasItem(..)
@@ -350,7 +350,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         }
 
         // Maintain the parent stack.
-        let (item, parent_pushed) = match *item.kind {
+        let (item, parent_pushed) = match item.kind {
             clean::TraitItem(..)
             | clean::EnumItem(..)
             | clean::ForeignTypeItem
@@ -367,7 +367,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
         // Once we've recursively found all the generics, hoard off all the
         // implementations elsewhere.
-        let ret = if let clean::Item { kind: box clean::ImplItem(ref i), .. } = item {
+        let ret = if let clean::Item {
+            inner: box clean::ItemInner { kind: clean::ImplItem(ref i), .. },
+            ..
+        } = item
+        {
             // Figure out the id of this impl. This may map to a
             // primitive rather than always to a struct/enum.
             // Note: matching twice to restrict the lifetime of the `i` borrow.
@@ -436,7 +440,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::Item, name: Symbol) {
     // Item has a name, so it must also have a DefId (can't be an impl, let alone a blanket or auto impl).
     let item_def_id = item.item_id.as_def_id().unwrap();
-    let (parent_did, parent_path) = match *item.kind {
+    let (parent_did, parent_path) = match item.kind {
         clean::StrippedItem(..) => return,
         clean::AssocConstItem(..) | clean::AssocTypeItem(..)
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
@@ -528,7 +532,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     // - It's either an inline, or a true re-export
     // - It's got the same name
     // - Both of them have the same exact path
-    let defid = match &*item.kind {
+    let defid = match &item.kind {
         clean::ItemKind::ImportItem(import) => import.source.did.unwrap_or(item_def_id),
         _ => item_def_id,
     };
@@ -605,7 +609,7 @@ enum ParentStackItem {
 
 impl ParentStackItem {
     fn new(item: &clean::Item) -> Self {
-        match &*item.kind {
+        match &item.kind {
             clean::ItemKind::ImplItem(box clean::Impl { for_, trait_, generics, kind, .. }) => {
                 ParentStackItem::Impl {
                     for_: for_.clone(),

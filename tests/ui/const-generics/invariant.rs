@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 trait SadBee {
     const ASSOC: usize;
 }
-// fn(&'static ())` is a supertype of `for<'a> fn(&'a ())` while
+// `fn(&'static ())` is a supertype of `for<'a> fn(&'a ())` while
 // we allow two different impls for these types, leading
 // to different const eval results.
 impl SadBee for for<'a> fn(&'a ()) {
