@@ -2418,11 +2418,22 @@ impl InlineAsmOperand {
     }
 }
 
+#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum AsmMacro {
+    /// The `asm!` macro
+    Asm,
+    /// The `global_asm!` macro
+    GlobalAsm,
+    /// The `naked_asm!` macro
+    NakedAsm,
+}
+
 /// Inline assembly.
 ///
 /// E.g., `asm!("NOP");`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct InlineAsm {
+    pub asm_macro: AsmMacro,
     pub template: Vec<InlineAsmTemplatePiece>,
     pub template_strs: Box<[(Symbol, Option<Symbol>, Span)]>,
     pub operands: Vec<(InlineAsmOperand, Span)>,

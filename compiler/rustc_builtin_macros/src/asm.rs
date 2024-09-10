@@ -3,6 +3,7 @@ use lint::BuiltinLintDiag;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::AsmMacro;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::PResult;
 use rustc_expand::base::*;
@@ -484,6 +485,7 @@ fn parse_reg<'a>(
 
 fn expand_preparsed_asm(
     ecx: &mut ExtCtxt<'_>,
+    asm_macro: ast::AsmMacro,
     args: AsmArgs,
 ) -> ExpandResult<Result<ast::InlineAsm, ErrorGuaranteed>, ()> {
     let mut template = vec![];
@@ -774,6 +776,7 @@ fn expand_preparsed_asm(
     }
 
     ExpandResult::Ready(Ok(ast::InlineAsm {
+        asm_macro,
         template,
         template_strs: template_strs.into_boxed_slice(),
         operands: args.operands,
@@ -790,7 +793,7 @@ pub(super) fn expand_asm<'cx>(
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(match parse_args(ecx, sp, tts, false) {
         Ok(args) => {
-            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, AsmMacro::Asm, args) else {
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
@@ -819,7 +822,8 @@ pub(super) fn expand_naked_asm<'cx>(
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(match parse_args(ecx, sp, tts, false) {
         Ok(args) => {
-            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, AsmMacro::NakedAsm, args)
+            else {
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
@@ -857,7 +861,8 @@ pub(super) fn expand_global_asm<'cx>(
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(match parse_args(ecx, sp, tts, true) {
         Ok(args) => {
-            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, AsmMacro::GlobalAsm, args)
+            else {
                 return ExpandResult::Retry(());
             };
             match mac {

@@ -1222,6 +1222,13 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_naked_asm_outside_naked_fn)]
+pub(crate) struct NakedAsmOutsideNakedFn {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_attr_only_in_functions)]
 pub(crate) struct AttrOnlyInFunctions {
     #[primary_span]
