@@ -237,7 +237,7 @@ pub fn supertrait_def_ids<I: Interner>(
     cx: I,
     trait_def_id: I::DefId,
 ) -> impl Iterator<Item = I::DefId> {
-    let mut set: HashSet<I::DefId> = HashSet::default();
+    let mut set = HashSet::default();
     let mut stack = vec![trait_def_id];
 
     set.insert(trait_def_id);
