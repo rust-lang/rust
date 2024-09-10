@@ -840,6 +840,7 @@ impl<'tcx> Cx<'tcx> {
                     ExprKind::ValueTypeAscription {
                         source: cast_expr,
                         user_ty: Some(Box::new(*user_ty)),
+                        user_ty_span: cast_ty.span,
                     }
                 } else {
                     cast
@@ -851,9 +852,17 @@ impl<'tcx> Cx<'tcx> {
                 debug!("make_mirror_unadjusted: (type) user_ty={:?}", user_ty);
                 let mirrored = self.mirror_expr(source);
                 if source.is_syntactic_place_expr() {
-                    ExprKind::PlaceTypeAscription { source: mirrored, user_ty }
+                    ExprKind::PlaceTypeAscription {
+                        source: mirrored,
+                        user_ty,
+                        user_ty_span: ty.span,
+                    }
                 } else {
-                    ExprKind::ValueTypeAscription { source: mirrored, user_ty }
+                    ExprKind::ValueTypeAscription {
+                        source: mirrored,
+                        user_ty,
+                        user_ty_span: ty.span,
+                    }
                 }
             }
             hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },

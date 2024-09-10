@@ -453,12 +453,14 @@ pub enum ExprKind<'tcx> {
         source: ExprId,
         /// Type that the user gave to this expression
         user_ty: UserTy<'tcx>,
+        user_ty_span: Span,
     },
-    /// A type ascription on a value, e.g. `42: i32`.
+    /// A type ascription on a value, e.g. `type_ascribe!(42, i32)` or `42 as i32`.
     ValueTypeAscription {
         source: ExprId,
         /// Type that the user gave to this expression
         user_ty: UserTy<'tcx>,
+        user_ty_span: Span,
     },
     /// A closure definition.
     Closure(Box<ClosureExpr<'tcx>>),
