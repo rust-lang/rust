@@ -1256,6 +1256,7 @@ symbols! {
         mut_preserve_binding_mode_2024,
         mut_ref,
         naked,
+        naked_asm,
         naked_functions,
         name,
         names,
