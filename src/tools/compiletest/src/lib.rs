@@ -164,7 +164,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "edition", "default Rust edition", "EDITION")
         .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
         .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH")
-        .reqopt("", "git-merge-commit-email", "email address used for the merge commits", "EMAIL");
+        .reqopt(
+            "",
+            "git-merge-commit-email",
+            "email address used for finding merge commits",
+            "EMAIL",
+        );
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {

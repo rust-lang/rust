@@ -96,7 +96,14 @@ pub fn updated_master_branch(
     Err("Cannot find any suitable upstream master branch".to_owned())
 }
 
-fn get_git_merge_base(config: &GitConfig<'_>, git_dir: Option<&Path>) -> Result<String, String> {
+/// Finds the nearest merge commit by comparing the local `HEAD` with the upstream branch's state.
+/// To work correctly, the upstream remote must be properly configured using `git remote add <name> <url>`.
+/// In most cases `get_closest_merge_commit` is the function you are looking for as it doesn't require remote
+/// to be configured.
+fn git_upstream_merge_base(
+    config: &GitConfig<'_>,
+    git_dir: Option<&Path>,
+) -> Result<String, String> {
     let updated_master = updated_master_branch(config, git_dir)?;
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {
@@ -105,9 +112,10 @@ fn get_git_merge_base(config: &GitConfig<'_>, git_dir: Option<&Path>) -> Result<
     Ok(output_result(git.arg("merge-base").arg(&updated_master).arg("HEAD"))?.trim().to_owned())
 }
 
-/// Resolves the closest merge commit by the given `author` and `target_paths`.
+/// Searches for the nearest merge commit in the repository that also exists upstream.
 ///
-/// If it fails to find the commit from upstream using `git merge-base`, fallbacks to HEAD.
+/// If it fails to find the upstream remote, it then looks for the most recent commit made
+/// by the merge bot by matching the author's email address with the merge bot's email.
 pub fn get_closest_merge_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
@@ -119,7 +127,7 @@ pub fn get_closest_merge_commit(
         git.current_dir(git_dir);
     }
 
-    let merge_base = get_git_merge_base(config, git_dir).unwrap_or_else(|_| "HEAD".into());
+    let merge_base = git_upstream_merge_base(config, git_dir).unwrap_or_else(|_| "HEAD".into());
 
     git.args([
         "rev-list",
