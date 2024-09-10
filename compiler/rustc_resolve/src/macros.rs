@@ -52,10 +52,10 @@ type Res = def::Res<NodeId>;
 /// Binding produced by a `macro_rules` item.
 /// Not modularized, can shadow previous `macro_rules` bindings, etc.
 #[derive(Debug)]
-pub(crate) struct MacroRulesBinding<'a> {
-    pub(crate) binding: NameBinding<'a>,
+pub(crate) struct MacroRulesBinding<'ra> {
+    pub(crate) binding: NameBinding<'ra>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
-    pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'a>,
+    pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'ra>,
     pub(crate) ident: Ident,
 }
 
@@ -65,11 +65,11 @@ pub(crate) struct MacroRulesBinding<'a> {
 /// Some macro invocations need to introduce `macro_rules` scopes too because they
 /// can potentially expand into macro definitions.
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum MacroRulesScope<'a> {
+pub(crate) enum MacroRulesScope<'ra> {
     /// Empty "root" scope at the crate start containing no names.
     Empty,
     /// The scope introduced by a `macro_rules!` macro definition.
-    Binding(&'a MacroRulesBinding<'a>),
+    Binding(&'ra MacroRulesBinding<'ra>),
     /// The scope introduced by a macro invocation that can potentially
     /// create a `macro_rules!` macro definition.
     Invocation(LocalExpnId),
@@ -81,7 +81,7 @@ pub(crate) enum MacroRulesScope<'a> {
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow linearly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
-pub(crate) type MacroRulesScopeRef<'a> = Interned<'a, Cell<MacroRulesScope<'a>>>;
+pub(crate) type MacroRulesScopeRef<'ra> = Interned<'ra, Cell<MacroRulesScope<'ra>>>;
 
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
@@ -177,7 +177,7 @@ fn soft_custom_inner_attributes_gate(path: &ast::Path, invoc: &Invocation) -> bo
     false
 }
 
-impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
+impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
     }
@@ -528,7 +528,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Resolver<'a, 'tcx> {
+impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Resolve macro path with error reporting and recovery.
     /// Uses dummy syntax extensions for unresolved macros or macros with unexpected resolutions
     /// for better error recovery.
@@ -538,7 +538,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         kind: MacroKind,
         supports_macro_expansion: SupportsMacroExpansion,
         inner_attr: bool,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         node_id: NodeId,
         force: bool,
         soft_custom_inner_attributes_gate: bool,
@@ -704,10 +704,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         path: &ast::Path,
         kind: Option<MacroKind>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         trace: bool,
         force: bool,
-        ignore_import: Option<Import<'a>>,
+        ignore_import: Option<Import<'ra>>,
     ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
         self.resolve_macro_or_delegation_path(
             path,
@@ -725,12 +725,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         ast_path: &ast::Path,
         kind: Option<MacroKind>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         trace: bool,
         force: bool,
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
-        ignore_import: Option<Import<'a>>,
+        ignore_import: Option<Import<'ra>>,
     ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
         let path_span = ast_path.span;
         let mut path = Segment::from_path(ast_path);
@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn prohibit_imported_non_macro_attrs(
         &self,
-        binding: Option<NameBinding<'a>>,
+        binding: Option<NameBinding<'ra>>,
         res: Option<Res>,
         span: Span,
     ) {
@@ -1065,9 +1065,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn report_out_of_scope_macro_calls(
         &mut self,
         path: &ast::Path,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
-        binding: Option<NameBinding<'a>>,
+        binding: Option<NameBinding<'ra>>,
     ) {
         if let Some((mod_def_id, node_id)) = invoc_in_mod_inert_attr
             && let Some(binding) = binding

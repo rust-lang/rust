@@ -52,8 +52,8 @@ impl UnusedImport {
     }
 }
 
-struct UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    r: &'a mut Resolver<'b, 'tcx>,
+struct UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
+    r: &'a mut Resolver<'ra, 'tcx>,
     /// All the (so far) unused imports, grouped path list
     unused_imports: FxIndexMap<ast::NodeId, UnusedImport>,
     extern_crate_items: Vec<ExternCrateToLint>,
@@ -78,7 +78,7 @@ struct ExternCrateToLint {
     renames: bool,
 }
 
-impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
+impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     // We have information about whether `use` (import) items are actually
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, id: ast::NodeId) {
@@ -212,7 +212,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
+impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         match item.kind {
             // Ignore is_public import statements because there's no way to be sure
