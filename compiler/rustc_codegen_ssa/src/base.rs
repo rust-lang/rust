@@ -154,7 +154,8 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
-                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
+                // A NOP cast that doesn't actually change anything, should be allowed even with
+                // invalid vtables.
                 return old_info;
             }
 
@@ -985,7 +986,8 @@ impl CrateInfo {
                 false
             }
             CrateType::Staticlib | CrateType::Rlib => {
-                // We don't invoke the linker for these, so we don't need to collect the NatVis for them.
+                // We don't invoke the linker for these, so we don't need to collect the NatVis for
+                // them.
                 false
             }
         });

@@ -478,8 +478,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         match self {
             OperandValue::ZeroSized => {
-                // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
-                // value is through `undef`/`poison`, and the store itself is useless.
+                // Avoid generating stores of zero-sized values, because the only way to have a
+                // zero-sized value is through `undef`/`poison`, and the store itself is useless.
             }
             OperandValue::Ref(val) => {
                 assert!(dest.layout.is_sized(), "cannot directly store unsized values");

@@ -200,7 +200,8 @@ pub fn i686_decorated_name(
     let mut decorated_name = String::with_capacity(name.len() + 6);
 
     if disable_name_mangling {
-        // LLVM uses a binary 1 ('\x01') prefix to a name to indicate that mangling needs to be disabled.
+        // LLVM uses a binary 1 ('\x01') prefix to a name to indicate that mangling needs to be
+        // disabled.
         decorated_name.push('\x01');
     }
 

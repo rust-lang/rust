@@ -24,6 +24,7 @@ pub struct FunctionDebugContext<'tcx, S, L> {
     /// Maps from an inlined function to its debug info declaration.
     pub inlined_function_scopes: FxHashMap<Instance<'tcx>, S>,
 }
+
 #[derive(Copy, Clone)]
 pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
