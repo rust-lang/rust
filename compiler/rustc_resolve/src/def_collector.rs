@@ -25,15 +25,15 @@ pub(crate) fn collect_definitions(
 }
 
 /// Creates `DefId`s for nodes in the AST.
-struct DefCollector<'a, 'b, 'tcx> {
-    resolver: &'a mut Resolver<'b, 'tcx>,
+struct DefCollector<'a, 'ra, 'tcx> {
+    resolver: &'a mut Resolver<'ra, 'tcx>,
     parent_def: LocalDefId,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
     expansion: LocalExpnId,
 }
 
-impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
+impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     fn create_def(
         &mut self,
         node_id: NodeId,
@@ -119,7 +119,7 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
+impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     fn visit_item(&mut self, i: &'a Item) {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
