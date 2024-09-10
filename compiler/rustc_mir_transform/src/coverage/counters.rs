@@ -253,12 +253,6 @@ impl<'a> MakeBcbCounters<'a> {
         Self { coverage_counters, basic_coverage_blocks }
     }
 
-    /// If two `BasicCoverageBlock`s branch from another `BasicCoverageBlock`, one of the branches
-    /// can be counted by `Expression` by subtracting the other branch from the branching
-    /// block. Otherwise, the `BasicCoverageBlock` executed the least should have the `Counter`.
-    /// One way to predict which branch executes the least is by considering loops. A loop is exited
-    /// at a branch, so the branch that jumps to a `BasicCoverageBlock` outside the loop is almost
-    /// always executed less than the branch that does not exit the loop.
     fn make_bcb_counters(&mut self, bcb_needs_counter: impl Fn(BasicCoverageBlock) -> bool) {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
 
@@ -273,7 +267,7 @@ impl<'a> MakeBcbCounters<'a> {
         while let Some(bcb) = traversal.next() {
             let _span = debug_span!("traversal", ?bcb).entered();
             if bcb_needs_counter(bcb) {
-                self.make_node_and_branch_counters(&traversal, bcb);
+                self.make_node_counter_and_out_edge_counters(&traversal, bcb);
             }
         }
 
@@ -284,74 +278,66 @@ impl<'a> MakeBcbCounters<'a> {
         );
     }
 
+    /// Make sure the given node has a node counter, and then make sure each of
+    /// its out-edges has an edge counter (if appropriate).
     #[instrument(level = "debug", skip(self, traversal))]
-    fn make_node_and_branch_counters(
+    fn make_node_counter_and_out_edge_counters(
         &mut self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
         from_bcb: BasicCoverageBlock,
     ) {
         // First, ensure that this node has a counter of some kind.
-        // We might also use its term later to compute one of the branch counters.
+        // We might also use that counter to compute one of the out-edge counters.
         let from_bcb_operand = self.get_or_make_counter_operand(from_bcb);
 
-        let branch_target_bcbs = self.basic_coverage_blocks.successors[from_bcb].as_slice();
+        let successors = self.basic_coverage_blocks.successors[from_bcb].as_slice();
 
         // If this node doesn't have multiple out-edges, or all of its out-edges
         // already have counters, then we don't need to create edge counters.
-        let needs_branch_counters = branch_target_bcbs.len() > 1
-            && branch_target_bcbs
-                .iter()
-                .any(|&to_bcb| self.branch_has_no_counter(from_bcb, to_bcb));
-        if !needs_branch_counters {
+        let needs_out_edge_counters = successors.len() > 1
+            && successors.iter().any(|&to_bcb| self.edge_has_no_counter(from_bcb, to_bcb));
+        if !needs_out_edge_counters {
             return;
         }
 
-        debug!(
-            "{from_bcb:?} has some branch(es) without counters:\n  {}",
-            branch_target_bcbs
-                .iter()
-                .map(|&to_bcb| {
-                    format!("{from_bcb:?}->{to_bcb:?}: {:?}", self.branch_counter(from_bcb, to_bcb))
-                })
-                .collect::<Vec<_>>()
-                .join("\n  "),
-        );
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            let _span =
+                debug_span!("node has some out-edges without counters", ?from_bcb).entered();
+            for &to_bcb in successors {
+                debug!(?to_bcb, counter=?self.edge_counter(from_bcb, to_bcb));
+            }
+        }
 
-        // Of the branch edges that don't have counters yet, one can be given an expression
-        // (computed from the other edges) instead of a dedicated counter.
-        let expression_to_bcb = self.choose_preferred_expression_branch(traversal, from_bcb);
+        // Of the out-edges that don't have counters yet, one can be given an expression
+        // (computed from the other out-edges) instead of a dedicated counter.
+        let expression_to_bcb = self.choose_out_edge_for_expression(traversal, from_bcb);
 
-        // For each branch arm other than the one that was chosen to get an expression,
+        // For each out-edge other than the one that was chosen to get an expression,
         // ensure that it has a counter (existing counter/expression or a new counter),
-        // and accumulate the corresponding terms into a single sum term.
-        let sum_of_all_other_branches: BcbCounter = {
-            let _span = debug_span!("sum_of_all_other_branches", ?expression_to_bcb).entered();
-            branch_target_bcbs
+        // and accumulate the corresponding counters into a single sum expression.
+        let sum_of_all_other_out_edges: BcbCounter = {
+            let _span = debug_span!("sum_of_all_other_out_edges", ?expression_to_bcb).entered();
+            successors
                 .iter()
                 .copied()
-                // Skip the chosen branch, since we'll calculate it from the other branches.
+                // Skip the chosen edge, since we'll calculate its count from this sum.
                 .filter(|&to_bcb| to_bcb != expression_to_bcb)
                 .fold(None, |accum, to_bcb| {
                     let _span = debug_span!("to_bcb", ?accum, ?to_bcb).entered();
-                    let branch_counter = self.get_or_make_edge_counter_operand(from_bcb, to_bcb);
-                    Some(self.coverage_counters.make_sum_expression(accum, branch_counter))
+                    let edge_counter = self.get_or_make_edge_counter_operand(from_bcb, to_bcb);
+                    Some(self.coverage_counters.make_sum_expression(accum, edge_counter))
                 })
-                .expect("there must be at least one other branch")
+                .expect("there must be at least one other out-edge")
         };
 
-        // For the branch that was chosen to get an expression, create that expression
-        // by taking the count of the node we're branching from, and subtracting the
-        // sum of all the other branches.
-        debug!(
-            "Making an expression for the selected expression_branch: \
-            {expression_to_bcb:?} (expression_branch predecessors: {:?})",
-            self.bcb_predecessors(expression_to_bcb),
-        );
+        // Now create an expression for the chosen edge, by taking the counter
+        // for its source node and subtracting the sum of its sibling out-edges.
         let expression = self.coverage_counters.make_expression(
             from_bcb_operand,
             Op::Subtract,
-            sum_of_all_other_branches,
+            sum_of_all_other_out_edges,
         );
+
         debug!("{expression_to_bcb:?} gets an expression: {expression:?}");
         if self.basic_coverage_blocks.bcb_has_multiple_in_edges(expression_to_bcb) {
             self.coverage_counters.set_bcb_edge_counter(from_bcb, expression_to_bcb, expression);
@@ -442,82 +428,79 @@ impl<'a> MakeBcbCounters<'a> {
         self.coverage_counters.set_bcb_edge_counter(from_bcb, to_bcb, counter_kind)
     }
 
-    /// Select a branch for the expression, either the recommended `reloop_branch`, or if none was
-    /// found, select any branch.
-    fn choose_preferred_expression_branch(
+    /// Choose one of the out-edges of `from_bcb` to receive an expression
+    /// instead of a physical counter, and returns that edge's target node.
+    ///
+    /// - Precondition: The node must have at least one out-edge without a counter.
+    /// - Postcondition: The selected edge does not have an edge counter.
+    fn choose_out_edge_for_expression(
         &self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
         from_bcb: BasicCoverageBlock,
     ) -> BasicCoverageBlock {
-        let good_reloop_branch = self.find_good_reloop_branch(traversal, from_bcb);
-        if let Some(reloop_target) = good_reloop_branch {
-            assert!(self.branch_has_no_counter(from_bcb, reloop_target));
+        if let Some(reloop_target) = self.find_good_reloop_edge(traversal, from_bcb) {
+            assert!(self.edge_has_no_counter(from_bcb, reloop_target));
             debug!("Selecting reloop target {reloop_target:?} to get an expression");
-            reloop_target
-        } else {
-            let &branch_without_counter = self
-                .bcb_successors(from_bcb)
-                .iter()
-                .find(|&&to_bcb| self.branch_has_no_counter(from_bcb, to_bcb))
-                .expect(
-                    "needs_branch_counters was `true` so there should be at least one \
-                    branch",
-                );
-            debug!(
-                "Selecting any branch={:?} that still needs a counter, to get the \
-                `Expression` because there was no `reloop_branch`, or it already had a \
-                counter",
-                branch_without_counter
-            );
-            branch_without_counter
+            return reloop_target;
         }
+
+        // We couldn't identify a "good" edge, so just choose any edge that
+        // doesn't already have a counter.
+        let arbitrary_target = self
+            .bcb_successors(from_bcb)
+            .iter()
+            .copied()
+            .find(|&to_bcb| self.edge_has_no_counter(from_bcb, to_bcb))
+            .expect("precondition: at least one out-edge without a counter");
+        debug!(?arbitrary_target, "selecting arbitrary out-edge to get an expression");
+        arbitrary_target
     }
 
-    /// Tries to find a branch that leads back to the top of a loop, and that
-    /// doesn't already have a counter. Such branches are good candidates to
+    /// Tries to find an edge that leads back to the top of a loop, and that
+    /// doesn't already have a counter. Such edges are good candidates to
     /// be given an expression (instead of a physical counter), because they
-    /// will tend to be executed more times than a loop-exit branch.
-    fn find_good_reloop_branch(
+    /// will tend to be executed more times than a loop-exit edge.
+    fn find_good_reloop_edge(
         &self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
         from_bcb: BasicCoverageBlock,
     ) -> Option<BasicCoverageBlock> {
-        let branch_target_bcbs = self.bcb_successors(from_bcb);
+        let successors = self.bcb_successors(from_bcb);
 
         // Consider each loop on the current traversal context stack, top-down.
         for reloop_bcbs in traversal.reloop_bcbs_per_loop() {
-            let mut all_branches_exit_this_loop = true;
+            let mut all_edges_exit_this_loop = true;
 
-            // Try to find a branch that doesn't exit this loop and doesn't
+            // Try to find an out-edge that doesn't exit this loop and doesn't
             // already have a counter.
-            for &branch_target_bcb in branch_target_bcbs {
-                // A branch is a reloop branch if it dominates any BCB that has
-                // an edge back to the loop header. (Other branches are exits.)
-                let is_reloop_branch = reloop_bcbs.iter().any(|&reloop_bcb| {
-                    self.basic_coverage_blocks.dominates(branch_target_bcb, reloop_bcb)
+            for &target_bcb in successors {
+                // An edge is a reloop edge if its target dominates any BCB that has
+                // an edge back to the loop header. (Otherwise it's an exit edge.)
+                let is_reloop_edge = reloop_bcbs.iter().any(|&reloop_bcb| {
+                    self.basic_coverage_blocks.dominates(target_bcb, reloop_bcb)
                 });
 
-                if is_reloop_branch {
-                    all_branches_exit_this_loop = false;
-                    if self.branch_has_no_counter(from_bcb, branch_target_bcb) {
-                        // We found a good branch to be given an expression.
-                        return Some(branch_target_bcb);
+                if is_reloop_edge {
+                    all_edges_exit_this_loop = false;
+                    if self.edge_has_no_counter(from_bcb, target_bcb) {
+                        // We found a good out-edge to be given an expression.
+                        return Some(target_bcb);
                     }
-                    // Keep looking for another reloop branch without a counter.
+                    // Keep looking for another reloop edge without a counter.
                 } else {
-                    // This branch exits the loop.
+                    // This edge exits the loop.
                 }
             }
 
-            if !all_branches_exit_this_loop {
-                // We found one or more reloop branches, but all of them already
-                // have counters. Let the caller choose one of the exit branches.
-                debug!("All reloop branches had counters; skip checking the other loops");
+            if !all_edges_exit_this_loop {
+                // We found one or more reloop edges, but all of them already
+                // have counters. Let the caller choose one of the other edges.
+                debug!("All reloop edges had counters; skipping the other loops");
                 return None;
             }
 
-            // All of the branches exit this loop, so keep looking for a good
-            // reloop branch for one of the outer loops.
+            // All of the out-edges exit this loop, so keep looking for a good
+            // reloop edge for one of the outer loops.
         }
 
         None
@@ -534,15 +517,15 @@ impl<'a> MakeBcbCounters<'a> {
     }
 
     #[inline]
-    fn branch_has_no_counter(
+    fn edge_has_no_counter(
         &self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
     ) -> bool {
-        self.branch_counter(from_bcb, to_bcb).is_none()
+        self.edge_counter(from_bcb, to_bcb).is_none()
     }
 
-    fn branch_counter(
+    fn edge_counter(
         &self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
