@@ -611,13 +611,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 &mut additional_tf,
             )
         }
-        // FIXME(struct_target_features): is this really necessary?
-        if !additional_tf.is_empty() && sig.skip_binder().abi() != abi::Abi::Rust {
-            tcx.dcx().span_err(
-                tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
-                "cannot use a struct with target features in a function with non-Rust ABI",
-            );
-        }
         if !additional_tf.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
             tcx.dcx().span_err(
                 tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
