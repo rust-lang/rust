@@ -483,7 +483,7 @@ fn concat_expand(
                 match it.kind {
                     tt::LitKind::Char => {
                         if let Ok(c) = unescape_char(it.symbol.as_str()) {
-                            text.extend(c.escape_default());
+                            text.push(c);
                         }
                         record_span(it.span);
                     }
@@ -491,11 +491,11 @@ fn concat_expand(
                         format_to!(text, "{}", it.symbol.as_str())
                     }
                     tt::LitKind::Str => {
-                        text.push_str(it.symbol.as_str());
+                        text.push_str(unescape_str(&it.symbol).as_str());
                         record_span(it.span);
                     }
                     tt::LitKind::StrRaw(_) => {
-                        format_to!(text, "{}", it.symbol.as_str().escape_debug());
+                        format_to!(text, "{}", it.symbol.as_str());
                         record_span(it.span);
                     }
                     tt::LitKind::Byte
@@ -813,7 +813,7 @@ fn include_str_expand(
 
 fn get_env_inner(db: &dyn ExpandDatabase, arg_id: MacroCallId, key: &Symbol) -> Option<String> {
     let krate = db.lookup_intern_macro_call(arg_id).krate;
-    db.crate_graph()[krate].env.get(key.as_str()).map(|it| it.escape_debug().to_string())
+    db.crate_graph()[krate].env.get(key.as_str())
 }
 
 fn env_expand(

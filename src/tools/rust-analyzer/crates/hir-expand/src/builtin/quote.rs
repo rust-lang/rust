@@ -3,6 +3,7 @@
 
 use intern::{sym, Symbol};
 use span::Span;
+use syntax::ToSmolStr;
 use tt::IdentIsRaw;
 
 use crate::name::Name;
@@ -211,8 +212,8 @@ impl_to_to_tokentrees! {
     _span: crate::tt::Literal => self { self };
     _span: crate::tt::Ident => self { self };
     _span: crate::tt::Punct => self { self };
-    span: &str => self { crate::tt::Literal{symbol: Symbol::intern(self), span, kind: tt::LitKind::Str, suffix: None }};
-    span: String => self { crate::tt::Literal{symbol: Symbol::intern(&self), span, kind: tt::LitKind::Str, suffix: None }};
+    span: &str => self { crate::tt::Literal{symbol: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix: None }};
+    span: String => self { crate::tt::Literal{symbol: Symbol::intern(&self.escape_default().to_smolstr()), span, kind: tt::LitKind::Str, suffix: None }};
     span: Name => self {
         let (is_raw, s) = IdentIsRaw::split_from_symbol(self.as_str());
         crate::tt::Ident{sym: Symbol::intern(s), span, is_raw }
