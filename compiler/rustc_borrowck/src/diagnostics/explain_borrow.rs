@@ -128,7 +128,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     && pat.span.can_be_used_for_suggestions()
                     && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
                 {
-                    suggest_rewrite_if_let(expr, &pat, init, conseq, alt, err);
+                    suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
                 } else if path_span.map_or(true, |path_span| path_span == var_or_use_span) {
                     // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
                     if borrow_span.map_or(true, |sp| !sp.overlaps(var_or_use_span)) {
@@ -292,7 +292,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                             && pat.span.can_be_used_for_suggestions()
                             && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
                         {
-                            suggest_rewrite_if_let(expr, &pat, init, conseq, alt, err);
+                            suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
                         }
                     }
                 }
@@ -428,34 +428,49 @@ impl<'tcx> BorrowExplanation<'tcx> {
     }
 }
 
-fn suggest_rewrite_if_let<'tcx>(
-    expr: &hir::Expr<'tcx>,
+fn suggest_rewrite_if_let(
+    tcx: TyCtxt<'_>,
+    expr: &hir::Expr<'_>,
     pat: &str,
-    init: &hir::Expr<'tcx>,
-    conseq: &hir::Expr<'tcx>,
-    alt: Option<&hir::Expr<'tcx>>,
+    init: &hir::Expr<'_>,
+    conseq: &hir::Expr<'_>,
+    alt: Option<&hir::Expr<'_>>,
     err: &mut Diag<'_>,
 ) {
+    let source_map = tcx.sess.source_map();
     err.span_note(
-        conseq.span.shrink_to_hi(),
-        "lifetime for temporaries generated in `if let`s have been shorted in Edition 2024",
+        source_map.end_point(conseq.span),
+        "lifetimes for temporaries generated in `if let`s have been shortened in Edition 2024 so that they are dropped here instead",
     );
     if expr.span.can_be_used_for_suggestions() && conseq.span.can_be_used_for_suggestions() {
+        let needs_block = if let Some(hir::Node::Expr(expr)) =
+            alt.and_then(|alt| tcx.hir().parent_iter(alt.hir_id).next()).map(|(_, node)| node)
+        {
+            matches!(expr.kind, hir::ExprKind::If(..))
+        } else {
+            false
+        };
         let mut sugg = vec![
-            (expr.span.shrink_to_lo().between(init.span), "match ".into()),
+            (
+                expr.span.shrink_to_lo().between(init.span),
+                if needs_block { "{ match ".into() } else { "match ".into() },
+            ),
             (conseq.span.shrink_to_lo(), format!(" {{ {pat} => ")),
         ];
         let expr_end = expr.span.shrink_to_hi();
+        let mut expr_end_code;
         if let Some(alt) = alt {
-            sugg.push((conseq.span.between(alt.span), format!(" _ => ")));
-            sugg.push((expr_end, "}".into()));
+            sugg.push((conseq.span.between(alt.span), " _ => ".into()));
+            expr_end_code = "}".to_string();
         } else {
-            sugg.push((expr_end, " _ => {} }".into()));
+            expr_end_code = " _ => {} }".into();
         }
+        expr_end_code.push('}');
+        sugg.push((expr_end, expr_end_code));
         err.multipart_suggestion(
             "consider rewriting the `if` into `match` which preserves the extended lifetime",
             sugg,
-            Applicability::MachineApplicable,
+            Applicability::MaybeIncorrect,
         );
     }
 }
