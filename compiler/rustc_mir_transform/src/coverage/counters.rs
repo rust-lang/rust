@@ -155,12 +155,14 @@ impl CoverageCounters {
         BcbCounter::Expression { id }
     }
 
-    /// Variant of `make_expression` that makes `lhs` optional and assumes [`Op::Add`].
+    /// Creates a counter that is the sum of the given counters.
     ///
-    /// This is useful when using [`Iterator::fold`] to build an arbitrary-length sum.
-    fn make_sum_expression(&mut self, lhs: Option<BcbCounter>, rhs: BcbCounter) -> BcbCounter {
-        let Some(lhs) = lhs else { return rhs };
-        self.make_expression(lhs, Op::Add, rhs)
+    /// Returns `None` if the given list of counters was empty.
+    fn make_sum(&mut self, counters: &[BcbCounter]) -> Option<BcbCounter> {
+        counters
+            .iter()
+            .copied()
+            .reduce(|accum, counter| self.make_expression(accum, Op::Add, counter))
     }
 
     pub(super) fn num_counters(&self) -> usize {
@@ -322,12 +324,9 @@ impl<'a> MakeBcbCounters<'a> {
             .filter(|&to_bcb| to_bcb != expression_to_bcb)
             .map(|to_bcb| self.get_or_make_edge_counter(from_bcb, to_bcb))
             .collect::<Vec<_>>();
-        let sum_of_all_other_out_edges: BcbCounter = other_out_edge_counters
-            .iter()
-            .copied()
-            .fold(None, |accum, edge_counter| {
-                Some(self.coverage_counters.make_sum_expression(accum, edge_counter))
-            })
+        let sum_of_all_other_out_edges: BcbCounter = self
+            .coverage_counters
+            .make_sum(&other_out_edge_counters)
             .expect("there must be at least one other out-edge");
 
         // Now create an expression for the chosen edge, by taking the counter
@@ -380,12 +379,9 @@ impl<'a> MakeBcbCounters<'a> {
             .copied()
             .map(|from_bcb| self.get_or_make_edge_counter(from_bcb, bcb))
             .collect::<Vec<_>>();
-        let sum_of_in_edges: BcbCounter = in_edge_counters
-            .iter()
-            .copied()
-            .fold(None, |accum, edge_counter| {
-                Some(self.coverage_counters.make_sum_expression(accum, edge_counter))
-            })
+        let sum_of_in_edges: BcbCounter = self
+            .coverage_counters
+            .make_sum(&in_edge_counters)
             .expect("there must be at least one in-edge");
 
         debug!("{bcb:?} gets a new counter (sum of predecessor counters): {sum_of_in_edges:?}");
