@@ -435,6 +435,7 @@ impl f16 {
         // WASM, see llvm/llvm-project#96437). These are platforms bugs, and Rust will misbehave on
         // such platforms, but we can at least try to make things seem as sane as possible by being
         // careful here.
+        // see also https://github.com/rust-lang/rust/issues/114479
         if self.is_infinite() {
             // Thus, a value may compare unequal to infinity, despite having a "full" exponent mask.
             FpCategory::Infinite
