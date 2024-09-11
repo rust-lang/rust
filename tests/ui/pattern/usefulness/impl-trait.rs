@@ -1,6 +1,7 @@
 #![feature(never_type)]
 #![feature(type_alias_impl_trait)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
+#![feature(exhaustive_patterns)]
 #![deny(unreachable_patterns)]
 // Test that the lint traversal handles opaques correctly
 #![deny(non_exhaustive_omitted_patterns)]
