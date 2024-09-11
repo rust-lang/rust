@@ -1418,21 +1418,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
-            constness: Const::Yes(cspan),
+            constness: Const::Yes(const_span),
             coroutine_kind: Some(coroutine_kind),
             ..
         }) = fk.header()
         {
-            let aspan = match coroutine_kind {
-                CoroutineKind::Async { span: aspan, .. }
-                | CoroutineKind::Gen { span: aspan, .. }
-                | CoroutineKind::AsyncGen { span: aspan, .. } => aspan,
-            };
-            // FIXME(gen_blocks): Report a different error for `const gen`
-            self.dcx().emit_err(errors::ConstAndAsync {
-                spans: vec![cspan, aspan],
-                cspan,
-                aspan,
+            self.dcx().emit_err(errors::ConstAndCoroutine {
+                spans: vec![coroutine_kind.span(), const_span],
+                const_span,
+                coroutine_span: coroutine_kind.span(),
+                coroutine_kind: coroutine_kind.as_str(),
                 span,
             });
         }
