@@ -244,6 +244,19 @@ where
         base.offset(offset, field_layout, self)
     }
 
+    /// Converts a repr(simd) value into an array of the right size, such that `project_index`
+    /// accesses the SIMD elements. Also returns the number of elements.
+    pub fn project_to_simd<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        base: &P,
+    ) -> InterpResult<'tcx, (P, u64)> {
+        assert!(base.layout().ty.ty_adt_def().unwrap().repr().simd());
+        // SIMD types must be newtypes around arrays, so all we have to do is project to their only field.
+        let array = self.project_field(base, 0)?;
+        let len = array.len(self)?;
+        Ok((array, len))
+    }
+
     fn project_constant_index<P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &P,

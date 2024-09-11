@@ -384,8 +384,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::simd_insert => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let elem = &args[2];
-                let (input, input_len) = self.operand_to_simd(&args[0])?;
-                let (dest, dest_len) = self.mplace_to_simd(dest)?;
+                let (input, input_len) = self.project_to_simd(&args[0])?;
+                let (dest, dest_len) = self.project_to_simd(dest)?;
                 assert_eq!(input_len, dest_len, "Return vector length must match input length");
                 // Bounds are not checked by typeck so we have to do it ourselves.
                 if index >= input_len {
@@ -406,7 +406,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::simd_extract => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
-                let (input, input_len) = self.operand_to_simd(&args[0])?;
+                let (input, input_len) = self.project_to_simd(&args[0])?;
                 // Bounds are not checked by typeck so we have to do it ourselves.
                 if index >= input_len {
                     throw_ub_format!(
