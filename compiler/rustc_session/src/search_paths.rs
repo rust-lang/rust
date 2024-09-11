@@ -96,7 +96,7 @@ impl SearchPath {
         Self::new(PathKind::All, make_target_lib_path(sysroot, triple))
     }
 
-    fn new(kind: PathKind, dir: PathBuf) -> Self {
+    pub fn new(kind: PathKind, dir: PathBuf) -> Self {
         // Get the files within the directory.
         let files = match std::fs::read_dir(&dir) {
             Ok(files) => files

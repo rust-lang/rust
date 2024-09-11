@@ -19,6 +19,11 @@ error[E0164]: expected tuple struct or tuple variant, found struct variant `Enum
    |
 LL |         Enum::Foo(a, b) => {}
    |         ^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: the struct variant's fields are being ignored
+   |
+LL |         Enum::Foo { a: _, b: _ } => {}
+   |                   ~~~~~~~~~~~~~~
 
 error[E0769]: tuple variant `Enum::Bar` written as struct variant
   --> $DIR/recover-from-bad-variant.rs:12:9

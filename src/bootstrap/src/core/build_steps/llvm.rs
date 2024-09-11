@@ -16,6 +16,7 @@ use std::sync::OnceLock;
 use std::{env, io};
 
 use build_helper::ci::CiEnv;
+use build_helper::git::get_closest_merge_commit;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
@@ -153,10 +154,9 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
-        helpers::get_closest_merge_base_commit(
+        get_closest_merge_commit(
             Some(&config.src),
             &config.git_config(),
-            &config.stage0_metadata.config.git_merge_commit_email,
             &[
                 config.src.join("src/llvm-project"),
                 config.src.join("src/bootstrap/download-ci-llvm-stamp"),

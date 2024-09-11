@@ -14,7 +14,7 @@ use std::sync::OnceLock;
 use std::{cmp, env, fs};
 
 use build_helper::exit;
-use build_helper::git::{output_result, GitConfig};
+use build_helper::git::{get_closest_merge_commit, output_result, GitConfig};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -24,7 +24,7 @@ pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
-use crate::utils::helpers::{self, exe, get_closest_merge_base_commit, output, t};
+use crate::utils::helpers::{self, exe, output, t};
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
@@ -2512,6 +2512,7 @@ impl Config {
         GitConfig {
             git_repository: &self.stage0_metadata.config.git_repository,
             nightly_branch: &self.stage0_metadata.config.nightly_branch,
+            git_merge_commit_email: &self.stage0_metadata.config.git_merge_commit_email,
         }
     }
 
@@ -2688,13 +2689,7 @@ impl Config {
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit = get_closest_merge_base_commit(
-            Some(&self.src),
-            &self.git_config(),
-            &self.stage0_metadata.config.git_merge_commit_email,
-            &[],
-        )
-        .unwrap();
+        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();
         if commit.is_empty() {
             println!("ERROR: could not find commit hash for downloading rustc");
             println!("HELP: maybe your repository history is too shallow?");
@@ -2786,13 +2781,7 @@ impl Config {
     ) -> Option<String> {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit = get_closest_merge_base_commit(
-            Some(&self.src),
-            &self.git_config(),
-            &self.stage0_metadata.config.git_merge_commit_email,
-            &[],
-        )
-        .unwrap();
+        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();
         if commit.is_empty() {
             println!("error: could not find commit hash for downloading components from CI");
             println!("help: maybe your repository history is too shallow?");
