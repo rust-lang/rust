@@ -216,6 +216,22 @@ macro_rules! impl_common_integer_tests {
                 )
             }
 
+            fn count_ones<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::count_ones,
+                    &|x| x.count_ones() as _,
+                    &|_| true,
+                )
+            }
+
+            fn count_zeros<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::count_zeros,
+                    &|x| x.count_zeros() as _,
+                    &|_| true,
+                )
+            }
+
             fn leading_zeros<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
                     &$vector::<LANES>::leading_zeros,
