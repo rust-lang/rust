@@ -976,6 +976,7 @@ pub fn walk_anon_const<'a, V: Visitor<'a>>(visitor: &mut V, constant: &'a AnonCo
 
 pub fn walk_inline_asm<'a, V: Visitor<'a>>(visitor: &mut V, asm: &'a InlineAsm) -> V::Result {
     let InlineAsm {
+        asm_macro: _,
         template: _,
         template_strs: _,
         operands,

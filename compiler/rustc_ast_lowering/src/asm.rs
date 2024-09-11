@@ -474,8 +474,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
         let line_spans =
             self.arena.alloc_from_iter(asm.line_spans.iter().map(|span| self.lower_span(*span)));
-        let hir_asm =
-            hir::InlineAsm { template, template_strs, operands, options: asm.options, line_spans };
+        let hir_asm = hir::InlineAsm {
+            asm_macro: asm.asm_macro,
+            template,
+            template_strs,
+            operands,
+            options: asm.options,
+            line_spans,
+        };
         self.arena.alloc(hir_asm)
     }
 }
