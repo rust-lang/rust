@@ -1,4 +1,3 @@
-//@error-in-other-file: /deallocation .* tag does not exist in the borrow stack/
 use std::alloc::{alloc, dealloc, Layout};
 
 fn main() {
@@ -10,5 +9,6 @@ fn main() {
         ptr1.write(0);
         // Deallocate through ptr2.
         dealloc(ptr2, Layout::from_size_align_unchecked(1, 1));
+        //~^ERROR: /deallocation .* tag does not exist in the borrow stack/
     }
 }

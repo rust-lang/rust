@@ -250,6 +250,7 @@ impl<T> Box<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[rustc_diagnostic_item = "box_new"]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
         #[rustc_box]
         Box::new(x)
