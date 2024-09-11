@@ -294,7 +294,8 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             }
             "__builtin_ia32_vfmaddsubps512_mask"
             | "__builtin_ia32_vfmaddsubpd512_mask"
-            | "__builtin_ia32_cmpsh_mask_round" => {
+            | "__builtin_ia32_cmpsh_mask_round"
+            | "__builtin_ia32_vfmaddph512_mask" => {
                 let mut new_args = args.to_vec();
                 let last_arg = new_args.pop().expect("last arg");
                 let arg4_type = gcc_func.get_param_type(3);
@@ -1131,6 +1132,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512fp16.maskz.vfcmadd.cph.512" => "__builtin_ia32_vfcmaddcph512_maskz_round",
         "llvm.x86.avx512fp16.mask.vfcmadd.csh" => "__builtin_ia32_vfcmaddcsh_mask_round",
         "llvm.x86.avx512fp16.maskz.vfcmadd.csh" => "__builtin_ia32_vfcmaddcsh_maskz_round",
+        "llvm.x86.avx512fp16.vfmadd.ph.512" => "__builtin_ia32_vfmaddph512_mask",
 
         // TODO: support the tile builtins:
         "llvm.x86.ldtilecfg" => "__builtin_trap",
