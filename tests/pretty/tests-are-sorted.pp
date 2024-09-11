@@ -12,6 +12,7 @@ extern crate std;
 extern crate test;
 #[cfg(test)]
 #[rustc_test_marker = "m_test"]
+#[allow(missing_docs)]
 pub const m_test: test::TestDescAndFn =
     test::TestDescAndFn {
         desc: test::TestDesc {
@@ -36,6 +37,7 @@ fn m_test() {}
 extern crate test;
 #[cfg(test)]
 #[rustc_test_marker = "z_test"]
+#[allow(missing_docs)]
 pub const z_test: test::TestDescAndFn =
     test::TestDescAndFn {
         desc: test::TestDesc {
@@ -61,6 +63,7 @@ fn z_test() {}
 extern crate test;
 #[cfg(test)]
 #[rustc_test_marker = "a_test"]
+#[allow(missing_docs)]
 pub const a_test: test::TestDescAndFn =
     test::TestDescAndFn {
         desc: test::TestDesc {
