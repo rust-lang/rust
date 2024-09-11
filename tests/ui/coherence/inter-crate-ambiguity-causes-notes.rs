@@ -1,3 +1,6 @@
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
+
 struct S;
 
 impl From<()> for S {

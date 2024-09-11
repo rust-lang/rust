@@ -1,5 +1,4 @@
 //@ revisions: old next
-//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 // A regression test for #105787
