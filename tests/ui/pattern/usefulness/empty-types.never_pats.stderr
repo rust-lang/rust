@@ -44,30 +44,6 @@ LL +     }
    |
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:70:9
-   |
-LL |         (_, _) => {}
-   |         ^^^^^^ matches no values because `(u32, !)` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:76:9
-   |
-LL |         _ => {}
-   |         ^ matches no values because `(!, !)` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:79:9
-   |
-LL |         (_, _) => {}
-   |         ^^^^^^ matches no values because `(!, !)` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
   --> $DIR/empty-types.rs:83:9
    |
 LL |         _ => {}
@@ -93,22 +69,6 @@ LL ~     match res_u32_never {
 LL +         Ok(_) => todo!(),
 LL +     }
    |
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:94:9
-   |
-LL |         Err(_) => {}
-   |         ^^^^^^ matches no values because `!` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:99:9
-   |
-LL |         Err(_) => {}
-   |         ^^^^^^ matches no values because `!` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error[E0004]: non-exhaustive patterns: `Ok(1_u32..=u32::MAX)` not covered
   --> $DIR/empty-types.rs:96:11
@@ -157,54 +117,6 @@ LL |     let Ok(_x) = &res_u32_never else { todo!() };
    |                                 ++++++++++++++++
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:112:9
-   |
-LL |         _ => {}
-   |         ^ matches no values because `Result<!, !>` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:115:9
-   |
-LL |         Ok(_) => {}
-   |         ^^^^^ matches no values because `Result<!, !>` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:118:9
-   |
-LL |         Ok(_) => {}
-   |         ^^^^^ matches no values because `Result<!, !>` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:119:9
-   |
-LL |         _ => {}
-   |         ^ matches no values because `Result<!, !>` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:122:9
-   |
-LL |         Ok(_) => {}
-   |         ^^^^^ matches no values because `Result<!, !>` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:123:9
-   |
-LL |         Err(_) => {}
-   |         ^^^^^^ matches no values because `Result<!, !>` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
   --> $DIR/empty-types.rs:132:13
    |
 LL |             _ => {}
@@ -219,22 +131,6 @@ LL |             _ if false => {}
    |             ^ matches no values because `Void` is uninhabited
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:143:13
-   |
-LL |             Some(_) => {}
-   |             ^^^^^^^ matches no values because `Void` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:147:13
-   |
-LL |             None => {}
-   |             ---- matches all the relevant values
-LL |             _ => {}
-   |             ^ no value can reach this
 
 error[E0004]: non-exhaustive patterns: `Some(!)` not covered
   --> $DIR/empty-types.rs:156:15
@@ -300,30 +196,6 @@ error: unreachable pattern
    |
 LL |         _ => {}
    |         ^ matches no values because `!` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:284:9
-   |
-LL |         (_, _) => {}
-   |         ^^^^^^ matches no values because `(!, !)` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:287:9
-   |
-LL |         Ok(_) => {}
-   |         ^^^^^ matches no values because `Result<!, !>` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:288:9
-   |
-LL |         Err(_) => {}
-   |         ^^^^^^ matches no values because `Result<!, !>` is uninhabited
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -474,30 +346,6 @@ LL +         _ => todo!(),
 LL +     }
    |
 
-error: unreachable pattern
-  --> $DIR/empty-types.rs:368:9
-   |
-LL |         _ => {}
-   |         ^ matches no values because `[!; 3]` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:371:9
-   |
-LL |         [_, _, _] => {}
-   |         ^^^^^^^^^ matches no values because `[!; 3]` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:374:9
-   |
-LL |         [_, ..] => {}
-   |         ^^^^^^^ matches no values because `[!; 3]` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
 error[E0004]: non-exhaustive patterns: type `[!; 0]` is non-empty
   --> $DIR/empty-types.rs:388:11
    |
@@ -533,40 +381,6 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL ~         [..] if false => {},
 LL +         [] => todo!()
    |
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:416:9
-   |
-LL |         Some(_) => {}
-   |         ^^^^^^^ matches no values because `!` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:421:9
-   |
-LL |         Some(_a) => {}
-   |         ^^^^^^^^ matches no values because `!` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:426:9
-   |
-LL |         None => {}
-   |         ---- matches all the relevant values
-LL |         // !useful, !reachable
-LL |         _ => {}
-   |         ^ no value can reach this
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:431:9
-   |
-LL |         None => {}
-   |         ---- matches all the relevant values
-LL |         // !useful, !reachable
-LL |         _a => {}
-   |         ^^ no value can reach this
 
 error[E0004]: non-exhaustive patterns: `&Some(!)` not covered
   --> $DIR/empty-types.rs:451:11
@@ -744,7 +558,7 @@ LL ~         None => {},
 LL +         Some(!)
    |
 
-error: aborting due to 65 previous errors; 1 warning emitted
+error: aborting due to 42 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0004, E0005.
 For more information about an error, try `rustc --explain E0004`.
