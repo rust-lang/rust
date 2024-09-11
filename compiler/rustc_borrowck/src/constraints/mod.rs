@@ -126,11 +126,12 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
 
             let annotation = sccs.annotation(scc);
 
-            // If this SCC participates in a universe violation,
+            // If this SCC participates in a universe violation
             // e.g. if it reaches a region with a universe smaller than
-            // the largest region reached, add a requirement that it must
+            // the largest region reached, or if this placeholder
+            // reaches another placeholder, add a requirement that it must
             // outlive `'static`.
-            if annotation.has_incompatible_universes() {
+            if let Some(offending_region) = annotation.placeholder_violation(&sccs) {
                 // Optimisation opportunity: this will add more constraints than
                 // needed for correctness, since an SCC upstream of another with
                 // a universe violation will "infect" its downstream SCCs to also
@@ -139,7 +140,7 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
                 let scc_representative_outlives_static = OutlivesConstraint {
                     sup: annotation.representative,
                     sub: fr_static,
-                    category: ConstraintCategory::IllegalUniverse,
+                    category: ConstraintCategory::IllegalPlaceholder(offending_region),
                     locations: Locations::All(rustc_span::DUMMY_SP),
                     span: rustc_span::DUMMY_SP,
                     variance_info: VarianceDiagInfo::None,

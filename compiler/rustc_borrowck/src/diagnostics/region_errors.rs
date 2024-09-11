@@ -61,7 +61,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal
-            | ConstraintCategory::IllegalUniverse => "",
+            | ConstraintCategory::IllegalPlaceholder(_) => "",
         }
     }
 }
@@ -432,9 +432,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
         let (blame_constraint, extra_info) =
-            self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
-                self.regioncx.provides_universal_region(r, fr, outlived_fr)
-            });
+            self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
         let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);

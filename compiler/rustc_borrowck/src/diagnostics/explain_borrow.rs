@@ -488,7 +488,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let (blame_constraint, extra_info) = self.regioncx.best_blame_constraint(
             borrow_region,
             NllRegionVariableOrigin::FreeRegion,
-            |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
+            outlived_region,
         );
         let BlameConstraint { category, from_closure, cause, .. } = blame_constraint;
 
