@@ -383,7 +383,7 @@ impl<'a> Parser<'a> {
             self.capture_state
                 .parser_replacements
                 .drain(parser_replacements_start..parser_replacements_end)
-                .chain(inner_attr_parser_replacements.into_iter())
+                .chain(inner_attr_parser_replacements)
                 .map(|(parser_range, data)| {
                     (NodeRange::new(parser_range, collect_pos.start_pos), data)
                 })
