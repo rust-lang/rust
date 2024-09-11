@@ -2902,21 +2902,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     candidate_fields.iter().map(|path| format!("{unwrap}{path}")),
                     Applicability::MaybeIncorrect,
                 );
-            } else {
-                if let Some(field_name) = find_best_match_for_name(&field_names, field.name, None) {
-                    err.span_suggestion_verbose(
-                        field.span,
-                        "a field with a similar name exists",
-                        format!("{unwrap}{}", field_name),
-                        Applicability::MaybeIncorrect,
-                    );
-                } else if !field_names.is_empty() {
-                    let is = if field_names.len() == 1 { " is" } else { "s are" };
-                    err.note(format!(
-                        "available field{is}: {}",
-                        self.name_series_display(field_names),
-                    ));
-                }
+            } else if let Some(field_name) =
+                find_best_match_for_name(&field_names, field.name, None)
+            {
+                err.span_suggestion_verbose(
+                    field.span,
+                    "a field with a similar name exists",
+                    format!("{unwrap}{}", field_name),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if !field_names.is_empty() {
+                let is = if field_names.len() == 1 { " is" } else { "s are" };
+                err.note(
+                    format!("available field{is}: {}", self.name_series_display(field_names),),
+                );
             }
         }
         err

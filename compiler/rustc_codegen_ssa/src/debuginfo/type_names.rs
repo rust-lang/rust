@@ -236,15 +236,13 @@ fn push_debuginfo_type_name<'tcx>(
             let has_enclosing_parens = if cpp_like_debuginfo {
                 output.push_str("dyn$<");
                 false
+            } else if trait_data.len() > 1 && auto_traits.len() != 0 {
+                // We need enclosing parens because there is more than one trait
+                output.push_str("(dyn ");
+                true
             } else {
-                if trait_data.len() > 1 && auto_traits.len() != 0 {
-                    // We need enclosing parens because there is more than one trait
-                    output.push_str("(dyn ");
-                    true
-                } else {
-                    output.push_str("dyn ");
-                    false
-                }
+                output.push_str("dyn ");
+                false
             };
 
             if let Some(principal) = trait_data.principal() {
