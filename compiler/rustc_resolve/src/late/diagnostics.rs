@@ -2255,25 +2255,24 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn let_binding_suggestion(&mut self, err: &mut Diag<'_>, ident_span: Span) -> bool {
         if let Some(Expr { kind: ExprKind::Assign(lhs, ..), .. }) = self.diag_metadata.in_assignment
             && let ast::ExprKind::Path(None, ref path) = lhs.kind
+            && !ident_span.from_expansion()
         {
-            if !ident_span.from_expansion() {
-                let (span, text) = match path.segments.first() {
-                    Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
-                        // a special case for #117894
-                        let name = name.strip_prefix('_').unwrap_or(name);
-                        (ident_span, format!("let {name}"))
-                    }
-                    _ => (ident_span.shrink_to_lo(), "let ".to_string()),
-                };
+            let (span, text) = match path.segments.first() {
+                Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
+                    // a special case for #117894
+                    let name = name.strip_prefix('_').unwrap_or(name);
+                    (ident_span, format!("let {name}"))
+                }
+                _ => (ident_span.shrink_to_lo(), "let ".to_string()),
+            };
 
-                err.span_suggestion_verbose(
-                    span,
-                    "you might have meant to introduce a new binding",
-                    text,
-                    Applicability::MaybeIncorrect,
-                );
-                return true;
-            }
+            err.span_suggestion_verbose(
+                span,
+                "you might have meant to introduce a new binding",
+                text,
+                Applicability::MaybeIncorrect,
+            );
+            return true;
         }
         false
     }

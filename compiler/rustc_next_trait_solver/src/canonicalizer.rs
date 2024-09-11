@@ -185,10 +185,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 for var in var_infos.iter_mut() {
                     // We simply put all regions from the input into the highest
                     // compressed universe, so we only deal with them at the end.
-                    if !var.is_region() {
-                        if is_existential == var.is_existential() {
-                            update_uv(var, orig_uv, is_existential)
-                        }
+                    if !var.is_region() && is_existential == var.is_existential() {
+                        update_uv(var, orig_uv, is_existential)
                     }
                 }
             }

@@ -95,19 +95,19 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
             // Check for assignment to fields of a constant
             // Assigning directly to a constant (e.g. `FOO = true;`) is a hard error,
             // so emitting a lint would be redundant.
-            if !lhs.projection.is_empty() {
-                if let Some(def_id) = self.is_const_item_without_destructor(lhs.local)
-                    && let Some((lint_root, span, item)) =
-                        self.should_lint_const_item_usage(lhs, def_id, loc)
-                {
-                    self.tcx.emit_node_span_lint(
-                        CONST_ITEM_MUTATION,
-                        lint_root,
-                        span,
-                        errors::ConstMutate::Modify { konst: item },
-                    );
-                }
+            if !lhs.projection.is_empty()
+                && let Some(def_id) = self.is_const_item_without_destructor(lhs.local)
+                && let Some((lint_root, span, item)) =
+                    self.should_lint_const_item_usage(lhs, def_id, loc)
+            {
+                self.tcx.emit_node_span_lint(
+                    CONST_ITEM_MUTATION,
+                    lint_root,
+                    span,
+                    errors::ConstMutate::Modify { konst: item },
+                );
             }
+
             // We are looking for MIR of the form:
             //
             // ```

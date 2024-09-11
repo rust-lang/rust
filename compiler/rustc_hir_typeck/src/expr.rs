@@ -1780,16 +1780,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Make sure the programmer specified correct number of fields.
-        if adt_kind == AdtKind::Union {
-            if hir_fields.len() != 1 {
-                struct_span_code_err!(
-                    self.dcx(),
-                    span,
-                    E0784,
-                    "union expressions should have exactly one field",
-                )
-                .emit();
-            }
+        if adt_kind == AdtKind::Union && hir_fields.len() != 1 {
+            struct_span_code_err!(
+                self.dcx(),
+                span,
+                E0784,
+                "union expressions should have exactly one field",
+            )
+            .emit();
         }
 
         // If check_expr_struct_fields hit an error, do not attempt to populate

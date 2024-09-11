@@ -1233,64 +1233,63 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     && ns == namespace
                     && in_module != parent_scope.module
                     && !ident.span.normalize_to_macros_2_0().from_expansion()
+                    && filter_fn(res)
                 {
-                    if filter_fn(res) {
-                        // create the path
-                        let mut segms = if lookup_ident.span.at_least_rust_2018() {
-                            // crate-local absolute paths start with `crate::` in edition 2018
-                            // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                            crate_path.clone()
+                    // create the path
+                    let mut segms = if lookup_ident.span.at_least_rust_2018() {
+                        // crate-local absolute paths start with `crate::` in edition 2018
+                        // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
+                        crate_path.clone()
+                    } else {
+                        ThinVec::new()
+                    };
+                    segms.append(&mut path_segments.clone());
+
+                    segms.push(ast::PathSegment::from_ident(ident));
+                    let path = Path { span: name_binding.span, segments: segms, tokens: None };
+
+                    if child_accessible {
+                        // Remove invisible match if exists
+                        if let Some(idx) = candidates
+                            .iter()
+                            .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
+                        {
+                            candidates.remove(idx);
+                        }
+                    }
+
+                    if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                        // See if we're recommending TryFrom, TryInto, or FromIterator and add
+                        // a note about editions
+                        let note = if let Some(did) = did {
+                            let requires_note = !did.is_local()
+                                && this.tcx.get_attrs(did, sym::rustc_diagnostic_item).any(
+                                    |attr| {
+                                        [sym::TryInto, sym::TryFrom, sym::FromIterator]
+                                            .map(|x| Some(x))
+                                            .contains(&attr.value_str())
+                                    },
+                                );
+
+                            requires_note.then(|| {
+                                format!(
+                                    "'{}' is included in the prelude starting in Edition 2021",
+                                    path_names_to_string(&path)
+                                )
+                            })
                         } else {
-                            ThinVec::new()
+                            None
                         };
-                        segms.append(&mut path_segments.clone());
 
-                        segms.push(ast::PathSegment::from_ident(ident));
-                        let path = Path { span: name_binding.span, segments: segms, tokens: None };
-
-                        if child_accessible {
-                            // Remove invisible match if exists
-                            if let Some(idx) = candidates
-                                .iter()
-                                .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
-                            {
-                                candidates.remove(idx);
-                            }
-                        }
-
-                        if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
-                            // See if we're recommending TryFrom, TryInto, or FromIterator and add
-                            // a note about editions
-                            let note = if let Some(did) = did {
-                                let requires_note = !did.is_local()
-                                    && this.tcx.get_attrs(did, sym::rustc_diagnostic_item).any(
-                                        |attr| {
-                                            [sym::TryInto, sym::TryFrom, sym::FromIterator]
-                                                .map(|x| Some(x))
-                                                .contains(&attr.value_str())
-                                        },
-                                    );
-
-                                requires_note.then(|| {
-                                    format!(
-                                        "'{}' is included in the prelude starting in Edition 2021",
-                                        path_names_to_string(&path)
-                                    )
-                                })
-                            } else {
-                                None
-                            };
-
-                            candidates.push(ImportSuggestion {
-                                did,
-                                descr: res.descr(),
-                                path,
-                                accessible: child_accessible,
-                                doc_visible: child_doc_visible,
-                                note,
-                                via_import,
-                            });
-                        }
+                        candidates.push(ImportSuggestion {
+                            did,
+                            descr: res.descr(),
+                            path,
+                            accessible: child_accessible,
+                            doc_visible: child_doc_visible,
+                            note,
+                            via_import,
+                        });
                     }
                 }
 

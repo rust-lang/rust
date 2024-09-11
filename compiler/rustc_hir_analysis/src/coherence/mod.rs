@@ -53,17 +53,15 @@ fn enforce_trait_manually_implementable(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_header_span = tcx.def_span(impl_def_id);
 
-    if tcx.is_lang_item(trait_def_id, LangItem::Freeze) {
-        if !tcx.features().freeze_impls {
-            feature_err(
-                &tcx.sess,
-                sym::freeze_impls,
-                impl_header_span,
-                "explicit impls for the `Freeze` trait are not permitted",
-            )
-            .with_span_label(impl_header_span, format!("impl of `Freeze` not allowed"))
-            .emit();
-        }
+    if tcx.is_lang_item(trait_def_id, LangItem::Freeze) && !tcx.features().freeze_impls {
+        feature_err(
+            &tcx.sess,
+            sym::freeze_impls,
+            impl_header_span,
+            "explicit impls for the `Freeze` trait are not permitted",
+        )
+        .with_span_label(impl_header_span, format!("impl of `Freeze` not allowed"))
+        .emit();
     }
 
     // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`

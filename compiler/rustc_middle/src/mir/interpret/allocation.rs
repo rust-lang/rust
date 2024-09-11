@@ -448,22 +448,20 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
                 bad: uninit_range,
             }))
         })?;
-        if !Prov::OFFSET_IS_ADDR {
-            if !self.provenance.range_empty(range, cx) {
-                // Find the provenance.
-                let (offset, _prov) = self
-                    .provenance
-                    .range_get_ptrs(range, cx)
-                    .first()
-                    .copied()
-                    .expect("there must be provenance somewhere here");
-                let start = offset.max(range.start); // the pointer might begin before `range`!
-                let end = (offset + cx.pointer_size()).min(range.end()); // the pointer might end after `range`!
-                return Err(AllocError::ReadPointerAsInt(Some(BadBytesAccess {
-                    access: range,
-                    bad: AllocRange::from(start..end),
-                })));
-            }
+        if !Prov::OFFSET_IS_ADDR && !self.provenance.range_empty(range, cx) {
+            // Find the provenance.
+            let (offset, _prov) = self
+                .provenance
+                .range_get_ptrs(range, cx)
+                .first()
+                .copied()
+                .expect("there must be provenance somewhere here");
+            let start = offset.max(range.start); // the pointer might begin before `range`!
+            let end = (offset + cx.pointer_size()).min(range.end()); // the pointer might end after `range`!
+            return Err(AllocError::ReadPointerAsInt(Some(BadBytesAccess {
+                access: range,
+                bad: AllocRange::from(start..end),
+            })));
         }
         Ok(self.get_bytes_unchecked(range))
     }
