@@ -303,8 +303,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let pointee_layout = self.layout_of(pointee_ty)?;
                 assert!(pointee_layout.abi.is_sized());
 
-                // We cannot overflow i64 as a type's size must be <= isize::MAX.
+                // The size always fits in `i64` as it can be at most `isize::MAX`.
                 let pointee_size = i64::try_from(pointee_layout.size.bytes()).unwrap();
+                // This uses the same type as `right`, which can be `isize` or `usize`.
+                // `pointee_size` is guaranteed to fit into both types.
                 let pointee_size = ImmTy::from_int(pointee_size, right.layout);
                 // Multiply element size and element count.
                 let (val, overflowed) = self
@@ -316,6 +318,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
 
                 let offset_bytes = val.to_target_isize(self)?;
+                if !right.layout.abi.is_signed() && offset_bytes < 0 {
+                    // We were supposed to do an unsigned offset but the result is negative -- this
+                    // can only mean that the cast wrapped around.
+                    throw_ub!(PointerArithOverflow)
+                }
                 let offset_ptr = self.ptr_offset_inbounds(ptr, offset_bytes)?;
                 Ok(ImmTy::from_scalar(Scalar::from_maybe_pointer(offset_ptr, self), left.layout))
             }
