@@ -188,22 +188,22 @@ declare_clippy_lint! {
     /// The `while let` loop is usually shorter and more
     /// readable.
     ///
-    /// ### Known problems
-    /// Sometimes the wrong binding is displayed ([#383](https://github.com/rust-lang/rust-clippy/issues/383)).
-    ///
     /// ### Example
     /// ```rust,no_run
-    /// # let y = Some(1);
+    /// let y = Some(1);
     /// loop {
     ///     let x = match y {
     ///         Some(x) => x,
     ///         None => break,
     ///     };
-    ///     // .. do something with x
+    ///     // ..
     /// }
-    /// // is easier written as
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    /// let y = Some(1);
     /// while let Some(x) = y {
-    ///     // .. do something with x
+    ///     // ..
     /// };
     /// ```
     #[clippy::version = "pre 1.29.0"]
