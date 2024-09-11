@@ -221,7 +221,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc
-                && la.map_or(false, CoroutineKind::is_async) == ra.map_or(false, CoroutineKind::is_async)
+                && eq_coroutine_kind(*la, *ra)
                 && lm == rm
                 && eq_fn_decl(lf, rf)
                 && eq_expr(le, re)
@@ -237,6 +237,16 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
                 && eq_struct_rest(&lse.rest, &rse.rest)
                 && unordered_over(&lse.fields, &rse.fields, eq_field)
         },
+        _ => false,
+    }
+}
+
+fn eq_coroutine_kind(a: Option<CoroutineKind>, b: Option<CoroutineKind>) -> bool {
+    match (a, b) {
+        (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
+        | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
+        | (Some(CoroutineKind::AsyncGen { .. }), Some(CoroutineKind::AsyncGen { .. }))
+        | (None, None) => true,
         _ => false,
     }
 }

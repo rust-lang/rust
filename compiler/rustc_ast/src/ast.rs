@@ -2610,14 +2610,6 @@ impl CoroutineKind {
         }
     }
 
-    pub fn is_async(self) -> bool {
-        matches!(self, CoroutineKind::Async { .. })
-    }
-
-    pub fn is_gen(self) -> bool {
-        matches!(self, CoroutineKind::Gen { .. })
-    }
-
     pub fn closure_id(self) -> NodeId {
         match self {
             CoroutineKind::Async { closure_id, .. }
