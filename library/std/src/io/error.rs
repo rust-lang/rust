@@ -327,9 +327,9 @@ pub enum ErrorKind {
     /// example, on Unix, a named pipe opened with `File::open`.
     #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     NotSeekable,
-    /// Filesystem quota was exceeded.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    FilesystemQuotaExceeded,
+    /// Filesystem quota or some other kind of quota was exceeded.
+    #[stable(feature = "io_error_quota_exceeded", since = "CURRENT_RUSTC_VERSION")]
+    QuotaExceeded,
     /// File larger than allowed or supported.
     ///
     /// This might arise from a hard limit of the underlying filesystem or file access API, or from
@@ -451,7 +451,7 @@ impl ErrorKind {
             ExecutableFileBusy => "executable file busy",
             FileTooLarge => "file too large",
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
-            FilesystemQuotaExceeded => "filesystem quota exceeded",
+            QuotaExceeded => "quota exceeded",
             HostUnreachable => "host unreachable",
             Interrupted => "operation interrupted",
             InProgress => "in progress",

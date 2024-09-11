@@ -43,7 +43,7 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ECONNREFUSED", ConnectionRefused),
         ("ECONNRESET", ConnectionReset),
         ("EDEADLK", Deadlock),
-        ("EDQUOT", FilesystemQuotaExceeded),
+        ("EDQUOT", QuotaExceeded),
         ("EEXIST", AlreadyExists),
         ("EFBIG", FileTooLarge),
         ("EHOSTUNREACH", HostUnreachable),
