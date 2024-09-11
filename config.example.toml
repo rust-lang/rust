@@ -759,6 +759,16 @@
 # Build compiler with the optimization enabled and -Zvalidate-mir, currently only for `std`
 #validate-mir-opts = 3
 
+# Configure `std` features used during bootstrap.
+# Default features will be expanded in the following cases:
+#  - If `rust.llvm-libunwind` or `target.llvm-libunwind` is enabled:
+#    - "llvm-libunwind" will be added for in-tree LLVM builds.
+#    - "system-llvm-libunwind" will be added for system LLVM builds.
+#  - If `rust.backtrace` is enabled, "backtrace" will be added.
+#  - If `rust.profiler` or `target.profiler` is enabled, "profiler" will be added.
+#  - If building for a zkvm target, "compiler-builtins-mem" will be added.
+#std-features = ["panic_unwind"]
+
 # =============================================================================
 # Options for specific targets
 #
