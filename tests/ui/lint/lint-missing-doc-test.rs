@@ -3,3 +3,6 @@
 
 //@ check-pass
 //@ compile-flags: --test -Dmissing_docs
+
+#[test]
+fn test() {}
