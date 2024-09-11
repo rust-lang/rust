@@ -139,6 +139,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::WSAEHOSTUNREACH => HostUnreachable,
         c::WSAENETDOWN => NetworkDown,
         c::WSAENETUNREACH => NetworkUnreachable,
+        c::WSAEDQUOT => FilesystemQuotaExceeded,
 
         _ => Uncategorized,
     }
