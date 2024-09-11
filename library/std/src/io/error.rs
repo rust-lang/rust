@@ -435,8 +435,8 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub(crate) fn as_str(&self) -> &'static str {
         use ErrorKind::*;
-        // tidy-alphabetical-start
         match *self {
+            // tidy-alphabetical-start
             AddrInUse => "address in use",
             AddrNotAvailable => "address not available",
             AlreadyExists => "entity already exists",
@@ -449,12 +449,11 @@ impl ErrorKind {
             Deadlock => "deadlock",
             DirectoryNotEmpty => "directory not empty",
             ExecutableFileBusy => "executable file busy",
-            FileTooLarge => "file too large",
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
-            QuotaExceeded => "quota exceeded",
+            FileTooLarge => "file too large",
             HostUnreachable => "host unreachable",
-            Interrupted => "operation interrupted",
             InProgress => "in progress",
+            Interrupted => "operation interrupted",
             InvalidData => "invalid data",
             InvalidFilename => "invalid filename",
             InvalidInput => "invalid input parameter",
@@ -468,6 +467,7 @@ impl ErrorKind {
             Other => "other error",
             OutOfMemory => "out of memory",
             PermissionDenied => "permission denied",
+            QuotaExceeded => "quota exceeded",
             ReadOnlyFilesystem => "read-only filesystem or storage medium",
             ResourceBusy => "resource busy",
             StaleNetworkFileHandle => "stale network file handle",
@@ -479,8 +479,8 @@ impl ErrorKind {
             Unsupported => "unsupported",
             WouldBlock => "operation would block",
             WriteZero => "write zero",
+            // tidy-alphabetical-end
         }
-        // tidy-alphabetical-end
     }
 }
 
