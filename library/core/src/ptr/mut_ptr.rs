@@ -353,8 +353,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * The computed offset, `count * size_of::<T>()` bytes (using unbounded arithmetic),
-    ///   must fit in an `isize`.
+    /// * The offset in bytes, `count * size_of::<T>()`, computed on mathematical integers (without
+    ///   "wrapping around"), must fit in an `isize`.
     ///
     /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
@@ -399,7 +399,7 @@ impl<T: ?Sized> *mut T {
         unsafe { intrinsics::offset(self, count) }
     }
 
-    /// Calculates the offset from a pointer in bytes.
+    /// Adds a signed offset in bytes to a pointer.
     ///
     /// `count` is in units of **bytes**.
     ///
@@ -889,7 +889,11 @@ impl<T: ?Sized> *mut T {
         unsafe { (self as *const T).sub_ptr(origin) }
     }
 
-    /// Adds an offset to a pointer.
+    /// Adds an unsigned offset to a pointer.
+    ///
+    /// This can only move the pointer forward (or not move it). If you need to move forward or
+    /// backward depending on the value, then you might want [`offset`](#method.offset) instead
+    /// which takes a signed offset.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -898,8 +902,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * The computed offset, `count * size_of::<T>()` bytes (using unbounded arithmetic),
-    ///   must fit in an `isize`.
+    /// * The offset in bytes, `count * size_of::<T>()`, computed on mathematical integers (without
+    ///   "wrapping around"), must fit in an `isize`.
     ///
     /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
@@ -942,7 +946,7 @@ impl<T: ?Sized> *mut T {
         unsafe { intrinsics::offset(self, count) }
     }
 
-    /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as isize)`).
+    /// Adds an unsigned offset in bytes to a pointer.
     ///
     /// `count` is in units of bytes.
     ///
@@ -963,7 +967,11 @@ impl<T: ?Sized> *mut T {
         unsafe { self.cast::<u8>().add(count).with_metadata_of(self) }
     }
 
-    /// Subtracts an offset from a pointer.
+    /// Subtracts an unsigned offset from a pointer.
+    ///
+    /// This can only move the pointer backward (or not move it). If you need to move forward or
+    /// backward depending on the value, then you might want [`offset`](#method.offset) instead
+    /// which takes a signed offset.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -972,8 +980,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * The computed offset, `count * size_of::<T>()` bytes (using unbounded arithmetic),
-    ///   must fit in an `isize`.
+    /// * The offset in bytes, `count * size_of::<T>()`, computed on mathematical integers (without
+    ///   "wrapping around"), must fit in an `isize`.
     ///
     /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
@@ -1024,8 +1032,7 @@ impl<T: ?Sized> *mut T {
         }
     }
 
-    /// Calculates the offset from a pointer in bytes (convenience for
-    /// `.byte_offset((count as isize).wrapping_neg())`).
+    /// Subtracts an unsigned offset in bytes from a pointer.
     ///
     /// `count` is in units of bytes.
     ///
