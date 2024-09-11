@@ -593,7 +593,7 @@ mod CheckBadStyle {
 }
 
 mod F {
-  //^ 💡 warn: Module `F` should have snake_case name, e.g. `f`
+  //^ 💡 error: Module `F` should have snake_case name, e.g. `f`
     #![deny(non_snake_case)]
     fn CheckItWorksWithModAttr() {}
      //^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Function `CheckItWorksWithModAttr` should have snake_case name, e.g. `check_it_works_with_mod_attr`
@@ -854,6 +854,71 @@ fn func() {
     for non_snake in [] { non_snake; }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn override_lint_level() {
+        check_diagnostics(
+            r#"
+#[warn(nonstandard_style)]
+fn foo() {
+    let BAR;
+     // ^^^ 💡 warn: Variable `BAR` should have snake_case name, e.g. `bar`
+    #[allow(non_snake_case)]
+    let FOO;
+}
+
+#[warn(nonstandard_style)]
+fn foo() {
+    let BAR;
+     // ^^^ 💡 warn: Variable `BAR` should have snake_case name, e.g. `bar`
+    #[expect(non_snake_case)]
+    let FOO;
+    #[allow(non_snake_case)]
+    struct qux;
+        // ^^^ 💡 warn: Structure `qux` should have CamelCase name, e.g. `Qux`
+
+    fn BAZ() {
+    // ^^^ 💡 error: Function `BAZ` should have snake_case name, e.g. `baz`
+        #![forbid(bad_style)]
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn different_files() {
+        check_diagnostics(
+            r#"
+//- /lib.rs
+#![expect(nonstandard_style)]
+
+mod BAD_CASE;
+
+fn BAD_CASE() {}
+
+//- /BAD_CASE.rs
+mod OtherBadCase;
+ // ^^^^^^^^^^^^ 💡 error: Module `OtherBadCase` should have snake_case name, e.g. `other_bad_case`
+
+//- /BAD_CASE/OtherBadCase.rs
+#![deny(non_snake_case)]
+
+fn FOO() {}
+// ^^^ 💡 error: Function `FOO` should have snake_case name, e.g. `foo`
+
+#[allow(bad_style)]
+mod FINE_WITH_BAD_CASE;
+
+//- /BAD_CASE/OtherBadCase/FINE_WITH_BAD_CASE.rs
+struct QUX;
+const foo: i32 = 0;
+fn BAR() {
+    let BAZ;
+}
+        "#,
         );
     }
 }

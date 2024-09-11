@@ -13,7 +13,7 @@ use either::Either;
 use hir_def::{
     hir::Expr,
     lower::LowerCtx,
-    nameres::MacroSubNs,
+    nameres::{MacroSubNs, ModuleOrigin},
     path::ModPath,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
@@ -32,7 +32,7 @@ use intern::Symbol;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::{EditionedFileId, FileId};
+use span::{EditionedFileId, FileId, HirFileIdRepr};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
@@ -321,6 +321,47 @@ impl<'db> SemanticsImpl<'db> {
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
+    }
+
+    pub fn find_parent_file(&self, file_id: HirFileId) -> Option<InFile<SyntaxNode>> {
+        match file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => {
+                let module = self.file_to_module_defs(file_id.file_id()).next()?;
+                let def_map = self.db.crate_def_map(module.krate().id);
+                match def_map[module.id.local_id].origin {
+                    ModuleOrigin::CrateRoot { .. } => None,
+                    ModuleOrigin::File { declaration, declaration_tree_id, .. } => {
+                        let file_id = declaration_tree_id.file_id();
+                        let in_file = InFile::new(file_id, declaration);
+                        let node = in_file.to_node(self.db.upcast());
+                        let root = find_root(node.syntax());
+                        self.cache(root, file_id);
+                        Some(in_file.with_value(node.syntax().clone()))
+                    }
+                    _ => unreachable!("FileId can only belong to a file module"),
+                }
+            }
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let node = self
+                    .db
+                    .lookup_intern_macro_call(macro_file.macro_call_id)
+                    .to_node(self.db.upcast());
+                let root = find_root(&node.value);
+                self.cache(root, node.file_id);
+                Some(node)
+            }
+        }
+    }
+
+    /// Returns the `SyntaxNode` of the module. If this is a file module, returns
+    /// the `SyntaxNode` of the *definition* file, not of the *declaration*.
+    pub fn module_definition_node(&self, module: Module) -> InFile<SyntaxNode> {
+        let def_map = module.id.def_map(self.db.upcast());
+        let definition = def_map[module.id.local_id].origin.definition_source(self.db.upcast());
+        let definition = definition.map(|it| it.node());
+        let root_node = find_root(&definition.value);
+        self.cache(root_node, definition.file_id);
+        definition
     }
 
     pub fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode {
