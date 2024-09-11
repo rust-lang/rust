@@ -41,7 +41,9 @@ use crate::errors::{
 };
 use crate::fluent_generated;
 use crate::mbe::diagnostics::annotate_err_with_kind;
-use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
+use crate::module::{
+    mod_dir_path, mod_file_path_from_attr, parse_external_mod, DirOwnership, ParsedExternalMod,
+};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 
 macro_rules! ast_fragments {
@@ -1202,8 +1204,14 @@ impl InvocationCollectorNode for P<ast::Item> {
                     ecx.current_expansion.dir_ownership,
                     *inline,
                 );
+                // If the module was parsed from an external file, recover its path.
+                // This lets `parse_external_mod` catch cycles if it's self-referential.
+                let file_path = match inline {
+                    Inline::Yes => None,
+                    Inline::No => mod_file_path_from_attr(ecx.sess, &attrs, &dir_path),
+                };
                 node.attrs = attrs;
-                (None, dir_path, dir_ownership)
+                (file_path, dir_path, dir_ownership)
             }
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
