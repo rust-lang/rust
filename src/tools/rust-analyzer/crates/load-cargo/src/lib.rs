@@ -493,8 +493,17 @@ impl ProcMacroExpander for Expander {
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
+        current_dir: Option<String>,
     ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
-        match self.0.expand(subtree, attrs, env.clone(), def_site, call_site, mixed_site) {
+        match self.0.expand(
+            subtree,
+            attrs,
+            env.clone(),
+            def_site,
+            call_site,
+            mixed_site,
+            current_dir,
+        ) {
             Ok(Ok(subtree)) => Ok(subtree),
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),

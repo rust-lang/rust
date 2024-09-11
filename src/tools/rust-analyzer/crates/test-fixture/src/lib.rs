@@ -571,6 +571,7 @@ impl ProcMacroExpander for IdentityProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
@@ -588,6 +589,7 @@ impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         attrs
             .cloned()
@@ -606,6 +608,7 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         fn traverse(input: &Subtree<Span>) -> Subtree<Span> {
             let mut token_trees = vec![];
@@ -636,6 +639,7 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         return Ok(traverse(input));
 

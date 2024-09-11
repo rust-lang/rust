@@ -320,6 +320,7 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree, ProcMacroExpansionError> {
         let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             subtree,
