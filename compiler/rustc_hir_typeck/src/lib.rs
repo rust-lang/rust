@@ -43,7 +43,7 @@ pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -421,6 +421,36 @@ fn report_unexpected_variant_res(
             }
 
             err.multipart_suggestion_verbose(descr, suggestion, Applicability::MaybeIncorrect);
+            err
+        }
+        Res::Def(DefKind::Variant, _) if expr.is_none() => {
+            err.span_label(span, format!("not a {expected}"));
+
+            let fields = &tcx.expect_variant_res(res).fields.raw;
+            let span = qpath.span().shrink_to_hi().to(span.shrink_to_hi());
+            let (msg, sugg) = if fields.is_empty() {
+                ("use the struct variant pattern syntax".to_string(), " {}".to_string())
+            } else {
+                let msg = format!(
+                    "the struct variant's field{s} {are} being ignored",
+                    s = pluralize!(fields.len()),
+                    are = pluralize!("is", fields.len())
+                );
+                let fields = fields
+                    .iter()
+                    .map(|field| format!("{}: _", field.name.to_ident_string()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let sugg = format!(" {{ {} }}", fields);
+                (msg, sugg)
+            };
+
+            err.span_suggestion_verbose(
+                qpath.span().shrink_to_hi().to(span.shrink_to_hi()),
+                msg,
+                sugg,
+                Applicability::HasPlaceholders,
+            );
             err
         }
         _ => err.with_span_label(span, format!("not a {expected}")),
