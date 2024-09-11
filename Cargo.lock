@@ -76,7 +76,6 @@ dependencies = [
  "gimli",
  "hashbrown",
  "log",
- "pulley-interpreter",
  "regalloc2",
  "rustc-hash",
  "smallvec",
@@ -307,17 +306,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pulley-interpreter"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70269a5a7464ccb9ab906534d44dfbd2e2f547d9fe74c08a528548d029ec641d"
-dependencies = [
- "cranelift-bitset",
- "log",
- "sptr",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -386,12 +374,6 @@ name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
-
-[[package]]
-name = "sptr"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b9b39299b249ad65f3b7e96443bad61c02ca5cd3589f46cb6d610a0fd6c0d6a"
 
 [[package]]
 name = "stable_deref_trait"

@@ -8,7 +8,8 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { version = "0.112.0", default-features = false, features = ["std", "unwind", "all-arch"] }
+# FIXME switch to native-arch instead of listing all archs on the next Cranelift update
+cranelift-codegen = { version = "0.112.0", default-features = false, features = ["std", "unwind", "x86", "arm64", "s390x", "riscv64"] }
 cranelift-frontend = { version = "0.112.0" }
 cranelift-module = { version = "0.112.0" }
 cranelift-native = { version = "0.112.0" }
