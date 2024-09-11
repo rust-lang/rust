@@ -371,7 +371,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     fn sub_region_values(&self, a: VarValue<'tcx>, b: VarValue<'tcx>) -> bool {
         match (a, b) {
             // Error region is `'static`
-            (VarValue::ErrorValue, _) | (_, VarValue::ErrorValue) => return true,
+            (VarValue::ErrorValue, _) | (_, VarValue::ErrorValue) => true,
             (VarValue::Empty(a_ui), VarValue::Empty(b_ui)) => {
                 // Empty regions are ordered according to the universe
                 // they are associated with.
@@ -439,7 +439,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         // If this empty region is from a universe that can
                         // name the placeholder, then the placeholder is
                         // larger; otherwise, the only ancestor is `'static`.
-                        return a_ui.can_name(placeholder.universe);
+                        a_ui.can_name(placeholder.universe)
                     }
                 }
             }

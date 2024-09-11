@@ -182,7 +182,7 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
         }
     }
 
-    return sysroot_candidates;
+    sysroot_candidates
 }
 
 /// Returns the provided sysroot or calls [`get_or_default_sysroot`] if it's none.

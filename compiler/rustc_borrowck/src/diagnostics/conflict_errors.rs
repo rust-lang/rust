@@ -3665,11 +3665,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 }
             }
+
             if any_match {
                 reinits.push(location);
-                return true;
+                true
+            } else {
+                false
             }
-            return false;
         };
 
         while let Some(location) = stack.pop() {

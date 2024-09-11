@@ -3040,7 +3040,6 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
                 self.first_legal_span = Some(inject);
             }
             self.first_use_span = search_for_any_use_in_items(&c.items);
-            return;
         } else {
             visit::walk_crate(self, c);
         }
@@ -3054,7 +3053,6 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
                     self.first_legal_span = Some(inject);
                 }
                 self.first_use_span = search_for_any_use_in_items(items);
-                return;
             }
         } else {
             visit::walk_item(self, item);
@@ -3076,7 +3074,7 @@ fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
             }
         }
     }
-    return None;
+    None
 }
 
 fn is_span_suitable_for_use_injection(s: Span) -> bool {

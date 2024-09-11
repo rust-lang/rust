@@ -275,7 +275,7 @@ fn characteristic_def_id_of_type_cached<'a>(
             if visited.insert(ty) {
                 return characteristic_def_id_of_type_cached(ty, visited);
             }
-            return None;
+            None
         }),
 
         ty::FnDef(def_id, _)

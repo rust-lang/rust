@@ -1172,7 +1172,7 @@ where
                     trace!(?def_id, ?goal, "disqualified auto-trait implementation");
                     // No need to actually consider the candidate here,
                     // since we do that in `consider_impl_candidate`.
-                    return Some(Err(NoSolution));
+                    Some(Err(NoSolution))
                 } else {
                     None
                 }

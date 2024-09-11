@@ -1118,7 +1118,6 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                         primitive scalar (integer/float/pointer) type"
                 )
                 .emit();
-                return;
             }
         }
     }

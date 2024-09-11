@@ -149,7 +149,7 @@ fn escaping_locals<'tcx>(
                 // Storage statements are expanded in run_pass.
                 StatementKind::StorageLive(..)
                 | StatementKind::StorageDead(..)
-                | StatementKind::Deinit(..) => return,
+                | StatementKind::Deinit(..) => {}
                 _ => self.super_statement(statement, location),
             }
         }

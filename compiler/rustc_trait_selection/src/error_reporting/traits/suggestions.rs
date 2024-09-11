@@ -1401,7 +1401,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return true;
                 }
             }
-            return false;
+            false
         };
 
         if let ObligationCauseCode::ImplDerived(cause) = &*code {

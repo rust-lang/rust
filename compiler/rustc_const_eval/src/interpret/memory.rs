@@ -861,7 +861,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             Some(GlobalAlloc::VTable(..)) => {
                 // No data to be accessed here. But vtables are pointer-aligned.
-                return (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::VTable);
+                (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::VTable)
             }
             // The rest must be dead.
             None => {

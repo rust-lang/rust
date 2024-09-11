@@ -2028,7 +2028,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let span = expr.span.find_oldest_ancestor_in_same_ctxt();
         err.span_suggestion_verbose(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
-        return true;
+        true
     }
 
     pub(crate) fn suggest_coercing_result_via_try_operator(

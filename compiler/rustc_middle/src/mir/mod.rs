@@ -1169,7 +1169,7 @@ impl<'tcx> LocalDecl<'tcx> {
             LocalInfo::DerefTemp => return true,
             _ => (),
         }
-        return false;
+        false
     }
 
     /// Returns `true` is the local is from a compiler desugaring, e.g.,

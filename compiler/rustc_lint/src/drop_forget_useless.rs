@@ -219,7 +219,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                         },
                     );
                 }
-                _ => return,
+                _ => {}
             };
         }
     }

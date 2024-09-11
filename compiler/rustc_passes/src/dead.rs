@@ -193,17 +193,16 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                             return true;
                         }
                     }
-                    return false;
+                    false
                 }
                 (hir::ExprKind::Field(lhs_l, ident_l), hir::ExprKind::Field(lhs_r, ident_r)) => {
                     if ident_l == ident_r {
-                        return check_for_self_assign_helper(typeck_results, lhs_l, lhs_r);
+                        check_for_self_assign_helper(typeck_results, lhs_l, lhs_r)
+                    } else {
+                        false
                     }
-                    return false;
                 }
-                _ => {
-                    return false;
-                }
+                _ => false,
             }
         }
 
@@ -394,7 +393,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
         }
 
-        return false;
+        false
     }
 
     fn visit_node(&mut self, node: Node<'tcx>) {

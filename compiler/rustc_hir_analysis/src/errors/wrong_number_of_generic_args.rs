@@ -807,7 +807,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                         num_assoc_fn_excess_args,
                         num_trait_generics_except_self,
                     ),
-                _ => return,
+                _ => {}
             }
         }
     }

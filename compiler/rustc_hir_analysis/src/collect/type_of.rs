@@ -122,7 +122,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 (ty, None)
             };
             tcx.dcx().emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
-            return ty;
+            ty
         }
 
         _ => Ty::new_error_with_message(

@@ -1006,11 +1006,7 @@ fn place_as_reborrow<'tcx>(
                 // reborrow, even if the check above were to disappear.
                 let inner_ty = place_base.ty(body, tcx).ty;
 
-                if let ty::Ref(..) = inner_ty.kind() {
-                    return Some(place_base);
-                } else {
-                    return None;
-                }
+                if let ty::Ref(..) = inner_ty.kind() { Some(place_base) } else { None }
             }
         }
         _ => None,

@@ -271,10 +271,10 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                             ty: ty_a,
                         }));
 
-                        return false;
+                        false
+                    } else {
+                        true
                     }
-
-                    return true;
                 })
                 .collect::<Vec<_>>();
 

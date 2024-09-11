@@ -1042,7 +1042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn explain_self_literal(
@@ -1182,7 +1182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 maybe_emit_help(def_id, method.ident, args, CallableKind::Method)
             }
-            _ => return,
+            _ => {}
         }
     }
 }

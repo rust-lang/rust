@@ -1904,7 +1904,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     (place_span.0, place_span.0, place_span.1),
                     uninit_mpi,
                 );
-                return; // don't bother finding other problems.
             }
         }
     }

@@ -779,7 +779,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             candidates = self.smart_resolve_partial_mod_path_errors(path, following_seg);
         }
 
-        return (false, candidates);
+        (false, candidates)
     }
 
     fn suggest_trait_and_bounds(

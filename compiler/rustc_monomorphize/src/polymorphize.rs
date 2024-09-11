@@ -106,11 +106,11 @@ fn should_polymorphize<'tcx>(
     match tcx.hir().body_const_context(def_id.expect_local()) {
         Some(ConstContext::ConstFn) | None if !tcx.is_mir_available(def_id) => {
             debug!("no mir available");
-            return false;
+            false
         }
         Some(_) if !tcx.is_ctfe_mir_available(def_id) => {
             debug!("no ctfe mir available");
-            return false;
+            false
         }
         _ => true,
     }

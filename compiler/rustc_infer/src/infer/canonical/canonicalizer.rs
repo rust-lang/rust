@@ -380,7 +380,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             ty::Infer(ty::IntVar(vid)) => {
                 let nt = self.infcx.unwrap().opportunistic_resolve_int_var(vid);
                 if nt != t {
-                    return self.fold_ty(nt);
+                    self.fold_ty(nt)
                 } else {
                     self.canonicalize_ty_var(
                         CanonicalVarInfo { kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Int) },
@@ -391,7 +391,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             ty::Infer(ty::FloatVar(vid)) => {
                 let nt = self.infcx.unwrap().opportunistic_resolve_float_var(vid);
                 if nt != t {
-                    return self.fold_ty(nt);
+                    self.fold_ty(nt)
                 } else {
                     self.canonicalize_ty_var(
                         CanonicalVarInfo { kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Float) },

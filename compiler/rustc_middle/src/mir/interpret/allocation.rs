@@ -576,25 +576,27 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
                 }
                 // Now use this provenance.
                 let ptr = Pointer::new(prov, Size::from_bytes(bits));
-                return Ok(Scalar::from_maybe_pointer(ptr, cx));
+                Ok(Scalar::from_maybe_pointer(ptr, cx))
             } else {
                 // Without OFFSET_IS_ADDR, the only remaining case we can handle is total absence of
                 // provenance.
                 if self.provenance.range_empty(range, cx) {
-                    return Ok(Scalar::from_uint(bits, range.size));
+                    Ok(Scalar::from_uint(bits, range.size))
+                } else {
+                    // Else we have mixed provenance, that doesn't work.
+                    Err(AllocError::ReadPartialPointer(range.start))
                 }
-                // Else we have mixed provenance, that doesn't work.
-                return Err(AllocError::ReadPartialPointer(range.start));
             }
         } else {
             // We are *not* reading a pointer.
             // If we can just ignore provenance or there is none, that's easy.
             if Prov::OFFSET_IS_ADDR || self.provenance.range_empty(range, cx) {
                 // We just strip provenance.
-                return Ok(Scalar::from_uint(bits, range.size));
+                Ok(Scalar::from_uint(bits, range.size))
+            } else {
+                // There is some provenance and we don't have OFFSET_IS_ADDR. This doesn't work.
+                Err(AllocError::ReadPointerAsInt(None))
             }
-            // There is some provenance and we don't have OFFSET_IS_ADDR. This doesn't work.
-            return Err(AllocError::ReadPointerAsInt(None));
         }
     }
 
@@ -641,13 +643,13 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
         self.mark_init(range, false);
         self.provenance.clear(range, cx)?;
-        return Ok(());
+        Ok(())
     }
 
     /// Remove all provenance in the given memory range.
     pub fn clear_provenance(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
         self.provenance.clear(range, cx)?;
-        return Ok(());
+        Ok(())
     }
 
     /// Applies a previously prepared provenance copy.

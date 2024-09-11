@@ -1790,9 +1790,7 @@ where
             }
             Ok(intern(folder.cx(), &new_list))
         }
-        Some((_, Err(err))) => {
-            return Err(err);
-        }
+        Some((_, Err(err))) => Err(err),
         None => Ok(list),
     }
 }

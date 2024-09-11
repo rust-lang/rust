@@ -899,7 +899,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     match kind {
                         hir::ClosureKind::CoroutineClosure(_) => {
                             // FIXME(async_closures): Implement this.
-                            return None;
+                            None
                         }
                         hir::ClosureKind::Closure => Some((def_id, fn_decl, true)),
                         hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(

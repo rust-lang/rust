@@ -231,7 +231,7 @@ impl<'r, 'ast, 'tcx> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r, 't
         // If it's a mod, also make the visitor walk all of its items
         match item.kind {
             // Resolved in rustc_privacy when types are available
-            ast::ItemKind::Impl(..) => return,
+            ast::ItemKind::Impl(..) => {}
 
             // Should be unreachable at this stage
             ast::ItemKind::MacCall(..) | ast::ItemKind::DelegationMac(..) => panic!(
@@ -276,7 +276,7 @@ impl<'r, 'ast, 'tcx> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r, 't
             | ast::ItemKind::MacroDef(..)
             | ast::ItemKind::ForeignMod(..)
             | ast::ItemKind::Fn(..)
-            | ast::ItemKind::Delegation(..) => return,
+            | ast::ItemKind::Delegation(..) => {}
         }
     }
 }

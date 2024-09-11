@@ -511,9 +511,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .is_ok()
                 {
                     self.sugg_let = Some(binding);
-                    return true;
+                    true
+                } else {
+                    false
                 }
-                return false;
             }
         }
 

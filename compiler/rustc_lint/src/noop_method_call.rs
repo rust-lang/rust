@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             match name {
                 // If `type_of(x) == T` and `x.borrow()` is used to get `&T`,
                 // then that should be allowed
-                sym::noop_method_borrow => return,
+                sym::noop_method_borrow => {}
                 sym::noop_method_clone => cx.emit_span_lint(
                     SUSPICIOUS_DOUBLE_REF_OP,
                     span,
@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                     span,
                     SuspiciousDoubleRefDerefDiag { ty: expr_ty },
                 ),
-                _ => return,
+                _ => {}
             }
         }
     }

@@ -470,9 +470,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 diag.subdiagnostic(FnConsiderCasting { casting });
             }
-            _ => {
-                return;
-            }
+            _ => {}
         };
     }
 

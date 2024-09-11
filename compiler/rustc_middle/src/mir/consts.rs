@@ -177,8 +177,8 @@ impl<'tcx> ConstValue<'tcx> {
     /// Can return `true` even if there is no provenance.
     pub fn may_have_provenance(&self, tcx: TyCtxt<'tcx>, size: Size) -> bool {
         match *self {
-            ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
-            ConstValue::Scalar(Scalar::Ptr(..)) => return true,
+            ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => false,
+            ConstValue::Scalar(Scalar::Ptr(..)) => true,
             // It's hard to find out the part of the allocation we point to;
             // just conservatively check everything.
             ConstValue::Slice { data, meta: _ } => !data.inner().provenance().ptrs().is_empty(),

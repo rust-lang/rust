@@ -2553,7 +2553,9 @@ impl<'a> Parser<'a> {
                 err.delay_as_bug();
             }
         }
-        return Ok(false); // Don't continue.
+
+        // Don't continue.
+        Ok(false)
     }
 
     /// Attempt to parse a generic const argument that has not been enclosed in braces.

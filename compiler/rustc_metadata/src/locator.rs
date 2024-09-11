@@ -862,12 +862,10 @@ fn get_metadata_section<'p>(
             "invalid metadata version found: {}",
             filename.display()
         ))),
-        Err(Some(found_version)) => {
-            return Err(MetadataError::VersionMismatch {
-                expected_version: rustc_version(cfg_version),
-                found_version,
-            });
-        }
+        Err(Some(found_version)) => Err(MetadataError::VersionMismatch {
+            expected_version: rustc_version(cfg_version),
+            found_version,
+        }),
     }
 }
 

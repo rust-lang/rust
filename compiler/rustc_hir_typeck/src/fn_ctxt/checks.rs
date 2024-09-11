@@ -697,7 +697,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         assoc.name,
                     ),
                 );
-                return;
             }
         };
         // A "softer" version of the `demand_compatible`, which checks types without persisting them,

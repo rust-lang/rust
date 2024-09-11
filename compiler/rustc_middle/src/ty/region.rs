@@ -431,7 +431,7 @@ impl BoundRegionKind {
 
     pub fn get_id(&self) -> Option<DefId> {
         match *self {
-            BoundRegionKind::BrNamed(id, _) => return Some(id),
+            BoundRegionKind::BrNamed(id, _) => Some(id),
             _ => None,
         }
     }
