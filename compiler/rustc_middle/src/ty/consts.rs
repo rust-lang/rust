@@ -396,7 +396,7 @@ impl<'tcx> Const<'tcx> {
                         Ok((tcx.type_of(unevaluated.def).instantiate(tcx, unevaluated.args), c))
                     }
                     Ok(Err(bad_ty)) => Err(Either::Left(bad_ty)),
-                    Err(err) => Err(Either::Right(err.into())),
+                    Err(err) => Err(Either::Right(err)),
                 }
             }
             ConstKind::Value(ty, val) => Ok((ty, val)),
