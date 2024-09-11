@@ -137,12 +137,12 @@ macro_rules! impl_fn_mut_tuple {
 //impl_fn_mut_tuple!(A B C D);
 //impl_fn_mut_tuple!(A B C D E);
 
-#[lang = "receiver"]
-trait Receiver {}
+#[lang = "legacy_receiver"]
+trait LegacyReceiver {}
 
-impl<T: ?Sized> Receiver for &T {}
+impl<T: ?Sized> LegacyReceiver for &T {}
 
-impl<T: ?Sized> Receiver for &mut T {}
+impl<T: ?Sized> LegacyReceiver for &mut T {}
 
 #[lang = "destruct"]
 #[const_trait]
@@ -454,7 +454,7 @@ impl<T> /* const */ Deref for Option<T> {
     }
 }
 
-impl<P: Receiver> Receiver for Pin<P> {}
+impl<P: LegacyReceiver> LegacyReceiver for Pin<P> {}
 
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {

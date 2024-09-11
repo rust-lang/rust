@@ -52,13 +52,13 @@ note: required by a bound in `test`
 LL | fn test<T: Sync>() {}
    |            ^^^^ required by this bound in `test`
 
-error[E0277]: `std::sync::mpsc::Receiver<i32>` cannot be shared between threads safely
+error[E0277]: `Receiver<i32>` cannot be shared between threads safely
   --> $DIR/not-sync.rs:18:12
    |
 LL |     test::<Receiver<i32>>();
-   |            ^^^^^^^^^^^^^ `std::sync::mpsc::Receiver<i32>` cannot be shared between threads safely
+   |            ^^^^^^^^^^^^^ `Receiver<i32>` cannot be shared between threads safely
    |
-   = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<i32>`
+   = help: the trait `Sync` is not implemented for `Receiver<i32>`
 note: required by a bound in `test`
   --> $DIR/not-sync.rs:5:12
    |

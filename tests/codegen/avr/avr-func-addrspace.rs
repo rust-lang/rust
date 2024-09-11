@@ -18,8 +18,8 @@ pub trait Sized {}
 #[lang = "copy"]
 pub trait Copy {}
 impl<T: ?Sized> Copy for *const T {}
-#[lang = "receiver"]
-pub trait Receiver {}
+#[lang = "legacy_receiver"]
+pub trait LegacyReceiver {}
 #[lang = "tuple_trait"]
 pub trait Tuple {}
 
