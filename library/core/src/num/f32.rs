@@ -652,42 +652,18 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
-        // A previous implementation tried to only use bitmask-based checks,
-        // using f32::to_bits to transmute the float to its bit repr and match on that.
-        // If we only cared about being "technically" correct, that's an entirely legit
-        // implementation.
-        //
-        // Unfortunately, there is hardware out there that does not correctly implement the IEEE
-        // float semantics Rust relies on: x87 uses a too-large mantissa and exponent, and some
-        // hardware flushes subnormals to zero. These are platforms bugs, and Rust will misbehave on
-        // such hardware, but we can at least try to make things seem as sane as possible by being
-        // careful here.
-        // see also https://github.com/rust-lang/rust/issues/114479
-        if self.is_infinite() {
-            // A value may compare unequal to infinity, despite having a "full" exponent mask.
-            FpCategory::Infinite
-        } else if self.is_nan() {
-            // And it may not be NaN, as it can simply be an "overextended" finite value.
-            FpCategory::Nan
-        } else {
-            // However, std can't simply compare to zero to check for zero, either,
-            // as correctness requires avoiding equality tests that may be Subnormal == -0.0
-            // because it may be wrong under "denormals are zero" and "flush to zero" modes.
-            // Most of std's targets don't use those, but they are used for thumbv7neon.
-            // So, this does use bitpattern matching for the rest. On x87, due to the incorrect
-            // float codegen on this hardware, this doesn't actually return a right answer for NaN
-            // because it cannot correctly discern between a floating point NaN, and some normal
-            // floating point numbers truncated from an x87 FPU -- but we took care of NaN above, so
-            // we are fine.
-            // FIXME(jubilee): This probably could at least answer things correctly for Infinity,
-            // like the f64 version does, but I need to run more checks on how things go on x86.
-            // I fear losing mantissa data that would have answered that differently.
-            let b = self.to_bits();
-            match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
-                (0, 0) => FpCategory::Zero,
-                (_, 0) => FpCategory::Subnormal,
-                _ => FpCategory::Normal,
-            }
+        // We used to have complicated logic here that avoids the simple bit-based tests to work
+        // around buggy codegen for x87 targets (see
+        // https://github.com/rust-lang/rust/issues/114479). However, some LLVM versions later, none
+        // of our tests is able to find any difference between the complicated and the naive
+        // version, so now we are back to the naive version.
+        let b = self.to_bits();
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (_, Self::EXP_MASK) => FpCategory::Nan,
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
+            _ => FpCategory::Normal,
         }
     }
 
