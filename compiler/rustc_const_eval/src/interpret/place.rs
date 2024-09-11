@@ -377,13 +377,15 @@ where
     Prov: Provenance,
     M: Machine<'tcx, Provenance = Prov>,
 {
-    pub fn ptr_with_meta_to_mplace(
+    fn ptr_with_meta_to_mplace(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
         meta: MemPlaceMeta<M::Provenance>,
         layout: TyAndLayout<'tcx>,
+        unaligned: bool,
     ) -> MPlaceTy<'tcx, M::Provenance> {
-        let misaligned = self.is_ptr_misaligned(ptr, layout.align.abi);
+        let misaligned =
+            if unaligned { None } else { self.is_ptr_misaligned(ptr, layout.align.abi) };
         MPlaceTy { mplace: MemPlace { ptr, meta, misaligned }, layout }
     }
 
@@ -393,7 +395,16 @@ where
         layout: TyAndLayout<'tcx>,
     ) -> MPlaceTy<'tcx, M::Provenance> {
         assert!(layout.is_sized());
-        self.ptr_with_meta_to_mplace(ptr, MemPlaceMeta::None, layout)
+        self.ptr_with_meta_to_mplace(ptr, MemPlaceMeta::None, layout, /*unaligned*/ false)
+    }
+
+    pub fn ptr_to_mplace_unaligned(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+        layout: TyAndLayout<'tcx>,
+    ) -> MPlaceTy<'tcx, M::Provenance> {
+        assert!(layout.is_sized());
+        self.ptr_with_meta_to_mplace(ptr, MemPlaceMeta::None, layout, /*unaligned*/ true)
     }
 
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
@@ -414,7 +425,7 @@ where
         // `ref_to_mplace` is called on raw pointers even if they don't actually get dereferenced;
         // we hence can't call `size_and_align_of` since that asserts more validity than we want.
         let ptr = ptr.to_pointer(self)?;
-        Ok(self.ptr_with_meta_to_mplace(ptr, meta, layout))
+        Ok(self.ptr_with_meta_to_mplace(ptr, meta, layout, /*unaligned*/ false))
     }
 
     /// Turn a mplace into a (thin or wide) mutable raw pointer, pointing to the same space.
@@ -482,23 +493,6 @@ where
         let a = self.get_ptr_alloc_mut(mplace.ptr(), size)?;
         misalign_err?;
         Ok(a)
-    }
-
-    /// Converts a repr(simd) place into a place where `place_index` accesses the SIMD elements.
-    /// Also returns the number of elements.
-    pub fn mplace_to_simd(
-        &self,
-        mplace: &MPlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, u64)> {
-        // Basically we want to transmute this place into an array following simd_size_and_type.
-        let (len, e_ty) = mplace.layout.ty.simd_size_and_type(*self.tcx);
-        // Some SIMD types have padding, so `len` many `e_ty` does not cover the entire place.
-        // Therefore we cannot transmute, and instead we project at offset 0, which side-steps
-        // the size check.
-        let array_layout = self.layout_of(Ty::new_array(self.tcx.tcx, e_ty, len))?;
-        assert!(array_layout.size <= mplace.layout.size);
-        let mplace = mplace.offset(Size::ZERO, array_layout, self)?;
-        Ok((mplace, len))
     }
 
     /// Turn a local in the current frame into a place.
@@ -986,7 +980,7 @@ where
             span_bug!(self.cur_span(), "cannot allocate space for `extern` type, size is not known")
         };
         let ptr = self.allocate_ptr(size, align, kind)?;
-        Ok(self.ptr_with_meta_to_mplace(ptr.into(), meta, layout))
+        Ok(self.ptr_with_meta_to_mplace(ptr.into(), meta, layout, /*unaligned*/ false))
     }
 
     pub fn allocate(
@@ -1021,7 +1015,12 @@ where
         };
         let meta = Scalar::from_target_usize(u64::try_from(str.len()).unwrap(), self);
         let layout = self.layout_of(self.tcx.types.str_).unwrap();
-        Ok(self.ptr_with_meta_to_mplace(ptr.into(), MemPlaceMeta::Meta(meta), layout))
+        Ok(self.ptr_with_meta_to_mplace(
+            ptr.into(),
+            MemPlaceMeta::Meta(meta),
+            layout,
+            /*unaligned*/ false,
+        ))
     }
 
     pub fn raw_const_to_mplace(

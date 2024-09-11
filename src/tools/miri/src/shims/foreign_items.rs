@@ -903,8 +903,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             name if name.starts_with("llvm.ctpop.v") => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (op, op_len) = this.project_to_simd(op)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, op_len);
 

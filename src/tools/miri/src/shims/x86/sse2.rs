@@ -42,9 +42,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
                 assert_eq!(dest_len.strict_mul(2), left_len);
@@ -81,9 +81,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 // left and right are u8x16, dest is u64x2
                 assert_eq!(left_len, right_len);
@@ -270,8 +270,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
 
                 assert_eq!(left_len, right_len);
 
@@ -297,7 +297,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Converts the first component of `op` from f64 to i32/i64.
             "cvtsd2si" | "cvttsd2si" | "cvtsd2si64" | "cvttsd2si64" => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let (op, _) = this.operand_to_simd(op)?;
+                let (op, _) = this.project_to_simd(op)?;
 
                 let op = this.read_immediate(&this.project_index(&op, 0)?)?;
 
@@ -325,9 +325,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, _) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, _) = this.project_to_simd(right)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, left_len);
 
