@@ -61,9 +61,9 @@ pub enum CoroutineInteriorOrUpvar {
 // This type provides a uniform interface to retrieve data on coroutines, whether it originated from
 // the local crate being compiled or from a foreign crate.
 #[derive(Debug)]
-struct CoroutineData<'tcx, 'a>(&'a TypeckResults<'tcx>);
+struct CoroutineData<'a, 'tcx>(&'a TypeckResults<'tcx>);
 
-impl<'tcx, 'a> CoroutineData<'tcx, 'a> {
+impl<'a, 'tcx> CoroutineData<'a, 'tcx> {
     /// Try to get information about variables captured by the coroutine that matches a type we are
     /// looking for with `ty_matches` function. We uses it to find upvar which causes a failure to
     /// meet an obligation

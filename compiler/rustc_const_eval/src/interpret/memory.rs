@@ -1114,7 +1114,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
 }
 
 /// Reading and writing.
-impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes>
+impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>
     AllocRefMut<'a, 'tcx, Prov, Extra, Bytes>
 {
     pub fn as_ref<'b>(&'b self) -> AllocRef<'b, 'tcx, Prov, Extra, Bytes> {
@@ -1162,7 +1162,7 @@ impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes>
     }
 }
 
-impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Prov, Extra, Bytes> {
+impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Prov, Extra, Bytes> {
     /// `range` is relative to this allocation reference, not the base of the allocation.
     pub fn read_scalar(
         &self,

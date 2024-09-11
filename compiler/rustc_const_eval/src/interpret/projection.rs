@@ -101,7 +101,7 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
 }
 
 /// A type representing iteration over the elements of an array.
-pub struct ArrayIterator<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> {
+pub struct ArrayIterator<'a, 'tcx, Prov: Provenance, P: Projectable<'tcx, Prov>> {
     base: &'a P,
     range: Range<u64>,
     stride: Size,
@@ -109,7 +109,7 @@ pub struct ArrayIterator<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>>
     _phantom: PhantomData<Prov>, // otherwise it says `Prov` is never used...
 }
 
-impl<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'tcx, 'a, Prov, P> {
+impl<'a, 'tcx, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'a, 'tcx, Prov, P> {
     /// Should be the same `ecx` on each call, and match the one used to create the iterator.
     pub fn next<M: Machine<'tcx, Provenance = Prov>>(
         &mut self,
@@ -273,7 +273,7 @@ where
     pub fn project_array_fields<'a, P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &'a P,
-    ) -> InterpResult<'tcx, ArrayIterator<'tcx, 'a, M::Provenance, P>> {
+    ) -> InterpResult<'tcx, ArrayIterator<'a, 'tcx, M::Provenance, P>> {
         let abi::FieldsShape::Array { stride, .. } = base.layout().fields else {
             span_bug!(self.cur_span(), "project_array_fields: expected an array layout");
         };

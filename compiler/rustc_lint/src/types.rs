@@ -1713,13 +1713,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         hir_ty: &hir::Ty<'tcx>,
         ty: Ty<'tcx>,
     ) -> Vec<(Ty<'tcx>, Span)> {
-        struct FnPtrFinder<'parent, 'a, 'tcx> {
-            visitor: &'parent ImproperCTypesVisitor<'a, 'tcx>,
+        struct FnPtrFinder<'a, 'b, 'tcx> {
+            visitor: &'a ImproperCTypesVisitor<'b, 'tcx>,
             spans: Vec<Span>,
             tys: Vec<Ty<'tcx>>,
         }
 
-        impl<'parent, 'a, 'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'parent, 'a, 'tcx> {
+        impl<'a, 'b, 'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'a, 'b, 'tcx> {
             fn visit_ty(&mut self, ty: &'_ hir::Ty<'_>) {
                 debug!(?ty);
                 if let hir::TyKind::BareFn(hir::BareFnTy { abi, .. }) = ty.kind
@@ -1732,7 +1732,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        impl<'vis, 'a, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'vis, 'a, 'tcx> {
+        impl<'a, 'b, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'a, 'b, 'tcx> {
             type Result = ControlFlow<Ty<'tcx>>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
@@ -1746,7 +1746,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        let mut visitor = FnPtrFinder { visitor: &*self, spans: Vec::new(), tys: Vec::new() };
+        let mut visitor = FnPtrFinder { visitor: self, spans: Vec::new(), tys: Vec::new() };
         ty.visit_with(&mut visitor);
         hir::intravisit::Visitor::visit_ty(&mut visitor, hir_ty);
 

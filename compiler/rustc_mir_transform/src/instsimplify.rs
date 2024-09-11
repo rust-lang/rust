@@ -63,13 +63,13 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
     }
 }
 
-struct InstSimplifyContext<'tcx, 'a> {
+struct InstSimplifyContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
     param_env: ParamEnv<'tcx>,
 }
 
-impl<'tcx> InstSimplifyContext<'tcx, '_> {
+impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     fn should_simplify(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
         self.should_simplify_custom(source_info, "Rvalue", rvalue)
     }

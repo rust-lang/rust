@@ -847,7 +847,7 @@ enum SimplifiedParam {
 ///
 /// This function also works recursively.
 #[instrument(level = "trace", skip(tcx, res, rgen, cache))]
-fn simplify_fn_type<'tcx, 'a>(
+fn simplify_fn_type<'a, 'tcx>(
     self_: Option<&'a Type>,
     generics: &Generics,
     arg: &'a Type,
@@ -1192,7 +1192,7 @@ fn simplify_fn_type<'tcx, 'a>(
     }
 }
 
-fn simplify_fn_constraint<'tcx, 'a>(
+fn simplify_fn_constraint<'a, 'tcx>(
     self_: Option<&'a Type>,
     generics: &Generics,
     constraint: &'a clean::AssocItemConstraint,
