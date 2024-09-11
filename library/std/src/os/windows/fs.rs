@@ -424,7 +424,7 @@ pub trait MetadataExt {
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_write_time(&self) -> u64;
 
-    /// Returns the value of the `nFileSize{High,Low}` fields of this
+    /// Returns the value of the `nFileSize` fields of this
     /// metadata.
     ///
     /// The returned value does not have meaning for directories.
@@ -463,7 +463,7 @@ pub trait MetadataExt {
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn number_of_links(&self) -> Option<u32>;
 
-    /// Returns the value of the `nFileIndex{Low,High}` fields of this
+    /// Returns the value of the `nFileIndex` fields of this
     /// metadata.
     ///
     /// This will return `None` if the `Metadata` instance was created from a
