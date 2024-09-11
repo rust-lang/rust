@@ -133,7 +133,7 @@ fn extract_iterator_next_call<'tcx>(
     {
         Some(recv)
     } else {
-        return None;
+        None
     }
 }
 

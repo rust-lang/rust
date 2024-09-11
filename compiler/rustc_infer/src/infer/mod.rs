@@ -1481,7 +1481,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // This hoists the borrow/release out of the loop body.
         let inner = self.inner.try_borrow();
 
-        return move |infer_var: TyOrConstInferVar| match (infer_var, &inner) {
+        move |infer_var: TyOrConstInferVar| match (infer_var, &inner) {
             (TyOrConstInferVar::Ty(ty_var), Ok(inner)) => {
                 use self::type_variable::TypeVariableValue;
 
@@ -1491,7 +1491,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
             }
             _ => false,
-        };
+        }
     }
 
     /// `ty_or_const_infer_var_changed` is equivalent to one of these two:

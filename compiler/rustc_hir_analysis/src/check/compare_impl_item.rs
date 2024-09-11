@@ -1038,7 +1038,7 @@ fn report_trait_method_mismatch<'tcx>(
         false,
     );
 
-    return diag.emit();
+    diag.emit()
 }
 
 fn check_region_bounds_on_impl_item<'tcx>(

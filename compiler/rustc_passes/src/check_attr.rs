@@ -1905,10 +1905,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             || (int_reprs == 1
                 && is_c
                 && item.is_some_and(|item| {
-                    if let ItemLike::Item(item) = item {
-                        return is_c_like_enum(item);
-                    }
-                    return false;
+                    if let ItemLike::Item(item) = item { is_c_like_enum(item) } else { false }
                 }))
         {
             self.tcx.emit_node_span_lint(
