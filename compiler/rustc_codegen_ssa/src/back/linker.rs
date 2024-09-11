@@ -1484,7 +1484,6 @@ impl<'a> Linker for L4Bender<'a> {
     fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[String]) {
         // ToDo, not implemented, copy from GCC
         self.sess.dcx().emit_warn(errors::L4BenderExportingSymbolsUnimplemented);
-        return;
     }
 
     fn subsystem(&mut self, subsystem: &str) {

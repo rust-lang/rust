@@ -605,7 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Abi::Rust,
         ));
 
-        return Some(ExpectedSig { cause_span, sig });
+        Some(ExpectedSig { cause_span, sig })
     }
 
     fn sig_of_closure(

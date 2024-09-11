@@ -438,7 +438,7 @@ fn link_rlib<'a>(
         ab.add_file(&lib)
     }
 
-    return Ok(ab);
+    Ok(ab)
 }
 
 /// Extract all symbols defined in raw-dylib libraries, collated by library name.
@@ -1319,7 +1319,7 @@ fn link_sanitizer_runtime(
     fn find_sanitizer_runtime(sess: &Session, filename: &str) -> PathBuf {
         let path = sess.target_tlib_path.dir.join(filename);
         if path.exists() {
-            return sess.target_tlib_path.dir.clone();
+            sess.target_tlib_path.dir.clone()
         } else {
             let default_sysroot =
                 filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
@@ -1327,7 +1327,7 @@ fn link_sanitizer_runtime(
                 &default_sysroot,
                 sess.opts.target_triple.triple(),
             );
-            return default_tlib;
+            default_tlib
         }
     }
 
