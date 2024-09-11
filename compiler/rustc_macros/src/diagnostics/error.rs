@@ -56,7 +56,7 @@ fn path_to_string(path: &syn::Path) -> String {
 /// Returns an error diagnostic on span `span` with msg `msg`.
 #[must_use]
 pub(crate) fn span_err<T: Into<String>>(span: impl MultiSpan, msg: T) -> Diagnostic {
-    Diagnostic::spanned(span, Level::Error, msg)
+    Diagnostic::spanned(span, Level::Error, format!("derive(Diagnostic): {}", msg.into()))
 }
 
 /// Emit a diagnostic on span `$span` with msg `$msg` (optionally performing additional decoration
