@@ -441,16 +441,16 @@ fn main() {
   //^^^^^^^^^^^^^^^^^ error: cannot cast thin pointer `*const i32` to fat pointer `*const [i32]`
 
     let t: *mut (dyn Trait + 'static) = 0 as *mut _;
-                                      //^^^^^^^^^^^ error: cannot cast `i32` to a fat pointer `*mut _`
+                                      //^^^^^^^^^^^ error: cannot cast `usize` to a fat pointer `*mut _`
     let mut fail: *const str = 0 as *const str;
-                             //^^^^^^^^^^^^^^^ error: cannot cast `i32` to a fat pointer `*const str`
+                             //^^^^^^^^^^^^^^^ error: cannot cast `usize` to a fat pointer `*const str`
     let mut fail2: *const str = 0isize as *const str;
                               //^^^^^^^^^^^^^^^^^^^^ error: cannot cast `isize` to a fat pointer `*const str`
 }
 
 fn foo<T: ?Sized>() {
     let s = 0 as *const T;
-          //^^^^^^^^^^^^^ error: cannot cast `i32` to a fat pointer `*const T`
+          //^^^^^^^^^^^^^ error: cannot cast `usize` to a fat pointer `*const T`
 }
 "#,
             &["E0308", "unused_variables"],
@@ -1098,6 +1098,17 @@ where
     let _ = &S as &dyn Trait;
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn cast_literal_to_char() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    0 as char;
+}
+            "#,
         );
     }
 }
