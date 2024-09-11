@@ -32,13 +32,17 @@
 //!
 //! Once you are familiar with the contents of the standard library you may
 //! begin to find the verbosity of the prose distracting. At this stage in your
-//! development you may want to press the `[-]` button near the top of the
-//! page to collapse it into a more skimmable view.
+//! development you may want to press the <code>
+//! <svg width="0.75rem" height="0.75rem" viewBox="0 0 12 12"
+//! stroke="currentColor" fill="none">
+//! <path d="M2,2l4,4l4,-4M2,6l4,4l4,-4"/></svg> Summary</code> button near the
+//! top of the page to collapse it into a more skimmable view.
 //!
-//! While you are looking at that `[-]` button also notice the `source`
-//! link. Rust's API documentation comes with the source code and you are
-//! encouraged to read it. The standard library source is generally high
-//! quality and a peek behind the curtains is often enlightening.
+//! While you are looking at the top of the page, also notice the
+//! <code>source</code> link. Rust's API documentation comes with the source
+//! code and you are encouraged to read it. The standard library source is
+//! generally high quality and a peek behind the curtains is
+//! often enlightening.
 //!
 //! # What is in the standard library documentation?
 //!
