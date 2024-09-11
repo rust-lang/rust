@@ -1,6 +1,6 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, searchState, updateLocalStorage */
-/* global onEach, onEachLazy, removeClass, getVar */
+/* global onEachLazy, removeClass, getVar */
 
 "use strict";
 
@@ -1826,14 +1826,11 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         return;
     }
     but.onclick = () => {
-        const parent = but.parentElement;
         const path = [];
-
-        onEach(parent.childNodes, child => {
-            if (child.tagName === "A") {
-                path.push(child.textContent);
-            }
+        onEachLazy(document.querySelectorAll(".rustdoc-breadcrumbs a"), a => {
+            path.push(a.textContent);
         });
+        path.push(document.querySelector("title").textContent.split(" ")[0]);
 
         copyContentToClipboard(path.join("::"));
         copyButtonAnimation(but);
