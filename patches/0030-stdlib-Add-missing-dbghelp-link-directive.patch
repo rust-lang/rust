@@ -1,0 +1,24 @@
+From 95de09ace678555e65e1d92a3c7f5b5c46053e13 Mon Sep 17 00:00:00 2001
+From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
+Date: Wed, 11 Sep 2024 17:37:06 +0000
+Subject: [PATCH] Add missing dbghelp link directive
+
+---
+ library/windows_targets/src/lib.rs | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/library/windows_targets/src/lib.rs b/library/windows_targets/src/lib.rs
+index 1965b6c..fa45a1e 100644
+--- a/library/windows_targets/src/lib.rs
++++ b/library/windows_targets/src/lib.rs
+@@ -35,6 +35,7 @@ pub macro link {
+ 
+ #[cfg(not(feature = "windows_raw_dylib"))]
+ #[link(name = "advapi32")]
++#[link(name = "dbghelp")]
+ #[link(name = "ntdll")]
+ #[link(name = "userenv")]
+ #[link(name = "ws2_32")]
+-- 
+2.34.1
+
