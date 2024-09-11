@@ -39,7 +39,7 @@ use serde::{Deserialize, Serialize, Serializer};
 
 use super::{collect_paths_for_type, ensure_trailing_slash, Context, RenderMode};
 use crate::clean::{Crate, Item, ItemId, ItemKind};
-use crate::config::{EmitType, RenderOptions};
+use crate::config::{EmitType, PathToParts, RenderOptions, ShouldMerge};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -50,12 +50,11 @@ use crate::html::layout;
 use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
 use crate::html::render::search_index::{build_index, SerializedSearchIndex};
 use crate::html::render::sorted_template::{self, FileFormat, SortedTemplate};
-use crate::html::render::{AssocItemLink, ImplRenderingParameters};
+use crate::html::render::{AssocItemLink, ImplRenderingParameters, StylePath};
 use crate::html::static_files::{self, suffix_path};
 use crate::visit::DocVisitor;
 use crate::{try_err, try_none};
 
-/// Write cross-crate information files, static files, invocation-specific files, etc. to disk
 pub(crate) fn write_shared(
     cx: &mut Context<'_>,
     krate: &Crate,
@@ -70,13 +69,14 @@ pub(crate) fn write_shared(
 
     let SerializedSearchIndex { index, desc } =
         build_index(&krate, &mut Rc::get_mut(&mut cx.shared).unwrap().cache, tcx);
-    write_search_desc(cx, &krate, &desc)?; // does not need to be merged; written unconditionally
+    write_search_desc(cx, &krate, &desc)?; // does not need to be merged
 
     let crate_name = krate.name(cx.tcx());
     let crate_name = crate_name.as_str(); // rand
     let crate_name_json = OrderedJson::serialize(crate_name).unwrap(); // "rand"
     let external_crates = hack_get_external_crate_names(&cx.dst, &cx.shared.resource_suffix)?;
     let info = CrateInfo {
+        version: CrateInfoVersion::V1,
         src_files_js: SourcesPart::get(cx, &crate_name_json)?,
         search_index_js: SearchIndexPart::get(index, &cx.shared.resource_suffix)?,
         all_crates: AllCratesPart::get(crate_name_json.clone(), &cx.shared.resource_suffix)?,
@@ -85,47 +85,103 @@ pub(crate) fn write_shared(
         type_impl: TypeAliasPart::get(cx, krate, &crate_name_json)?,
     };
 
-    let crates = vec![info]; // we have info from just one crate. rest will found in out dir
-
-    write_static_files(cx, &opt)?;
-    let dst = &cx.dst;
-    if opt.emit.is_empty() || opt.emit.contains(&EmitType::InvocationSpecific) {
-        if cx.include_sources {
-            write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, &crates)?;
-        }
-        write_rendered_cci::<SearchIndexPart, _>(SearchIndexPart::blank, dst, &crates)?;
-        write_rendered_cci::<AllCratesPart, _>(AllCratesPart::blank, dst, &crates)?;
+    if let Some(parts_out_dir) = &opt.parts_out_dir {
+        create_parents(&parts_out_dir.0)?;
+        try_err!(
+            fs::write(&parts_out_dir.0, serde_json::to_string(&info).unwrap()),
+            &parts_out_dir.0
+        );
     }
-    write_rendered_cci::<TraitAliasPart, _>(TraitAliasPart::blank, dst, &crates)?;
-    write_rendered_cci::<TypeAliasPart, _>(TypeAliasPart::blank, dst, &crates)?;
-    match &opt.index_page {
-        Some(index_page) if opt.enable_index_page => {
-            let mut md_opts = opt.clone();
-            md_opts.output = cx.dst.clone();
-            md_opts.external_html = cx.shared.layout.external_html.clone();
-            try_err!(
-                crate::markdown::render(&index_page, md_opts, cx.shared.edition()),
-                &index_page
-            );
+
+    let mut crates = CrateInfo::read_many(&opt.include_parts_dir)?;
+    crates.push(info);
+
+    if opt.should_merge.write_rendered_cci {
+        write_not_crate_specific(
+            &crates,
+            &cx.dst,
+            opt,
+            &cx.shared.style_files,
+            cx.shared.layout.css_file_extension.as_deref(),
+            &cx.shared.resource_suffix,
+            cx.include_sources,
+        )?;
+        match &opt.index_page {
+            Some(index_page) if opt.enable_index_page => {
+                let mut md_opts = opt.clone();
+                md_opts.output = cx.dst.clone();
+                md_opts.external_html = cx.shared.layout.external_html.clone();
+                try_err!(
+                    crate::markdown::render(&index_page, md_opts, cx.shared.edition()),
+                    &index_page
+                );
+            }
+            None if opt.enable_index_page => {
+                write_rendered_cci::<CratesIndexPart, _>(
+                    || CratesIndexPart::blank(cx),
+                    &cx.dst,
+                    &crates,
+                    &opt.should_merge,
+                )?;
+            }
+            _ => {} // they don't want an index page
         }
-        None if opt.enable_index_page => {
-            write_rendered_cci::<CratesIndexPart, _>(|| CratesIndexPart::blank(cx), dst, &crates)?;
-        }
-        _ => {} // they don't want an index page
     }
 
     Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
     Ok(())
 }
 
-/// Writes the static files, the style files, and the css extensions
-fn write_static_files(cx: &mut Context<'_>, options: &RenderOptions) -> Result<(), Error> {
-    let static_dir = cx.dst.join("static.files");
+/// Writes files that are written directly to the `--out-dir`, without the prefix from the current
+/// crate. These are the rendered cross-crate files that encode info from multiple crates (e.g.
+/// search index), and the static files.
+pub(crate) fn write_not_crate_specific(
+    crates: &[CrateInfo],
+    dst: &Path,
+    opt: &RenderOptions,
+    style_files: &[StylePath],
+    css_file_extension: Option<&Path>,
+    resource_suffix: &str,
+    include_sources: bool,
+) -> Result<(), Error> {
+    write_rendered_cross_crate_info(crates, dst, opt, include_sources)?;
+    write_static_files(dst, opt, style_files, css_file_extension, resource_suffix)?;
+    Ok(())
+}
 
-    cx.shared.fs.create_dir_all(&static_dir).map_err(|e| PathError::new(e, "static.files"))?;
+fn write_rendered_cross_crate_info(
+    crates: &[CrateInfo],
+    dst: &Path,
+    opt: &RenderOptions,
+    include_sources: bool,
+) -> Result<(), Error> {
+    let m = &opt.should_merge;
+    if opt.emit.is_empty() || opt.emit.contains(&EmitType::InvocationSpecific) {
+        if include_sources {
+            write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, &crates, m)?;
+        }
+        write_rendered_cci::<SearchIndexPart, _>(SearchIndexPart::blank, dst, &crates, m)?;
+        write_rendered_cci::<AllCratesPart, _>(AllCratesPart::blank, dst, &crates, m)?;
+    }
+    write_rendered_cci::<TraitAliasPart, _>(TraitAliasPart::blank, dst, &crates, m)?;
+    write_rendered_cci::<TypeAliasPart, _>(TypeAliasPart::blank, dst, &crates, m)?;
+    Ok(())
+}
+
+/// Writes the static files, the style files, and the css extensions.
+/// Have to be careful about these, because they write to the root out dir.
+fn write_static_files(
+    dst: &Path,
+    opt: &RenderOptions,
+    style_files: &[StylePath],
+    css_file_extension: Option<&Path>,
+    resource_suffix: &str,
+) -> Result<(), Error> {
+    let static_dir = dst.join("static.files");
+    try_err!(fs::create_dir_all(&static_dir), &static_dir);
 
     // Handle added third-party themes
-    for entry in &cx.shared.style_files {
+    for entry in style_files {
         let theme = entry.basename()?;
         let extension =
             try_none!(try_none!(entry.path.extension(), &entry.path).to_str(), &entry.path);
@@ -136,22 +192,24 @@ fn write_static_files(cx: &mut Context<'_>, options: &RenderOptions) -> Result<(
         }
 
         let bytes = try_err!(fs::read(&entry.path), &entry.path);
-        let filename = format!("{theme}{suffix}.{extension}", suffix = cx.shared.resource_suffix);
-        cx.shared.fs.write(cx.dst.join(filename), bytes)?;
+        let filename = format!("{theme}{resource_suffix}.{extension}");
+        let dst_filename = dst.join(filename);
+        try_err!(fs::write(&dst_filename, bytes), &dst_filename);
     }
 
     // When the user adds their own CSS files with --extend-css, we write that as an
     // invocation-specific file (that is, with a resource suffix).
-    if let Some(ref css) = cx.shared.layout.css_file_extension {
+    if let Some(css) = css_file_extension {
         let buffer = try_err!(fs::read_to_string(css), css);
-        let path = static_files::suffix_path("theme.css", &cx.shared.resource_suffix);
-        cx.shared.fs.write(cx.dst.join(path), buffer)?;
+        let path = static_files::suffix_path("theme.css", resource_suffix);
+        let dst_path = dst.join(path);
+        try_err!(fs::write(&dst_path, buffer), &dst_path);
     }
 
-    if options.emit.is_empty() || options.emit.contains(&EmitType::Toolchain) {
+    if opt.emit.is_empty() || opt.emit.contains(&EmitType::Toolchain) {
         static_files::for_each(|f: &static_files::StaticFile| {
             let filename = static_dir.join(f.output_filename());
-            cx.shared.fs.write(filename, f.minified())
+            fs::write(&filename, f.minified()).map_err(|e| PathError::new(e, &filename))
         })?;
     }
 
@@ -186,13 +244,41 @@ fn write_search_desc(
 
 /// Contains pre-rendered contents to insert into the CCI template
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct CrateInfo {
+pub(crate) struct CrateInfo {
+    version: CrateInfoVersion,
     src_files_js: PartsAndLocations<SourcesPart>,
     search_index_js: PartsAndLocations<SearchIndexPart>,
     all_crates: PartsAndLocations<AllCratesPart>,
     crates_index: PartsAndLocations<CratesIndexPart>,
     trait_impl: PartsAndLocations<TraitAliasPart>,
     type_impl: PartsAndLocations<TypeAliasPart>,
+}
+
+impl CrateInfo {
+    /// Read all of the crate info from its location on the filesystem
+    pub(crate) fn read_many(parts_paths: &[PathToParts]) -> Result<Vec<Self>, Error> {
+        parts_paths
+            .iter()
+            .map(|parts_path| {
+                let path = &parts_path.0;
+                let parts = try_err!(fs::read(&path), &path);
+                let parts: CrateInfo = try_err!(serde_json::from_slice(&parts), &path);
+                Ok::<_, Error>(parts)
+            })
+            .collect::<Result<Vec<CrateInfo>, Error>>()
+    }
+}
+
+/// Version for the format of the crate-info file.
+///
+/// This enum should only ever have one variant, representing the current version.
+/// Gives pretty good error message about expecting the current version on deserialize.
+///
+/// Must be incremented (V2, V3, etc.) upon any changes to the search index or CrateInfo,
+/// to provide better diagnostics about including an invalid file.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+enum CrateInfoVersion {
+    V1,
 }
 
 /// Paths (relative to the doc root) and their pre-merge contents
@@ -900,10 +986,14 @@ fn create_parents(path: &Path) -> Result<(), Error> {
 fn read_template_or_blank<F, T: FileFormat>(
     mut make_blank: F,
     path: &Path,
+    should_merge: &ShouldMerge,
 ) -> Result<SortedTemplate<T>, Error>
 where
     F: FnMut() -> SortedTemplate<T>,
 {
+    if !should_merge.read_rendered_cci {
+        return Ok(make_blank());
+    }
     match fs::read_to_string(&path) {
         Ok(template) => Ok(try_err!(SortedTemplate::from_str(&template), &path)),
         Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(make_blank()),
@@ -916,6 +1006,7 @@ fn write_rendered_cci<T: CciPart, F>(
     mut make_blank: F,
     dst: &Path,
     crates_info: &[CrateInfo],
+    should_merge: &ShouldMerge,
 ) -> Result<(), Error>
 where
     F: FnMut() -> SortedTemplate<T::FileFormat>,
@@ -924,7 +1015,8 @@ where
     for (path, parts) in get_path_parts::<T>(dst, crates_info) {
         create_parents(&path)?;
         // read previous rendered cci from storage, append to them
-        let mut template = read_template_or_blank::<_, T::FileFormat>(&mut make_blank, &path)?;
+        let mut template =
+            read_template_or_blank::<_, T::FileFormat>(&mut make_blank, &path, should_merge)?;
         for part in parts {
             template.append(part);
         }

@@ -28,8 +28,11 @@ trait Sized {}
 #[lang = "copy"]
 trait Copy {}
 
+// Do we really need to use no_core for this?!?
+impl<T: Copy, const N: usize> Copy for [T; N] {}
+
 #[repr(simd)]
-pub struct f32x4(f32, f32, f32, f32);
+pub struct f32x4([f32; 4]);
 
 impl Copy for i32 {}
 impl Copy for f32 {}

@@ -1091,29 +1091,21 @@ impl<'tcx> Ty<'tcx> {
     }
 
     pub fn simd_size_and_type(self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
-        match self.kind() {
-            Adt(def, args) => {
-                assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
-                let variant = def.non_enum_variant();
-                let f0_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
-
-                match f0_ty.kind() {
-                    // If the first field is an array, we assume it is the only field and its
-                    // elements are the SIMD components.
-                    Array(f0_elem_ty, f0_len) => {
-                        // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
-                        // The way we evaluate the `N` in `[T; N]` here only works since we use
-                        // `simd_size_and_type` post-monomorphization. It will probably start to ICE
-                        // if we use it in generic code. See the `simd-array-trait` ui test.
-                        (f0_len.eval_target_usize(tcx, ParamEnv::empty()), *f0_elem_ty)
-                    }
-                    // Otherwise, the fields of this Adt are the SIMD components (and we assume they
-                    // all have the same type).
-                    _ => (variant.fields.len() as u64, f0_ty),
-                }
-            }
-            _ => bug!("`simd_size_and_type` called on invalid type"),
-        }
+        let Adt(def, args) = self.kind() else {
+            bug!("`simd_size_and_type` called on invalid type")
+        };
+        assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
+        let variant = def.non_enum_variant();
+        assert_eq!(variant.fields.len(), 1);
+        let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
+        let Array(f0_elem_ty, f0_len) = field_ty.kind() else {
+            bug!("Simd type has non-array field type {field_ty:?}")
+        };
+        // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
+        // The way we evaluate the `N` in `[T; N]` here only works since we use
+        // `simd_size_and_type` post-monomorphization. It will probably start to ICE
+        // if we use it in generic code. See the `simd-array-trait` ui test.
+        (f0_len.eval_target_usize(tcx, ParamEnv::empty()), *f0_elem_ty)
     }
 
     #[inline]

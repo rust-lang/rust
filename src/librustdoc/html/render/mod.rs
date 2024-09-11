@@ -61,6 +61,7 @@ use tracing::{debug, info};
 
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
+pub(crate) use self::write_shared::*;
 use crate::clean::{self, ItemId, RenderedLink};
 use crate::error::Error;
 use crate::formats::cache::Cache;

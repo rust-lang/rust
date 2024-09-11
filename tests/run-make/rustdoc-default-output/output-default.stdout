@@ -172,6 +172,23 @@ Options:
         --scrape-tests  Include test code when scraping examples
         --with-examples path to function call information (for displaying examples in the documentation)
                         
+        --merge none|shared|finalize
+                        Controls how rustdoc handles files from previously
+                        documented crates in the doc root
+                        none = Do not write cross-crate information to the
+                        --out-dir
+                        shared = Append current crate's info to files found in
+                        the --out-dir
+                        finalize = Write current crate's info and
+                        --include-parts-dir info to the --out-dir, overwriting
+                        conflicting files
+        --parts-out-dir path/to/doc.parts/<crate-name>
+                        Writes trait implementations and other info for the
+                        current crate to provided path. Only use with
+                        --merge=none
+        --include-parts-dir path/to/doc.parts/<crate-name>
+                        Includes trait implementations and other crate info
+                        from provided path. Only use with --merge=finalize
         --disable-minification 
                         removed
         --plugin-path DIR

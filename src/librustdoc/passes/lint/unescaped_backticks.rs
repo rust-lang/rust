@@ -4,6 +4,7 @@ use std::ops::Range;
 
 use pulldown_cmark::{BrokenLink, Event, Parser};
 use rustc_errors::Diag;
+use rustc_hir::HirId;
 use rustc_lint_defs::Applicability;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 
@@ -11,17 +12,8 @@ use crate::clean::Item;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
+pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
     let tcx = cx.tcx;
-    let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
-        // If non-local, no need to check anything.
-        return;
-    };
-
-    let dox = item.doc_value();
-    if dox.is_empty() {
-        return;
-    }
 
     let link_names = item.link_names(&cx.cache);
     let mut replacer = |broken_link: BrokenLink<'_>| {

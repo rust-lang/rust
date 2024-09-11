@@ -20,7 +20,7 @@ use rustc_interface::interface;
 use rustc_lint::{late_lint_mod, MissingDoc};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
-use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
+use rustc_session::config::{self, CrateType, ErrorOutputType, Input, ResolveDocLinks};
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{lint, Session};
 use rustc_span::symbol::sym;
@@ -177,8 +177,8 @@ pub(crate) fn new_dcx(
 
 /// Parse, resolve, and typecheck the given crate.
 pub(crate) fn create_config(
+    input: Input,
     RustdocOptions {
-        input,
         crate_name,
         proc_macro_crate,
         error_format,

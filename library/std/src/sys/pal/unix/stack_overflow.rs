@@ -32,7 +32,8 @@ impl Drop for Handler {
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "solaris"
+    target_os = "solaris",
+    target_os = "illumos",
 ))]
 mod imp {
     #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
@@ -280,7 +281,7 @@ mod imp {
         libc::SIGSTKSZ
     }
 
-    #[cfg(target_os = "solaris")]
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut current_stack: libc::stack_t = crate::mem::zeroed();
         assert_eq!(libc::stack_getbounds(&mut current_stack), 0);
@@ -486,7 +487,12 @@ mod imp {
         Some(guardaddr..guardaddr + page_size)
     }
 
-    #[cfg(any(target_os = "macos", target_os = "openbsd", target_os = "solaris"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+    ))]
     // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {
         let stackptr = get_stack_start()?;
@@ -569,7 +575,8 @@ mod imp {
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "solaris"
+    target_os = "solaris",
+    target_os = "illumos",
 )))]
 mod imp {
     pub unsafe fn init() {}

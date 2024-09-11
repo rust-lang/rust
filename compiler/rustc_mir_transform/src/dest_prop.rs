@@ -242,7 +242,7 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
             }
             round_count += 1;
 
-            apply_merges(body, tcx, &merges, &merged_locals);
+            apply_merges(body, tcx, merges, merged_locals);
         }
 
         trace!(round_count);
@@ -281,20 +281,20 @@ struct Candidates {
 fn apply_merges<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    merges: &FxIndexMap<Local, Local>,
-    merged_locals: &BitSet<Local>,
+    merges: FxIndexMap<Local, Local>,
+    merged_locals: BitSet<Local>,
 ) {
     let mut merger = Merger { tcx, merges, merged_locals };
     merger.visit_body_preserves_cfg(body);
 }
 
-struct Merger<'a, 'tcx> {
+struct Merger<'tcx> {
     tcx: TyCtxt<'tcx>,
-    merges: &'a FxIndexMap<Local, Local>,
-    merged_locals: &'a BitSet<Local>,
+    merges: FxIndexMap<Local, Local>,
+    merged_locals: BitSet<Local>,
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
+impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
