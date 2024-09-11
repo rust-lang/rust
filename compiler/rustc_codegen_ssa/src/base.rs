@@ -425,7 +425,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         let isize_ty = cx.type_isize();
         let ptr_ty = cx.type_ptr();
-        let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
+        let (arg_argc, arg_argv) = get_argc_argv(&mut bx);
 
         let (start_fn, start_ty, args, instance) = if let EntryFnType::Main { sigpipe } = entry_type
         {
@@ -468,33 +468,30 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 /// Obtain the `argc` and `argv` values to pass to the rust start function.
-fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    cx: &'a Bx::CodegenCx,
-    bx: &mut Bx,
-) -> (Bx::Value, Bx::Value) {
-    if cx.sess().target.os.contains("uefi") {
+fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> (Bx::Value, Bx::Value) {
+    if bx.cx().sess().target.os.contains("uefi") {
         // Params for UEFI
         let param_handle = bx.get_param(0);
         let param_system_table = bx.get_param(1);
         let ptr_size = bx.tcx().data_layout.pointer_size;
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let arg_argc = bx.const_int(cx.type_isize(), 2);
+        let arg_argc = bx.const_int(bx.cx().type_isize(), 2);
         let arg_argv = bx.alloca(2 * ptr_size, ptr_align);
         bx.store(param_handle, arg_argv, ptr_align);
         let arg_argv_el1 = bx.inbounds_ptradd(arg_argv, bx.const_usize(ptr_size.bytes()));
         bx.store(param_system_table, arg_argv_el1, ptr_align);
         (arg_argc, arg_argv)
-    } else if cx.sess().target.main_needs_argc_argv {
+    } else if bx.cx().sess().target.main_needs_argc_argv {
         // Params from native `main()` used as args for rust start function
         let param_argc = bx.get_param(0);
         let param_argv = bx.get_param(1);
-        let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
+        let arg_argc = bx.intcast(param_argc, bx.cx().type_isize(), true);
         let arg_argv = param_argv;
         (arg_argc, arg_argv)
     } else {
         // The Rust start function doesn't need `argc` and `argv`, so just pass zeros.
-        let arg_argc = bx.const_int(cx.type_int(), 0);
-        let arg_argv = bx.const_null(cx.type_ptr());
+        let arg_argc = bx.const_int(bx.cx().type_int(), 0);
+        let arg_argv = bx.const_null(bx.cx().type_ptr());
         (arg_argc, arg_argv)
     }
 }
