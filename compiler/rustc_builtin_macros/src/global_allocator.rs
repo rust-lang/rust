@@ -65,7 +65,7 @@ struct AllocFnFactory<'a, 'b> {
     span: Span,
     ty_span: Span,
     global: Ident,
-    cx: &'b ExtCtxt<'a>,
+    cx: &'a ExtCtxt<'b>,
 }
 
 impl AllocFnFactory<'_, '_> {

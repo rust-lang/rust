@@ -295,7 +295,7 @@ struct SimplifyToExp {
 }
 
 #[derive(Clone, Copy)]
-enum ExpectedTransformKind<'tcx, 'a> {
+enum ExpectedTransformKind<'a, 'tcx> {
     /// Identical statements.
     Same(&'a StatementKind<'tcx>),
     /// Assignment statements have the same value.
