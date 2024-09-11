@@ -3,7 +3,6 @@
 // issue: rust-lang/rust#121413
 //@ compile-flags: -Zextra-const-ub-checks
 // ignore-tidy-linelength
-#![feature(const_refs_to_static)]
 const REF_INTERIOR_MUT: &usize = {
     //~^ HELP consider importing this struct
     static FOO: Sync = AtomicUsize::new(0);

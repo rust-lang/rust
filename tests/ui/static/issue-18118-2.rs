@@ -1,6 +1,8 @@
+//@ check-pass
+
 pub fn main() {
-    const z: &'static isize = {
-        static p: isize = 3;
-        &p //~ ERROR referencing statics
+    const Z: &'static isize = {
+        static P: isize = 3;
+        &P
     };
 }
