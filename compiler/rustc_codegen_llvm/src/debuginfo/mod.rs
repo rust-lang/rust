@@ -1,8 +1,8 @@
 #![doc = include_str!("doc.md")]
 
 use std::cell::{OnceCell, RefCell};
-use std::iter;
 use std::ops::Range;
+use std::{iter, ptr};
 
 use libc::c_uint;
 use rustc_codegen_ssa::debuginfo::type_names;
@@ -206,6 +206,12 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
     fn set_dbg_loc(&mut self, dbg_loc: &'ll DILocation) {
         unsafe {
             llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, dbg_loc);
+        }
+    }
+
+    fn clear_dbg_loc(&mut self) {
+        unsafe {
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
         }
     }
 
