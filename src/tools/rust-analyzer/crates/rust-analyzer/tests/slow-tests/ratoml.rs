@@ -844,7 +844,7 @@ fn ratoml_multiple_ratoml_in_single_source_root() {
 
 // [dependencies]
 // p2 = { path = "../p2" }
-// #,
+// "#,
 //                 r#"
 // //- /p1/src/lib.rs
 // enum Value {

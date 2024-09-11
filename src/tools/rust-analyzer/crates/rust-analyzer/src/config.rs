@@ -60,7 +60,7 @@ mod patch_old_style;
 // However, editor specific config, which the server doesn't know about, should
 // be specified directly in `package.json`.
 //
-// To deprecate an option by replacing it with another name use `new_name | `old_name` so that we keep
+// To deprecate an option by replacing it with another name use `new_name` | `old_name` so that we keep
 // parsing the old name.
 config_data! {
     /// Configs that apply on a workspace-wide scope. There are 2 levels on which a global configuration can be configured
