@@ -124,6 +124,19 @@ xflags::xflags! {
             optional --proc-macro-srv path: PathBuf
         }
 
+        /// Report unresolved references
+        cmd unresolved-references {
+            /// Directory with Cargo.toml.
+            required path: PathBuf
+
+            /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
+            optional --disable-build-scripts
+            /// Don't use expand proc macros.
+            optional --disable-proc-macros
+            /// Run a custom proc-macro-srv binary.
+            optional --proc-macro-srv path: PathBuf
+        }
+
         cmd ssr {
             /// A structured search replace rule (`$a.foo($b) ==>> bar($a, $b)`)
             repeated rule: SsrRule
@@ -181,6 +194,7 @@ pub enum RustAnalyzerCmd {
     RunTests(RunTests),
     RustcTests(RustcTests),
     Diagnostics(Diagnostics),
+    UnresolvedReferences(UnresolvedReferences),
     Ssr(Ssr),
     Search(Search),
     Lsif(Lsif),
@@ -243,6 +257,15 @@ pub struct RustcTests {
 
 #[derive(Debug)]
 pub struct Diagnostics {
+    pub path: PathBuf,
+
+    pub disable_build_scripts: bool,
+    pub disable_proc_macros: bool,
+    pub proc_macro_srv: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedReferences {
     pub path: PathBuf,
 
     pub disable_build_scripts: bool,
