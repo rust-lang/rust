@@ -1,3 +1,6 @@
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
+
 // Tests that we consider `T: Sugar + Fruit` to be ambiguous, even
 // though no impls are found.
 

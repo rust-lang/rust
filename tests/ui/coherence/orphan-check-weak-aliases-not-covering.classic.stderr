@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
-  --> $DIR/orphan-check-weak-aliases-not-covering.rs:13:6
+  --> $DIR/orphan-check-weak-aliases-not-covering.rs:16:6
    |
 LL | impl<T> foreign::Trait1<Local, T> for Identity<T> {}
    |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
