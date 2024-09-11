@@ -219,6 +219,12 @@ pub trait SimdInt: Copy + Sealed {
     /// The least significant bit becomes the most significant bit, second least-significant bit becomes second most-significant bit, etc.
     fn reverse_bits(self) -> Self;
 
+    /// Returns the number of ones in the binary representation of each element.
+    fn count_ones(self) -> Self::Unsigned;
+
+    /// Returns the number of zeros in the binary representation of each element.
+    fn count_zeros(self) -> Self::Unsigned;
+
     /// Returns the number of leading zeros in the binary representation of each element.
     fn leading_zeros(self) -> Self::Unsigned;
 
@@ -365,6 +371,16 @@ macro_rules! impl_trait {
             fn reverse_bits(self) -> Self {
                 // Safety: `self` is an integer vector
                 unsafe { core::intrinsics::simd::simd_bitreverse(self) }
+            }
+
+            #[inline]
+            fn count_ones(self) -> Self::Unsigned {
+                self.cast::<$unsigned>().count_ones()
+            }
+
+            #[inline]
+            fn count_zeros(self) -> Self::Unsigned {
+                self.cast::<$unsigned>().count_zeros()
             }
 
             #[inline]
