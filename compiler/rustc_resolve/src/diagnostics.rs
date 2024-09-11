@@ -3076,7 +3076,7 @@ fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
             }
         }
     }
-    return None;
+    None
 }
 
 fn is_span_suitable_for_use_injection(s: Span) -> bool {

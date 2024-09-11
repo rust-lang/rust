@@ -3669,7 +3669,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 reinits.push(location);
                 return true;
             }
-            return false;
+            false
         };
 
         while let Some(location) = stack.pop() {

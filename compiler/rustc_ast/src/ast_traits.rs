@@ -153,7 +153,7 @@ impl HasTokens for StmtKind {
             StmtKind::Let(local) => local.tokens.as_ref(),
             StmtKind::Item(item) => item.tokens(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.tokens(),
-            StmtKind::Empty => return None,
+            StmtKind::Empty => None,
             StmtKind::MacCall(mac) => mac.tokens.as_ref(),
         }
     }
@@ -162,7 +162,7 @@ impl HasTokens for StmtKind {
             StmtKind::Let(local) => Some(&mut local.tokens),
             StmtKind::Item(item) => item.tokens_mut(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.tokens_mut(),
-            StmtKind::Empty => return None,
+            StmtKind::Empty => None,
             StmtKind::MacCall(mac) => Some(&mut mac.tokens),
         }
     }

@@ -5016,5 +5016,5 @@ fn def_id_matches_path(tcx: TyCtxt<'_>, mut def_id: DefId, expected_path: &[&str
         }
         def_id = parent;
     }
-    return true;
+    true
 }

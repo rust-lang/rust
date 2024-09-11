@@ -214,7 +214,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion| {
                 if let Some(ex_reg_var) = reg_map.get(&br) {
-                    return *ex_reg_var;
+                    *ex_reg_var
                 } else {
                     let ex_reg_var = self.next_existential_region_var(true, br.kind.get_name());
                     debug!(?ex_reg_var);

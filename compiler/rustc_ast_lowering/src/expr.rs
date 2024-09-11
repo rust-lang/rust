@@ -1837,7 +1837,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Safety::Default,
             sym::allow,
             sym::unreachable_code,
-            self.lower_span(span),
+            try_span,
         );
         let attrs: AttrVec = thin_vec![attr];
 

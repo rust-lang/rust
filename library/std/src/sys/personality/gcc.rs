@@ -95,14 +95,15 @@ const UNWIND_DATA_REG: (i32, i32) = (4, 5); // a0, a1
 
 cfg_if::cfg_if! {
     if #[cfg(all(
-            target_arch = "arm",
-            not(all(target_vendor = "apple", not(target_os = "watchos"))),
-            not(target_os = "netbsd"),
-        ))] {
+        target_arch = "arm",
+        not(target_vendor = "apple"),
+        not(target_os = "netbsd"),
+    ))] {
         /// personality fn called by [ARM EHABI][armeabi-eh]
         ///
-        /// Apple 32-bit ARM (but not watchOS) uses the default routine instead
-        /// since it uses "setjmp-longjmp" unwinding.
+        /// 32-bit ARM on iOS/tvOS/watchOS does not use ARM EHABI, it uses
+        /// either "setjmp-longjmp" unwinding or DWARF CFI unwinding, which is
+        /// handled by the default routine.
         ///
         /// [armeabi-eh]: https://web.archive.org/web/20190728160938/https://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
         #[lang = "eh_personality"]

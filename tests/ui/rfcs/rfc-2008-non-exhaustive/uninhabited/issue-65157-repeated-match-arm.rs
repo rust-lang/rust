@@ -12,7 +12,6 @@ use uninhabited::PartiallyInhabitedVariants;
 pub fn foo(x: PartiallyInhabitedVariants) {
     match x {
         PartiallyInhabitedVariants::Struct { .. } => {}
-        //~^ ERROR unreachable pattern
         PartiallyInhabitedVariants::Struct { .. } => {}
         //~^ ERROR unreachable pattern
         _ => {}
