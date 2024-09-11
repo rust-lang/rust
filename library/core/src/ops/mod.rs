@@ -168,8 +168,8 @@ pub use self::control_flow::ControlFlow;
 pub use self::coroutine::{Coroutine, CoroutineState};
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 pub use self::deref::DerefPure;
-#[unstable(feature = "receiver_trait", issue = "none")]
-pub use self::deref::Receiver;
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+pub use self::deref::LegacyReceiver;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::deref::{Deref, DerefMut};
 #[stable(feature = "rust1", since = "1.0.0")]
