@@ -36,6 +36,12 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                     scope 12 (inlined NonNull::<T>::as_ptr) {
                     }
                     scope 13 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
+                        scope 14 (inlined core::ub_checks::check_language_ub) {
+                            scope 15 (inlined core::ub_checks::check_language_ub::runtime) {
+                            }
+                        }
+                        scope 16 (inlined std::mem::size_of::<T>) {
+                        }
                     }
                 }
                 scope 8 (inlined <NonNull<[T]> as From<&[T]>>::from) {
@@ -49,7 +55,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             }
         }
     }
-    scope 14 (inlined <std::slice::Iter<'_, T> as IntoIterator>::into_iter) {
+    scope 17 (inlined <std::slice::Iter<'_, T> as IntoIterator>::into_iter) {
     }
 
     bb0: {

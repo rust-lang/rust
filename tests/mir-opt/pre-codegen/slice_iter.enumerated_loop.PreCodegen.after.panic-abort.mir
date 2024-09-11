@@ -19,30 +19,30 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
             debug i => _22;
             debug x => _23;
         }
-        scope 17 (inlined <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next) {
+        scope 20 (inlined <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next) {
             let mut _14: &mut std::slice::Iter<'_, T>;
             let mut _15: std::option::Option<&T>;
             let mut _19: (usize, bool);
             let mut _20: (usize, &T);
-            scope 18 {
+            scope 21 {
                 let _18: usize;
-                scope 23 {
+                scope 26 {
                 }
             }
-            scope 19 {
-                scope 20 {
-                    scope 26 (inlined <Option<(usize, &T)> as FromResidual<Option<Infallible>>>::from_residual) {
+            scope 22 {
+                scope 23 {
+                    scope 29 (inlined <Option<(usize, &T)> as FromResidual<Option<Infallible>>>::from_residual) {
                     }
                 }
             }
-            scope 21 {
-                scope 22 {
+            scope 24 {
+                scope 25 {
                 }
             }
-            scope 24 (inlined <Option<&T> as Try>::branch) {
+            scope 27 (inlined <Option<&T> as Try>::branch) {
                 let mut _16: isize;
                 let _17: &T;
-                scope 25 {
+                scope 28 {
                 }
             }
         }
@@ -64,6 +64,12 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                     scope 12 (inlined NonNull::<T>::as_ptr) {
                     }
                     scope 13 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
+                        scope 14 (inlined core::ub_checks::check_language_ub) {
+                            scope 15 (inlined core::ub_checks::check_language_ub::runtime) {
+                            }
+                        }
+                        scope 16 (inlined std::mem::size_of::<T>) {
+                        }
                     }
                 }
                 scope 8 (inlined <NonNull<[T]> as From<&[T]>>::from) {
@@ -77,11 +83,11 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
             }
         }
     }
-    scope 14 (inlined <std::slice::Iter<'_, T> as Iterator>::enumerate) {
-        scope 15 (inlined Enumerate::<std::slice::Iter<'_, T>>::new) {
+    scope 17 (inlined <std::slice::Iter<'_, T> as Iterator>::enumerate) {
+        scope 18 (inlined Enumerate::<std::slice::Iter<'_, T>>::new) {
         }
     }
-    scope 16 (inlined <Enumerate<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
+    scope 19 (inlined <Enumerate<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
     }
 
     bb0: {
