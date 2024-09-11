@@ -1425,8 +1425,7 @@ extern "rust-intrinsic" {
     ///
     /// If the computed offset is non-zero, then both the starting and resulting pointer must be
     /// either in bounds or at the end of an allocated object. If either pointer is out
-    /// of bounds or arithmetic overflow occurs then any further use of the returned value will
-    /// result in undefined behavior.
+    /// of bounds or arithmetic overflow occurs then this operation is undefined behavior.
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]

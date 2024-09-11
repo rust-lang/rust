@@ -344,7 +344,7 @@ impl<T: ?Sized> *mut T {
         if self.is_null() { None } else { Some(unsafe { &*(self as *const MaybeUninit<T>) }) }
     }
 
-    /// Adds an offset to a pointer.
+    /// Adds a signed offset to a pointer.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -353,7 +353,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
+    /// * The computed offset, `count * size_of::<T>()` bytes (using unbounded arithmetic),
+    ///   must fit in an `isize`.
     ///
     /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
@@ -888,7 +889,7 @@ impl<T: ?Sized> *mut T {
         unsafe { (self as *const T).sub_ptr(origin) }
     }
 
-    /// Adds an offset to a pointer (convenience for `.offset(count as isize)`).
+    /// Adds an offset to a pointer.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -897,7 +898,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
+    /// * The computed offset, `count * size_of::<T>()` bytes (using unbounded arithmetic),
+    ///   must fit in an `isize`.
     ///
     /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
@@ -961,8 +963,7 @@ impl<T: ?Sized> *mut T {
         unsafe { self.cast::<u8>().add(count).with_metadata_of(self) }
     }
 
-    /// Subtracts an offset from a pointer (convenience for
-    /// `.offset((count as isize).wrapping_neg())`).
+    /// Subtracts an offset from a pointer.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -971,7 +972,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// If any of the following conditions are violated, the result is Undefined Behavior:
     ///
-    /// * The computed offset, `count * size_of::<T>()` bytes, must not overflow `isize`.
+    /// * The computed offset, `count * size_of::<T>()` bytes (using unbounded arithmetic),
+    ///   must fit in an `isize`.
     ///
     /// * If the computed offset is non-zero, then `self` must be derived from a pointer to some
     ///   [allocated object], and the entire memory range between `self` and the result must be in
