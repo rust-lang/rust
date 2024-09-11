@@ -388,10 +388,11 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     }
                     self.check_unwind_edge(location, unwind);
 
-                    // The code generation assumes that there are no critical call edges. The assumption
-                    // is used to simplify inserting code that should be executed along the return edge
-                    // from the call. FIXME(tmiasko): Since this is a strictly code generation concern,
-                    // the code generation should be responsible for handling it.
+                    // The code generation assumes that there are no critical call edges. The
+                    // assumption is used to simplify inserting code that should be executed along
+                    // the return edge from the call. FIXME(tmiasko): Since this is a strictly code
+                    // generation concern, the code generation should be responsible for handling
+                    // it.
                     if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Optimized)
                         && self.is_critical_call_edge(target, unwind)
                     {
@@ -404,8 +405,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                         );
                     }
 
-                    // The call destination place and Operand::Move place used as an argument might be
-                    // passed by a reference to the callee. Consequently they cannot be packed.
+                    // The call destination place and Operand::Move place used as an argument might
+                    // be passed by a reference to the callee. Consequently they cannot be packed.
                     if is_within_packed(self.tcx, &self.body.local_decls, destination).is_some() {
                         // This is bad! The callee will expect the memory to be aligned.
                         self.fail(
@@ -953,9 +954,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
                 AggregateKind::RawPtr(pointee_ty, mutability) => {
                     if !matches!(self.mir_phase, MirPhase::Runtime(_)) {
-                        // It would probably be fine to support this in earlier phases,
-                        // but at the time of writing it's only ever introduced from intrinsic lowering,
-                        // so earlier things just `bug!` on it.
+                        // It would probably be fine to support this in earlier phases, but at the
+                        // time of writing it's only ever introduced from intrinsic lowering, so
+                        // earlier things just `bug!` on it.
                         self.fail(location, "RawPtr should be in runtime MIR only");
                     }
 
@@ -1109,10 +1110,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                     UnOp::PtrMetadata => {
                         if !matches!(self.mir_phase, MirPhase::Runtime(_)) {
-                            // It would probably be fine to support this in earlier phases,
-                            // but at the time of writing it's only ever introduced from intrinsic lowering
-                            // or other runtime-phase optimization passes,
-                            // so earlier things can just `bug!` on it.
+                            // It would probably be fine to support this in earlier phases, but at
+                            // the time of writing it's only ever introduced from intrinsic
+                            // lowering or other runtime-phase optimization passes, so earlier
+                            // things can just `bug!` on it.
                             self.fail(location, "PtrMetadata should be in runtime MIR only");
                         }
 
@@ -1506,7 +1507,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
 
                 if let TerminatorKind::TailCall { .. } = terminator.kind {
-                    // FIXME(explicit_tail_calls): implement tail-call specific checks here (such as signature matching, forbidding closures, etc)
+                    // FIXME(explicit_tail_calls): implement tail-call specific checks here (such
+                    // as signature matching, forbidding closures, etc)
                 }
             }
             TerminatorKind::Assert { cond, .. } => {

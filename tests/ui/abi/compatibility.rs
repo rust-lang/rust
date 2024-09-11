@@ -189,7 +189,7 @@ mod prelude {
 #[cfg(not(host))]
 use prelude::*;
 
-macro_rules! assert_abi_compatible {
+macro_rules! test_abi_compatible {
     ($name:ident, $t1:ty, $t2:ty) => {
         mod $name {
             use super::*;
@@ -213,16 +213,6 @@ impl Clone for Zst {
 }
 
 #[repr(C)]
-struct ReprC1<T: ?Sized>(T);
-#[repr(C)]
-struct ReprC2Int<T>(i32, T);
-#[repr(C)]
-struct ReprC2Float<T>(f32, T);
-#[repr(C)]
-struct ReprC4<T>(T, Vec<i32>, Zst, T);
-#[repr(C)]
-struct ReprC4Mixed<T>(T, f32, i32, T);
-#[repr(C)]
 enum ReprCEnum<T> {
     Variant1,
     Variant2(T),
@@ -231,23 +221,6 @@ enum ReprCEnum<T> {
 union ReprCUnion<T> {
     nothing: (),
     something: ManuallyDrop<T>,
-}
-
-macro_rules! test_abi_compatible {
-    ($name:ident, $t1:ty, $t2:ty) => {
-        mod $name {
-            use super::*;
-            assert_abi_compatible!(plain, $t1, $t2);
-            // We also do some tests with differences in fields of `repr(C)` types.
-            assert_abi_compatible!(repr_c_1, ReprC1<$t1>, ReprC1<$t2>);
-            assert_abi_compatible!(repr_c_2_int, ReprC2Int<$t1>, ReprC2Int<$t2>);
-            assert_abi_compatible!(repr_c_2_float, ReprC2Float<$t1>, ReprC2Float<$t2>);
-            assert_abi_compatible!(repr_c_4, ReprC4<$t1>, ReprC4<$t2>);
-            assert_abi_compatible!(repr_c_4mixed, ReprC4Mixed<$t1>, ReprC4Mixed<$t2>);
-            assert_abi_compatible!(repr_c_enum, ReprCEnum<$t1>, ReprCEnum<$t2>);
-            assert_abi_compatible!(repr_c_union, ReprCUnion<$t1>, ReprCUnion<$t2>);
-        }
-    };
 }
 
 // Compatibility of pointers.
@@ -268,7 +241,6 @@ test_abi_compatible!(isize_int, isize, i64);
 
 // Compatibility of 1-ZST.
 test_abi_compatible!(zst_unit, Zst, ());
-#[cfg(not(any(target_arch = "sparc64")))]
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
 
@@ -285,13 +257,13 @@ test_abi_compatible!(arc, Arc<i32>, *mut i32);
 
 // `repr(transparent)` compatibility.
 #[repr(transparent)]
-struct Wrapper1<T: ?Sized>(T);
+struct TransparentWrapper1<T: ?Sized>(T);
 #[repr(transparent)]
-struct Wrapper2<T: ?Sized>((), Zst, T);
+struct TransparentWrapper2<T: ?Sized>((), Zst, T);
 #[repr(transparent)]
-struct Wrapper3<T>(T, [u8; 0], PhantomData<u64>);
+struct TransparentWrapper3<T>(T, [u8; 0], PhantomData<u64>);
 #[repr(transparent)]
-union WrapperUnion<T> {
+union TransparentWrapperUnion<T> {
     nothing: (),
     something: ManuallyDrop<T>,
 }
@@ -300,10 +272,10 @@ macro_rules! test_transparent {
     ($name:ident, $t:ty) => {
         mod $name {
             use super::*;
-            test_abi_compatible!(wrap1, $t, Wrapper1<$t>);
-            test_abi_compatible!(wrap2, $t, Wrapper2<$t>);
-            test_abi_compatible!(wrap3, $t, Wrapper3<$t>);
-            test_abi_compatible!(wrap4, $t, WrapperUnion<$t>);
+            test_abi_compatible!(wrap1, $t, TransparentWrapper1<$t>);
+            test_abi_compatible!(wrap2, $t, TransparentWrapper2<$t>);
+            test_abi_compatible!(wrap3, $t, TransparentWrapper3<$t>);
+            test_abi_compatible!(wrap4, $t, TransparentWrapperUnion<$t>);
         }
     };
 }
@@ -342,10 +314,8 @@ macro_rules! test_transparent_unsized {
     ($name:ident, $t:ty) => {
         mod $name {
             use super::*;
-            assert_abi_compatible!(wrap1, $t, Wrapper1<$t>);
-            assert_abi_compatible!(wrap1_reprc, ReprC1<$t>, ReprC1<Wrapper1<$t>>);
-            assert_abi_compatible!(wrap2, $t, Wrapper2<$t>);
-            assert_abi_compatible!(wrap2_reprc, ReprC1<$t>, ReprC1<Wrapper2<$t>>);
+            test_abi_compatible!(wrap1, $t, TransparentWrapper1<$t>);
+            test_abi_compatible!(wrap2, $t, TransparentWrapper2<$t>);
         }
     };
 }

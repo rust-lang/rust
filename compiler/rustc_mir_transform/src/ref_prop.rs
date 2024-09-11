@@ -253,11 +253,8 @@ fn compute_replacement<'tcx>(
 
     debug!(?targets);
 
-    let mut finder = ReplacementFinder {
-        targets: &mut targets,
-        can_perform_opt,
-        allowed_replacements: FxHashSet::default(),
-    };
+    let mut finder =
+        ReplacementFinder { targets, can_perform_opt, allowed_replacements: FxHashSet::default() };
     let reachable_blocks = traversal::reachable_as_bitset(body);
     for (bb, bbdata) in body.basic_blocks.iter_enumerated() {
         // Only visit reachable blocks as we rely on dataflow.
@@ -269,19 +266,19 @@ fn compute_replacement<'tcx>(
     let allowed_replacements = finder.allowed_replacements;
     return Replacer {
         tcx,
-        targets,
+        targets: finder.targets,
         storage_to_remove,
         allowed_replacements,
         any_replacement: false,
     };
 
-    struct ReplacementFinder<'a, 'tcx, F> {
-        targets: &'a mut IndexVec<Local, Value<'tcx>>,
+    struct ReplacementFinder<'tcx, F> {
+        targets: IndexVec<Local, Value<'tcx>>,
         can_perform_opt: F,
         allowed_replacements: FxHashSet<(Local, Location)>,
     }
 
-    impl<'tcx, F> Visitor<'tcx> for ReplacementFinder<'_, 'tcx, F>
+    impl<'tcx, F> Visitor<'tcx> for ReplacementFinder<'tcx, F>
     where
         F: FnMut(Place<'tcx>, Location) -> bool,
     {

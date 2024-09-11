@@ -87,6 +87,7 @@ mod match_branches;
 mod mentioned_items;
 mod multiple_return_terminators;
 mod nrvo;
+mod post_drop_elaboration;
 mod prettify;
 mod promote_consts;
 mod ref_prop;
@@ -168,8 +169,9 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
                     match tupled_args.node {
                         Operand::Constant(_) => {
-                            // there is no good way of extracting a tuple arg from a constant (const generic stuff)
-                            // so we just create a temporary and deconstruct that.
+                            // There is no good way of extracting a tuple arg from a constant
+                            // (const generic stuff) so we just create a temporary and deconstruct
+                            // that.
                             let local = body.local_decls.push(LocalDecl::new(ty, fn_span));
                             bb.statements.push(Statement {
                                 source_info: SourceInfo::outermost(fn_span),
@@ -222,14 +224,14 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// MIR associated with them.
 fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     // All body-owners have MIR associated with them.
-    let mut set: FxIndexSet<_> = tcx.hir().body_owners().collect();
+    let set: FxIndexSet<_> = tcx.hir().body_owners().collect();
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
-    struct GatherCtors<'a> {
-        set: &'a mut FxIndexSet<LocalDefId>,
+    struct GatherCtors {
+        set: FxIndexSet<LocalDefId>,
     }
-    impl<'tcx> Visitor<'tcx> for GatherCtors<'_> {
+    impl<'tcx> Visitor<'tcx> for GatherCtors {
         fn visit_variant_data(&mut self, v: &'tcx hir::VariantData<'tcx>) {
             if let hir::VariantData::Tuple(_, _, def_id) = *v {
                 self.set.insert(def_id);
@@ -237,9 +239,11 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
             intravisit::walk_struct_def(self, v)
         }
     }
-    tcx.hir().visit_all_item_likes_in_crate(&mut GatherCtors { set: &mut set });
 
-    set
+    let mut gather_ctors = GatherCtors { set };
+    tcx.hir().visit_all_item_likes_in_crate(&mut gather_ctors);
+
+    gather_ctors.set
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
@@ -477,10 +481,13 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
         pm::run_passes(
             tcx,
             body,
-            &[&remove_uninit_drops::RemoveUninitDrops, &simplify::SimplifyCfg::RemoveFalseEdges],
+            &[
+                &remove_uninit_drops::RemoveUninitDrops,
+                &simplify::SimplifyCfg::RemoveFalseEdges,
+                &Lint(post_drop_elaboration::CheckLiveDrops),
+            ],
             None,
         );
-        check_consts::post_drop_elaboration::check_live_drops(tcx, body); // FIXME: make this a MIR lint
     }
 
     debug!("runtime_mir_lowering({:?})", did);
@@ -509,10 +516,12 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 /// Returns the sequence of passes that lowers analysis to runtime MIR.
 fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
-        // These next passes must be executed together
+        // These next passes must be executed together.
         &add_call_guards::CriticalCallEdges,
-        &reveal_all::RevealAll, // has to be done before drop elaboration, since we need to drop opaque types, too.
-        &add_subtyping_projections::Subtyper, // calling this after reveal_all ensures that we don't deal with opaque types
+        // Must be done before drop elaboration because we need to drop opaque types, too.
+        &reveal_all::RevealAll,
+        // Calling this after reveal_all ensures that we don't deal with opaque types.
+        &add_subtyping_projections::Subtyper,
         &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer
         // necessary as well as forcing any call in a non-unwinding
@@ -521,8 +530,8 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
-        // `AddRetag` needs to run after `ElaborateDrops` but before `ElaborateBoxDerefs`. Otherwise it should run fairly late,
-        // but before optimizations begin.
+        // `AddRetag` needs to run after `ElaborateDrops` but before `ElaborateBoxDerefs`.
+        // Otherwise it should run fairly late, but before optimizations begin.
         &add_retag::AddRetag,
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &coroutine::StateTransform,
@@ -563,13 +572,15 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
-            // Also simple, so can just do first
+            // Also simple, so can just do first.
             &lower_slice_len::LowerSliceLenCalls,
-            // Perform instsimplify before inline to eliminate some trivial calls (like clone shims).
+            // Perform instsimplify before inline to eliminate some trivial calls (like clone
+            // shims).
             &instsimplify::InstSimplify::BeforeInline,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
-            // Code from other crates may have storage markers, so this needs to happen after inlining.
+            // Code from other crates may have storage markers, so this needs to happen after
+            // inlining.
             &remove_storage_markers::RemoveStorageMarkers,
             // Inlining and instantiation may introduce ZST and useless drops.
             &remove_zsts::RemoveZsts,
@@ -586,7 +597,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
-            // After simplifycfg, it allows us to discover new opportunities for peephole optimizations.
+            // After simplifycfg, it allows us to discover new opportunities for peephole
+            // optimizations.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,

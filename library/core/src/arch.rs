@@ -17,6 +17,20 @@ pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }
 
+/// Inline assembly used in combination with `#[naked]` functions.
+///
+/// Refer to [Rust By Example] for a usage guide and the [reference] for
+/// detailed information about the syntax and available options.
+///
+/// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
+/// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
+#[unstable(feature = "naked_functions", issue = "90957")]
+#[rustc_builtin_macro]
+#[cfg(not(bootstrap))]
+pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+    /* compiler built-in */
+}
+
 /// Module-level inline assembly.
 ///
 /// Refer to [Rust By Example] for a usage guide and the [reference] for

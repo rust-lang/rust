@@ -166,7 +166,7 @@ fn main() {
         enum Never {}
     }
 
-    foo(I64X2(0, 0));
+    foo(I64X2([0, 0]));
 
     transmute_fat_pointer();
 
@@ -204,7 +204,7 @@ fn rust_call_abi() {
 }
 
 #[repr(simd)]
-struct I64X2(i64, i64);
+struct I64X2([i64; 2]);
 
 #[allow(improper_ctypes_definitions)]
 extern "C" fn foo(_a: I64X2) {}

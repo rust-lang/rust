@@ -123,6 +123,7 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
         self.super_statement(stmt, loc);
         self.target_local = None;
     }
+
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, loc: Location) {
         if let Rvalue::Ref(_, BorrowKind::Mut { .. }, place) = rvalue {
             let local = place.local;
