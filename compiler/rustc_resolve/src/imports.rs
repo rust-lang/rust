@@ -1256,28 +1256,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         extern_crate_span: self.tcx.source_span(self.local_def_id(extern_crate_id)),
                     },
                 );
-            } else {
-                if ns == TypeNS {
-                    let err = if crate_private_reexport {
-                        self.dcx().create_err(CannotBeReexportedCratePublicNS {
-                            span: import.span,
-                            ident,
-                        })
-                    } else {
-                        self.dcx()
-                            .create_err(CannotBeReexportedPrivateNS { span: import.span, ident })
-                    };
-                    err.emit();
+            } else if ns == TypeNS {
+                let err = if crate_private_reexport {
+                    self.dcx()
+                        .create_err(CannotBeReexportedCratePublicNS { span: import.span, ident })
                 } else {
-                    let mut err = if crate_private_reexport {
-                        self.dcx()
-                            .create_err(CannotBeReexportedCratePublic { span: import.span, ident })
-                    } else {
-                        self.dcx()
-                            .create_err(CannotBeReexportedPrivate { span: import.span, ident })
-                    };
+                    self.dcx().create_err(CannotBeReexportedPrivateNS { span: import.span, ident })
+                };
+                err.emit();
+            } else {
+                let mut err = if crate_private_reexport {
+                    self.dcx()
+                        .create_err(CannotBeReexportedCratePublic { span: import.span, ident })
+                } else {
+                    self.dcx().create_err(CannotBeReexportedPrivate { span: import.span, ident })
+                };
 
-                    match binding.kind {
+                match binding.kind {
                         NameBindingKind::Res(Res::Def(DefKind::Macro(_), def_id))
                             // exclude decl_macro
                             if self.get_macro_by_def_id(def_id).macro_rules =>
@@ -1293,8 +1288,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             });
                         }
                     }
-                    err.emit();
-                }
+                err.emit();
             }
         }
 

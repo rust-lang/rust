@@ -426,13 +426,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     } else if kind == ty::ClosureKind::FnOnce {
                         candidates.vec.push(ClosureCandidate { is_const });
                     }
+                } else if kind == ty::ClosureKind::FnOnce {
+                    candidates.vec.push(ClosureCandidate { is_const });
                 } else {
-                    if kind == ty::ClosureKind::FnOnce {
-                        candidates.vec.push(ClosureCandidate { is_const });
-                    } else {
-                        // This stays ambiguous until kind+upvars are determined.
-                        candidates.ambiguous = true;
-                    }
+                    // This stays ambiguous until kind+upvars are determined.
+                    candidates.ambiguous = true;
                 }
             }
             ty::Infer(ty::TyVar(_)) => {

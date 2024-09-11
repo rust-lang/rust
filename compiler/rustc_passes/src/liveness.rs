@@ -1500,15 +1500,13 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             );
                         }
                     }
-                } else {
-                    if let Some(name) = self.should_warn(var) {
-                        self.ir.tcx.emit_node_span_lint(
-                            lint::builtin::UNUSED_VARIABLES,
-                            var_hir_id,
-                            vec![span],
-                            errors::UnusedVarMaybeCaptureRef { name },
-                        );
-                    }
+                } else if let Some(name) = self.should_warn(var) {
+                    self.ir.tcx.emit_node_span_lint(
+                        lint::builtin::UNUSED_VARIABLES,
+                        var_hir_id,
+                        vec![span],
+                        errors::UnusedVarMaybeCaptureRef { name },
+                    );
                 }
             }
         }

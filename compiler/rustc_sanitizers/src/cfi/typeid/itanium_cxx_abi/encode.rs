@@ -207,14 +207,12 @@ fn encode_fnsig<'tcx>(
         if fn_sig.c_variadic {
             s.push('z');
         }
+    } else if fn_sig.c_variadic {
+        s.push('z');
     } else {
-        if fn_sig.c_variadic {
-            s.push('z');
-        } else {
-            // Empty parameter lists, whether declared as () or conventionally as (void), are
-            // encoded with a void parameter specifier "v".
-            s.push('v')
-        }
+        // Empty parameter lists, whether declared as () or conventionally as (void), are
+        // encoded with a void parameter specifier "v".
+        s.push('v')
     }
 
     // Close the "F..E" pair

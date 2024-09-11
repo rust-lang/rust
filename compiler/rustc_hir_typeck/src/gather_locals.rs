@@ -158,14 +158,12 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         ),
                     );
                 }
-            } else {
-                if !self.fcx.tcx.features().unsized_locals {
-                    self.fcx.require_type_is_sized(
-                        var_ty,
-                        p.span,
-                        ObligationCauseCode::VariableType(p.hir_id),
-                    );
-                }
+            } else if !self.fcx.tcx.features().unsized_locals {
+                self.fcx.require_type_is_sized(
+                    var_ty,
+                    p.span,
+                    ObligationCauseCode::VariableType(p.hir_id),
+                );
             }
 
             debug!(
