@@ -2,8 +2,8 @@
 use std::{iter, mem, str::FromStr, sync};
 
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileChange,
-    FileSet, LangCrateOrigin, SourceRoot, SourceRootDatabase, Version, VfsPath,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, CrateWorkspaceData, Dependency,
+    Env, FileChange, FileSet, LangCrateOrigin, SourceRoot, SourceRootDatabase, Version, VfsPath,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -354,16 +354,20 @@ impl ChangeFixture {
         };
         roots.push(root);
 
-        let mut change = ChangeWithProcMacros {
-            source_change,
-            proc_macros: Some(proc_macros.build()),
-            toolchains: Some(iter::repeat(toolchain).take(crate_graph.len()).collect()),
-            target_data_layouts: Some(
-                iter::repeat(target_data_layout).take(crate_graph.len()).collect(),
-            ),
-        };
+        let mut change =
+            ChangeWithProcMacros { source_change, proc_macros: Some(proc_macros.build()) };
 
         change.source_change.set_roots(roots);
+        change.source_change.set_ws_data(
+            crate_graph
+                .iter()
+                .zip(iter::repeat(From::from(CrateWorkspaceData {
+                    proc_macro_cwd: None,
+                    data_layout: target_data_layout,
+                    toolchain,
+                })))
+                .collect(),
+        );
         change.source_change.set_crate_graph(crate_graph);
 
         ChangeFixture { file_position, files, change }
@@ -567,6 +571,7 @@ impl ProcMacroExpander for IdentityProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
@@ -584,6 +589,7 @@ impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         attrs
             .cloned()
@@ -602,6 +608,7 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         fn traverse(input: &Subtree<Span>) -> Subtree<Span> {
             let mut token_trees = vec![];
@@ -632,6 +639,7 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         return Ok(traverse(input));
 

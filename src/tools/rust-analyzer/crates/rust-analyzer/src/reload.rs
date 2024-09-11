@@ -16,8 +16,9 @@
 use std::{iter, mem};
 
 use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros, ProcMacrosBuilder};
+use ide::CrateId;
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, Version},
+    base_db::{salsa::Durability, CrateGraph, CrateWorkspaceData, ProcMacroPaths},
     FxHashMap,
 };
 use itertools::Itertools;
@@ -692,7 +693,7 @@ impl GlobalState {
             })
             .collect();
 
-        let (crate_graph, proc_macro_paths, layouts, toolchains) = {
+        let (crate_graph, proc_macro_paths, ws_data) = {
             // Create crate graph from all the workspaces
             let vfs = &mut self.vfs.write().0;
 
@@ -721,9 +722,7 @@ impl GlobalState {
                     .collect(),
             );
         }
-        change.set_crate_graph(crate_graph);
-        change.set_target_data_layouts(layouts);
-        change.set_toolchains(toolchains);
+        change.set_crate_graph(crate_graph, ws_data);
         self.analysis_host.apply_change(change);
         self.report_progress(
             "Building CrateGraph",
@@ -863,51 +862,27 @@ pub fn ws_to_crate_graph(
     workspaces: &[ProjectWorkspace],
     extra_env: &FxHashMap<String, String>,
     mut load: impl FnMut(&AbsPath) -> Option<vfs::FileId>,
-) -> (CrateGraph, Vec<ProcMacroPaths>, Vec<Result<Arc<str>, Arc<str>>>, Vec<Option<Version>>) {
+) -> (CrateGraph, Vec<ProcMacroPaths>, FxHashMap<CrateId, Arc<CrateWorkspaceData>>) {
     let mut crate_graph = CrateGraph::default();
     let mut proc_macro_paths = Vec::default();
-    let mut layouts = Vec::default();
-    let mut toolchains = Vec::default();
-    let e = Err(Arc::from("missing layout"));
+    let mut ws_data = FxHashMap::default();
     for ws in workspaces {
         let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
-        let num_layouts = layouts.len();
-        let num_toolchains = toolchains.len();
         let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
-        let mapping = crate_graph.extend(
-            other,
-            &mut crate_proc_macros,
-            |(cg_id, cg_data), (_o_id, o_data)| {
-                // if the newly created crate graph's layout is equal to the crate of the merged graph, then
-                // we can merge the crates.
-                let id = cg_id.into_raw().into_u32() as usize;
-                layouts[id] == *target_layout && toolchains[id] == *toolchain && cg_data == o_data
-            },
-        );
+        let mapping = crate_graph.extend(other, &mut crate_proc_macros);
         // Populate the side tables for the newly merged crates
-        mapping.values().for_each(|val| {
-            let idx = val.into_raw().into_u32() as usize;
-            // we only need to consider crates that were not merged and remapped, as the
-            // ones that were remapped already have the correct layout and toolchain
-            if idx >= num_layouts {
-                if layouts.len() <= idx {
-                    layouts.resize(idx + 1, e.clone());
-                }
-                layouts[idx].clone_from(target_layout);
-            }
-            if idx >= num_toolchains {
-                if toolchains.len() <= idx {
-                    toolchains.resize(idx + 1, None);
-                }
-                toolchains[idx].clone_from(toolchain);
-            }
-        });
+        ws_data.extend(mapping.values().copied().zip(iter::repeat(Arc::new(CrateWorkspaceData {
+            toolchain: toolchain.clone(),
+            data_layout: target_layout.clone(),
+            proc_macro_cwd: Some(ws.workspace_root().to_owned()),
+        }))));
         proc_macro_paths.push(crate_proc_macros);
     }
+
     crate_graph.shrink_to_fit();
     proc_macro_paths.shrink_to_fit();
-    (crate_graph, proc_macro_paths, layouts, toolchains)
+    (crate_graph, proc_macro_paths, ws_data)
 }
 
 pub(crate) fn should_refresh_for_change(

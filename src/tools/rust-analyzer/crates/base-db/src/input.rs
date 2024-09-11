@@ -491,22 +491,15 @@ impl CrateGraph {
             .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
     }
 
-    /// Extends this crate graph by adding a complete disjoint second crate
+    /// Extends this crate graph by adding a complete second crate
     /// graph and adjust the ids in the [`ProcMacroPaths`] accordingly.
     ///
-    /// This will deduplicate the crates of the graph where possible.
-    /// Note that for deduplication to fully work, `self`'s crate dependencies must be sorted by crate id.
-    /// If the crate dependencies were sorted, the resulting graph from this `extend` call will also
-    /// have the crate dependencies sorted.
-    ///
-    /// Returns a mapping from `other`'s crate ids to the new crate ids in `self`.
+    /// Returns a map mapping `other`'s IDs to the new IDs in `self`.
     pub fn extend(
         &mut self,
         mut other: CrateGraph,
         proc_macros: &mut ProcMacroPaths,
-        merge: impl Fn((CrateId, &mut CrateData), (CrateId, &CrateData)) -> bool,
     ) -> FxHashMap<CrateId, CrateId> {
-        let m = self.len();
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
         for topo in topo {
@@ -514,20 +507,13 @@ impl CrateGraph {
 
             crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
             crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
-            let res = self
-                .arena
-                .iter_mut()
-                .take(m)
-                .find_map(|(id, data)| merge((id, data), (topo, crate_data)).then_some(id));
 
-            let new_id =
-                if let Some(res) = res { res } else { self.arena.alloc(crate_data.clone()) };
+            let new_id = self.arena.alloc(crate_data.clone());
             id_map.insert(topo, new_id);
         }
 
         *proc_macros =
             mem::take(proc_macros).into_iter().map(|(id, macros)| (id_map[&id], macros)).collect();
-
         id_map
     }
 
