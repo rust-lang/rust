@@ -513,10 +513,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // then there's nothing else to check.
         if let Some(closure_kind) = self_ty.to_opt_closure_kind()
             && let Some(goal_kind) = target_kind_ty.to_opt_closure_kind()
+            && closure_kind.extends(goal_kind)
         {
-            if closure_kind.extends(goal_kind) {
-                candidates.vec.push(AsyncFnKindHelperCandidate);
-            }
+            candidates.vec.push(AsyncFnKindHelperCandidate);
         }
     }
 

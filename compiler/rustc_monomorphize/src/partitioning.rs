@@ -504,10 +504,8 @@ fn compute_inlined_overlap<'tcx>(cgu1: &CodegenUnit<'tcx>, cgu2: &CodegenUnit<'t
 
     let mut overlap = 0;
     for (item, data) in src_cgu.items().iter() {
-        if data.inlined {
-            if dst_cgu.items().contains_key(item) {
-                overlap += data.size_estimate;
-            }
+        if data.inlined && dst_cgu.items().contains_key(item) {
+            overlap += data.size_estimate;
         }
     }
     overlap

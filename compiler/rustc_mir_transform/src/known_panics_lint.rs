@@ -378,19 +378,19 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if let (Some(l), Some(r)) = (l, r)
             && l.layout.ty.is_integral()
             && op.is_overflowing()
-        {
-            if self.use_ecx(|this| {
+            && self.use_ecx(|this| {
                 let (_res, overflow) = this.ecx.binary_op(op, &l, &r)?.to_scalar_pair();
                 overflow.to_bool()
-            })? {
-                self.report_assert_as_lint(
-                    location,
-                    AssertLintKind::ArithmeticOverflow,
-                    AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
-                );
-                return None;
-            }
+            })?
+        {
+            self.report_assert_as_lint(
+                location,
+                AssertLintKind::ArithmeticOverflow,
+                AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
+            );
+            return None;
         }
+
         Some(())
     }
 

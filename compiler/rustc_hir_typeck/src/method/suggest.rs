@@ -1252,11 +1252,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && suggested_bounds.contains(parent)
                         {
                             // We don't suggest `PartialEq` when we already suggest `Eq`.
-                        } else if !suggested_bounds.contains(pred) {
-                            if collect_type_param_suggestions(self_ty, *pred, &p) {
-                                suggested = true;
-                                suggested_bounds.insert(pred);
-                            }
+                        } else if !suggested_bounds.contains(pred)
+                            && collect_type_param_suggestions(self_ty, *pred, &p)
+                        {
+                            suggested = true;
+                            suggested_bounds.insert(pred);
                         }
                         (
                             match parent_pred {
@@ -1267,14 +1267,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         if !suggested
                                             && !suggested_bounds.contains(pred)
                                             && !suggested_bounds.contains(parent_pred)
-                                        {
-                                            if collect_type_param_suggestions(
+                                            && collect_type_param_suggestions(
                                                 self_ty,
                                                 *parent_pred,
                                                 &p,
-                                            ) {
-                                                suggested_bounds.insert(pred);
-                                            }
+                                            )
+                                        {
+                                            suggested_bounds.insert(pred);
                                         }
                                         format!("`{p}`\nwhich is required by `{parent_p}`")
                                     }

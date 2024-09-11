@@ -827,20 +827,18 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             if num_generic_args_supplied_to_trait + num_assoc_fn_excess_args
                 == num_trait_generics_except_self
+                && let Some(span) = self.gen_args.span_ext()
+                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
             {
-                if let Some(span) = self.gen_args.span_ext()
-                    && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
-                {
-                    let sugg = vec![
-                        (
-                            self.path_segment.ident.span,
-                            format!("{}::{}", snippet, self.path_segment.ident),
-                        ),
-                        (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned()),
-                    ];
+                let sugg = vec![
+                    (
+                        self.path_segment.ident.span,
+                        format!("{}::{}", snippet, self.path_segment.ident),
+                    ),
+                    (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned()),
+                ];
 
-                    err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
-                }
+                err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
             }
         }
     }

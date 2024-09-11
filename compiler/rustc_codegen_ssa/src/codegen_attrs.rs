@@ -617,32 +617,29 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
-    if !codegen_fn_attrs.target_features.is_empty() {
-        if codegen_fn_attrs.inline == InlineAttr::Always {
-            if let Some(span) = inline_span {
-                tcx.dcx().span_err(
-                    span,
-                    "cannot use `#[inline(always)]` with \
+    if !codegen_fn_attrs.target_features.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always
+    {
+        if let Some(span) = inline_span {
+            tcx.dcx().span_err(
+                span,
+                "cannot use `#[inline(always)]` with \
                      `#[target_feature]`",
-                );
-            }
+            );
         }
     }
 
-    if !codegen_fn_attrs.no_sanitize.is_empty() {
-        if codegen_fn_attrs.inline == InlineAttr::Always {
-            if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
-                let hir_id = tcx.local_def_id_to_hir_id(did);
-                tcx.node_span_lint(
-                    lint::builtin::INLINE_NO_SANITIZE,
-                    hir_id,
-                    no_sanitize_span,
-                    |lint| {
-                        lint.primary_message("`no_sanitize` will have no effect after inlining");
-                        lint.span_note(inline_span, "inlining requested here");
-                    },
-                )
-            }
+    if !codegen_fn_attrs.no_sanitize.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
+        if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
+            let hir_id = tcx.local_def_id_to_hir_id(did);
+            tcx.node_span_lint(
+                lint::builtin::INLINE_NO_SANITIZE,
+                hir_id,
+                no_sanitize_span,
+                |lint| {
+                    lint.primary_message("`no_sanitize` will have no effect after inlining");
+                    lint.span_note(inline_span, "inlining requested here");
+                },
+            )
         }
     }
 
