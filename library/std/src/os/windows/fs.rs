@@ -472,7 +472,7 @@ pub trait MetadataExt {
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn file_index(&self) -> Option<u64>;
 
-    /// Returns the value of the `ChangeTime{Low,High}` fields of this metadata.
+    /// Returns the value of the `ChangeTime` fields of this metadata.
     ///
     /// `ChangeTime` is the last time file metadata was changed, such as
     /// renames, attributes, etc.
