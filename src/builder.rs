@@ -1939,33 +1939,18 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.int_type
         };
 
-        let mut mask_elements = if let Some(vector_type) = mask.get_type().dyncast_vector() {
-            let mask_num_units = vector_type.get_num_units();
-            let mut mask_elements = vec![];
-            for i in 0..mask_num_units {
-                let index = self.context.new_rvalue_from_long(self.cx.type_u32(), i as _);
-                mask_elements.push(self.context.new_cast(
-                    self.location,
-                    self.extract_element(mask, index).to_rvalue(),
-                    mask_element_type,
-                ));
-            }
-            mask_elements
-        } else {
-            let struct_type = mask.get_type().is_struct().expect("mask should be of struct type");
-            let mask_num_units = struct_type.get_field_count();
-            let mut mask_elements = vec![];
-            for i in 0..mask_num_units {
-                let field = struct_type.get_field(i as i32);
-                mask_elements.push(self.context.new_cast(
-                    self.location,
-                    mask.access_field(self.location, field).to_rvalue(),
-                    mask_element_type,
-                ));
-            }
-            mask_elements
-        };
-        let mask_num_units = mask_elements.len();
+        let vector_type =
+            mask.get_type().dyncast_vector().expect("simd_shuffle mask should be of vector type");
+        let mask_num_units = vector_type.get_num_units();
+        let mut mask_elements = vec![];
+        for i in 0..mask_num_units {
+            let index = self.context.new_rvalue_from_long(self.cx.type_u32(), i as _);
+            mask_elements.push(self.context.new_cast(
+                self.location,
+                self.extract_element(mask, index).to_rvalue(),
+                mask_element_type,
+            ));
+        }
 
         // NOTE: the mask needs to be the same length as the input vectors, so add the missing
         // elements in the mask if needed.
