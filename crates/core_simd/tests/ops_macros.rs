@@ -527,6 +527,9 @@ macro_rules! impl_float_tests {
                 }
 
                 fn is_normal<const LANES: usize>() {
+                    // Arm v7 Neon violates float opsem re: subnormals, see
+                    // https://github.com/rust-lang/portable-simd/issues/439
+                    #[cfg(not(target_arch = "arm"))]
                     test_helpers::test_unary_mask_elementwise(
                         &Vector::<LANES>::is_normal,
                         &Scalar::is_normal,
@@ -535,6 +538,9 @@ macro_rules! impl_float_tests {
                 }
 
                 fn is_subnormal<const LANES: usize>() {
+                    // Arm v7 Neon violates float opsem re: subnormals, see
+                    // https://github.com/rust-lang/portable-simd/issues/439
+                    #[cfg(not(target_arch = "arm"))]
                     test_helpers::test_unary_mask_elementwise(
                         &Vector::<LANES>::is_subnormal,
                         &Scalar::is_subnormal,
