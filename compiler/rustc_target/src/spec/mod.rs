@@ -855,6 +855,43 @@ impl ToJson for RelroLevel {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Hash)]
+pub enum SmallDataThresholdSupport {
+    None,
+    DefaultForArch,
+    LlvmModuleFlag(StaticCow<str>),
+    LlvmArg(StaticCow<str>),
+}
+
+impl FromStr for SmallDataThresholdSupport {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "none" {
+            Ok(Self::None)
+        } else if s == "default-for-arch" {
+            Ok(Self::DefaultForArch)
+        } else if let Some(flag) = s.strip_prefix("llvm-module-flag=") {
+            Ok(Self::LlvmModuleFlag(flag.to_string().into()))
+        } else if let Some(arg) = s.strip_prefix("llvm-arg=") {
+            Ok(Self::LlvmArg(arg.to_string().into()))
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl ToJson for SmallDataThresholdSupport {
+    fn to_json(&self) -> Value {
+        match self {
+            Self::None => "none".to_json(),
+            Self::DefaultForArch => "default-for-arch".to_json(),
+            Self::LlvmModuleFlag(flag) => format!("llvm-module-flag={flag}").to_json(),
+            Self::LlvmArg(arg) => format!("llvm-arg={arg}").to_json(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum MergeFunctions {
     Disabled,
@@ -2392,6 +2429,9 @@ pub struct TargetOptions {
 
     /// Whether the target supports XRay instrumentation.
     pub supports_xray: bool,
+
+    /// Whether the targets supports -Z small-data-threshold
+    small_data_threshold_support: SmallDataThresholdSupport,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -2609,6 +2649,7 @@ impl Default for TargetOptions {
             entry_name: "main".into(),
             entry_abi: Conv::C,
             supports_xray: false,
+            small_data_threshold_support: SmallDataThresholdSupport::DefaultForArch,
         }
     }
 }
@@ -2880,6 +2921,15 @@ impl Target {
                         _ => return Some(Err(format!("'{}' is not a valid TLS model. \
                                                       Run `rustc --print tls-models` to \
                                                       see the list of supported values.", s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
+            ($key_name:ident, SmallDataThresholdSupport) => ( {
+                obj.remove("small-data-threshold-support").and_then(|o| o.as_str().and_then(|s| {
+                    match s.parse::<SmallDataThresholdSupport>() {
+                        Ok(support) => base.small_data_threshold_support = support,
+                        _ => return Some(Err(format!("'{s}' is not a valid value for small-data-threshold-support."))),
                     }
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
@@ -3321,6 +3371,7 @@ impl Target {
         key!(supported_sanitizers, SanitizerSet)?;
         key!(generate_arange_section, bool);
         key!(supports_stack_protector, bool);
+        key!(small_data_threshold_support, SmallDataThresholdSupport)?;
         key!(entry_name);
         key!(entry_abi, Conv)?;
         key!(supports_xray, bool);
@@ -3413,6 +3464,30 @@ impl Target {
                 let obj = serde_json::from_str(contents).map_err(|e| e.to_string())?;
                 Target::from_json(obj)
             }
+        }
+    }
+
+    /// Return the target's small data threshold support, converting
+    /// `DefaultForArch` into a concrete value.
+    pub fn small_data_threshold_support(&self) -> SmallDataThresholdSupport {
+        match &self.options.small_data_threshold_support {
+            // Avoid having to duplicate the small data support in every
+            // target file by supporting a default value for each
+            // architecture.
+            SmallDataThresholdSupport::DefaultForArch => match self.arch.as_ref() {
+                "mips" | "mips64" | "mips32r6" => {
+                    SmallDataThresholdSupport::LlvmArg("mips-ssection-threshold".into())
+                }
+                "hexagon" => {
+                    SmallDataThresholdSupport::LlvmArg("hexagon-small-data-threshold".into())
+                }
+                "m68k" => SmallDataThresholdSupport::LlvmArg("m68k-ssection-threshold".into()),
+                "riscv32" | "riscv64" => {
+                    SmallDataThresholdSupport::LlvmModuleFlag("SmallDataLimit".into())
+                }
+                _ => SmallDataThresholdSupport::None,
+            },
+            s => s.clone(),
         }
     }
 }
@@ -3577,6 +3652,7 @@ impl ToJson for Target {
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);
         target_option_val!(supports_stack_protector);
+        target_option_val!(small_data_threshold_support);
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
         target_option_val!(supports_xray);

@@ -183,6 +183,12 @@ pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_target_small_data_threshold_not_supported)]
+pub(crate) struct SmallDataThresholdNotSupportedForTarget<'a> {
+    pub(crate) target_triple: &'a TargetTriple,
+}
+
+#[derive(Diagnostic)]
 #[diag(session_branch_protection_requires_aarch64)]
 pub(crate) struct BranchProtectionRequiresAArch64;
 
