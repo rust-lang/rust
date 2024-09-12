@@ -76,9 +76,9 @@ mod handlers {
 #[cfg(test)]
 mod tests;
 
-use std::sync::LazyLock;
+use std::{collections::hash_map, sync::LazyLock};
 
-use hir::{diagnostics::AnyDiagnostic, InFile, Semantics};
+use hir::{diagnostics::AnyDiagnostic, HirFileId, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
     base_db::SourceDatabase,
@@ -89,10 +89,10 @@ use ide_db::{
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
     EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
-use stdx::never;
+use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode},
-    AstPtr, Edition, SyntaxNode, SyntaxNodePtr, TextRange,
+    ast::{self, AstNode, HasAttrs},
+    AstPtr, Edition, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange,
 };
 
 // FIXME: Make this an enum
@@ -476,8 +476,9 @@ pub fn semantic_diagnostics(
             || ctx.config.disable_experimental && d.experimental)
     });
 
-    let mut diagnostics_of_range = res
+    let mut lints = res
         .iter_mut()
+        .filter(|it| matches!(it.code, DiagnosticCode::Clippy(_) | DiagnosticCode::RustcLint(_)))
         .filter_map(|it| {
             Some((
                 it.main_node.map(|ptr| {
@@ -486,23 +487,16 @@ pub fn semantic_diagnostics(
                 it,
             ))
         })
-        .collect::<FxHashMap<_, _>>();
+        .collect::<Vec<_>>();
 
-    if diagnostics_of_range.is_empty() {
-        return res;
-    }
-
-    let mut rustc_stack: FxHashMap<String, Vec<Severity>> = FxHashMap::default();
-    let mut clippy_stack: FxHashMap<String, Vec<Severity>> = FxHashMap::default();
-
-    // FIXME: This becomes quite expensive for big files
+    // The edition isn't accurate (each diagnostics may have its own edition due to macros),
+    // but it's okay as it's only being used for error recovery.
     handle_lint_attributes(
         &ctx.sema,
-        parse.syntax(),
-        &mut rustc_stack,
-        &mut clippy_stack,
-        &mut diagnostics_of_range,
-        ctx.edition,
+        &mut FxHashMap::default(),
+        &mut lints,
+        &mut Vec::new(),
+        file_id.edition(),
     );
 
     res.retain(|d| d.severity != Severity::Allow);
@@ -536,147 +530,264 @@ fn build_group_dict(
     all_groups: &'static [&'static str],
     prefix: &'static str,
 ) -> FxHashMap<&'static str, Vec<&'static str>> {
-    let mut r: FxHashMap<&str, Vec<&str>> = FxHashMap::default();
+    let mut map_with_prefixes: FxHashMap<&str, Vec<&str>> = FxHashMap::default();
     for g in lint_group {
-        for child in g.children {
-            r.entry(child.strip_prefix(prefix).unwrap())
-                .or_default()
-                .push(g.lint.label.strip_prefix(prefix).unwrap());
+        let mut add_children = |label: &'static str| {
+            for child in g.children {
+                map_with_prefixes.entry(child).or_default().push(label);
+            }
+        };
+        add_children(g.lint.label);
+
+        if g.lint.label == "nonstandard_style" {
+            // Also add `bad_style`, which for some reason isn't listed in the groups.
+            add_children("bad_style");
         }
     }
-    for (lint, groups) in r.iter_mut() {
+    for (lint, groups) in map_with_prefixes.iter_mut() {
         groups.push(lint);
         groups.extend_from_slice(all_groups);
     }
-    r
+    map_with_prefixes.into_iter().map(|(k, v)| (k.strip_prefix(prefix).unwrap(), v)).collect()
 }
 
 fn handle_lint_attributes(
     sema: &Semantics<'_, RootDatabase>,
-    root: &SyntaxNode,
-    rustc_stack: &mut FxHashMap<String, Vec<Severity>>,
-    clippy_stack: &mut FxHashMap<String, Vec<Severity>>,
-    diagnostics_of_range: &mut FxHashMap<InFile<SyntaxNode>, &mut Diagnostic>,
+    cache: &mut FxHashMap<HirFileId, FxHashMap<SmolStr, SeverityAttr>>,
+    diagnostics: &mut [(InFile<SyntaxNode>, &mut Diagnostic)],
+    cache_stack: &mut Vec<HirFileId>,
     edition: Edition,
 ) {
-    let _g = tracing::info_span!("handle_lint_attributes").entered();
-    let file_id = sema.hir_file_for(root);
-    let preorder = root.preorder();
-    for ev in preorder {
-        match ev {
-            syntax::WalkEvent::Enter(node) => {
-                for attr in node.children().filter_map(ast::Attr::cast) {
-                    parse_lint_attribute(
-                        attr,
-                        rustc_stack,
-                        clippy_stack,
-                        |stack, severity| {
-                            stack.push(severity);
-                        },
-                        edition,
-                    );
-                }
-                if let Some(it) =
-                    diagnostics_of_range.get_mut(&InFile { file_id, value: node.clone() })
-                {
-                    const EMPTY_LINTS: &[&str] = &[];
-                    let (names, stack) = match it.code {
-                        DiagnosticCode::RustcLint(name) => (
-                            RUSTC_LINT_GROUPS_DICT.get(name).map_or(EMPTY_LINTS, |it| &**it),
-                            &mut *rustc_stack,
-                        ),
-                        DiagnosticCode::Clippy(name) => (
-                            CLIPPY_LINT_GROUPS_DICT.get(name).map_or(EMPTY_LINTS, |it| &**it),
-                            &mut *clippy_stack,
-                        ),
-                        _ => continue,
-                    };
-                    for &name in names {
-                        if let Some(s) = stack.get(name).and_then(|it| it.last()) {
-                            it.severity = *s;
-                        }
-                    }
-                }
-                if let Some(item) = ast::Item::cast(node.clone()) {
-                    if let Some(me) = sema.expand_attr_macro(&item) {
-                        for stack in [&mut *rustc_stack, &mut *clippy_stack] {
-                            stack
-                                .entry("__RA_EVERY_LINT".to_owned())
-                                .or_default()
-                                .push(Severity::Allow);
-                        }
-                        handle_lint_attributes(
-                            sema,
-                            &me,
-                            rustc_stack,
-                            clippy_stack,
-                            diagnostics_of_range,
-                            edition,
-                        );
-                        for stack in [&mut *rustc_stack, &mut *clippy_stack] {
-                            stack.entry("__RA_EVERY_LINT".to_owned()).or_default().pop();
-                        }
-                    }
-                }
-                if let Some(mc) = ast::MacroCall::cast(node) {
-                    if let Some(me) = sema.expand(&mc) {
-                        handle_lint_attributes(
-                            sema,
-                            &me,
-                            rustc_stack,
-                            clippy_stack,
-                            diagnostics_of_range,
-                            edition,
-                        );
-                    }
-                }
-            }
-            syntax::WalkEvent::Leave(node) => {
-                for attr in node.children().filter_map(ast::Attr::cast) {
-                    parse_lint_attribute(
-                        attr,
-                        rustc_stack,
-                        clippy_stack,
-                        |stack, severity| {
-                            if stack.pop() != Some(severity) {
-                                never!("Mismatched serevity in walking lint attributes");
-                            }
-                        },
-                        edition,
-                    );
-                }
-            }
+    for (node, diag) in diagnostics {
+        let mut diag_severity = fill_lint_attrs(sema, node, cache, cache_stack, diag, edition);
+
+        if let outline_diag_severity @ Some(_) =
+            find_outline_mod_lint_severity(sema, node, diag, edition)
+        {
+            diag_severity = outline_diag_severity;
+        }
+
+        if let Some(diag_severity) = diag_severity {
+            diag.severity = diag_severity;
         }
     }
 }
 
-fn parse_lint_attribute(
-    attr: ast::Attr,
-    rustc_stack: &mut FxHashMap<String, Vec<Severity>>,
-    clippy_stack: &mut FxHashMap<String, Vec<Severity>>,
-    job: impl Fn(&mut Vec<Severity>, Severity),
+fn find_outline_mod_lint_severity(
+    sema: &Semantics<'_, RootDatabase>,
+    node: &InFile<SyntaxNode>,
+    diag: &Diagnostic,
     edition: Edition,
-) {
-    let Some((tag, args_tt)) = attr.as_simple_call() else {
-        return;
-    };
-    let severity = match tag.as_str() {
-        "allow" => Severity::Allow,
-        "warn" => Severity::Warning,
-        "forbid" | "deny" => Severity::Error,
-        _ => return,
-    };
-    for lint in parse_tt_as_comma_sep_paths(args_tt, edition).into_iter().flatten() {
-        if let Some(lint) = lint.as_single_name_ref() {
-            job(rustc_stack.entry(lint.to_string()).or_default(), severity);
+) -> Option<Severity> {
+    let mod_node = node.value.ancestors().find_map(ast::Module::cast)?;
+    if mod_node.item_list().is_some() {
+        // Inline modules will be handled by `fill_lint_attrs()`.
+        return None;
+    }
+
+    let mod_def = sema.to_module_def(&mod_node)?;
+    let module_source_file = sema.module_definition_node(mod_def);
+    let mut result = None;
+    let lint_groups = lint_groups(&diag.code);
+    lint_attrs(
+        ast::AnyHasAttrs::cast(module_source_file.value).expect("SourceFile always has attrs"),
+        edition,
+    )
+    .for_each(|(lint, severity)| {
+        if lint_groups.contains(&&*lint) {
+            result = Some(severity);
         }
-        if let Some(tool) = lint.qualifier().and_then(|it| it.as_single_name_ref()) {
-            if let Some(name_ref) = &lint.segment().and_then(|it| it.name_ref()) {
-                if tool.to_string() == "clippy" {
-                    job(clippy_stack.entry(name_ref.to_string()).or_default(), severity);
+    });
+    result
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SeverityAttr {
+    severity: Severity,
+    /// This field counts how far we are from the main node. Bigger values mean more far.
+    ///
+    /// Note this isn't accurate: there can be gaps between values (created when merging severity maps).
+    /// The important thing is that if an attr is closer to the main node, it will have smaller value.
+    ///
+    /// This is necessary even though we take care to never overwrite a value from deeper nesting
+    /// because of lint groups. For example, in the following code:
+    /// ```
+    /// #[warn(non_snake_case)]
+    /// mod foo {
+    ///     #[allow(nonstandard_style)]
+    ///     mod bar;
+    /// }
+    /// ```
+    /// We want to not warn on non snake case inside `bar`. If we are traversing this for the first
+    /// time, everything will be fine, because we will set `diag_severity` on the first matching group
+    /// and never overwrite it since then. But if `bar` is cached, the cache will contain both
+    /// `#[warn(non_snake_case)]` and `#[allow(nonstandard_style)]`, and without this field, we have
+    /// no way of differentiating between the two.
+    depth: u32,
+}
+
+fn fill_lint_attrs(
+    sema: &Semantics<'_, RootDatabase>,
+    node: &InFile<SyntaxNode>,
+    cache: &mut FxHashMap<HirFileId, FxHashMap<SmolStr, SeverityAttr>>,
+    cache_stack: &mut Vec<HirFileId>,
+    diag: &Diagnostic,
+    edition: Edition,
+) -> Option<Severity> {
+    let mut collected_lint_attrs = FxHashMap::<SmolStr, SeverityAttr>::default();
+    let mut diag_severity = None;
+
+    let mut ancestors = node.value.ancestors().peekable();
+    let mut depth = 0;
+    loop {
+        let ancestor = ancestors.next().expect("we always return from top-level nodes");
+        depth += 1;
+
+        if ancestors.peek().is_none() {
+            // We don't want to insert too many nodes into cache, but top level nodes (aka. outline modules
+            // or macro expansions) need to touch the database so they seem like a good fit to cache.
+
+            if let Some(cached) = cache.get_mut(&node.file_id) {
+                // This node (and everything above it) is already cached; the attribute is either here or nowhere.
+
+                // Workaround for the borrow checker.
+                let cached = std::mem::take(cached);
+
+                cached.iter().for_each(|(lint, severity)| {
+                    for item in &*cache_stack {
+                        let node_cache_entry = cache
+                            .get_mut(item)
+                            .expect("we always insert cached nodes into the cache map");
+                        let lint_cache_entry = node_cache_entry.entry(lint.clone());
+                        if let hash_map::Entry::Vacant(lint_cache_entry) = lint_cache_entry {
+                            // Do not overwrite existing lint attributes, as we go bottom to top and bottom attrs
+                            // overwrite top attrs.
+                            lint_cache_entry.insert(SeverityAttr {
+                                severity: severity.severity,
+                                depth: severity.depth + depth,
+                            });
+                        }
+                    }
+                });
+
+                let all_matching_groups = lint_groups(&diag.code)
+                    .iter()
+                    .filter_map(|lint_group| cached.get(&**lint_group));
+                let cached_severity =
+                    all_matching_groups.min_by_key(|it| it.depth).map(|it| it.severity);
+
+                cache.insert(node.file_id, cached);
+
+                return diag_severity.or(cached_severity);
+            }
+
+            // Insert this node's descendants' attributes into any outline descendant, but not including this node.
+            // This must come before inserting this node's own attributes to preserve order.
+            collected_lint_attrs.drain().for_each(|(lint, severity)| {
+                if diag_severity.is_none() && lint_groups(&diag.code).contains(&&*lint) {
+                    diag_severity = Some(severity.severity);
+                }
+
+                for item in &*cache_stack {
+                    let node_cache_entry = cache
+                        .get_mut(item)
+                        .expect("we always insert cached nodes into the cache map");
+                    let lint_cache_entry = node_cache_entry.entry(lint.clone());
+                    if let hash_map::Entry::Vacant(lint_cache_entry) = lint_cache_entry {
+                        // Do not overwrite existing lint attributes, as we go bottom to top and bottom attrs
+                        // overwrite top attrs.
+                        lint_cache_entry.insert(severity);
+                    }
+                }
+            });
+
+            cache_stack.push(node.file_id);
+            cache.insert(node.file_id, FxHashMap::default());
+
+            if let Some(ancestor) = ast::AnyHasAttrs::cast(ancestor) {
+                // Insert this node's attributes into any outline descendant, including this node.
+                lint_attrs(ancestor, edition).for_each(|(lint, severity)| {
+                    if diag_severity.is_none() && lint_groups(&diag.code).contains(&&*lint) {
+                        diag_severity = Some(severity);
+                    }
+
+                    for item in &*cache_stack {
+                        let node_cache_entry = cache
+                            .get_mut(item)
+                            .expect("we always insert cached nodes into the cache map");
+                        let lint_cache_entry = node_cache_entry.entry(lint.clone());
+                        if let hash_map::Entry::Vacant(lint_cache_entry) = lint_cache_entry {
+                            // Do not overwrite existing lint attributes, as we go bottom to top and bottom attrs
+                            // overwrite top attrs.
+                            lint_cache_entry.insert(SeverityAttr { severity, depth });
+                        }
+                    }
+                });
+            }
+
+            let parent_node = sema.find_parent_file(node.file_id);
+            if let Some(parent_node) = parent_node {
+                let parent_severity =
+                    fill_lint_attrs(sema, &parent_node, cache, cache_stack, diag, edition);
+                if diag_severity.is_none() {
+                    diag_severity = parent_severity;
                 }
             }
+            cache_stack.pop();
+            return diag_severity;
+        } else if let Some(ancestor) = ast::AnyHasAttrs::cast(ancestor) {
+            lint_attrs(ancestor, edition).for_each(|(lint, severity)| {
+                if diag_severity.is_none() && lint_groups(&diag.code).contains(&&*lint) {
+                    diag_severity = Some(severity);
+                }
+
+                let lint_cache_entry = collected_lint_attrs.entry(lint);
+                if let hash_map::Entry::Vacant(lint_cache_entry) = lint_cache_entry {
+                    // Do not overwrite existing lint attributes, as we go bottom to top and bottom attrs
+                    // overwrite top attrs.
+                    lint_cache_entry.insert(SeverityAttr { severity, depth });
+                }
+            });
         }
+    }
+}
+
+fn lint_attrs(
+    ancestor: ast::AnyHasAttrs,
+    edition: Edition,
+) -> impl Iterator<Item = (SmolStr, Severity)> {
+    ancestor
+        .attrs_including_inner()
+        .filter_map(|attr| {
+            attr.as_simple_call().and_then(|(name, value)| match &*name {
+                "allow" | "expect" => Some((Severity::Allow, value)),
+                "warn" => Some((Severity::Warning, value)),
+                "forbid" | "deny" => Some((Severity::Error, value)),
+                _ => None,
+            })
+        })
+        .flat_map(move |(severity, lints)| {
+            parse_tt_as_comma_sep_paths(lints, edition).into_iter().flat_map(move |lints| {
+                // Rejoin the idents with `::`, so we have no spaces in between.
+                lints.into_iter().map(move |lint| {
+                    (
+                        lint.segments().filter_map(|segment| segment.name_ref()).join("::").into(),
+                        severity,
+                    )
+                })
+            })
+        })
+}
+
+fn lint_groups(lint: &DiagnosticCode) -> &'static [&'static str] {
+    match lint {
+        DiagnosticCode::RustcLint(name) => {
+            RUSTC_LINT_GROUPS_DICT.get(name).map(|it| &**it).unwrap_or_default()
+        }
+        DiagnosticCode::Clippy(name) => {
+            CLIPPY_LINT_GROUPS_DICT.get(name).map(|it| &**it).unwrap_or_default()
+        }
+        _ => &[],
     }
 }
 
