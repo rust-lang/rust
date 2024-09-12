@@ -402,4 +402,26 @@ fn f() {
             ],
         );
     }
+
+    #[test]
+    fn underscore_in_asm() {
+        check_diagnostics(
+            r#"
+//- minicore: asm
+fn rdtscp() -> u64 {
+    let hi: u64;
+    let lo: u64;
+    unsafe {
+        core::arch::asm!(
+            "rdtscp",
+            out("rdx") hi,
+            out("rax") lo,
+            out("rcx") _,
+            options(nomem, nostack, preserves_flags)
+        );
+    }
+    (hi << 32) | lo
+}"#,
+        );
+    }
 }

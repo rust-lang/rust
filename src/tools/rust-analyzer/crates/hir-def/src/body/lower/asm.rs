@@ -87,45 +87,64 @@ impl ExprCollector<'_> {
                                     );
                                     AsmOperand::In { reg, expr }
                                 } else if dir_spec.out_token().is_some() {
-                                    let expr = self.collect_expr_opt(
-                                        op.asm_operand_expr().and_then(|it| it.in_expr()),
-                                    );
-                                    AsmOperand::Out { reg, expr: Some(expr), late: false }
+                                    let expr = op
+                                        .asm_operand_expr()
+                                        .and_then(|it| it.in_expr())
+                                        .filter(|it| !matches!(it, ast::Expr::UnderscoreExpr(_)))
+                                        .map(|expr| self.collect_expr(expr));
+                                    AsmOperand::Out { reg, expr, late: false }
                                 } else if dir_spec.lateout_token().is_some() {
-                                    let expr = self.collect_expr_opt(
-                                        op.asm_operand_expr().and_then(|it| it.in_expr()),
-                                    );
-                                    AsmOperand::Out { reg, expr: Some(expr), late: true }
+                                    let expr = op
+                                        .asm_operand_expr()
+                                        .and_then(|it| it.in_expr())
+                                        .filter(|it| !matches!(it, ast::Expr::UnderscoreExpr(_)))
+                                        .map(|expr| self.collect_expr(expr));
+
+                                    AsmOperand::Out { reg, expr, late: true }
                                 } else if dir_spec.inout_token().is_some() {
                                     let Some(op_expr) = op.asm_operand_expr() else { continue };
                                     let in_expr = self.collect_expr_opt(op_expr.in_expr());
-                                    let out_expr =
-                                        op_expr.out_expr().map(|it| self.collect_expr(it));
-                                    match out_expr {
-                                        Some(out_expr) => AsmOperand::SplitInOut {
-                                            reg,
-                                            in_expr,
-                                            out_expr: Some(out_expr),
-                                            late: false,
-                                        },
-                                        None => {
+                                    match op_expr.fat_arrow_token().is_some() {
+                                        true => {
+                                            let out_expr = op_expr
+                                                .out_expr()
+                                                .filter(|it| {
+                                                    !matches!(it, ast::Expr::UnderscoreExpr(_))
+                                                })
+                                                .map(|expr| self.collect_expr(expr));
+
+                                            AsmOperand::SplitInOut {
+                                                reg,
+                                                in_expr,
+                                                out_expr,
+                                                late: false,
+                                            }
+                                        }
+                                        false => {
                                             AsmOperand::InOut { reg, expr: in_expr, late: false }
                                         }
                                     }
                                 } else if dir_spec.inlateout_token().is_some() {
                                     let Some(op_expr) = op.asm_operand_expr() else { continue };
                                     let in_expr = self.collect_expr_opt(op_expr.in_expr());
-                                    let out_expr =
-                                        op_expr.out_expr().map(|it| self.collect_expr(it));
-                                    match out_expr {
-                                        Some(out_expr) => AsmOperand::SplitInOut {
-                                            reg,
-                                            in_expr,
-                                            out_expr: Some(out_expr),
-                                            late: false,
-                                        },
-                                        None => {
-                                            AsmOperand::InOut { reg, expr: in_expr, late: false }
+                                    match op_expr.fat_arrow_token().is_some() {
+                                        true => {
+                                            let out_expr = op_expr
+                                                .out_expr()
+                                                .filter(|it| {
+                                                    !matches!(it, ast::Expr::UnderscoreExpr(_))
+                                                })
+                                                .map(|expr| self.collect_expr(expr));
+
+                                            AsmOperand::SplitInOut {
+                                                reg,
+                                                in_expr,
+                                                out_expr,
+                                                late: true,
+                                            }
+                                        }
+                                        false => {
+                                            AsmOperand::InOut { reg, expr: in_expr, late: true }
                                         }
                                     }
                                 } else {
