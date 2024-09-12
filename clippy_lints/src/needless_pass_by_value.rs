@@ -208,7 +208,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             )
                             .is_ok()
                             {
-                                diag.span_help(span, "consider marking this type as `Copy`");
+                                diag.span_help(span, "or consider marking this type as `Copy`");
                             }
                         }
                     }
