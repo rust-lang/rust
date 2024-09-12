@@ -139,8 +139,8 @@ It can sometimes be useful to run some tests with specific compiler arguments,
 without using `RUSTFLAGS` (during development of unstable features, with `-Z`
 flags, for example).
 
-This can be done with `./x test`'s `--rustc-args` option, to pass additional
-arguments to the compiler when building the tests.
+This can be done with `./x test`'s `--compiletest-rustc-args` option, to pass
+additional arguments to the compiler when building the tests.
 
 ## Editing and updating the reference files
 
