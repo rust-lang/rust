@@ -16,16 +16,13 @@ extern "rust-intrinsic" {
 #[repr(simd)]
 struct Simd<T, const N: usize>([T; N]);
 
-unsafe fn __shuffle_vector16<const IDX: [u32; 16], T, U>(x: T, y: T) -> U {
-    simd_shuffle(x, y, IDX)
-}
-unsafe fn __shuffle_vector16_v2<const IDX: Simd<u32, 16>, T, U>(x: T, y: T) -> U {
+unsafe fn __shuffle_vector16<const IDX: Simd<u32, 16>, T, U>(x: T, y: T) -> U {
     simd_shuffle(x, y, IDX)
 }
 
 fn main() {
-    const I1: [u32; 4] = [0, 2, 4, 6];
-    const I2: [u32; 2] = [1, 5];
+    const I1: Simd<u32, 4> = Simd([0, 2, 4, 6]);
+    const I2: Simd<u32, 2> = Simd([1, 5]);
     let a = Simd::<u8, 4>([0, 1, 2, 3]);
     let b = Simd::<u8, 4>([4, 5, 6, 7]);
     unsafe {
@@ -33,16 +30,6 @@ fn main() {
         assert_eq!(x.0, [0, 2, 4, 6]);
 
         let y: Simd<u8, 2> = simd_shuffle(a, b, I2);
-        assert_eq!(y.0, [1, 5]);
-    }
-    // Test that we can also use a SIMD vector instead of a normal array for the shuffle.
-    const I1_SIMD: Simd<u32, 4> = Simd([0, 2, 4, 6]);
-    const I2_SIMD: Simd<u32, 2> = Simd([1, 5]);
-    unsafe {
-        let x: Simd<u8, 4> = simd_shuffle(a, b, I1_SIMD);
-        assert_eq!(x.0, [0, 2, 4, 6]);
-
-        let y: Simd<u8, 2> = simd_shuffle(a, b, I2_SIMD);
         assert_eq!(y.0, [1, 5]);
     }
 
@@ -53,13 +40,6 @@ fn main() {
     let b = Simd::<u8, 16>([16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
     unsafe {
         __shuffle_vector16::<
-            { [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] },
-            Simd<u8, 16>,
-            Simd<u8, 16>,
-        >(a, b);
-    }
-    unsafe {
-        __shuffle_vector16_v2::<
             { Simd([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]) },
             Simd<u8, 16>,
             Simd<u8, 16>,

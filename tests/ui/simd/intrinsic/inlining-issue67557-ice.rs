@@ -13,6 +13,9 @@ extern "rust-intrinsic" {
 #[derive(Debug, PartialEq)]
 struct Simd2([u8; 2]);
 
+#[repr(simd)]
+struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);
+
 fn main() {
     unsafe {
         let _: Simd2 = inline_me();
@@ -21,6 +24,6 @@ fn main() {
 
 #[inline(always)]
 unsafe fn inline_me() -> Simd2 {
-    const IDX: [u32; 2] = [0, 3];
+    const IDX: SimdShuffleIdx<2> = SimdShuffleIdx([0, 3]);
     simd_shuffle(Simd2([10, 11]), Simd2([12, 13]), IDX)
 }
