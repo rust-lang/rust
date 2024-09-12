@@ -4,6 +4,7 @@ use std::{borrow::Cow, iter};
 
 use itertools::{MultiPeek, multipeek};
 use rustc_span::Span;
+use tracing::{debug, trace};
 
 use crate::config::Config;
 use crate::rewrite::{RewriteContext, RewriteErrorExt, RewriteResult};

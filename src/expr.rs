@@ -5,6 +5,7 @@ use itertools::Itertools;
 use rustc_ast::token::{Delimiter, Lit, LitKind};
 use rustc_ast::{ForLoopKind, MatchKind, ast, ptr, token};
 use rustc_span::{BytePos, Span};
+use tracing::debug;
 
 use crate::chains::rewrite_chain;
 use crate::closures;
@@ -467,7 +468,7 @@ fn rewrite_empty_block(
         return None;
     }
 
-    let label_str = rewrite_label(label);
+    let label_str = rewrite_label(context, label);
     if attrs.map_or(false, |a| !inner_attributes(a).is_empty()) {
         return None;
     }
@@ -537,7 +538,7 @@ fn rewrite_single_line_block(
             .offset_left(last_line_width(prefix))
             .max_width_error(shape.width, block_expr.span())?;
         let expr_str = block_expr.rewrite_result(context, expr_shape)?;
-        let label_str = rewrite_label(label);
+        let label_str = rewrite_label(context, label);
         let result = format!("{prefix}{label_str}{{ {expr_str} }}");
         if result.len() <= shape.width && !result.contains('\n') {
             return Ok(result);
@@ -572,7 +573,7 @@ pub(crate) fn rewrite_block_with_visitor(
     }
 
     let inner_attrs = attrs.map(inner_attributes);
-    let label_str = rewrite_label(label);
+    let label_str = rewrite_label(context, label);
     visitor.visit_block(block, inner_attrs.as_deref(), has_braces);
     let visitor_context = visitor.get_context();
     context
@@ -956,7 +957,7 @@ impl<'a> ControlFlow<'a> {
             fresh_shape
         };
 
-        let label_string = rewrite_label(self.label);
+        let label_string = rewrite_label(context, self.label);
         // 1 = space after keyword.
         let offset = self.keyword.len() + label_string.len() + 1;
 
@@ -1189,9 +1190,9 @@ impl<'a> Rewrite for ControlFlow<'a> {
     }
 }
 
-fn rewrite_label(opt_label: Option<ast::Label>) -> Cow<'static, str> {
+fn rewrite_label(context: &RewriteContext<'_>, opt_label: Option<ast::Label>) -> Cow<'static, str> {
     match opt_label {
-        Some(label) => Cow::from(format!("{}: ", label.ident)),
+        Some(label) => Cow::from(format!("{}: ", context.snippet(label.ident.span))),
         None => Cow::from(""),
     }
 }

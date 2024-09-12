@@ -4,9 +4,6 @@
 #![recursion_limit = "256"]
 #![allow(clippy::match_like_matches_macro)]
 
-#[macro_use]
-extern crate tracing;
-
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;

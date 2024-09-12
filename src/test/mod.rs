@@ -19,6 +19,7 @@ use crate::{
 };
 
 use rustfmt_config_proc_macro::nightly_only_test;
+use tracing::{debug, warn};
 
 mod configuration_snippet;
 mod mod_resolver;

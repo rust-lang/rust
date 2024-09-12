@@ -4,6 +4,7 @@ use std::iter::repeat;
 
 use rustc_ast::{MatchKind, ast, ptr};
 use rustc_span::{BytePos, Span};
+use tracing::debug;
 
 use crate::comment::{FindUncommented, combine_strs_with_missing_comments, rewrite_comment};
 use crate::config::lists::*;

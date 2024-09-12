@@ -7,6 +7,7 @@ use regex::Regex;
 use rustc_ast::visit;
 use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, DUMMY_SP, Span, symbol};
+use tracing::debug;
 
 use crate::attr::filter_inline_attrs;
 use crate::comment::{

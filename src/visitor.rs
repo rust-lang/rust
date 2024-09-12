@@ -4,6 +4,7 @@ use std::rc::Rc;
 use rustc_ast::{ast, token::Delimiter, visit};
 use rustc_data_structures::sync::Lrc;
 use rustc_span::{BytePos, Pos, Span, symbol};
+use tracing::debug;
 
 use crate::attr::*;
 use crate::comment::{CodeCharKind, CommentCodeSlices, contains_comment, rewrite_comment};
