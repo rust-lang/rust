@@ -64,8 +64,8 @@ impl fmt::Display for BreakContextKind {
 }
 
 #[derive(Clone)]
-struct CheckLoopVisitor<'a, 'tcx> {
-    sess: &'a Session,
+struct CheckLoopVisitor<'tcx> {
+    sess: &'tcx Session,
     tcx: TyCtxt<'tcx>,
     // Keep track of a stack of contexts, so that suggestions
     // are not made for contexts where it would be incorrect,
@@ -90,7 +90,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_loops, ..*providers };
 }
 
-impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
+impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -129,7 +129,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::If(cond, then, else_opt) => {
                 self.visit_expr(cond);
 
-                let get_block = |ck_loop: &CheckLoopVisitor<'a, 'hir>,
+                let get_block = |ck_loop: &CheckLoopVisitor<'hir>,
                                  expr: &hir::Expr<'hir>|
                  -> Option<&hir::Block<'hir>> {
                     if let hir::ExprKind::Block(b, None) = expr.kind
@@ -306,10 +306,10 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     }
 }
 
-impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
+impl<'hir> CheckLoopVisitor<'hir> {
     fn with_context<F>(&mut self, cx: Context, f: F)
     where
-        F: FnOnce(&mut CheckLoopVisitor<'a, 'hir>),
+        F: FnOnce(&mut CheckLoopVisitor<'hir>),
     {
         self.cx_stack.push(cx);
         f(self);
