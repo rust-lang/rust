@@ -1761,7 +1761,16 @@ where
     /// Insert a key-value pair into the map without checking
     /// if the key already exists in the map.
     ///
+    /// This operation is faster than regular insert, because it does not perform
+    /// lookup before insertion.
+    ///
+    /// This operation is useful during initial population of the map.
+    /// For example, when constructing a map from another map, we know
+    /// that keys are unique.
+    ///
     /// Returns a reference to the key and value just inserted.
+    ///
+    /// # Safety
     ///
     /// This operation is safe if a key does not exist in the map.
     ///
@@ -1772,12 +1781,9 @@ where
     /// That said, this operation (and following operations) are guaranteed to
     /// not violate memory safety.
     ///
-    /// This operation is faster than regular insert, because it does not perform
-    /// lookup before insertion.
-    ///
-    /// This operation is useful during initial population of the map.
-    /// For example, when constructing a map from another map, we know
-    /// that keys are unique.
+    /// However this operation is still unsafe because the resulting `HashMap`
+    /// may be passed to unsafe code which does expect the map to behave
+    /// correctly, and would could unsoundness as a result.
     ///
     /// # Examples
     ///
@@ -1793,10 +1799,12 @@ where
     /// let mut map2 = HashMap::new();
     ///
     /// for (key, value) in map1.into_iter() {
-    ///     map2.insert_unique_unchecked(key, value);
+    ///     unsafe {
+    ///         map2.insert_unique_unchecked(key, value);
+    ///     }
     /// }
     ///
-    /// let (key, value) = map2.insert_unique_unchecked(4, "d");
+    /// let (key, value) = unsafe { map2.insert_unique_unchecked(4, "d") };
     /// assert_eq!(key, &4);
     /// assert_eq!(value, &mut "d");
     /// *value = "e";
@@ -1808,7 +1816,7 @@ where
     /// assert_eq!(map2.len(), 4);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert_unique_unchecked(&mut self, k: K, v: V) -> (&K, &mut V) {
+    pub unsafe fn insert_unique_unchecked(&mut self, k: K, v: V) -> (&K, &mut V) {
         let hash = make_hash::<K, S>(&self.hash_builder, &k);
         let bucket = self
             .table
@@ -3187,7 +3195,7 @@ impl<'a, K, V, S, A: Allocator> IntoIterator for &'a HashMap<K, V, S, A> {
     ///
     /// for (key, value) in &map_one {
     ///     println!("Key: {}, Value: {}", key, value);
-    ///     map_two.insert_unique_unchecked(*key, *value);
+    ///     map_two.insert(*key, *value);
     /// }
     ///
     /// assert_eq!(map_one, map_two);
@@ -5710,9 +5718,9 @@ mod test_map {
     #[test]
     fn test_insert_unique_unchecked() {
         let mut map = HashMap::new();
-        let (k1, v1) = map.insert_unique_unchecked(10, 11);
+        let (k1, v1) = unsafe { map.insert_unique_unchecked(10, 11) };
         assert_eq!((&10, &mut 11), (k1, v1));
-        let (k2, v2) = map.insert_unique_unchecked(20, 21);
+        let (k2, v2) = unsafe { map.insert_unique_unchecked(20, 21) };
         assert_eq!((&20, &mut 21), (k2, v2));
         assert_eq!(Some(&11), map.get(&10));
         assert_eq!(Some(&21), map.get(&20));
