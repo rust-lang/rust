@@ -36,7 +36,7 @@ fn check_duplicated_attr(
     }
     let Some(ident) = attr.ident() else { return };
     let name = ident.name;
-    if name == sym::doc || name == sym::cfg_attr || name == sym::rustc_on_unimplemented {
+    if name == sym::doc || name == sym::cfg_attr || name == sym::rustc_on_unimplemented || name == sym::reason {
         // FIXME: Would be nice to handle `cfg_attr` as well. Only problem is to check that cfg
         // conditions are the same.
         // `#[rustc_on_unimplemented]` contains duplicated subattributes, that's expected.
