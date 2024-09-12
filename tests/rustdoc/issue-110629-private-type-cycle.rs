@@ -1,10 +1,12 @@
 //@ compile-flags: --document-private-items
 
+// https://github.com/rust-lang/rust/issues/110629
+#![crate_name="foo"]
 #![feature(type_alias_impl_trait)]
 
 type Bar<'a, 'b> = impl PartialEq<Bar<'a, 'b>> + std::fmt::Debug;
 
-//@ has issue_110629_private_type_cycle/type.Bar.html
+//@ has foo/type.Bar.html
 //@ has - '//pre[@class="rust item-decl"]' \
 //     "pub(crate) type Bar<'a, 'b> = impl PartialEq<Bar<'a, 'b>> + Debug;"
 

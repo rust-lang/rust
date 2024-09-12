@@ -1,5 +1,6 @@
 //@ aux-build: issue-113982-doc_auto_cfg-reexport-foreign.rs
 
+// https://github.com/rust-lang/rust/issues/113982
 #![feature(no_core, doc_auto_cfg)]
 #![no_core]
 #![crate_name = "foo"]
