@@ -122,6 +122,21 @@ where
             (certainty, NestedNormalizationGoals::empty())
         };
 
+        if let Certainty::Maybe(cause @ MaybeCause::Overflow { .. }) = certainty {
+            // If we have overflow, it's probable that we're substituting a type
+            // into itself infinitely and any partial substitutions in the query
+            // response are probably not useful anyways, so just return an empty
+            // query response.
+            //
+            // This may prevent us from potentially useful inference, e.g.
+            // 2 candidates, one ambiguous and one overflow, which both
+            // have the same inference constraints.
+            //
+            // Changing this to retain some constraints in the future
+            // won't be a breaking change, so this is good enough for now.
+            return Ok(self.make_ambiguous_response_no_constraints(cause));
+        }
+
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
         let (var_values, mut external_constraints) = (self.var_values, external_constraints)

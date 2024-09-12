@@ -117,7 +117,8 @@ impl<I: Interner, P> Goal<I, P> {
 /// Why a specific goal has to be proven.
 ///
 /// This is necessary as we treat nested goals different depending on
-/// their source.
+/// their source. This is currently mostly used by proof tree visitors
+/// but will be used by cycle handling in the future.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum GoalSource {
@@ -126,13 +127,6 @@ pub enum GoalSource {
     ///
     /// FIXME(-Znext-solver=coinductive): Explain how and why this
     /// changes whether cycles are coinductive.
-    ///
-    /// This also impacts whether we erase constraints on overflow.
-    /// Erasing constraints is generally very useful for perf and also
-    /// results in better error messages by avoiding spurious errors.
-    /// We do not erase overflow constraints in `normalizes-to` goals unless
-    /// they are from an impl where-clause. This is necessary due to
-    /// backwards compatibility, cc trait-system-refactor-initiatitive#70.
     ImplWhereBound,
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,
