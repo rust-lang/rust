@@ -672,7 +672,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut ty_str_reported = ty_str.clone();
         if let ty::Adt(_, generics) = rcvr_ty.kind() {
             if generics.len() > 0 {
-                let mut autoderef = self.autoderef(span, rcvr_ty);
+                let mut autoderef = self.autoderef(span, rcvr_ty).silence_errors();
                 let candidate_found = autoderef.any(|(ty, _)| {
                     if let ty::Adt(adt_def, _) = ty.kind() {
                         self.tcx

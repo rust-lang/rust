@@ -2942,7 +2942,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Vec<(Vec<&'tcx ty::FieldDef>, GenericArgsRef<'tcx>)> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
-        self.autoderef(span, base_ty)
+        let mut autoderef = self.autoderef(span, base_ty).silence_errors();
+        let deref_chain: Vec<_> = autoderef.by_ref().collect();
+
+        // Don't probe if we hit the recursion limit, since it may result in
+        // quadratic blowup if we then try to further deref the results of this
+        // function. This is a best-effort method, after all.
+        if autoderef.reached_recursion_limit() {
+            return vec![];
+        }
+
+        deref_chain
+            .into_iter()
             .filter_map(move |(base_t, _)| {
                 match base_t.kind() {
                     ty::Adt(base_def, args) if !base_def.is_enum() => {
