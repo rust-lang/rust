@@ -789,7 +789,7 @@ struct CreateRunnableDocTests {
 
 impl CreateRunnableDocTests {
     fn new(rustdoc_options: RustdocOptions, opts: GlobalTestOptions) -> CreateRunnableDocTests {
-        let can_merge_doctests = rustdoc_options.edition >= Edition::Edition2024;
+        let can_merge_doctests = true;
         CreateRunnableDocTests {
             standalone_tests: Vec::new(),
             mergeable_tests: FxHashMap::default(),
