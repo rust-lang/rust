@@ -1,5 +1,4 @@
 use crate::{Equivalent, TryReserveError};
-use alloc::borrow::ToOwned;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FusedIterator};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
@@ -911,45 +910,16 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert(&mut self, value: T) -> &T {
-        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
-        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.map
-            .raw_entry_mut()
-            .from_key(&value)
-            .or_insert(value, ())
-            .0
-    }
-
-    /// Inserts an owned copy of the given `value` into the set if it is not
-    /// present, then returns a reference to the value in the set.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut set: HashSet<String> = ["cat", "dog", "horse"]
-    ///     .iter().map(|&pet| pet.to_owned()).collect();
-    ///
-    /// assert_eq!(set.len(), 3);
-    /// for &pet in &["cat", "dog", "fish"] {
-    ///     let value = set.get_or_insert_owned(pet);
-    ///     assert_eq!(value, pet);
-    /// }
-    /// assert_eq!(set.len(), 4); // a new "fish" was inserted
-    /// ```
-    #[inline]
-    pub fn get_or_insert_owned<Q>(&mut self, value: &Q) -> &T
-    where
-        Q: Hash + Equivalent<T> + ToOwned<Owned = T> + ?Sized,
-    {
-        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
-        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.map
-            .raw_entry_mut()
-            .from_key(value)
-            .or_insert_with(|| (value.to_owned(), ()))
-            .0
+        let hash = make_hash(&self.map.hash_builder, &value);
+        let bucket = match self.map.table.find_or_find_insert_slot(
+            hash,
+            equivalent_key(&value),
+            make_hasher(&self.map.hash_builder),
+        ) {
+            Ok(bucket) => bucket,
+            Err(slot) => unsafe { self.map.table.insert_in_slot(hash, slot, (value, ())) },
+        };
+        unsafe { &bucket.as_ref().0 }
     }
 
     /// Inserts a value computed from `f` into the set if the given `value` is
@@ -970,19 +940,33 @@ where
     /// }
     /// assert_eq!(set.len(), 4); // a new "fish" was inserted
     /// ```
+    ///
+    /// The following example will panic because the new value doesn't match.
+    ///
+    /// ```should_panic
+    /// let mut set = hashbrown::HashSet::new();
+    /// set.get_or_insert_with("rust", |_| String::new());
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert_with<Q, F>(&mut self, value: &Q, f: F) -> &T
     where
         Q: Hash + Equivalent<T> + ?Sized,
         F: FnOnce(&Q) -> T,
     {
-        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
-        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.map
-            .raw_entry_mut()
-            .from_key(value)
-            .or_insert_with(|| (f(value), ()))
-            .0
+        let hash = make_hash(&self.map.hash_builder, &value);
+        let bucket = match self.map.table.find_or_find_insert_slot(
+            hash,
+            equivalent_key(value),
+            make_hasher(&self.map.hash_builder),
+        ) {
+            Ok(bucket) => bucket,
+            Err(slot) => {
+                let new = f(value);
+                assert!(value.equivalent(&new), "new value is not equivalent");
+                unsafe { self.map.table.insert_in_slot(hash, slot, (new, ())) }
+            }
+        };
+        unsafe { &bucket.as_ref().0 }
     }
 
     /// Gets the given value's corresponding entry in the set for in-place manipulation.
@@ -1607,15 +1591,21 @@ where
     /// ```
     fn bitxor_assign(&mut self, rhs: &HashSet<T, S, A>) {
         for item in rhs {
-            let entry = self.map.raw_entry_mut().from_key(item);
-            match entry {
-                map::RawEntryMut::Occupied(e) => {
-                    e.remove();
-                }
-                map::RawEntryMut::Vacant(e) => {
-                    e.insert(item.to_owned(), ());
-                }
-            };
+            let hash = make_hash(&self.map.hash_builder, &item);
+            match self.map.table.find_or_find_insert_slot(
+                hash,
+                equivalent_key(item),
+                make_hasher(&self.map.hash_builder),
+            ) {
+                Ok(bucket) => unsafe {
+                    self.map.table.remove(bucket);
+                },
+                Err(slot) => unsafe {
+                    self.map
+                        .table
+                        .insert_in_slot(hash, slot, (item.clone(), ()));
+                },
+            }
         }
     }
 }
