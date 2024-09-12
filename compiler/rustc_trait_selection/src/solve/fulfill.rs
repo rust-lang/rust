@@ -302,7 +302,7 @@ fn fulfillment_error_for_stalled<'tcx>(
             Ok((_, Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }))) => (
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
                 // Don't look into overflows because we treat overflows weirdly anyways.
-                // In `instantiate_response_discarding_overflow` we set `has_changed = false`,
+                // We discard the inference constraints from overflowing goals, so
                 // recomputing the goal again during `find_best_leaf_obligation` may apply
                 // inference guidance that makes other goals go from ambig -> pass, for example.
                 //

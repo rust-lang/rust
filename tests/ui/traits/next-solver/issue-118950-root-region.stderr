@@ -37,6 +37,8 @@ LL | impl<T> Overlap<T> for T {}
 LL |
 LL | impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `fn(_)`
+   |
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
 
 error: aborting due to 3 previous errors; 1 warning emitted
 

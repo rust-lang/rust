@@ -17,7 +17,7 @@ use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, Goal, GoalEvaluationKind, GoalSource, MaybeCause,
+    CanonicalInput, CanonicalResponse, Certainty, Goal, GoalEvaluationKind, GoalSource,
     NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult, SolverMode,
     FIXPOINT_STEP_LIMIT,
 };
@@ -370,7 +370,7 @@ where
             canonical_goal,
             &mut goal_evaluation,
         );
-        let canonical_response = match canonical_response {
+        let response = match canonical_response {
             Err(e) => {
                 self.inspect.goal_evaluation(goal_evaluation);
                 return Err(e);
@@ -378,12 +378,11 @@ where
             Ok(response) => response,
         };
 
-        let (normalization_nested_goals, certainty, has_changed) = self
-            .instantiate_response_discarding_overflow(
-                goal.param_env,
-                orig_values,
-                canonical_response,
-            );
+        let has_changed = !response.value.var_values.is_identity_modulo_regions()
+            || !response.value.external_constraints.opaque_types.is_empty();
+
+        let (normalization_nested_goals, certainty) =
+            self.instantiate_and_apply_query_response(goal.param_env, orig_values, response);
         self.inspect.goal_evaluation(goal_evaluation);
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
@@ -396,24 +395,6 @@ where
         // we should re-add an assert here.
 
         Ok((normalization_nested_goals, has_changed, certainty))
-    }
-
-    fn instantiate_response_discarding_overflow(
-        &mut self,
-        param_env: I::ParamEnv,
-        original_values: Vec<I::GenericArg>,
-        response: CanonicalResponse<I>,
-    ) -> (NestedNormalizationGoals<I>, Certainty, bool) {
-        if let Certainty::Maybe(MaybeCause::Overflow { .. }) = response.value.certainty {
-            return (NestedNormalizationGoals::empty(), response.value.certainty, false);
-        }
-
-        let has_changed = !response.value.var_values.is_identity_modulo_regions()
-            || !response.value.external_constraints.opaque_types.is_empty();
-
-        let (normalization_nested_goals, certainty) =
-            self.instantiate_and_apply_query_response(param_env, original_values, response);
-        (normalization_nested_goals, certainty, has_changed)
     }
 
     fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
