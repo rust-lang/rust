@@ -40,8 +40,6 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-use std::collections::hash_map::Entry;
-
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
@@ -115,8 +113,8 @@ struct LoweringContext<'a, 'hir> {
     /// outside of an `async fn`.
     current_item: Option<Span>,
 
-    catch_scope: Option<NodeId>,
-    loop_scope: Option<NodeId>,
+    catch_scope: Option<HirId>,
+    loop_scope: Option<HirId>,
     is_in_loop_condition: bool,
     is_in_trait_impl: bool,
     is_in_dyn_type: bool,
@@ -140,8 +138,10 @@ struct LoweringContext<'a, 'hir> {
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
 
-    /// NodeIds that are lowered inside the current HIR owner.
-    node_id_to_local_id: NodeMap<hir::ItemLocalId>,
+    /// NodeIds of labelled nodes that are lowered inside the current HIR owner.
+    labelled_node_id_to_local_id: NodeMap<hir::ItemLocalId>,
+    /// NodeIds of identifier that are lowered inside the current HIR owner.
+    ident_to_local_id: NodeMap<hir::ItemLocalId>,
 
     allow_try_trait: Lrc<[Symbol]>,
     allow_gen_future: Lrc<[Symbol]>,
@@ -171,7 +171,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             current_hir_id_owner: hir::CRATE_OWNER_ID,
             current_def_id_parent: CRATE_DEF_ID,
             item_local_id_counter: hir::ItemLocalId::ZERO,
-            node_id_to_local_id: Default::default(),
+            labelled_node_id_to_local_id: Default::default(),
+            ident_to_local_id: Default::default(),
             trait_map: Default::default(),
 
             // Lowering state.
@@ -588,7 +589,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
-        let current_node_ids = std::mem::take(&mut self.node_id_to_local_id);
+        let current_labelled_node_id_to_local_id =
+            std::mem::take(&mut self.labelled_node_id_to_local_id);
+        let current_ident_to_local_id = std::mem::take(&mut self.ident_to_local_id);
         let current_trait_map = std::mem::take(&mut self.trait_map);
         let current_owner =
             std::mem::replace(&mut self.current_hir_id_owner, hir::OwnerId { def_id });
@@ -601,10 +604,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we want `f` to be able to refer to the `LocalDefId`s that the caller created.
         // and the caller to refer to some of the subdefinitions' nodes' `LocalDefId`s.
 
-        // Always allocate the first `HirId` for the owner itself.
-        let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
-        debug_assert_eq!(_old, None);
-
         let item = self.with_def_id_parent(def_id, f);
         debug_assert_eq!(def_id, item.def_id().def_id);
         // `f` should have consumed all the elements in these vectors when constructing `item`.
@@ -614,7 +613,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.attrs = current_attrs;
         self.bodies = current_bodies;
-        self.node_id_to_local_id = current_node_ids;
+        self.labelled_node_id_to_local_id = current_labelled_node_id_to_local_id;
+        self.ident_to_local_id = current_ident_to_local_id;
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
@@ -680,39 +680,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
     }
 
-    /// This method allocates a new `HirId` for the given `NodeId` and stores it in
-    /// the `LoweringContext`'s `NodeId => HirId` map.
+    /// This method allocates a new `HirId` for the given `NodeId`.
     /// Take care not to call this method if the resulting `HirId` is then not
     /// actually used in the HIR, as that would trigger an assertion in the
     /// `HirIdValidator` later on, which makes sure that all `NodeId`s got mapped
-    /// properly. Calling the method twice with the same `NodeId` is fine though.
+    /// properly. Calling the method twice with the same `NodeId` is also forbidden.
     #[instrument(level = "debug", skip(self), ret)]
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
-        match self.node_id_to_local_id.entry(ast_node_id) {
-            Entry::Occupied(o) => HirId { owner: self.current_hir_id_owner, local_id: *o.get() },
-            Entry::Vacant(v) => {
-                // Generate a new `HirId`.
-                let owner = self.current_hir_id_owner;
-                let local_id = self.item_local_id_counter;
-                let hir_id = HirId { owner, local_id };
+        let owner = self.current_hir_id_owner;
+        let local_id = self.item_local_id_counter;
+        assert_ne!(local_id, hir::ItemLocalId::ZERO);
+        self.item_local_id_counter.increment_by(1);
+        let hir_id = HirId { owner, local_id };
 
-                v.insert(local_id);
-                self.item_local_id_counter.increment_by(1);
-
-                assert_ne!(local_id, hir::ItemLocalId::ZERO);
-                if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
-                    self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
-                }
-
-                if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
-                    self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
-                }
-
-                hir_id
-            }
+        if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
+            self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
+
+        if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
+            self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
+        }
+
+        hir_id
     }
 
     /// Generate a new `HirId` without a backing `NodeId`.
@@ -729,7 +720,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
         let res: Result<Res, ()> = res.apply_id(|id| {
             let owner = self.current_hir_id_owner;
-            let local_id = self.node_id_to_local_id.get(&id).copied().ok_or(())?;
+            let local_id = self.ident_to_local_id.get(&id).copied().ok_or(())?;
             Ok(HirId { owner, local_id })
         });
         trace!(?res);
