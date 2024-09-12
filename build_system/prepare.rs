@@ -5,9 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::path::{Dirs, RelPath};
-use crate::utils::{
-    copy_dir_recursively, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
-};
+use crate::utils::{copy_dir_recursively, remove_dir_if_exists, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
     RelPath::DOWNLOAD.ensure_exists(dirs);
@@ -110,7 +108,11 @@ impl GitRepo {
 
         match self.url {
             GitRepoUrl::Github { user, repo } => {
-                clone_repo_shallow_github(dirs, &download_dir, user, repo, self.rev);
+                clone_repo(
+                    &download_dir,
+                    &format!("https://github.com/{}/{}.git", user, repo),
+                    self.rev,
+                );
             }
         }
 
@@ -145,7 +147,6 @@ impl GitRepo {
     }
 }
 
-#[allow(dead_code)]
 fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     eprintln!("[CLONE] {}", repo);
     // Ignore exit code as the repo may already have been checked out
@@ -160,55 +161,6 @@ fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     spawn_and_wait(checkout_cmd);
 
     std::fs::remove_dir_all(download_dir.join(".git")).unwrap();
-}
-
-fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo: &str, rev: &str) {
-    if cfg!(windows) {
-        // Older windows doesn't have tar or curl by default. Fall back to using git.
-        clone_repo(download_dir, &format!("https://github.com/{}/{}.git", user, repo), rev);
-        return;
-    }
-
-    let archive_url = format!("https://github.com/{}/{}/archive/{}.tar.gz", user, repo, rev);
-    let archive_file = RelPath::DOWNLOAD.to_path(dirs).join(format!("{}.tar.gz", rev));
-    let archive_dir = RelPath::DOWNLOAD.to_path(dirs).join(format!("{}-{}", repo, rev));
-
-    eprintln!("[DOWNLOAD] {}/{} from {}", user, repo, archive_url);
-
-    // Remove previous results if they exists
-    let _ = std::fs::remove_file(&archive_file);
-    let _ = std::fs::remove_dir_all(&archive_dir);
-    let _ = std::fs::remove_dir_all(&download_dir);
-
-    // Download zip archive
-    let mut download_cmd = Command::new("curl");
-    download_cmd
-        .arg("--max-time")
-        .arg("600")
-        .arg("-y")
-        .arg("30")
-        .arg("-Y")
-        .arg("10")
-        .arg("--connect-timeout")
-        .arg("30")
-        .arg("--continue-at")
-        .arg("-")
-        .arg("--location")
-        .arg("--output")
-        .arg(&archive_file)
-        .arg(archive_url);
-    retry_spawn_and_wait(5, download_cmd);
-
-    // Unpack tar archive
-    let mut unpack_cmd = Command::new("tar");
-    unpack_cmd.arg("xf").arg(&archive_file).current_dir(RelPath::DOWNLOAD.to_path(dirs));
-    spawn_and_wait(unpack_cmd);
-
-    // Rename unpacked dir to the expected name
-    std::fs::rename(archive_dir, &download_dir).unwrap();
-
-    // Cleanup
-    std::fs::remove_file(archive_file).unwrap();
 }
 
 fn init_git_repo(repo_dir: &Path) {
