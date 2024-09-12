@@ -1166,10 +1166,9 @@ impl<'tcx> LocalDecl<'tcx> {
     /// Returns `true` if this is a DerefTemp
     pub fn is_deref_temp(&self) -> bool {
         match self.local_info() {
-            LocalInfo::DerefTemp => return true,
-            _ => (),
+            LocalInfo::DerefTemp => true,
+            _ => false,
         }
-        return false;
     }
 
     /// Returns `true` is the local is from a compiler desugaring, e.g.,

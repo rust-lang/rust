@@ -641,7 +641,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
         self.mark_init(range, false);
         self.provenance.clear(range, cx)?;
-        return Ok(());
+        Ok(())
     }
 
     /// Remove all provenance in the given memory range.

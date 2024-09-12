@@ -6,6 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirIdSet, InlineAsmOperand, StmtKind};
+use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNDEFINED_NAKED_FUNCTION_ABI;
@@ -14,8 +15,9 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use crate::errors::{
-    NakedFunctionsAsmBlock, NakedFunctionsAsmOptions, NakedFunctionsMustUseNoreturn,
-    NakedFunctionsOperands, NoPatterns, ParamsNotAllowed, UndefinedNakedFunctionAbi,
+    NakedAsmOutsideNakedFn, NakedFunctionsAsmBlock, NakedFunctionsAsmOptions,
+    NakedFunctionsMustUseNoreturn, NakedFunctionsOperands, NoPatterns, ParamsNotAllowed,
+    UndefinedNakedFunctionAbi,
 };
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -26,11 +28,6 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     let items = tcx.hir_module_items(module_def_id);
     for def_id in items.definitions() {
         if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-            continue;
-        }
-
-        let naked = tcx.has_attr(def_id, sym::naked);
-        if !naked {
             continue;
         }
 
@@ -48,10 +45,17 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         };
 
         let body = tcx.hir().body(body_id);
-        check_abi(tcx, def_id, fn_header.abi);
-        check_no_patterns(tcx, body.params);
-        check_no_parameters_use(tcx, body);
-        check_asm(tcx, def_id, body);
+
+        if tcx.has_attr(def_id, sym::naked) {
+            check_abi(tcx, def_id, fn_header.abi);
+            check_no_patterns(tcx, body.params);
+            check_no_parameters_use(tcx, body);
+            check_asm(tcx, def_id, body);
+        } else {
+            // `naked_asm!` is not allowed outside of functions marked as `#[naked]`
+            let mut visitor = CheckNakedAsmInNakedFn { tcx };
+            visitor.visit_body(body);
+        }
     }
 }
 
@@ -274,5 +278,27 @@ impl<'tcx> Visitor<'tcx> for CheckInlineAssembly<'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         self.check_expr(expr, expr.span);
+    }
+}
+
+struct CheckNakedAsmInNakedFn<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> Visitor<'tcx> for CheckNakedAsmInNakedFn<'tcx> {
+    type NestedFilter = OnlyBodies;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        if let ExprKind::InlineAsm(inline_asm) = expr.kind {
+            if let rustc_ast::AsmMacro::NakedAsm = inline_asm.asm_macro {
+                self.tcx.dcx().emit_err(NakedAsmOutsideNakedFn { span: expr.span });
+            }
+        }
+
+        hir::intravisit::walk_expr(self, expr);
     }
 }

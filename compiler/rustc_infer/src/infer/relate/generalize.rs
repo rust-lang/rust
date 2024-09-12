@@ -259,11 +259,11 @@ impl<'tcx> InferCtxt<'tcx> {
             structurally_relate_aliases,
             root_vid,
             for_universe,
-            ambient_variance,
             root_term: source_term.into(),
+            ambient_variance,
             in_alias: false,
-            has_unconstrained_ty_var: false,
             cache: Default::default(),
+            has_unconstrained_ty_var: false,
         };
 
         let value_may_be_infer = generalizer.relate(source_term, source_term)?;
@@ -304,14 +304,12 @@ struct Generalizer<'me, 'tcx> {
     /// we reject the relation.
     for_universe: ty::UniverseIndex,
 
-    /// After we generalize this type, we are going to relate it to
-    /// some other type. What will be the variance at this point?
-    ambient_variance: ty::Variance,
-
     /// The root term (const or type) we're generalizing. Used for cycle errors.
     root_term: Term<'tcx>,
 
-    cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
+    /// After we generalize this type, we are going to relate it to
+    /// some other type. What will be the variance at this point?
+    ambient_variance: ty::Variance,
 
     /// This is set once we're generalizing the arguments of an alias.
     ///
@@ -319,6 +317,8 @@ struct Generalizer<'me, 'tcx> {
     /// `<T as Bar<<?0 as Foo>::Assoc>::Assoc == ?0`. This equality can
     /// hold by either normalizing the outer or the inner associated type.
     in_alias: bool,
+
+    cache: SsoHashMap<(Ty<'tcx>, ty::Variance, bool), Ty<'tcx>>,
 
     /// See the field `has_unconstrained_ty_var` in `Generalization`.
     has_unconstrained_ty_var: bool,
@@ -451,7 +451,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
 
-        if let Some(&result) = self.cache.get(&t) {
+        if let Some(&result) = self.cache.get(&(t, self.ambient_variance, self.in_alias)) {
             return Ok(result);
         }
 
@@ -557,7 +557,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             _ => relate::structurally_relate_tys(self, t, t),
         }?;
 
-        self.cache.insert(t, g);
+        self.cache.insert((t, self.ambient_variance, self.in_alias), g);
         Ok(g)
     }
 

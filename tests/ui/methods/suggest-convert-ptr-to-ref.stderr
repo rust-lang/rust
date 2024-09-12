@@ -11,6 +11,7 @@ note: the method `to_string` exists on the type `&u8`
    = note: the following trait bounds were not satisfied:
            `*const u8: std::fmt::Display`
            which is required by `*const u8: ToString`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 
 error[E0599]: `*mut u8` doesn't implement `std::fmt::Display`
   --> $DIR/suggest-convert-ptr-to-ref.rs:8:22
@@ -25,6 +26,7 @@ note: the method `to_string` exists on the type `&&mut u8`
    = note: the following trait bounds were not satisfied:
            `*mut u8: std::fmt::Display`
            which is required by `*mut u8: ToString`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 
 error[E0599]: no method named `make_ascii_lowercase` found for raw pointer `*mut u8` in the current scope
   --> $DIR/suggest-convert-ptr-to-ref.rs:9:7

@@ -188,7 +188,7 @@ impl ArgAttributes {
         if self.arg_ext != other.arg_ext {
             return false;
         }
-        return true;
+        true
     }
 }
 
@@ -632,7 +632,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Indirect { .. } => {
                 self.mode = PassMode::Direct(ArgAttributes::new());
             }
-            PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => return, // already direct
+            PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => {} // already direct
             _ => panic!("Tried to make {:?} direct", self.mode),
         }
     }
@@ -646,7 +646,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             }
             PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
                 // already indirect
-                return;
             }
             _ => panic!("Tried to make {:?} indirect", self.mode),
         }
@@ -661,7 +660,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             }
             PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
                 // already indirect
-                return;
             }
             _ => panic!("Tried to make {:?} indirect (expected `PassMode::Ignore`)", self.mode),
         }

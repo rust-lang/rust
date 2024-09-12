@@ -570,7 +570,7 @@ cc = ["@bjorn3"]
 cc = ["@antoyo", "@GuillaumeGomez"]
 
 [mentions."compiler/rustc_const_eval/src/interpret"]
-message = "Some changes occurred to the CTFE / Miri engine"
+message = "Some changes occurred to the CTFE / Miri interpreter"
 cc = ["@rust-lang/miri"]
 
 [mentions."compiler/rustc_infer/src/infer/error_reporting/need_type_info.rs"]
@@ -590,7 +590,7 @@ message = "changes to `inspect_obligations.rs`"
 cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_middle/src/mir/interpret"]
-message = "Some changes occurred to the CTFE / Miri engine"
+message = "Some changes occurred to the CTFE / Miri interpreter"
 cc = ["@rust-lang/miri"]
 
 [mentions."compiler/rustc_mir_transform/src/"]
@@ -658,6 +658,13 @@ Some changes occurred to the platform-builtins intrinsics. Make sure the
 LLVM backend as well as portable-simd gets adapted for the changes.
 """
 cc = ["@antoyo", "@GuillaumeGomez", "@bjorn3", "@calebzulawski", "@programmerjake"]
+
+[mentions."library/core/src/intrinsics"]
+message = """
+Some changes occurred to the intrinsics. Make sure the CTFE / Miri interpreter
+gets adapted for the changes, if necessary.
+"""
+cc = ["@rust-lang/miri"]
 
 [mentions."library/portable-simd"]
 message = """

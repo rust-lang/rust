@@ -8,11 +8,11 @@ use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{fluent_value_from_str_list_sep_by_and, FluentValue};
-use rustc_lint_defs::{Applicability, LintExpectationId};
+use rustc_lint_defs::Applicability;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
-use rustc_span::{AttrId, Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
 
 use crate::snippet::Style;
@@ -351,26 +351,6 @@ impl DiagInner {
             | Level::FailureNote
             | Level::Allow
             | Level::Expect(_) => false,
-        }
-    }
-
-    pub(crate) fn update_unstable_expectation_id(
-        &mut self,
-        unstable_to_stable: &FxIndexMap<AttrId, LintExpectationId>,
-    ) {
-        if let Level::Expect(expectation_id) | Level::ForceWarning(Some(expectation_id)) =
-            &mut self.level
-            && let LintExpectationId::Unstable { attr_id, lint_index } = *expectation_id
-        {
-            // The unstable to stable map only maps the unstable `AttrId` to a stable `HirId` with an attribute index.
-            // The lint index inside the attribute is manually transferred here.
-            let Some(stable_id) = unstable_to_stable.get(&attr_id) else {
-                panic!("{expectation_id:?} must have a matching stable id")
-            };
-
-            let mut stable_id = *stable_id;
-            stable_id.set_lint_index(lint_index);
-            *expectation_id = stable_id;
         }
     }
 

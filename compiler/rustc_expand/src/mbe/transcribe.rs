@@ -773,18 +773,20 @@ fn extract_symbol_from_pnr<'a>(
     match pnr {
         ParseNtResult::Ident(nt_ident, is_raw) => {
             if let IdentIsRaw::Yes = is_raw {
-                return Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR));
+                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
+            } else {
+                Ok(nt_ident.name)
             }
-            return Ok(nt_ident.name);
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token { kind: TokenKind::Ident(symbol, is_raw), .. },
             _,
         )) => {
             if let IdentIsRaw::Yes = is_raw {
-                return Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR));
+                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
+            } else {
+                Ok(*symbol)
             }
-            return Ok(*symbol);
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token {
@@ -792,15 +794,13 @@ fn extract_symbol_from_pnr<'a>(
                 ..
             },
             _,
-        )) => {
-            return Ok(*symbol);
-        }
+        )) => Ok(*symbol),
         ParseNtResult::Nt(nt)
             if let Nonterminal::NtLiteral(expr) = &**nt
                 && let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) =
                     &expr.kind =>
         {
-            return Ok(*symbol);
+            Ok(*symbol)
         }
         _ => Err(dcx
             .struct_err(

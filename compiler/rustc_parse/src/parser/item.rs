@@ -457,7 +457,7 @@ impl<'a> Parser<'a> {
 
     fn parse_item_builtin(&mut self) -> PResult<'a, Option<ItemInfo>> {
         // To be expanded
-        return Ok(None);
+        Ok(None)
     }
 
     /// Parses an item macro, e.g., `item!();`.
