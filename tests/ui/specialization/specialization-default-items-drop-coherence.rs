@@ -1,5 +1,8 @@
-//@ revisions: current next
+//@ revisions: classic coherence next
 //@[next] compile-flags: -Znext-solver
+//@[coherence] compile-flags: -Znext-solver=coherence
+//@[classic] check-pass
+//@[classic] known-bug: #105782
 
 // Should fail. Default items completely drop candidates instead of ambiguity,
 // which is unsound during coherence, since coherence requires completeness.
@@ -24,7 +27,8 @@ impl Overlap for u32 {
 }
 
 impl Overlap for <u32 as Default>::Id {
-    //~^ ERROR conflicting implementations of trait `Overlap` for type `u32`
+    //[coherence]~^ ERROR conflicting implementations of trait `Overlap` for type `u32`
+    //[next]~^^ ERROR conflicting implementations of trait `Overlap` for type `u32`
     type Assoc = Box<usize>;
 }
 
