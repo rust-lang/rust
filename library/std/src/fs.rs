@@ -1869,8 +1869,10 @@ impl Permissions {
     ///
     /// # Note
     ///
-    /// This function does not take Access Control Lists (ACLs) or Unix group
-    /// membership into account.
+    /// This function does not take Access Control Lists (ACLs), Unix group
+    /// membership and other nuances into account.
+    /// Therefore the return value of this function cannot be relied upon
+    /// to predict whether attempts to read or write the file will actually succeed.
     ///
     /// # Windows
     ///
@@ -1885,10 +1887,13 @@ impl Permissions {
     /// # Unix (including macOS)
     ///
     /// On Unix-based platforms this checks if *any* of the owner, group or others
-    /// write permission bits are set. It does not check if the current
-    /// user is in the file's assigned group. It also does not check ACLs.
-    /// Therefore the return value of this function cannot be relied upon
-    /// to predict whether attempts to read or write the file will actually succeed.
+    /// write permission bits are set. It does not consider anything else, including:
+    ///
+    /// * Whether the current user is in the file's assigned group.
+    /// * Permissions granted by ACL.
+    /// * That `root` user can write to files that do not have any write bits set.
+    /// * Writable files on a filesystem that is mounted read-only.
+    ///
     /// The [`PermissionsExt`] trait gives direct access to the permission bits but
     /// also does not read ACLs.
     ///
