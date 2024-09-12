@@ -7,7 +7,6 @@ use rustc_middle::mir::*;
 use super::MaybeBorrowedLocals;
 use crate::{GenKill, ResultsCursor};
 
-#[derive(Clone)]
 pub struct MaybeStorageLive<'a> {
     always_live_locals: Cow<'a, BitSet<Local>>,
 }
@@ -80,7 +79,6 @@ impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
     }
 }
 
-#[derive(Clone)]
 pub struct MaybeStorageDead<'a> {
     always_live_locals: Cow<'a, BitSet<Local>>,
 }
