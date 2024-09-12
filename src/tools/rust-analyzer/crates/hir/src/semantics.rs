@@ -386,6 +386,19 @@ impl<'db> SemanticsImpl<'db> {
         Some(node)
     }
 
+    pub fn check_cfg_attr(&self, attr: &ast::TokenTree) -> Option<bool> {
+        let file_id = self.find_file(attr.syntax()).file_id;
+        let krate = match file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => {
+                self.file_to_module_defs(file_id.file_id()).next()?.krate().id
+            }
+            HirFileIdRepr::MacroFile(macro_file) => {
+                self.db.lookup_intern_macro_call(macro_file.macro_call_id).krate
+            }
+        };
+        hir_expand::check_cfg_attr_value(self.db.upcast(), attr, krate)
+    }
+
     /// Expands the macro if it isn't one of the built-in ones that expand to custom syntax or dummy
     /// expansions.
     pub fn expand_allowed_builtins(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {

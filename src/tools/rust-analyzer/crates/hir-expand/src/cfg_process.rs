@@ -6,7 +6,7 @@ use cfg::{CfgAtom, CfgExpr};
 use intern::{sym, Symbol};
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, Attr, HasAttrs, Meta, VariantList},
+    ast::{self, Attr, HasAttrs, Meta, TokenTree, VariantList},
     AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, T,
 };
 use tracing::{debug, warn};
@@ -17,7 +17,7 @@ fn check_cfg(db: &dyn ExpandDatabase, attr: &Attr, krate: CrateId) -> Option<boo
     if !attr.simple_name().as_deref().map(|v| v == "cfg")? {
         return None;
     }
-    let cfg = parse_from_attr_meta(attr.meta()?)?;
+    let cfg = parse_from_attr_token_tree(&attr.meta()?.token_tree()?)?;
     let enabled = db.crate_graph()[krate].cfg_options.check(&cfg) != Some(false);
     Some(enabled)
 }
@@ -26,7 +26,15 @@ fn check_cfg_attr(db: &dyn ExpandDatabase, attr: &Attr, krate: CrateId) -> Optio
     if !attr.simple_name().as_deref().map(|v| v == "cfg_attr")? {
         return None;
     }
-    let cfg_expr = parse_from_attr_meta(attr.meta()?)?;
+    check_cfg_attr_value(db, &attr.token_tree()?, krate)
+}
+
+pub fn check_cfg_attr_value(
+    db: &dyn ExpandDatabase,
+    attr: &TokenTree,
+    krate: CrateId,
+) -> Option<bool> {
+    let cfg_expr = parse_from_attr_token_tree(attr)?;
     let enabled = db.crate_graph()[krate].cfg_options.check(&cfg_expr) != Some(false);
     Some(enabled)
 }
@@ -238,8 +246,7 @@ pub(crate) fn process_cfg_attrs(
     Some(remove)
 }
 /// Parses a `cfg` attribute from the meta
-fn parse_from_attr_meta(meta: Meta) -> Option<CfgExpr> {
-    let tt = meta.token_tree()?;
+fn parse_from_attr_token_tree(tt: &TokenTree) -> Option<CfgExpr> {
     let mut iter = tt
         .token_trees_and_tokens()
         .filter(is_not_whitespace)
@@ -328,7 +335,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use syntax::{ast::Attr, AstNode, SourceFile};
 
-    use crate::cfg_process::parse_from_attr_meta;
+    use crate::cfg_process::parse_from_attr_token_tree;
 
     fn check_dnf_from_syntax(input: &str, expect: Expect) {
         let parse = SourceFile::parse(input, span::Edition::CURRENT);
@@ -342,7 +349,7 @@ mod tests {
         let node = node.clone_subtree();
         assert_eq!(node.syntax().text_range().start(), 0.into());
 
-        let cfg = parse_from_attr_meta(node.meta().unwrap()).unwrap();
+        let cfg = parse_from_attr_token_tree(&node.meta().unwrap().token_tree().unwrap()).unwrap();
         let actual = format!("#![cfg({})]", DnfExpr::new(&cfg));
         expect.assert_eq(&actual);
     }
