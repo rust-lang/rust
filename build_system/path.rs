@@ -14,7 +14,6 @@ pub(crate) struct Dirs {
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum PathBase {
     Source,
-    Download,
     Build,
     Dist,
 }
@@ -23,7 +22,6 @@ impl PathBase {
     fn to_path(self, dirs: &Dirs) -> PathBuf {
         match self {
             PathBase::Source => dirs.source_dir.clone(),
-            PathBase::Download => dirs.download_dir.clone(),
             PathBase::Build => dirs.build_dir.clone(),
             PathBase::Dist => dirs.dist_dir.clone(),
         }
@@ -38,7 +36,6 @@ pub(crate) enum RelPath {
 
 impl RelPath {
     pub(crate) const SOURCE: RelPath = RelPath::Base(PathBase::Source);
-    pub(crate) const DOWNLOAD: RelPath = RelPath::Base(PathBase::Download);
     pub(crate) const BUILD: RelPath = RelPath::Base(PathBase::Build);
     pub(crate) const DIST: RelPath = RelPath::Base(PathBase::Dist);
 

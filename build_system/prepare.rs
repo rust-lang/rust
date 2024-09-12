@@ -8,7 +8,7 @@ use crate::path::{Dirs, RelPath};
 use crate::utils::{copy_dir_recursively, ensure_empty_dir, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
-    RelPath::DOWNLOAD.ensure_exists(dirs);
+    std::fs::create_dir_all(&dirs.download_dir).unwrap();
     crate::tests::RAND_REPO.fetch(dirs);
     crate::tests::REGEX_REPO.fetch(dirs);
 }
@@ -79,7 +79,7 @@ impl GitRepo {
 
     fn download_dir(&self, dirs: &Dirs) -> PathBuf {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo).to_path(dirs),
+            GitRepoUrl::Github { user: _, repo } => dirs.download_dir.join(repo),
         }
     }
 
