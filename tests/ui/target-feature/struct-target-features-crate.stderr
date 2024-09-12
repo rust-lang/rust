@@ -1,0 +1,11 @@
+warning: the feature `struct_target_features` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/struct-target-features-crate.rs:5:12
+   |
+LL | #![feature(struct_target_features)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #129107 <https://github.com/rust-lang/rust/issues/129107> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

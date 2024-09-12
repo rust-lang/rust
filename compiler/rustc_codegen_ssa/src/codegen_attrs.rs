@@ -1,12 +1,12 @@
-use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
-use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_ast::{MetaItemKind, NestedMetaItem, ast, attr};
+use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr, list_contains_name};
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, DiagMessage, SubdiagMessage};
+use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
-use rustc_hir::{lang_items, LangItem};
+use rustc_hir::{LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, TargetFeature,
 };
@@ -16,8 +16,8 @@ use rustc_middle::ty::{self as ty, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span};
-use rustc_target::spec::{abi, SanitizerSet};
+use rustc_span::{Span, sym};
+use rustc_target::spec::{SanitizerSet, abi};
 
 use crate::errors;
 use crate::target_features::{check_target_feature_trait_unsafe, from_target_feature};
@@ -82,11 +82,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         use DefKind::*;
 
         let def_kind = tcx.def_kind(did);
-        if let Fn | AssocFn | Variant | Ctor(..) = def_kind {
-            Some(tcx.fn_sig(did))
-        } else {
-            None
-        }
+        if let Fn | AssocFn | Variant | Ctor(..) = def_kind { Some(tcx.fn_sig(did)) } else { None }
     };
 
     for attr in attrs.iter() {
@@ -253,7 +249,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && let Some(fn_sig) = fn_sig()
                     && fn_sig.skip_binder().safety() == hir::Safety::Safe
                 {
-                    if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
+                    if attr.meta_item_list().is_some_and(|list| {
+                        list.len() == 1 && list[0].ident().is_some_and(|x| x.name == sym::from_args)
+                    }) {
+                        // #[target_feature(from_args)] can be applied to safe functions and safe
+                        // trait methods.
+                    } else if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on
                         // WebAssembly targets on all functions, including safe
                         // ones. Other targets require that `#[target_feature]` is
@@ -292,6 +293,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     attr,
                     supported_target_features,
                     &mut codegen_fn_attrs.target_features,
+                    Some(&mut codegen_fn_attrs.target_features_from_args),
                 );
             }
             sym::linkage => {
@@ -602,7 +604,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    if let Some(sig) = fn_sig_outer() {
+    if let Some(sig) = fn_sig_outer()
+        && codegen_fn_attrs.target_features_from_args
+    {
         let mut additional_tf = vec![];
         for ty in sig.skip_binder().inputs().skip_binder() {
             extend_with_struct_target_features(
@@ -769,7 +773,7 @@ fn struct_target_features(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[TargetFeatur
     let mut features = vec![];
     let supported_features = tcx.supported_target_features(LOCAL_CRATE);
     for attr in tcx.get_attrs(def_id, sym::target_feature) {
-        from_target_feature(tcx, attr, supported_features, &mut features);
+        from_target_feature(tcx, attr, supported_features, &mut features, None);
     }
     tcx.arena.alloc_slice(&features)
 }

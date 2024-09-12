@@ -238,7 +238,7 @@ codegen_ssa_stripping_debug_info_failed = stripping debug info with `{$util}` fa
 
 codegen_ssa_symbol_file_write_failure = failed to write symbols file: {$error}
 
-codegen_ssa_target_feature_safe_trait = `#[target_feature(..)]` cannot be applied to safe trait method
+codegen_ssa_target_feature_safe_trait = `#[target_feature(enable = ..)]` cannot be applied to safe trait method
     .label = cannot be applied to safe trait method
     .label_def = not an `unsafe` function
 

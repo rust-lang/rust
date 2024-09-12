@@ -25,19 +25,22 @@ impl TFAssociatedType for () {
     type Assoc = Avx;
 }
 
+#[target_feature(from_args)]
 fn avx_self(_: <() as TFAssociatedType>::Assoc) {
     avx();
 }
 
+#[target_feature(from_args)]
 fn avx_avx(_: Avx) {
     avx();
 }
 
+#[target_feature(from_args)]
 extern "C" fn bad_fun(_: Avx) {}
-//~^ ERROR cannot use a struct with target features in a function with non-Rust ABI
 
 #[inline(always)]
 //~^ ERROR cannot use `#[inline(always)]` with `#[target_feature]`
+#[target_feature(from_args)]
 fn inline_fun(_: Avx) {}
 //~^ ERROR cannot use a struct with target features in a #[inline(always)] function
 
@@ -46,6 +49,7 @@ trait Simd {
 }
 
 impl Simd for Avx {
+    #[target_feature(from_args)]
     fn do_something(&self) {
         unsafe {
             println!("{:?}", _mm256_setzero_ps());
@@ -54,6 +58,7 @@ impl Simd for Avx {
 }
 
 impl Simd for Sse {
+    #[target_feature(from_args)]
     fn do_something(&self) {
         unsafe {
             println!("{:?}", _mm_setzero_ps());
@@ -61,24 +66,7 @@ impl Simd for Sse {
     }
 }
 
-struct WithAvx {
-    #[allow(dead_code)]
-    avx: Avx,
-}
-
-impl Simd for WithAvx {
-    fn do_something(&self) {
-        unsafe {
-            println!("{:?}", _mm256_setzero_ps());
-        }
-    }
-}
-
-#[inline(never)]
-fn dosomething<S: Simd>(simd: &S) {
-    simd.do_something();
-}
-
+#[target_feature(from_args)]
 fn avxfn(_: &Avx) {
     // This is not unsafe because we already have the feature at function-level.
     let _ = Avx {};
@@ -91,10 +79,9 @@ fn main() {
     if is_x86_feature_detected!("avx") {
         let avx = unsafe { Avx {} };
         avxfn(&avx);
-        dosomething(&avx);
-        dosomething(&WithAvx { avx });
+        avx.do_something();
     }
     if is_x86_feature_detected!("sse") {
-        dosomething(&unsafe { Sse {} })
+        unsafe { Sse {} }.do_something();
     }
 }

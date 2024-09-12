@@ -15,12 +15,20 @@ struct Avx {}
 #[target_feature(enable = "fma")]
 struct Fma {}
 
+#[target_feature(from_args)]
 pub fn add_simple(_: Avx, v: __m256) -> __m256 {
     // CHECK-NOT: call
     // CHECK: vaddps
     unsafe { _mm256_add_ps(v, v) }
 }
 
+// Test that the features don't get inherited from the arguments without the attribute.
+pub fn add_simple_noattr(_: Avx, v: __m256) -> __m256 {
+    // CHECK: call
+    unsafe { _mm256_add_ps(v, v) }
+}
+
+#[target_feature(from_args)]
 pub fn add_fma_combined(_: &Avx, _: &Fma, v: __m256) -> (__m256, __m256) {
     // CHECK-NOT: call
     // CHECK-DAG: vaddps
