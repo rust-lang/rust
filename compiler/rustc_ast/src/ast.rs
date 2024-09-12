@@ -2602,12 +2602,12 @@ impl CoroutineKind {
         }
     }
 
-    pub fn is_async(self) -> bool {
-        matches!(self, CoroutineKind::Async { .. })
-    }
-
-    pub fn is_gen(self) -> bool {
-        matches!(self, CoroutineKind::Gen { .. })
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CoroutineKind::Async { .. } => "async",
+            CoroutineKind::Gen { .. } => "gen",
+            CoroutineKind::AsyncGen { .. } => "async gen",
+        }
     }
 
     pub fn closure_id(self) -> NodeId {
