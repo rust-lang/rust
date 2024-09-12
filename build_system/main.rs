@@ -185,12 +185,11 @@ fn main() {
         frozen,
     };
 
-    path::RelPath::BUILD.ensure_exists(&dirs);
+    std::fs::create_dir_all(&dirs.build_dir).unwrap();
 
     {
         // Make sure we always explicitly specify the target dir
-        let target =
-            path::RelPath::BUILD.join("target_dir_should_be_set_explicitly").to_path(&dirs);
+        let target = dirs.build_dir.join("target_dir_should_be_set_explicitly");
         env::set_var("CARGO_TARGET_DIR", &target);
         let _ = std::fs::remove_file(&target);
         std::fs::File::create(target).unwrap();

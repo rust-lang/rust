@@ -85,7 +85,7 @@ impl GitRepo {
 
     pub(crate) const fn source_dir(&self) -> RelPath {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => RelPath::BUILD.join(repo),
+            GitRepoUrl::Github { user: _, repo } => RelPath::build(repo),
         }
     }
 
@@ -130,7 +130,7 @@ impl GitRepo {
         }
 
         let source_lockfile =
-            RelPath::PATCHES.to_path(dirs).join(format!("{}-lock.toml", self.patch_name));
+            dirs.source_dir.join("patches").join(format!("{}-lock.toml", self.patch_name));
         let target_lockfile = download_dir.join("Cargo.lock");
         if source_lockfile.exists() {
             assert!(!target_lockfile.exists());
@@ -191,7 +191,7 @@ fn init_git_repo(repo_dir: &Path) {
 }
 
 fn get_patches(dirs: &Dirs, crate_name: &str) -> Vec<PathBuf> {
-    let mut patches: Vec<_> = fs::read_dir(RelPath::PATCHES.to_path(dirs))
+    let mut patches: Vec<_> = fs::read_dir(dirs.source_dir.join("patches"))
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension() == Some(OsStr::new("patch")))

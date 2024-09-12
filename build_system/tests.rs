@@ -10,7 +10,7 @@ use crate::shared_utils::rustflags_from_env;
 use crate::utils::{CargoProject, Compiler, LogGroup, ensure_empty_dir, spawn_and_wait};
 use crate::{CodegenBackend, SysrootKind, build_sysroot, config};
 
-static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
+static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::build("example");
 
 struct TestCase {
     config: &'static str,
@@ -129,11 +129,11 @@ pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
 
 static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex_target");
 
-static PORTABLE_SIMD_SRC: RelPath = RelPath::BUILD.join("portable-simd");
+static PORTABLE_SIMD_SRC: RelPath = RelPath::build("portable-simd");
 
 static PORTABLE_SIMD: CargoProject = CargoProject::new(&PORTABLE_SIMD_SRC, "portable-simd_target");
 
-static LIBCORE_TESTS_SRC: RelPath = RelPath::BUILD.join("coretests");
+static LIBCORE_TESTS_SRC: RelPath = RelPath::build("coretests");
 
 static LIBCORE_TESTS: CargoProject = CargoProject::new(&LIBCORE_TESTS_SRC, "coretests_target");
 
@@ -162,7 +162,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             &LIBCORE_TESTS_SRC.to_path(&runner.dirs),
         );
 
-        let source_lockfile = RelPath::PATCHES.to_path(&runner.dirs).join("coretests-lock.toml");
+        let source_lockfile = runner.dirs.source_dir.join("patches/coretests-lock.toml");
         let target_lockfile = LIBCORE_TESTS_SRC.to_path(&runner.dirs).join("Cargo.lock");
         fs::copy(source_lockfile, target_lockfile).unwrap();
 

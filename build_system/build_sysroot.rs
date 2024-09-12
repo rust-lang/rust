@@ -22,9 +22,9 @@ pub(crate) fn build_sysroot(
 
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
 
-    let dist_dir = RelPath::DIST.to_path(dirs);
+    let dist_dir = &dirs.dist_dir;
 
-    ensure_empty_dir(&dist_dir);
+    ensure_empty_dir(dist_dir);
     fs::create_dir_all(dist_dir.join("bin")).unwrap();
     fs::create_dir_all(dist_dir.join("lib")).unwrap();
 
@@ -55,7 +55,7 @@ pub(crate) fn build_sysroot(
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
         let wrapper_path = dist_dir.join(&wrapper_name);
         build_cargo_wrapper_cmd
-            .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
+            .arg(dirs.source_dir.join("scripts").join(&format!("{wrapper}.rs")))
             .arg("-o")
             .arg(&wrapper_path)
             .arg("-Cstrip=debuginfo");
@@ -85,7 +85,7 @@ pub(crate) fn build_sysroot(
         &cg_clif_dylib_path,
         sysroot_kind,
     );
-    host.install_into_sysroot(&dist_dir);
+    host.install_into_sysroot(dist_dir);
 
     if !is_native {
         build_sysroot_for_triple(
@@ -99,7 +99,7 @@ pub(crate) fn build_sysroot(
             &cg_clif_dylib_path,
             sysroot_kind,
         )
-        .install_into_sysroot(&dist_dir);
+        .install_into_sysroot(dist_dir);
     }
 
     let mut target_compiler = {
@@ -143,10 +143,10 @@ impl SysrootTarget {
     }
 }
 
-static STDLIB_SRC: RelPath = RelPath::BUILD.join("stdlib");
+static STDLIB_SRC: RelPath = RelPath::build("stdlib");
 static STANDARD_LIBRARY: CargoProject =
-    CargoProject::new(&STDLIB_SRC.join("library/sysroot"), "stdlib_target");
-static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
+    CargoProject::new(&RelPath::build("stdlib/library/sysroot"), "stdlib_target");
+static RTSTARTUP_SYSROOT: RelPath = RelPath::build("rtstartup");
 
 fn build_sysroot_for_triple(
     dirs: &Dirs,

@@ -93,7 +93,7 @@ impl CargoProject {
     }
 
     pub(crate) fn target_dir(&self, dirs: &Dirs) -> PathBuf {
-        RelPath::BUILD.join(self.target).to_path(dirs)
+        dirs.build_dir.join(self.target)
     }
 
     #[must_use]
