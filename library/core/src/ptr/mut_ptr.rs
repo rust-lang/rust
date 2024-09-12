@@ -1783,6 +1783,35 @@ impl<T: ?Sized> *mut T {
         //   2. ensure that `align_offset` (in `const_impl`) doesn't actually try to compute an offset.
         const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl)
     }
+
+    /// Returns the tag of a pointer.
+    ///
+    /// Intended for use with architecture features like AArch64 TBI.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "ptr_tag", issue = "none")]
+    pub fn tag(self) -> u8 {
+        (self.addr() >> 56) as u8
+    }
+
+    /// Sets the tag of a pointer to the provided value.
+    ///
+    /// Intended for use with pointer tagging architecture features such as AArch64 TBI.
+    ///
+    /// SAFETY: Within Rust's memory model, this method offsets the pointer outside of
+    /// the bounds of its original allocation, making any use of it Undefined Behaviour.
+    ///
+    /// This is only designed to be a helper method for writing tagging allocators.
+    /// Users *must* ensure that code using this method simulates a realloc from the untagged
+    /// address to the tagged address, and that the underlying memory is only ever accessed
+    /// using the tagged address from there onwards. Anything short of that explicitly violates the
+    /// Rust memory model and will cause the program to break in unexpected ways.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "ptr_tag", issue = "none")]
+    pub unsafe fn with_tag(self, tag: u8) -> Self {
+        self.map_addr(|addr| (addr & 0x00ffffffffffffff) | (tag as usize) << 56)
+    }
 }
 
 impl<T> *mut [T] {
