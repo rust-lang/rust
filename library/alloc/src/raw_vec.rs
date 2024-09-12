@@ -96,13 +96,6 @@ struct RawVecInner<A: Allocator = Global> {
 }
 
 impl<T> RawVec<T, Global> {
-    /// HACK(Centril): This exists because stable `const fn` can only call stable `const fn`, so
-    /// they cannot call `Self::new()`.
-    ///
-    /// If you change `RawVec<T>::new` or dependencies, please take care to not introduce anything
-    /// that would truly const-call something unstable.
-    pub const NEW: Self = Self::new();
-
     /// Creates the biggest possible `RawVec` (on the system heap)
     /// without allocating. If `T` has positive size, then this makes a
     /// `RawVec` with capacity `0`. If `T` is zero-sized, then it makes a
@@ -111,7 +104,7 @@ impl<T> RawVec<T, Global> {
     #[must_use]
     #[rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81")]
     pub const fn new() -> Self {
-        Self { inner: RawVecInner::new::<T>(), _marker: PhantomData }
+        Self::new_in(Global)
     }
 
     /// Creates a `RawVec` (on the system heap) with exactly the
@@ -149,12 +142,6 @@ impl<T> RawVec<T, Global> {
 }
 
 impl RawVecInner<Global> {
-    #[must_use]
-    #[rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81")]
-    const fn new<T>() -> Self {
-        Self::new_in(Global, core::mem::align_of::<T>())
-    }
-
     #[cfg(not(any(no_global_oom_handling, test)))]
     #[must_use]
     #[inline]

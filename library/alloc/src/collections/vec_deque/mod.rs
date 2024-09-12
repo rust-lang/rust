@@ -554,8 +554,8 @@ impl<T> VecDeque<T> {
     #[rustc_const_stable(feature = "const_vec_deque_new", since = "1.68.0")]
     #[must_use]
     pub const fn new() -> VecDeque<T> {
-        // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
-        VecDeque { head: 0, len: 0, buf: RawVec::NEW }
+        // FIXME(const-hack): This should just be `VecDeque::new_in(Global)` once that hits stable.
+        VecDeque { head: 0, len: 0, buf: RawVec::new() }
     }
 
     /// Creates an empty deque with space for at least `capacity` elements.
