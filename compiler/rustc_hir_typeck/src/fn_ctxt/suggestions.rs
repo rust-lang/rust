@@ -79,9 +79,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `break` type mismatches provide better context for tail `loop` expressions.
             return false;
         }
-        if let Some((fn_id, fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
+        if let Some((fn_id, fn_decl)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type =
-                self.suggest_missing_return_type(err, fn_decl, expected, found, can_suggest, fn_id);
+                self.suggest_missing_return_type(err, fn_decl, expected, found, fn_id);
             self.suggest_missing_break_or_return_expr(
                 err, expr, fn_decl, expected, found, blk_id, fn_id,
             );
@@ -813,7 +813,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        can_suggest: bool,
         fn_id: LocalDefId,
     ) -> bool {
         // Can't suggest `->` on a block-like coroutine
@@ -826,28 +825,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let found =
             self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
         // Only suggest changing the return type for methods that
-        // haven't set a return type at all (and aren't `fn main()` or an impl).
+        // haven't set a return type at all (and aren't `fn main()`, impl or closure).
         match &fn_decl.output {
-            &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() && !can_suggest => {
-                // `fn main()` must return `()`, do not suggest changing return type
-                err.subdiagnostic(errors::ExpectedReturnTypeLabel::Unit { span });
-                return true;
-            }
+            // For closure with default returns, don't suggest adding return type
+            &hir::FnRetTy::DefaultReturn(_) if self.tcx.is_closure_like(fn_id.to_def_id()) => {}
             &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() => {
-                if let Some(found) = found.make_suggestable(self.tcx, false, None) {
+                if !self.can_add_return_type(fn_id) {
+                    err.subdiagnostic(errors::ExpectedReturnTypeLabel::Unit { span });
+                } else if let Some(found) = found.make_suggestable(self.tcx, false, None) {
                     err.subdiagnostic(errors::AddReturnTypeSuggestion::Add {
                         span,
                         found: found.to_string(),
                     });
-                    return true;
                 } else if let Some(sugg) = suggest_impl_trait(self, self.param_env, found) {
                     err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span, found: sugg });
-                    return true;
                 } else {
                     // FIXME: if `found` could be `impl Iterator` we should suggest that.
                     err.subdiagnostic(errors::AddReturnTypeSuggestion::MissingHere { span });
-                    return true;
                 }
+
+                return true;
             }
             hir::FnRetTy::Return(hir_ty) => {
                 if let hir::TyKind::OpaqueDef(item_id, ..) = hir_ty.kind
@@ -903,6 +900,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {}
         }
         false
+    }
+
+    /// Checks whether we can add a return type to a function.
+    /// Assumes given function doesn't have a explicit return type.
+    fn can_add_return_type(&self, fn_id: LocalDefId) -> bool {
+        match self.tcx.hir_node_by_def_id(fn_id) {
+            Node::Item(&hir::Item { ident, .. }) => {
+                // This is less than ideal, it will not suggest a return type span on any
+                // method called `main`, regardless of whether it is actually the entry point,
+                // but it will still present it as the reason for the expected type.
+                ident.name != sym::main
+            }
+            Node::ImplItem(item) => {
+                // If it doesn't impl a trait, we can add a return type
+                let Node::Item(&hir::Item {
+                    kind: hir::ItemKind::Impl(&hir::Impl { of_trait, .. }),
+                    ..
+                }) = self.tcx.parent_hir_node(item.hir_id())
+                else {
+                    unreachable!();
+                };
+
+                of_trait.is_none()
+            }
+            _ => true,
+        }
     }
 
     fn try_note_caller_chooses_ty_for_ty_param(
@@ -2028,7 +2051,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let span = expr.span.find_oldest_ancestor_in_same_ctxt();
         err.span_suggestion_verbose(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
-        return true;
+        true
     }
 
     pub(crate) fn suggest_coercing_result_via_try_operator(

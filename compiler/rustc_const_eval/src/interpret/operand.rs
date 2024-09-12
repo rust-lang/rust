@@ -433,6 +433,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
         Ok(self.offset_(offset, layout, ecx))
     }
 
+    #[inline(always)]
     fn to_op<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         _ecx: &InterpCx<'tcx, M>,
@@ -522,6 +523,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
         }
     }
 
+    #[inline(always)]
     fn to_op<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         _ecx: &InterpCx<'tcx, M>,

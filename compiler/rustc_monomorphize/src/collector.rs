@@ -1193,7 +1193,7 @@ fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> 
             return Some(new.def_id);
         }
     }
-    return None;
+    None
 }
 
 /// Scans the MIR in order to find function calls, closures, and drop-glue.

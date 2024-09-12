@@ -1042,7 +1042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn explain_self_literal(

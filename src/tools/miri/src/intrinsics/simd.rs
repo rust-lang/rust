@@ -666,22 +666,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (right, right_len) = this.operand_to_simd(right)?;
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
-                // `index` is an array, not a SIMD type
-                let ty::Array(_, index_len) = index.layout.ty.kind() else {
-                    span_bug!(
-                        this.cur_span(),
-                        "simd_shuffle index argument has non-array type {}",
-                        index.layout.ty
-                    )
+                // `index` is an array or a SIMD type
+                let (index, index_len) = match index.layout.ty.kind() {
+                    // FIXME: remove this once `index` must always be a SIMD vector.
+                    ty::Array(..) => (index.assert_mem_place(), index.len(this)?),
+                    _ => this.operand_to_simd(index)?,
                 };
-                let index_len = index_len.eval_target_usize(*this.tcx, this.param_env());
 
                 assert_eq!(left_len, right_len);
                 assert_eq!(index_len, dest_len);
 
                 for i in 0..dest_len {
                     let src_index: u64 = this
-                        .read_immediate(&this.project_index(index, i)?)?
+                        .read_immediate(&this.project_index(&index, i)?)?
                         .to_scalar()
                         .to_u32()?
                         .into();

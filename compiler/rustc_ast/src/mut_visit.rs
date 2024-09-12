@@ -1388,6 +1388,7 @@ fn walk_anon_const<T: MutVisitor>(vis: &mut T, AnonConst { id, value }: &mut Ano
 fn walk_inline_asm<T: MutVisitor>(vis: &mut T, asm: &mut InlineAsm) {
     // FIXME: Visit spans inside all this currently ignored stuff.
     let InlineAsm {
+        asm_macro: _,
         template: _,
         template_strs: _,
         operands,

@@ -353,7 +353,7 @@ fn build_options<O: Default>(
             None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
         }
     }
-    return op;
+    op
 }
 
 #[allow(non_upper_case_globals)]

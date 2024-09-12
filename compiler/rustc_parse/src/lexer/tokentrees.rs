@@ -299,7 +299,7 @@ impl<'psess, 'src> TokenTreesReader<'psess, 'src> {
             }
             return diff_errs;
         }
-        return errs;
+        errs
     }
 
     fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'psess> {

@@ -290,7 +290,7 @@ pub(crate) fn check_tied_features(
             }
         }
     }
-    return None;
+    None
 }
 
 /// Used to generate cfg variables and apply features

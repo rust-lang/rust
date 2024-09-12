@@ -200,6 +200,11 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                 adjective = Some("modified");
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
+                        if files.is_empty() {
+                            println!("fmt info: No modified files detected for formatting.");
+                            return;
+                        }
+
                         for file in files {
                             override_builder.add(&format!("/{file}")).expect(&file);
                         }

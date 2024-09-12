@@ -2,4 +2,9 @@
 //! on the generated test harness.
 
 //@ check-pass
-//@ compile-flags: --test -Dmissing_docs
+//@ compile-flags: --test
+
+#![forbid(missing_docs)]
+
+#[test]
+fn test() {}

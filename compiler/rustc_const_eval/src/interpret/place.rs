@@ -166,6 +166,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
         Ok(MPlaceTy { mplace: self.mplace.offset_with_meta_(offset, mode, meta, ecx)?, layout })
     }
 
+    #[inline(always)]
     fn to_op<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         _ecx: &InterpCx<'tcx, M>,
@@ -299,6 +300,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
         })
     }
 
+    #[inline(always)]
     fn to_op<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         ecx: &InterpCx<'tcx, M>,
@@ -560,6 +562,7 @@ where
 
     /// Given a place, returns either the underlying mplace or a reference to where the value of
     /// this place is stored.
+    #[inline(always)]
     fn as_mplace_or_mutable_local(
         &mut self,
         place: &PlaceTy<'tcx, M::Provenance>,

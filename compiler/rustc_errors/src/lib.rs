@@ -69,7 +69,7 @@ use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
 pub use rustc_span::ErrorGuaranteed;
-use rustc_span::{AttrId, Loc, Span, DUMMY_SP};
+use rustc_span::{Loc, Span, DUMMY_SP};
 pub use snippet::Style;
 // Used by external projects such as `rust-gpu`.
 // See https://github.com/rust-lang/rust/pull/115393.
@@ -497,28 +497,18 @@ struct DiagCtxtInner {
 
     future_breakage_diagnostics: Vec<DiagInner>,
 
-    /// The [`Self::unstable_expect_diagnostics`] should be empty when this struct is
-    /// dropped. However, it can have values if the compilation is stopped early
-    /// or is only partially executed. To avoid ICEs, like in rust#94953 we only
-    /// check if [`Self::unstable_expect_diagnostics`] is empty, if the expectation ids
-    /// have been converted.
-    check_unstable_expect_diagnostics: bool,
-
-    /// Expected [`DiagInner`][struct@diagnostic::DiagInner]s store a [`LintExpectationId`] as part
-    /// of the lint level. [`LintExpectationId`]s created early during the compilation
-    /// (before `HirId`s have been defined) are not stable and can therefore not be
-    /// stored on disk. This buffer stores these diagnostics until the ID has been
-    /// replaced by a stable [`LintExpectationId`]. The [`DiagInner`][struct@diagnostic::DiagInner]s
-    /// are submitted for storage and added to the list of fulfilled expectations.
-    unstable_expect_diagnostics: Vec<DiagInner>,
-
     /// expected diagnostic will have the level `Expect` which additionally
     /// carries the [`LintExpectationId`] of the expectation that can be
     /// marked as fulfilled. This is a collection of all [`LintExpectationId`]s
     /// that have been marked as fulfilled this way.
     ///
+    /// Emitting expectations after having stolen this field can happen. In particular, an
+    /// `#[expect(warnings)]` can easily make the `UNFULFILLED_LINT_EXPECTATIONS` lint expect
+    /// itself. To avoid needless complexity in this corner case, we tolerate failing to track
+    /// those expectations.
+    ///
     /// [RFC-2383]: https://rust-lang.github.io/rfcs/2383-lint-reasons.html
-    fulfilled_expectations: FxHashSet<LintExpectationId>,
+    fulfilled_expectations: FxIndexSet<LintExpectationId>,
 
     /// The file where the ICE information is stored. This allows delayed_span_bug backtraces to be
     /// stored along side the main panic backtrace.
@@ -604,13 +594,6 @@ impl Drop for DiagCtxtInner {
                      called at: {backtrace}"
                 );
             }
-        }
-
-        if self.check_unstable_expect_diagnostics {
-            assert!(
-                self.unstable_expect_diagnostics.is_empty(),
-                "all diagnostics with unstable expectations should have been converted",
-            );
         }
     }
 }
@@ -740,8 +723,6 @@ impl DiagCtxt {
             emitted_diagnostics,
             stashed_diagnostics,
             future_breakage_diagnostics,
-            check_unstable_expect_diagnostics,
-            unstable_expect_diagnostics,
             fulfilled_expectations,
             ice_file: _,
         } = inner.deref_mut();
@@ -761,8 +742,6 @@ impl DiagCtxt {
         *emitted_diagnostics = Default::default();
         *stashed_diagnostics = Default::default();
         *future_breakage_diagnostics = Default::default();
-        *check_unstable_expect_diagnostics = false;
-        *unstable_expect_diagnostics = Default::default();
         *fulfilled_expectations = Default::default();
     }
 
@@ -1094,44 +1073,10 @@ impl<'a> DiagCtxtHandle<'a> {
         inner.emitter.emit_unused_externs(lint_level, unused_externs)
     }
 
-    pub fn update_unstable_expectation_id(
-        &self,
-        unstable_to_stable: FxIndexMap<AttrId, LintExpectationId>,
-    ) {
-        let mut inner = self.inner.borrow_mut();
-        let diags = std::mem::take(&mut inner.unstable_expect_diagnostics);
-        inner.check_unstable_expect_diagnostics = true;
-
-        if !diags.is_empty() {
-            inner.suppressed_expected_diag = true;
-            for mut diag in diags.into_iter() {
-                diag.update_unstable_expectation_id(&unstable_to_stable);
-
-                // Here the diagnostic is given back to `emit_diagnostic` where it was first
-                // intercepted. Now it should be processed as usual, since the unstable expectation
-                // id is now stable.
-                inner.emit_diagnostic(diag, self.tainted_with_errors);
-            }
-        }
-
-        inner
-            .stashed_diagnostics
-            .values_mut()
-            .for_each(|(diag, _guar)| diag.update_unstable_expectation_id(&unstable_to_stable));
-        inner
-            .future_breakage_diagnostics
-            .iter_mut()
-            .for_each(|diag| diag.update_unstable_expectation_id(&unstable_to_stable));
-    }
-
     /// This methods steals all [`LintExpectationId`]s that are stored inside
     /// [`DiagCtxtInner`] and indicate that the linked expectation has been fulfilled.
     #[must_use]
-    pub fn steal_fulfilled_expectation_ids(&self) -> FxHashSet<LintExpectationId> {
-        assert!(
-            self.inner.borrow().unstable_expect_diagnostics.is_empty(),
-            "`DiagCtxtInner::unstable_expect_diagnostics` should be empty at this point",
-        );
+    pub fn steal_fulfilled_expectation_ids(&self) -> FxIndexSet<LintExpectationId> {
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
 
@@ -1440,8 +1385,6 @@ impl DiagCtxtInner {
             emitted_diagnostics: Default::default(),
             stashed_diagnostics: Default::default(),
             future_breakage_diagnostics: Vec::new(),
-            check_unstable_expect_diagnostics: false,
-            unstable_expect_diagnostics: Vec::new(),
             fulfilled_expectations: Default::default(),
             ice_file: None,
         }
@@ -1471,24 +1414,6 @@ impl DiagCtxtInner {
         mut diagnostic: DiagInner,
         taint: Option<&Cell<Option<ErrorGuaranteed>>>,
     ) -> Option<ErrorGuaranteed> {
-        match diagnostic.level {
-            Expect(expect_id) | ForceWarning(Some(expect_id)) => {
-                // The `LintExpectationId` can be stable or unstable depending on when it was
-                // created. Diagnostics created before the definition of `HirId`s are unstable and
-                // can not yet be stored. Instead, they are buffered until the `LintExpectationId`
-                // is replaced by a stable one by the `LintLevelsBuilder`.
-                if let LintExpectationId::Unstable { .. } = expect_id {
-                    // We don't call TRACK_DIAGNOSTIC because we wait for the
-                    // unstable ID to be updated, whereupon the diagnostic will be
-                    // passed into this method again.
-                    self.unstable_expect_diagnostics.push(diagnostic);
-                    return None;
-                }
-                // Continue through to the `Expect`/`ForceWarning` case below.
-            }
-            _ => {}
-        }
-
         if diagnostic.has_future_breakage() {
             // Future breakages aren't emitted if they're `Level::Allow` or
             // `Level::Expect`, but they still need to be constructed and
@@ -1564,9 +1489,6 @@ impl DiagCtxtInner {
                 return None;
             }
             Expect(expect_id) | ForceWarning(Some(expect_id)) => {
-                if let LintExpectationId::Unstable { .. } = expect_id {
-                    unreachable!(); // this case was handled at the top of this function
-                }
                 self.fulfilled_expectations.insert(expect_id);
                 if let Expect(_) = diagnostic.level {
                     // Nothing emitted here for expected lints.
