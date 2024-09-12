@@ -577,11 +577,14 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
 
 impl InlayHintLabelBuilder<'_> {
     fn make_new_part(&mut self) {
-        self.result.parts.push(InlayHintLabelPart {
-            text: take(&mut self.last_part),
-            linked_location: self.location.take(),
-            tooltip: None,
-        });
+        let text = take(&mut self.last_part);
+        if !text.is_empty() {
+            self.result.parts.push(InlayHintLabelPart {
+                text,
+                linked_location: self.location.take(),
+                tooltip: None,
+            });
+        }
     }
 
     fn finish(mut self) -> InlayHintLabel {
