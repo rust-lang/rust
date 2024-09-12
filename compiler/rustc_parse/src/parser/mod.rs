@@ -1359,13 +1359,11 @@ impl<'a> Parser<'a> {
     fn parse_attr_args(&mut self) -> PResult<'a, AttrArgs> {
         Ok(if let Some(args) = self.parse_delim_args_inner() {
             AttrArgs::Delimited(args)
+        } else if self.eat(&token::Eq) {
+            let eq_span = self.prev_token.span;
+            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(self.parse_expr_force_collect()?))
         } else {
-            if self.eat(&token::Eq) {
-                let eq_span = self.prev_token.span;
-                AttrArgs::Eq(eq_span, AttrArgsEq::Ast(self.parse_expr_force_collect()?))
-            } else {
-                AttrArgs::Empty
-            }
+            AttrArgs::Empty
         })
     }
 

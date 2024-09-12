@@ -235,13 +235,11 @@ pub fn parse_asm_args<'a>(
                 continue;
             }
             args.named_args.insert(name, slot);
-        } else {
-            if !args.named_args.is_empty() || !args.reg_args.is_empty() {
-                let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
-                let explicit = args.reg_args.iter().map(|p| args.operands[p].1).collect();
+        } else if !args.named_args.is_empty() || !args.reg_args.is_empty() {
+            let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
+            let explicit = args.reg_args.iter().map(|p| args.operands[p].1).collect();
 
-                dcx.emit_err(errors::AsmPositionalAfter { span, named, explicit });
-            }
+            dcx.emit_err(errors::AsmPositionalAfter { span, named, explicit });
         }
     }
 

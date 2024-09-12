@@ -426,13 +426,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     } else if kind == ty::ClosureKind::FnOnce {
                         candidates.vec.push(ClosureCandidate { is_const });
                     }
+                } else if kind == ty::ClosureKind::FnOnce {
+                    candidates.vec.push(ClosureCandidate { is_const });
                 } else {
-                    if kind == ty::ClosureKind::FnOnce {
-                        candidates.vec.push(ClosureCandidate { is_const });
-                    } else {
-                        // This stays ambiguous until kind+upvars are determined.
-                        candidates.ambiguous = true;
-                    }
+                    // This stays ambiguous until kind+upvars are determined.
+                    candidates.ambiguous = true;
                 }
             }
             ty::Infer(ty::TyVar(_)) => {
@@ -513,10 +511,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // then there's nothing else to check.
         if let Some(closure_kind) = self_ty.to_opt_closure_kind()
             && let Some(goal_kind) = target_kind_ty.to_opt_closure_kind()
+            && closure_kind.extends(goal_kind)
         {
-            if closure_kind.extends(goal_kind) {
-                candidates.vec.push(AsyncFnKindHelperCandidate);
-            }
+            candidates.vec.push(AsyncFnKindHelperCandidate);
         }
     }
 

@@ -381,24 +381,22 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
         }
 
         mir_opaque_ty.ty
+    } else if let Some(guar) = tables.tainted_by_errors {
+        // Some error in the owner fn prevented us from populating
+        // the `concrete_opaque_types` table.
+        Ty::new_error(tcx, guar)
     } else {
-        if let Some(guar) = tables.tainted_by_errors {
-            // Some error in the owner fn prevented us from populating
-            // the `concrete_opaque_types` table.
-            Ty::new_error(tcx, guar)
+        // Fall back to the RPIT we inferred during HIR typeck
+        if let Some(hir_opaque_ty) = hir_opaque_ty {
+            hir_opaque_ty.ty
         } else {
-            // Fall back to the RPIT we inferred during HIR typeck
-            if let Some(hir_opaque_ty) = hir_opaque_ty {
-                hir_opaque_ty.ty
-            } else {
-                // We failed to resolve the opaque type or it
-                // resolves to itself. We interpret this as the
-                // no values of the hidden type ever being constructed,
-                // so we can just make the hidden type be `!`.
-                // For backwards compatibility reasons, we fall back to
-                // `()` until we the diverging default is changed.
-                Ty::new_diverging_default(tcx)
-            }
+            // We failed to resolve the opaque type or it
+            // resolves to itself. We interpret this as the
+            // no values of the hidden type ever being constructed,
+            // so we can just make the hidden type be `!`.
+            // For backwards compatibility reasons, we fall back to
+            // `()` until we the diverging default is changed.
+            Ty::new_diverging_default(tcx)
         }
     }
 }

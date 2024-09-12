@@ -118,10 +118,8 @@ impl LivenessValues {
         debug!("LivenessValues::add_location(region={:?}, location={:?})", region, location);
         if let Some(points) = &mut self.points {
             points.insert(region, point);
-        } else {
-            if self.elements.point_in_range(point) {
-                self.live_regions.as_mut().unwrap().insert(region);
-            }
+        } else if self.elements.point_in_range(point) {
+            self.live_regions.as_mut().unwrap().insert(region);
         }
 
         // When available, record the loans flowing into this region as live at the given point.
@@ -137,10 +135,8 @@ impl LivenessValues {
         debug!("LivenessValues::add_points(region={:?}, points={:?})", region, points);
         if let Some(this) = &mut self.points {
             this.union_row(region, points);
-        } else {
-            if points.iter().any(|point| self.elements.point_in_range(point)) {
-                self.live_regions.as_mut().unwrap().insert(region);
-            }
+        } else if points.iter().any(|point| self.elements.point_in_range(point)) {
+            self.live_regions.as_mut().unwrap().insert(region);
         }
 
         // When available, record the loans flowing into this region as live at the given points.

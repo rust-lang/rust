@@ -2554,13 +2554,12 @@ impl<'a> Parser<'a> {
             let maybe_fatarrow = self.token.clone();
             let block = if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_block()?
+            } else if let Some(block) = recover_block_from_condition(self) {
+                block
             } else {
-                if let Some(block) = recover_block_from_condition(self) {
-                    block
-                } else {
-                    self.error_on_extra_if(&cond)?;
-                    // Parse block, which will always fail, but we can add a nice note to the error
-                    self.parse_block().map_err(|mut err| {
+                self.error_on_extra_if(&cond)?;
+                // Parse block, which will always fail, but we can add a nice note to the error
+                self.parse_block().map_err(|mut err| {
                         if self.prev_token == token::Semi
                             && self.token == token::AndAnd
                             && let maybe_let = self.look_ahead(1, |t| t.clone())
@@ -2592,7 +2591,6 @@ impl<'a> Parser<'a> {
                         }
                         err
                     })?
-                }
             };
             self.error_on_if_block_attrs(lo, false, block.span, attrs);
             block

@@ -1336,21 +1336,19 @@ impl<'a> Parser<'a> {
                         vec![(first_etc_span, String::new())],
                         Applicability::MachineApplicable,
                     );
-                } else {
-                    if let Some(last_non_comma_dotdot_span) = last_non_comma_dotdot_span {
-                        // We have `.., x`.
-                        err.multipart_suggestion(
-                            "move the `..` to the end of the field list",
-                            vec![
-                                (first_etc_span, String::new()),
-                                (
-                                    self.token.span.to(last_non_comma_dotdot_span.shrink_to_hi()),
-                                    format!("{} .. }}", if ate_comma { "" } else { "," }),
-                                ),
-                            ],
-                            Applicability::MachineApplicable,
-                        );
-                    }
+                } else if let Some(last_non_comma_dotdot_span) = last_non_comma_dotdot_span {
+                    // We have `.., x`.
+                    err.multipart_suggestion(
+                        "move the `..` to the end of the field list",
+                        vec![
+                            (first_etc_span, String::new()),
+                            (
+                                self.token.span.to(last_non_comma_dotdot_span.shrink_to_hi()),
+                                format!("{} .. }}", if ate_comma { "" } else { "," }),
+                            ),
+                        ],
+                        Applicability::MachineApplicable,
+                    );
                 }
             }
             err.emit();

@@ -681,10 +681,10 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             " ".repeat(expected_padding),
             expected_label
         ))];
-        msg.extend(expected.0.into_iter());
+        msg.extend(expected.0);
         msg.push(StringPart::normal(format!("`{expected_extra}\n")));
         msg.push(StringPart::normal(format!("{}{} `", " ".repeat(found_padding), found_label)));
-        msg.extend(found.0.into_iter());
+        msg.extend(found.0);
         msg.push(StringPart::normal(format!("`{found_extra}")));
 
         // For now, just attach these as notes.

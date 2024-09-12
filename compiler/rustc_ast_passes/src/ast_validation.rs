@@ -447,13 +447,13 @@ impl<'a> AstValidator<'a> {
     fn check_item_safety(&self, span: Span, safety: Safety) {
         match self.extern_mod_safety {
             Some(extern_safety) => {
-                if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_)) {
-                    if extern_safety == Safety::Default {
-                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
-                            item_span: span,
-                            block: Some(self.current_extern_span().shrink_to_lo()),
-                        });
-                    }
+                if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_))
+                    && extern_safety == Safety::Default
+                {
+                    self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                        item_span: span,
+                        block: Some(self.current_extern_span().shrink_to_lo()),
+                    });
                 }
             }
             None => {
@@ -1418,21 +1418,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
-            constness: Const::Yes(cspan),
+            constness: Const::Yes(const_span),
             coroutine_kind: Some(coroutine_kind),
             ..
         }) = fk.header()
         {
-            let aspan = match coroutine_kind {
-                CoroutineKind::Async { span: aspan, .. }
-                | CoroutineKind::Gen { span: aspan, .. }
-                | CoroutineKind::AsyncGen { span: aspan, .. } => aspan,
-            };
-            // FIXME(gen_blocks): Report a different error for `const gen`
-            self.dcx().emit_err(errors::ConstAndAsync {
-                spans: vec![cspan, aspan],
-                cspan,
-                aspan,
+            self.dcx().emit_err(errors::ConstAndCoroutine {
+                spans: vec![coroutine_kind.span(), const_span],
+                const_span,
+                coroutine_span: coroutine_kind.span(),
+                coroutine_kind: coroutine_kind.as_str(),
                 span,
             });
         }
