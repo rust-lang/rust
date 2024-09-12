@@ -78,7 +78,7 @@ pub(super) fn hints(
         }
         closing_token = block.r_curly_token()?;
 
-        let lifetime = label.lifetime().map_or_else(String::new, |it| it.to_string());
+        let lifetime = label.lifetime()?.to_string();
 
         (lifetime, Some(label.syntax().text_range()))
     } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {

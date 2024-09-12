@@ -3,7 +3,7 @@
 //! Tests live in [`bind_pat`][super::bind_pat] module.
 use ide_db::famous_defs::FamousDefs;
 use span::EditionedFileId;
-use stdx::TupleExt;
+use stdx::{never, TupleExt};
 use syntax::ast::{self, AstNode};
 use text_edit::{TextRange, TextSize};
 
@@ -63,17 +63,21 @@ pub(super) fn hints(
         // force cache the source file, otherwise sema lookup will potentially panic
         _ = sema.parse_or_expand(source.file());
 
+        let label = format!(
+            "{}{}",
+            match capture.kind() {
+                hir::CaptureKind::SharedRef => "&",
+                hir::CaptureKind::UniqueSharedRef => "&unique ",
+                hir::CaptureKind::MutableRef => "&mut ",
+                hir::CaptureKind::Move => "",
+            },
+            capture.display_place(sema.db)
+        );
+        if never!(label.is_empty()) {
+            continue;
+        }
         let label = InlayHintLabel::simple(
-            format!(
-                "{}{}",
-                match capture.kind() {
-                    hir::CaptureKind::SharedRef => "&",
-                    hir::CaptureKind::UniqueSharedRef => "&unique ",
-                    hir::CaptureKind::MutableRef => "&mut ",
-                    hir::CaptureKind::Move => "",
-                },
-                capture.display_place(sema.db)
-            ),
+            label,
             None,
             source.name().and_then(|name| {
                 name.syntax().original_file_range_opt(sema.db).map(TupleExt::head).map(Into::into)
