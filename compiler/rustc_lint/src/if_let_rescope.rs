@@ -7,7 +7,7 @@ use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir::{self as hir, HirIdSet};
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::LintDiagnostic;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{FutureIncompatibilityReason, Level};
 use rustc_session::{declare_lint, impl_lint_pass};
@@ -124,103 +124,109 @@ impl IfLetRescope {
         let source_map = tcx.sess.source_map();
         let expr_end = expr.span.shrink_to_hi();
         let mut add_bracket_to_match_head = match_head_needs_bracket(tcx, expr);
+        let mut significant_droppers = vec![];
+        let mut lifetime_ends = vec![];
         let mut closing_brackets = 0;
         let mut alt_heads = vec![];
         let mut match_heads = vec![];
         let mut consequent_heads = vec![];
-        let mut first_if_to_rewrite = None;
+        let mut first_if_to_lint = None;
+        let mut first_if_to_rewrite = false;
         let mut empty_alt = false;
         while let hir::ExprKind::If(cond, conseq, alt) = expr.kind {
             self.skip.insert(expr.hir_id);
-            let hir::ExprKind::Let(&hir::LetExpr {
+            // We are interested in `let` fragment of the condition.
+            // Otherwise, we probe into the `else` fragment.
+            if let hir::ExprKind::Let(&hir::LetExpr {
                 span,
                 pat,
                 init,
                 ty: ty_ascription,
                 recovered: Recovered::No,
             }) = cond.kind
-            else {
-                if let Some(alt) = alt {
-                    add_bracket_to_match_head = matches!(alt.kind, hir::ExprKind::If(..));
-                    expr = alt;
-                    continue;
-                } else {
-                    // finalize and emit span
-                    break;
-                }
-            };
-            let if_let_pat = expr.span.shrink_to_lo().between(init.span);
-            // the consequent fragment is always a block
-            let before_conseq = conseq.span.shrink_to_lo();
-            let lifetime_end = source_map.end_point(conseq.span);
-
-            if let ControlFlow::Break(significant_dropper) =
-                (FindSignificantDropper { cx }).visit_expr(init)
             {
-                tcx.emit_node_span_lint(
-                    IF_LET_RESCOPE,
-                    expr.hir_id,
-                    span,
-                    IfLetRescopeLint { significant_dropper, lifetime_end },
-                );
-                if ty_ascription.is_some()
-                    || !expr.span.can_be_used_for_suggestions()
-                    || !pat.span.can_be_used_for_suggestions()
+                let if_let_pat = expr.span.shrink_to_lo().between(init.span);
+                // The consequent fragment is always a block.
+                let before_conseq = conseq.span.shrink_to_lo();
+                let lifetime_end = source_map.end_point(conseq.span);
+
+                if let ControlFlow::Break(significant_dropper) =
+                    (FindSignificantDropper { cx }).visit_expr(init)
                 {
-                    // Our `match` rewrites does not support type ascription,
-                    // so we just bail.
-                    // Alternatively when the span comes from proc macro expansion,
-                    // we will also bail.
-                    // FIXME(#101728): change this when type ascription syntax is stabilized again
-                } else if let Ok(pat) = source_map.span_to_snippet(pat.span) {
-                    let emit_suggestion = || {
-                        first_if_to_rewrite =
-                            first_if_to_rewrite.or_else(|| Some((expr.span, expr.hir_id)));
-                        if add_bracket_to_match_head {
-                            closing_brackets += 2;
-                            match_heads.push(SingleArmMatchBegin::WithOpenBracket(if_let_pat));
+                    first_if_to_lint = first_if_to_lint.or_else(|| Some((span, expr.hir_id)));
+                    significant_droppers.push(significant_dropper);
+                    lifetime_ends.push(lifetime_end);
+                    if ty_ascription.is_some()
+                        || !expr.span.can_be_used_for_suggestions()
+                        || !pat.span.can_be_used_for_suggestions()
+                    {
+                        // Our `match` rewrites does not support type ascription,
+                        // so we just bail.
+                        // Alternatively when the span comes from proc macro expansion,
+                        // we will also bail.
+                        // FIXME(#101728): change this when type ascription syntax is stabilized again
+                    } else if let Ok(pat) = source_map.span_to_snippet(pat.span) {
+                        let emit_suggestion = |alt_span| {
+                            first_if_to_rewrite = true;
+                            if add_bracket_to_match_head {
+                                closing_brackets += 2;
+                                match_heads.push(SingleArmMatchBegin::WithOpenBracket(if_let_pat));
+                            } else {
+                                // Sometimes, wrapping `match` into a block is undesirable,
+                                // because the scrutinee temporary lifetime is shortened and
+                                // the proposed fix will not work.
+                                closing_brackets += 1;
+                                match_heads
+                                    .push(SingleArmMatchBegin::WithoutOpenBracket(if_let_pat));
+                            }
+                            consequent_heads.push(ConsequentRewrite { span: before_conseq, pat });
+                            if let Some(alt_span) = alt_span {
+                                alt_heads.push(AltHead(alt_span));
+                            }
+                        };
+                        if let Some(alt) = alt {
+                            let alt_head = conseq.span.between(alt.span);
+                            if alt_head.can_be_used_for_suggestions() {
+                                // We lint only when the `else` span is user code, too.
+                                emit_suggestion(Some(alt_head));
+                            }
                         } else {
-                            // It has to be a block
-                            closing_brackets += 1;
-                            match_heads.push(SingleArmMatchBegin::WithoutOpenBracket(if_let_pat));
+                            // This is the end of the `if .. else ..` cascade.
+                            // We can stop here.
+                            emit_suggestion(None);
+                            empty_alt = true;
+                            break;
                         }
-                        consequent_heads.push(ConsequentRewrite { span: before_conseq, pat });
-                    };
-                    if let Some(alt) = alt {
-                        let alt_head = conseq.span.between(alt.span);
-                        if alt_head.can_be_used_for_suggestions() {
-                            // lint
-                            emit_suggestion();
-                            alt_heads.push(AltHead(alt_head));
-                        }
-                    } else {
-                        emit_suggestion();
-                        empty_alt = true;
-                        break;
                     }
                 }
             }
+            // At this point, any `if let` fragment in the cascade is definitely preceeded by `else`,
+            // so a opening bracket is mandatory before each `match`.
+            add_bracket_to_match_head = true;
             if let Some(alt) = alt {
-                add_bracket_to_match_head = matches!(alt.kind, hir::ExprKind::If(..));
                 expr = alt;
             } else {
                 break;
             }
         }
-        if let Some((span, hir_id)) = first_if_to_rewrite {
+        if let Some((span, hir_id)) = first_if_to_lint {
             tcx.emit_node_span_lint(
                 IF_LET_RESCOPE,
                 hir_id,
                 span,
-                IfLetRescopeRewrite {
-                    match_heads,
-                    consequent_heads,
-                    closing_brackets: ClosingBrackets {
-                        span: expr_end,
-                        count: closing_brackets,
-                        empty_alt,
-                    },
-                    alt_heads,
+                IfLetRescopeLint {
+                    significant_droppers,
+                    lifetime_ends,
+                    rewrite: first_if_to_rewrite.then_some(IfLetRescopeRewrite {
+                        match_heads,
+                        consequent_heads,
+                        closing_brackets: ClosingBrackets {
+                            span: expr_end,
+                            count: closing_brackets,
+                            empty_alt,
+                        },
+                        alt_heads,
+                    }),
                 },
             );
         }
@@ -254,32 +260,68 @@ impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
 #[diag(lint_if_let_rescope)]
 struct IfLetRescopeLint {
     #[label]
-    significant_dropper: Span,
+    significant_droppers: Vec<Span>,
     #[help]
-    lifetime_end: Span,
+    lifetime_ends: Vec<Span>,
+    #[subdiagnostic]
+    rewrite: Option<IfLetRescopeRewrite>,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(lint_if_let_rescope_suggestion)]
+// #[derive(Subdiagnostic)]
 struct IfLetRescopeRewrite {
-    #[subdiagnostic]
     match_heads: Vec<SingleArmMatchBegin>,
-    #[subdiagnostic]
     consequent_heads: Vec<ConsequentRewrite>,
-    #[subdiagnostic]
     closing_brackets: ClosingBrackets,
-    #[subdiagnostic]
     alt_heads: Vec<AltHead>,
 }
 
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
-struct AltHead(#[suggestion_part(code = " _ => ")] Span);
+impl Subdiagnostic for IfLetRescopeRewrite {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        f: &F,
+    ) {
+        let mut suggestions = vec![];
+        for match_head in self.match_heads {
+            match match_head {
+                SingleArmMatchBegin::WithOpenBracket(span) => {
+                    suggestions.push((span, "{ match ".into()))
+                }
+                SingleArmMatchBegin::WithoutOpenBracket(span) => {
+                    suggestions.push((span, "match ".into()))
+                }
+            }
+        }
+        for ConsequentRewrite { span, pat } in self.consequent_heads {
+            suggestions.push((span, format!("{{ {pat} => ")));
+        }
+        for AltHead(span) in self.alt_heads {
+            suggestions.push((span, " _ => ".into()));
+        }
+        let closing_brackets = self.closing_brackets;
+        suggestions.push((
+            closing_brackets.span,
+            closing_brackets
+                .empty_alt
+                .then_some(" _ => {}".chars())
+                .into_iter()
+                .flatten()
+                .chain(repeat('}').take(closing_brackets.count))
+                .collect(),
+        ));
+        let msg = f(diag, crate::fluent_generated::lint_suggestion.into());
+        diag.multipart_suggestion_with_style(
+            msg,
+            suggestions,
+            Applicability::MachineApplicable,
+            SuggestionStyle::ShowCode,
+        );
+    }
+}
 
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+struct AltHead(Span);
+
 struct ConsequentRewrite {
-    #[suggestion_part(code = "{{ {pat} => ")]
     span: Span,
     pat: String,
 }
@@ -289,36 +331,9 @@ struct ClosingBrackets {
     count: usize,
     empty_alt: bool,
 }
-
-impl Subdiagnostic for ClosingBrackets {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
-        let code: String = self
-            .empty_alt
-            .then_some(" _ => {}".chars())
-            .into_iter()
-            .flatten()
-            .chain(repeat('}').take(self.count))
-            .collect();
-        let msg = f(diag, crate::fluent_generated::lint_suggestion.into());
-        diag.multipart_suggestion_with_style(
-            msg,
-            vec![(self.span, code)],
-            Applicability::MachineApplicable,
-            SuggestionStyle::ShowCode,
-        );
-    }
-}
-
-#[derive(Subdiagnostic)]
 enum SingleArmMatchBegin {
-    #[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
-    WithOpenBracket(#[suggestion_part(code = "{{ match ")] Span),
-    #[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
-    WithoutOpenBracket(#[suggestion_part(code = "match ")] Span),
+    WithOpenBracket(Span),
+    WithoutOpenBracket(Span),
 }
 
 struct FindSignificantDropper<'tcx, 'a> {

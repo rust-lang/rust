@@ -9,7 +9,7 @@ LL |     if let Some(_value) = Droppy.get() {
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
 help: the value is now dropped here in Edition 2024
-  --> $DIR/lint-if-let-rescope-gated.rs:32:5
+  --> $DIR/lint-if-let-rescope-gated.rs:31:5
    |
 LL |     } else {
    |     ^
@@ -18,37 +18,16 @@ note: the lint level is defined here
    |
 LL | #![deny(if_let_rescope)]
    |         ^^^^^^^^^^^^^^
+help: a `match` with a single arm can preserve the drop order up to Edition 2021
+   |
+LL ~     match Droppy.get() { Some(_value) => {
+LL |
+LL |
+LL |
+LL ~     } _ => {
+LL |
+LL ~     }}
+   |
 
-error: a `match` with a single arm can preserve the drop order up to Edition 2021
-  --> $DIR/lint-if-let-rescope-gated.rs:27:5
-   |
-LL | /     if let Some(_value) = Droppy.get() {
-LL | |
-LL | |
-LL | |
-LL | |
-LL | |     } else {
-LL | |     }
-   | |_____^
-   |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
-help: rewrite this `if let` into `match`
-   |
-LL |     match Droppy.get() {
-   |     ~~~~~
-help: rewrite this `if let` into `match`
-   |
-LL |     if let Some(_value) = Droppy.get() { Some(_value) => {
-   |                                        +++++++++++++++++
-help: rewrite this `if let` into `match`
-   |
-LL |     }}
-   |      +
-help: rewrite this `if let` into `match`
-   |
-LL |     } _ => {
-   |       ~~~~
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
