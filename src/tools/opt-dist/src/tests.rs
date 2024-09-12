@@ -67,6 +67,7 @@ change-id = 115898
 [build]
 rustc = "{rustc}"
 cargo = "{cargo}"
+local-rebuild = true
 
 [target.{host_triple}]
 llvm-config = "{llvm_config}"
@@ -102,13 +103,7 @@ llvm-config = "{llvm_config}"
     for test_path in env.skipped_tests() {
         args.extend(["--skip", test_path]);
     }
-    cmd(&args)
-        .env("COMPILETEST_FORCE_STAGE0", "1")
-        // Above we override the stage 0 compiler with previously compiled compiler,
-        // which can cause confusion in bootstrap's target sanity checks.
-        .env("BOOTSTRAP_SKIP_TARGET_SANITY", "1")
-        .run()
-        .context("Cannot execute tests")
+    cmd(&args).env("COMPILETEST_FORCE_STAGE0", "1").run().context("Cannot execute tests")
 }
 
 /// Tries to find the version of the dist artifacts (either nightly, beta, or 1.XY.Z).
