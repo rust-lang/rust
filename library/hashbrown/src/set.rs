@@ -2588,7 +2588,7 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use super::HashSet;
+    use super::{make_hash, Equivalent, HashSet};
     use crate::DefaultHashBuilder;
     use std::vec::Vec;
 
@@ -3061,5 +3061,58 @@ mod test_set {
         assert_eq!(HashSet::<()>::new().allocation_size(), 0);
         assert_eq!(HashSet::<u32>::new().allocation_size(), 0);
         assert!(HashSet::<u32>::with_capacity(1).allocation_size() > core::mem::size_of::<u32>());
+    }
+
+    #[test]
+    fn duplicate_insert() {
+        let mut set = HashSet::new();
+        set.insert(1);
+        set.get_or_insert_with(&1, |_| 1);
+        set.get_or_insert_with(&1, |_| 1);
+        assert!([1].iter().eq(set.iter()));
+    }
+
+    #[test]
+    #[should_panic]
+    fn some_invalid_equivalent() {
+        use core::hash::{Hash, Hasher};
+        struct Invalid {
+            count: u32,
+            other: u32,
+        }
+
+        struct InvalidRef {
+            count: u32,
+            other: u32,
+        }
+
+        impl PartialEq for Invalid {
+            fn eq(&self, other: &Self) -> bool {
+                self.count == other.count && self.other == other.other
+            }
+        }
+        impl Eq for Invalid {}
+
+        impl Equivalent<Invalid> for InvalidRef {
+            fn equivalent(&self, key: &Invalid) -> bool {
+                self.count == key.count && self.other == key.other
+            }
+        }
+        impl Hash for Invalid {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.count.hash(state);
+            }
+        }
+        impl Hash for InvalidRef {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.count.hash(state);
+            }
+        }
+        let mut set: HashSet<Invalid> = HashSet::new();
+        let key = InvalidRef { count: 1, other: 1 };
+        let value = Invalid { count: 1, other: 2 };
+        if make_hash(set.hasher(), &key) == make_hash(set.hasher(), &value) {
+            set.get_or_insert_with(&key, |_| value);
+        }
     }
 }
