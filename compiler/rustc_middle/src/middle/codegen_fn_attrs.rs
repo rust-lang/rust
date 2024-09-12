@@ -49,6 +49,8 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
+    /// Whether the target features can be extended through the arguments of the function.
+    pub target_features_from_args: bool,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -156,6 +158,7 @@ impl CodegenFnAttrs {
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
+            target_features_from_args: false,
         }
     }
 

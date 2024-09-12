@@ -946,6 +946,7 @@ symbols! {
         frem_algebraic,
         frem_fast,
         from,
+        from_args,
         from_desugaring,
         from_fn,
         from_iter,

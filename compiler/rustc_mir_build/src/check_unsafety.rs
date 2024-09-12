@@ -589,14 +589,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             .copied()
                             .filter(|feature| missing.contains(feature))
                             .collect();
-                        self.requires_unsafe(
-                            expr.span,
-                            ConstructingTargetFeaturesTypeWith {
-                                adt: adt_def.did(),
-                                missing,
-                                build_enabled,
-                            },
-                        );
+                        self.requires_unsafe(expr.span, ConstructingTargetFeaturesTypeWith {
+                            adt: adt_def.did(),
+                            missing,
+                            build_enabled,
+                        });
                     }
                 }
             }

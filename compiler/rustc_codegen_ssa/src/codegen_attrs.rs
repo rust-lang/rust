@@ -250,7 +250,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && let Some(fn_sig) = fn_sig()
                     && fn_sig.skip_binder().safety() == hir::Safety::Safe
                 {
-                    if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
+                    if attr.meta_item_list().is_some_and(|list| {
+                        list.len() == 1 && list[0].ident().is_some_and(|x| x.name == sym::from_args)
+                    }) {
+                        // #[target_feature(from_args)] can be applied to safe functions and safe
+                        // trait methods.
+                    } else if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on
                         // WebAssembly targets on all functions, including safe
                         // ones. Other targets require that `#[target_feature]` is
@@ -289,6 +294,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     attr,
                     supported_target_features,
                     &mut codegen_fn_attrs.target_features,
+                    Some(&mut codegen_fn_attrs.target_features_from_args),
                 );
             }
             sym::linkage => {
@@ -599,7 +605,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    if let Some(sig) = fn_sig_outer() {
+    if let Some(sig) = fn_sig_outer()
+        && codegen_fn_attrs.target_features_from_args
+    {
         let mut additional_tf = vec![];
         for ty in sig.skip_binder().inputs().skip_binder() {
             extend_with_struct_target_features(
@@ -806,7 +814,7 @@ fn struct_target_features(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[TargetFeatur
     let mut features = vec![];
     let supported_features = tcx.supported_target_features(LOCAL_CRATE);
     for attr in tcx.get_attrs(def_id, sym::target_feature) {
-        from_target_feature(tcx, attr, supported_features, &mut features);
+        from_target_feature(tcx, attr, supported_features, &mut features, None);
     }
     tcx.arena.alloc_slice(&features)
 }

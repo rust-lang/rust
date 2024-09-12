@@ -243,7 +243,7 @@ codegen_ssa_symbol_file_write_failure = failed to write symbols file: {$error}
 codegen_ssa_target_feature_disable_or_enable =
     the target features {$features} must all be either enabled or disabled together
 
-codegen_ssa_target_feature_safe_trait = `#[target_feature(..)]` cannot be applied to safe trait method
+codegen_ssa_target_feature_safe_trait = `#[target_feature(enable = ..)]` cannot be applied to safe trait method
     .label = cannot be applied to safe trait method
     .label_def = not an `unsafe` function
 
