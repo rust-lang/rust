@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when expanding type alias `Bar`
-  --> $DIR/issue-110629-private-type-cycle-dyn.rs:3:38
+  --> $DIR/private-type-cycle-dyn-110629.rs:3:38
    |
 LL | type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;
    |                                      ^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;
    = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
 note: cycle used when checking that `Bar` is well-formed
-  --> $DIR/issue-110629-private-type-cycle-dyn.rs:3:1
+  --> $DIR/private-type-cycle-dyn-110629.rs:3:1
    |
 LL | type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;
    | ^^^^^^^^^^^^^^^^
