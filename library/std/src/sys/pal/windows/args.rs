@@ -20,7 +20,7 @@ use crate::{fmt, io, iter, vec};
 
 /// This is the const equivalent to `NonZero::new(n).unwrap()`
 ///
-/// FIXME: This can be removed once `Option::unwrap` is stably const.
+/// FIXME(const-hack): This can be removed once `Option::unwrap` is stably const.
 /// See the `const_option` feature (#67441).
 const fn non_zero_u16(n: u16) -> NonZero<u16> {
     match NonZero::new(n) {

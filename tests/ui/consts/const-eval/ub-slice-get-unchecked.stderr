@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const fn `core::slice::<impl [()]>::get_unchecked::<std::ops::Range<usize>>` in constants
-  --> $DIR/ub-slice-get-unchecked.rs:9:29
+  --> $DIR/ub-slice-get-unchecked.rs:7:29
    |
 LL | const B: &[()] = unsafe { A.get_unchecked(3..1) };
    |                             ^^^^^^^^^^^^^^^^^^^
