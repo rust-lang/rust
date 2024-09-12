@@ -27,73 +27,45 @@ fn main() {
     match droppy().get() { Some(_value) => {
         //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
         //~| WARN: this changes meaning in Rust 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| ERROR a `match` with a single arm can preserve the drop order up to Edition 2021
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
         // do something
     } _ => {
         //~^ HELP: the value is now dropped here in Edition 2024
-        //~| HELP: rewrite this `if let` into `match`
         // do something else
     }}
-    //~^ HELP: rewrite this `if let` into `match`
 
     match droppy().get() { Some(_value) => {
         //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
         //~| WARN: this changes meaning in Rust 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| ERROR a `match` with a single arm can preserve the drop order up to Edition 2021
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
         // do something
     } _ => { match droppy().get() { Some(_value) => {
         //~^ HELP: the value is now dropped here in Edition 2024
-        //~| ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
         // do something else
     } _ => {}}}}
-    //~^ HELP: rewrite this `if let` into `match`
-    //~| HELP: the value is now dropped here in Edition 2024
+    //~^ HELP: the value is now dropped here in Edition 2024
 
     if droppy().get().is_some() {
         // Should not lint
     } else { match droppy().get() { Some(_value) => {
         //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| ERROR a `match` with a single arm can preserve the drop order up to Edition 2021
         //~| WARN: this changes meaning in Rust 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
     } _ => if droppy().get().is_none() {
         //~^ HELP: the value is now dropped here in Edition 2024
-        //~| HELP: rewrite this `if let` into `match`
     }}}
-    //~^ HELP: rewrite this `if let` into `match`
 
     if let Some(1) = { match Droppy.get() { Some(_value) => { Some(1) } _ => { None }} } {
         //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| ERROR a `match` with a single arm can preserve the drop order up to Edition 2021
         //~| WARN: this changes meaning in Rust 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
         //~| HELP: the value is now dropped here in Edition 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
     }
 
     if let () = { match Droppy.get() { Some(_value) => {} _ => {}} } {
         //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
-        //~| ERROR a `match` with a single arm can preserve the drop order up to Edition 2021
         //~| WARN: this changes meaning in Rust 2024
-        //~| WARN: this changes meaning in Rust 2024
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
-        //~| HELP: rewrite this `if let` into `match`
         //~| HELP: the value is now dropped here in Edition 2024
+        //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
     }
 }
