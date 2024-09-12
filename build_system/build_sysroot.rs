@@ -281,13 +281,14 @@ fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
         return None;
     }
 
-    RTSTARTUP_SYSROOT.ensure_fresh(dirs);
+    let rtstartup_sysroot = RTSTARTUP_SYSROOT.to_path(dirs);
+    ensure_empty_dir(&rtstartup_sysroot);
 
     let rtstartup_src = STDLIB_SRC.to_path(dirs).join("library").join("rtstartup");
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
     for file in ["rsbegin", "rsend"] {
-        let obj = RTSTARTUP_SYSROOT.to_path(dirs).join(format!("{file}.o"));
+        let obj = rtstartup_sysroot.join(format!("{file}.o"));
         let mut build_rtstartup_cmd = Command::new(&compiler.rustc);
         build_rtstartup_cmd
             .arg("--target")
