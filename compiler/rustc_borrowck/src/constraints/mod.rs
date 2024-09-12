@@ -132,6 +132,10 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
             // reaches another placeholder, add a requirement that it must
             // outlive `'static`.
             if let Some(offending_region) = annotation.placeholder_violation(&sccs) {
+                assert!(
+                    annotation.representative != offending_region,
+                    "Attemtping to blame a constraint for itself!"
+                );
                 // Optimisation opportunity: this will add more constraints than
                 // needed for correctness, since an SCC upstream of another with
                 // a universe violation will "infect" its downstream SCCs to also

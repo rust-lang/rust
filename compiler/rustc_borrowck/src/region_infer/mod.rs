@@ -1778,18 +1778,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Walks the graph of constraints (where `'a: 'b` is considered
-    /// an edge `'a -> 'b`) to find all paths from `from_region` to
-    /// `to_region`. The paths are accumulated into the vector
-    /// `results`. The paths are stored as a series of
-    /// `ConstraintIndex` values -- in other words, a list of *edges*.
-    ///
+    /// an edge `'a -> 'b`) to find a path from `from_region` to
+    /// the first region `R` for which the predicate function
+    /// `target_test` returns `true`.
     /// Returns: a series of constraints as well as the region `R`
     /// that passed the target test.
+    /// If `include_static_outlives_all` is `true`, then the synthetic
+    /// outlives constraints `'static -> a` for every region `a` are
+    /// considered in the search, otherwise they are ignored.
     #[instrument(skip(self, target_test), ret)]
-    pub(crate) fn find_constraint_paths_between_regions(
+    pub(crate) fn find_constraint_path_to(
         &self,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
+        include_static_outlives_all: bool,
     ) -> Option<(Vec<OutlivesConstraint<'tcx>>, RegionVid)> {
         let mut context = IndexVec::from_elem(Trace::NotVisited, &self.definitions);
         context[from_region] = Trace::StartRegion;
@@ -1802,7 +1804,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         while let Some(r) = deque.pop_front() {
             debug!(
-                "find_constraint_paths_between_regions: from_region={:?} r={:?} value={}",
+                "find_constraint_path_to: from_region={:?} r={:?} value={}",
                 from_region,
                 r,
                 self.region_value_str(r),
@@ -1838,7 +1840,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // A constraint like `'r: 'x` can come from our constraint
             // graph.
-            let fr_static = self.universal_regions.fr_static;
+            let fr_static = if include_static_outlives_all {
+                Some(self.universal_regions.fr_static)
+            } else {
+                None
+            };
             let outgoing_edges_from_graph =
                 self.constraint_graph.outgoing_edges(r, &self.constraints, fr_static);
 
@@ -1884,11 +1890,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, location: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.region_universe(fr1));
-        self.find_constraint_paths_between_regions(fr1, |r| {
+        self.find_constraint_path_to(fr1, |r| {
             // First look for some `r` such that `fr1: r` and `r` is live at `location`
             trace!(?r, liveness_constraints=?self.liveness_constraints.pretty_print_live_points(r));
             self.liveness_constraints.is_live_at(r, location)
-        })
+        },
+        true
+    )
         .map(|(_path, r)| r)
         .unwrap()
     }
@@ -1920,60 +1928,47 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.universal_regions.as_ref()
     }
 
-    /// Tries to find the best constraint to blame for the fact that
-    /// `to_region: from_region`.
-    /// This works by following the constraint graph,
-    /// creating a constraint path that forces `R` to outlive
-    /// `from_region`, and then finding the best choices within that
-    /// path to blame.
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn best_blame_constraint(
+    /// Find a path of outlives constraints from `from` to `to`,
+    /// taking placeholder blame constraints into account, e.g.
+    /// if there is a relationship where `r1` reaches `r2` and
+    /// r2 has a larger universe or if r1 and r2 both come from
+    /// placeholder regions.
+    ///
+    /// Returns the path and the target region, which may or may
+    /// not be the original `to`. It panics if there is no such
+    /// path.
+    fn path_to_modulo_placeholders(
         &self,
-        from_region: RegionVid,
-        from_region_origin: NllRegionVariableOrigin,
-        to_region: RegionVid,
-    ) -> (BlameConstraint<'tcx>, Vec<ExtraConstraintInfo>) {
-        let result = self.best_blame_constraint_(from_region, from_region_origin, to_region);
+        from: RegionVid,
+        to: RegionVid,
+    ) -> (Vec<OutlivesConstraint<'tcx>>, RegionVid) {
+        let path = self.find_constraint_path_to(from, |r| r == to, true).unwrap().0;
 
-        // We are trying to blame an outlives-static constraint added
-        // by an issue with placeholder regions. We figure out why the placeholder
-        // region issue happened instead.
-        if let ConstraintCategory::IllegalPlaceholder(offending_r) = result.0.category {
-            debug!("best_blame_constraint: placeholder issue caused by {offending_r:?}");
+        // If we are looking for a path to 'static, and we are passing
+        // through a constraint synthesised from an illegal placeholder
+        // relation, redirect the search to the placeholder to blame.
+        if self.is_static(to) {
+            for constraint in path.iter() {
+                let ConstraintCategory::IllegalPlaceholder(culprit_r) = constraint.category else {
+                    continue;
+                };
 
-            if to_region == offending_r {
-                // We do not want an infinite loop.
-                return result;
+                debug!("{culprit_r:?} is the reason {from:?}: 'static!");
+                // FIXME: think: this may be for transitive reasons and
+                // we may have to do this arbitrarily many times. Or may we?
+                return self.find_constraint_path_to(from, |r| r == culprit_r, false).unwrap();
             }
-            return self.best_blame_constraint(from_region, from_region_origin, offending_r);
         }
-
-        result
+        // No funny business; just return the path!
+        (path, to)
     }
 
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn best_blame_constraint_(
+    /// Find interesting spans from bound placeholders' predicates
+    /// from a constraint path.
+    fn find_bound_region_predicate_span(
         &self,
-        from_region: RegionVid,
-        from_region_origin: NllRegionVariableOrigin,
-        to_region: RegionVid,
-    ) -> (BlameConstraint<'tcx>, Vec<ExtraConstraintInfo>) {
-        // Find all paths
-        let (path, target_region) =
-            self.find_constraint_paths_between_regions(from_region, |r| r == to_region).unwrap();
-        debug!(
-            "path={:#?}",
-            path.iter()
-                .map(|c| format!(
-                    "{:?} ({:?}: {:?})",
-                    c,
-                    self.constraint_sccs.scc(c.sup),
-                    self.constraint_sccs.scc(c.sub),
-                ))
-                .collect::<Vec<_>>()
-        );
-
-        let mut extra_info = vec![];
+        path: &[OutlivesConstraint<'_>],
+    ) -> Vec<ExtraConstraintInfo> {
         for constraint in path.iter() {
             let outlived = constraint.sub;
             let Some(origin) = self.var_infos.get(outlived) else {
@@ -1987,10 +1982,42 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let ConstraintCategory::Predicate(span) = constraint.category else {
                 continue;
             };
-            extra_info.push(ExtraConstraintInfo::PlaceholderFromPredicate(span));
             // We only want to point to one
-            break;
+            return vec![ExtraConstraintInfo::PlaceholderFromPredicate(span)];
         }
+        vec![]
+    }
+
+    /// Tries to find the best constraint to blame for the fact that
+    /// `to_region: from_region`.
+    /// This works by following the constraint graph,
+    /// creating a constraint path that forces `R` to outlive
+    /// `from_region`, and then finding the best choices within that
+    /// path to blame.
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn best_blame_constraint(
+        &self,
+        from_region: RegionVid,
+        from_region_origin: NllRegionVariableOrigin,
+        to_region: RegionVid,
+    ) -> (BlameConstraint<'tcx>, Vec<ExtraConstraintInfo>) {
+        assert!(from_region != to_region, "Trying to blame a region for itself!");
+
+        let (path, new_to_region) = self.path_to_modulo_placeholders(from_region, to_region);
+
+        debug!(
+            "path={:#?}",
+            path.iter()
+                .map(|c| format!(
+                    "{:?} ({:?}: {:?})",
+                    c,
+                    self.constraint_sccs.scc(c.sup),
+                    self.constraint_sccs.scc(c.sub),
+                ))
+                .collect::<Vec<_>>()
+        );
+
+        let extra_info = self.find_bound_region_predicate_span(&path);
 
         // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
         // Instead, we use it to produce an improved `ObligationCauseCode`.
@@ -2041,7 +2068,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // most likely to be the point where the value escapes -- but
         // we still want to screen for an "interesting" point to
         // highlight (e.g., a call site or something).
-        let target_scc = self.constraint_sccs.scc(target_region);
+        let target_scc = self.constraint_sccs.scc(new_to_region);
         let mut range = 0..path.len();
 
         // As noted above, when reporting an error, there is typically a chain of constraints
@@ -2237,6 +2264,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// mean they are unequal).
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
         self.constraint_sccs.annotation(scc).representative
+    }
+
+    /// Returns true if `r` is `'static`.
+    fn is_static(&self, r: RegionVid) -> bool {
+        r == self.universal_regions.fr_static
     }
 }
 
