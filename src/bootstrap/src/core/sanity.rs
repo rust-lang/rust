@@ -233,7 +233,8 @@ than building it.
         }
 
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        if cfg!(not(feature = "bootstrap-self-test")) && !skip_target_sanity {
+        if cfg!(not(feature = "bootstrap-self-test")) && !skip_target_sanity && !build.local_rebuild
+        {
             let mut has_target = false;
             let target_str = target.to_string();
 
