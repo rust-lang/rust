@@ -151,6 +151,31 @@ impl Command {
         self
     }
 
+    /// Set an auxiliary stream passed to the process, besides the stdio streams.
+    #[cfg(unix)]
+    pub fn set_aux_fd<F: Into<std::os::fd::OwnedFd>>(
+        &mut self,
+        newfd: std::os::fd::RawFd,
+        fd: F,
+    ) -> &mut Self {
+        use std::os::fd::AsRawFd;
+        use std::os::unix::process::CommandExt;
+
+        let fd = fd.into();
+        unsafe {
+            self.cmd.pre_exec(move || {
+                let fd = fd.as_raw_fd();
+                let ret = if fd == newfd {
+                    libc::fcntl(fd, libc::F_SETFD, 0)
+                } else {
+                    libc::dup2(fd, newfd)
+                };
+                if ret == -1 { Err(std::io::Error::last_os_error()) } else { Ok(()) }
+            });
+        }
+        self
+    }
+
     /// Run the constructed command and assert that it is successfully run.
     ///
     /// By default, std{in,out,err} are [`Stdio::piped()`].

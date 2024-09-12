@@ -19,22 +19,24 @@ fn main() {
         .run_fail()
         .stderr_utf8();
     diff().expected_file("cannot_open_fd.stderr").actual_text("actual", out).run();
-    // FIXME(Oneirical): Find how to use file descriptor "3" with run-make-support
-    // and pipe /dev/null into it.
-    // Original lines:
-    //
-    // bash -c 'echo "fn main() {}" | makeflags="--jobserver-auth=3,3" $(rustc) - 3</dev/null' \
-    // 2>&1 | diff not_a_pipe.stderr -
+
+    let out = rustc()
+        .stdin("fn main() {}")
+        .input("-")
+        .env("MAKEFLAGS", "--jobserver-auth=3,3")
+        .set_aux_fd(3, std::fs::File::open("/dev/null").unwrap())
+        .run()
+        .stderr_utf8();
+    diff().expected_file("not_a_pipe.stderr").actual_text("actual", out).run();
+
     // # this test randomly fails, see https://github.com/rust-lang/rust/issues/110321
-    // disabled:
-    // bash -c 'echo "fn main() {}" | makeflags="--jobserver-auth=3,3" $(rustc) - \
-    // 3< <(cat /dev/null)' 2>&1 | diff poisoned_pipe.stderr -
-    //
+    // let (readpipe, _) = std::pipe::pipe().unwrap();
     // let out = rustc()
     //     .stdin("fn main() {}")
     //     .input("-")
-    //     .env("MAKEFLAGS", "--jobserver-auth=0,0")
+    //     .env("MAKEFLAGS", "--jobserver-auth=3,3")
+    //     .set_fd3(readpipe)
     //     .run()
     //     .stderr_utf8();
-    // diff().expected_file("not_a_pipe.stderr").actual_text("actual", out).run();
+    // diff().expected_file("poisoned_pipe.stderr").actual_text("actual", out).run();
 }
