@@ -172,7 +172,7 @@ enum RecordPartialRes {
 /// The rib kind restricts certain accesses,
 /// e.g. to a `Res::Local` of an outer item.
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum RibKind<'a> {
+pub(crate) enum RibKind<'ra> {
     /// No restriction needs to be applied.
     Normal,
 
@@ -195,7 +195,7 @@ pub(crate) enum RibKind<'a> {
     ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
 
     /// We passed through a module.
-    Module(Module<'a>),
+    Module(Module<'ra>),
 
     /// We passed through a `macro_rules!` statement
     MacroDefinition(DefId),
@@ -260,13 +260,13 @@ impl RibKind<'_> {
 /// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
-pub(crate) struct Rib<'a, R = Res> {
+pub(crate) struct Rib<'ra, R = Res> {
     pub bindings: IdentMap<R>,
-    pub kind: RibKind<'a>,
+    pub kind: RibKind<'ra>,
 }
 
-impl<'a, R> Rib<'a, R> {
-    fn new(kind: RibKind<'a>) -> Rib<'a, R> {
+impl<'ra, R> Rib<'ra, R> {
+    fn new(kind: RibKind<'ra>) -> Rib<'ra, R> {
         Rib { bindings: Default::default(), kind }
     }
 }
@@ -584,8 +584,8 @@ impl MaybeExported<'_> {
 
 /// Used for recording UnnecessaryQualification.
 #[derive(Debug)]
-pub(crate) struct UnnecessaryQualification<'a> {
-    pub binding: LexicalScopeBinding<'a>,
+pub(crate) struct UnnecessaryQualification<'ra> {
+    pub binding: LexicalScopeBinding<'ra>,
     pub node_id: NodeId,
     pub path_span: Span,
     pub removal_span: Span,
@@ -659,20 +659,20 @@ struct DiagMetadata<'ast> {
     current_elision_failures: Vec<MissingLifetime>,
 }
 
-struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
-    r: &'b mut Resolver<'a, 'tcx>,
+struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
+    r: &'a mut Resolver<'ra, 'tcx>,
 
     /// The module that represents the current item scope.
-    parent_scope: ParentScope<'a>,
+    parent_scope: ParentScope<'ra>,
 
     /// The current set of local scopes for types and values.
-    ribs: PerNS<Vec<Rib<'a>>>,
+    ribs: PerNS<Vec<Rib<'ra>>>,
 
     /// Previous popped `rib`, only used for diagnostic.
-    last_block_rib: Option<Rib<'a>>,
+    last_block_rib: Option<Rib<'ra>>,
 
     /// The current set of local scopes, for labels.
-    label_ribs: Vec<Rib<'a, NodeId>>,
+    label_ribs: Vec<Rib<'ra, NodeId>>,
 
     /// The current set of local scopes for lifetimes.
     lifetime_ribs: Vec<LifetimeRib>,
@@ -685,7 +685,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     lifetime_elision_candidates: Option<Vec<(LifetimeRes, LifetimeElisionCandidate)>>,
 
     /// The trait that the current context can refer to.
-    current_trait_ref: Option<(Module<'a>, TraitRef)>,
+    current_trait_ref: Option<(Module<'ra>, TraitRef)>,
 
     /// Fields used to add information to diagnostic errors.
     diag_metadata: Box<DiagMetadata<'ast>>,
@@ -702,7 +702,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
-impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
+impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn visit_attribute(&mut self, _: &'ast Attribute) {
         // We do not want to resolve expressions that appear in attributes,
         // as they do not correspond to actual code.
@@ -1316,8 +1316,8 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
     }
 }
 
-impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
-    fn new(resolver: &'b mut Resolver<'a, 'tcx>) -> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
+impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
+    fn new(resolver: &'a mut Resolver<'ra, 'tcx>) -> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
@@ -1347,7 +1347,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         &mut self,
         ident: Ident,
         ns: Namespace,
-    ) -> Option<LexicalScopeBinding<'a>> {
+    ) -> Option<LexicalScopeBinding<'ra>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
             ns,
@@ -1363,8 +1363,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         ident: Ident,
         ns: Namespace,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'a>>,
-    ) -> Option<LexicalScopeBinding<'a>> {
+        ignore_binding: Option<NameBinding<'ra>>,
+    ) -> Option<LexicalScopeBinding<'ra>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
             ns,
@@ -1380,7 +1380,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         finalize: Option<Finalize>,
-    ) -> PathResult<'a> {
+    ) -> PathResult<'ra> {
         self.r.resolve_path_with_ribs(
             path,
             opt_ns,
@@ -1414,7 +1414,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn with_rib<T>(
         &mut self,
         ns: Namespace,
-        kind: RibKind<'a>,
+        kind: RibKind<'ra>,
         work: impl FnOnce(&mut Self) -> T,
     ) -> T {
         self.ribs[ns].push(Rib::new(kind));
@@ -2266,14 +2266,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         /// Visits a type to find all the &references, and determines the
         /// set of lifetimes for all of those references where the referent
         /// contains Self.
-        struct FindReferenceVisitor<'r, 'a, 'tcx> {
-            r: &'r Resolver<'a, 'tcx>,
+        struct FindReferenceVisitor<'a, 'ra, 'tcx> {
+            r: &'a Resolver<'ra, 'tcx>,
             impl_self: Option<Res>,
             lifetime: Set1<LifetimeRes>,
         }
 
-        impl<'a> Visitor<'a> for FindReferenceVisitor<'_, '_, '_> {
-            fn visit_ty(&mut self, ty: &'a Ty) {
+        impl<'ra> Visitor<'ra> for FindReferenceVisitor<'_, '_, '_> {
+            fn visit_ty(&mut self, ty: &'ra Ty) {
                 trace!("FindReferenceVisitor considering ty={:?}", ty);
                 if let TyKind::Ref(lt, _) = ty.kind {
                     // See if anything inside the &thing contains Self
@@ -2299,13 +2299,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             // A type may have an expression as a const generic argument.
             // We do not want to recurse into those.
-            fn visit_expr(&mut self, _: &'a Expr) {}
+            fn visit_expr(&mut self, _: &'ra Expr) {}
         }
 
         /// Visitor which checks the referent of a &Thing to see if the
         /// Thing contains Self
-        struct SelfVisitor<'r, 'a, 'tcx> {
-            r: &'r Resolver<'a, 'tcx>,
+        struct SelfVisitor<'a, 'ra, 'tcx> {
+            r: &'a Resolver<'ra, 'tcx>,
             impl_self: Option<Res>,
             self_found: bool,
         }
@@ -2327,8 +2327,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
         }
 
-        impl<'a> Visitor<'a> for SelfVisitor<'_, '_, '_> {
-            fn visit_ty(&mut self, ty: &'a Ty) {
+        impl<'ra> Visitor<'ra> for SelfVisitor<'_, '_, '_> {
+            fn visit_ty(&mut self, ty: &'ra Ty) {
                 trace!("SelfVisitor considering ty={:?}", ty);
                 if self.is_self_ty(ty) {
                     trace!("SelfVisitor found Self");
@@ -2339,7 +2339,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             // A type may have an expression as a const generic argument.
             // We do not want to recurse into those.
-            fn visit_expr(&mut self, _: &'a Expr) {}
+            fn visit_expr(&mut self, _: &'ra Expr) {}
         }
 
         let impl_self = self
@@ -2371,7 +2371,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
     /// label and reports an error if the label is not found or is unreachable.
-    fn resolve_label(&mut self, mut label: Ident) -> Result<(NodeId, Span), ResolutionError<'a>> {
+    fn resolve_label(&mut self, mut label: Ident) -> Result<(NodeId, Span), ResolutionError<'ra>> {
         let mut suggestion = None;
 
         for i in (0..self.label_ribs.len()).rev() {
@@ -2712,7 +2712,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn with_generic_param_rib<'c, F>(
         &'c mut self,
         params: &'c [GenericParam],
-        kind: RibKind<'a>,
+        kind: RibKind<'ra>,
         lifetime_kind: LifetimeRibKind,
         f: F,
     ) where
@@ -2878,7 +2878,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
     }
 
-    fn with_label_rib(&mut self, kind: RibKind<'a>, f: impl FnOnce(&mut Self)) {
+    fn with_label_rib(&mut self, kind: RibKind<'ra>, f: impl FnOnce(&mut Self)) {
         self.label_ribs.push(Rib::new(kind));
         f(self);
         self.label_ribs.pop();
@@ -3306,7 +3306,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         seen_trait_items: &mut FxHashMap<DefId, Span>,
         err: F,
     ) where
-        F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'a>,
+        F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'ra>,
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         let Some((module, _)) = self.current_trait_ref else {
@@ -4010,101 +4010,102 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // about possible missing imports.
         //
         // Similar thing, for types, happens in `report_errors` above.
-        let report_errors_for_call = |this: &mut Self, parent_err: Spanned<ResolutionError<'a>>| {
-            // Before we start looking for candidates, we have to get our hands
-            // on the type user is trying to perform invocation on; basically:
-            // we're transforming `HashMap::new` into just `HashMap`.
-            let (following_seg, prefix_path) = match path.split_last() {
-                Some((last, path)) if !path.is_empty() => (Some(last), path),
-                _ => return Some(parent_err),
-            };
-
-            let (mut err, candidates) = this.smart_resolve_report_errors(
-                prefix_path,
-                following_seg,
-                path_span,
-                PathSource::Type,
-                None,
-            );
-
-            // There are two different error messages user might receive at
-            // this point:
-            // - E0412 cannot find type `{}` in this scope
-            // - E0433 failed to resolve: use of undeclared type or module `{}`
-            //
-            // The first one is emitted for paths in type-position, and the
-            // latter one - for paths in expression-position.
-            //
-            // Thus (since we're in expression-position at this point), not to
-            // confuse the user, we want to keep the *message* from E0433 (so
-            // `parent_err`), but we want *hints* from E0412 (so `err`).
-            //
-            // And that's what happens below - we're just mixing both messages
-            // into a single one.
-            let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
-
-            // overwrite all properties with the parent's error message
-            err.messages = take(&mut parent_err.messages);
-            err.code = take(&mut parent_err.code);
-            swap(&mut err.span, &mut parent_err.span);
-            err.children = take(&mut parent_err.children);
-            err.sort_span = parent_err.sort_span;
-            err.is_lint = parent_err.is_lint.clone();
-
-            // merge the parent's suggestions with the typo suggestions
-            fn append_result<T, E>(res1: &mut Result<Vec<T>, E>, res2: Result<Vec<T>, E>) {
-                match res1 {
-                    Ok(vec1) => match res2 {
-                        Ok(mut vec2) => vec1.append(&mut vec2),
-                        Err(e) => *res1 = Err(e),
-                    },
-                    Err(_) => (),
+        let report_errors_for_call =
+            |this: &mut Self, parent_err: Spanned<ResolutionError<'ra>>| {
+                // Before we start looking for candidates, we have to get our hands
+                // on the type user is trying to perform invocation on; basically:
+                // we're transforming `HashMap::new` into just `HashMap`.
+                let (following_seg, prefix_path) = match path.split_last() {
+                    Some((last, path)) if !path.is_empty() => (Some(last), path),
+                    _ => return Some(parent_err),
                 };
-            }
-            append_result(&mut err.suggestions, parent_err.suggestions.clone());
 
-            parent_err.cancel();
+                let (mut err, candidates) = this.smart_resolve_report_errors(
+                    prefix_path,
+                    following_seg,
+                    path_span,
+                    PathSource::Type,
+                    None,
+                );
 
-            let def_id = this.parent_scope.module.nearest_parent_mod();
+                // There are two different error messages user might receive at
+                // this point:
+                // - E0412 cannot find type `{}` in this scope
+                // - E0433 failed to resolve: use of undeclared type or module `{}`
+                //
+                // The first one is emitted for paths in type-position, and the
+                // latter one - for paths in expression-position.
+                //
+                // Thus (since we're in expression-position at this point), not to
+                // confuse the user, we want to keep the *message* from E0433 (so
+                // `parent_err`), but we want *hints* from E0412 (so `err`).
+                //
+                // And that's what happens below - we're just mixing both messages
+                // into a single one.
+                let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
 
-            if this.should_report_errs() {
-                if candidates.is_empty() {
-                    if path.len() == 2
-                        && let [segment] = prefix_path
-                    {
-                        // Delay to check whether methond name is an associated function or not
-                        // ```
-                        // let foo = Foo {};
-                        // foo::bar(); // possibly suggest to foo.bar();
-                        //```
-                        err.stash(segment.ident.span, rustc_errors::StashKey::CallAssocMethod);
+                // overwrite all properties with the parent's error message
+                err.messages = take(&mut parent_err.messages);
+                err.code = take(&mut parent_err.code);
+                swap(&mut err.span, &mut parent_err.span);
+                err.children = take(&mut parent_err.children);
+                err.sort_span = parent_err.sort_span;
+                err.is_lint = parent_err.is_lint.clone();
+
+                // merge the parent's suggestions with the typo suggestions
+                fn append_result<T, E>(res1: &mut Result<Vec<T>, E>, res2: Result<Vec<T>, E>) {
+                    match res1 {
+                        Ok(vec1) => match res2 {
+                            Ok(mut vec2) => vec1.append(&mut vec2),
+                            Err(e) => *res1 = Err(e),
+                        },
+                        Err(_) => (),
+                    };
+                }
+                append_result(&mut err.suggestions, parent_err.suggestions.clone());
+
+                parent_err.cancel();
+
+                let def_id = this.parent_scope.module.nearest_parent_mod();
+
+                if this.should_report_errs() {
+                    if candidates.is_empty() {
+                        if path.len() == 2
+                            && let [segment] = prefix_path
+                        {
+                            // Delay to check whether methond name is an associated function or not
+                            // ```
+                            // let foo = Foo {};
+                            // foo::bar(); // possibly suggest to foo.bar();
+                            //```
+                            err.stash(segment.ident.span, rustc_errors::StashKey::CallAssocMethod);
+                        } else {
+                            // When there is no suggested imports, we can just emit the error
+                            // and suggestions immediately. Note that we bypass the usually error
+                            // reporting routine (ie via `self.r.report_error`) because we need
+                            // to post-process the `ResolutionError` above.
+                            err.emit();
+                        }
                     } else {
-                        // When there is no suggested imports, we can just emit the error
-                        // and suggestions immediately. Note that we bypass the usually error
-                        // reporting routine (ie via `self.r.report_error`) because we need
-                        // to post-process the `ResolutionError` above.
-                        err.emit();
+                        // If there are suggested imports, the error reporting is delayed
+                        this.r.use_injections.push(UseError {
+                            err,
+                            candidates,
+                            def_id,
+                            instead: false,
+                            suggestion: None,
+                            path: prefix_path.into(),
+                            is_call: source.is_call(),
+                        });
                     }
                 } else {
-                    // If there are suggested imports, the error reporting is delayed
-                    this.r.use_injections.push(UseError {
-                        err,
-                        candidates,
-                        def_id,
-                        instead: false,
-                        suggestion: None,
-                        path: prefix_path.into(),
-                        is_call: source.is_call(),
-                    });
+                    err.cancel();
                 }
-            } else {
-                err.cancel();
-            }
 
-            // We don't return `Some(parent_err)` here, because the error will
-            // be already printed either immediately or as part of the `use` injections
-            None
-        };
+                // We don't return `Some(parent_err)` here, because the error will
+                // be already printed either immediately or as part of the `use` injections
+                None
+            };
 
         let partial_res = match self.resolve_qpath_anywhere(
             qself,
@@ -4205,7 +4206,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// A wrapper around [`Resolver::report_error`].
     ///
     /// This doesn't emit errors for function bodies if this is rustdoc.
-    fn report_error(&mut self, span: Span, resolution_error: ResolutionError<'a>) {
+    fn report_error(&mut self, span: Span, resolution_error: ResolutionError<'ra>) {
         if self.should_report_errs() {
             self.r.report_error(span, resolution_error);
         }
@@ -4229,7 +4230,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         span: Span,
         defer_to_typeck: bool,
         finalize: Finalize,
-    ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
+    ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'ra>>> {
         let mut fin_res = None;
 
         for (i, &ns) in [primary_ns, TypeNS, ValueNS].iter().enumerate() {
@@ -4271,7 +4272,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         path: &[Segment],
         ns: Namespace,
         finalize: Finalize,
-    ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
+    ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'ra>>> {
         debug!(
             "resolve_qpath(qself={:?}, path={:?}, ns={:?}, finalize={:?})",
             qself, path, ns, finalize,
@@ -4920,8 +4921,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
 /// Walks the whole crate in DFS order, visiting each item, counting the declared number of
 /// lifetime generic parameters and function parameters.
-struct ItemInfoCollector<'a, 'b, 'tcx> {
-    r: &'b mut Resolver<'a, 'tcx>,
+struct ItemInfoCollector<'a, 'ra, 'tcx> {
+    r: &'a mut Resolver<'ra, 'tcx>,
 }
 
 impl ItemInfoCollector<'_, '_, '_> {
@@ -4988,7 +4989,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
     }
 }
 
-impl<'a, 'tcx> Resolver<'a, 'tcx> {
+impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
         visit::walk_crate(&mut ItemInfoCollector { r: self }, krate);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);

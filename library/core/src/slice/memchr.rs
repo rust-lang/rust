@@ -51,7 +51,6 @@ const fn memchr_naive(x: u8, text: &[u8]) -> Option<usize> {
 }
 
 #[rustc_allow_const_fn_unstable(const_cmp)]
-#[rustc_allow_const_fn_unstable(const_slice_index)]
 #[rustc_allow_const_fn_unstable(const_align_offset)]
 #[rustc_const_stable(feature = "const_memchr", since = "1.65.0")]
 const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
