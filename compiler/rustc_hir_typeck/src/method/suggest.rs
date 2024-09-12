@@ -2675,9 +2675,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if let SelfSource::MethodCall(expr) = source {
             let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
-            for (fields, args) in
-                self.get_field_candidates_considering_privacy(span, actual, mod_id, expr.hir_id)
-            {
+            for (fields, args) in self.get_field_candidates_considering_privacy_for_diag(
+                span,
+                actual,
+                mod_id,
+                expr.hir_id,
+            ) {
                 let call_expr = self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id));
 
                 let lang_items = self.tcx.lang_items();
@@ -2693,7 +2696,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut candidate_fields: Vec<_> = fields
                     .into_iter()
                     .filter_map(|candidate_field| {
-                        self.check_for_nested_field_satisfying(
+                        self.check_for_nested_field_satisfying_condition_for_diag(
                             span,
                             &|_, field_ty| {
                                 self.lookup_probe_for_diagnostic(
