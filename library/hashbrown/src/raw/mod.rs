@@ -771,6 +771,18 @@ impl<T, A: Allocator> RawTable<T, A> {
         NonNull::new_unchecked(self.data_end().as_ptr().wrapping_sub(self.buckets()))
     }
 
+    /// Returns the total amount of memory allocated internally by the hash
+    /// table, in bytes.
+    ///
+    /// The returned number is informational only. It is intended to be
+    /// primarily used for memory profiling.
+    #[inline]
+    pub fn allocation_size(&self) -> usize {
+        // SAFETY: We use the same `table_layout` that was used to allocate
+        // this table.
+        unsafe { self.table.allocation_size_or_zero(Self::TABLE_LAYOUT) }
+    }
+
     /// Returns the index of a bucket from a `Bucket`.
     #[inline]
     pub unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
@@ -3054,6 +3066,33 @@ impl RawTableInner {
             unsafe { NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)) },
             layout,
         )
+    }
+
+    /// Returns the total amount of memory allocated internally by the hash
+    /// table, in bytes.
+    ///
+    /// The returned number is informational only. It is intended to be
+    /// primarily used for memory profiling.
+    ///
+    /// # Safety
+    ///
+    /// The `table_layout` must be the same [`TableLayout`] as the `TableLayout`
+    /// that was used to allocate this table. Failure to comply with this condition
+    /// may result in [`undefined behavior`].
+    ///
+    ///
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[inline]
+    unsafe fn allocation_size_or_zero(&self, table_layout: TableLayout) -> usize {
+        if self.is_empty_singleton() {
+            0
+        } else {
+            // SAFETY:
+            // 1. We have checked that our table is allocated.
+            // 2. The caller ensures that `table_layout` matches the [`TableLayout`]
+            // that was used to allocate this table.
+            unsafe { self.allocation_info(table_layout).1.size() }
+        }
     }
 
     /// Marks all table buckets as empty without dropping their contents.

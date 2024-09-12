@@ -1230,6 +1230,16 @@ where
             None => None,
         }
     }
+
+    /// Returns the total amount of memory allocated internally by the hash
+    /// set, in bytes.
+    ///
+    /// The returned number is informational only. It is intended to be
+    /// primarily used for memory profiling.
+    #[inline]
+    pub fn allocation_size(&self) -> usize {
+        self.map.allocation_size()
+    }
 }
 
 impl<T, S, A> PartialEq for HashSet<T, S, A>
@@ -3054,5 +3064,12 @@ mod test_set {
         // At the time of writing, this hits the ZST case in from_base_index
         // (and without the `map`, it does not).
         let mut _set: HashSet<_> = (0..3).map(|_| ()).collect();
+    }
+
+    #[test]
+    fn test_allocation_info() {
+        assert_eq!(HashSet::<()>::new().allocation_size(), 0);
+        assert_eq!(HashSet::<u32>::new().allocation_size(), 0);
+        assert!(HashSet::<u32>::with_capacity(1).allocation_size() > core::mem::size_of::<u32>());
     }
 }
