@@ -14,12 +14,15 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    const I: [u32; 2] = [0; 2];
-    const I2: [f32; 2] = [0.; 2];
+    const I: Simd<u32, 2> = Simd([0; 2]);
+    const I2: Simd<f32, 2> = Simd([0.; 2]);
     let v = Simd::<u32, 4>([0; 4]);
 
     unsafe {
         let _: Simd<u32, 2> = simd_shuffle(v, v, I);
+
+        let _: Simd<u32, 2> = simd_shuffle(v, v, const { [0u32; 2] });
+        //~^ ERROR invalid monomorphization of `simd_shuffle` intrinsic
 
         let _: Simd<u32, 4> = simd_shuffle(v, v, I);
         //~^ ERROR invalid monomorphization of `simd_shuffle` intrinsic

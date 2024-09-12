@@ -23,6 +23,9 @@ extern "rust-intrinsic" {
     fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
 }
 
+#[repr(simd)]
+struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);
+
 macro_rules! all_eq {
     ($a: expr, $b: expr) => {{
         let a = $a;
@@ -30,9 +33,8 @@ macro_rules! all_eq {
         // type inference works better with the concrete type on the
         // left, but humans work better with the expected on the
         // right.
-        assert!(b == a,
-                "{:?} != {:?}", a, b);
-    }}
+        assert!(b == a, "{:?} != {:?}", a, b);
+    }};
 }
 
 fn main() {
@@ -79,20 +81,34 @@ fn main() {
     let y4 = i32x4([140, 141, 142, 143]);
     let y8 = i32x8([180, 181, 182, 183, 184, 185, 186, 187]);
     unsafe {
-        all_eq!(simd_shuffle(x2, y2, const { [3u32, 0] }), i32x2([121, 20]));
-        all_eq!(simd_shuffle(x2, y2, const { [3u32, 0, 1, 2] }), i32x4([121, 20, 21, 120]));
-        all_eq!(simd_shuffle(x2, y2, const { [3u32, 0, 1, 2, 1, 2, 3, 0] }),
-                i32x8([121, 20, 21, 120, 21, 120, 121, 20]));
+        all_eq!(simd_shuffle(x2, y2, const { SimdShuffleIdx([3u32, 0]) }), i32x2([121, 20]));
+        all_eq!(
+            simd_shuffle(x2, y2, const { SimdShuffleIdx([3u32, 0, 1, 2]) }),
+            i32x4([121, 20, 21, 120])
+        );
+        all_eq!(
+            simd_shuffle(x2, y2, const { SimdShuffleIdx([3u32, 0, 1, 2, 1, 2, 3, 0]) }),
+            i32x8([121, 20, 21, 120, 21, 120, 121, 20])
+        );
 
-        all_eq!(simd_shuffle(x4, y4, const { [7u32, 2] }), i32x2([143, 42]));
-        all_eq!(simd_shuffle(x4, y4, const { [7u32, 2, 5, 0] }), i32x4([143, 42, 141, 40]));
-        all_eq!(simd_shuffle(x4, y4, const { [7u32, 2, 5, 0, 3, 6, 4, 1] }),
-                i32x8([143, 42, 141, 40, 43, 142, 140, 41]));
+        all_eq!(simd_shuffle(x4, y4, const { SimdShuffleIdx([7u32, 2]) }), i32x2([143, 42]));
+        all_eq!(
+            simd_shuffle(x4, y4, const { SimdShuffleIdx([7u32, 2, 5, 0]) }),
+            i32x4([143, 42, 141, 40])
+        );
+        all_eq!(
+            simd_shuffle(x4, y4, const { SimdShuffleIdx([7u32, 2, 5, 0, 3, 6, 4, 1]) }),
+            i32x8([143, 42, 141, 40, 43, 142, 140, 41])
+        );
 
-        all_eq!(simd_shuffle(x8, y8, const { [11u32, 5] }), i32x2([183, 85]));
-        all_eq!(simd_shuffle(x8, y8, const { [11u32, 5, 15, 0] }), i32x4([183, 85, 187, 80]));
-        all_eq!(simd_shuffle(x8, y8, const { [11u32, 5, 15, 0, 3, 8, 12, 1] }),
-                i32x8([183, 85, 187, 80, 83, 180, 184, 81]));
+        all_eq!(simd_shuffle(x8, y8, const { SimdShuffleIdx([11u32, 5]) }), i32x2([183, 85]));
+        all_eq!(
+            simd_shuffle(x8, y8, const { SimdShuffleIdx([11u32, 5, 15, 0]) }),
+            i32x4([183, 85, 187, 80])
+        );
+        all_eq!(
+            simd_shuffle(x8, y8, const { SimdShuffleIdx([11u32, 5, 15, 0, 3, 8, 12, 1]) }),
+            i32x8([183, 85, 187, 80, 83, 180, 184, 81])
+        );
     }
-
 }
