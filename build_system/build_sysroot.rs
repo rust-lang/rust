@@ -3,7 +3,8 @@ use std::process::Command;
 use std::{env, fs};
 
 use crate::path::{Dirs, RelPath};
-use crate::rustc_info::get_file_name;
+use crate::prepare::apply_patches;
+use crate::rustc_info::{get_default_sysroot, get_file_name};
 use crate::utils::{
     remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler, LogGroup,
 };
@@ -157,10 +158,10 @@ impl SysrootTarget {
     }
 }
 
-pub(crate) static STDLIB_SRC: RelPath = RelPath::BUILD.join("stdlib");
-pub(crate) static STANDARD_LIBRARY: CargoProject =
+static STDLIB_SRC: RelPath = RelPath::BUILD.join("stdlib");
+static STANDARD_LIBRARY: CargoProject =
     CargoProject::new(&STDLIB_SRC.join("library/sysroot"), "stdlib_target");
-pub(crate) static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
+static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
 
 fn build_sysroot_for_triple(
     dirs: &Dirs,
@@ -285,7 +286,10 @@ fn build_clif_sysroot_for_triple(
 
 fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
     if !config::get_bool("keep_sysroot") {
-        crate::prepare::prepare_stdlib(dirs, &compiler.rustc);
+        let sysroot_src_orig = get_default_sysroot(&compiler.rustc).join("lib/rustlib/src/rust");
+        assert!(sysroot_src_orig.exists());
+
+        apply_patches(dirs, "stdlib", &sysroot_src_orig, &STDLIB_SRC.to_path(dirs));
     }
 
     if !compiler.triple.ends_with("windows-gnu") {

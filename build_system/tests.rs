@@ -117,7 +117,7 @@ pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
     "rand",
 );
 
-pub(crate) static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand_target");
+static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand_target");
 
 pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
     "rust-lang",
@@ -127,12 +127,11 @@ pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
     "regex",
 );
 
-pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex_target");
+static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex_target");
 
-pub(crate) static PORTABLE_SIMD_SRC: RelPath = RelPath::BUILD.join("portable-simd");
+static PORTABLE_SIMD_SRC: RelPath = RelPath::BUILD.join("portable-simd");
 
-pub(crate) static PORTABLE_SIMD: CargoProject =
-    CargoProject::new(&PORTABLE_SIMD_SRC, "portable-simd_target");
+static PORTABLE_SIMD: CargoProject = CargoProject::new(&PORTABLE_SIMD_SRC, "portable-simd_target");
 
 static LIBCORE_TESTS_SRC: RelPath = RelPath::BUILD.join("coretests");
 

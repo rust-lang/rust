@@ -4,9 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::build_sysroot::STDLIB_SRC;
 use crate::path::{Dirs, RelPath};
-use crate::rustc_info::get_default_sysroot;
 use crate::utils::{
     copy_dir_recursively, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
 };
@@ -15,13 +13,6 @@ pub(crate) fn prepare(dirs: &Dirs) {
     RelPath::DOWNLOAD.ensure_exists(dirs);
     crate::tests::RAND_REPO.fetch(dirs);
     crate::tests::REGEX_REPO.fetch(dirs);
-}
-
-pub(crate) fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
-    let sysroot_src_orig = get_default_sysroot(rustc).join("lib/rustlib/src/rust");
-    assert!(sysroot_src_orig.exists());
-
-    apply_patches(dirs, "stdlib", &sysroot_src_orig, &STDLIB_SRC.to_path(dirs));
 }
 
 pub(crate) struct GitRepo {
