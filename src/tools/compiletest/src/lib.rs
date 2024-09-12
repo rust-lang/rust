@@ -647,6 +647,12 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
     }
 
+    // Re-run coverage tests if the `coverage-dump` tool was modified,
+    // because its output format might have changed.
+    if let Some(coverage_dump_path) = &config.coverage_dump_path {
+        stamp.add_path(coverage_dump_path)
+    }
+
     stamp.add_dir(&rust_src_dir.join("src/tools/run-make-support"));
 
     // Compiletest itself.
