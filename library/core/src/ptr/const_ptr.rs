@@ -420,7 +420,7 @@ impl<T: ?Sized> *const T {
         unsafe { self.cast::<u8>().offset(count).with_metadata_of(self) }
     }
 
-    /// Calculates the offset from a pointer using wrapping arithmetic.
+    /// Adds a signed offset to a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -482,7 +482,7 @@ impl<T: ?Sized> *const T {
         unsafe { intrinsics::arith_offset(self, count) }
     }
 
-    /// Calculates the offset from a pointer in bytes using wrapping arithmetic.
+    /// Adds a signed offset in bytes to a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of **bytes**.
     ///
@@ -972,8 +972,7 @@ impl<T: ?Sized> *const T {
         unsafe { self.cast::<u8>().sub(count).with_metadata_of(self) }
     }
 
-    /// Calculates the offset from a pointer using wrapping arithmetic.
-    /// (convenience for `.wrapping_offset(count as isize)`)
+    /// Adds an unsigned offset to a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -1034,8 +1033,7 @@ impl<T: ?Sized> *const T {
         self.wrapping_offset(count as isize)
     }
 
-    /// Calculates the offset from a pointer in bytes using wrapping arithmetic.
-    /// (convenience for `.wrapping_byte_offset(count as isize)`)
+    /// Adds an unsigned offset in bytes to a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of bytes.
     ///
@@ -1053,8 +1051,7 @@ impl<T: ?Sized> *const T {
         self.cast::<u8>().wrapping_add(count).with_metadata_of(self)
     }
 
-    /// Calculates the offset from a pointer using wrapping arithmetic.
-    /// (convenience for `.wrapping_offset((count as isize).wrapping_neg())`)
+    /// Subtracts an unsigned offset from a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
@@ -1115,8 +1112,7 @@ impl<T: ?Sized> *const T {
         self.wrapping_offset((count as isize).wrapping_neg())
     }
 
-    /// Calculates the offset from a pointer in bytes using wrapping arithmetic.
-    /// (convenience for `.wrapping_offset((count as isize).wrapping_neg())`)
+    /// Subtracts an unsigned offset in bytes from a pointer using wrapping arithmetic.
     ///
     /// `count` is in units of bytes.
     ///
