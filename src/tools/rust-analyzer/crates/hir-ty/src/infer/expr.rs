@@ -895,21 +895,52 @@ impl InferenceContext<'_> {
                         TyKind::Scalar(Scalar::Int(primitive::int_ty_from_builtin(*int_ty)))
                             .intern(Interner)
                     }
-                    None => self.table.new_integer_var(),
+                    None => {
+                        let expected_ty = expected.to_option(&mut self.table);
+                        let opt_ty = match expected_ty.as_ref().map(|it| it.kind(Interner)) {
+                            Some(TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))) => expected_ty,
+                            Some(TyKind::Scalar(Scalar::Char)) => {
+                                Some(TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner))
+                            }
+                            Some(TyKind::Raw(..) | TyKind::FnDef(..) | TyKind::Function(..)) => {
+                                Some(TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner))
+                            }
+                            _ => None,
+                        };
+                        opt_ty.unwrap_or_else(|| self.table.new_integer_var())
+                    }
                 },
                 Literal::Uint(_v, ty) => match ty {
                     Some(int_ty) => {
                         TyKind::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(*int_ty)))
                             .intern(Interner)
                     }
-                    None => self.table.new_integer_var(),
+                    None => {
+                        let expected_ty = expected.to_option(&mut self.table);
+                        let opt_ty = match expected_ty.as_ref().map(|it| it.kind(Interner)) {
+                            Some(TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))) => expected_ty,
+                            Some(TyKind::Scalar(Scalar::Char)) => {
+                                Some(TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner))
+                            }
+                            Some(TyKind::Raw(..) | TyKind::FnDef(..) | TyKind::Function(..)) => {
+                                Some(TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner))
+                            }
+                            _ => None,
+                        };
+                        opt_ty.unwrap_or_else(|| self.table.new_integer_var())
+                    }
                 },
                 Literal::Float(_v, ty) => match ty {
                     Some(float_ty) => {
                         TyKind::Scalar(Scalar::Float(primitive::float_ty_from_builtin(*float_ty)))
                             .intern(Interner)
                     }
-                    None => self.table.new_float_var(),
+                    None => {
+                        let opt_ty = expected.to_option(&mut self.table).filter(|ty| {
+                            matches!(ty.kind(Interner), TyKind::Scalar(Scalar::Float(_)))
+                        });
+                        opt_ty.unwrap_or_else(|| self.table.new_float_var())
+                    }
                 },
             },
             Expr::Underscore => {
