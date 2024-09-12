@@ -96,15 +96,28 @@ fn mutex_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     // recursive or error checking mutexes. We should also add thme in this sanity check.
     static SANITY: AtomicBool = AtomicBool::new(false);
     if !SANITY.swap(true, Ordering::Relaxed) {
-        let static_initializer = ecx.eval_path(&["libc", "PTHREAD_MUTEX_INITIALIZER"]);
-        let id_field = static_initializer
-            .offset(Size::from_bytes(offset), ecx.machine.layouts.u32, ecx)
-            .unwrap();
-        let id = ecx.read_scalar(&id_field).unwrap().to_u32().unwrap();
-        assert_eq!(
-            id, 0,
-            "PTHREAD_MUTEX_INITIALIZER is incompatible with our pthread_mutex layout: id is not 0"
-        );
+        let check_static_initializer = |name| {
+            let static_initializer = ecx.eval_path(&["libc", name]);
+            let id_field = static_initializer
+                .offset(Size::from_bytes(offset), ecx.machine.layouts.u32, ecx)
+                .unwrap();
+            let id = ecx.read_scalar(&id_field).unwrap().to_u32().unwrap();
+            assert_eq!(id, 0, "{name} is incompatible with our pthread_mutex layout: id is not 0");
+        };
+
+        check_static_initializer("PTHREAD_MUTEX_INITIALIZER");
+        // Check non-standard initializers.
+        match &*ecx.tcx.sess.target.os {
+            "linux" => {
+                check_static_initializer("PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP");
+                check_static_initializer("PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP");
+                check_static_initializer("PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP");
+            }
+            "illumos" | "solaris" | "macos" => {
+                // No non-standard initializers.
+            }
+            os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
+        }
     }
 
     Ok(offset)
@@ -167,7 +180,7 @@ fn kind_from_static_initializer<'tcx>(
                 mutex.offset(Size::from_bytes(offset), ecx.machine.layouts.i32, ecx)?;
             ecx.read_scalar(&kind_place)?.to_i32()?
         }
-        | "illumos" | "solaris" | "macos" => ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"),
+        "illumos" | "solaris" | "macos" => ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"),
         os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
     };
 
