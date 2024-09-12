@@ -3361,10 +3361,8 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
                     // name.
                     //
                     // Any stable ordering would be fine here though.
-                    if *v.get() != symbol {
-                        if v.get().as_str() > symbol.as_str() {
-                            v.insert(symbol);
-                        }
+                    if *v.get() != symbol && v.get().as_str() > symbol.as_str() {
+                        v.insert(symbol);
                     }
                 }
                 Vacant(v) => {

@@ -16,7 +16,7 @@ use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_trait_selection::traits::ObligationCtxt;
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use super::{
     err_inval, throw_inval, throw_ub, throw_ub_custom, Frame, FrameInfo, GlobalId, InterpErrorInfo,
@@ -315,6 +315,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Check if the two things are equal in the current param_env, using an infctx to get proper
     /// equality checks.
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn eq_in_param_env<T>(&self, a: T, b: T) -> bool
     where
         T: PartialEq + TypeFoldable<TyCtxt<'tcx>> + ToTrace<'tcx>,
@@ -330,13 +331,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // equate the two trait refs after normalization
         let a = ocx.normalize(&cause, self.param_env, a);
         let b = ocx.normalize(&cause, self.param_env, b);
-        if ocx.eq(&cause, self.param_env, a, b).is_ok() {
-            if ocx.select_all_or_error().is_empty() {
-                // All good.
-                return true;
-            }
+
+        if let Err(terr) = ocx.eq(&cause, self.param_env, a, b) {
+            trace!(?terr);
+            return false;
         }
-        return false;
+
+        let errors = ocx.select_all_or_error();
+        if !errors.is_empty() {
+            trace!(?errors);
+            return false;
+        }
+
+        // All good.
+        true
     }
 
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a

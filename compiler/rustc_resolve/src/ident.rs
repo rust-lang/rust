@@ -958,12 +958,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
-            if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
-                if let NameBindingKind::Import { import, .. } = binding.kind
-                    && matches!(import.kind, ImportKind::MacroExport)
-                {
-                    self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
-                }
+            if !restricted_shadowing
+                && binding.expansion != LocalExpnId::ROOT
+                && let NameBindingKind::Import { import, .. } = binding.kind
+                && matches!(import.kind, ImportKind::MacroExport)
+            {
+                self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
             }
 
             self.record_use(ident, binding, used);

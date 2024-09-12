@@ -69,29 +69,27 @@ where
 
     if must_use_stack {
         arg.make_indirect_byval(None);
-    } else {
-        if is_xtensa_aggregate(arg) {
-            // Aggregates which are <= max_size will be passed in
-            // registers if possible, so coerce to integers.
+    } else if is_xtensa_aggregate(arg) {
+        // Aggregates which are <= max_size will be passed in
+        // registers if possible, so coerce to integers.
 
-            // Use a single `xlen` int if possible, 2 * `xlen` if 2 * `xlen` alignment
-            // is required, and a 2-element `xlen` array if only `xlen` alignment is
-            // required.
-            if size <= 32 {
-                arg.cast_to(Reg::i32());
-            } else {
-                let reg = if needed_align == 2 * 32 { Reg::i64() } else { Reg::i32() };
-                let total = Size::from_bits(((size + 32 - 1) / 32) * 32);
-                arg.cast_to(Uniform::new(reg, total));
-            }
+        // Use a single `xlen` int if possible, 2 * `xlen` if 2 * `xlen` alignment
+        // is required, and a 2-element `xlen` array if only `xlen` alignment is
+        // required.
+        if size <= 32 {
+            arg.cast_to(Reg::i32());
         } else {
-            // All integral types are promoted to `xlen`
-            // width.
-            //
-            // We let the LLVM backend handle integral types >= xlen.
-            if size < 32 {
-                arg.extend_integer_width_to(32);
-            }
+            let reg = if needed_align == 2 * 32 { Reg::i64() } else { Reg::i32() };
+            let total = Size::from_bits(((size + 32 - 1) / 32) * 32);
+            arg.cast_to(Uniform::new(reg, total));
+        }
+    } else {
+        // All integral types are promoted to `xlen`
+        // width.
+        //
+        // We let the LLVM backend handle integral types >= xlen.
+        if size < 32 {
+            arg.extend_integer_width_to(32);
         }
     }
 }

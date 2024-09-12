@@ -45,18 +45,16 @@ pub fn entry_point_type(
         EntryPointType::Start
     } else if attr::contains_name(attrs, sym::rustc_main) {
         EntryPointType::RustcMainAttr
-    } else {
-        if let Some(name) = name
-            && name == sym::main
-        {
-            if at_root {
-                // This is a top-level function so it can be `main`.
-                EntryPointType::MainNamed
-            } else {
-                EntryPointType::OtherMain
-            }
+    } else if let Some(name) = name
+        && name == sym::main
+    {
+        if at_root {
+            // This is a top-level function so it can be `main`.
+            EntryPointType::MainNamed
         } else {
-            EntryPointType::None
+            EntryPointType::OtherMain
         }
+    } else {
+        EntryPointType::None
     }
 }
