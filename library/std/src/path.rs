@@ -1154,7 +1154,7 @@ impl FusedIterator for Ancestors<'_> {}
 ///
 /// Which method works best depends on what kind of situation you're in.
 ///
-/// Note that `PathBuf`` does not always sanitize arguments, for example
+/// Note that `PathBuf` does not always sanitize arguments, for example
 /// [`push`] allows paths built from strings which include separators:
 ///
 /// use std::path::PathBuf;
@@ -1167,7 +1167,7 @@ impl FusedIterator for Ancestors<'_> {}
 /// path.push("system32");
 ///
 /// The behaviour of `PathBuf` may be changed to a panic on such inputs
-/// in the future. The [`extend`] method should be used to add multi-part paths.
+/// in the future. [`Extend::extend`] should be used to add multi-part paths.
 #[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PathBuf {
