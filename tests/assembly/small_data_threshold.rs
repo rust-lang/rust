@@ -58,7 +58,7 @@ static mut Z: u64 = 0;
 // Currently, only MIPS and RISCV successfully put any objects in the small data
 // sections so the U/V/W/X tests are skipped on Hexagon and M68K
 
-//@ RISCV: .section .sdata,
+//@ RISCV: .section .sdata
 //@ RISCV-NOT: .section
 //@ RISCV: U:
 //@ RISCV: .section .sbss
@@ -71,7 +71,7 @@ static mut Z: u64 = 0;
 //@ RISCV-NOT: .section
 //@ RISCV: X:
 
-//@ MIPS: .section .sdata,
+//@ MIPS: .section .sdata
 //@ MIPS-NOT: .section
 //@ MIPS: U:
 //@ MIPS: .section .sbss
