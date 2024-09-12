@@ -196,7 +196,7 @@ impl GlobalState {
             ) {
                 return Ok(());
             }
-            self.handle_event(event)?;
+            self.handle_event(event);
         }
 
         Err(anyhow::anyhow!("A receiver has been dropped, something panicked!"))
@@ -278,7 +278,7 @@ impl GlobalState {
         .map(Some)
     }
 
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) {
         let loop_start = Instant::now();
         let _p = tracing::info_span!("GlobalState::handle_event", event = %event).entered();
 
@@ -295,7 +295,7 @@ impl GlobalState {
         match event {
             Event::Lsp(msg) => match msg {
                 lsp_server::Message::Request(req) => self.on_new_request(loop_start, req),
-                lsp_server::Message::Notification(not) => self.on_notification(not)?,
+                lsp_server::Message::Notification(not) => self.on_notification(not),
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::QueuedTask(task) => {
@@ -487,7 +487,6 @@ impl GlobalState {
                 "overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}"
             ));
         }
-        Ok(())
     }
 
     fn prime_caches(&mut self, cause: String) {
@@ -1116,37 +1115,32 @@ impl GlobalState {
     }
 
     /// Handles an incoming notification.
-    fn on_notification(&mut self, not: Notification) -> anyhow::Result<()> {
+    fn on_notification(&mut self, not: Notification) {
         let _p =
             span!(Level::INFO, "GlobalState::on_notification", not.method = ?not.method).entered();
         use crate::handlers::notification as handlers;
         use lsp_types::notification as notifs;
 
         NotificationDispatcher { not: Some(not), global_state: self }
-            .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
+            .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)
             .on_sync_mut::<notifs::WorkDoneProgressCancel>(
                 handlers::handle_work_done_progress_cancel,
-            )?
-            .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
-            .on_sync_mut::<notifs::DidChangeTextDocument>(
-                handlers::handle_did_change_text_document,
-            )?
-            .on_sync_mut::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)?
-            .on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
+            )
+            .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)
+            .on_sync_mut::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)
+            .on_sync_mut::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)
+            .on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)
             .on_sync_mut::<notifs::DidChangeConfiguration>(
                 handlers::handle_did_change_configuration,
-            )?
+            )
             .on_sync_mut::<notifs::DidChangeWorkspaceFolders>(
                 handlers::handle_did_change_workspace_folders,
-            )?
-            .on_sync_mut::<notifs::DidChangeWatchedFiles>(
-                handlers::handle_did_change_watched_files,
-            )?
-            .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)?
-            .on_sync_mut::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)?
-            .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
-            .on_sync_mut::<lsp_ext::AbortRunTest>(handlers::handle_abort_run_test)?
+            )
+            .on_sync_mut::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)
+            .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)
+            .on_sync_mut::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)
+            .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)
+            .on_sync_mut::<lsp_ext::AbortRunTest>(handlers::handle_abort_run_test)
             .finish();
-        Ok(())
     }
 }

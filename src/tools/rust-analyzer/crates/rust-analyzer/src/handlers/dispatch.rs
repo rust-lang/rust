@@ -325,14 +325,14 @@ impl NotificationDispatcher<'_> {
     pub(crate) fn on_sync_mut<N>(
         &mut self,
         f: fn(&mut GlobalState, N::Params) -> anyhow::Result<()>,
-    ) -> anyhow::Result<&mut Self>
+    ) -> &mut Self
     where
         N: lsp_types::notification::Notification,
         N::Params: DeserializeOwned + Send + Debug,
     {
         let not = match self.not.take() {
             Some(it) => it,
-            None => return Ok(self),
+            None => return self,
         };
 
         let _guard = tracing::info_span!("notification", method = ?not.method).entered();
@@ -344,7 +344,7 @@ impl NotificationDispatcher<'_> {
             }
             Err(ExtractError::MethodMismatch(not)) => {
                 self.not = Some(not);
-                return Ok(self);
+                return self;
             }
         };
 
@@ -355,8 +355,10 @@ impl NotificationDispatcher<'_> {
             version(),
             N::METHOD
         ));
-        f(self.global_state, params)?;
-        Ok(self)
+        if let Err(e) = f(self.global_state, params) {
+            tracing::error!(handler = %N::METHOD, error = %e, "notification handler failed");
+        }
+        self
     }
 
     pub(crate) fn finish(&mut self) {
