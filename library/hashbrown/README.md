@@ -102,7 +102,6 @@ This crate has the following Cargo features:
 - `nightly`: Enables nightly-only features including: `#[may_dangle]`.
 - `serde`: Enables serde serialization support.
 - `borsh`: Enables borsh serialization support.
-- `rkyv`: Enables rkyv serialization support.
 - `rayon`: Enables rayon parallel iterator support.
 - `equivalent`: Allows comparisons to be customized with the `Equivalent` trait.
 - `raw-entry`: Enables access to the deprecated `RawEntry` API.
