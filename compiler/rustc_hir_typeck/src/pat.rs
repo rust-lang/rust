@@ -2533,6 +2533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.help("the semantics of slice patterns changed recently; see issue #62254");
         } else if self
             .autoderef(span, expected_ty)
+            .silence_errors()
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
             && let Some(span) = ti.span
             && let Some(_) = ti.origin_expr

@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// trait or region sub-obligations. (presumably we could, but it's not
     /// particularly important for diagnostics...)
     pub(crate) fn deref_once_mutably_for_diagnostic(&self, expr_ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        self.autoderef(DUMMY_SP, expr_ty).nth(1).and_then(|(deref_ty, _)| {
+        self.autoderef(DUMMY_SP, expr_ty).silence_errors().nth(1).and_then(|(deref_ty, _)| {
             self.infcx
                 .type_implements_trait(
                     self.tcx.lang_items().deref_mut_trait()?,

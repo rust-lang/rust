@@ -12,6 +12,5 @@ impl<T> Deref for Wrap<T> {
 fn main() {
     Wrap(1).lmao();
     //~^ ERROR reached the recursion limit
-    //~| ERROR reached the recursion limit
     //~| ERROR no method named `lmao`
 }
