@@ -252,6 +252,9 @@
 //@ revisions: loongarch64_unknown_linux_musl
 //@ [loongarch64_unknown_linux_musl] compile-flags: --target loongarch64-unknown-linux-musl
 //@ [loongarch64_unknown_linux_musl] needs-llvm-components: loongarch
+//@ revisions: loongarch64_unknown_linux_ohos
+//@ [loongarch64_unknown_linux_ohos] compile-flags: --target loongarch64-unknown-linux-ohos
+//@ [loongarch64_unknown_linux_ohos] needs-llvm-components: loongarch
 //@ revisions: loongarch64_unknown_none
 //@ [loongarch64_unknown_none] compile-flags: --target loongarch64-unknown-none
 //@ [loongarch64_unknown_none] needs-llvm-components: loongarch
