@@ -1,3 +1,4 @@
+// Regression test for <https://github.com/rust-lang/rust/issues/111064>.
 #![feature(no_core)]
 #![no_core]
 #![crate_name = "foo"]

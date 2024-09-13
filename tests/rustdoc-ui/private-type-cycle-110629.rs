@@ -1,4 +1,5 @@
 //@ check-pass
+// https://github.com/rust-lang/rust/issues/110629
 
 #![feature(type_alias_impl_trait)]
 

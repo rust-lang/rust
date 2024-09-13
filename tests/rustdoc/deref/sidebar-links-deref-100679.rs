@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/100679
 #![crate_name="foo"]
 
 pub struct Vec;

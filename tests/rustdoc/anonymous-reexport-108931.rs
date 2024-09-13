@@ -1,4 +1,5 @@
 // Ensuring that anonymous re-exports are always inlined.
+// https://github.com/rust-lang/rust/issues/108931
 
 #![crate_name = "foo"]
 
