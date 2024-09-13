@@ -15,7 +15,7 @@ use crate::ptr;
 /// that a `ManuallyDrop<T>` whose content has been dropped must not be exposed
 /// through a public safe API. Correspondingly, `ManuallyDrop::drop` is unsafe.
 ///
-/// # `ManuallyDrop` and drop order.
+/// # `ManuallyDrop` and drop order
 ///
 /// Rust has a well-defined [drop order] of values. To make sure that fields or
 /// locals are dropped in a specific order, reorder the declarations such that
@@ -39,7 +39,7 @@ use crate::ptr;
 /// }
 /// ```
 ///
-/// # Interaction with `Box`.
+/// # Interaction with `Box`
 ///
 /// Currently, once the `Box<T>` inside a `ManuallyDrop<Box<T>>` is dropped,
 /// moving the `ManuallyDrop<Box<T>>` is [considered to be undefined
@@ -56,16 +56,17 @@ use crate::ptr;
 /// let y = x; // Undefined behavior!
 /// ```
 ///
-/// This may change in the future. In the meantime, consider using
-/// [`MaybeUninit`] instead.
+/// This is [likely to change in the
+/// future](https://rust-lang.github.io/rfcs/3336-maybe-dangling.html). In the
+/// meantime, consider using [`MaybeUninit`] instead.
 ///
-/// # Safety hazards when storing `ManuallyDrop` in a struct / enum.
+/// # Safety hazards when storing `ManuallyDrop` in a struct or an enum.
 ///
 /// Special care is needed when all of the conditions below are met:
 /// * A field of a struct or enum is a `ManuallyDrop` or contains a
 ///   `ManuallyDrop`, without the `ManuallyDrop` being inside a `union`.
-/// * The struct or enum is part of public API, or is stored in a struct or enum
-///   that is part of public API.
+/// * The struct or enum is part of public API, or is stored in a struct or an
+///   enum that is part of public API.
 /// * There is code outside of a `Drop` implementation that calls
 ///   [`ManuallyDrop::drop`] or [`ManuallyDrop::take`] on the `ManuallyDrop`
 ///   field.
@@ -120,14 +121,15 @@ use crate::ptr;
 /// ```no_run
 /// use std::mem::ManuallyDrop;
 ///
-/// #[derive(Debug)] // This is unsound!
+/// // This derive is unsound in combination with the `ManuallyDrop::drop` call.
+/// #[derive(Debug)]
 /// pub struct Foo {
 ///     value: ManuallyDrop<String>,
 /// }
 /// impl Foo {
 ///     pub fn new() -> Self {
 ///         let mut temp = Self {
-///             value: ManuallyDrop::new(String::from("Unsafe rust is hard"))
+///             value: ManuallyDrop::new(String::from("Unsafe rust is hard."))
 ///         };
 ///         unsafe {
 ///             // SAFETY: `value` hasn't been dropped yet.
