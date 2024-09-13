@@ -13,4 +13,3 @@ gimli = "0.31.0"
 libc = "0.2"
 build_helper = { path = "../build_helper" }
 serde_json = "1.0"
-libc = "0.2"
