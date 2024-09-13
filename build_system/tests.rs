@@ -432,7 +432,6 @@ impl<'a> TestRunner<'a> {
         cmd.arg("--target");
         cmd.arg(&self.target_compiler.triple);
         cmd.arg("-Cpanic=abort");
-        cmd.arg("-Zunstable-options");
         cmd.arg("--check-cfg=cfg(jit)");
         cmd.args(args);
         cmd
