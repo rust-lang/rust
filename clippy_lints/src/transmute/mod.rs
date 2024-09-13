@@ -619,10 +619,10 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg, &self.msrv)
                 | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
-                | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context)
+                | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context, &self.msrv)
                 | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
-                | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
-                | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
+                | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context, &self.msrv)
+                | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context, &self.msrv)
                 | (unsound_collection_transmute::check(cx, e, from_ty, to_ty)
                     || transmute_undefined_repr::check(cx, e, from_ty, to_ty))
                 | (eager_transmute::check(cx, e, arg, from_ty, to_ty));
