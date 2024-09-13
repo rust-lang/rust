@@ -340,4 +340,8 @@ impl ParseSess {
     pub fn dcx(&self) -> DiagCtxtHandle<'_> {
         self.dcx.handle()
     }
+
+    pub fn set_dcx(&mut self, dcx: DiagCtxt) {
+        self.dcx = dcx;
+    }
 }
