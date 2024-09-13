@@ -66,7 +66,7 @@ function run_tests {
     time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test $TARGET_FLAG tests/{pass,panic}
   fi
   if [ -n "${MANY_SEEDS-}" ]; then
-    # Also run some many-seeds tests.
+    # Also run some many-seeds tests. (Also tests `./miri run`.)
     time for FILE in tests/many-seeds/*.rs; do
       ./miri run "--many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
     done
@@ -75,6 +75,8 @@ function run_tests {
     # Check that the benchmarks build and run, but only once.
     time HYPERFINE="hyperfine -w0 -r1" ./miri bench $TARGET_FLAG
   fi
+  # Smoke-test `./miri run --dep`.
+  ./miri run $TARGET_FLAG --dep tests/pass-dep/getrandom.rs
 
   ## test-cargo-miri
   # On Windows, there is always "python", not "python3" or "python2".
