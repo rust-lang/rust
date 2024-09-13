@@ -341,15 +341,15 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
         | FalseUnwind { real_target: target, .. }
         | Goto { target } => CoverageSuccessors::Chainable(target),
 
-        // A call terminator can normally be chained, except when they have no
-        // successor because they are known to diverge.
+        // A call terminator can normally be chained, except when it has no
+        // successor because it is known to diverge.
         Call { target: maybe_target, .. } => match maybe_target {
             Some(target) => CoverageSuccessors::Chainable(target),
             None => CoverageSuccessors::NotChainable(&[]),
         },
 
-        // An inline asm terminator can normally be chained, except when it diverges or uses asm
-        // goto.
+        // An inline asm terminator can normally be chained, except when it
+        // diverges or uses asm goto.
         InlineAsm { ref targets, .. } => {
             if let [target] = targets[..] {
                 CoverageSuccessors::Chainable(target)
