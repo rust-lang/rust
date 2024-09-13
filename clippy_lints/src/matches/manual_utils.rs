@@ -4,8 +4,8 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
 use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, is_else_clause, is_lint_allowed, is_res_lang_ctor, path_res,
-    path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
+    CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, is_res_lang_ctor,
+    path_res, path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
 };
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
@@ -73,7 +73,7 @@ where
     }
 
     // `map` won't perform any adjustments.
-    if expr_has_type_coercion(cx, expr) {
+    if expr_requires_coercion(cx, expr) {
         return None;
     }
 
@@ -271,72 +271,4 @@ pub(super) fn try_parse_pattern<'tcx>(
 // Checks for the `None` value.
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     is_res_lang_ctor(cx, path_res(cx, peel_blocks(expr)), OptionNone)
-}
-
-fn expr_ty_adjusted(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    cx.typeck_results()
-        .expr_adjustments(expr)
-        .iter()
-        // We do not care about exprs with `NeverToAny` adjustments, such as `panic!` call.
-        .any(|adj| !matches!(adj.kind, Adjust::NeverToAny))
-}
-
-fn expr_has_type_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
-    if expr.span.from_expansion() {
-        return false;
-    }
-    if expr_ty_adjusted(cx, expr) {
-        return true;
-    }
-
-    // Identify coercion sites and recursively check it those sites
-    // actually has type adjustments.
-    match expr.kind {
-        // Function/method calls, including enum initialization.
-        ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) if let Some(def_id) = fn_def_id(cx, expr) => {
-            let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
-            if !fn_sig.output().skip_binder().has_type_flags(TypeFlags::HAS_TY_PARAM) {
-                return false;
-            }
-            let mut args_with_ty_param = fn_sig
-                .inputs()
-                .skip_binder()
-                .iter()
-                .zip(args)
-                .filter_map(|(arg_ty, arg)| if arg_ty.has_type_flags(TypeFlags::HAS_TY_PARAM) {
-                    Some(arg)
-                } else {
-                    None
-                });
-            args_with_ty_param.any(|arg| expr_has_type_coercion(cx, arg))
-        },
-        // Struct/union initialization.
-        ExprKind::Struct(_, fields, _) => {
-            fields.iter().map(|expr_field| expr_field.expr).any(|ex| expr_has_type_coercion(cx, ex))
-        },
-        // those two `ref` keywords cannot be removed
-        #[allow(clippy::needless_borrow)]
-        // Function results, including the final line of a block or a `return` expression.
-        ExprKind::Block(hir::Block { expr: Some(ref ret_expr), .. }, _) |
-        ExprKind::Ret(Some(ref ret_expr)) => expr_has_type_coercion(cx, ret_expr),
-
-        // ===== Coercion-propagation expressions =====
-
-        // Array, where the type is `[U; n]`.
-        ExprKind::Array(elems) |
-        // Tuple, `(U_0, U_1, ..., U_n)`.
-        ExprKind::Tup(elems) => {
-            elems.iter().any(|elem| expr_has_type_coercion(cx, elem))
-        },
-        // Array but with repeating syntax.
-        ExprKind::Repeat(rep_elem, _) => expr_has_type_coercion(cx, rep_elem),
-        // Others that may contain coercion sites.
-        ExprKind::If(_, then, maybe_else) => {
-            expr_has_type_coercion(cx, then) || maybe_else.is_some_and(|e| expr_has_type_coercion(cx, e))
-        }
-        ExprKind::Match(_, arms, _) => {
-            arms.iter().map(|arm| arm.body).any(|body| expr_has_type_coercion(cx, body))
-        }
-        _ => false
-    }
 }

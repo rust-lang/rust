@@ -117,7 +117,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgKind, GenericArgsRef, IntTy, Ty,
-    TyCtxt, TypeVisitableExt, UintTy, UpvarCapture,
+    TyCtxt, TypeFlags, TypeVisitableExt, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -3488,4 +3488,91 @@ pub fn leaks_droppable_temporary_with_limited_lifetime<'tcx>(cx: &LateContext<'t
         }
     })
     .is_break()
+}
+
+/// Returns true if the specified `expr` requires coercion,
+/// meaning that it either has a coercion or propagates a coercion from one of its sub expressions.
+///
+/// Similar to [`is_adjusted`], this not only checks if an expression's type was adjusted,
+/// but also going through extra steps to see if it fits the description of [coercion sites].
+///
+/// You should used this when you want to avoid suggesting replacing an expression that is currently
+/// a coercion site or coercion propagating expression with one that is not.
+///
+/// [coercion sites]: https://doc.rust-lang.org/stable/reference/type-coercions.html#coercion-sites
+pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
+    let expr_ty_is_adjusted = cx
+        .typeck_results()
+        .expr_adjustments(expr)
+        .iter()
+        // ignore `NeverToAny` adjustments, such as `panic!` call.
+        .any(|adj| !matches!(adj.kind, Adjust::NeverToAny));
+    if expr_ty_is_adjusted {
+        return true;
+    }
+
+    // Identify coercion sites and recursively check if those sites
+    // actually have type adjustments.
+    match expr.kind {
+        ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) if let Some(def_id) = fn_def_id(cx, expr) => {
+            let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+
+            if !fn_sig.output().skip_binder().has_type_flags(TypeFlags::HAS_TY_PARAM) {
+                return false;
+            }
+
+            let self_arg_count = usize::from(matches!(expr.kind, ExprKind::MethodCall(..)));
+            let mut args_with_ty_param = {
+                fn_sig
+                    .inputs()
+                    .skip_binder()
+                    .iter()
+                    .skip(self_arg_count)
+                    .zip(args)
+                    .filter_map(|(arg_ty, arg)| {
+                        if arg_ty.has_type_flags(TypeFlags::HAS_TY_PARAM) {
+                            Some(arg)
+                        } else {
+                            None
+                        }
+                    })
+            };
+            args_with_ty_param.any(|arg| expr_requires_coercion(cx, arg))
+        },
+        // Struct/union initialization.
+        ExprKind::Struct(qpath, _, _) => {
+            let res = cx.typeck_results().qpath_res(qpath, expr.hir_id);
+            if let Some((_, v_def)) = adt_and_variant_of_res(cx, res) {
+                let generic_args = cx.typeck_results().node_args(expr.hir_id);
+                v_def
+                    .fields
+                    .iter()
+                    .any(|field| field.ty(cx.tcx, generic_args).has_type_flags(TypeFlags::HAS_TY_PARAM))
+            } else {
+                false
+            }
+        },
+        // Function results, including the final line of a block or a `return` expression.
+        ExprKind::Block(
+            &Block {
+                expr: Some(ret_expr), ..
+            },
+            _,
+        )
+        | ExprKind::Ret(Some(ret_expr)) => expr_requires_coercion(cx, ret_expr),
+
+        // ===== Coercion-propagation expressions =====
+        ExprKind::Array(elems) | ExprKind::Tup(elems) => elems.iter().any(|elem| expr_requires_coercion(cx, elem)),
+        // Array but with repeating syntax.
+        ExprKind::Repeat(rep_elem, _) => expr_requires_coercion(cx, rep_elem),
+        // Others that may contain coercion sites.
+        ExprKind::If(_, then, maybe_else) => {
+            expr_requires_coercion(cx, then) || maybe_else.is_some_and(|e| expr_requires_coercion(cx, e))
+        },
+        ExprKind::Match(_, arms, _) => arms
+            .iter()
+            .map(|arm| arm.body)
+            .any(|body| expr_requires_coercion(cx, body)),
+        _ => false,
+    }
 }

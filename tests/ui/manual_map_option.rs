@@ -170,6 +170,12 @@ fn main() {
         None => None,
     };
 
+    // Don't lint, coercion
+    let x: Option<Vec<&[u8]>> = match Some(()) {
+        Some(_) => Some(vec![b"1234"]),
+        None => None,
+    };
+
     match option_env!("") {
         Some(x) => Some(String::from(x)),
         None => None,
