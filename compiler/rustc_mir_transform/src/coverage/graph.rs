@@ -165,21 +165,15 @@ impl CoverageGraph {
         self.dominators.as_ref().unwrap().cmp_in_dominator_order(a, b)
     }
 
-    /// Returns true if the given node has 2 or more in-edges, i.e. 2 or more
-    /// predecessors.
-    ///
-    /// This property is interesting to code that assigns counters to nodes and
-    /// edges, because if a node _doesn't_ have multiple in-edges, then there's
-    /// no benefit in having a separate counter for its in-edge, because it
-    /// would have the same value as the node's own counter.
-    #[inline(always)]
-    pub(crate) fn bcb_has_multiple_in_edges(&self, bcb: BasicCoverageBlock) -> bool {
-        // Even though bcb0 conceptually has an extra virtual in-edge due to
-        // being the entry point, we've already asserted that it has no _other_
-        // in-edges, so there's no possibility of it having _multiple_ in-edges.
-        // (And since its virtual in-edge doesn't exist in the graph, that edge
-        // can't have a separate counter anyway.)
-        self.predecessors[bcb].len() > 1
+    /// Returns the source of this node's sole in-edge, if it has exactly one.
+    /// That edge can be assumed to have the same execution count as the node
+    /// itself (in the absence of panics).
+    pub(crate) fn sole_predecessor(
+        &self,
+        to_bcb: BasicCoverageBlock,
+    ) -> Option<BasicCoverageBlock> {
+        // Unlike `simple_successor`, there is no need for extra checks here.
+        if let &[from_bcb] = self.predecessors[to_bcb].as_slice() { Some(from_bcb) } else { None }
     }
 
     /// Returns the target of this node's sole out-edge, if it has exactly

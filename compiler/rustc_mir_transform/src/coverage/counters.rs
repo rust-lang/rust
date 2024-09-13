@@ -364,10 +364,13 @@ impl<'a> MakeBcbCounters<'a> {
         );
 
         debug!("{expression_to_bcb:?} gets an expression: {expression:?}");
-        if self.basic_coverage_blocks.bcb_has_multiple_in_edges(expression_to_bcb) {
-            self.coverage_counters.set_bcb_edge_counter(from_bcb, expression_to_bcb, expression);
-        } else {
+        if let Some(sole_pred) = self.basic_coverage_blocks.sole_predecessor(expression_to_bcb) {
+            // This edge normally wouldn't get its own counter, so attach the expression
+            // to its target node instead, so that `edge_has_no_counter` can see it.
+            assert_eq!(sole_pred, from_bcb);
             self.coverage_counters.set_bcb_counter(expression_to_bcb, expression);
+        } else {
+            self.coverage_counters.set_bcb_edge_counter(from_bcb, expression_to_bcb, expression);
         }
     }
 
@@ -413,10 +416,12 @@ impl<'a> MakeBcbCounters<'a> {
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
     ) -> BcbCounter {
-        // If the target BCB has only one in-edge (i.e. this one), then create
-        // a node counter instead, since it will have the same value.
-        if !self.basic_coverage_blocks.bcb_has_multiple_in_edges(to_bcb) {
-            assert_eq!([from_bcb].as_slice(), self.basic_coverage_blocks.predecessors[to_bcb]);
+        // If the target node has exactly one in-edge (i.e. this one), then just
+        // use the node's counter, since it will have the same value.
+        if let Some(sole_pred) = self.basic_coverage_blocks.sole_predecessor(to_bcb) {
+            assert_eq!(sole_pred, from_bcb);
+            // This call must take care not to invoke `get_or_make_edge` for
+            // this edge, since that would result in infinite recursion!
             return self.get_or_make_node_counter(to_bcb);
         }
 
@@ -508,18 +513,14 @@ impl<'a> MakeBcbCounters<'a> {
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
     ) -> bool {
-        self.edge_counter(from_bcb, to_bcb).is_none()
-    }
+        let edge_counter =
+            if let Some(sole_pred) = self.basic_coverage_blocks.sole_predecessor(to_bcb) {
+                assert_eq!(sole_pred, from_bcb);
+                self.coverage_counters.bcb_counters[to_bcb]
+            } else {
+                self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb)).copied()
+            };
 
-    fn edge_counter(
-        &self,
-        from_bcb: BasicCoverageBlock,
-        to_bcb: BasicCoverageBlock,
-    ) -> Option<&BcbCounter> {
-        if self.basic_coverage_blocks.bcb_has_multiple_in_edges(to_bcb) {
-            self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb))
-        } else {
-            self.coverage_counters.bcb_counters[to_bcb].as_ref()
-        }
+        edge_counter.is_none()
     }
 }
