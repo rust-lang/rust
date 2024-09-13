@@ -50,6 +50,7 @@ where
 
         let ra_fmt_layer = tracing_subscriber::fmt::layer()
             .with_target(false)
+            .with_ansi(false)
             .with_writer(writer)
             .with_filter(filter);
 

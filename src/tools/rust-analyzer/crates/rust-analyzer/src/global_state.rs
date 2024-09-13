@@ -111,6 +111,9 @@ pub(crate) struct GlobalState {
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
     pub(crate) vfs_done: bool,
+    // used to track how long VFS loading takes. this can't be on `vfs::loader::Handle`,
+    // as that handle's lifetime is the same as `GlobalState` itself.
+    pub(crate) vfs_span: Option<tracing::span::EnteredSpan>,
     pub(crate) wants_to_switch: Option<Cause>,
 
     /// `workspaces` field stores the data we actually use, while the `OpQueue`
@@ -253,6 +256,7 @@ impl GlobalState {
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
+            vfs_span: None,
             vfs_done: true,
             wants_to_switch: None,
 
