@@ -169,12 +169,14 @@ impl Once {
     /// [`call_once_force()`] will be no-ops.
     ///
     /// The closure `f` is yielded a [`OnceState`] structure which can be used
-    /// to query the poison status of the [`Once`].
+    /// to query the poison status of the [`Once`] or mark the [`Once`] as poisoned.
     ///
     /// [`call_once()`]: Once::call_once
     /// [`call_once_force()`]: Once::call_once_force
     ///
     /// # Examples
+    ///
+    /// Poison a [`Once`] by panicking in a `call_once` closure:
     ///
     /// ```
     /// use std::sync::Once;
@@ -201,6 +203,20 @@ impl Once {
     ///
     /// // once any success happens, we stop propagating the poison
     /// INIT.call_once(|| {});
+    /// ```
+    ///
+    /// Poison a [`Once`] by explicitly calling [`OnceState::poison`]:
+    ///
+    /// ```
+    /// #![feature(once_state_poison_pub)]
+    ///
+    /// use std::sync::Once;
+    ///
+    /// static INIT: Once = Once::new();
+    ///
+    /// // poison the once without panicking
+    /// INIT.call_once_force(|p| p.poison());
+    /// INIT.call_once_force(|p| assert!(p.is_poisoned()));
     /// ```
     #[inline]
     #[stable(feature = "once_poison", since = "1.51.0")]
@@ -375,9 +391,9 @@ impl OnceState {
     }
 
     /// Poison the associated [`Once`] without explicitly panicking.
-    // NOTE: This is currently only exposed for `OnceLock`.
+    #[unstable(feature = "once_state_poison_pub", issue = "130327")]
     #[inline]
-    pub(crate) fn poison(&self) {
+    pub fn poison(&self) {
         self.inner.poison();
     }
 }
