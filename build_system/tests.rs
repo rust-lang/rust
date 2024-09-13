@@ -447,26 +447,11 @@ impl<'a> TestRunner<'a> {
     }
 
     fn run_out_command(&self, name: &str, args: &[&str]) {
-        let mut full_cmd = vec![];
+        let mut cmd = self
+            .target_compiler
+            .run_with_runner(BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs).join(name));
 
-        // Prepend the RUN_WRAPPER's
-        if !self.target_compiler.runner.is_empty() {
-            full_cmd.extend(self.target_compiler.runner.iter().cloned());
-        }
-
-        full_cmd.push(
-            BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs).join(name).to_str().unwrap().to_string(),
-        );
-
-        for arg in args {
-            full_cmd.push(arg.to_string());
-        }
-
-        let mut cmd_iter = full_cmd.into_iter();
-        let first = cmd_iter.next().unwrap();
-
-        let mut cmd = Command::new(first);
-        cmd.args(cmd_iter);
+        cmd.args(args);
 
         spawn_and_wait(cmd);
     }

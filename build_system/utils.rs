@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -57,6 +58,18 @@ impl Compiler {
             _ => {
                 eprintln!("Unknown non-native platform");
             }
+        }
+    }
+
+    pub(crate) fn run_with_runner(&self, program: impl AsRef<OsStr>) -> Command {
+        if self.runner.is_empty() {
+            Command::new(program)
+        } else {
+            let mut runner_iter = self.runner.iter();
+            let mut cmd = Command::new(runner_iter.next().unwrap());
+            cmd.args(runner_iter);
+            cmd.arg(program);
+            cmd
         }
     }
 }
