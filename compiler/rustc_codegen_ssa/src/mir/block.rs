@@ -1213,9 +1213,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mergeable_succ,
         )
     }
-}
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(crate) fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
         let llbb = match self.try_llbb(bb) {
             Some(llbb) => llbb,

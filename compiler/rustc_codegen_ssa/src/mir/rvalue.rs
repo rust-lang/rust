@@ -1047,9 +1047,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         OperandValue::Pair(val, of)
     }
-}
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, cast_ty) => {
