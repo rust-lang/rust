@@ -159,9 +159,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [data, control] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (data, data_len) = this.operand_to_simd(data)?;
-                let (control, control_len) = this.operand_to_simd(control)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (data, data_len) = this.project_to_simd(data)?;
+                let (control, control_len) = this.project_to_simd(control)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, data_len);
                 assert_eq!(dest_len, control_len);
@@ -193,9 +193,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [data, control] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (data, data_len) = this.operand_to_simd(data)?;
-                let (control, control_len) = this.operand_to_simd(control)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (data, data_len) = this.project_to_simd(data)?;
+                let (control, control_len) = this.project_to_simd(control)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, data_len);
                 assert_eq!(dest_len, control_len);

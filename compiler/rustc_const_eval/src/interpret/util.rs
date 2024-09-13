@@ -9,7 +9,7 @@ use rustc_middle::ty::{
 };
 use tracing::debug;
 
-use super::{throw_inval, InterpCx, MPlaceTy, MemPlaceMeta, MemoryKind};
+use super::{throw_inval, InterpCx, MPlaceTy, MemoryKind};
 use crate::const_eval::{CompileTimeInterpCx, CompileTimeMachine, InterpretationResult};
 
 /// Checks whether a type contains generic parameters which must be instantiated.
@@ -103,5 +103,5 @@ pub(crate) fn create_static_alloc<'tcx>(
     assert_eq!(ecx.machine.static_root_ids, None);
     ecx.machine.static_root_ids = Some((alloc_id, static_def_id));
     assert!(ecx.memory.alloc_map.insert(alloc_id, (MemoryKind::Stack, alloc)).is_none());
-    Ok(ecx.ptr_with_meta_to_mplace(Pointer::from(alloc_id).into(), MemPlaceMeta::None, layout))
+    Ok(ecx.ptr_to_mplace(Pointer::from(alloc_id).into(), layout))
 }
