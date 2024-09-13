@@ -295,20 +295,12 @@ impl<'tcx> Const<'tcx> {
             _ => expr,
         };
 
-        if let hir::ExprKind::Path(
-            qpath @ hir::QPath::Resolved(
-                _,
-                &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
-            ),
-        ) = expr.kind
+        if let hir::ExprKind::Path(hir::QPath::Resolved(
+            _,
+            &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
+        )) = expr.kind
         {
-            if tcx.features().const_arg_path {
-                span_bug!(
-                    expr.span,
-                    "try_from_lit: received const param which shouldn't be possible"
-                );
-            }
-            return Some(Const::from_param(tcx, qpath, expr.hir_id));
+            span_bug!(expr.span, "try_from_lit: received const param which shouldn't be possible");
         };
 
         let lit_input = match expr.kind {
