@@ -8,7 +8,7 @@ use rustc_ast::{
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
-    ImplPolarity, IsAuto, Movability, Mutability, UnOp,
+    ImplPolarity, IsAuto, Movability, Mutability, UnOp, UnsafeBinderCastKind,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -1740,6 +1740,7 @@ impl Expr<'_> {
             | ExprKind::Struct(..)
             | ExprKind::Tup(_)
             | ExprKind::Type(..)
+            | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
 
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
@@ -1768,6 +1769,9 @@ impl Expr<'_> {
             // operand. See:
             // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
             ExprKind::Type(ref e, _) => e.is_place_expr(allow_projections_from),
+
+            // Unsafe binder cast preserves place-ness of the sub-expression.
+            ExprKind::UnsafeBinderCast(_, e, _) => e.is_place_expr(allow_projections_from),
 
             ExprKind::Unary(UnOp::Deref, _) => true,
 
@@ -1850,7 +1854,8 @@ impl Expr<'_> {
             | ExprKind::Field(base, _)
             | ExprKind::Index(base, _, _)
             | ExprKind::AddrOf(.., base)
-            | ExprKind::Cast(base, _) => {
+            | ExprKind::Cast(base, _)
+            | ExprKind::UnsafeBinderCast(_, base, _) => {
                 // This isn't exactly true for `Index` and all `Unary`, but we are using this
                 // method exclusively for diagnostics and there's a *cultural* pressure against
                 // them being used only for its side-effects.
@@ -2143,6 +2148,10 @@ pub enum ExprKind<'hir> {
 
     /// A suspension point for coroutines (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
+
+    /// Operators which can be used to interconvert `unsafe` binder types.
+    /// e.g. `unsafe<'a> &'a i32` <=> `&i32`.
+    UnsafeBinderCast(UnsafeBinderCastKind, &'hir Expr<'hir>, Option<&'hir Ty<'hir>>),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err(rustc_span::ErrorGuaranteed),

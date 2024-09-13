@@ -152,6 +152,7 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | Underscore
             | Yeet(..)
             | Yield(..)
+            | UnsafeBinderCast(..)
             | Err(..)
             | Dummy => return false,
         }
@@ -232,6 +233,7 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Paren(_)
             | Try(_)
             | Yeet(None)
+            | UnsafeBinderCast(..)
             | Err(_)
             | Dummy => break None,
         }

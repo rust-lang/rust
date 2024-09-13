@@ -544,6 +544,8 @@ pub use core::u64;
 #[stable(feature = "i128", since = "1.26.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::u128;
+#[unstable(feature = "unsafe_binders", issue = "130516")]
+pub use core::unsafe_binder;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::usize;

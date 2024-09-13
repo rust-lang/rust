@@ -1230,6 +1230,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         ExprKind::TryBlock(body) => try_visit!(visitor.visit_block(body)),
         ExprKind::Lit(_token) => {}
         ExprKind::IncludedBytes(_bytes) => {}
+        ExprKind::UnsafeBinderCast(_kind, expr, ty) => {
+            try_visit!(visitor.visit_expr(expr));
+            visit_opt!(visitor, visit_ty, ty);
+        }
         ExprKind::Err(_guar) => {}
         ExprKind::Dummy => {}
     }

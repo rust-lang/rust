@@ -1780,6 +1780,12 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
         ExprKind::TryBlock(body) => vis.visit_block(body),
         ExprKind::Lit(_token) => {}
         ExprKind::IncludedBytes(_bytes) => {}
+        ExprKind::UnsafeBinderCast(_kind, expr, ty) => {
+            vis.visit_expr(expr);
+            if let Some(ty) = ty {
+                vis.visit_ty(ty);
+            }
+        }
         ExprKind::Err(_guar) => {}
         ExprKind::Dummy => {}
     }
