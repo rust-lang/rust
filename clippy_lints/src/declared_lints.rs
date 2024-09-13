@@ -738,6 +738,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::unit_types::UNIT_CMP_INFO,
     crate::unnamed_address::FN_ADDRESS_COMPARISONS_INFO,
     crate::unnecessary_box_returns::UNNECESSARY_BOX_RETURNS_INFO,
+    crate::unnecessary_literal_bound::UNNECESSARY_LITERAL_BOUND_INFO,
     crate::unnecessary_map_on_constructor::UNNECESSARY_MAP_ON_CONSTRUCTOR_INFO,
     crate::unnecessary_owned_empty_strings::UNNECESSARY_OWNED_EMPTY_STRINGS_INFO,
     crate::unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS_INFO,
