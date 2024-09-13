@@ -10,10 +10,6 @@ use crate::utils::{
 };
 use crate::{config, CodegenBackend, SysrootKind};
 
-static DIST_DIR: RelPath = RelPath::DIST;
-static BIN_DIR: RelPath = RelPath::DIST.join("bin");
-static LIB_DIR: RelPath = RelPath::DIST.join("lib");
-
 pub(crate) fn build_sysroot(
     dirs: &Dirs,
     sysroot_kind: SysrootKind,
@@ -26,9 +22,12 @@ pub(crate) fn build_sysroot(
 
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
 
-    DIST_DIR.ensure_fresh(dirs);
-    BIN_DIR.ensure_exists(dirs);
-    LIB_DIR.ensure_exists(dirs);
+    let dist_dir = RelPath::DIST.to_path(dirs);
+
+    remove_dir_if_exists(&dist_dir);
+    fs::create_dir_all(&dist_dir).unwrap();
+    fs::create_dir_all(dist_dir.join("bin")).unwrap();
+    fs::create_dir_all(dist_dir.join("lib")).unwrap();
 
     let is_native = bootstrap_host_compiler.triple == target_triple;
 
@@ -38,11 +37,10 @@ pub(crate) fn build_sysroot(
             let cg_clif_dylib_path = if cfg!(windows) {
                 // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
                 // binaries.
-                BIN_DIR
+                dist_dir.join("bin")
             } else {
-                LIB_DIR
+                dist_dir.join("lib")
             }
-            .to_path(dirs)
             .join(src_path.file_name().unwrap());
             try_hard_link(src_path, &cg_clif_dylib_path);
             CodegenBackend::Local(cg_clif_dylib_path)
@@ -56,7 +54,7 @@ pub(crate) fn build_sysroot(
         let wrapper_name = wrapper_base_name.replace("____", wrapper);
 
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
-        let wrapper_path = DIST_DIR.to_path(dirs).join(&wrapper_name);
+        let wrapper_path = dist_dir.join(&wrapper_name);
         build_cargo_wrapper_cmd
             .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
             .arg("-o")
@@ -79,7 +77,7 @@ pub(crate) fn build_sysroot(
             build_cargo_wrapper_cmd.env("BUILTIN_BACKEND", name);
         }
         spawn_and_wait(build_cargo_wrapper_cmd);
-        try_hard_link(wrapper_path, BIN_DIR.to_path(dirs).join(wrapper_name));
+        try_hard_link(wrapper_path, dist_dir.join("bin").join(wrapper_name));
     }
 
     let host = build_sysroot_for_triple(
@@ -88,7 +86,7 @@ pub(crate) fn build_sysroot(
         &cg_clif_dylib_path,
         sysroot_kind,
     );
-    host.install_into_sysroot(&DIST_DIR.to_path(dirs));
+    host.install_into_sysroot(&dist_dir);
 
     if !is_native {
         build_sysroot_for_triple(
@@ -102,7 +100,7 @@ pub(crate) fn build_sysroot(
             &cg_clif_dylib_path,
             sysroot_kind,
         )
-        .install_into_sysroot(&DIST_DIR.to_path(dirs));
+        .install_into_sysroot(&dist_dir);
     }
 
     // Copy std for the host to the lib dir. This is necessary for the jit mode to find
@@ -110,16 +108,13 @@ pub(crate) fn build_sysroot(
     for lib in host.libs {
         let filename = lib.file_name().unwrap().to_str().unwrap();
         if filename.contains("std-") && !filename.contains(".rlib") {
-            try_hard_link(&lib, LIB_DIR.to_path(dirs).join(lib.file_name().unwrap()));
+            try_hard_link(&lib, dist_dir.join("lib").join(lib.file_name().unwrap()));
         }
     }
 
     let mut target_compiler = {
-        let dirs: &Dirs = &dirs;
-        let rustc_clif =
-            RelPath::DIST.to_path(&dirs).join(wrapper_base_name.replace("____", "rustc-clif"));
-        let rustdoc_clif =
-            RelPath::DIST.to_path(&dirs).join(wrapper_base_name.replace("____", "rustdoc-clif"));
+        let rustc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustc-clif"));
+        let rustdoc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustdoc-clif"));
 
         Compiler {
             cargo: bootstrap_host_compiler.cargo.clone(),
