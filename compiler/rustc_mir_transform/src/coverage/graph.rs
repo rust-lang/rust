@@ -87,7 +87,11 @@ impl CoverageGraph {
             for &bb in basic_blocks.iter() {
                 bb_to_bcb[bb] = Some(bcb);
             }
-            let bcb_data = BasicCoverageBlockData::from(basic_blocks);
+
+            let is_out_summable = basic_blocks.last().map_or(false, |&bb| {
+                bcb_filtered_successors(mir_body[bb].terminator()).is_out_summable()
+            });
+            let bcb_data = BasicCoverageBlockData { basic_blocks, is_out_summable };
             debug!("adding bcb{}: {:?}", bcb.index(), bcb_data);
             bcbs.push(bcb_data);
         };
@@ -168,8 +172,6 @@ impl CoverageGraph {
     /// edges, because if a node _doesn't_ have multiple in-edges, then there's
     /// no benefit in having a separate counter for its in-edge, because it
     /// would have the same value as the node's own counter.
-    ///
-    /// FIXME: That assumption might not be true for [`TerminatorKind::Yield`]?
     #[inline(always)]
     pub(crate) fn bcb_has_multiple_in_edges(&self, bcb: BasicCoverageBlock) -> bool {
         // Even though bcb0 conceptually has an extra virtual in-edge due to
@@ -178,6 +180,24 @@ impl CoverageGraph {
         // (And since its virtual in-edge doesn't exist in the graph, that edge
         // can't have a separate counter anyway.)
         self.predecessors[bcb].len() > 1
+    }
+
+    /// Returns the target of this node's sole out-edge, if it has exactly
+    /// one, but only if that edge can be assumed to have the same execution
+    /// count as the node itself (in the absence of panics).
+    pub(crate) fn simple_successor(
+        &self,
+        from_bcb: BasicCoverageBlock,
+    ) -> Option<BasicCoverageBlock> {
+        // If a node's count is the sum of its out-edges, and it has exactly
+        // one out-edge, then that edge has the same count as the node.
+        if self.bcbs[from_bcb].is_out_summable
+            && let &[to_bcb] = self.successors[from_bcb].as_slice()
+        {
+            Some(to_bcb)
+        } else {
+            None
+        }
     }
 }
 
@@ -266,14 +286,16 @@ rustc_index::newtype_index! {
 #[derive(Debug, Clone)]
 pub(crate) struct BasicCoverageBlockData {
     pub(crate) basic_blocks: Vec<BasicBlock>,
+
+    /// If true, this node's execution count can be assumed to be the sum of the
+    /// execution counts of all of its **out-edges** (assuming no panics).
+    ///
+    /// Notably, this is false for a node ending with [`TerminatorKind::Yield`],
+    /// because the yielding coroutine might not be resumed.
+    pub(crate) is_out_summable: bool,
 }
 
 impl BasicCoverageBlockData {
-    fn from(basic_blocks: Vec<BasicBlock>) -> Self {
-        assert!(basic_blocks.len() > 0);
-        Self { basic_blocks }
-    }
-
     #[inline(always)]
     pub(crate) fn leader_bb(&self) -> BasicBlock {
         self.basic_blocks[0]
@@ -295,6 +317,9 @@ enum CoverageSuccessors<'a> {
     Chainable(BasicBlock),
     /// The block cannot be combined into the same BCB as its successor(s).
     NotChainable(&'a [BasicBlock]),
+    /// Yield terminators are not chainable, and their execution count can also
+    /// differ from the execution count of their out-edge.
+    Yield(BasicBlock),
 }
 
 impl CoverageSuccessors<'_> {
@@ -302,6 +327,17 @@ impl CoverageSuccessors<'_> {
         match self {
             Self::Chainable(_) => true,
             Self::NotChainable(_) => false,
+            Self::Yield(_) => false,
+        }
+    }
+
+    /// Returns true if the terminator itself is assumed to have the same
+    /// execution count as the sum of its out-edges (assuming no panics).
+    fn is_out_summable(&self) -> bool {
+        match self {
+            Self::Chainable(_) => true,
+            Self::NotChainable(_) => true,
+            Self::Yield(_) => false,
         }
     }
 }
@@ -312,7 +348,9 @@ impl IntoIterator for CoverageSuccessors<'_> {
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            Self::Chainable(bb) => Some(bb).into_iter().chain((&[]).iter().copied()),
+            Self::Chainable(bb) | Self::Yield(bb) => {
+                Some(bb).into_iter().chain((&[]).iter().copied())
+            }
             Self::NotChainable(bbs) => None.into_iter().chain(bbs.iter().copied()),
         }
     }
@@ -331,7 +369,7 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
 
         // A yield terminator has exactly 1 successor, but should not be chained,
         // because its resume edge has a different execution count.
-        Yield { ref resume, .. } => CoverageSuccessors::NotChainable(std::slice::from_ref(resume)),
+        Yield { resume, .. } => CoverageSuccessors::Yield(resume),
 
         // These terminators have exactly one coverage-relevant successor,
         // and can be chained into it.

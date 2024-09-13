@@ -316,6 +316,11 @@ impl<'a> MakeBcbCounters<'a> {
 
         let successors = self.basic_coverage_blocks.successors[from_bcb].as_slice();
 
+        // If this node's out-edges won't sum to the node's counter,
+        // then there's no reason to create edge counters here.
+        if !self.basic_coverage_blocks[from_bcb].is_out_summable {
+            return;
+        }
         // If this node doesn't have multiple out-edges, or all of its out-edges
         // already have counters, then we don't need to create edge counters.
         let needs_out_edge_counters = successors.len() > 1
@@ -416,9 +421,10 @@ impl<'a> MakeBcbCounters<'a> {
             return self.get_or_make_node_counter(to_bcb);
         }
 
-        // If the source BCB has only one successor (assumed to be the given target), an edge
-        // counter is unnecessary. Just get or make a counter for the source BCB.
-        if self.bcb_successors(from_bcb).len() == 1 {
+        // If the source node has exactly one out-edge (i.e. this one) and would have
+        // the same execution count as that edge, then just use the node's counter.
+        if let Some(simple_succ) = self.basic_coverage_blocks.simple_successor(from_bcb) {
+            assert_eq!(simple_succ, to_bcb);
             return self.get_or_make_node_counter(from_bcb);
         }
 
