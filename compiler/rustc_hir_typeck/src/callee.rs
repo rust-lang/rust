@@ -58,7 +58,7 @@ pub(crate) fn check_legal_trait_for_method_call(
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
     DeferredClosure(LocalDefId, ty::FnSig<'tcx>),
-    /// E.g., enum variant constructors.
+    /// Call overloading when callee implements one of the Fn* traits.
     Overloaded(MethodCallee<'tcx>),
 }
 
