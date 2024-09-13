@@ -723,13 +723,13 @@ impl<'mir, 'tcx>
     ResultsVisitor<'mir, 'tcx, Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>>
     for Collector<'tcx, '_>
 {
-    type FlowState = State<FlatSet<Scalar>>;
+    type Domain = State<FlatSet<Scalar>>;
 
     #[instrument(level = "trace", skip(self, results, statement))]
     fn visit_statement_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         statement: &'mir Statement<'tcx>,
         location: Location,
     ) {
@@ -751,7 +751,7 @@ impl<'mir, 'tcx>
     fn visit_statement_after_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         statement: &'mir Statement<'tcx>,
         location: Location,
     ) {
@@ -776,7 +776,7 @@ impl<'mir, 'tcx>
     fn visit_terminator_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         location: Location,
     ) {

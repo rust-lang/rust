@@ -102,7 +102,7 @@ pub fn save_as_intervals<'tcx, N, R>(
 ) -> SparseIntervalMatrix<N, PointIndex>
 where
     N: Idx,
-    R: ResultsVisitable<'tcx, FlowState = BitSet<N>>,
+    R: ResultsVisitable<'tcx, Domain = BitSet<N>>,
 {
     let values = SparseIntervalMatrix::new(elements.num_points());
     let mut visitor = Visitor { elements, values };
@@ -124,12 +124,12 @@ impl<'mir, 'tcx, R, N> ResultsVisitor<'mir, 'tcx, R> for Visitor<'_, N>
 where
     N: Idx,
 {
-    type FlowState = BitSet<N>;
+    type Domain = BitSet<N>;
 
     fn visit_statement_after_primary_effect(
         &mut self,
         _results: &mut R,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         _statement: &'mir mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -143,7 +143,7 @@ where
     fn visit_terminator_after_primary_effect(
         &mut self,
         _results: &mut R,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         _terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) {
