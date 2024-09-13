@@ -1,9 +1,12 @@
-//@ has issue_118180_empty_tuple_struct/enum.Enum.html
+// https://github.com/rust-lang/rust/issues/118180
+#![crate_name="foo"]
+
+//@ has foo/enum.Enum.html
 pub enum Enum {
     //@ has - '//*[@id="variant.Empty"]//h3' 'Empty()'
     Empty(),
 }
 
-//@ has issue_118180_empty_tuple_struct/struct.Empty.html
+//@ has foo/struct.Empty.html
 //@ has - '//pre/code' 'Empty()'
 pub struct Empty();

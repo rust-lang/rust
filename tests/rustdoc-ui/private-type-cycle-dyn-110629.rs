@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/110629
+
 type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;
 //~^ ERROR cycle detected when expanding type alias
 
