@@ -93,6 +93,10 @@ impl SyntaxContextData {
     fn is_decode_placeholder(&self) -> bool {
         self.dollar_crate_name == kw::Empty
     }
+
+    fn key(&self) -> SyntaxContextKey {
+        (self.parent, self.outer_expn, self.outer_transparency)
+    }
 }
 
 rustc_index::newtype_index! {
@@ -395,7 +399,7 @@ impl HygieneData {
             expn_hash_to_expn_id: iter::once((ExpnHash(Fingerprint::ZERO), ExpnId::root()))
                 .collect(),
             syntax_context_data: vec![root_ctxt_data],
-            syntax_context_map: FxHashMap::default(),
+            syntax_context_map: iter::once((root_ctxt_data.key(), SyntaxContext(0))).collect(),
             expn_data_disambiguators: UnhashMap::default(),
         }
     }
@@ -1454,34 +1458,38 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
     // Don't try to decode data while holding the lock, since we need to
     // be able to recursively decode a SyntaxContext
     let ctxt_data = decode_data(d, raw_id);
+    let ctxt_key = ctxt_data.key();
 
     let ctxt = HygieneData::with(|hygiene_data| {
-        let old = if let Some(old) = hygiene_data.syntax_context_data.get(raw_id as usize)
-            && old.outer_expn == ctxt_data.outer_expn
-            && old.outer_transparency == ctxt_data.outer_transparency
-            && old.parent == ctxt_data.parent
-        {
-            Some(old.clone())
-        } else {
-            None
-        };
-        // Overwrite its placeholder data with our decoded data.
-        let ctxt_data_ref = &mut hygiene_data.syntax_context_data[pending_ctxt.as_u32() as usize];
-        let prev_ctxt_data = mem::replace(ctxt_data_ref, ctxt_data);
-        // Reset `dollar_crate_name` so that it will be updated by `update_dollar_crate_names`.
-        // We don't care what the encoding crate set this to - we want to resolve it
-        // from the perspective of the current compilation session
-        ctxt_data_ref.dollar_crate_name = kw::DollarCrate;
-        if let Some(old) = old {
-            *ctxt_data_ref = old;
+        match hygiene_data.syntax_context_map.get(&ctxt_key) {
+            // Ensure that syntax contexts are unique.
+            // If syntax contexts with the given key already exists, reuse it instead of
+            // using `pending_ctxt`.
+            // `pending_ctxt` will leave an unused hole in the vector of syntax contexts.
+            // Hopefully its value isn't stored anywhere during decoding and its dummy data
+            // is never accessed later. The `is_decode_placeholder` asserts on all
+            // accesses to syntax context data attempt to ensure it.
+            Some(&ctxt) => ctxt,
+            // This is a completely new context.
+            // Overwrite its placeholder data with our decoded data.
+            None => {
+                let ctxt_data_ref =
+                    &mut hygiene_data.syntax_context_data[pending_ctxt.as_u32() as usize];
+                let prev_ctxt_data = mem::replace(ctxt_data_ref, ctxt_data);
+                // Reset `dollar_crate_name` so that it will be updated by `update_dollar_crate_names`.
+                // We don't care what the encoding crate set this to - we want to resolve it
+                // from the perspective of the current compilation session.
+                ctxt_data_ref.dollar_crate_name = kw::DollarCrate;
+                // Make sure nothing weird happened while `decode_data` was running.
+                if !prev_ctxt_data.is_decode_placeholder() {
+                    // Another thread may have already inserted the decoded data,
+                    // but the decoded data should match.
+                    assert_eq!(prev_ctxt_data, *ctxt_data_ref);
+                }
+                hygiene_data.syntax_context_map.insert(ctxt_key, pending_ctxt);
+                pending_ctxt
+            }
         }
-        // Make sure nothing weird happened while `decode_data` was running.
-        if !prev_ctxt_data.is_decode_placeholder() {
-            // Another thread may have already inserted the decoded data,
-            // but the decoded data should match.
-            assert_eq!(prev_ctxt_data, *ctxt_data_ref);
-        }
-        pending_ctxt
     });
 
     // Mark the context as completed
