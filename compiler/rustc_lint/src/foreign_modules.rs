@@ -3,8 +3,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, Instance, Ty, TyCtxt};
 use rustc_session::declare_lint;
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
@@ -212,7 +211,17 @@ fn structurally_same_type<'tcx>(
     ckind: types::CItemKind,
 ) -> bool {
     let mut seen_types = UnordSet::default();
-    structurally_same_type_impl(&mut seen_types, tcx, param_env, a, b, ckind)
+    let result = structurally_same_type_impl(&mut seen_types, tcx, param_env, a, b, ckind);
+    if cfg!(debug_assertions) && result {
+        // Sanity-check: must have same ABI, size and alignment.
+        // `extern` blocks cannot be generic, so we'll always get a layout here.
+        let a_layout = tcx.layout_of(param_env.and(a)).unwrap();
+        let b_layout = tcx.layout_of(param_env.and(b)).unwrap();
+        assert_eq!(a_layout.abi, b_layout.abi);
+        assert_eq!(a_layout.size, b_layout.size);
+        assert_eq!(a_layout.align, b_layout.align);
+    }
+    result
 }
 
 fn structurally_same_type_impl<'tcx>(
@@ -266,30 +275,21 @@ fn structurally_same_type_impl<'tcx>(
         // Do a full, depth-first comparison between the two.
         use rustc_type_ir::TyKind::*;
 
-        let compare_layouts = |a, b| -> Result<bool, &'tcx LayoutError<'tcx>> {
-            debug!("compare_layouts({:?}, {:?})", a, b);
-            let a_layout = &tcx.layout_of(param_env.and(a))?.layout.abi();
-            let b_layout = &tcx.layout_of(param_env.and(b))?.layout.abi();
-            debug!(
-                "comparing layouts: {:?} == {:?} = {}",
-                a_layout,
-                b_layout,
-                a_layout == b_layout
-            );
-            Ok(a_layout == b_layout)
-        };
-
         let is_primitive_or_pointer =
             |ty: Ty<'tcx>| ty.is_primitive() || matches!(ty.kind(), RawPtr(..) | Ref(..));
 
         ensure_sufficient_stack(|| {
             match (a.kind(), b.kind()) {
-                (Adt(a_def, _), Adt(b_def, _)) => {
-                    // We can immediately rule out these types as structurally same if
-                    // their layouts differ.
-                    match compare_layouts(a, b) {
-                        Ok(false) => return false,
-                        _ => (), // otherwise, continue onto the full, fields comparison
+                (&Adt(a_def, _), &Adt(b_def, _)) => {
+                    // Only `repr(C)` types can be compared structurally.
+                    if !(a_def.repr().c() && b_def.repr().c()) {
+                        return false;
+                    }
+                    // If the types differ in their packed-ness, align, or simd-ness they conflict.
+                    let repr_characteristica =
+                        |def: AdtDef<'tcx>| (def.repr().pack, def.repr().align, def.repr().simd());
+                    if repr_characteristica(a_def) != repr_characteristica(b_def) {
+                        return false;
                     }
 
                     // Grab a flattened representation of all fields.
@@ -311,9 +311,9 @@ fn structurally_same_type_impl<'tcx>(
                         },
                     )
                 }
-                (Array(a_ty, a_const), Array(b_ty, b_const)) => {
-                    // For arrays, we also check the constness of the type.
-                    a_const.kind() == b_const.kind()
+                (Array(a_ty, a_len), Array(b_ty, b_len)) => {
+                    // For arrays, we also check the length.
+                    a_len == b_len
                         && structurally_same_type_impl(
                             seen_types, tcx, param_env, *a_ty, *b_ty, ckind,
                         )
@@ -357,10 +357,9 @@ fn structurally_same_type_impl<'tcx>(
                             ckind,
                         )
                 }
-                (Tuple(a_args), Tuple(b_args)) => {
-                    a_args.iter().eq_by(b_args.iter(), |a_ty, b_ty| {
-                        structurally_same_type_impl(seen_types, tcx, param_env, a_ty, b_ty, ckind)
-                    })
+                (Tuple(..), Tuple(..)) => {
+                    // Tuples are not `repr(C)` so these cannot be compared structurally.
+                    false
                 }
                 // For these, it's not quite as easy to define structural-sameness quite so easily.
                 // For the purposes of this lint, take the conservative approach and mark them as
@@ -380,24 +379,21 @@ fn structurally_same_type_impl<'tcx>(
                 // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
                 // enum layout optimisation is being applied.
                 (Adt(..), _) if is_primitive_or_pointer(b) => {
-                    if let Some(ty) = types::repr_nullable_ptr(tcx, param_env, a, ckind) {
-                        ty == b
+                    if let Some(a_inner) = types::repr_nullable_ptr(tcx, param_env, a, ckind) {
+                        a_inner == b
                     } else {
-                        compare_layouts(a, b).unwrap_or(false)
+                        false
                     }
                 }
                 (_, Adt(..)) if is_primitive_or_pointer(a) => {
-                    if let Some(ty) = types::repr_nullable_ptr(tcx, param_env, b, ckind) {
-                        ty == a
+                    if let Some(b_inner) = types::repr_nullable_ptr(tcx, param_env, b, ckind) {
+                        b_inner == a
                     } else {
-                        compare_layouts(a, b).unwrap_or(false)
+                        false
                     }
                 }
 
-                // Otherwise, just compare the layouts. This may fail to lint for some
-                // incompatible types, but at the very least, will stop reads into
-                // uninitialised memory.
-                _ => compare_layouts(a, b).unwrap_or(false),
+                _ => false,
             }
         })
     }
