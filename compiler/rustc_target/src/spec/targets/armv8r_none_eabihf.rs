@@ -21,16 +21,16 @@ pub(crate) fn target() -> Target {
             linker: Some("rust-lld".into()),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
-            // The Cortex-R52 has two variants with respect to floating-point support:
-            // 1. fp-armv8, SP-only, with 16 DP (32 SP) registers
-            // 2. neon-fp-armv8, SP+DP, with 32 DP registers
-            // Use the lesser of these two options as the default, as it will produce code
-            // compatible with either variant.
+            // Armv8-R requires a minimum set of floating-point features equivalent to:
+            // fp-armv8, SP-only, with 16 DP (32 SP) registers
+            // LLVM defines Armv8-R to include these features automatically.
+            //
+            // The Cortex-R52 supports these default features and optionally includes:
+            // neon-fp-armv8, SP+DP, with 32 DP registers
             //
             // Reference:
             // Arm Cortex-R52 Processor Technical Reference Manual
             // - Chapter 15 Advanced SIMD and floating-point support
-            features: "+fp-armv8,-fp64,-d32".into(),
             max_atomic_width: Some(64),
             emit_debug_gdb_scripts: false,
             // GCC defaults to 8 for arm-none here.
