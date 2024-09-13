@@ -885,12 +885,12 @@ struct StorageConflictVisitor<'a, 'tcx> {
 impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
     for StorageConflictVisitor<'a, 'tcx>
 {
-    type FlowState = BitSet<Local>;
+    type Domain = BitSet<Local>;
 
     fn visit_statement_before_primary_effect(
         &mut self,
         _results: &mut R,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         _statement: &'a Statement<'tcx>,
         loc: Location,
     ) {
@@ -900,7 +900,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
     fn visit_terminator_before_primary_effect(
         &mut self,
         _results: &mut R,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         _terminator: &'a Terminator<'tcx>,
         loc: Location,
     ) {
@@ -909,13 +909,13 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 }
 
 impl StorageConflictVisitor<'_, '_> {
-    fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
+    fn apply_state(&mut self, state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
         if let TerminatorKind::Unreachable = self.body.basic_blocks[loc.block].terminator().kind {
             return;
         }
 
-        self.eligible_storage_live.clone_from(flow_state);
+        self.eligible_storage_live.clone_from(state);
         self.eligible_storage_live.intersect(&**self.saved_locals);
 
         for local in self.eligible_storage_live.iter() {

@@ -544,15 +544,15 @@ where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
-    type FlowState = A::Domain;
+    type Domain = A::Domain;
 
-    fn visit_block_start(&mut self, state: &Self::FlowState) {
+    fn visit_block_start(&mut self, state: &Self::Domain) {
         if A::Direction::IS_FORWARD {
             self.prev_state.clone_from(state);
         }
     }
 
-    fn visit_block_end(&mut self, state: &Self::FlowState) {
+    fn visit_block_end(&mut self, state: &Self::Domain) {
         if A::Direction::IS_BACKWARD {
             self.prev_state.clone_from(state);
         }
@@ -561,7 +561,7 @@ where
     fn visit_statement_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
@@ -574,7 +574,7 @@ where
     fn visit_statement_after_primary_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
@@ -585,7 +585,7 @@ where
     fn visit_terminator_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
@@ -598,7 +598,7 @@ where
     fn visit_terminator_after_primary_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
