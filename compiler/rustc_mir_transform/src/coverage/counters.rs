@@ -321,25 +321,23 @@ impl<'a> MakeBcbCounters<'a> {
         if !self.basic_coverage_blocks[from_bcb].is_out_summable {
             return;
         }
-        // If this node doesn't have multiple out-edges, or all of its out-edges
-        // already have counters, then we don't need to create edge counters.
-        let needs_out_edge_counters = successors.len() > 1
-            && successors.iter().any(|&to_bcb| self.edge_has_no_counter(from_bcb, to_bcb));
-        if !needs_out_edge_counters {
+
+        // Determine the set of out-edges that don't yet have edge counters.
+        let candidate_successors = self
+            .bcb_successors(from_bcb)
+            .iter()
+            .copied()
+            .filter(|&to_bcb| self.edge_has_no_counter(from_bcb, to_bcb))
+            .collect::<Vec<_>>();
+        debug!(?candidate_successors);
+
+        // If there are out-edges without counters, choose one to be given an expression
+        // (computed from this node and the other out-edges) instead of a physical counter.
+        let Some(expression_to_bcb) =
+            self.choose_out_edge_for_expression(traversal, &candidate_successors)
+        else {
             return;
-        }
-
-        if tracing::enabled!(tracing::Level::DEBUG) {
-            let _span =
-                debug_span!("node has some out-edges without counters", ?from_bcb).entered();
-            for &to_bcb in successors {
-                debug!(?to_bcb, counter=?self.edge_counter(from_bcb, to_bcb));
-            }
-        }
-
-        // Of the out-edges that don't have counters yet, one can be given an expression
-        // (computed from the other out-edges) instead of a dedicated counter.
-        let expression_to_bcb = self.choose_out_edge_for_expression(traversal, from_bcb);
+        };
 
         // For each out-edge other than the one that was chosen to get an expression,
         // ensure that it has a counter (existing counter/expression or a new counter),
@@ -351,10 +349,11 @@ impl<'a> MakeBcbCounters<'a> {
             .filter(|&to_bcb| to_bcb != expression_to_bcb)
             .map(|to_bcb| self.get_or_make_edge_counter(from_bcb, to_bcb))
             .collect::<Vec<_>>();
-        let sum_of_all_other_out_edges: BcbCounter = self
-            .coverage_counters
-            .make_sum(&other_out_edge_counters)
-            .expect("there must be at least one other out-edge");
+        let Some(sum_of_all_other_out_edges) =
+            self.coverage_counters.make_sum(&other_out_edge_counters)
+        else {
+            return;
+        };
 
         // Now create an expression for the chosen edge, by taking the counter
         // for its source node and subtracting the sum of its sibling out-edges.
@@ -440,79 +439,59 @@ impl<'a> MakeBcbCounters<'a> {
         self.coverage_counters.make_phys_edge_counter(from_bcb, to_bcb)
     }
 
-    /// Choose one of the out-edges of `from_bcb` to receive an expression
-    /// instead of a physical counter, and returns that edge's target node.
-    ///
-    /// - Precondition: The node must have at least one out-edge without a counter.
-    /// - Postcondition: The selected edge does not have an edge counter.
+    /// Given a set of candidate out-edges (represented by their successor node),
+    /// choose one to be given a counter expression instead of a physical counter.
     fn choose_out_edge_for_expression(
         &self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
-        from_bcb: BasicCoverageBlock,
-    ) -> BasicCoverageBlock {
-        if let Some(reloop_target) = self.find_good_reloop_edge(traversal, from_bcb) {
-            assert!(self.edge_has_no_counter(from_bcb, reloop_target));
+        candidate_successors: &[BasicCoverageBlock],
+    ) -> Option<BasicCoverageBlock> {
+        // Try to find a candidate that leads back to the top of a loop,
+        // because reloop edges tend to be executed more times than loop-exit edges.
+        if let Some(reloop_target) = self.find_good_reloop_edge(traversal, &candidate_successors) {
             debug!("Selecting reloop target {reloop_target:?} to get an expression");
-            return reloop_target;
+            return Some(reloop_target);
         }
 
-        // We couldn't identify a "good" edge, so just choose any edge that
-        // doesn't already have a counter.
-        let arbitrary_target = self
-            .bcb_successors(from_bcb)
-            .iter()
-            .copied()
-            .find(|&to_bcb| self.edge_has_no_counter(from_bcb, to_bcb))
-            .expect("precondition: at least one out-edge without a counter");
+        // We couldn't identify a "good" edge, so just choose an arbitrary one.
+        let arbitrary_target = candidate_successors.first().copied()?;
         debug!(?arbitrary_target, "selecting arbitrary out-edge to get an expression");
-        arbitrary_target
+        Some(arbitrary_target)
     }
 
-    /// Tries to find an edge that leads back to the top of a loop, and that
-    /// doesn't already have a counter. Such edges are good candidates to
-    /// be given an expression (instead of a physical counter), because they
-    /// will tend to be executed more times than a loop-exit edge.
+    /// Given a set of candidate out-edges (represented by their successor node),
+    /// tries to find one that leads back to the top of a loop.
+    ///
+    /// Reloop edges are good candidates for counter expressions, because they
+    /// will tend to be executed more times than a loop-exit edge, so it's nice
+    /// for them to be able to avoid a physical counter increment.
     fn find_good_reloop_edge(
         &self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
-        from_bcb: BasicCoverageBlock,
+        candidate_successors: &[BasicCoverageBlock],
     ) -> Option<BasicCoverageBlock> {
-        let successors = self.bcb_successors(from_bcb);
+        // If there are no candidates, avoid iterating over the loop stack.
+        if candidate_successors.is_empty() {
+            return None;
+        }
 
         // Consider each loop on the current traversal context stack, top-down.
         for reloop_bcbs in traversal.reloop_bcbs_per_loop() {
-            let mut all_edges_exit_this_loop = true;
-
-            // Try to find an out-edge that doesn't exit this loop and doesn't
-            // already have a counter.
-            for &target_bcb in successors {
+            // Try to find a candidate edge that doesn't exit this loop.
+            for &target_bcb in candidate_successors {
                 // An edge is a reloop edge if its target dominates any BCB that has
                 // an edge back to the loop header. (Otherwise it's an exit edge.)
                 let is_reloop_edge = reloop_bcbs.iter().any(|&reloop_bcb| {
                     self.basic_coverage_blocks.dominates(target_bcb, reloop_bcb)
                 });
-
                 if is_reloop_edge {
-                    all_edges_exit_this_loop = false;
-                    if self.edge_has_no_counter(from_bcb, target_bcb) {
-                        // We found a good out-edge to be given an expression.
-                        return Some(target_bcb);
-                    }
-                    // Keep looking for another reloop edge without a counter.
-                } else {
-                    // This edge exits the loop.
+                    // We found a good out-edge to be given an expression.
+                    return Some(target_bcb);
                 }
             }
 
-            if !all_edges_exit_this_loop {
-                // We found one or more reloop edges, but all of them already
-                // have counters. Let the caller choose one of the other edges.
-                debug!("All reloop edges had counters; skipping the other loops");
-                return None;
-            }
-
-            // All of the out-edges exit this loop, so keep looking for a good
-            // reloop edge for one of the outer loops.
+            // All of the candidate edges exit this loop, so keep looking
+            // for a good reloop edge for one of the outer loops.
         }
 
         None
