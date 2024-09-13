@@ -2739,6 +2739,8 @@ impl Config {
                 return false;
             }
 
+            // Fetching the LLVM submodule is unnecessary for self-tests.
+            #[cfg(not(feature = "bootstrap-self-test"))]
             self.update_submodule("src/llvm-project");
 
             // Check for untracked changes in `src/llvm-project`.
