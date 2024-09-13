@@ -473,29 +473,11 @@ impl Step for Rustc {
                     );
                 }
             }
-
-            let builder_compiler =
-                builder.compiler_for(builder.top_stage, builder.config.build, compiler.host);
-
-            maybe_install_wasm_component_ld(
-                builder,
-                builder_compiler,
-                compiler.host,
-                &dst_dir,
-                true,
-            );
-
-            let self_contained_bin_dir = dst_dir.join("self-contained");
-            t!(fs::create_dir_all(&self_contained_bin_dir));
-            maybe_install_llvm_bitcode_linker(
-                builder,
-                builder_compiler,
-                compiler.host,
-                &self_contained_bin_dir,
-                true,
-            );
-
-            maybe_install_llvm_tools(builder, compiler.host, &dst_dir, true);
+            if builder.tool_enabled("wasm-component-ld") {
+                let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
+                let ld = exe("wasm-component-ld", compiler.host);
+                builder.copy_link(&src_dir.join(&ld), &dst_dir.join(&ld));
+            }
 
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));
@@ -2101,85 +2083,6 @@ pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection
     // statically.
     if builder.llvm_link_shared() {
         maybe_install_llvm(builder, target, &dst_libdir, false);
-    }
-}
-
-/// Maybe add LLVM tools to the rustc sysroot.
-pub fn maybe_install_llvm_tools(
-    builder: &Builder<'_>,
-    target: TargetSelection,
-    dst_dir: &Path,
-    dereference_symlinks: bool,
-) {
-    if builder.config.llvm_enabled(target) {
-        let llvm::LlvmResult { llvm_config, .. } = builder.ensure(llvm::Llvm { target });
-        if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
-            let llvm_bin_dir =
-                command(llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
-            let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
-
-            // Since we've already built the LLVM tools, install them to the sysroot.
-            // This is the equivalent of installing the `llvm-tools-preview` component via
-            // rustup, and lets developers use a locally built toolchain to
-            // build projects that expect llvm tools to be present in the sysroot
-            // (e.g. the `bootimage` crate).
-            for tool in LLVM_TOOLS {
-                let tool_exe = exe(tool, target);
-                let src_path = llvm_bin_dir.join(&tool_exe);
-                // When using `download-ci-llvm`, some of the tools
-                // may not exist, so skip trying to copy them.
-                if src_path.exists() {
-                    builder.copy_link_internal(
-                        &src_path,
-                        &dst_dir.join(&tool_exe),
-                        dereference_symlinks,
-                    );
-                }
-            }
-        }
-    }
-}
-
-/// Maybe add `llvm-bitcode-linker` to the rustc sysroot.
-pub fn maybe_install_llvm_bitcode_linker(
-    builder: &Builder<'_>,
-    builder_compiler: Compiler,
-    target: TargetSelection,
-    dst_dir: &Path,
-    dereference_symlinks: bool,
-) {
-    if builder.config.llvm_bitcode_linker_enabled {
-        let llvm_bitcode_linker_exe = builder.ensure(tool::LlvmBitcodeLinker {
-            compiler: builder_compiler,
-            target,
-            extra_features: vec![],
-        });
-
-        builder.copy_link_internal(
-            &llvm_bitcode_linker_exe,
-            &dst_dir.join(llvm_bitcode_linker_exe.file_name().unwrap()),
-            dereference_symlinks,
-        );
-    }
-}
-
-/// Maybe add `wasm-component-ld` to the rustc sysroot.
-pub fn maybe_install_wasm_component_ld(
-    builder: &Builder<'_>,
-    builder_compiler: Compiler,
-    target: TargetSelection,
-    dst_dir: &Path,
-    dereference_symlinks: bool,
-) {
-    if builder.tool_enabled("wasm-component-ld") {
-        let wasm_component_ld_exe =
-            builder.ensure(tool::WasmComponentLd { compiler: builder_compiler, target });
-
-        builder.copy_link_internal(
-            &wasm_component_ld_exe,
-            &dst_dir.join(wasm_component_ld_exe.file_name().unwrap()),
-            dereference_symlinks,
-        );
     }
 }
 
