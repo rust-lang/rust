@@ -26,7 +26,7 @@ time ./miri install
 # We enable all features to make sure the Stacked Borrows consistency check runs.
 echo "Building debug version of Miri"
 export CARGO_EXTRA_FLAGS="$CARGO_EXTRA_FLAGS --all-features"
-time ./miri build --all-targets # the build that all the `./miri test` below will use
+time ./miri build # the build that all the `./miri test` below will use
 
 endgroup
 
