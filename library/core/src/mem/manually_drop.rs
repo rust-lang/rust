@@ -63,22 +63,21 @@ use crate::ptr;
 /// # Safety hazards when storing `ManuallyDrop` in a struct or an enum.
 ///
 /// Special care is needed when all of the conditions below are met:
-/// * A field of a struct or enum is a `ManuallyDrop` or contains a
-///   `ManuallyDrop`, without the `ManuallyDrop` being inside a `union`.
+/// * A struct or enum contains a `ManuallyDrop`.
+/// * The `ManuallyDrop` is not inside a `union`.
 /// * The struct or enum is part of public API, or is stored in a struct or an
 ///   enum that is part of public API.
-/// * There is code outside of a `Drop` implementation that calls
-///   [`ManuallyDrop::drop`] or [`ManuallyDrop::take`] on the `ManuallyDrop`
-///   field.
+/// * There is code that drops the contents of the `ManuallyDrop` field, and
+///   this code is outside the struct or enum's `Drop` implementation.
 ///
-/// In particular, the following hazards can occur:
+/// In particular, the following hazards may occur:
 ///
 /// #### Storing generic types
 ///
 /// If the `ManuallyDrop` contains a client-supplied generic type, the client
-/// might provide a `Box`, causing undefined behavior when the struct / enum is
-/// later moved, as mentioned above. For example, the following code causes
-/// undefined behavior:
+/// might provide a `Box` as that type. This would cause undefined behavior when
+/// the struct or enum is later moved, as mentioned in the previous section. For
+/// example, the following code causes undefined behavior:
 ///
 /// ```no_run
 /// use std::mem::ManuallyDrop;
@@ -114,7 +113,7 @@ use crate::ptr;
 /// #### Deriving traits
 ///
 /// Deriving `Debug`, `Clone`, `PartialEq`, `PartialOrd`, `Ord`, or `Hash` on
-/// the struct / enum could be unsound, since the derived implementations of
+/// the struct or enum could be unsound, since the derived implementations of
 /// these traits would access the `ManuallyDrop` field. For example, the
 /// following code causes undefined behavior:
 ///
