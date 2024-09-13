@@ -18,8 +18,8 @@ pub(crate) fn build_backend(
     let mut cmd = CG_CLIF.build(&bootstrap_host_compiler, dirs);
 
     let mut rustflags = rustflags_from_env("RUSTFLAGS");
-
     rustflags.push("-Zallow-features=rustc_private".to_owned());
+    rustflags_to_cmd_env(&mut cmd, "RUSTFLAGS", &rustflags);
 
     if env::var("CG_CLIF_EXPENSIVE_CHECKS").is_ok() {
         // Enabling debug assertions implicitly enables the clif ir verifier
@@ -32,8 +32,6 @@ pub(crate) fn build_backend(
     }
 
     cmd.arg("--release");
-
-    rustflags_to_cmd_env(&mut cmd, "RUSTFLAGS", &rustflags);
 
     eprintln!("[BUILD] rustc_codegen_cranelift");
     crate::utils::spawn_and_wait(cmd);

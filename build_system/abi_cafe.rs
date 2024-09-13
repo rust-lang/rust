@@ -36,12 +36,11 @@ pub(crate) fn run(
 
     eprintln!("Running abi-cafe");
 
-    let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
-    let pairs =
+    let pairs: &[_] =
         if cfg!(not(any(target_os = "macos", all(target_os = "windows", target_env = "msvc")))) {
-            &pairs[..]
+            &["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"]
         } else {
-            &pairs[..2]
+            &["rustc_calls_cgclif", "cgclif_calls_rustc"]
         };
 
     let mut cmd = ABI_CAFE.run(bootstrap_host_compiler, dirs);
