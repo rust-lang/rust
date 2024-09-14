@@ -644,6 +644,29 @@ ul.block, .block li, .block ul {
 	padding-left: var(--sidebar-elems-left-padding);
 }
 
+#copy-cargo-snippet {
+	color: var(--main-color);
+	background: var(--sidebar-background-color);
+	margin-left: 10px;
+	padding: 0;
+	padding-left: 2px;
+	border: 0;
+	font-size: 0;
+
+    scale: 80%;
+    justify-content: center;
+}
+#copy-cargo-snippet::before {
+	filter: var(--copy-path-img-filter);
+	content: var(--clipboard-image);
+}
+#copy-cargo-snippet:hover::before {
+	filter: var(--copy-path-img-hover-filter);
+}
+#copy-cargo-snippet.clicked::before {
+	content: var(--checkmark-image);
+}
+
 .sidebar a {
 	color: var(--sidebar-link-color);
 }
@@ -766,6 +789,9 @@ ul.block, .block li, .block ul {
 	font-weight: normal;
 	font-size: 1rem;
 	overflow-wrap: break-word;
+
+    display: flex;
+    align-items: center;
 }
 
 .sidebar-crate + .version {
