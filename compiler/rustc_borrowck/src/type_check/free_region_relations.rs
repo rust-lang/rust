@@ -181,12 +181,12 @@ impl UniversalRegionRelations<'_> {
     }
 }
 
-struct UniversalRegionRelationsBuilder<'this, 'tcx> {
-    infcx: &'this InferCtxt<'tcx>,
+struct UniversalRegionRelationsBuilder<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     universal_regions: Rc<UniversalRegions<'tcx>>,
     implicit_region_bound: ty::Region<'tcx>,
-    constraints: &'this mut MirTypeckRegionConstraints<'tcx>,
+    constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 
     // outputs:
     outlives: TransitiveRelationBuilder<RegionVid>,

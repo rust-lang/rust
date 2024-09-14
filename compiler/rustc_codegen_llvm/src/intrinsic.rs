@@ -573,6 +573,8 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     span,
                 ) {
                     Ok(llval) => llval,
+                    // If there was an error, just skip this invocation... we'll abort compilation anyway,
+                    // but we can keep codegen'ing to find more errors.
                     Err(()) => return Ok(()),
                 }
             }
@@ -1290,24 +1292,14 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_shuffle {
-        // Make sure this is actually an array or SIMD vector, since typeck only checks the length-suffixed
-        // version of this intrinsic.
+        // Make sure this is actually a SIMD vector.
         let idx_ty = args[2].layout.ty;
-        let n: u64 = match idx_ty.kind() {
-            ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => {
-                len.try_eval_target_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(
-                    || span_bug!(span, "could not evaluate shuffle index array length"),
-                )
-            }
-            _ if idx_ty.is_simd()
-                && matches!(
-                    idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(),
-                    ty::Uint(ty::UintTy::U32)
-                ) =>
-            {
-                idx_ty.simd_size_and_type(bx.cx.tcx).0
-            }
-            _ => return_error!(InvalidMonomorphization::SimdShuffle { span, name, ty: idx_ty }),
+        let n: u64 = if idx_ty.is_simd()
+            && matches!(idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
+        {
+            idx_ty.simd_size_and_type(bx.cx.tcx).0
+        } else {
+            return_error!(InvalidMonomorphization::SimdShuffle { span, name, ty: idx_ty })
         };
 
         let (out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
@@ -1322,38 +1314,24 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         let total_len = u128::from(in_len) * 2;
 
-        let vector = args[2].immediate();
+        // Check that the indices are in-bounds.
+        let indices = args[2].immediate();
+        for i in 0..n {
+            let val = bx.const_get_elt(indices, i as u64);
+            let idx = bx
+                .const_to_opt_u128(val, true)
+                .unwrap_or_else(|| bug!("typeck should have already ensured that these are const"));
+            if idx >= total_len {
+                return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
+                    span,
+                    name,
+                    arg_idx: i,
+                    total_len,
+                });
+            }
+        }
 
-        let indices: Option<Vec<_>> = (0..n)
-            .map(|i| {
-                let arg_idx = i;
-                let val = bx.const_get_elt(vector, i as u64);
-                match bx.const_to_opt_u128(val, true) {
-                    None => {
-                        bug!("typeck should have already ensured that these are const")
-                    }
-                    Some(idx) if idx >= total_len => {
-                        bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
-                            span,
-                            name,
-                            arg_idx,
-                            total_len,
-                        });
-                        None
-                    }
-                    Some(idx) => Some(bx.const_i32(idx as i32)),
-                }
-            })
-            .collect();
-        let Some(indices) = indices else {
-            return Ok(bx.const_null(llret_ty));
-        };
-
-        return Ok(bx.shuffle_vector(
-            args[0].immediate(),
-            args[1].immediate(),
-            bx.const_vector(&indices),
-        ));
+        return Ok(bx.shuffle_vector(args[0].immediate(), args[1].immediate(), indices));
     }
 
     if name == sym::simd_insert {
@@ -1371,13 +1349,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .const_to_opt_u128(args[1].immediate(), false)
             .expect("typeck should have ensure that this is a const");
         if idx >= in_len.into() {
-            bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
+            return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
                 span,
                 name,
                 arg_idx: 1,
                 total_len: in_len.into(),
             });
-            return Ok(bx.const_null(llret_ty));
         }
         return Ok(bx.insert_element(
             args[0].immediate(),
@@ -1394,13 +1371,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .const_to_opt_u128(args[1].immediate(), false)
             .expect("typeck should have ensure that this is a const");
         if idx >= in_len.into() {
-            bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
+            return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
                 span,
                 name,
                 arg_idx: 1,
                 total_len: in_len.into(),
             });
-            return Ok(bx.const_null(llret_ty));
         }
         return Ok(bx.extract_element(args[0].immediate(), bx.const_i32(idx as i32)));
     }

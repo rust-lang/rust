@@ -143,18 +143,18 @@ impl<'tcx> LateLintPass<'tcx> for TailExprDropOrder {
     }
 }
 
-struct LintVisitor<'tcx, 'a> {
+struct LintVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     // We only record locals that have significant drops
     locals: Vec<Span>,
 }
 
-struct LocalCollector<'tcx, 'a> {
+struct LocalCollector<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     locals: &'a mut Vec<Span>,
 }
 
-impl<'tcx, 'a> Visitor<'tcx> for LocalCollector<'tcx, 'a> {
+impl<'a, 'tcx> Visitor<'tcx> for LocalCollector<'a, 'tcx> {
     type Result = ();
     fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
         if let PatKind::Binding(_binding_mode, id, ident, pat) = pat.kind {
@@ -171,7 +171,7 @@ impl<'tcx, 'a> Visitor<'tcx> for LocalCollector<'tcx, 'a> {
     }
 }
 
-impl<'tcx, 'a> Visitor<'tcx> for LintVisitor<'tcx, 'a> {
+impl<'a, 'tcx> Visitor<'tcx> for LintVisitor<'a, 'tcx> {
     fn visit_block(&mut self, block: &'tcx Block<'tcx>) {
         let mut locals = <_>::default();
         swap(&mut locals, &mut self.locals);
@@ -183,7 +183,7 @@ impl<'tcx, 'a> Visitor<'tcx> for LintVisitor<'tcx, 'a> {
     }
 }
 
-impl<'tcx, 'a> LintVisitor<'tcx, 'a> {
+impl<'a, 'tcx> LintVisitor<'a, 'tcx> {
     fn check_block_inner(&mut self, block: &Block<'tcx>) {
         if !block.span.at_least_rust_2024() {
             // We only lint for Edition 2024 onwards
@@ -205,13 +205,13 @@ impl<'tcx, 'a> LintVisitor<'tcx, 'a> {
     }
 }
 
-struct LintTailExpr<'tcx, 'a> {
+struct LintTailExpr<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     is_root_tail_expr: bool,
     locals: &'a [Span],
 }
 
-impl<'tcx, 'a> LintTailExpr<'tcx, 'a> {
+impl<'a, 'tcx> LintTailExpr<'a, 'tcx> {
     fn expr_eventually_point_into_local(mut expr: &Expr<'tcx>) -> bool {
         loop {
             match expr.kind {
@@ -239,7 +239,7 @@ impl<'tcx, 'a> LintTailExpr<'tcx, 'a> {
     }
 }
 
-impl<'tcx, 'a> Visitor<'tcx> for LintTailExpr<'tcx, 'a> {
+impl<'a, 'tcx> Visitor<'tcx> for LintTailExpr<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if self.is_root_tail_expr {
             self.is_root_tail_expr = false;

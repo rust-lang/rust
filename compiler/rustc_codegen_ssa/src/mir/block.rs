@@ -915,32 +915,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 };
 
-                let args: Vec<_> = args
-                    .iter()
-                    .enumerate()
-                    .map(|(i, arg)| {
-                        // The indices passed to simd_shuffle in the
-                        // third argument must be constant. This is
-                        // checked by the type-checker.
-                        if i == 2 && intrinsic.name == sym::simd_shuffle {
-                            // FIXME: the simd_shuffle argument is actually an array,
-                            // not a vector, so we need this special hack to make sure
-                            // it is passed as an immediate. We should pass the
-                            // shuffle indices as a vector instead to avoid this hack.
-                            if let mir::Operand::Constant(constant) = &arg.node {
-                                let (llval, ty) = self.immediate_const_vector(bx, constant);
-                                return OperandRef {
-                                    val: Immediate(llval),
-                                    layout: bx.layout_of(ty),
-                                };
-                            } else {
-                                span_bug!(span, "shuffle indices must be constant");
-                            }
-                        }
-
-                        self.codegen_operand(bx, &arg.node)
-                    })
-                    .collect();
+                let args: Vec<_> =
+                    args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
 
                 if matches!(intrinsic, ty::IntrinsicDef { name: sym::caller_location, .. }) {
                     let location = self

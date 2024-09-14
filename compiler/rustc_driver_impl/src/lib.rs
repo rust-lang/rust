@@ -207,17 +207,17 @@ pub fn diagnostics_registry() -> Registry {
 }
 
 /// This is the primary entry point for rustc.
-pub struct RunCompiler<'a, 'b> {
+pub struct RunCompiler<'a> {
     at_args: &'a [String],
-    callbacks: &'b mut (dyn Callbacks + Send),
+    callbacks: &'a mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     make_codegen_backend:
         Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
     using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 }
 
-impl<'a, 'b> RunCompiler<'a, 'b> {
-    pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
+impl<'a> RunCompiler<'a> {
+    pub fn new(at_args: &'a [String], callbacks: &'a mut (dyn Callbacks + Send)) -> Self {
         Self {
             at_args,
             callbacks,

@@ -29,43 +29,43 @@ LL |     { builtin # offset_of((u8, u8), 1 .) };
    |                                        ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:46:45
+  --> $DIR/offset-of-tuple.rs:47:45
    |
 LL |     { builtin # offset_of(ComplexTup, 0.0.1.) };
    |                                             ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:47:46
+  --> $DIR/offset-of-tuple.rs:48:46
    |
 LL |     { builtin # offset_of(ComplexTup, 0 .0.1.) };
    |                                              ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:48:47
+  --> $DIR/offset-of-tuple.rs:49:47
    |
 LL |     { builtin # offset_of(ComplexTup, 0 . 0.1.) };
    |                                               ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:49:46
+  --> $DIR/offset-of-tuple.rs:50:46
    |
 LL |     { builtin # offset_of(ComplexTup, 0. 0.1.) };
    |                                              ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:50:46
+  --> $DIR/offset-of-tuple.rs:51:46
    |
 LL |     { builtin # offset_of(ComplexTup, 0.0 .1.) };
    |                                              ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:51:47
+  --> $DIR/offset-of-tuple.rs:52:47
    |
 LL |     { builtin # offset_of(ComplexTup, 0.0 . 1.) };
    |                                               ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:52:46
+  --> $DIR/offset-of-tuple.rs:53:46
    |
 LL |     { builtin # offset_of(ComplexTup, 0.0. 1.) };
    |                                              ^
@@ -104,43 +104,43 @@ LL |     offset_of!((u8, u8), 1 .);
    |                             ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:35:34
+  --> $DIR/offset-of-tuple.rs:36:34
    |
 LL |     offset_of!(ComplexTup, 0.0.1.);
    |                                  ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:36:35
+  --> $DIR/offset-of-tuple.rs:37:35
    |
 LL |     offset_of!(ComplexTup, 0 .0.1.);
    |                                   ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:37:36
+  --> $DIR/offset-of-tuple.rs:38:36
    |
 LL |     offset_of!(ComplexTup, 0 . 0.1.);
    |                                    ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:38:35
+  --> $DIR/offset-of-tuple.rs:39:35
    |
 LL |     offset_of!(ComplexTup, 0. 0.1.);
    |                                   ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:39:35
+  --> $DIR/offset-of-tuple.rs:40:35
    |
 LL |     offset_of!(ComplexTup, 0.0 .1.);
    |                                   ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:40:36
+  --> $DIR/offset-of-tuple.rs:41:36
    |
 LL |     offset_of!(ComplexTup, 0.0 . 1.);
    |                                    ^
 
 error: unexpected token: `)`
-  --> $DIR/offset-of-tuple.rs:41:35
+  --> $DIR/offset-of-tuple.rs:42:35
    |
 LL |     offset_of!(ComplexTup, 0.0. 1.);
    |                                   ^
@@ -196,22 +196,21 @@ LL |     builtin # offset_of((u8, u8), 1_u8);
 error[E0609]: no field `2` on type `(u8, u16)`
   --> $DIR/offset-of-tuple.rs:30:47
    |
-LL |       offset_of!(((u8, u16), (u32, u16, u8)), 0.2);
-   |  _____------------------------------------------^-
-   | |     |
-   | |     in this macro invocation
-LL | |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2);
-LL | |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2.0);
-...  |
+LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.2);
+   |                                               ^
+
+error[E0609]: no field `1e2` on type `(u8, u16)`
+  --> $DIR/offset-of-tuple.rs:31:47
    |
-   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.1e2);
+   |                                               ^^^
 
 error[E0609]: no field `0` on type `u8`
-  --> $DIR/offset-of-tuple.rs:32:49
+  --> $DIR/offset-of-tuple.rs:33:49
    |
 LL |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2.0);
    |                                                 ^
 
-error: aborting due to 33 previous errors
+error: aborting due to 34 previous errors
 
 For more information about this error, try `rustc --explain E0609`.
