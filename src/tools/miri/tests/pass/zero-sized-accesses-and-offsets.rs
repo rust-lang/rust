@@ -1,5 +1,4 @@
 //! Tests specific for <https://github.com/rust-lang/rust/issues/117945>: zero-sized operations.
-#![feature(strict_provenance)]
 
 use std::ptr;
 

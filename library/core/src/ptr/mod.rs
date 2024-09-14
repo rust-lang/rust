@@ -290,8 +290,6 @@
 //! represent the tagged pointer as an actual pointer and not a `usize`*. For instance:
 //!
 //! ```
-//! #![feature(strict_provenance)]
-//!
 //! unsafe {
 //!     // A flag we want to pack into our pointer
 //!     static HAS_DATA: usize = 0x1;

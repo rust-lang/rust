@@ -4,7 +4,6 @@
 #![feature(slice_as_chunks)]
 #![feature(slice_partition_dedup)]
 #![feature(layout_for_ptr)]
-#![feature(strict_provenance)]
 
 use std::{ptr, slice};
 

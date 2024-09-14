@@ -549,7 +549,7 @@ impl<T: ?Sized> *mut T {
     /// ## Examples
     ///
     /// ```
-    /// #![feature(ptr_mask, strict_provenance)]
+    /// #![feature(ptr_mask)]
     /// let mut v = 17_u32;
     /// let ptr: *mut u32 = &mut v;
     ///

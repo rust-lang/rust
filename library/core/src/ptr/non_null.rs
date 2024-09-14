@@ -748,7 +748,6 @@ impl<T: ?Sized> NonNull<T> {
     /// *Incorrect* usage:
     ///
     /// ```rust,no_run
-    /// #![feature(strict_provenance)]
     /// use std::ptr::NonNull;
     ///
     /// let ptr1 = NonNull::new(Box::into_raw(Box::new(0u8))).unwrap();

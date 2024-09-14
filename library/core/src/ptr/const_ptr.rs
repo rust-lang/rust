@@ -552,7 +552,7 @@ impl<T: ?Sized> *const T {
     /// ## Examples
     ///
     /// ```
-    /// #![feature(ptr_mask, strict_provenance)]
+    /// #![feature(ptr_mask)]
     /// let v = 17_u32;
     /// let ptr: *const u32 = &v;
     ///
