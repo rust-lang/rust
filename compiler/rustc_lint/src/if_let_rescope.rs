@@ -23,7 +23,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,edition2021
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,edition2021")]
+    // ``` // Trick tidy's backtick count. Remove on bootstrap bump. #[cfg(not(bootstrap))]
     /// #![feature(if_let_rescope)]
     /// #![warn(if_let_rescope)]
     /// #![allow(unused_variables)]

@@ -1870,7 +1870,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    // ``` // Trick tidy's backtick count. Remove on bootstrap bump. #[cfg(not(bootstrap))]
     /// #![deny(elided_named_lifetimes)]
     /// struct Foo;
     /// impl Foo {
