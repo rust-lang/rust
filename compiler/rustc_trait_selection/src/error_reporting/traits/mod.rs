@@ -344,7 +344,8 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
 
     write!(
         w,
-        " {} for {}",
+        " {}{} for {}",
+        tcx.impl_polarity(impl_def_id).as_str(),
         trait_ref.print_only_trait_path(),
         tcx.type_of(impl_def_id).instantiate_identity()
     )
