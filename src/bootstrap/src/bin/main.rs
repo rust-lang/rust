@@ -171,11 +171,14 @@ fn check_version(config: &Config) -> Option<String> {
         if io::stdout().is_terminal() && !config.dry_run() {
             t!(fs::write(warned_id_path, latest_change_id.to_string()));
         }
-    } else {
+
+        Some(msg)
+    } else if config.is_verbose() {
         msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
         msg.push_str("NOTE: to silence this warning, ");
         msg.push_str(&format!("add `change-id = {latest_change_id}` at the top of `config.toml`"));
-    };
-
-    Some(msg)
+        Some(msg)
+    } else {
+        None
+    }
 }
