@@ -174,6 +174,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             // Include projections defined on supertraits.
                             projection_bounds.push((pred, span));
                         }
+
+                        self.check_elaborated_projection_mentions_input_lifetimes(pred, span);
                     }
                     _ => (),
                 }
@@ -357,6 +359,54 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?region_bound);
 
         Ty::new_dynamic(tcx, existential_predicates, region_bound, representation)
+    }
+
+    /// Check that elaborating the principal of a trait ref doesn't lead to projections
+    /// that are unconstrained. This can happen because an otherwise unconstrained
+    /// *type variable* can be substituted with a type that has late-bound regions. See
+    /// `elaborated-predicates-unconstrained-late-bound.rs` for a test.
+    fn check_elaborated_projection_mentions_input_lifetimes(
+        &self,
+        pred: ty::PolyProjectionPredicate<'tcx>,
+        span: Span,
+    ) {
+        let tcx = self.tcx();
+
+        // Find any late-bound regions declared in `ty` that are not
+        // declared in the trait-ref or assoc_item. These are not well-formed.
+        //
+        // Example:
+        //
+        //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
+        //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
+        let late_bound_in_projection_term =
+            tcx.collect_constrained_late_bound_regions(pred.map_bound(|pred| pred.projection_term));
+        let late_bound_in_term =
+            tcx.collect_referenced_late_bound_regions(pred.map_bound(|pred| pred.term));
+        debug!(?late_bound_in_projection_term);
+        debug!(?late_bound_in_term);
+
+        // FIXME: point at the type params that don't have appropriate lifetimes:
+        // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
+        //                         ----  ----     ^^^^^^^
+        // NOTE(associated_const_equality): This error should be impossible to trigger
+        //                                  with associated const equality constraints.
+        self.validate_late_bound_regions(
+            late_bound_in_projection_term,
+            late_bound_in_term,
+            |br_name| {
+                let item_name = tcx.item_name(pred.projection_def_id());
+                struct_span_code_err!(
+                    self.dcx(),
+                    span,
+                    E0582,
+                    "binding for associated type `{}` references {}, \
+                             which does not appear in the trait input types",
+                    item_name,
+                    br_name
+                )
+            },
+        );
     }
 }
 
