@@ -172,11 +172,33 @@ pub(crate) fn spawn_and_wait(mut cmd: Command) {
     }
 }
 
-pub(crate) fn remove_dir_if_exists(path: &Path) {
-    match fs::remove_dir_all(&path) {
-        Ok(()) => {}
-        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
-        Err(err) => panic!("Failed to remove {path}: {err}", path = path.display()),
+/// Create the specified directory if it doesn't exist yet and delete all contents.
+pub(crate) fn ensure_empty_dir(path: &Path) {
+    fs::create_dir_all(path).unwrap();
+    let read_dir = match fs::read_dir(&path) {
+        Ok(read_dir) => read_dir,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {
+            return;
+        }
+        Err(err) => {
+            panic!("Failed to read contents of {path}: {err}", path = path.display())
+        }
+    };
+    for entry in read_dir {
+        let entry = entry.unwrap();
+        if entry.file_type().unwrap().is_dir() {
+            match fs::remove_dir_all(entry.path()) {
+                Ok(()) => {}
+                Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+                Err(err) => panic!("Failed to remove {path}: {err}", path = entry.path().display()),
+            }
+        } else {
+            match fs::remove_file(entry.path()) {
+                Ok(()) => {}
+                Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+                Err(err) => panic!("Failed to remove {path}: {err}", path = entry.path().display()),
+            }
+        }
     }
 }
 

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::path::{Dirs, RelPath};
-use crate::utils::{copy_dir_recursively, remove_dir_if_exists, spawn_and_wait};
+use crate::utils::{copy_dir_recursively, ensure_empty_dir, spawn_and_wait};
 
 pub(crate) fn prepare(dirs: &Dirs) {
     RelPath::DOWNLOAD.ensure_exists(dirs);
@@ -202,8 +202,7 @@ pub(crate) fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, ta
 
     eprintln!("[COPY] {crate_name} source");
 
-    remove_dir_if_exists(target_dir);
-    fs::create_dir_all(target_dir).unwrap();
+    ensure_empty_dir(target_dir);
     copy_dir_recursively(source_dir, target_dir);
 
     init_git_repo(target_dir);

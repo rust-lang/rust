@@ -6,7 +6,7 @@ use crate::path::{Dirs, RelPath};
 use crate::prepare::apply_patches;
 use crate::rustc_info::{get_default_sysroot, get_file_name};
 use crate::utils::{
-    remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler, LogGroup,
+    ensure_empty_dir, spawn_and_wait, try_hard_link, CargoProject, Compiler, LogGroup,
 };
 use crate::{config, CodegenBackend, SysrootKind};
 
@@ -24,8 +24,7 @@ pub(crate) fn build_sysroot(
 
     let dist_dir = RelPath::DIST.to_path(dirs);
 
-    remove_dir_if_exists(&dist_dir);
-    fs::create_dir_all(&dist_dir).unwrap();
+    ensure_empty_dir(&dist_dir);
     fs::create_dir_all(dist_dir.join("bin")).unwrap();
     fs::create_dir_all(dist_dir.join("lib")).unwrap();
 
@@ -223,7 +222,7 @@ fn build_clif_sysroot_for_triple(
     if !config::get_bool("keep_sysroot") {
         // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
         // recompilation as they are not affected by changes in cg_clif.
-        remove_dir_if_exists(&build_dir.join("deps"));
+        ensure_empty_dir(&build_dir.join("deps"));
     }
 
     // Build sysroot
