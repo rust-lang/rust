@@ -15,3 +15,11 @@ rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 serde = { version = "1.0.125", features = ["derive"] }
 # tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+rustc_use_parallel_compiler = [
+    'rustc_data_structures/rustc_use_parallel_compiler',
+    'rustc_error_messages/rustc_use_parallel_compiler',
+]
+# tidy-alphabetical-end

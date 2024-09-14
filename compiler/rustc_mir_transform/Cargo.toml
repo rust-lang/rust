@@ -29,3 +29,12 @@ rustc_type_ir = { path = "../rustc_type_ir" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 # tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+rustc_use_parallel_compiler = [
+    'rustc_data_structures/rustc_use_parallel_compiler',
+    'rustc_errors/rustc_use_parallel_compiler',
+    'rustc_middle/rustc_use_parallel_compiler',
+]
+# tidy-alphabetical-end
