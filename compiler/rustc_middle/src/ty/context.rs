@@ -3171,7 +3171,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
     }
 
-    pub fn needs_coroutine_by_move_body_def_id(self, def_id: LocalDefId) -> bool {
+    pub fn needs_coroutine_by_move_body_def_id(self, def_id: DefId) -> bool {
         if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
             self.coroutine_kind(def_id)
             && let ty::Coroutine(_, args) = self.type_of(def_id).instantiate_identity().kind()
