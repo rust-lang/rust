@@ -47,11 +47,6 @@ source "$ci_dir/shared.sh"
 
 export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
-# suppress change-tracker warnings on CI
-if [ "$CI" != "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set change-id=99999999"
-fi
-
 if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf || \
   isCiBranch automation/bors/try; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
