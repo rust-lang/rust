@@ -1106,7 +1106,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// [memory layout]: self#memory-layout
     /// [`Layout`]: crate::Layout
-    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "none")]
+    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
@@ -1216,7 +1216,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     /// [`Layout`]: crate::Layout
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "none")]
+    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
     pub const unsafe fn from_non_null_in(raw: NonNull<T>, alloc: A) -> Self {
@@ -1332,7 +1332,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "none")]
+    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     #[inline]
     pub fn into_non_null(b: Self) -> NonNull<T> {
         // SAFETY: `Box` is guaranteed to be non-null.
@@ -1447,7 +1447,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "none")]
+    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     #[inline]
     pub fn into_non_null_with_allocator(b: Self) -> (NonNull<T>, A) {
         let (ptr, alloc) = Box::into_raw_with_allocator(b);
