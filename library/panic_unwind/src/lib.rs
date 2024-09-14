@@ -19,8 +19,6 @@
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(std_internals)]
-#![feature(strict_provenance)]
-#![feature(exposed_provenance)]
 #![feature(rustc_attrs)]
 #![panic_runtime]
 #![feature(panic_runtime)]

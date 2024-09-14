@@ -1,4 +1,4 @@
-#![feature(strict_provenance)]
+#![feature(strict_provenance_lints)]
 #![deny(lossy_provenance_casts)]
 
 fn main() {
