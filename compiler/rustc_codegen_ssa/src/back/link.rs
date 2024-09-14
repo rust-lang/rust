@@ -3044,7 +3044,7 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
             "iphonesimulator"
                 if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") => {
             }
-            "macosx10.15"
+            "macosx"
                 if sdkroot.contains("iPhoneOS.platform")
                     || sdkroot.contains("iPhoneSimulator.platform") => {}
             "watchos"
