@@ -314,9 +314,9 @@ fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
     right: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (left, left_len) = this.project_to_simd(left)?;
+    let (right, right_len) = this.project_to_simd(right)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
@@ -344,9 +344,9 @@ fn bin_op_simd_float_all<'tcx, F: rustc_apfloat::Float>(
     right: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (left, left_len) = this.project_to_simd(left)?;
+    let (right, right_len) = this.project_to_simd(right)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
@@ -430,8 +430,8 @@ fn unary_op_ss<'tcx>(
     op: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (op, op_len) = this.project_to_simd(op)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, op_len);
 
@@ -453,8 +453,8 @@ fn unary_op_ps<'tcx>(
     op: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (op, op_len) = this.project_to_simd(op)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, op_len);
 
@@ -491,8 +491,8 @@ fn shift_simd_by_scalar<'tcx>(
     which: ShiftOp,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (left, left_len) = this.project_to_simd(left)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     // `right` may have a different length, and we only care about its
@@ -547,9 +547,9 @@ fn shift_simd_by_simd<'tcx>(
     which: ShiftOp,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (left, left_len) = this.project_to_simd(left)?;
+    let (right, right_len) = this.project_to_simd(right)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
@@ -613,9 +613,9 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
     rounding: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (left, left_len) = this.project_to_simd(left)?;
+    let (right, right_len) = this.project_to_simd(right)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
@@ -643,8 +643,8 @@ fn round_all<'tcx, F: rustc_apfloat::Float>(
     rounding: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (op, op_len) = this.project_to_simd(op)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, op_len);
 
@@ -695,8 +695,8 @@ fn convert_float_to_int<'tcx>(
     rnd: rustc_apfloat::Round,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (op, op_len) = this.project_to_simd(op)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     // Output must be *signed* integers.
     assert!(matches!(dest.layout.field(this, 0).ty.kind(), ty::Int(_)));
@@ -729,8 +729,8 @@ fn int_abs<'tcx>(
     op: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (op, op_len) = this.project_to_simd(op)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(op_len, dest_len);
 
@@ -906,8 +906,8 @@ fn test_bits_masked<'tcx>(
 ) -> InterpResult<'tcx, (bool, bool)> {
     assert_eq!(op.layout, mask.layout);
 
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (mask, mask_len) = this.operand_to_simd(mask)?;
+    let (op, op_len) = this.project_to_simd(op)?;
+    let (mask, mask_len) = this.project_to_simd(mask)?;
 
     assert_eq!(op_len, mask_len);
 
@@ -937,8 +937,8 @@ fn test_high_bits_masked<'tcx>(
 ) -> InterpResult<'tcx, (bool, bool)> {
     assert_eq!(op.layout, mask.layout);
 
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (mask, mask_len) = this.operand_to_simd(mask)?;
+    let (op, op_len) = this.project_to_simd(op)?;
+    let (mask, mask_len) = this.project_to_simd(mask)?;
 
     assert_eq!(op_len, mask_len);
 
@@ -967,8 +967,8 @@ fn mask_load<'tcx>(
     mask: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (mask, mask_len) = this.operand_to_simd(mask)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (mask, mask_len) = this.project_to_simd(mask)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, mask_len);
 
@@ -1000,8 +1000,8 @@ fn mask_store<'tcx>(
     mask: &OpTy<'tcx>,
     value: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (mask, mask_len) = this.operand_to_simd(mask)?;
-    let (value, value_len) = this.operand_to_simd(value)?;
+    let (mask, mask_len) = this.project_to_simd(mask)?;
+    let (value, value_len) = this.project_to_simd(value)?;
 
     assert_eq!(value_len, mask_len);
 
@@ -1014,9 +1014,12 @@ fn mask_store<'tcx>(
         let value = this.project_index(&value, i)?;
 
         if this.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
+            // *Non-inbounds* pointer arithmetic to compute the destination.
+            // (That's why we can't use a place projection.)
             let ptr = ptr.wrapping_offset(value.layout.size * i, &this.tcx);
-            // Unaligned copy, which is what we want.
-            this.mem_copy(value.ptr(), ptr, value.layout.size, /*nonoverlapping*/ true)?;
+            // Deref the pointer *unaligned*, and do the copy.
+            let dest = this.ptr_to_mplace_unaligned(ptr, value.layout);
+            this.copy_op(&value, &dest)?;
         }
     }
 
@@ -1095,9 +1098,9 @@ fn pmulhrsw<'tcx>(
     right: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (left, left_len) = this.project_to_simd(left)?;
+    let (right, right_len) = this.project_to_simd(right)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
@@ -1313,9 +1316,9 @@ fn psign<'tcx>(
     right: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.mplace_to_simd(dest)?;
+    let (left, left_len) = this.project_to_simd(left)?;
+    let (right, right_len) = this.project_to_simd(right)?;
+    let (dest, dest_len) = this.project_to_simd(dest)?;
 
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);

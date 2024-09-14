@@ -1602,7 +1602,7 @@ fn check_fn_or_method<'tcx>(
                     function: def_id,
                     // Note that the `param_idx` of the output type is
                     // one greater than the index of the last input type.
-                    param_idx: idx.try_into().unwrap(),
+                    param_idx: idx,
                 }),
                 ty,
             )
@@ -1611,7 +1611,7 @@ fn check_fn_or_method<'tcx>(
     for (idx, ty) in sig.inputs_and_output.iter().enumerate() {
         wfcx.register_wf_obligation(
             arg_span(idx),
-            Some(WellFormedLoc::Param { function: def_id, param_idx: idx.try_into().unwrap() }),
+            Some(WellFormedLoc::Param { function: def_id, param_idx: idx }),
             ty.into(),
         );
     }

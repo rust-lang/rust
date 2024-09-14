@@ -3237,16 +3237,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // then the tuple must be the one containing capture types.
                 let is_upvar_tys_infer_tuple = if !matches!(ty.kind(), ty::Tuple(..)) {
                     false
+                } else if let ObligationCauseCode::BuiltinDerived(data) = &*data.parent_code {
+                    let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
+                    let nested_ty = parent_trait_ref.skip_binder().self_ty();
+                    matches!(nested_ty.kind(), ty::Coroutine(..))
+                        || matches!(nested_ty.kind(), ty::Closure(..))
                 } else {
-                    if let ObligationCauseCode::BuiltinDerived(data) = &*data.parent_code {
-                        let parent_trait_ref =
-                            self.resolve_vars_if_possible(data.parent_trait_pred);
-                        let nested_ty = parent_trait_ref.skip_binder().self_ty();
-                        matches!(nested_ty.kind(), ty::Coroutine(..))
-                            || matches!(nested_ty.kind(), ty::Closure(..))
-                    } else {
-                        false
-                    }
+                    false
                 };
 
                 if !is_upvar_tys_infer_tuple {

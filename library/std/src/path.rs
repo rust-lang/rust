@@ -1153,6 +1153,21 @@ impl FusedIterator for Ancestors<'_> {}
 /// ```
 ///
 /// Which method works best depends on what kind of situation you're in.
+///
+/// Note that `PathBuf` does not always sanitize arguments, for example
+/// [`push`] allows paths built from strings which include separators:
+///
+/// use std::path::PathBuf;
+///
+/// let mut path = PathBuf::new();
+///
+/// path.push(r"C:\");
+/// path.push("windows");
+/// path.push(r"..\otherdir");
+/// path.push("system32");
+///
+/// The behaviour of `PathBuf` may be changed to a panic on such inputs
+/// in the future. [`Extend::extend`] should be used to add multi-part paths.
 #[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PathBuf {
@@ -1391,6 +1406,9 @@ impl PathBuf {
     /// `file_name`. The new path will be a sibling of the original path.
     /// (That is, it will have the same parent.)
     ///
+    /// The argument is not sanitized, so can include separators. This
+    /// behaviour may be changed to a panic in the future.
+    ///
     /// [`self.file_name`]: Path::file_name
     /// [`pop`]: PathBuf::pop
     ///
@@ -1411,6 +1429,12 @@ impl PathBuf {
     ///
     /// buf.set_file_name("baz");
     /// assert!(buf == PathBuf::from("/baz"));
+    ///
+    /// buf.set_file_name("../b/c.txt");
+    /// assert!(buf == PathBuf::from("/../b/c.txt"));
+    ///
+    /// buf.set_file_name("baz");
+    /// assert!(buf == PathBuf::from("/../b/baz"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_file_name<S: AsRef<OsStr>>(&mut self, file_name: S) {

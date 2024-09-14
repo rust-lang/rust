@@ -14,6 +14,5 @@ struct Wrapper<const C: <i32 as Trait>::Type> {}
 
 impl<const C: usize> Wrapper<C> {}
 //~^ ERROR the constant `C` is not of type `<i32 as Trait>::Type`
-//~| ERROR: mismatched types
 
 fn main() {}

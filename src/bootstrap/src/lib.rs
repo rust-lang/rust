@@ -145,6 +145,7 @@ pub struct Build {
     rustfmt_info: GitInfo,
     enzyme_info: GitInfo,
     in_tree_llvm_info: GitInfo,
+    in_tree_gcc_info: GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
     doc_tests: DocTests,
@@ -315,6 +316,7 @@ impl Build {
 
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = GitInfo::new(false, &src.join("src/llvm-project"));
+        let in_tree_gcc_info = GitInfo::new(false, &src.join("src/gcc"));
 
         let initial_target_libdir_str = if config.dry_run() {
             "/dummy/lib/path/to/lib/".to_string()
@@ -407,6 +409,7 @@ impl Build {
             rustfmt_info,
             enzyme_info,
             in_tree_llvm_info,
+            in_tree_gcc_info,
             cc: RefCell::new(HashMap::new()),
             cxx: RefCell::new(HashMap::new()),
             ar: RefCell::new(HashMap::new()),
@@ -763,6 +766,10 @@ impl Build {
 
     fn enzyme_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(&*target.triple).join("enzyme")
+    }
+
+    fn gcc_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("gcc")
     }
 
     fn lld_out(&self, target: TargetSelection) -> PathBuf {

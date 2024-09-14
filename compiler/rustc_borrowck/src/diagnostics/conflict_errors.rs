@@ -1999,19 +1999,32 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         let used_in_call = matches!(
             explanation,
-            BorrowExplanation::UsedLater(LaterUseKind::Call | LaterUseKind::Other, _call_span, _)
+            BorrowExplanation::UsedLater(
+                _,
+                LaterUseKind::Call | LaterUseKind::Other,
+                _call_span,
+                _
+            )
         );
         if !used_in_call {
             debug!("not later used in call");
             return;
         }
+        if matches!(
+            self.body.local_decls[issued_borrow.borrowed_place.local].local_info(),
+            LocalInfo::IfThenRescopeTemp { .. }
+        ) {
+            // A better suggestion will be issued by the `if_let_rescope` lint
+            return;
+        }
 
-        let use_span =
-            if let BorrowExplanation::UsedLater(LaterUseKind::Other, use_span, _) = explanation {
-                Some(use_span)
-            } else {
-                None
-            };
+        let use_span = if let BorrowExplanation::UsedLater(_, LaterUseKind::Other, use_span, _) =
+            explanation
+        {
+            Some(use_span)
+        } else {
+            None
+        };
 
         let outer_call_loc =
             if let TwoPhaseActivation::ActivatedAt(loc) = issued_borrow.activation_location {
@@ -2574,33 +2587,31 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
             fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
-                if e.span.contains(self.capture_span) {
-                    if let hir::ExprKind::Closure(&hir::Closure {
+                if e.span.contains(self.capture_span)
+                    && let hir::ExprKind::Closure(&hir::Closure {
                         kind: hir::ClosureKind::Closure,
                         body,
                         fn_arg_span,
                         fn_decl: hir::FnDecl { inputs, .. },
                         ..
                     }) = e.kind
-                        && let hir::Node::Expr(body) = self.tcx.hir_node(body.hir_id)
-                    {
-                        self.suggest_arg = "this: &Self".to_string();
-                        if inputs.len() > 0 {
-                            self.suggest_arg.push_str(", ");
-                        }
-                        self.in_closure = true;
-                        self.closure_arg_span = fn_arg_span;
-                        self.visit_expr(body);
-                        self.in_closure = false;
+                    && let hir::Node::Expr(body) = self.tcx.hir_node(body.hir_id)
+                {
+                    self.suggest_arg = "this: &Self".to_string();
+                    if inputs.len() > 0 {
+                        self.suggest_arg.push_str(", ");
                     }
+                    self.in_closure = true;
+                    self.closure_arg_span = fn_arg_span;
+                    self.visit_expr(body);
+                    self.in_closure = false;
                 }
-                if let hir::Expr { kind: hir::ExprKind::Path(path), .. } = e {
-                    if let hir::QPath::Resolved(_, hir::Path { segments: [seg], .. }) = path
-                        && seg.ident.name == kw::SelfLower
-                        && self.in_closure
-                    {
-                        self.closure_change_spans.push(e.span);
-                    }
+                if let hir::Expr { kind: hir::ExprKind::Path(path), .. } = e
+                    && let hir::QPath::Resolved(_, hir::Path { segments: [seg], .. }) = path
+                    && seg.ident.name == kw::SelfLower
+                    && self.in_closure
+                {
+                    self.closure_change_spans.push(e.span);
                 }
                 hir::intravisit::walk_expr(self, e);
             }
@@ -2609,8 +2620,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let hir::Pat { kind: hir::PatKind::Binding(_, hir_id, _ident, _), .. } =
                     local.pat
                     && let Some(init) = local.init
-                {
-                    if let hir::Expr {
+                    && let hir::Expr {
                         kind:
                             hir::ExprKind::Closure(&hir::Closure {
                                 kind: hir::ClosureKind::Closure,
@@ -2618,11 +2628,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             }),
                         ..
                     } = init
-                        && init.span.contains(self.capture_span)
-                    {
-                        self.closure_local_id = Some(*hir_id);
-                    }
+                    && init.span.contains(self.capture_span)
+                {
+                    self.closure_local_id = Some(*hir_id);
                 }
+
                 hir::intravisit::walk_local(self, local);
             }
 
@@ -2862,7 +2872,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // and `move` will not help here.
             (
                 Some(name),
-                BorrowExplanation::UsedLater(LaterUseKind::ClosureCapture, var_or_use_span, _),
+                BorrowExplanation::UsedLater(_, LaterUseKind::ClosureCapture, var_or_use_span, _),
             ) if borrow_spans.for_coroutine() || borrow_spans.for_closure() => self
                 .report_escaping_closure_capture(
                     borrow_spans,

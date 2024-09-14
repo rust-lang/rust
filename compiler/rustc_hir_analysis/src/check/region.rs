@@ -472,7 +472,12 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
         hir::ExprKind::If(cond, then, Some(otherwise)) => {
             let expr_cx = visitor.cx;
-            visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
+            let data = if expr.span.at_least_rust_2024() && visitor.tcx.features().if_let_rescope {
+                ScopeData::IfThenRescope
+            } else {
+                ScopeData::IfThen
+            };
+            visitor.enter_scope(Scope { id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
@@ -482,7 +487,12 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
         hir::ExprKind::If(cond, then, None) => {
             let expr_cx = visitor.cx;
-            visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
+            let data = if expr.span.at_least_rust_2024() && visitor.tcx.features().if_let_rescope {
+                ScopeData::IfThenRescope
+            } else {
+                ScopeData::IfThen
+            };
+            visitor.enter_scope(Scope { id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
             visitor.visit_expr(cond);
             visitor.visit_expr(then);

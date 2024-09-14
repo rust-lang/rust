@@ -9,6 +9,5 @@ impl Fn(&isize) for Error {
     //~^ ERROR associated function in `impl` without body
     //~| ERROR method `foo` is not a member of trait `Fn` [E0407]
     //~| ERROR associated type `B` not found for `Self` [E0220]
-    //~| ERROR: associated type `B` not found for `Self`
 }
 fn main() {}

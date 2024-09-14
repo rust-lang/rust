@@ -156,7 +156,7 @@ impl<T> [T] {
         if let [first, ..] = self { Some(first) } else { None }
     }
 
-    /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
+    /// Returns a mutable reference to the first element of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -529,7 +529,7 @@ impl<T> [T] {
             None
         } else {
             // SAFETY: We manually verified the bounds of the slice.
-            // FIXME: Without const traits, we need this instead of `get_unchecked`.
+            // FIXME(const-hack): Without const traits, we need this instead of `get_unchecked`.
             let last = unsafe { self.split_at_unchecked(self.len() - N).1 };
 
             // SAFETY: We explicitly check for the correct number of elements,
@@ -563,7 +563,7 @@ impl<T> [T] {
             None
         } else {
             // SAFETY: We manually verified the bounds of the slice.
-            // FIXME: Without const traits, we need this instead of `get_unchecked`.
+            // FIXME(const-hack): Without const traits, we need this instead of `get_unchecked`.
             let last = unsafe { self.split_at_mut_unchecked(self.len() - N).1 };
 
             // SAFETY: We explicitly check for the correct number of elements,
@@ -1952,7 +1952,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
-        // HACK: the const function `from_raw_parts` is used to make this
+        // FIXME(const-hack): the const function `from_raw_parts` is used to make this
         // function const; previously the implementation used
         // `(self.get_unchecked(..mid), self.get_unchecked(mid..))`
 

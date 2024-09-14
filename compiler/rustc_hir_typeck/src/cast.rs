@@ -732,12 +732,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             _ => return Err(CastError::NonScalar),
         };
-        if let ty::Adt(adt_def, _) = *self.expr_ty.kind() {
-            if adt_def.did().krate != LOCAL_CRATE {
-                if adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive) {
-                    return Err(CastError::ForeignNonExhaustiveAdt);
-                }
-            }
+        if let ty::Adt(adt_def, _) = *self.expr_ty.kind()
+            && adt_def.did().krate != LOCAL_CRATE
+            && adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive)
+        {
+            return Err(CastError::ForeignNonExhaustiveAdt);
         }
         match (t_from, t_cast) {
             // These types have invariants! can't cast into them.

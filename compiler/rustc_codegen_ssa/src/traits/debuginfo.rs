@@ -80,6 +80,7 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
         fragment: Option<Range<Size>>,
     );
     fn set_dbg_loc(&mut self, dbg_loc: Self::DILocation);
+    fn clear_dbg_loc(&mut self);
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self);
     fn set_var_name(&mut self, value: Self::Value, name: &str);
 }

@@ -562,13 +562,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             tcx.const_param_default(param.def_id)
                                 .instantiate(tcx, preceding_args)
                                 .into()
+                        } else if infer_args {
+                            self.lowerer.ct_infer(Some(param), self.span).into()
                         } else {
-                            if infer_args {
-                                self.lowerer.ct_infer(Some(param), self.span).into()
-                            } else {
-                                // We've already errored above about the mismatch.
-                                ty::Const::new_misc_error(tcx).into()
-                            }
+                            // We've already errored above about the mismatch.
+                            ty::Const::new_misc_error(tcx).into()
                         }
                     }
                 }

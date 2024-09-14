@@ -220,9 +220,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             let parent_def_id = self.current_def_id_parent;
                             let node_id = self.next_node_id();
                             // HACK(min_generic_const_args): see lower_anon_const
-                            if !self.tcx.features().const_arg_path
-                                || !expr.is_potential_trivial_const_arg()
-                            {
+                            if !expr.is_potential_trivial_const_arg() {
                                 self.create_def(
                                     parent_def_id,
                                     node_id,

@@ -1,3 +1,5 @@
+//@ compile-flags: -Znext-solver=coherence
+
 trait Mirror {
     type Assoc;
 }

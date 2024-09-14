@@ -1183,10 +1183,10 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         //
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.
-        if tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Abort {
-            if tcx.is_lang_item(did, LangItem::DropInPlace) {
-                return false;
-            }
+        if tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Abort
+            && tcx.is_lang_item(did, LangItem::DropInPlace)
+        {
+            return false;
         }
     }
 

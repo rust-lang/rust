@@ -706,7 +706,13 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::If(cond, then, else_opt) => ExprKind::If {
                 if_then_scope: region::Scope {
                     id: then.hir_id.local_id,
-                    data: region::ScopeData::IfThen,
+                    data: {
+                        if expr.span.at_least_rust_2024() && tcx.features().if_let_rescope {
+                            region::ScopeData::IfThenRescope
+                        } else {
+                            region::ScopeData::IfThen
+                        }
+                    },
                 },
                 cond: self.mirror_expr(cond),
                 then: self.mirror_expr(then),

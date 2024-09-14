@@ -42,14 +42,14 @@ pub trait Direction {
     ) where
         A: GenKillAnalysis<'tcx>;
 
-    fn visit_results_in_block<'mir, 'tcx, F, R>(
-        state: &mut F,
+    fn visit_results_in_block<'mir, 'tcx, D, R>(
+        state: &mut D,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
         results: &mut R,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, R, FlowState = F>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = D>,
     ) where
-        R: ResultsVisitable<'tcx, FlowState = F>;
+        R: ResultsVisitable<'tcx, Domain = D>;
 
     fn join_state_into_successors_of<'tcx, A>(
         analysis: &mut A,
@@ -186,14 +186,14 @@ impl Direction for Backward {
         analysis.apply_statement_effect(state, statement, location);
     }
 
-    fn visit_results_in_block<'mir, 'tcx, F, R>(
-        state: &mut F,
+    fn visit_results_in_block<'mir, 'tcx, D, R>(
+        state: &mut D,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
         results: &mut R,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, R, FlowState = F>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = D>,
     ) where
-        R: ResultsVisitable<'tcx, FlowState = F>,
+        R: ResultsVisitable<'tcx, Domain = D>,
     {
         results.reset_to_block_entry(state, block);
 
@@ -444,9 +444,9 @@ impl Direction for Forward {
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
         results: &mut R,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, R, FlowState = F>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, R, Domain = F>,
     ) where
-        R: ResultsVisitable<'tcx, FlowState = F>,
+        R: ResultsVisitable<'tcx, Domain = F>,
     {
         results.reset_to_block_entry(state, block);
 

@@ -174,16 +174,14 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
         // If the current node is a function, has const stability attributes and if it doesn not have an intrinsic ABI,
         // check if the function/method is const or the parent impl block is const
-        if let (Some(const_span), Some(fn_sig)) = (const_span, fn_sig) {
-            if fn_sig.header.abi != Abi::RustIntrinsic && !fn_sig.header.is_const() {
-                if !self.in_trait_impl
-                    || (self.in_trait_impl && !self.tcx.is_const_fn_raw(def_id.to_def_id()))
-                {
-                    self.tcx
-                        .dcx()
-                        .emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span, const_span });
-                }
-            }
+        if let (Some(const_span), Some(fn_sig)) = (const_span, fn_sig)
+            && fn_sig.header.abi != Abi::RustIntrinsic
+            && !fn_sig.header.is_const()
+            && (!self.in_trait_impl || !self.tcx.is_const_fn_raw(def_id.to_def_id()))
+        {
+            self.tcx
+                .dcx()
+                .emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span, const_span });
         }
 
         // `impl const Trait for Type` items forward their const stability to their

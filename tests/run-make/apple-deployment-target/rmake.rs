@@ -55,11 +55,8 @@ fn main() {
         rustc().env(env_var, example_version).run();
         minos("foo.o", example_version);
 
-        // FIXME(madsmtm): Doesn't work on Mac Catalyst and the simulator.
-        if !target().contains("macabi") && !target().contains("sim") {
-            rustc().env_remove(env_var).run();
-            minos("foo.o", default_version);
-        }
+        rustc().env_remove(env_var).run();
+        minos("foo.o", default_version);
     });
 
     // Test that version makes it to the linker when linking dylibs.
@@ -81,9 +78,8 @@ fn main() {
         rustc().env(env_var, example_version).run();
         minos("libfoo.dylib", example_version);
 
-        // FIXME(madsmtm): Deployment target is not currently passed properly to linker
-        // rustc().env_remove(env_var).run();
-        // minos("libfoo.dylib", default_version);
+        rustc().env_remove(env_var).run();
+        minos("libfoo.dylib", default_version);
 
         // Test with ld64 instead
 
@@ -105,14 +101,23 @@ fn main() {
             rustc
         };
 
-        // FIXME(madsmtm): Doesn't work on watchOS for some reason?
-        if !target().contains("watchos") {
+        // FIXME(madsmtm): Xcode's version of Clang seems to require a minimum
+        // version of 9.0 on aarch64-apple-watchos for some reason? Which is
+        // odd, because the first Aarch64 watch was Apple Watch Series 4,
+        // which runs on as low as watchOS 5.0.
+        //
+        // You can see Clang's behaviour by running:
+        // ```
+        // echo "int main() { return 0; }" > main.c
+        // xcrun --sdk watchos clang --target=aarch64-apple-watchos main.c
+        // vtool -show a.out
+        // ```
+        if target() != "aarch64-apple-watchos" {
             rustc().env(env_var, example_version).run();
             minos("foo", example_version);
 
-            // FIXME(madsmtm): Deployment target is not currently passed properly to linker
-            // rustc().env_remove(env_var).run();
-            // minos("foo", default_version);
+            rustc().env_remove(env_var).run();
+            minos("foo", default_version);
         }
 
         // Test with ld64 instead
@@ -148,10 +153,7 @@ fn main() {
         rustc().env(env_var, higher_example_version).run();
         minos("foo.o", higher_example_version);
 
-        // FIXME(madsmtm): Doesn't work on Mac Catalyst and the simulator.
-        if !target().contains("macabi") && !target().contains("sim") {
-            rustc().env_remove(env_var).run();
-            minos("foo.o", default_version);
-        }
+        rustc().env_remove(env_var).run();
+        minos("foo.o", default_version);
     });
 }
