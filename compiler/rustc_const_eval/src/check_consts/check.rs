@@ -538,8 +538,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // final value.
                             // Note: This is only sound if every local that has a `StorageDead` has a
                             // `StorageDead` in every control flow path leading to a `return` terminator.
-                            // The good news is that interning will detect if any unexpected mutable
-                            // pointer slips through.
+                            // If anything slips through, there's no safety net -- safe code can create
+                            // references to variants of `!Freeze` enums as long as that variant is `Freeze`,
+                            // so interning can't protect us here.
                             if self.local_is_transient(place.local) {
                                 self.check_op(ops::TransientCellBorrow);
                             } else {

@@ -10,7 +10,6 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, Abi};
@@ -18,13 +17,12 @@ use tracing::{debug, instrument, trace};
 
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
 use crate::const_eval::CheckAlignment;
-use crate::errors::{self, ConstEvalError, DanglingPtrInFinal};
 use crate::interpret::{
     create_static_alloc, eval_nullary_intrinsic, intern_const_alloc_recursive, throw_exhaust,
     CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpError,
     InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup,
 };
-use crate::CTRL_C_RECEIVED;
+use crate::{errors, CTRL_C_RECEIVED};
 
 // Returns a pointer to where the result lives
 #[instrument(level = "trace", skip(ecx, body))]
@@ -100,18 +98,15 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
             return Err(ecx
                 .tcx
                 .dcx()
-                .emit_err(DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind })
+                .emit_err(errors::DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind })
                 .into());
         }
         Err(InternResult::FoundBadMutablePointer) => {
-            // only report mutable pointers if there were no dangling pointers
-            let err_diag = errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind };
-            ecx.tcx.emit_node_span_lint(
-                lint::builtin::CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
-                ecx.machine.best_lint_scope(*ecx.tcx),
-                err_diag.span,
-                err_diag,
-            )
+            return Err(ecx
+                .tcx
+                .dcx()
+                .emit_err(errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind })
+                .into());
         }
     }
 
@@ -443,7 +438,12 @@ fn report_eval_error<'tcx>(
         error,
         DUMMY_SP,
         || super::get_span_and_frames(ecx.tcx, ecx.stack()),
-        |span, frames| ConstEvalError { span, error_kind: kind, instance, frame_notes: frames },
+        |span, frames| errors::ConstEvalError {
+            span,
+            error_kind: kind,
+            instance,
+            frame_notes: frames,
+        },
     )
 }
 

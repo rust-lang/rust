@@ -579,6 +579,10 @@ fn register_builtins(store: &mut LintStore) {
          <https://github.com/rust-lang/rust/issues/107457> for more information",
     );
     store.register_removed("writes_through_immutable_pointer", "converted into hard error");
+    store.register_removed(
+        "const_eval_mutable_ptr_in_final_value",
+        "partially allowed now, otherwise turned into a hard error",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
