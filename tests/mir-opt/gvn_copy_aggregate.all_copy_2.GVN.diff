@@ -1,0 +1,64 @@
+- // MIR for `all_copy_2` before GVN
++ // MIR for `all_copy_2` after GVN
+  
+  fn all_copy_2(_1: &&AllCopy) -> AllCopy {
+      debug v => _1;
+      let mut _0: AllCopy;
+      let _2: i32;
+      let mut _5: i32;
+      let mut _6: u64;
+      let mut _7: [i8; 3];
+      let mut _8: &AllCopy;
+      let mut _9: &AllCopy;
+      let mut _10: &AllCopy;
+      scope 1 {
+          debug a => _2;
+          let _3: u64;
+          scope 2 {
+              debug b => _3;
+              let _4: [i8; 3];
+              scope 3 {
+                  debug c => _4;
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _8 = deref_copy (*_1);
++         nop;
++         _8 = copy (*_1);
+          _2 = copy ((*_8).0: i32);
+-         StorageLive(_3);
+-         _9 = deref_copy (*_1);
+-         _3 = copy ((*_9).1: u64);
+-         StorageLive(_4);
+-         _10 = deref_copy (*_1);
+-         _4 = copy ((*_10).2: [i8; 3]);
++         nop;
++         _9 = copy _8;
++         _3 = copy ((*_8).1: u64);
++         nop;
++         _10 = copy _8;
++         _4 = copy ((*_8).2: [i8; 3]);
+          StorageLive(_5);
+          _5 = copy _2;
+          StorageLive(_6);
+          _6 = copy _3;
+          StorageLive(_7);
+          _7 = copy _4;
+-         _0 = AllCopy { a: move _5, b: move _6, c: move _7 };
++         _0 = copy (*_8);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         StorageDead(_2);
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  
