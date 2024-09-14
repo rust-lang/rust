@@ -206,6 +206,15 @@ impl<'a> LintExtractor<'a> {
                     None => return Ok(lints),
                 }
             };
+
+            fn strip_prefix_and_suffix<'a>(
+                line: &'a str,
+                prefix: &str,
+                suffix: &str,
+            ) -> Option<&'a str> {
+                line.strip_prefix(prefix)?.strip_suffix(suffix)
+            }
+
             // Read the lint.
             let mut doc_lines = Vec::new();
             let (doc, name) = loop {
@@ -216,6 +225,20 @@ impl<'a> LintExtractor<'a> {
                             doc_lines.push(text.to_string());
                         } else if line == "///" {
                             doc_lines.push("".to_string());
+                        } else if let Some(_) = strip_prefix_and_suffix(
+                            line,
+                            r##"#[cfg_attr(bootstrap, doc = ""##,
+                            r##"")]"##,
+                        ) {
+                            // Ignore bootstrap-only parts of the doc comment.
+                            continue;
+                        } else if let Some(text) = strip_prefix_and_suffix(
+                            line,
+                            r##"#[cfg_attr(not(bootstrap), doc = ""##,
+                            r##"")]"##,
+                        ) {
+                            // Include not-bootstrap parts of the doc comment.
+                            doc_lines.push(text.to_string())
                         } else if line.starts_with("// ") {
                             // Ignore comments.
                             continue;
