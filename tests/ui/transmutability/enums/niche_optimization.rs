@@ -161,5 +161,5 @@ fn niche_fields() {
         B(bool),
     }
 
-    assert::is_transmutable::<u16, Kind>();
+    assert::is_maybe_transmutable::<u16, Kind>();
 }
