@@ -38,7 +38,7 @@ pub(super) fn build_projection<'tcx>(
     ]
 }
 
-struct ElaborateBoxDerefVisitor<'tcx, 'a> {
+struct ElaborateBoxDerefVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     unique_did: DefId,
     nonnull_did: DefId,
@@ -46,7 +46,7 @@ struct ElaborateBoxDerefVisitor<'tcx, 'a> {
     patch: MirPatch<'tcx>,
 }
 
-impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
+impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

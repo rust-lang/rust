@@ -166,12 +166,12 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     }
 }
 
-struct LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
+struct LocalReturnTyVisitor<'a, 'mir, 'tcx> {
     kind: LocalKind,
-    checker: &'ck mut Checker<'mir, 'tcx>,
+    checker: &'a mut Checker<'mir, 'tcx>,
 }
 
-impl<'ck, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
+impl<'a, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'a, 'mir, 'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
             ty::FnPtr(..) => {}

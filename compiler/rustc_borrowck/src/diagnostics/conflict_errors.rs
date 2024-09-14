@@ -3553,7 +3553,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         location: Location,
         mpi: MovePathIndex,
     ) -> (Vec<MoveSite>, Vec<Location>) {
-        fn predecessor_locations<'tcx, 'a>(
+        fn predecessor_locations<'a, 'tcx>(
             body: &'a mir::Body<'tcx>,
             location: Location,
         ) -> impl Iterator<Item = Location> + Captures<'tcx> + 'a {

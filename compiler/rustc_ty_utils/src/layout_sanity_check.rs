@@ -28,7 +28,7 @@ pub(super) fn sanity_check_layout<'tcx>(
     }
 
     /// Yields non-ZST fields of the type
-    fn non_zst_fields<'tcx, 'a>(
+    fn non_zst_fields<'a, 'tcx>(
         cx: &'a LayoutCx<'tcx, TyCtxt<'tcx>>,
         layout: &'a TyAndLayout<'tcx>,
     ) -> impl Iterator<Item = (Size, TyAndLayout<'tcx>)> + 'a {

@@ -68,7 +68,7 @@ macro_rules! parse_by_kind {
 }
 pub(crate) use parse_by_kind;
 
-impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
+impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
     /// Expressions should only ever be matched on after preparsing them. This removes extra scopes
     /// we don't care about.
     fn preparse(&self, expr_id: ExprId) -> ExprId {

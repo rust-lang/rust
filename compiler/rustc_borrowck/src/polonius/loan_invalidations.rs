@@ -32,18 +32,18 @@ pub(super) fn emit_loan_invalidations<'tcx>(
     visitor.visit_body(body);
 }
 
-struct LoanInvalidationsGenerator<'cx, 'tcx> {
+struct LoanInvalidationsGenerator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    all_facts: &'cx mut AllFacts,
-    location_table: &'cx LocationTable,
-    body: &'cx Body<'tcx>,
-    dominators: &'cx Dominators<BasicBlock>,
-    borrow_set: &'cx BorrowSet<'tcx>,
+    all_facts: &'a mut AllFacts,
+    location_table: &'a LocationTable,
+    body: &'a Body<'tcx>,
+    dominators: &'a Dominators<BasicBlock>,
+    borrow_set: &'a BorrowSet<'tcx>,
 }
 
 /// Visits the whole MIR and generates `invalidates()` facts.
 /// Most of the code implementing this was stolen from `borrow_check/mod.rs`.
-impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         self.check_activations(location);
 
@@ -212,7 +212,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> LoanInvalidationsGenerator<'cx, 'tcx> {
+impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
     /// Simulates mutation of a place.
     fn mutate_place(&mut self, location: Location, place: Place<'tcx>, kind: AccessDepth) {
         self.access_place(

@@ -98,7 +98,7 @@ fn find_duplicates(body: &Body<'_>) -> FxHashMap<BasicBlock, BasicBlock> {
     duplicates
 }
 
-struct BasicBlockHashable<'tcx, 'a> {
+struct BasicBlockHashable<'a, 'tcx> {
     basic_block_data: &'a BasicBlockData<'tcx>,
 }
 
