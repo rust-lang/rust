@@ -1098,7 +1098,7 @@ impl<'a> Parser<'a> {
                     let dot_span = span
                         .with_lo(span.lo + ident1_len)
                         .with_hi(span.lo + ident1_len + BytePos(1));
-                    let ident2_span = self.token.span.with_lo(span.lo + ident1_len + BytePos(1));
+                    let ident2_span = span.with_lo(span.lo + ident1_len + BytePos(1));
                     (ident1_span, dot_span, ident2_span)
                 } else {
                     (span, span, span)
