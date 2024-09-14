@@ -1848,8 +1848,8 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         return;
     }
     crate_version_copy_button.onclick = () => {
-        let crate_version = crate_version_copy_button.parentElement.textContent;
-        let snippet = `${window.currentCrate} = "${crate_version}"`;
+        const crate_version = crate_version_copy_button.parentElement.textContent;
+        const snippet = `${window.currentCrate} = "${crate_version}"`;
 
         copyContentToClipboard(snippet);
         copyButtonAnimation(crate_version_copy_button);
