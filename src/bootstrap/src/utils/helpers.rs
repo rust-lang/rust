@@ -533,3 +533,41 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Resu
     };
     f.set_times(times)
 }
+
+pub struct HashStamp {
+    pub path: PathBuf,
+    pub hash: Option<Vec<u8>>,
+}
+
+impl HashStamp {
+    pub fn new(path: PathBuf, hash: Option<&str>) -> Self {
+        HashStamp { path, hash: hash.map(|s| s.as_bytes().to_owned()) }
+    }
+
+    pub fn is_done(&self) -> bool {
+        match fs::read(&self.path) {
+            Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => false,
+            Err(e) => {
+                panic!("failed to read stamp file `{}`: {}", self.path.display(), e);
+            }
+        }
+    }
+
+    pub fn remove(&self) -> io::Result<()> {
+        match fs::remove_file(&self.path) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    pub fn write(&self) -> io::Result<()> {
+        fs::write(&self.path, self.hash.as_deref().unwrap_or(b""))
+    }
+}
