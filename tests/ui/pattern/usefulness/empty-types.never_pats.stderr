@@ -11,7 +11,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:49:9
    |
 LL |         _ => {}
-   |         ^ matches no values because `!` is uninhabited
+   |         ^------
+   |         |
+   |         matches no values because `!` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
@@ -24,7 +27,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:52:9
    |
 LL |         _x => {}
-   |         ^^ matches no values because `!` is uninhabited
+   |         ^^------
+   |         |
+   |         matches no values because `!` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -47,7 +53,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:83:9
    |
 LL |         _ => {}
-   |         ^ matches no values because `!` is uninhabited
+   |         ^------
+   |         |
+   |         matches no values because `!` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -120,7 +129,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:132:13
    |
 LL |             _ => {}
-   |             ^ matches no values because `Void` is uninhabited
+   |             ^------
+   |             |
+   |             matches no values because `Void` is uninhabited
+   |             help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -128,7 +140,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:135:13
    |
 LL |             _ if false => {}
-   |             ^ matches no values because `Void` is uninhabited
+   |             ^---------------
+   |             |
+   |             matches no values because `Void` is uninhabited
+   |             help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -155,7 +170,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:199:13
    |
 LL |             _ => {}
-   |             ^ matches no values because `!` is uninhabited
+   |             ^------
+   |             |
+   |             matches no values because `!` is uninhabited
+   |             help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -163,7 +181,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:204:13
    |
 LL |             _ => {}
-   |             ^ matches no values because `!` is uninhabited
+   |             ^------
+   |             |
+   |             matches no values because `!` is uninhabited
+   |             help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -171,7 +192,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:209:13
    |
 LL |             _ => {}
-   |             ^ matches no values because `!` is uninhabited
+   |             ^------
+   |             |
+   |             matches no values because `!` is uninhabited
+   |             help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -179,7 +203,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:214:13
    |
 LL |             _ => {}
-   |             ^ matches no values because `!` is uninhabited
+   |             ^------
+   |             |
+   |             matches no values because `!` is uninhabited
+   |             help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -187,7 +214,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:220:13
    |
 LL |             _ => {}
-   |             ^ matches no values because `!` is uninhabited
+   |             ^------
+   |             |
+   |             matches no values because `!` is uninhabited
+   |             help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -195,7 +225,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:281:9
    |
 LL |         _ => {}
-   |         ^ matches no values because `!` is uninhabited
+   |         ^------
+   |         |
+   |         matches no values because `!` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -476,7 +509,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:603:9
    |
 LL |         _ => {}
-   |         ^ matches no values because `!` is uninhabited
+   |         ^------
+   |         |
+   |         matches no values because `!` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -484,7 +520,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:606:9
    |
 LL |         _x => {}
-   |         ^^ matches no values because `!` is uninhabited
+   |         ^^------
+   |         |
+   |         matches no values because `!` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -492,7 +531,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:609:9
    |
 LL |         _ if false => {}
-   |         ^ matches no values because `!` is uninhabited
+   |         ^---------------
+   |         |
+   |         matches no values because `!` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
@@ -500,7 +542,10 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:612:9
    |
 LL |         _x if false => {}
-   |         ^^ matches no values because `!` is uninhabited
+   |         ^^---------------
+   |         |
+   |         matches no values because `!` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
