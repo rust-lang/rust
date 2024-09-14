@@ -180,7 +180,13 @@ pub trait Emitter: Translate {
 
     /// Emit a notification that an artifact has been output.
     /// Currently only supported for the JSON format.
-    fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
+    fn emit_artifact_notification(
+        &mut self,
+        _path: &Path,
+        _artifact_type: &str,
+        _api_hash: Option<&str>,
+    ) {
+    }
 
     /// Emit a report about future breakage.
     /// Currently only supported for the JSON format.

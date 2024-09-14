@@ -128,8 +128,13 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
-        let data = ArtifactNotification { artifact: path, emit: artifact_type };
+    fn emit_artifact_notification(
+        &mut self,
+        path: &Path,
+        artifact_type: &str,
+        api_hash: Option<&str>,
+    ) {
+        let data = ArtifactNotification { artifact: path, emit: artifact_type, api_hash };
         let result = self.emit(EmitTyped::Artifact(data));
         if let Err(e) = result {
             panic!("failed to print notification: {e:?}");
@@ -262,6 +267,7 @@ struct ArtifactNotification<'a> {
     artifact: &'a Path,
     /// What kind of artifact we're emitting.
     emit: &'a str,
+    api_hash: Option<&'a str>,
 }
 
 #[derive(Serialize)]

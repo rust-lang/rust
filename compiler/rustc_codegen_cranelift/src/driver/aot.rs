@@ -299,7 +299,7 @@ fn produce_final_output_artifacts(
                     // for single cgu file is renamed to drop cgu specific suffix
                     // so we regenerate it the same way
                     let path = crate_output.path(ty);
-                    sess.dcx().emit_artifact_notification(path.as_path(), descr);
+                    sess.dcx().emit_artifact_notification(path.as_path(), descr, None);
                 }
             });
         } else {
@@ -307,7 +307,7 @@ fn produce_final_output_artifacts(
                 module.for_each_output(|path, ty| {
                     if sess.opts.output_types.contains_key(&ty) {
                         let descr = ty.shorthand();
-                        sess.dcx().emit_artifact_notification(&path, descr);
+                        sess.dcx().emit_artifact_notification(&path, descr, None);
                     }
                 });
             }

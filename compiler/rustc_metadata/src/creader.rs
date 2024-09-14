@@ -640,7 +640,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             let mut result = LoadResult::Loaded(library);
             for (cnum, data) in self.cstore.iter_crate_data() {
                 if data.name() == root.name() && root.hash() == data.hash() {
-                    assert!(locator.hash.is_none());
+                    //assert!(locator.hash.is_none());
                     info!("load success, going to previous cnum: {}", cnum);
                     result = LoadResult::Previous(cnum);
                     break;

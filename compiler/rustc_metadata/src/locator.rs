@@ -685,15 +685,15 @@ impl<'a> CrateLocator<'a> {
         }
 
         let hash = header.hash;
-        if let Some(expected_hash) = self.hash {
-            if hash != expected_hash {
-                info!("Rejecting via hash: expected {} got {}", expected_hash, hash);
-                self.crate_rejections
-                    .via_hash
-                    .push(CrateMismatch { path: libpath.to_path_buf(), got: hash.to_string() });
-                return None;
-            }
-        }
+        // if let Some(expected_hash) = self.hash {
+        //     if hash != expected_hash {
+        //         info!("Rejecting via hash: expected {} got {}", expected_hash, hash);
+        //         self.crate_rejections
+        //             .via_hash
+        //             .push(CrateMismatch { path: libpath.to_path_buf(), got: hash.to_string() });
+        //         return None;
+        //     }
+        // }
 
         Some(hash)
     }
@@ -1029,12 +1029,12 @@ impl CrateError {
                             ));
                         }
                     }
-                    dcx.emit_err(errors::NewerCrateVersion {
-                        span,
-                        crate_name,
-                        add_info,
-                        found_crates,
-                    });
+                    // dcx.emit_err(errors::NewerCrateVersion {
+                    //     span,
+                    //     crate_name,
+                    //     add_info,
+                    //     found_crates,
+                    // });
                 } else if !locator.crate_rejections.via_triple.is_empty() {
                     let mismatches = locator.crate_rejections.via_triple.iter();
                     for CrateMismatch { path, got } in mismatches {

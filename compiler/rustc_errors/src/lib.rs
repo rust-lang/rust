@@ -1032,8 +1032,13 @@ impl<'a> DiagCtxtHandle<'a> {
         self.inner.borrow_mut().emit_diagnostic(diagnostic, self.tainted_with_errors)
     }
 
-    pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
-        self.inner.borrow_mut().emitter.emit_artifact_notification(path, artifact_type);
+    pub fn emit_artifact_notification(
+        &self,
+        path: &Path,
+        artifact_type: &str,
+        api_hash: Option<&str>,
+    ) {
+        self.inner.borrow_mut().emitter.emit_artifact_notification(path, artifact_type, api_hash);
     }
 
     pub fn emit_future_breakage_report(&self) {

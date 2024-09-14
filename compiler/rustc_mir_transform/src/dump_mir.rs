@@ -27,7 +27,7 @@ pub fn emit_mir(tcx: TyCtxt<'_>) -> io::Result<()> {
             let mut f = io::BufWriter::new(File::create(&path)?);
             write_mir_pretty(tcx, None, &mut f)?;
             if tcx.sess.opts.json_artifact_notifications {
-                tcx.dcx().emit_artifact_notification(&path, "mir");
+                tcx.dcx().emit_artifact_notification(&path, "mir", None);
             }
         }
     }

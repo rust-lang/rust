@@ -146,7 +146,7 @@ pub fn link_binary(
                 }
             }
             if sess.opts.json_artifact_notifications {
-                sess.dcx().emit_artifact_notification(&out_filename, "link");
+                sess.dcx().emit_artifact_notification(&out_filename, "link", None);
             }
 
             if sess.prof.enabled() {
