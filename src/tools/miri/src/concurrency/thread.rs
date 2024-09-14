@@ -898,7 +898,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // This allocation will be deallocated when the thread dies, so it is not in read-only memory.
             alloc.mutability = Mutability::Mut;
             // Create a fresh allocation with this content.
-            let ptr = this.allocate_raw_ptr(alloc, MiriMemoryKind::Tls.into())?;
+            let ptr = this.insert_allocation(alloc, MiriMemoryKind::Tls.into())?;
             this.machine.threads.set_thread_local_alloc(def_id, ptr);
             Ok(ptr)
         }

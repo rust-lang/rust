@@ -363,14 +363,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 //
                 // Linux: https://www.unix.com/man-page/linux/3/reallocarray/
                 // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=reallocarray
-                match nmemb.checked_mul(size) {
+                match this.compute_size_in_bytes(Size::from_bytes(size), nmemb) {
                     None => {
                         let einval = this.eval_libc("ENOMEM");
                         this.set_last_error(einval)?;
                         this.write_null(dest)?;
                     }
                     Some(len) => {
-                        let res = this.realloc(ptr, len)?;
+                        let res = this.realloc(ptr, len.bytes())?;
                         this.write_pointer(res, dest)?;
                     }
                 }

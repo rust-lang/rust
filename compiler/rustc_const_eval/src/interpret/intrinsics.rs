@@ -216,7 +216,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
             }
             sym::write_bytes => {
-                self.write_bytes_intrinsic(&args[0], &args[1], &args[2])?;
+                self.write_bytes_intrinsic(&args[0], &args[1], &args[2], "write_bytes")?;
             }
             sym::compare_bytes => {
                 let result = self.compare_bytes_intrinsic(&args[0], &args[1], &args[2])?;
@@ -634,11 +634,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(())
     }
 
-    pub(crate) fn write_bytes_intrinsic(
+    pub fn write_bytes_intrinsic(
         &mut self,
         dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         byte: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        name: &'static str,
     ) -> InterpResult<'tcx> {
         let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap())?;
 
@@ -648,9 +649,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
-        let len = self.compute_size_in_bytes(layout.size, count).ok_or_else(|| {
-            err_ub_custom!(fluent::const_eval_size_overflow, name = "write_bytes")
-        })?;
+        let len = self
+            .compute_size_in_bytes(layout.size, count)
+            .ok_or_else(|| err_ub_custom!(fluent::const_eval_size_overflow, name = name))?;
 
         let bytes = std::iter::repeat(byte).take(len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)

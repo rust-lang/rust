@@ -290,7 +290,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Computes the total size of this access, `count * elem_size`,
     /// checking for overflow beyond isize::MAX.
-    pub(super) fn compute_size_in_bytes(&self, elem_size: Size, count: u64) -> Option<Size> {
+    pub fn compute_size_in_bytes(&self, elem_size: Size, count: u64) -> Option<Size> {
         // `checked_mul` applies `u64` limits independent of the target pointer size... but the
         // subsequent check for `max_size_of_val` means we also handle 32bit targets correctly.
         // (We cannot use `Size::checked_mul` as that enforces `obj_size_bound` as the limit, which
