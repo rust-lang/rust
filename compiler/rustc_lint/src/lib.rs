@@ -579,6 +579,7 @@ fn register_builtins(store: &mut LintStore) {
          <https://github.com/rust-lang/rust/issues/107457> for more information",
     );
     store.register_removed("writes_through_immutable_pointer", "converted into hard error");
+    store.register_removed("unsupported_calling_conventions", "converted into hard error");
 }
 
 fn register_internals(store: &mut LintStore) {
