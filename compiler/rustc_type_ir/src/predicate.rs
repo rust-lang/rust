@@ -196,6 +196,17 @@ impl fmt::Display for ImplPolarity {
     }
 }
 
+impl ImplPolarity {
+    /// The polarity marker in front of the impl trait ref if applicable.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Positive => "",
+            Self::Negative => "!",
+            Self::Reservation => "",
+        }
+    }
+}
+
 /// Polarity for a trait predicate. May either be negative or positive.
 /// Distinguished from [`ImplPolarity`] since we never compute goals with
 /// "reservation" level.
