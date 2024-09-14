@@ -113,14 +113,14 @@ impl Determinacy {
 /// This enum is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
 #[derive(Clone, Copy, Debug)]
-enum Scope<'a> {
+enum Scope<'ra> {
     DeriveHelpers(LocalExpnId),
     DeriveHelpersCompat,
-    MacroRules(MacroRulesScopeRef<'a>),
+    MacroRules(MacroRulesScopeRef<'ra>),
     CrateRoot,
     // The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     // lint if it should be reported.
-    Module(Module<'a>, Option<NodeId>),
+    Module(Module<'ra>, Option<NodeId>),
     MacroUsePrelude,
     BuiltinAttrs,
     ExternPrelude,
@@ -134,7 +134,7 @@ enum Scope<'a> {
 /// This enum is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
 #[derive(Clone, Copy, Debug)]
-enum ScopeSet<'a> {
+enum ScopeSet<'ra> {
     /// All scopes with the given namespace.
     All(Namespace),
     /// Crate root, then extern prelude (used for mixed 2015-2018 mode in macros).
@@ -143,7 +143,7 @@ enum ScopeSet<'a> {
     Macro(MacroKind),
     /// All scopes with the given namespace, used for partially performing late resolution.
     /// The node id enables lints and is used for reporting them.
-    Late(Namespace, Module<'a>, Option<NodeId>),
+    Late(Namespace, Module<'ra>, Option<NodeId>),
 }
 
 /// Everything you need to know about a name's location to resolve it.
@@ -151,17 +151,17 @@ enum ScopeSet<'a> {
 /// This struct is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
 #[derive(Clone, Copy, Debug)]
-struct ParentScope<'a> {
-    module: Module<'a>,
+struct ParentScope<'ra> {
+    module: Module<'ra>,
     expansion: LocalExpnId,
-    macro_rules: MacroRulesScopeRef<'a>,
-    derives: &'a [ast::Path],
+    macro_rules: MacroRulesScopeRef<'ra>,
+    derives: &'ra [ast::Path],
 }
 
-impl<'a> ParentScope<'a> {
+impl<'ra> ParentScope<'ra> {
     /// Creates a parent scope with the passed argument used as the module scope component,
     /// and other scope components set to default empty values.
-    fn module(module: Module<'a>, resolver: &Resolver<'a, '_>) -> ParentScope<'a> {
+    fn module(module: Module<'ra>, resolver: &Resolver<'ra, '_>) -> ParentScope<'ra> {
         ParentScope {
             module,
             expansion: LocalExpnId::ROOT,
@@ -169,6 +169,29 @@ impl<'a> ParentScope<'a> {
             derives: &[],
         }
     }
+}
+
+#[derive(Copy, Debug, Clone)]
+struct InvocationParent {
+    parent_def: LocalDefId,
+    pending_anon_const_info: Option<PendingAnonConstInfo>,
+    impl_trait_context: ImplTraitContext,
+    in_attr: bool,
+}
+
+impl InvocationParent {
+    const ROOT: Self = Self {
+        parent_def: CRATE_DEF_ID,
+        pending_anon_const_info: None,
+        impl_trait_context: ImplTraitContext::Existential,
+        in_attr: false,
+    };
+}
+
+#[derive(Copy, Debug, Clone)]
+struct PendingAnonConstInfo {
+    id: NodeId,
+    span: Span,
 }
 
 #[derive(Copy, Debug, Clone)]
@@ -203,7 +226,7 @@ struct BindingError {
 }
 
 #[derive(Debug)]
-enum ResolutionError<'a> {
+enum ResolutionError<'ra> {
     /// Error E0401: can't use type or const parameters from outer item.
     GenericParamsFromOuterItem(Res, HasGenericParams, DefKind),
     /// Error E0403: the name is already used for a type or const parameter in this generic
@@ -216,7 +239,7 @@ enum ResolutionError<'a> {
     /// Error E0438: const is not a member of trait.
     ConstNotMemberOfTrait(Ident, String, Option<Symbol>),
     /// Error E0408: variable `{}` is not bound in all patterns.
-    VariableNotBoundInPattern(BindingError, ParentScope<'a>),
+    VariableNotBoundInPattern(BindingError, ParentScope<'ra>),
     /// Error E0409: variable `{}` is bound in inconsistent ways within the same match arm.
     VariableBoundWithDifferentMode(Symbol, Span),
     /// Error E0415: identifier is bound more than once in this parameter list.
@@ -236,7 +259,7 @@ enum ResolutionError<'a> {
         segment: Option<Symbol>,
         label: String,
         suggestion: Option<Suggestion>,
-        module: Option<ModuleOrUniformRoot<'a>>,
+        module: Option<ModuleOrUniformRoot<'ra>>,
     },
     /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
@@ -377,12 +400,12 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
 /// items are visible in their whole block, while `Res`es only from the place they are defined
 /// forward.
 #[derive(Debug, Copy, Clone)]
-enum LexicalScopeBinding<'a> {
-    Item(NameBinding<'a>),
+enum LexicalScopeBinding<'ra> {
+    Item(NameBinding<'ra>),
     Res(Res),
 }
 
-impl<'a> LexicalScopeBinding<'a> {
+impl<'ra> LexicalScopeBinding<'ra> {
     fn res(self) -> Res {
         match self {
             LexicalScopeBinding::Item(binding) => binding.res(),
@@ -392,9 +415,9 @@ impl<'a> LexicalScopeBinding<'a> {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-enum ModuleOrUniformRoot<'a> {
+enum ModuleOrUniformRoot<'ra> {
     /// Regular module.
-    Module(Module<'a>),
+    Module(Module<'ra>),
 
     /// Virtual module that denotes resolution in crate root with fallback to extern prelude.
     CrateRootAndExternPrelude,
@@ -410,8 +433,8 @@ enum ModuleOrUniformRoot<'a> {
 }
 
 #[derive(Debug)]
-enum PathResult<'a> {
-    Module(ModuleOrUniformRoot<'a>),
+enum PathResult<'ra> {
+    Module(ModuleOrUniformRoot<'ra>),
     NonModule(PartialRes),
     Indeterminate,
     Failed {
@@ -432,20 +455,20 @@ enum PathResult<'a> {
         /// ```
         ///
         /// In this case, `module` will point to `a`.
-        module: Option<ModuleOrUniformRoot<'a>>,
+        module: Option<ModuleOrUniformRoot<'ra>>,
         /// The segment name of target
         segment_name: Symbol,
     },
 }
 
-impl<'a> PathResult<'a> {
+impl<'ra> PathResult<'ra> {
     fn failed(
         ident: Ident,
         is_error_from_last_segment: bool,
         finalize: bool,
-        module: Option<ModuleOrUniformRoot<'a>>,
+        module: Option<ModuleOrUniformRoot<'ra>>,
         label_and_suggestion: impl FnOnce() -> (String, Option<Suggestion>),
-    ) -> PathResult<'a> {
+    ) -> PathResult<'ra> {
         let (label, suggestion) =
             if finalize { label_and_suggestion() } else { (String::new(), None) };
         PathResult::Failed {
@@ -518,7 +541,7 @@ impl BindingKey {
     }
 }
 
-type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution<'a>>>>;
+type Resolutions<'ra> = RefCell<FxIndexMap<BindingKey, &'ra RefCell<NameResolution<'ra>>>>;
 
 /// One node in the tree of modules.
 ///
@@ -531,15 +554,15 @@ type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution
 /// * curly-braced block with statements
 ///
 /// You can use [`ModuleData::kind`] to determine the kind of module this is.
-struct ModuleData<'a> {
+struct ModuleData<'ra> {
     /// The direct parent module (it may not be a `mod`, however).
-    parent: Option<Module<'a>>,
+    parent: Option<Module<'ra>>,
     /// What kind of module this is, because this may not be a `mod`.
     kind: ModuleKind,
 
     /// Mapping between names and their (possibly in-progress) resolutions in this module.
     /// Resolutions in modules from other crates are not populated until accessed.
-    lazy_resolutions: Resolutions<'a>,
+    lazy_resolutions: Resolutions<'ra>,
     /// True if this is a module from other crate that needs to be populated on access.
     populate_on_access: Cell<bool>,
 
@@ -549,11 +572,11 @@ struct ModuleData<'a> {
     /// Whether `#[no_implicit_prelude]` is active.
     no_implicit_prelude: bool,
 
-    glob_importers: RefCell<Vec<Import<'a>>>,
-    globs: RefCell<Vec<Import<'a>>>,
+    glob_importers: RefCell<Vec<Import<'ra>>>,
+    globs: RefCell<Vec<Import<'ra>>>,
 
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
-    traits: RefCell<Option<Box<[(Ident, NameBinding<'a>)]>>>,
+    traits: RefCell<Option<Box<[(Ident, NameBinding<'ra>)]>>>,
 
     /// Span of the module itself. Used for error reporting.
     span: Span,
@@ -565,11 +588,11 @@ struct ModuleData<'a> {
 /// so we can use referential equality to compare them.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
-struct Module<'a>(Interned<'a, ModuleData<'a>>);
+struct Module<'ra>(Interned<'ra, ModuleData<'ra>>);
 
-impl<'a> ModuleData<'a> {
+impl<'ra> ModuleData<'ra> {
     fn new(
-        parent: Option<Module<'a>>,
+        parent: Option<Module<'ra>>,
         kind: ModuleKind,
         expansion: ExpnId,
         span: Span,
@@ -595,11 +618,11 @@ impl<'a> ModuleData<'a> {
     }
 }
 
-impl<'a> Module<'a> {
+impl<'ra> Module<'ra> {
     fn for_each_child<'tcx, R, F>(self, resolver: &mut R, mut f: F)
     where
-        R: AsMut<Resolver<'a, 'tcx>>,
-        F: FnMut(&mut R, Ident, Namespace, NameBinding<'a>),
+        R: AsMut<Resolver<'ra, 'tcx>>,
+        F: FnMut(&mut R, Ident, Namespace, NameBinding<'ra>),
     {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
             if let Some(binding) = name_resolution.borrow().binding {
@@ -611,7 +634,7 @@ impl<'a> Module<'a> {
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
     fn ensure_traits<'tcx, R>(self, resolver: &mut R)
     where
-        R: AsMut<Resolver<'a, 'tcx>>,
+        R: AsMut<Resolver<'ra, 'tcx>>,
     {
         let mut traits = self.traits.borrow_mut();
         if traits.is_none() {
@@ -656,7 +679,7 @@ impl<'a> Module<'a> {
         matches!(self.kind, ModuleKind::Def(DefKind::Trait, _, _))
     }
 
-    fn nearest_item_scope(self) -> Module<'a> {
+    fn nearest_item_scope(self) -> Module<'ra> {
         match self.kind {
             ModuleKind::Def(DefKind::Enum | DefKind::Trait, ..) => {
                 self.parent.expect("enum or trait module without a parent")
@@ -686,15 +709,15 @@ impl<'a> Module<'a> {
     }
 }
 
-impl<'a> std::ops::Deref for Module<'a> {
-    type Target = ModuleData<'a>;
+impl<'ra> std::ops::Deref for Module<'ra> {
+    type Target = ModuleData<'ra>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<'a> fmt::Debug for Module<'a> {
+impl<'ra> fmt::Debug for Module<'ra> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.res())
     }
@@ -702,9 +725,9 @@ impl<'a> fmt::Debug for Module<'a> {
 
 /// Records a possibly-private value, type, or module definition.
 #[derive(Clone, Copy, Debug)]
-struct NameBindingData<'a> {
-    kind: NameBindingKind<'a>,
-    ambiguity: Option<(NameBinding<'a>, AmbiguityKind)>,
+struct NameBindingData<'ra> {
+    kind: NameBindingKind<'ra>,
+    ambiguity: Option<(NameBinding<'ra>, AmbiguityKind)>,
     /// Produce a warning instead of an error when reporting ambiguities inside this binding.
     /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
     warn_ambiguity: bool,
@@ -715,26 +738,26 @@ struct NameBindingData<'a> {
 
 /// All name bindings are unique and allocated on a same arena,
 /// so we can use referential equality to compare them.
-type NameBinding<'a> = Interned<'a, NameBindingData<'a>>;
+type NameBinding<'ra> = Interned<'ra, NameBindingData<'ra>>;
 
-trait ToNameBinding<'a> {
-    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> NameBinding<'a>;
+trait ToNameBinding<'ra> {
+    fn to_name_binding(self, arenas: &'ra ResolverArenas<'ra>) -> NameBinding<'ra>;
 }
 
-impl<'a> ToNameBinding<'a> for NameBinding<'a> {
-    fn to_name_binding(self, _: &'a ResolverArenas<'a>) -> NameBinding<'a> {
+impl<'ra> ToNameBinding<'ra> for NameBinding<'ra> {
+    fn to_name_binding(self, _: &'ra ResolverArenas<'ra>) -> NameBinding<'ra> {
         self
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-enum NameBindingKind<'a> {
+enum NameBindingKind<'ra> {
     Res(Res),
-    Module(Module<'a>),
-    Import { binding: NameBinding<'a>, import: Import<'a> },
+    Module(Module<'ra>),
+    Import { binding: NameBinding<'ra>, import: Import<'ra> },
 }
 
-impl<'a> NameBindingKind<'a> {
+impl<'ra> NameBindingKind<'ra> {
     /// Is this a name binding of an import?
     fn is_import(&self) -> bool {
         matches!(*self, NameBindingKind::Import { .. })
@@ -742,12 +765,12 @@ impl<'a> NameBindingKind<'a> {
 }
 
 #[derive(Debug)]
-struct PrivacyError<'a> {
+struct PrivacyError<'ra> {
     ident: Ident,
-    binding: NameBinding<'a>,
+    binding: NameBinding<'ra>,
     dedup_span: Span,
     outermost_res: Option<(Res, Ident)>,
-    parent_scope: ParentScope<'a>,
+    parent_scope: ParentScope<'ra>,
     /// Is the format `use a::{b,c}`?
     single_nested: bool,
 }
@@ -812,18 +835,18 @@ enum AmbiguityErrorMisc {
     None,
 }
 
-struct AmbiguityError<'a> {
+struct AmbiguityError<'ra> {
     kind: AmbiguityKind,
     ident: Ident,
-    b1: NameBinding<'a>,
-    b2: NameBinding<'a>,
+    b1: NameBinding<'ra>,
+    b2: NameBinding<'ra>,
     misc1: AmbiguityErrorMisc,
     misc2: AmbiguityErrorMisc,
     warning: bool,
 }
 
-impl<'a> NameBindingData<'a> {
-    fn module(&self) -> Option<Module<'a>> {
+impl<'ra> NameBindingData<'ra> {
+    fn module(&self) -> Option<Module<'ra>> {
         match self.kind {
             NameBindingKind::Module(module) => Some(module),
             NameBindingKind::Import { binding, .. } => binding.module(),
@@ -947,8 +970,8 @@ impl<'a> NameBindingData<'a> {
 }
 
 #[derive(Default, Clone)]
-struct ExternPreludeEntry<'a> {
-    binding: Option<NameBinding<'a>>,
+struct ExternPreludeEntry<'ra> {
+    binding: Option<NameBinding<'ra>>,
     introduced_by_item: bool,
 }
 
@@ -985,16 +1008,16 @@ impl MacroData {
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
-pub struct Resolver<'a, 'tcx> {
+pub struct Resolver<'ra, 'tcx> {
     tcx: TyCtxt<'tcx>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
 
-    graph_root: Module<'a>,
+    graph_root: Module<'ra>,
 
-    prelude: Option<Module<'a>>,
-    extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
+    prelude: Option<Module<'ra>>,
+    extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'ra>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     field_names: LocalDefIdMap<Vec<Ident>>,
@@ -1004,10 +1027,10 @@ pub struct Resolver<'a, 'tcx> {
     field_visibility_spans: FxHashMap<DefId, Vec<Span>>,
 
     /// All imports known to succeed or fail.
-    determined_imports: Vec<Import<'a>>,
+    determined_imports: Vec<Import<'ra>>,
 
     /// All non-determined imports.
-    indeterminate_imports: Vec<Import<'a>>,
+    indeterminate_imports: Vec<Import<'ra>>,
 
     // Spans for local variables found during pattern resolution.
     // Used for suggestions during error reporting.
@@ -1018,7 +1041,7 @@ pub struct Resolver<'a, 'tcx> {
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     import_res_map: NodeMap<PerNS<Option<Res>>>,
     /// An import will be inserted into this map if it has been used.
-    import_use_map: FxHashMap<Import<'a>, Used>,
+    import_use_map: FxHashMap<Import<'ra>, Used>,
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     label_res_map: NodeMap<NodeId>,
     /// Resolutions for lifetimes.
@@ -1045,13 +1068,13 @@ pub struct Resolver<'a, 'tcx> {
     ///
     /// There will be an anonymous module created around `g` with the ID of the
     /// entry block for `f`.
-    block_map: NodeMap<Module<'a>>,
+    block_map: NodeMap<Module<'ra>>,
     /// A fake module that contains no definition and no prelude. Used so that
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
-    empty_module: Module<'a>,
-    module_map: FxHashMap<DefId, Module<'a>>,
-    binding_parent_modules: FxHashMap<NameBinding<'a>, Module<'a>>,
+    empty_module: Module<'ra>,
+    module_map: FxHashMap<DefId, Module<'ra>>,
+    binding_parent_modules: FxHashMap<NameBinding<'ra>, Module<'ra>>,
 
     underscore_disambiguator: u32,
     /// Disambiguator for anonymous adts.
@@ -1065,57 +1088,57 @@ pub struct Resolver<'a, 'tcx> {
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
-    privacy_errors: Vec<PrivacyError<'a>>,
+    privacy_errors: Vec<PrivacyError<'ra>>,
     /// Ambiguity errors are delayed for deduplication.
-    ambiguity_errors: Vec<AmbiguityError<'a>>,
+    ambiguity_errors: Vec<AmbiguityError<'ra>>,
     /// `use` injections are delayed for better placement and deduplication.
     use_injections: Vec<UseError<'tcx>>,
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)>,
 
-    arenas: &'a ResolverArenas<'a>,
-    dummy_binding: NameBinding<'a>,
-    builtin_types_bindings: FxHashMap<Symbol, NameBinding<'a>>,
-    builtin_attrs_bindings: FxHashMap<Symbol, NameBinding<'a>>,
-    registered_tool_bindings: FxHashMap<Ident, NameBinding<'a>>,
+    arenas: &'ra ResolverArenas<'ra>,
+    dummy_binding: NameBinding<'ra>,
+    builtin_types_bindings: FxHashMap<Symbol, NameBinding<'ra>>,
+    builtin_attrs_bindings: FxHashMap<Symbol, NameBinding<'ra>>,
+    registered_tool_bindings: FxHashMap<Ident, NameBinding<'ra>>,
     /// Binding for implicitly declared names that come with a module,
     /// like `self` (not yet used), or `crate`/`$crate` (for root modules).
-    module_self_bindings: FxHashMap<Module<'a>, NameBinding<'a>>,
+    module_self_bindings: FxHashMap<Module<'ra>, NameBinding<'ra>>,
 
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
     registered_tools: &'tcx RegisteredTools,
-    macro_use_prelude: FxHashMap<Symbol, NameBinding<'a>>,
+    macro_use_prelude: FxHashMap<Symbol, NameBinding<'ra>>,
     macro_map: FxHashMap<DefId, MacroData>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attr: MacroData,
-    local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
-    ast_transform_scopes: FxHashMap<LocalExpnId, Module<'a>>,
+    local_macro_def_scopes: FxHashMap<LocalDefId, Module<'ra>>,
+    ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
     unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
     unused_macro_rules: FxHashMap<(LocalDefId, usize), (Ident, Span)>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
-        Vec<(Ident, MacroKind, ParentScope<'a>, Option<NameBinding<'a>>)>,
+        Vec<(Ident, MacroKind, ParentScope<'ra>, Option<NameBinding<'ra>>)>,
     multi_segment_macro_resolutions:
-        Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>, Option<Res>, Namespace)>,
-    builtin_attrs: Vec<(Ident, ParentScope<'a>)>,
+        Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'ra>, Option<Res>, Namespace)>,
+    builtin_attrs: Vec<(Ident, ParentScope<'ra>)>,
     /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
     containers_deriving_copy: FxHashSet<LocalExpnId>,
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
-    invocation_parent_scopes: FxHashMap<LocalExpnId, ParentScope<'a>>,
+    invocation_parent_scopes: FxHashMap<LocalExpnId, ParentScope<'ra>>,
     /// `macro_rules` scopes *produced* by expanding the macro invocations,
     /// include all the `macro_rules` items and other invocations generated by them.
-    output_macro_rules_scopes: FxHashMap<LocalExpnId, MacroRulesScopeRef<'a>>,
+    output_macro_rules_scopes: FxHashMap<LocalExpnId, MacroRulesScopeRef<'ra>>,
     /// `macro_rules` scopes produced by `macro_rules` item definitions.
-    macro_rules_scopes: FxHashMap<LocalDefId, MacroRulesScopeRef<'a>>,
+    macro_rules_scopes: FxHashMap<LocalDefId, MacroRulesScopeRef<'ra>>,
     /// Helper attributes that are in scope for the given expansion.
-    helper_attrs: FxHashMap<LocalExpnId, Vec<(Ident, NameBinding<'a>)>>,
+    helper_attrs: FxHashMap<LocalExpnId, Vec<(Ident, NameBinding<'ra>)>>,
     /// Ready or in-progress results of resolving paths inside the `#[derive(...)]` attribute
     /// with the given `ExpnId`.
     derive_data: FxHashMap<LocalExpnId, DeriveData>,
@@ -1123,9 +1146,9 @@ pub struct Resolver<'a, 'tcx> {
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Symbol, Span>,
 
-    potentially_unused_imports: Vec<Import<'a>>,
+    potentially_unused_imports: Vec<Import<'ra>>,
 
-    potentially_unnecessary_qualifications: Vec<UnnecessaryQualification<'a>>,
+    potentially_unnecessary_qualifications: Vec<UnnecessaryQualification<'ra>>,
 
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
@@ -1144,7 +1167,7 @@ pub struct Resolver<'a, 'tcx> {
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table,
     /// and how the `impl Trait` fragments were introduced.
-    invocation_parents: FxHashMap<LocalExpnId, (LocalDefId, ImplTraitContext, bool /*in_attr*/)>,
+    invocation_parents: FxHashMap<LocalExpnId, InvocationParent>,
 
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
@@ -1186,28 +1209,29 @@ pub struct Resolver<'a, 'tcx> {
     current_crate_outer_attr_insert_span: Span,
 }
 
-/// Nothing really interesting here; it just provides memory for the rest of the crate.
+/// This provides memory for the rest of the crate. The `'ra` lifetime that is
+/// used by many types in this crate is an abbreviation of `ResolverArenas`.
 #[derive(Default)]
-pub struct ResolverArenas<'a> {
-    modules: TypedArena<ModuleData<'a>>,
-    local_modules: RefCell<Vec<Module<'a>>>,
-    imports: TypedArena<ImportData<'a>>,
-    name_resolutions: TypedArena<RefCell<NameResolution<'a>>>,
+pub struct ResolverArenas<'ra> {
+    modules: TypedArena<ModuleData<'ra>>,
+    local_modules: RefCell<Vec<Module<'ra>>>,
+    imports: TypedArena<ImportData<'ra>>,
+    name_resolutions: TypedArena<RefCell<NameResolution<'ra>>>,
     ast_paths: TypedArena<ast::Path>,
     dropless: DroplessArena,
 }
 
-impl<'a> ResolverArenas<'a> {
+impl<'ra> ResolverArenas<'ra> {
     fn new_module(
-        &'a self,
-        parent: Option<Module<'a>>,
+        &'ra self,
+        parent: Option<Module<'ra>>,
         kind: ModuleKind,
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        module_map: &mut FxHashMap<DefId, Module<'a>>,
-        module_self_bindings: &mut FxHashMap<Module<'a>, NameBinding<'a>>,
-    ) -> Module<'a> {
+        module_map: &mut FxHashMap<DefId, Module<'ra>>,
+        module_self_bindings: &mut FxHashMap<Module<'ra>, NameBinding<'ra>>,
+    ) -> Module<'ra> {
         let module = Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
             parent,
             kind,
@@ -1227,37 +1251,37 @@ impl<'a> ResolverArenas<'a> {
         }
         module
     }
-    fn local_modules(&'a self) -> std::cell::Ref<'a, Vec<Module<'a>>> {
+    fn local_modules(&'ra self) -> std::cell::Ref<'ra, Vec<Module<'ra>>> {
         self.local_modules.borrow()
     }
-    fn alloc_name_binding(&'a self, name_binding: NameBindingData<'a>) -> NameBinding<'a> {
+    fn alloc_name_binding(&'ra self, name_binding: NameBindingData<'ra>) -> NameBinding<'ra> {
         Interned::new_unchecked(self.dropless.alloc(name_binding))
     }
-    fn alloc_import(&'a self, import: ImportData<'a>) -> Import<'a> {
+    fn alloc_import(&'ra self, import: ImportData<'ra>) -> Import<'ra> {
         Interned::new_unchecked(self.imports.alloc(import))
     }
-    fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
+    fn alloc_name_resolution(&'ra self) -> &'ra RefCell<NameResolution<'ra>> {
         self.name_resolutions.alloc(Default::default())
     }
-    fn alloc_macro_rules_scope(&'a self, scope: MacroRulesScope<'a>) -> MacroRulesScopeRef<'a> {
+    fn alloc_macro_rules_scope(&'ra self, scope: MacroRulesScope<'ra>) -> MacroRulesScopeRef<'ra> {
         Interned::new_unchecked(self.dropless.alloc(Cell::new(scope)))
     }
     fn alloc_macro_rules_binding(
-        &'a self,
-        binding: MacroRulesBinding<'a>,
-    ) -> &'a MacroRulesBinding<'a> {
+        &'ra self,
+        binding: MacroRulesBinding<'ra>,
+    ) -> &'ra MacroRulesBinding<'ra> {
         self.dropless.alloc(binding)
     }
-    fn alloc_ast_paths(&'a self, paths: &[ast::Path]) -> &'a [ast::Path] {
+    fn alloc_ast_paths(&'ra self, paths: &[ast::Path]) -> &'ra [ast::Path] {
         self.ast_paths.alloc_from_iter(paths.iter().cloned())
     }
-    fn alloc_pattern_spans(&'a self, spans: impl Iterator<Item = Span>) -> &'a [Span] {
+    fn alloc_pattern_spans(&'ra self, spans: impl Iterator<Item = Span>) -> &'ra [Span] {
         self.dropless.alloc_from_iter(spans)
     }
 }
 
-impl<'a, 'tcx> AsMut<Resolver<'a, 'tcx>> for Resolver<'a, 'tcx> {
-    fn as_mut(&mut self) -> &mut Resolver<'a, 'tcx> {
+impl<'ra, 'tcx> AsMut<Resolver<'ra, 'tcx>> for Resolver<'ra, 'tcx> {
+    fn as_mut(&mut self) -> &mut Resolver<'ra, 'tcx> {
         self
     }
 }
@@ -1341,14 +1365,14 @@ impl<'tcx> Resolver<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Resolver<'a, 'tcx> {
+impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         attrs: &[ast::Attribute],
         crate_span: Span,
         current_crate_outer_attr_insert_span: Span,
-        arenas: &'a ResolverArenas<'a>,
-    ) -> Resolver<'a, 'tcx> {
+        arenas: &'ra ResolverArenas<'ra>,
+    ) -> Resolver<'ra, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
         let mut module_map = FxHashMap::default();
         let mut module_self_bindings = FxHashMap::default();
@@ -1381,8 +1405,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         node_id_to_def_id.insert(CRATE_NODE_ID, crate_feed);
 
         let mut invocation_parents = FxHashMap::default();
-        invocation_parents
-            .insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential, false));
+        invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = tcx
             .sess
@@ -1541,12 +1564,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn new_module(
         &mut self,
-        parent: Option<Module<'a>>,
+        parent: Option<Module<'ra>>,
         kind: ModuleKind,
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-    ) -> Module<'a> {
+    ) -> Module<'ra> {
         let module_map = &mut self.module_map;
         let module_self_bindings = &mut self.module_self_bindings;
         self.arenas.new_module(
@@ -1578,7 +1601,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self.lint_buffer
     }
 
-    pub fn arenas() -> ResolverArenas<'a> {
+    pub fn arenas() -> ResolverArenas<'ra> {
         Default::default()
     }
 
@@ -1719,8 +1742,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn traits_in_scope(
         &mut self,
-        current_trait: Option<Module<'a>>,
-        parent_scope: &ParentScope<'a>,
+        current_trait: Option<Module<'ra>>,
+        parent_scope: &ParentScope<'ra>,
         ctxt: SyntaxContext,
         assoc_item: Option<(Symbol, Namespace)>,
     ) -> Vec<TraitCandidate> {
@@ -1754,7 +1777,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn traits_in_module(
         &mut self,
-        module: Module<'a>,
+        module: Module<'ra>,
         assoc_item: Option<(Symbol, Namespace)>,
         found_traits: &mut Vec<TraitCandidate>,
     ) {
@@ -1776,7 +1799,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // associated items.
     fn trait_may_have_item(
         &mut self,
-        trait_module: Option<Module<'a>>,
+        trait_module: Option<Module<'ra>>,
         assoc_item: Option<(Symbol, Namespace)>,
     ) -> bool {
         match (trait_module, assoc_item) {
@@ -1822,7 +1845,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         BindingKey { ident, ns, disambiguator }
     }
 
-    fn resolutions(&mut self, module: Module<'a>) -> &'a Resolutions<'a> {
+    fn resolutions(&mut self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
         if module.populate_on_access.get() {
             module.populate_on_access.set(false);
             self.build_reduced_graph_external(module);
@@ -1832,9 +1855,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolution(
         &mut self,
-        module: Module<'a>,
+        module: Module<'ra>,
         key: BindingKey,
-    ) -> &'a RefCell<NameResolution<'a>> {
+    ) -> &'ra RefCell<NameResolution<'ra>> {
         *self
             .resolutions(module)
             .borrow_mut()
@@ -1860,14 +1883,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         false
     }
 
-    fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'a>, used: Used) {
+    fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'ra>, used: Used) {
         self.record_use_inner(ident, used_binding, used, used_binding.warn_ambiguity);
     }
 
     fn record_use_inner(
         &mut self,
         ident: Ident,
-        used_binding: NameBinding<'a>,
+        used_binding: NameBinding<'ra>,
         used: Used,
         warn_ambiguity: bool,
     ) {
@@ -1929,7 +1952,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn resolve_crate_root(&mut self, ident: Ident) -> Module<'a> {
+    fn resolve_crate_root(&mut self, ident: Ident) -> Module<'ra> {
         debug!("resolve_crate_root({:?})", ident);
         let mut ctxt = ident.span.ctxt();
         let mark = if ident.name == kw::DollarCrate {
@@ -2002,7 +2025,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         module
     }
 
-    fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'a>) -> Module<'a> {
+    fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'ra>) -> Module<'ra> {
         let mut module = self.expect_module(module.nearest_parent_mod());
         while module.span.ctxt().normalize_to_macros_2_0() != *ctxt {
             let parent = module.parent.unwrap_or_else(|| self.expn_def_scope(ctxt.remove_mark()));
@@ -2026,12 +2049,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn is_accessible_from(
         &self,
         vis: ty::Visibility<impl Into<DefId>>,
-        module: Module<'a>,
+        module: Module<'ra>,
     ) -> bool {
         vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 
-    fn set_binding_parent_module(&mut self, binding: NameBinding<'a>, module: Module<'a>) {
+    fn set_binding_parent_module(&mut self, binding: NameBinding<'ra>, module: Module<'ra>) {
         if let Some(old_module) = self.binding_parent_modules.insert(binding, module) {
             if module != old_module {
                 span_bug!(binding.span, "parent module is reset for binding");
@@ -2041,8 +2064,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn disambiguate_macro_rules_vs_modularized(
         &self,
-        macro_rules: NameBinding<'a>,
-        modularized: NameBinding<'a>,
+        macro_rules: NameBinding<'ra>,
+        modularized: NameBinding<'ra>,
     ) -> bool {
         // Some non-controversial subset of ambiguities "modularized macro name" vs "macro_rules"
         // is disambiguated to mitigate regressions from macro modularization.
@@ -2059,7 +2082,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn extern_prelude_get(&mut self, ident: Ident, finalize: bool) -> Option<NameBinding<'a>> {
+    fn extern_prelude_get(&mut self, ident: Ident, finalize: bool) -> Option<NameBinding<'ra>> {
         if ident.is_path_segment_keyword() {
             // Make sure `self`, `super` etc produce an error when passed to here.
             return None;
@@ -2108,7 +2131,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         path_str: &str,
         ns: Namespace,
-        parent_scope: ParentScope<'a>,
+        parent_scope: ParentScope<'ra>,
     ) -> Option<Res> {
         let mut segments =
             Vec::from_iter(path_str.split("::").map(Ident::from_str).map(Segment::from_ident));

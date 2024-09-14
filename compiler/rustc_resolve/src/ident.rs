@@ -38,16 +38,16 @@ impl From<UsePrelude> for bool {
     }
 }
 
-impl<'a, 'tcx> Resolver<'a, 'tcx> {
+impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// A generic scope visitor.
     /// Visits scopes in order to resolve some identifier in them or perform other actions.
     /// If the callback returns `Some` result, we stop visiting scopes and return it.
     pub(crate) fn visit_scopes<T>(
         &mut self,
-        scope_set: ScopeSet<'a>,
-        parent_scope: &ParentScope<'a>,
+        scope_set: ScopeSet<'ra>,
+        parent_scope: &ParentScope<'ra>,
         ctxt: SyntaxContext,
-        mut visitor: impl FnMut(&mut Self, Scope<'a>, UsePrelude, SyntaxContext) -> Option<T>,
+        mut visitor: impl FnMut(&mut Self, Scope<'ra>, UsePrelude, SyntaxContext) -> Option<T>,
     ) -> Option<T> {
         // General principles:
         // 1. Not controlled (user-defined) names should have higher priority than controlled names
@@ -218,10 +218,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn hygienic_lexical_parent(
         &mut self,
-        module: Module<'a>,
+        module: Module<'ra>,
         ctxt: &mut SyntaxContext,
         derive_fallback_lint_id: Option<NodeId>,
-    ) -> Option<(Module<'a>, Option<NodeId>)> {
+    ) -> Option<(Module<'ra>, Option<NodeId>)> {
         if !module.expansion.outer_expn_is_descendant_of(*ctxt) {
             return Some((self.expn_def_scope(ctxt.remove_mark()), None));
         }
@@ -286,11 +286,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         mut ident: Ident,
         ns: Namespace,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        ribs: &[Rib<'a>],
-        ignore_binding: Option<NameBinding<'a>>,
-    ) -> Option<LexicalScopeBinding<'a>> {
+        ribs: &[Rib<'ra>],
+        ignore_binding: Option<NameBinding<'ra>>,
+    ) -> Option<LexicalScopeBinding<'ra>> {
         assert!(ns == TypeNS || ns == ValueNS);
         let orig_ident = ident;
         if ident.name == kw::Empty {
@@ -381,13 +381,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn early_resolve_ident_in_lexical_scope(
         &mut self,
         orig_ident: Ident,
-        scope_set: ScopeSet<'a>,
-        parent_scope: &ParentScope<'a>,
+        scope_set: ScopeSet<'ra>,
+        parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
         force: bool,
-        ignore_binding: Option<NameBinding<'a>>,
-        ignore_import: Option<Import<'a>>,
-    ) -> Result<NameBinding<'a>, Determinacy> {
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> Result<NameBinding<'ra>, Determinacy> {
         bitflags::bitflags! {
             #[derive(Clone, Copy)]
             struct Flags: u8 {
@@ -742,12 +742,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn maybe_resolve_ident_in_module(
         &mut self,
-        module: ModuleOrUniformRoot<'a>,
+        module: ModuleOrUniformRoot<'ra>,
         ident: Ident,
         ns: Namespace,
-        parent_scope: &ParentScope<'a>,
-        ignore_import: Option<Import<'a>>,
-    ) -> Result<NameBinding<'a>, Determinacy> {
+        parent_scope: &ParentScope<'ra>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> Result<NameBinding<'ra>, Determinacy> {
         self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, None, None, ignore_import)
             .map_err(|(determinacy, _)| determinacy)
     }
@@ -755,14 +755,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn resolve_ident_in_module(
         &mut self,
-        module: ModuleOrUniformRoot<'a>,
+        module: ModuleOrUniformRoot<'ra>,
         ident: Ident,
         ns: Namespace,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'a>>,
-        ignore_import: Option<Import<'a>>,
-    ) -> Result<NameBinding<'a>, Determinacy> {
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> Result<NameBinding<'ra>, Determinacy> {
         self.resolve_ident_in_module_ext(
             module,
             ident,
@@ -778,14 +778,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn resolve_ident_in_module_ext(
         &mut self,
-        module: ModuleOrUniformRoot<'a>,
+        module: ModuleOrUniformRoot<'ra>,
         mut ident: Ident,
         ns: Namespace,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'a>>,
-        ignore_import: Option<Import<'a>>,
-    ) -> Result<NameBinding<'a>, (Determinacy, Weak)> {
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
         let tmp_parent_scope;
         let mut adjusted_parent_scope = parent_scope;
         match module {
@@ -818,14 +818,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn resolve_ident_in_module_unadjusted(
         &mut self,
-        module: ModuleOrUniformRoot<'a>,
+        module: ModuleOrUniformRoot<'ra>,
         ident: Ident,
         ns: Namespace,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'a>>,
-        ignore_import: Option<Import<'a>>,
-    ) -> Result<NameBinding<'a>, Determinacy> {
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> Result<NameBinding<'ra>, Determinacy> {
         self.resolve_ident_in_module_unadjusted_ext(
             module,
             ident,
@@ -844,17 +844,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn resolve_ident_in_module_unadjusted_ext(
         &mut self,
-        module: ModuleOrUniformRoot<'a>,
+        module: ModuleOrUniformRoot<'ra>,
         ident: Ident,
         ns: Namespace,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         restricted_shadowing: bool,
         finalize: Option<Finalize>,
         // This binding should be ignored during in-module resolution, so that we don't get
         // "self-confirming" import resolutions during import validation and checking.
-        ignore_binding: Option<NameBinding<'a>>,
-        ignore_import: Option<Import<'a>>,
-    ) -> Result<NameBinding<'a>, (Determinacy, Weak)> {
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
             ModuleOrUniformRoot::CrateRootAndExternPrelude => {
@@ -958,19 +958,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
-            if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
-                if let NameBindingKind::Import { import, .. } = binding.kind
-                    && matches!(import.kind, ImportKind::MacroExport)
-                {
-                    self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
-                }
+            if !restricted_shadowing
+                && binding.expansion != LocalExpnId::ROOT
+                && let NameBindingKind::Import { import, .. } = binding.kind
+                && matches!(import.kind, ImportKind::MacroExport)
+            {
+                self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
             }
 
             self.record_use(ident, binding, used);
             return Ok(binding);
         }
 
-        let check_usable = |this: &mut Self, binding: NameBinding<'a>| {
+        let check_usable = |this: &mut Self, binding: NameBinding<'ra>| {
             let usable = this.is_accessible_from(binding.vis, parent_scope.module);
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };
@@ -1151,7 +1151,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         mut res: Res,
         finalize: Option<Span>,
         original_rib_ident_def: Ident,
-        all_ribs: &[Rib<'a>],
+        all_ribs: &[Rib<'ra>],
     ) -> Res {
         debug!("validate_res_from_ribs({:?})", res);
         let ribs = &all_ribs[rib_index + 1..];
@@ -1436,9 +1436,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
-        parent_scope: &ParentScope<'a>,
-        ignore_import: Option<Import<'a>>,
-    ) -> PathResult<'a> {
+        parent_scope: &ParentScope<'ra>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> PathResult<'ra> {
         self.resolve_path_with_ribs(path, opt_ns, parent_scope, None, None, None, ignore_import)
     }
 
@@ -1447,11 +1447,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'a>>,
-        ignore_import: Option<Import<'a>>,
-    ) -> PathResult<'a> {
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> PathResult<'ra> {
         self.resolve_path_with_ribs(
             path,
             opt_ns,
@@ -1467,12 +1467,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        ribs: Option<&PerNS<Vec<Rib<'a>>>>,
-        ignore_binding: Option<NameBinding<'a>>,
-        ignore_import: Option<Import<'a>>,
-    ) -> PathResult<'a> {
+        ribs: Option<&PerNS<Vec<Rib<'ra>>>>,
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> PathResult<'ra> {
         let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;

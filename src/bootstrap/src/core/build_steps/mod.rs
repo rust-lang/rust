@@ -5,6 +5,7 @@ pub(crate) mod compile;
 pub(crate) mod dist;
 pub(crate) mod doc;
 pub(crate) mod format;
+pub(crate) mod gcc;
 pub(crate) mod install;
 pub(crate) mod llvm;
 pub(crate) mod perf;

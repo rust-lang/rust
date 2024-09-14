@@ -268,10 +268,9 @@ impl Builder<'_, '_> {
     pub(crate) fn mcdc_decrement_depth_if_enabled(&mut self) {
         if let Some(coverage_info) = self.coverage_info.as_mut()
             && let Some(mcdc_info) = coverage_info.mcdc_info.as_mut()
+            && mcdc_info.state.decision_ctx_stack.pop().is_none()
         {
-            if mcdc_info.state.decision_ctx_stack.pop().is_none() {
-                bug!("Unexpected empty decision stack");
-            }
+            bug!("Unexpected empty decision stack");
         };
     }
 }

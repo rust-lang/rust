@@ -353,11 +353,11 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
             let location = self.cx.elements.to_location(drop_point);
             debug_assert_eq!(self.cx.body.terminator_loc(location.block), location,);
 
-            if self.cx.initialized_at_terminator(location.block, mpi) {
-                if self.drop_live_at.insert(drop_point) {
-                    self.drop_locations.push(location);
-                    self.stack.push(drop_point);
-                }
+            if self.cx.initialized_at_terminator(location.block, mpi)
+                && self.drop_live_at.insert(drop_point)
+            {
+                self.drop_locations.push(location);
+                self.stack.push(drop_point);
             }
         }
 

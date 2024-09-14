@@ -2,6 +2,9 @@
 // "Coherence incorrectly considers `unnormalizable_projection: Trait` to not hold even if it could"
 #![crate_type = "lib"]
 
+//@ revisions: classic next
+//@[next] compile-flags: -Znext-solver
+
 pub trait WhereBound {}
 impl WhereBound for () {}
 

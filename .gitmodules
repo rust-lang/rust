@@ -51,3 +51,7 @@
 	path = src/tools/enzyme
 	url = https://github.com/EnzymeAD/Enzyme.git
 	shallow = true
+[submodule "src/gcc"]
+	path = src/gcc
+	url = https://github.com/rust-lang/gcc.git
+	shallow = true

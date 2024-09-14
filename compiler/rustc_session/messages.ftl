@@ -113,6 +113,8 @@ session_split_lto_unit_requires_lto = `-Zsplit-lto-unit` requires `-Clto`, `-Clt
 
 session_target_requires_unwind_tables = target requires unwind tables, they cannot be disabled with `-C force-unwind-tables=no`
 
+session_target_small_data_threshold_not_supported = `-Z small-data-threshold` is not supported for target {$target_triple} and will be ignored
+
 session_target_stack_protector_not_supported = `-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
 
 session_unleashed_feature_help_named = skipping check for `{$gate}` feature

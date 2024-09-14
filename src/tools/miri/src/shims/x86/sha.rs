@@ -23,7 +23,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sha").unwrap();
 
-        fn read<'c>(this: &mut MiriInterpCx<'c>, reg: &MPlaceTy<'c>) -> InterpResult<'c, [u32; 4]> {
+        fn read<'c>(this: &mut MiriInterpCx<'c>, reg: &OpTy<'c>) -> InterpResult<'c, [u32; 4]> {
             let mut res = [0; 4];
             // We reverse the order because x86 is little endian but the copied implementation uses
             // big endian.
@@ -53,10 +53,10 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "256rnds2" => {
                 let [a, b, k] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (a_reg, a_len) = this.operand_to_simd(a)?;
-                let (b_reg, b_len) = this.operand_to_simd(b)?;
-                let (k_reg, k_len) = this.operand_to_simd(k)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (a_reg, a_len) = this.project_to_simd(a)?;
+                let (b_reg, b_len) = this.project_to_simd(b)?;
+                let (k_reg, k_len) = this.project_to_simd(k)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(a_len, 4);
                 assert_eq!(b_len, 4);
@@ -74,9 +74,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "256msg1" => {
                 let [a, b] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (a_reg, a_len) = this.operand_to_simd(a)?;
-                let (b_reg, b_len) = this.operand_to_simd(b)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (a_reg, a_len) = this.project_to_simd(a)?;
+                let (b_reg, b_len) = this.project_to_simd(b)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(a_len, 4);
                 assert_eq!(b_len, 4);
@@ -92,9 +92,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "256msg2" => {
                 let [a, b] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (a_reg, a_len) = this.operand_to_simd(a)?;
-                let (b_reg, b_len) = this.operand_to_simd(b)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (a_reg, a_len) = this.project_to_simd(a)?;
+                let (b_reg, b_len) = this.project_to_simd(b)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(a_len, 4);
                 assert_eq!(b_len, 4);

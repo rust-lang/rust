@@ -1,4 +1,3 @@
-//@error-in-other-file: memory leaked
 //@normalize-stderr-test: ".*│.*" -> "$$stripped$$"
 
 use std::cell::Cell;
@@ -10,7 +9,7 @@ pub fn main() {
 
     std::thread::spawn(|| {
         TLS.with(|cell| {
-            cell.set(Some(Box::leak(Box::new(123))));
+            cell.set(Some(Box::leak(Box::new(123)))); //~ERROR: memory leaked
         });
     })
     .join()

@@ -217,7 +217,6 @@ impl DefUse {
 /// This is basically written for dead store elimination and nothing else.
 ///
 /// All of the caveats of `MaybeLiveLocals` apply.
-#[derive(Clone, Copy)]
 pub struct MaybeTransitiveLiveLocals<'a> {
     always_live: &'a BitSet<Local>,
 }

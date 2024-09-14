@@ -92,11 +92,9 @@ fn prepare_lto(
                     dcx.emit_err(LtoDylib);
                     return Err(FatalError);
                 }
-            } else if *crate_type == CrateType::ProcMacro {
-                if !cgcx.opts.unstable_opts.dylib_lto {
-                    dcx.emit_err(LtoProcMacro);
-                    return Err(FatalError);
-                }
+            } else if *crate_type == CrateType::ProcMacro && !cgcx.opts.unstable_opts.dylib_lto {
+                dcx.emit_err(LtoProcMacro);
+                return Err(FatalError);
             }
         }
 

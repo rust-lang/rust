@@ -229,7 +229,7 @@ trait RustcPeekAt<'tcx>: Analysis<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        flow_state: &Self::Domain,
+        state: &Self::Domain,
         call: PeekCall,
     );
 }
@@ -243,12 +243,12 @@ where
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        flow_state: &Self::Domain,
+        state: &Self::Domain,
         call: PeekCall,
     ) {
         match self.move_data().rev_lookup.find(place.as_ref()) {
             LookupResult::Exact(peek_mpi) => {
-                let bit_state = flow_state.contains(peek_mpi);
+                let bit_state = state.contains(peek_mpi);
                 debug!("rustc_peek({:?} = &{:?}) bit_state: {}", call.arg, place, bit_state);
                 if !bit_state {
                     tcx.dcx().emit_err(PeekBitNotSet { span: call.span });
@@ -267,7 +267,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        flow_state: &BitSet<Local>,
+        state: &BitSet<Local>,
         call: PeekCall,
     ) {
         info!(?place, "peek_at");
@@ -276,7 +276,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
             return;
         };
 
-        if !flow_state.contains(local) {
+        if !state.contains(local) {
             tcx.dcx().emit_err(PeekBitNotSet { span: call.span });
         }
     }

@@ -56,15 +56,7 @@ error[E0220]: associated type `B` not found for `Self`
 LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
    |                                            ^ help: `Self` has the following associated type: `Output`
 
-error[E0220]: associated type `B` not found for `Self`
-  --> $DIR/issue-95023.rs:8:44
-   |
-LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
-   |                                            ^ help: `Self` has the following associated type: `Output`
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0046, E0183, E0220, E0229, E0277, E0407.
 For more information about an error, try `rustc --explain E0046`.

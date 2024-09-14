@@ -791,14 +791,12 @@ impl<'a> Linker for GccLinker<'a> {
             self.link_arg("-exported_symbols_list").link_arg(path);
         } else if self.sess.target.is_like_solaris {
             self.link_arg("-M").link_arg(path);
+        } else if is_windows {
+            self.link_arg(path);
         } else {
-            if is_windows {
-                self.link_arg(path);
-            } else {
-                let mut arg = OsString::from("--version-script=");
-                arg.push(path);
-                self.link_arg(arg).link_arg("--no-undefined-version");
-            }
+            let mut arg = OsString::from("--version-script=");
+            arg.push(path);
+            self.link_arg(arg).link_arg("--no-undefined-version");
         }
     }
 

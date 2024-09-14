@@ -96,6 +96,7 @@ impl fmt::Debug for Scope {
             ScopeData::Arguments => write!(fmt, "Arguments({:?})", self.id),
             ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.id),
             ScopeData::IfThen => write!(fmt, "IfThen({:?})", self.id),
+            ScopeData::IfThenRescope => write!(fmt, "IfThen[edition2024]({:?})", self.id),
             ScopeData::Remainder(fsi) => write!(
                 fmt,
                 "Remainder {{ block: {:?}, first_statement_index: {}}}",
@@ -125,6 +126,11 @@ pub enum ScopeData {
     /// Scope of the condition and then block of an if expression
     /// Used for variables introduced in an if-let expression.
     IfThen,
+
+    /// Scope of the condition and then block of an if expression
+    /// Used for variables introduced in an if-let expression,
+    /// whose lifetimes do not cross beyond this scope.
+    IfThenRescope,
 
     /// Scope following a `let id = expr;` binding in a block.
     Remainder(FirstStatementIndex),

@@ -54,6 +54,12 @@ pub fn llvm_dwarfdump() -> LlvmDwarfdump {
     LlvmDwarfdump::new()
 }
 
+/// Construct a new `llvm-pdbutil` invocation. This assumes that `llvm-pdbutil` is available
+/// at `$LLVM_BIN_DIR/llvm-pdbutil`.
+pub fn llvm_pdbutil() -> LlvmPdbutil {
+    LlvmPdbutil::new()
+}
+
 /// A `llvm-readobj` invocation builder.
 #[derive(Debug)]
 #[must_use]

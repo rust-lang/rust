@@ -657,16 +657,17 @@ pub(crate) enum TildeConstReason {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_const_and_async)]
-pub(crate) struct ConstAndAsync {
+#[diag(ast_passes_const_and_coroutine)]
+pub(crate) struct ConstAndCoroutine {
     #[primary_span]
     pub spans: Vec<Span>,
     #[label(ast_passes_const)]
-    pub cspan: Span,
-    #[label(ast_passes_async)]
-    pub aspan: Span,
+    pub const_span: Span,
+    #[label(ast_passes_coroutine)]
+    pub coroutine_span: Span,
     #[label]
     pub span: Span,
+    pub coroutine_kind: &'static str,
 }
 
 #[derive(Diagnostic)]

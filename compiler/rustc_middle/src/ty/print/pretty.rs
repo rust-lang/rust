@@ -1526,7 +1526,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                 let precedence = |binop: rustc_middle::mir::BinOp| {
                     use rustc_ast::util::parser::AssocOp;
-                    AssocOp::from_ast_binop(binop.to_hir_binop().into()).precedence()
+                    AssocOp::from_ast_binop(binop.to_hir_binop()).precedence()
                 };
                 let op_precedence = precedence(op);
                 let formatted_op = op.to_hir_binop().as_str();
@@ -3361,10 +3361,8 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
                     // name.
                     //
                     // Any stable ordering would be fine here though.
-                    if *v.get() != symbol {
-                        if v.get().as_str() > symbol.as_str() {
-                            v.insert(symbol);
-                        }
+                    if *v.get() != symbol && v.get().as_str() > symbol.as_str() {
+                        v.insert(symbol);
                     }
                 }
                 Vacant(v) => {

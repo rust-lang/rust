@@ -5,7 +5,7 @@ LL | impl<const N: u64> Q for [u8; N] {
    |                          ^^^^^^^ expected `usize`, found `u64`
 
 error: the constant `13` is not of type `u64`
-  --> $DIR/bad-subst-const-kind.rs:14:24
+  --> $DIR/bad-subst-const-kind.rs:13:24
    |
 LL | pub fn test() -> [u8; <[u8; 13] as Q>::ASSOC] {
    |                        ^^^^^^^^ expected `u64`, found `usize`
@@ -18,12 +18,5 @@ LL | impl<const N: u64> Q for [u8; N] {
    |      |
    |      unsatisfied trait bound introduced here
 
-error[E0308]: mismatched types
-  --> $DIR/bad-subst-const-kind.rs:8:31
-   |
-LL | impl<const N: u64> Q for [u8; N] {
-   |                               ^ expected `usize`, found `u64`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0308`.

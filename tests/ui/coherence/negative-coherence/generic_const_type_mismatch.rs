@@ -5,9 +5,7 @@
 #![feature(with_negative_coherence)]
 trait Trait {}
 impl<const N: u8> Trait for [(); N] {}
-//~^ ERROR: mismatched types
 impl<const N: i8> Trait for [(); N] {}
 //~^ ERROR: conflicting implementations of trait `Trait`
-//~| ERROR: mismatched types
 
 fn main() {}

@@ -2169,17 +2169,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     attr.span,
                     errors::MacroExport::TooManyItems,
                 );
-            } else {
-                if meta_item_list[0].name_or_empty() != sym::local_inner_macros {
-                    self.tcx.emit_node_span_lint(
-                        INVALID_MACRO_EXPORT_ARGUMENTS,
-                        hir_id,
-                        meta_item_list[0].span(),
-                        errors::MacroExport::UnknownItem {
-                            name: meta_item_list[0].name_or_empty(),
-                        },
-                    );
-                }
+            } else if meta_item_list[0].name_or_empty() != sym::local_inner_macros {
+                self.tcx.emit_node_span_lint(
+                    INVALID_MACRO_EXPORT_ARGUMENTS,
+                    hir_id,
+                    meta_item_list[0].span(),
+                    errors::MacroExport::UnknownItem { name: meta_item_list[0].name_or_empty() },
+                );
             }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
