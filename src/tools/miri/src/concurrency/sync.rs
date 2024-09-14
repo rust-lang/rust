@@ -134,6 +134,9 @@ struct Condvar {
     /// Contains the clock of the last thread to
     /// perform a condvar-signal.
     clock: VClock,
+
+    /// Additional data that can be set by shim implementations.
+    data: Option<Box<dyn Any>>,
 }
 
 /// The futex state.
@@ -344,19 +347,47 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.machine.sync.rwlocks[id].data.as_deref().and_then(|p| p.downcast_ref::<T>())
     }
 
+    /// Eagerly create and initialize a new condvar.
+    fn condvar_create(
+        &mut self,
+        condvar: &MPlaceTy<'tcx>,
+        offset: u64,
+        data: Option<Box<dyn Any>>,
+    ) -> InterpResult<'tcx, CondvarId> {
+        let this = self.eval_context_mut();
+        this.create_id(
+            condvar,
+            offset,
+            |ecx| &mut ecx.machine.sync.condvars,
+            Condvar { data, ..Default::default() },
+        )
+    }
+
     fn condvar_get_or_create_id(
         &mut self,
         lock: &MPlaceTy<'tcx>,
         offset: u64,
+        initialize_data: impl for<'a> FnOnce(
+            &'a mut MiriInterpCx<'tcx>,
+        ) -> InterpResult<'tcx, Option<Box<dyn Any>>>,
     ) -> InterpResult<'tcx, CondvarId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
             lock,
             offset,
             |ecx| &mut ecx.machine.sync.condvars,
-            |_| Ok(Default::default()),
+            |ecx| initialize_data(ecx).map(|data| Condvar { data, ..Default::default() }),
         )?
         .ok_or_else(|| err_ub_format!("condvar has invalid ID").into())
+    }
+
+    /// Retrieve the additional data stored for a condvar.
+    fn condvar_get_data<'a, T: 'static>(&'a mut self, id: CondvarId) -> Option<&'a T>
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_ref();
+        this.machine.sync.condvars[id].data.as_deref().and_then(|p| p.downcast_ref::<T>())
     }
 
     #[inline]

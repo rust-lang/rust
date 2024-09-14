@@ -206,7 +206,7 @@ fn translate_kind<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> InterpResult<'tc
 // - id: u32
 
 #[derive(Debug)]
-/// Additional data that may be used by shim implementations.
+/// Additional data that we attach with each rwlock instance.
 pub struct AdditionalRwLockData {
     /// The address of the rwlock.
     pub address: u64,
@@ -286,6 +286,19 @@ fn condattr_get_clock_id<'tcx>(
     .to_i32()
 }
 
+fn translate_clock_id<'tcx>(ecx: &MiriInterpCx<'tcx>, raw_id: i32) -> InterpResult<'tcx, ClockId> {
+    // To ensure compatibility with PTHREAD_COND_INITIALIZER on all platforms,
+    // we can't just compare with CLOCK_REALTIME: on Solarish, PTHREAD_COND_INITIALIZER
+    // makes the clock 0 but CLOCK_REALTIME is 3.
+    Ok(if raw_id == ecx.eval_libc_i32("CLOCK_REALTIME") || raw_id == 0 {
+        ClockId::Realtime
+    } else if raw_id == ecx.eval_libc_i32("CLOCK_MONOTONIC") {
+        ClockId::Monotonic
+    } else {
+        throw_unsup_format!("unsupported clock id: {raw_id}");
+    })
+}
+
 fn condattr_set_clock_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     attr_ptr: &OpTy<'tcx>,
@@ -331,16 +344,6 @@ fn cond_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     Ok(offset)
 }
 
-/// Determines whether this clock represents the real-time clock, CLOCK_REALTIME.
-fn is_cond_clock_realtime<'tcx>(ecx: &MiriInterpCx<'tcx>, clock_id: i32) -> bool {
-    // To ensure compatibility with PTHREAD_COND_INITIALIZER on all platforms,
-    // we can't just compare with CLOCK_REALTIME: on Solarish, PTHREAD_COND_INITIALIZER
-    // makes the clock 0 but CLOCK_REALTIME is 3.
-    // However, we need to always be able to distinguish this from CLOCK_MONOTONIC.
-    clock_id == ecx.eval_libc_i32("CLOCK_REALTIME")
-        || (clock_id == 0 && clock_id != ecx.eval_libc_i32("CLOCK_MONOTONIC"))
-}
-
 fn cond_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> u64 {
     // macOS doesn't have a clock attribute, but to keep the code uniform we store
     // a clock ID in the pthread_cond_t anyway. There's enough space.
@@ -355,8 +358,9 @@ fn cond_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> u64 {
             .offset(Size::from_bytes(offset), ecx.machine.layouts.i32, ecx)
             .unwrap();
         let id = ecx.read_scalar(&id_field).unwrap().to_i32().unwrap();
+        let id = translate_clock_id(ecx, id).expect("static initializer should be valid");
         assert!(
-            is_cond_clock_realtime(ecx, id),
+            matches!(id, ClockId::Realtime),
             "PTHREAD_COND_INITIALIZER is incompatible with our pthread_cond layout: clock is not CLOCK_REALTIME"
         );
     }
@@ -364,25 +368,47 @@ fn cond_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> u64 {
     offset
 }
 
+#[derive(Debug, Clone, Copy)]
+enum ClockId {
+    Realtime,
+    Monotonic,
+}
+
+#[derive(Debug)]
+/// Additional data that we attach with each cond instance.
+struct AdditionalCondData {
+    /// The address of the cond.
+    address: u64,
+
+    /// The clock id of the cond.
+    clock_id: ClockId,
+}
+
 fn cond_get_id<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     cond_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, CondvarId> {
     let cond = ecx.deref_pointer(cond_ptr)?;
-    ecx.condvar_get_or_create_id(&cond, cond_id_offset(ecx)?)
-}
+    let address = cond.ptr().addr().bytes();
+    let id = ecx.condvar_get_or_create_id(&cond, cond_id_offset(ecx)?, |ecx| {
+        let raw_id = if ecx.tcx.sess.target.os == "macos" {
+            ecx.eval_libc_i32("CLOCK_REALTIME")
+        } else {
+            cond_get_clock_id(ecx, cond_ptr)?
+        };
+        let clock_id = translate_clock_id(ecx, raw_id)?;
+        Ok(Some(Box::new(AdditionalCondData { address, clock_id })))
+    })?;
 
-fn cond_reset_id<'tcx>(
-    ecx: &mut MiriInterpCx<'tcx>,
-    cond_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    ecx.deref_pointer_and_write(
-        cond_ptr,
-        cond_id_offset(ecx)?,
-        Scalar::from_i32(0),
-        ecx.libc_ty_layout("pthread_cond_t"),
-        ecx.machine.layouts.u32,
-    )
+    // Check that the mutex has not been moved since last use.
+    let data = ecx
+        .condvar_get_data::<AdditionalCondData>(id)
+        .expect("data should always exist for pthreads");
+    if data.address != address {
+        throw_ub_format!("pthread_cond_t can't be moved after first use")
+    }
+
+    Ok(id)
 }
 
 fn cond_get_clock_id<'tcx>(
@@ -396,20 +422,6 @@ fn cond_get_clock_id<'tcx>(
         ecx.machine.layouts.i32,
     )?
     .to_i32()
-}
-
-fn cond_set_clock_id<'tcx>(
-    ecx: &mut MiriInterpCx<'tcx>,
-    cond_ptr: &OpTy<'tcx>,
-    clock_id: i32,
-) -> InterpResult<'tcx, ()> {
-    ecx.deref_pointer_and_write(
-        cond_ptr,
-        cond_clock_offset(ecx),
-        Scalar::from_i32(clock_id),
-        ecx.libc_ty_layout("pthread_cond_t"),
-        ecx.machine.layouts.i32,
-    )
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -820,11 +832,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             condattr_get_clock_id(this, attr_op)?
         };
+        let clock_id = translate_clock_id(this, clock_id)?;
 
-        // Write 0 to use the same code path as the static initializers.
-        cond_reset_id(this, cond_op)?;
-
-        cond_set_clock_id(this, cond_op, clock_id)?;
+        let cond = this.deref_pointer(cond_op)?;
+        let address = cond.ptr().addr().bytes();
+        this.condvar_create(
+            &cond,
+            cond_id_offset(this)?,
+            Some(Box::new(AdditionalCondData { address, clock_id })),
+        )?;
 
         Ok(())
     }
@@ -879,7 +895,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mutex_id = mutex_get_id(this, mutex_op)?;
 
         // Extract the timeout.
-        let clock_id = cond_get_clock_id(this, cond_op)?;
+        let clock_id = this
+            .condvar_get_data::<AdditionalCondData>(id)
+            .expect("additional data should always be present for pthreads")
+            .clock_id;
         let duration = match this
             .read_timespec(&this.deref_pointer_as(abstime_op, this.libc_ty_layout("timespec"))?)?
         {
@@ -890,13 +909,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return Ok(());
             }
         };
-        let timeout_clock = if is_cond_clock_realtime(this, clock_id) {
-            this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
-            TimeoutClock::RealTime
-        } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC") {
-            TimeoutClock::Monotonic
-        } else {
-            throw_unsup_format!("unsupported clock id: {}", clock_id);
+        let timeout_clock = match clock_id {
+            ClockId::Realtime => {
+                this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
+                TimeoutClock::RealTime
+            }
+            ClockId::Monotonic => TimeoutClock::Monotonic,
         };
 
         this.condvar_wait(
@@ -912,16 +930,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn pthread_cond_destroy(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        //NOTE: Destroying an uninit pthread_cond is UB. Make sure it's not uninit,
+        // by accessing at least once all of its fields that we use.
+
         let this = self.eval_context_mut();
 
         let id = cond_get_id(this, cond_op)?;
         if this.condvar_is_awaited(id) {
             throw_ub_format!("destroying an awaited conditional variable");
         }
-
-        // Destroying an uninit pthread_cond is UB, so check to make sure it's not uninit.
-        cond_get_id(this, cond_op)?;
-        cond_get_clock_id(this, cond_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
         this.write_uninit(&this.deref_pointer_as(cond_op, this.libc_ty_layout("pthread_cond_t"))?)?;
