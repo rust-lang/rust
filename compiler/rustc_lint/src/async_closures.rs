@@ -12,6 +12,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(async_closure)]
     /// #![warn(closure_returning_async_block)]
     /// let c = |x: &str| async {};
     /// ```
