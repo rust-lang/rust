@@ -653,8 +653,8 @@ ul.block, .block li, .block ul {
 	border: 0;
 	font-size: 0;
 
-    scale: 80%;
-    justify-content: center;
+	scale: 80%;
+	justify-content: center;
 }
 #copy-cargo-snippet::before {
 	filter: var(--copy-path-img-filter);
@@ -790,8 +790,8 @@ ul.block, .block li, .block ul {
 	font-size: 1rem;
 	overflow-wrap: break-word;
 
-    display: flex;
-    align-items: center;
+	display: flex;
+	align-items: center;
 }
 
 .sidebar-crate + .version {
