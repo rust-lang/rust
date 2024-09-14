@@ -179,6 +179,10 @@ pub struct Clause<'tcx>(
 );
 
 impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
+    fn as_predicate(self) -> Predicate<'tcx> {
+        self.as_predicate()
+    }
+
     fn instantiate_supertrait(self, tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> Self {
         self.instantiate_supertrait(tcx, trait_ref)
     }
