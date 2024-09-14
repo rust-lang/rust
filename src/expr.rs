@@ -1330,7 +1330,7 @@ fn rewrite_int_lit(
                 format!(
                     "0x{}{}",
                     hex_lit,
-                    token_lit.suffix.map_or(String::new(), |s| s.to_string())
+                    token_lit.suffix.as_ref().map_or("", |s| s.as_str())
                 ),
                 context.config.max_width(),
                 shape,
