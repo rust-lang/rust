@@ -186,12 +186,6 @@ mod msrv {
     extern "C" fn c() {}
 }
 
-mod with_extern {
-    extern "C-unwind" fn c_unwind() {}
-    extern "system" fn system() {}
-    extern "system-unwind" fn system_unwind() {}
-}
-
 mod with_ty_alias {
     type Foo = impl std::fmt::Debug;
 
