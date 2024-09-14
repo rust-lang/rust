@@ -664,14 +664,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right, index] = check_arg_count(args)?;
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
+                let (index, index_len) = this.project_to_simd(index)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                // `index` is an array or a SIMD type
-                let (index, index_len) = match index.layout.ty.kind() {
-                    // FIXME: remove this once `index` must always be a SIMD vector.
-                    ty::Array(..) => (index.clone(), index.len(this)?),
-                    _ => this.project_to_simd(index)?,
-                };
 
                 assert_eq!(left_len, right_len);
                 assert_eq!(index_len, dest_len);
