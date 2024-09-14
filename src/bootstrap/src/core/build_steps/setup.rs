@@ -16,7 +16,6 @@ use std::{fmt, fs, io};
 use sha2::Digest;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, hex_encode};
 use crate::{Config, t};
@@ -228,11 +227,9 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
         return;
     }
 
-    let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap().change_id;
     let settings = format!(
         "# Includes one of the default files in {PROFILE_DIR}\n\
-    profile = \"{profile}\"\n\
-    change-id = {latest_change_id}\n"
+    profile = \"{profile}\"\n"
     );
 
     t!(fs::write(path, settings));
