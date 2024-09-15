@@ -1,23 +1,3 @@
-warning: elided lifetime has a name
-  --> $DIR/min_const_fn.rs:47:34
-   |
-LL | impl<'a, T> Foo<T> {
-   |      -- lifetime `'a` declared here
-...
-LL |     const fn get_lt(&'a self) -> &T { &self.0 }
-   |                                  ^ this elided lifetime gets resolved as `'a`
-   |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
-
-warning: elided lifetime has a name
-  --> $DIR/min_const_fn.rs:48:42
-   |
-LL | impl<'a, T> Foo<T> {
-   |      -- lifetime `'a` declared here
-...
-LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
-   |                                          ^ this elided lifetime gets resolved as `'a`
-
 error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:37:25
    |
@@ -26,144 +6,24 @@ LL |     const fn into_inner(self) -> T { self.0 }
    |                         |
    |                         the destructor for this type cannot be evaluated in constant functions
 
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:39:22
-   |
-LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
-   |                      ^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:39:36
-   |
-LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
-   |                                    ^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:39:45
-   |
-LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
-   |                                             ^^^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:46:28
+  --> $DIR/min_const_fn.rs:43:28
    |
 LL |     const fn into_inner_lt(self) -> T { self.0 }
    |                            ^^^^                - value is dropped here
    |                            |
    |                            the destructor for this type cannot be evaluated in constant functions
 
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:48:25
-   |
-LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
-   |                         ^^^^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:48:42
-   |
-LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
-   |                                          ^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:48:51
-   |
-LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
-   |                                                   ^^^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:55:27
+  --> $DIR/min_const_fn.rs:49:27
    |
 LL |     const fn into_inner_s(self) -> T { self.0 }
    |                           ^^^^                - value is dropped here
    |                           |
    |                           the destructor for this type cannot be evaluated in constant functions
 
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:57:24
-   |
-LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
-   |                        ^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:57:38
-   |
-LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
-   |                                      ^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:57:47
-   |
-LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
-   |                                               ^^^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:64:25
-   |
-LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
-   |                         ^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:64:39
-   |
-LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
-   |                                       ^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:64:48
-   |
-LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
-   |                                                ^^^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: referencing statics in constant functions is unstable
-  --> $DIR/min_const_fn.rs:89:27
+  --> $DIR/min_const_fn.rs:77:27
    |
 LL | const fn foo25() -> u32 { BAR }
    |                           ^^^
@@ -175,7 +35,7 @@ LL | const fn foo25() -> u32 { BAR }
    = help: to fix this, the value can be extracted to a `const` and then used.
 
 error[E0658]: referencing statics in constant functions is unstable
-  --> $DIR/min_const_fn.rs:90:37
+  --> $DIR/min_const_fn.rs:78:37
    |
 LL | const fn foo26() -> &'static u32 { &BAR }
    |                                     ^^^
@@ -187,7 +47,7 @@ LL | const fn foo26() -> &'static u32 { &BAR }
    = help: to fix this, the value can be extracted to a `const` and then used.
 
 error: pointers cannot be cast to integers during const eval
-  --> $DIR/min_const_fn.rs:91:42
+  --> $DIR/min_const_fn.rs:79:42
    |
 LL | const fn foo30(x: *const u32) -> usize { x as usize }
    |                                          ^^^^^^^^^^
@@ -196,7 +56,7 @@ LL | const fn foo30(x: *const u32) -> usize { x as usize }
    = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
 error: pointers cannot be cast to integers during const eval
-  --> $DIR/min_const_fn.rs:93:63
+  --> $DIR/min_const_fn.rs:81:63
    |
 LL | const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } }
    |                                                               ^^^^^^^^^^
@@ -205,7 +65,7 @@ LL | const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } 
    = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
 error: pointers cannot be cast to integers during const eval
-  --> $DIR/min_const_fn.rs:95:42
+  --> $DIR/min_const_fn.rs:83:42
    |
 LL | const fn foo30_2(x: *mut u32) -> usize { x as usize }
    |                                          ^^^^^^^^^^
@@ -214,7 +74,7 @@ LL | const fn foo30_2(x: *mut u32) -> usize { x as usize }
    = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
 error: pointers cannot be cast to integers during const eval
-  --> $DIR/min_const_fn.rs:97:63
+  --> $DIR/min_const_fn.rs:85:63
    |
 LL | const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } }
    |                                                               ^^^^^^^^^^
@@ -222,18 +82,8 @@ LL | const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } 
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
-error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/min_const_fn.rs:100:14
-   |
-LL | const fn inc(x: &mut i32) { *x += 1 }
-   |              ^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0493]: destructor of `AlanTuring<impl std::fmt::Debug>` cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:122:19
+  --> $DIR/min_const_fn.rs:109:19
    |
 LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    |                   ^^                                     - value is dropped here
@@ -241,14 +91,14 @@ LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    |                   the destructor for this type cannot be evaluated in constant functions
 
 error[E0493]: destructor of `impl std::fmt::Debug` cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:124:18
+  --> $DIR/min_const_fn.rs:111:18
    |
 LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                  ^^                         - value is dropped here
    |                  |
    |                  the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 24 previous errors; 2 warnings emitted
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0493, E0658.
 For more information about an error, try `rustc --explain E0493`.

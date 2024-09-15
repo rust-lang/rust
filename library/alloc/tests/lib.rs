@@ -6,7 +6,7 @@
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
 #![feature(const_heap)]
-#![feature(const_mut_refs)]
+#![cfg_attr(bootstrap, feature(const_mut_refs))]
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_ptr_write)]
 #![feature(const_try)]

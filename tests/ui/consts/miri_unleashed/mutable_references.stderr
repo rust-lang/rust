@@ -177,11 +177,6 @@ help: skipping check for `const_refs_to_static` feature
    |
 LL | const SUBTLE: &mut i32 = unsafe { static mut STATIC: i32 = 0; &mut STATIC };
    |                                                                    ^^^^^^
-help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references.rs:30:63
-   |
-LL | const SUBTLE: &mut i32 = unsafe { static mut STATIC: i32 = 0; &mut STATIC };
-   |                                                               ^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
   --> $DIR/mutable_references.rs:40:28
    |
@@ -197,16 +192,6 @@ help: skipping check that does not even have a feature gate
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references.rs:65:49
-   |
-LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references.rs:65:49
-   |
-LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
   --> $DIR/mutable_references.rs:72:43
    |

@@ -846,7 +846,7 @@ impl<T> [T] {
     /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "slice_ptr_range", since = "1.48.0")]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[rustc_allow_const_fn_unstable(const_mut_refs)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs, const_refs_to_cell))]
     #[inline]
     #[must_use]
     pub const fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
