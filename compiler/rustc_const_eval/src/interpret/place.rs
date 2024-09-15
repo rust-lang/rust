@@ -500,15 +500,13 @@ where
         &self,
         local: mir::Local,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        // Other parts of the system rely on `Place::Local` never being unsized.
-        // So we eagerly check here if this local has an MPlace, and if yes we use it.
         let frame = self.frame();
         let layout = self.layout_of_local(frame, local, None)?;
         let place = if layout.is_sized() {
             // We can just always use the `Local` for sized values.
             Place::Local { local, offset: None, locals_addr: frame.locals_addr() }
         } else {
-            // Unsized `Local` isn't okay (we cannot store the metadata).
+            // Other parts of the system rely on `Place::Local` never being unsized.
             match frame.locals[local].access()? {
                 Operand::Immediate(_) => bug!(),
                 Operand::Indirect(mplace) => Place::Ptr(*mplace),
@@ -562,7 +560,10 @@ where
         place: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<
         'tcx,
-        Either<MPlaceTy<'tcx, M::Provenance>, (&mut Immediate<M::Provenance>, TyAndLayout<'tcx>)>,
+        Either<
+            MPlaceTy<'tcx, M::Provenance>,
+            (&mut Immediate<M::Provenance>, TyAndLayout<'tcx>, mir::Local),
+        >,
     > {
         Ok(match place.to_place().as_mplace_or_local() {
             Left(mplace) => Left(mplace),
@@ -581,7 +582,7 @@ where
                         }
                         Operand::Immediate(local_val) => {
                             // The local still has the optimized representation.
-                            Right((local_val, layout))
+                            Right((local_val, layout, local))
                         }
                     }
                 }
@@ -643,9 +644,13 @@ where
         assert!(dest.layout().is_sized(), "Cannot write unsized immediate data");
 
         match self.as_mplace_or_mutable_local(&dest.to_place())? {
-            Right((local_val, local_layout)) => {
+            Right((local_val, local_layout, local)) => {
                 // Local can be updated in-place.
                 *local_val = src;
+                // Call the machine hook (the data race detector needs to know about this write).
+                if !self.validation_in_progress() {
+                    M::after_local_write(self, local, /*storage_live*/ false)?;
+                }
                 // Double-check that the value we are storing and the local fit to each other.
                 if cfg!(debug_assertions) {
                     src.assert_matches_abi(local_layout.abi, self);
@@ -714,8 +719,12 @@ where
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         match self.as_mplace_or_mutable_local(&dest.to_place())? {
-            Right((local_val, _local_layout)) => {
+            Right((local_val, _local_layout, local)) => {
                 *local_val = Immediate::Uninit;
+                // Call the machine hook (the data race detector needs to know about this write).
+                if !self.validation_in_progress() {
+                    M::after_local_write(self, local, /*storage_live*/ false)?;
+                }
             }
             Left(mplace) => {
                 let Some(mut alloc) = self.get_place_alloc_mut(&mplace)? else {
@@ -734,8 +743,12 @@ where
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         match self.as_mplace_or_mutable_local(&dest.to_place())? {
-            Right((local_val, _local_layout)) => {
+            Right((local_val, _local_layout, local)) => {
                 local_val.clear_provenance()?;
+                // Call the machine hook (the data race detector needs to know about this write).
+                if !self.validation_in_progress() {
+                    M::after_local_write(self, local, /*storage_live*/ false)?;
+                }
             }
             Left(mplace) => {
                 let Some(mut alloc) = self.get_place_alloc_mut(&mplace)? else {
@@ -941,7 +954,7 @@ where
                                 mplace.mplace,
                             )?;
                         }
-                        M::after_local_allocated(self, local, &mplace)?;
+                        M::after_local_moved_to_memory(self, local, &mplace)?;
                         // Now we can call `access_mut` again, asserting it goes well, and actually
                         // overwrite things. This points to the entire allocation, not just the part
                         // the place refers to, i.e. we do this before we apply `offset`.

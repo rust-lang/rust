@@ -1,11 +1,12 @@
 use either::Either;
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::NullOp;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::symbol::sym;
+use rustc_target::abi::Size;
 use tracing::trace;
 
 use super::{throw_ub, ImmTy, InterpCx, Machine, MemPlaceMeta};
@@ -285,6 +286,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
         })
+    }
+
+    /// Computes the total size of this access, `count * elem_size`,
+    /// checking for overflow beyond isize::MAX.
+    pub fn compute_size_in_bytes(&self, elem_size: Size, count: u64) -> Option<Size> {
+        // `checked_mul` applies `u64` limits independent of the target pointer size... but the
+        // subsequent check for `max_size_of_val` means we also handle 32bit targets correctly.
+        // (We cannot use `Size::checked_mul` as that enforces `obj_size_bound` as the limit, which
+        // would be wrong here.)
+        elem_size
+            .bytes()
+            .checked_mul(count)
+            .map(Size::from_bytes)
+            .filter(|&total| total <= self.max_size_of_val())
     }
 
     fn binary_ptr_op(

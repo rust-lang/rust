@@ -660,6 +660,56 @@ impl String {
         Cow::Owned(res)
     }
 
+    /// Converts a [`Vec<u8>`] to a `String`, substituting invalid UTF-8
+    /// sequences with replacement characters.
+    ///
+    /// See [`from_utf8_lossy`] for more details.
+    ///
+    /// [`from_utf8_lossy`]: String::from_utf8_lossy
+    ///
+    /// Note that this function does not guarantee reuse of the original `Vec`
+    /// allocation.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_from_utf8_lossy_owned)]
+    /// // some bytes, in a vector
+    /// let sparkle_heart = vec![240, 159, 146, 150];
+    ///
+    /// let sparkle_heart = String::from_utf8_lossy_owned(sparkle_heart);
+    ///
+    /// assert_eq!(String::from("💖"), sparkle_heart);
+    /// ```
+    ///
+    /// Incorrect bytes:
+    ///
+    /// ```
+    /// #![feature(string_from_utf8_lossy_owned)]
+    /// // some invalid bytes
+    /// let input: Vec<u8> = b"Hello \xF0\x90\x80World".into();
+    /// let output = String::from_utf8_lossy_owned(input);
+    ///
+    /// assert_eq!(String::from("Hello �World"), output);
+    /// ```
+    #[must_use]
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_from_utf8_lossy_owned", issue = "129436")]
+    pub fn from_utf8_lossy_owned(v: Vec<u8>) -> String {
+        if let Cow::Owned(string) = String::from_utf8_lossy(&v) {
+            string
+        } else {
+            // SAFETY: `String::from_utf8_lossy`'s contract ensures that if
+            // it returns a `Cow::Borrowed`, it is a valid UTF-8 string.
+            // Otherwise, it returns a new allocation of an owned `String`, with
+            // replacement characters for invalid sequences, which is returned
+            // above.
+            unsafe { String::from_utf8_unchecked(v) }
+        }
+    }
+
     /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
     ///
@@ -2008,6 +2058,30 @@ impl FromUtf8Error {
     #[stable(feature = "from_utf8_error_as_bytes", since = "1.26.0")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..]
+    }
+
+    /// Converts the bytes into a `String` lossily, substituting invalid UTF-8
+    /// sequences with replacement characters.
+    ///
+    /// See [`String::from_utf8_lossy`] for more details on replacement of
+    /// invalid sequences, and [`String::from_utf8_lossy_owned`] for the
+    /// `String` function which corresponds to this function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_from_utf8_lossy_owned)]
+    /// // some invalid bytes
+    /// let input: Vec<u8> = b"Hello \xF0\x90\x80World".into();
+    /// let output = String::from_utf8(input).unwrap_or_else(|e| e.into_utf8_lossy());
+    ///
+    /// assert_eq!(String::from("Hello �World"), output);
+    /// ```
+    #[must_use]
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_from_utf8_lossy_owned", issue = "129436")]
+    pub fn into_utf8_lossy(self) -> String {
+        String::from_utf8_lossy_owned(self.bytes)
     }
 
     /// Returns the bytes that were attempted to convert to a `String`.
