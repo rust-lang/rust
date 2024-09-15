@@ -38,7 +38,7 @@ impl From<rustc_span::FileName> for FileName {
 impl fmt::Display for FileName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FileName::Real(p) => write!(f, "{}", p.to_str().unwrap()),
+            FileName::Real(p) => write!(f, "{}", p.display()),
             FileName::Stdin => write!(f, "<stdin>"),
         }
     }

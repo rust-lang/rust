@@ -341,10 +341,10 @@ fn format(
 
     for file in files {
         if !file.exists() {
-            eprintln!("Error: file `{}` does not exist", file.to_str().unwrap());
+            eprintln!("Error: file `{}` does not exist", file.display());
             session.add_operational_error();
         } else if file.is_dir() {
-            eprintln!("Error: `{}` is a directory", file.to_str().unwrap());
+            eprintln!("Error: `{}` is a directory", file.display());
             session.add_operational_error();
         } else {
             // Check the file directory if the config-path could not be read or not provided
