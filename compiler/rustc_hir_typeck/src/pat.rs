@@ -259,8 +259,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Struct(ref qpath, fields, has_rest_pat) => {
                 self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, pat_info)
             }
-            PatKind::Guard(pat, _) => {
+            PatKind::Guard(pat, cond) => {
                 self.check_pat(pat, expected, pat_info);
+                self.check_expr_has_type_or_error(cond, self.tcx.types.bool, |_| {});
                 expected
             }
             PatKind::Or(pats) => {
