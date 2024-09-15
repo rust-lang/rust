@@ -77,6 +77,7 @@ rm -r tests/ui/instrument-coverage/
 # missing f16/f128 support
 rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
 rm tests/ui/asm/aarch64/type-f16.rs
+rm tests/ui/float/conv-bits-runtime-const.rs
 
 # optimization tests
 # ==================
