@@ -19,6 +19,7 @@ pub struct RwLock {
 const READ_LOCKED: u32 = 1;
 const MASK: u32 = (1 << 30) - 1;
 const WRITE_LOCKED: u32 = MASK;
+const DOWNGRADE: u32 = READ_LOCKED.overflowing_sub(WRITE_LOCKED).0; // READ_LOCKED - WRITE_LOCKED
 const MAX_READERS: u32 = MASK - 1;
 const READERS_WAITING: u32 = 1 << 30;
 const WRITERS_WAITING: u32 = 1 << 31;
@@ -185,18 +186,9 @@ impl RwLock {
 
     #[inline]
     pub unsafe fn downgrade(&self) {
-        // Removes all the write bits and adds a single read bit.
-        let old_state = self.state.fetch_sub(WRITE_LOCKED - READ_LOCKED, Relaxed);
-        debug_assert!(
-            is_write_locked(old_state),
-            "RwLock must be write locked to call `downgrade`"
-        );
-
-        let state = old_state - WRITE_LOCKED + READ_LOCKED;
-        debug_assert!(
-            !is_unlocked(state) && !is_write_locked(state),
-            "RwLock is somehow not in read mode after `downgrade`"
-        );
+        // Removes all write bits and adds a single read bit.
+        let state = self.state.fetch_add(DOWNGRADE, Relaxed);
+        debug_assert!(is_write_locked(state), "RwLock must be write locked to call `downgrade`");
 
         if has_readers_waiting(state) {
             self.state.fetch_sub(READERS_WAITING, Relaxed);
