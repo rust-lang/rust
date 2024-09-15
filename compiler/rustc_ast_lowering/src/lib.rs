@@ -138,10 +138,10 @@ struct LoweringContext<'a, 'hir> {
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
 
-    /// NodeIds of labelled nodes that are lowered inside the current HIR owner.
-    labelled_node_id_to_local_id: NodeMap<hir::ItemLocalId>,
-    /// NodeIds of identifier that are lowered inside the current HIR owner.
-    ident_to_local_id: NodeMap<hir::ItemLocalId>,
+    /// NodeIds of pattern identifiers and labelled nodes that are lowered inside the current HIR owner.
+    ident_and_label_to_local_id: NodeMap<hir::ItemLocalId>,
+    /// NodeIds that are lowered inside the current HIR owner. Only used for duplicate lowering check.
+    node_id_to_local_id: NodeMap<hir::ItemLocalId>,
 
     allow_try_trait: Lrc<[Symbol]>,
     allow_gen_future: Lrc<[Symbol]>,
@@ -171,8 +171,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             current_hir_id_owner: hir::CRATE_OWNER_ID,
             current_def_id_parent: CRATE_DEF_ID,
             item_local_id_counter: hir::ItemLocalId::ZERO,
-            labelled_node_id_to_local_id: Default::default(),
-            ident_to_local_id: Default::default(),
+            ident_and_label_to_local_id: Default::default(),
+            node_id_to_local_id: Default::default(),
             trait_map: Default::default(),
 
             // Lowering state.
@@ -589,9 +589,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
-        let current_labelled_node_id_to_local_id =
-            std::mem::take(&mut self.labelled_node_id_to_local_id);
-        let current_ident_to_local_id = std::mem::take(&mut self.ident_to_local_id);
+        let current_ident_and_label_to_local_id =
+            std::mem::take(&mut self.ident_and_label_to_local_id);
+        let current_node_id_to_local_id = std::mem::take(&mut self.node_id_to_local_id);
         let current_trait_map = std::mem::take(&mut self.trait_map);
         let current_owner =
             std::mem::replace(&mut self.current_hir_id_owner, hir::OwnerId { def_id });
@@ -604,6 +604,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we want `f` to be able to refer to the `LocalDefId`s that the caller created.
         // and the caller to refer to some of the subdefinitions' nodes' `LocalDefId`s.
 
+        // Always allocate the first `HirId` for the owner itself.
+        let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
+        debug_assert_eq!(_old, None);
+
         let item = self.with_def_id_parent(def_id, f);
         debug_assert_eq!(def_id, item.def_id().def_id);
         // `f` should have consumed all the elements in these vectors when constructing `item`.
@@ -613,8 +617,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.attrs = current_attrs;
         self.bodies = current_bodies;
-        self.labelled_node_id_to_local_id = current_labelled_node_id_to_local_id;
-        self.ident_to_local_id = current_ident_to_local_id;
+        self.ident_and_label_to_local_id = current_ident_and_label_to_local_id;
+        self.node_id_to_local_id = current_node_id_to_local_id;
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
@@ -703,6 +707,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
         }
 
+        // Check whether the same `NodeId` is lowered more than once.
+        #[cfg(debug_assertions)]
+        {
+            let old = self.node_id_to_local_id.insert(ast_node_id, local_id);
+            assert_eq!(old, None);
+        }
+
         hir_id
     }
 
@@ -720,7 +731,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
         let res: Result<Res, ()> = res.apply_id(|id| {
             let owner = self.current_hir_id_owner;
-            let local_id = self.ident_to_local_id.get(&id).copied().ok_or(())?;
+            let local_id = self.ident_and_label_to_local_id.get(&id).copied().ok_or(())?;
             Ok(HirId { owner, local_id })
         });
         trace!(?res);

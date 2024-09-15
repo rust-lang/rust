@@ -14,15 +14,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(self.lower_block_noalloc(hir_id, b, targeted_by_break))
     }
 
-    pub(super) fn lower_block_with_hir_id(
-        &mut self,
-        b: &Block,
-        hir_id: hir::HirId,
-        targeted_by_break: bool,
-    ) -> &'hir hir::Block<'hir> {
-        self.arena.alloc(self.lower_block_noalloc(hir_id, b, targeted_by_break))
-    }
-
     pub(super) fn lower_block_noalloc(
         &mut self,
         hir_id: hir::HirId,

@@ -260,7 +260,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     };
                     self_resolver.visit_block(block);
                     // Target expr needs to lower `self` path.
-                    this.ident_to_local_id.insert(pat_node_id, param.pat.hir_id.local_id);
+                    this.ident_and_label_to_local_id.insert(pat_node_id, param.pat.hir_id.local_id);
                     this.lower_target_expr(&block)
                 } else {
                     this.generate_arg(param.pat.hir_id, span)

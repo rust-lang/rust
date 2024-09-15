@@ -261,10 +261,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // expr node id.
                     let block_hir_id = self.lower_node_id(blk.id);
                     let opt_label = self.lower_label(*opt_label, blk.id, block_hir_id);
-                    hir::ExprKind::Block(
-                        self.lower_block_with_hir_id(blk, block_hir_id, opt_label.is_some()),
-                        opt_label,
-                    )
+                    let hir_block = self.arena.alloc(self.lower_block_noalloc(
+                        block_hir_id,
+                        blk,
+                        opt_label.is_some(),
+                    ));
+                    hir::ExprKind::Block(hir_block, opt_label)
                 }
                 ExprKind::Assign(el, er, span) => self.lower_expr_assign(el, er, *span, e.span),
                 ExprKind::AssignOp(op, el, er) => hir::ExprKind::AssignOp(
@@ -1486,7 +1488,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         dest_hir_id: hir::HirId,
     ) -> Option<Label> {
         let label = opt_label?;
-        self.labelled_node_id_to_local_id.insert(dest_id, dest_hir_id.local_id);
+        self.ident_and_label_to_local_id.insert(dest_id, dest_hir_id.local_id);
         Some(Label { ident: self.lower_ident(label.ident) })
     }
 
@@ -1494,7 +1496,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let target_id = match destination {
             Some((id, _)) => {
                 if let Some(loop_id) = self.resolver.get_label_res(id) {
-                    let local_id = self.labelled_node_id_to_local_id[&loop_id];
+                    let local_id = self.ident_and_label_to_local_id[&loop_id];
                     let loop_hir_id = HirId { owner: self.current_hir_id_owner, local_id };
                     Ok(loop_hir_id)
                 } else {

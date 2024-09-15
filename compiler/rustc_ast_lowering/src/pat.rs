@@ -270,12 +270,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 };
                 // All identifiers resolves to this canonical identifier share its `HirId`.
                 let binding_id = if canonical_id == p.id {
-                    self.ident_to_local_id.insert(canonical_id, hir_id.local_id);
+                    self.ident_and_label_to_local_id.insert(canonical_id, hir_id.local_id);
                     hir_id
                 } else {
                     hir::HirId {
                         owner: self.current_hir_id_owner,
-                        local_id: self.ident_to_local_id[&canonical_id],
+                        local_id: self.ident_and_label_to_local_id[&canonical_id],
                     }
                 };
                 hir::PatKind::Binding(

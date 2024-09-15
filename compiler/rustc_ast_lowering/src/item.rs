@@ -154,8 +154,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_item(&mut self, i: &Item) -> &'hir hir::Item<'hir> {
         let mut ident = i.ident;
         let vis_span = self.lower_span(i.vis.span);
-        let hir_id =
-            hir::HirId { owner: self.current_hir_id_owner, local_id: hir::ItemLocalId::ZERO };
+        let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
         let attrs = self.lower_attrs(hir_id, &i.attrs);
         let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, vis_span, &i.kind);
         let item = hir::Item {
@@ -605,8 +604,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
-        let hir_id =
-            hir::HirId { owner: self.current_hir_id_owner, local_id: hir::ItemLocalId::ZERO };
+        let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
         let owner_id = hir_id.expect_owner();
         self.lower_attrs(hir_id, &i.attrs);
         let item = hir::ForeignItem {
@@ -730,8 +728,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
-        let hir_id =
-            hir::HirId { owner: self.current_hir_id_owner, local_id: hir::ItemLocalId::ZERO };
+        let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
         self.lower_attrs(hir_id, &i.attrs);
         let trait_item_def_id = hir_id.expect_owner();
 
@@ -861,8 +858,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
-        let hir_id =
-            hir::HirId { owner: self.current_hir_id_owner, local_id: hir::ItemLocalId::ZERO };
+        let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
         self.lower_attrs(hir_id, &i.attrs);
 
         let (generics, kind) = match &i.kind {
