@@ -172,6 +172,7 @@ dependencies = [
 name = "miri-test-deps"
 version = "0.1.0"
 dependencies = [
+ "cfg-if",
  "getrandom 0.1.16",
  "getrandom 0.2.15",
  "libc",
