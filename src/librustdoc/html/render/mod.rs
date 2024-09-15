@@ -1197,11 +1197,33 @@ pub(crate) fn render_all_impls(
     blanket_impl: &[&Impl],
 ) {
     let mut impls = Buffer::html();
-    render_impls(cx, &mut impls, concrete, containing_item, true);
+
+    let (concrete_local, concrete_nonlocal): (Vec<&Impl>, Vec<&Impl>) = concrete
+        .into_iter()
+        .filter(|elem| elem.inner_impl().trait_.is_some())
+        .partition(|elem| elem.inner_impl().trait_.as_ref().unwrap().def_id().is_local());
+
+    render_impls(cx, &mut impls, &concrete_local, containing_item, true);
+
     let impls = impls.into_inner();
     if !impls.is_empty() {
-        write_impl_section_heading(&mut w, "Trait Implementations", "trait-implementations");
-        write!(w, "<div id=\"trait-implementations-list\">{impls}</div>").unwrap();
+        write_impl_section_heading(
+            &mut w,
+            "Crate Trait Implementations",
+            "crate-trait-implementations",
+        );
+        write!(w, "<div id=\"crate-trait-implementations-list\">{impls}</div>").unwrap();
+    }
+
+    if !concrete_nonlocal.is_empty() {
+        write_impl_section_heading(
+            &mut w,
+            "External Trait Implementations",
+            "external-trait-implementations",
+        );
+        w.write_str("<div id=\"external-trait-implementations-list\">").unwrap();
+        render_impls(cx, &mut w, &concrete_nonlocal, containing_item, false);
+        w.write_str("</div>").unwrap();
     }
 
     if !synthetic.is_empty() {
