@@ -182,11 +182,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             // Make sure this is actually a SIMD vector.
             let idx_ty = fx.monomorphize(idx.node.ty(fx.mir, fx.tcx));
-            let n: u16 = if idx_ty.is_simd()
-                && matches!(idx_ty.simd_size_and_type(fx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
+            if !idx_ty.is_simd()
+                || !matches!(idx_ty.simd_size_and_type(fx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
             {
-                idx_ty.simd_size_and_type(fx.tcx).0.try_into().unwrap()
-            } else {
                 fx.tcx.dcx().span_err(
                     span,
                     format!("simd_shuffle index must be a SIMD vector of `u32`, got `{}`", idx_ty),
@@ -195,6 +193,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
                 return;
             };
+            let n: u16 = idx_ty.simd_size_and_type(fx.tcx).0.try_into().unwrap();
 
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();
