@@ -3,9 +3,10 @@
 //! <https://developer.apple.com/documentation/kernel/1387446-sysctlbyname/determining_instruction_set_characteristics>
 
 use crate::detect::{cache, Feature};
+use core::ffi::CStr;
 
 #[inline]
-fn _sysctlbyname(name: &str) -> bool {
+fn _sysctlbyname(name: &CStr) -> bool {
     use libc;
 
     let mut enabled: i32 = 0;
@@ -14,7 +15,7 @@ fn _sysctlbyname(name: &str) -> bool {
 
     let ret = unsafe {
         libc::sysctlbyname(
-            name.as_ptr() as *const i8,
+            name.as_ptr(),
             enabled_ptr,
             &mut enabled_len,
             core::ptr::null_mut(),
@@ -38,35 +39,35 @@ pub(crate) fn detect_features() -> cache::Initializer {
         }
     };
 
-    let asimd = _sysctlbyname("hw.optional.AdvSIMD\0");
-    let pmull = _sysctlbyname("hw.optional.arm.FEAT_PMULL\0");
-    let fp = _sysctlbyname("hw.optional.floatingpoint\0");
-    let fp16 = _sysctlbyname("hw.optional.arm.FEAT_FP16\0");
-    let crc = _sysctlbyname("hw.optional.armv8_crc32\0");
-    let lse = _sysctlbyname("hw.optional.arm.FEAT_LSE\0");
-    let lse2 = _sysctlbyname("hw.optional.arm.FEAT_LSE2\0");
-    let rdm = _sysctlbyname("hw.optional.arm.FEAT_RDM\0");
-    let rcpc = _sysctlbyname("hw.optional.arm.FEAT_LRCPC\0");
-    let rcpc2 = _sysctlbyname("hw.optional.arm.FEAT_LRCPC2\0");
-    let dotprod = _sysctlbyname("hw.optional.arm.FEAT_DotProd\0");
-    let fhm = _sysctlbyname("hw.optional.arm.FEAT_FHM\0");
-    let flagm = _sysctlbyname("hw.optional.arm.FEAT_FlagM\0");
-    let ssbs = _sysctlbyname("hw.optional.arm.FEAT_SSBS\0");
-    let sb = _sysctlbyname("hw.optional.arm.FEAT_SB\0");
-    let paca = _sysctlbyname("hw.optional.arm.FEAT_PAuth\0");
-    let dpb = _sysctlbyname("hw.optional.arm.FEAT_DPB\0");
-    let dpb2 = _sysctlbyname("hw.optional.arm.FEAT_DPB2\0");
-    let frintts = _sysctlbyname("hw.optional.arm.FEAT_FRINTTS\0");
-    let i8mm = _sysctlbyname("hw.optional.arm.FEAT_I8MM\0");
-    let bf16 = _sysctlbyname("hw.optional.arm.FEAT_BF16\0");
-    let bti = _sysctlbyname("hw.optional.arm.FEAT_BTI\0");
-    let fcma = _sysctlbyname("hw.optional.arm.FEAT_FCMA\0");
-    let aes = _sysctlbyname("hw.optional.arm.FEAT_AES\0");
-    let sha1 = _sysctlbyname("hw.optional.arm.FEAT_SHA1\0");
-    let sha2 = _sysctlbyname("hw.optional.arm.FEAT_SHA256\0");
-    let sha3 = _sysctlbyname("hw.optional.arm.FEAT_SHA3\0");
-    let sha512 = _sysctlbyname("hw.optional.arm.FEAT_SHA512\0");
-    let jsconv = _sysctlbyname("hw.optional.arm.FEAT_JSCVT\0");
+    let asimd = _sysctlbyname(c"hw.optional.AdvSIMD");
+    let pmull = _sysctlbyname(c"hw.optional.arm.FEAT_PMULL");
+    let fp = _sysctlbyname(c"hw.optional.floatingpoint");
+    let fp16 = _sysctlbyname(c"hw.optional.arm.FEAT_FP16");
+    let crc = _sysctlbyname(c"hw.optional.armv8_crc32");
+    let lse = _sysctlbyname(c"hw.optional.arm.FEAT_LSE");
+    let lse2 = _sysctlbyname(c"hw.optional.arm.FEAT_LSE2");
+    let rdm = _sysctlbyname(c"hw.optional.arm.FEAT_RDM");
+    let rcpc = _sysctlbyname(c"hw.optional.arm.FEAT_LRCPC");
+    let rcpc2 = _sysctlbyname(c"hw.optional.arm.FEAT_LRCPC2");
+    let dotprod = _sysctlbyname(c"hw.optional.arm.FEAT_DotProd");
+    let fhm = _sysctlbyname(c"hw.optional.arm.FEAT_FHM");
+    let flagm = _sysctlbyname(c"hw.optional.arm.FEAT_FlagM");
+    let ssbs = _sysctlbyname(c"hw.optional.arm.FEAT_SSBS");
+    let sb = _sysctlbyname(c"hw.optional.arm.FEAT_SB");
+    let paca = _sysctlbyname(c"hw.optional.arm.FEAT_PAuth");
+    let dpb = _sysctlbyname(c"hw.optional.arm.FEAT_DPB");
+    let dpb2 = _sysctlbyname(c"hw.optional.arm.FEAT_DPB2");
+    let frintts = _sysctlbyname(c"hw.optional.arm.FEAT_FRINTTS");
+    let i8mm = _sysctlbyname(c"hw.optional.arm.FEAT_I8MM");
+    let bf16 = _sysctlbyname(c"hw.optional.arm.FEAT_BF16");
+    let bti = _sysctlbyname(c"hw.optional.arm.FEAT_BTI");
+    let fcma = _sysctlbyname(c"hw.optional.arm.FEAT_FCMA");
+    let aes = _sysctlbyname(c"hw.optional.arm.FEAT_AES");
+    let sha1 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA1");
+    let sha2 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA256");
+    let sha3 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA3");
+    let sha512 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA512");
+    let jsconv = _sysctlbyname(c"hw.optional.arm.FEAT_JSCVT");
 
     enable_feature(Feature::asimd, asimd);
     enable_feature(Feature::pmull, pmull);

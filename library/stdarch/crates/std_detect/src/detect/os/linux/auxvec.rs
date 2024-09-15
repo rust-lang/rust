@@ -187,7 +187,7 @@ fn getauxval(key: usize) -> Result<usize, ()> {
     use libc;
     pub type F = unsafe extern "C" fn(usize) -> usize;
     unsafe {
-        let ptr = libc::dlsym(libc::RTLD_DEFAULT, "getauxval\0".as_ptr() as *const _);
+        let ptr = libc::dlsym(libc::RTLD_DEFAULT, c"getauxval".as_ptr());
         if ptr.is_null() {
             return Err(());
         }

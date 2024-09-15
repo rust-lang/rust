@@ -134,7 +134,8 @@ cfg_if::cfg_if! {
 
         #[inline]
         fn initialize(mut value: Initializer) -> Initializer {
-            const RUST_STD_DETECT_UNSTABLE: &[u8] = b"RUST_STD_DETECT_UNSTABLE\0";
+            use core::ffi::CStr;
+            const RUST_STD_DETECT_UNSTABLE: &CStr = c"RUST_STD_DETECT_UNSTABLE";
             cfg_if::cfg_if! {
                 if #[cfg(windows)] {
                     use alloc::vec;
@@ -142,18 +143,18 @@ cfg_if::cfg_if! {
                     extern "system" {
                         fn GetEnvironmentVariableA(name: *const u8, buffer: *mut u8, size: u32) -> u32;
                     }
-                    let len = unsafe { GetEnvironmentVariableA(RUST_STD_DETECT_UNSTABLE.as_ptr(), core::ptr::null_mut(), 0) };
+                    let len = unsafe { GetEnvironmentVariableA(RUST_STD_DETECT_UNSTABLE.as_ptr().cast::<u8>(), core::ptr::null_mut(), 0) };
                     if len > 0 {
                         // +1 to include the null terminator.
                         let mut env = vec![0; len as usize + 1];
-                        let len = unsafe { GetEnvironmentVariableA(RUST_STD_DETECT_UNSTABLE.as_ptr(), env.as_mut_ptr(), len + 1) };
+                        let len = unsafe { GetEnvironmentVariableA(RUST_STD_DETECT_UNSTABLE.as_ptr().cast::<u8>(), env.as_mut_ptr(), len + 1) };
                         if len > 0 {
                             disable_features(&env[..len as usize], &mut value);
                         }
                     }
                 } else {
                     let env = unsafe {
-                        libc::getenv(RUST_STD_DETECT_UNSTABLE.as_ptr() as *const libc::c_char)
+                        libc::getenv(RUST_STD_DETECT_UNSTABLE.as_ptr())
                     };
                     if !env.is_null() {
                         let len = unsafe { libc::strlen(env) };

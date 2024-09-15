@@ -14,10 +14,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // https://reviews.llvm.org/D114523
         let mut arch = [0_u8; libc::PROP_VALUE_MAX as usize];
         let len = unsafe {
-            libc::__system_property_get(
-                b"ro.arch\0".as_ptr() as *const libc::c_char,
-                arch.as_mut_ptr() as *mut libc::c_char,
-            )
+            libc::__system_property_get(c"ro.arch".as_ptr(), arch.as_mut_ptr() as *mut libc::c_char)
         };
         // On Exynos, ro.arch is not available on Android 12+, but it is fine
         // because Android 9+ includes the fix.
