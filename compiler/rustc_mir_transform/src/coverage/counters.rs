@@ -100,6 +100,14 @@ impl CoverageCounters {
         BcbCounter::Counter { id }
     }
 
+    /// Creates a new physical counter attached a BCB node.
+    /// The node must not already have a counter.
+    fn make_phys_node_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
+        let counter = self.make_counter(CounterIncrementSite::Node { bcb });
+        debug!(?bcb, ?counter, "node gets a physical counter");
+        self.set_bcb_counter(bcb, counter)
+    }
+
     fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
         let new_expr = BcbExpression { lhs, op, rhs };
         *self
@@ -353,28 +361,21 @@ impl<'a> MakeBcbCounters<'a> {
             return counter_kind;
         }
 
-        // A BCB with only one incoming edge gets a simple `Counter` (via `make_counter()`).
-        // Also, a BCB that loops back to itself gets a simple `Counter`. This may indicate the
-        // program results in a tight infinite loop, but it should still compile.
-        let one_path_to_target = !self.basic_coverage_blocks.bcb_has_multiple_in_edges(bcb);
-        if one_path_to_target || self.bcb_predecessors(bcb).contains(&bcb) {
-            let counter_kind =
-                self.coverage_counters.make_counter(CounterIncrementSite::Node { bcb });
-            if one_path_to_target {
-                debug!("{bcb:?} gets a new counter: {counter_kind:?}");
-            } else {
-                debug!(
-                    "{bcb:?} has itself as its own predecessor. It can't be part of its own \
-                    Expression sum, so it will get its own new counter: {counter_kind:?}. \
-                    (Note, the compiled code will generate an infinite loop.)",
-                );
-            }
-            return self.coverage_counters.set_bcb_counter(bcb, counter_kind);
+        let predecessors = self.basic_coverage_blocks.predecessors[bcb].as_slice();
+
+        // Handle cases where we can't compute a node's count from its in-edges:
+        // - START_BCB has no in-edges, so taking the sum would panic (or be wrong).
+        // - For nodes with one in-edge, or that directly loop to themselves,
+        //   trying to get the in-edge counts would require this node's counter,
+        //   leading to infinite recursion.
+        if predecessors.len() <= 1 || predecessors.contains(&bcb) {
+            debug!(?bcb, ?predecessors, "node has <=1 predecessors or is its own predecessor");
+            return self.coverage_counters.make_phys_node_counter(bcb);
         }
 
         // A BCB with multiple incoming edges can compute its count by ensuring that counters
         // exist for each of those edges, and then adding them up to get a total count.
-        let in_edge_counters = self.basic_coverage_blocks.predecessors[bcb]
+        let in_edge_counters = predecessors
             .iter()
             .copied()
             .map(|from_bcb| self.get_or_make_edge_counter(from_bcb, bcb))
@@ -498,11 +499,6 @@ impl<'a> MakeBcbCounters<'a> {
         }
 
         None
-    }
-
-    #[inline]
-    fn bcb_predecessors(&self, bcb: BasicCoverageBlock) -> &[BasicCoverageBlock] {
-        &self.basic_coverage_blocks.predecessors[bcb]
     }
 
     #[inline]
