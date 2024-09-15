@@ -140,6 +140,31 @@ pub macro unreachable_2021 {
     ),
 }
 
+/// Invokes a closure, aborting if the closure unwinds.
+///
+/// When compiled with aborting panics, this function is effectively a no-op.
+/// With unwinding panics, an unwind results in another call into the panic
+/// hook followed by a process abort.
+///
+/// # Notes
+///
+/// Instead of using this function, code should attempt to support unwinding.
+/// Implementing [`Drop`] allows you to restore invariants uniformly in both
+/// return and unwind paths.
+///
+/// If an unwind can lead to logical issues but not soundness issues, you
+/// should allow the unwind. Opting out of [`UnwindSafe`] indicates to your
+/// consumers that they need to consider correctness in the face of unwinds.
+///
+/// If an unwind would be unsound, then this function should be used in order
+/// to prevent unwinds. However, note that `extern "C" fn` will automatically
+/// convert unwinds to aborts, so using this function isn't necessary for FFI.
+#[unstable(feature = "abort_unwind", issue = "130338")]
+#[rustc_nounwind]
+pub fn abort_unwind<F: FnOnce() -> R, R>(f: F) -> R {
+    f()
+}
+
 /// An internal trait used by std to pass data from std to `panic_unwind` and
 /// other panic runtimes. Not intended to be stabilized any time soon, do not
 /// use.
