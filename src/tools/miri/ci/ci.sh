@@ -154,7 +154,7 @@ case $HOST_TARGET in
     TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX threadname pthread libc-time fs
     TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX threadname pthread sync available-parallelism libc-time tls
     TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX threadname pthread sync available-parallelism libc-time tls
-    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX
+    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX pthread --skip threadname --skip pthread_cond_timedwait
     TEST_TARGET=wasm32-wasip2          run_tests_minimal empty_main wasm heap_alloc libc-mem
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal empty_main wasm
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
