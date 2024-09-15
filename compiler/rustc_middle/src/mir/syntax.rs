@@ -579,7 +579,8 @@ pub struct CopyNonOverlapping<'tcx> {
     pub count: Operand<'tcx>,
 }
 
-/// Represents how a [`TerminatorKind::Call`] was constructed, used for diagnostics.
+/// Represents how a [`TerminatorKind::Call`] was constructed.
+/// Used only for diagnostics.
 #[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, PartialEq, Hash, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum CallSource {
@@ -1419,7 +1420,8 @@ pub enum CastKind {
     Transmute,
 }
 
-/// Represents how a [`CastKind::PointerCoercion`] was constructed, used for diagnostics.
+/// Represents how a [`CastKind::PointerCoercion`] was constructed.
+/// Used only for diagnostics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CoercionSource {
     /// The coercion was manually written by the user with an `as` cast.
