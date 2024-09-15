@@ -15,7 +15,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // The values are part of the platform-specific [asm/hwcap.h][hwcap]
     //
-    // [hwcap]: https://github.com/torvalds/linux/blob/master/arch/arm64/include/uapi/asm/hwcap.h
+    // [hwcap]: https://github.com/torvalds/linux/blob/master/arch/mips/include/uapi/asm/hwcap.h
     if let Ok(auxv) = auxvec::auxv() {
         enable_feature(&mut value, Feature::msa, bit::test(auxv.hwcap, 1));
         return value;
