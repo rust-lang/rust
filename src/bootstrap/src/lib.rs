@@ -312,8 +312,6 @@ impl Build {
         let miri_info = config.miri_info.clone();
         let rustfmt_info = config.rustfmt_info.clone();
         let enzyme_info = config.enzyme_info.clone();
-
-        // we always try to use git for LLVM builds
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 

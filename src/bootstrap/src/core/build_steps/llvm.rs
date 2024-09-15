@@ -241,7 +241,17 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
 
 /// Returns true if we're running in CI with modified LLVM (and thus can't download it)
 pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
-    CiEnv::is_ci() && config.rust_info.is_managed_git_subrepository() && {
+    // If the LLVM submodule is unavailable (which is the case when `llvm.download-ci-llvm` is set to true),
+    // LLVM cannot be modified which means it is unnecessary to run the git logic below.
+    //
+    // This is very unlikely to happen on our (rust-lang/rust) CI runners, as we intentionally fetch all
+    // submodules in CI and most of the time (probably always) prefer `llvm.download-ci-llvm` to be set
+    // to "if-unchanged" or true.
+    if config.in_tree_llvm_info.is_managed_git_subrepository() {
+        return false;
+    }
+
+    CiEnv::is_ci() && {
         // We assume we have access to git, so it's okay to unconditionally pass
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
