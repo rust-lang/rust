@@ -268,10 +268,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let val = codegen_operand(fx, &val.node);
 
             // FIXME validate
-            let idx_const = if let Some(idx_const) =
-                crate::constant::mir_operand_get_const_val(fx, &idx.node)
-            {
-                idx_const
+            let idx_const = if let Some(idx_const) = idx.node.constant() {
+                crate::constant::eval_mir_constant(fx, idx_const).0.try_to_scalar_int().unwrap()
             } else {
                 fx.tcx.dcx().span_fatal(span, "Index argument for `simd_insert` is not a constant");
             };
@@ -304,22 +302,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             }
 
-            let idx_const = if let Some(idx_const) =
-                crate::constant::mir_operand_get_const_val(fx, &idx.node)
-            {
-                idx_const
+            let idx_const = if let Some(idx_const) = idx.node.constant() {
+                crate::constant::eval_mir_constant(fx, idx_const).0.try_to_scalar_int().unwrap()
             } else {
-                fx.tcx.dcx().span_warn(span, "Index argument for `simd_extract` is not a constant");
-                let trap_block = fx.bcx.create_block();
-                let true_ = fx.bcx.ins().iconst(types::I8, 1);
-                let ret_block = fx.get_block(target);
-                fx.bcx.ins().brif(true_, trap_block, &[], ret_block, &[]);
-                fx.bcx.switch_to_block(trap_block);
-                crate::trap::trap_unimplemented(
-                    fx,
-                    "Index argument for `simd_extract` is not a constant",
-                );
-                return;
+                fx.tcx
+                    .dcx()
+                    .span_fatal(span, "Index argument for `simd_extract` is not a constant");
             };
 
             let idx = idx_const.to_u32();

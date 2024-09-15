@@ -490,6 +490,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 }
 
 /// Used only for intrinsic implementations that need a compile-time constant
+///
+/// All uses of this function are a bug inside stdarch. [`eval_mir_constant`]
+/// should be used everywhere, but for some vendor intrinsics stdarch forgets
+/// to wrap the immediate argument in `const {}`, necesitating this hack to get
+/// the correct value at compile time instead.
 pub(crate) fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     operand: &Operand<'tcx>,
