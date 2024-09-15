@@ -323,8 +323,7 @@ impl<'a> MakeBcbCounters<'a> {
         }
 
         // Determine the set of out-edges that don't yet have edge counters.
-        let candidate_successors = self
-            .bcb_successors(from_bcb)
+        let candidate_successors = self.basic_coverage_blocks.successors[from_bcb]
             .iter()
             .copied()
             .filter(|&to_bcb| self.edge_has_no_counter(from_bcb, to_bcb))
@@ -500,11 +499,6 @@ impl<'a> MakeBcbCounters<'a> {
         }
 
         None
-    }
-
-    #[inline]
-    fn bcb_successors(&self, bcb: BasicCoverageBlock) -> &[BasicCoverageBlock] {
-        &self.basic_coverage_blocks.successors[bcb]
     }
 
     #[inline]
