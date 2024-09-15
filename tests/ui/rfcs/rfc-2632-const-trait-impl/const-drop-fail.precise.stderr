@@ -1,5 +1,5 @@
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/const-drop-fail.rs:20:12
+  --> $DIR/const-drop-fail.rs:19:12
    |
 LL | impl const Drop for ConstImplWithDropGlue {
    |            ^^^^
@@ -8,13 +8,13 @@ LL | impl const Drop for ConstImplWithDropGlue {
    = note: adding a non-const method body in the future would be a breaking change
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-fail.rs:24:26
+  --> $DIR/const-drop-fail.rs:23:26
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
    |                          ^^^^^^^^
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/const-drop-fail.rs:24:36
+  --> $DIR/const-drop-fail.rs:23:36
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
    |                                    ^ the destructor for this type cannot be evaluated in constant functions
@@ -27,12 +27,12 @@ error[E0080]: evaluation of constant value failed
 note: inside `std::ptr::drop_in_place::<NonTrivialDrop> - shim(Some(NonTrivialDrop))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `check::<NonTrivialDrop>`
-  --> $DIR/const-drop-fail.rs:24:43
+  --> $DIR/const-drop-fail.rs:23:43
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
    |                                           ^
 note: inside `_`
-  --> $DIR/const-drop-fail.rs:28:23
+  --> $DIR/const-drop-fail.rs:27:23
    |
 LL |           const _: () = check($exp);
    |                         ^^^^^^^^^^^
@@ -54,12 +54,12 @@ note: inside `std::ptr::drop_in_place::<NonTrivialDrop> - shim(Some(NonTrivialDr
 note: inside `std::ptr::drop_in_place::<ConstImplWithDropGlue> - shim(Some(ConstImplWithDropGlue))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `check::<ConstImplWithDropGlue>`
-  --> $DIR/const-drop-fail.rs:24:43
+  --> $DIR/const-drop-fail.rs:23:43
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
    |                                           ^
 note: inside `_`
-  --> $DIR/const-drop-fail.rs:28:23
+  --> $DIR/const-drop-fail.rs:27:23
    |
 LL |           const _: () = check($exp);
    |                         ^^^^^^^^^^^

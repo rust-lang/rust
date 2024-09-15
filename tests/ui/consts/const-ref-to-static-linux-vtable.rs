@@ -1,6 +1,6 @@
 //@check-pass
 //! This is the reduced version of the "Linux kernel vtable" use-case.
-#![feature(const_mut_refs, const_refs_to_static)]
+#![feature(const_refs_to_static)]
 use std::ptr::addr_of_mut;
 
 #[repr(C)]

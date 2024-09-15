@@ -2,7 +2,6 @@
 
 #![feature(type_alias_impl_trait)]
 #![feature(const_trait_impl)]
-#![feature(const_refs_to_cell)]
 
 use std::marker::Destruct;
 

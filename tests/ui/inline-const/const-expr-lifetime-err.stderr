@@ -1,5 +1,5 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/const-expr-lifetime-err.rs:22:30
+  --> $DIR/const-expr-lifetime-err.rs:20:30
    |
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here

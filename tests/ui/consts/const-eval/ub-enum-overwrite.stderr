@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum-overwrite.rs:13:14
+  --> $DIR/ub-enum-overwrite.rs:11:14
    |
 LL |     unsafe { *p }
    |              ^^ using uninitialized data, but this operation requires initialized memory

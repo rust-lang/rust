@@ -9,7 +9,7 @@
 #![crate_type = "lib"]
 #![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs, staged_api)]
 #![feature(fundamental, marker_trait_attr)]
-#![feature(const_trait_impl, effects, const_mut_refs)]
+#![feature(const_trait_impl, effects)]
 #![allow(internal_features, incomplete_features)]
 #![no_std]
 #![no_core]

@@ -1,5 +1,4 @@
 //! Ensure we catch UB due to writing through a shared reference.
-#![feature(const_mut_refs, const_refs_to_cell)]
 #![allow(invalid_reference_casting)]
 
 use std::mem;

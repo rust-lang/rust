@@ -114,7 +114,6 @@
 #![feature(const_maybe_uninit_write)]
 #![feature(const_option)]
 #![feature(const_pin)]
-#![feature(const_refs_to_cell)]
 #![feature(const_size_of_val)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
@@ -164,13 +163,14 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(const_mut_refs))]
+#![cfg_attr(bootstrap, feature(const_refs_to_cell))]
 #![cfg_attr(not(test), feature(coroutine_trait))]
 #![cfg_attr(test, feature(panic_update_hook))]
 #![cfg_attr(test, feature(test))]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
 #![feature(cfg_sanitize)]
-#![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_write)]
 #![feature(const_try)]
