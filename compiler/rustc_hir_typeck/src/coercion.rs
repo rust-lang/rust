@@ -769,7 +769,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         ));
 
         Ok(InferOk {
-            value: (vec![Adjustment { kind: Adjust::DynStar, target: b }], b),
+            value: (
+                vec![Adjustment { kind: Adjust::Pointer(PointerCoercion::DynStar), target: b }],
+                b,
+            ),
             obligations,
         })
     }

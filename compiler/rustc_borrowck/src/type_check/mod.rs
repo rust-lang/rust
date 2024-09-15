@@ -2139,7 +2139,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
                     }
 
-                    CastKind::DynStar => {
+                    CastKind::PointerCoercion(PointerCoercion::DynStar) => {
                         // get the constraints from the target type (`dyn* Clone`)
                         //
                         // apply them to prove that the source type `Foo` implements `Clone` etc

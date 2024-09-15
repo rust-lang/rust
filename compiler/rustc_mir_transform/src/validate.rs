@@ -1128,9 +1128,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Cast(kind, operand, target_type) => {
                 let op_ty = operand.ty(self.body, self.tcx);
                 match kind {
-                    CastKind::DynStar => {
-                        // FIXME(dyn-star): make sure nothing needs to be done here.
-                    }
                     // FIXME: Add Checks for these
                     CastKind::PointerWithExposedProvenance | CastKind::PointerExposeProvenance => {}
                     CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
@@ -1207,6 +1204,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     CastKind::PointerCoercion(PointerCoercion::Unsize) => {
                         // This is used for all `CoerceUnsized` types,
                         // not just pointers/references, so is hard to check.
+                    }
+                    CastKind::PointerCoercion(PointerCoercion::DynStar) => {
+                        // FIXME(dyn-star): make sure nothing needs to be done here.
                     }
                     CastKind::IntToInt | CastKind::IntToFloat => {
                         let input_valid = op_ty.is_integral() || op_ty.is_char() || op_ty.is_bool();

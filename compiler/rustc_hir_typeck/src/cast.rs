@@ -33,12 +33,12 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::bug;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
@@ -674,6 +674,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         use rustc_middle::ty::cast::CastTy::*;
         use rustc_middle::ty::cast::IntTy::*;
 
+        if self.cast_ty.is_dyn_star() {
+            if fcx.tcx.features().dyn_star {
+                span_bug!(self.span, "should be handled by `coerce`");
+            } else {
+                // Report "casting is invalid" rather than "non-primitive cast"
+                // if the feature is not enabled.
+                return Err(CastError::IllegalCast);
+            }
+        }
+
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty), CastTy::from_ty(self.cast_ty))
         {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
@@ -780,16 +790,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
 
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
-
-            (_, DynStar) => {
-                if fcx.tcx.features().dyn_star {
-                    bug!("should be handled by `coerce`")
-                } else {
-                    Err(CastError::IllegalCast)
-                }
-            }
-
-            (DynStar, _) => Err(CastError::IllegalCast),
         }
     }
 

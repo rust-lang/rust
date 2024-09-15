@@ -1404,8 +1404,6 @@ pub enum CastKind {
     ///
     /// Both are runtime nops, so should be [`CastKind::PtrToPtr`] instead in runtime MIR.
     PointerCoercion(PointerCoercion),
-    /// Cast into a dyn* object.
-    DynStar,
     IntToInt,
     FloatToInt,
     FloatToFloat,

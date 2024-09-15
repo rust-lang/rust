@@ -665,11 +665,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::Unsize),
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize)
+                | mir::CastKind::PointerCoercion(PointerCoercion::DynStar),
                 ref operand,
                 target_ty,
-            )
-            | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
+            ) => {
                 let source_ty = operand.ty(self.body, self.tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items

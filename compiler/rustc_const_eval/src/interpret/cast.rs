@@ -125,7 +125,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            CastKind::DynStar => {
+            CastKind::PointerCoercion(PointerCoercion::DynStar) => {
                 if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
                     // Initial cast from sized to dyn trait
                     let vtable = self.get_vtable_ptr(src.layout.ty, data)?;

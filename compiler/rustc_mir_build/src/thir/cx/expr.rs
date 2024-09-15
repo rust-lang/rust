@@ -146,7 +146,6 @@ impl<'tcx> Cx<'tcx> {
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
-            Adjust::DynStar => ExprKind::Cast { source: self.thir.exprs.push(expr) },
             Adjust::ReborrowPin(region, mutbl) => {
                 debug!("apply ReborrowPin adjustment");
                 // Rewrite `$expr` as `Pin { __pointer: &(mut)? *($expr).__pointer }`

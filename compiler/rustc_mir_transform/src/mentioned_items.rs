@@ -70,11 +70,11 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
         match *rvalue {
             // We need to detect unsizing casts that required vtables.
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::Unsize),
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize)
+                | mir::CastKind::PointerCoercion(PointerCoercion::DynStar),
                 ref operand,
                 target_ty,
-            )
-            | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
+            ) => {
                 // This isn't monomorphized yet so we can't tell what the actual types are -- just
                 // add everything that may involve a vtable.
                 let source_ty = operand.ty(self.body, self.tcx);
