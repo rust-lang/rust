@@ -191,6 +191,7 @@ impl RwLock {
         debug_assert!(is_write_locked(state), "RwLock must be write locked to call `downgrade`");
 
         if has_readers_waiting(state) {
+            // Since we had the exclusive lock, nobody else can unset this bit.
             self.state.fetch_sub(READERS_WAITING, Relaxed);
             futex_wake_all(&self.state);
         }
