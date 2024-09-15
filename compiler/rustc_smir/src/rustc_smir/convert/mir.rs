@@ -286,8 +286,8 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
         match self {
             PointerExposeProvenance => stable_mir::mir::CastKind::PointerExposeAddress,
             PointerWithExposedProvenance => stable_mir::mir::CastKind::PointerWithExposedProvenance,
-            PointerCoercion(PointerCoercion::DynStar) => stable_mir::mir::CastKind::DynStar,
-            PointerCoercion(c) => stable_mir::mir::CastKind::PointerCoercion(c.stable(tables)),
+            PointerCoercion(PointerCoercion::DynStar, _) => stable_mir::mir::CastKind::DynStar,
+            PointerCoercion(c, _) => stable_mir::mir::CastKind::PointerCoercion(c.stable(tables)),
             IntToInt => stable_mir::mir::CastKind::IntToInt,
             FloatToInt => stable_mir::mir::CastKind::FloatToInt,
             FloatToFloat => stable_mir::mir::CastKind::FloatToFloat,

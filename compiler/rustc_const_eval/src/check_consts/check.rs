@@ -440,6 +440,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     | PointerCoercion::UnsafeFnPointer
                     | PointerCoercion::ClosureFnPointer(_)
                     | PointerCoercion::ReifyFnPointer,
+                    _,
                 ),
                 _,
                 _,
@@ -448,7 +449,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(
-                CastKind::PointerCoercion(PointerCoercion::Unsize | PointerCoercion::DynStar),
+                CastKind::PointerCoercion(PointerCoercion::Unsize | PointerCoercion::DynStar, _),
                 _,
                 _,
             ) => {

@@ -104,15 +104,28 @@ impl<'tcx> Cx<'tcx> {
         };
 
         let kind = match adjustment.kind {
-            Adjust::Pointer(PointerCoercion::Unsize) => {
-                adjust_span(&mut expr);
-                ExprKind::PointerCoercion {
-                    cast: PointerCoercion::Unsize,
-                    source: self.thir.exprs.push(expr),
-                }
-            }
             Adjust::Pointer(cast) => {
-                ExprKind::PointerCoercion { cast, source: self.thir.exprs.push(expr) }
+                if cast == PointerCoercion::Unsize {
+                    adjust_span(&mut expr);
+                }
+
+                let is_from_as_cast = if let hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Cast(..),
+                    span: cast_span,
+                    ..
+                }) = self.tcx.parent_hir_node(hir_expr.hir_id)
+                {
+                    // Use the whole span of the `x as T` expression for the coercion.
+                    span = *cast_span;
+                    true
+                } else {
+                    false
+                };
+                ExprKind::PointerCoercion {
+                    cast,
+                    source: self.thir.exprs.push(expr),
+                    is_from_as_cast,
+                }
             }
             Adjust::NeverToAny if adjustment.target.is_never() => return expr,
             Adjust::NeverToAny => ExprKind::NeverToAny { source: self.thir.exprs.push(expr) },
@@ -235,6 +248,7 @@ impl<'tcx> Cx<'tcx> {
             ExprKind::PointerCoercion {
                 source: self.mirror_expr(source),
                 cast: PointerCoercion::ArrayToPointer,
+                is_from_as_cast: true,
             }
         } else if let hir::ExprKind::Path(ref qpath) = source.kind
             && let res = self.typeck_results().qpath_res(qpath, source.hir_id)

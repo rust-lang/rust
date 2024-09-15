@@ -407,7 +407,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         temp,
                         Rvalue::Cast(
-                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            CastKind::PointerCoercion(
+                                PointerCoercion::Unsize,
+                                CoercionSource::Implicit,
+                            ),
                             Operand::Copy(val),
                             ty,
                         ),
@@ -421,7 +424,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         slice,
                         Rvalue::Cast(
-                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            CastKind::PointerCoercion(
+                                PointerCoercion::Unsize,
+                                CoercionSource::Implicit,
+                            ),
                             expect,
                             ty,
                         ),

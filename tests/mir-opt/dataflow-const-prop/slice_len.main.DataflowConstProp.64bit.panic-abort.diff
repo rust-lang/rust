@@ -32,7 +32,7 @@
           _14 = const main::promoted[0];
           _4 = copy _14;
           _3 = copy _4;
-          _2 = move _3 as &[u32] (PointerCoercion(Unsize));
+          _2 = move _3 as &[u32] (PointerCoercion(Unsize, AsCast));
           StorageDead(_3);
           StorageLive(_6);
           _6 = const 1_usize;

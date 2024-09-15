@@ -68,7 +68,9 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         Cast { source } => visitor.visit_expr(&visitor.thir()[source]),
         Use { source } => visitor.visit_expr(&visitor.thir()[source]),
         NeverToAny { source } => visitor.visit_expr(&visitor.thir()[source]),
-        PointerCoercion { source, cast: _ } => visitor.visit_expr(&visitor.thir()[source]),
+        PointerCoercion { source, cast: _, is_from_as_cast: _ } => {
+            visitor.visit_expr(&visitor.thir()[source])
+        }
         Let { expr, ref pat } => {
             visitor.visit_expr(&visitor.thir()[expr]);
             visitor.visit_pat(pat);

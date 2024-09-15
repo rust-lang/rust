@@ -61,7 +61,7 @@
       }
   
       bb1: {
-          _3 = move _4 as std::boxed::Box<dyn std::fmt::Display> (PointerCoercion(Unsize));
+          _3 = move _4 as std::boxed::Box<dyn std::fmt::Display> (PointerCoercion(Unsize, Implicit));
           StorageDead(_4);
           _2 = Result::<Box<dyn std::fmt::Display>, <T as Err>::Err>::Ok(move _3);
           StorageDead(_3);

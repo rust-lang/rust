@@ -576,7 +576,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     }
                     value.offset(Size::ZERO, to, &self.ecx).ok()?
                 }
-                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) => {
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let to = self.ecx.layout_of(to).ok()?;
                     let dest = self.ecx.allocate(to, MemoryKind::Stack).ok()?;
@@ -593,7 +593,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
                     ret.into()
                 }
-                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer) => {
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let src = self.ecx.read_immediate(src).ok()?;
                     let to = self.ecx.layout_of(to).ok()?;
@@ -1138,7 +1138,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             (
                 UnOp::PtrMetadata,
                 Value::Cast {
-                    kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize),
+                    kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _),
                     from,
                     to,
                     ..
@@ -1342,7 +1342,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             return Some(value);
         }
 
-        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_)) = kind {
+        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_), _) = kind {
             // Each reification of a generic fn may get a different pointer.
             // Do not try to merge them.
             return self.new_opaque();
@@ -1429,7 +1429,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // We have an unsizing cast, which assigns the length to fat pointer metadata.
         if let Value::Cast { kind, from, to, .. } = self.get(inner)
-            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) = kind
+            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
             && let Some(from) = from.builtin_deref(true)
             && let ty::Array(_, len) = from.kind()
             && let Some(to) = to.builtin_deref(true)

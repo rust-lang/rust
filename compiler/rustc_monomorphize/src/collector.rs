@@ -665,8 +665,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::Unsize)
-                | mir::CastKind::PointerCoercion(PointerCoercion::DynStar),
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _)
+                | mir::CastKind::PointerCoercion(PointerCoercion::DynStar, _),
                 ref operand,
                 target_ty,
             ) => {
@@ -694,7 +694,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 }
             }
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer),
+                mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _),
                 ref operand,
                 _,
             ) => {
@@ -705,7 +705,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 visit_fn_use(self.tcx, fn_ty, false, span, self.used_items);
             }
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
+                mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _),
                 ref operand,
                 _,
             ) => {

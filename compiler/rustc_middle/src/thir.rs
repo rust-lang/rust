@@ -338,6 +338,8 @@ pub enum ExprKind<'tcx> {
     PointerCoercion {
         cast: PointerCoercion,
         source: ExprId,
+        /// Whether this coercion is written with an `as` cast in the source code.
+        is_from_as_cast: bool,
     },
     /// A `loop` expression.
     Loop {
