@@ -33,6 +33,7 @@ rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
 [target.'cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))'.dependencies]
 miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
 addr2line = { version = "0.22.0", optional = true, default-features = false }
+ruzstd = { version = "0.7.2", default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
 libc = { version = "0.2.156", default-features = false, features = [
@@ -48,6 +49,7 @@ object = { version = "0.36.0", default-features = false, optional = true, featur
     'unaligned',
     'archive',
 ] }
+ruzstd = { version = "0.7.2", default-features = false, optional = true, features = [ "rustc-dep-of-std"] }
 
 [target.'cfg(target_os = "aix")'.dependencies]
 object = { version = "0.36.0", default-features = false, optional = true, features = [
@@ -89,8 +91,9 @@ r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std'] }
 [features]
 backtrace = [
     'addr2line/rustc-dep-of-std',
-    'object/rustc-dep-of-std',
     'miniz_oxide/rustc-dep-of-std',
+    'object/rustc-dep-of-std',
+    'ruzstd/rustc-dep-of-std',
 ]
 
 panic-unwind = ["panic_unwind"]
