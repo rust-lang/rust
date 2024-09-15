@@ -17,7 +17,7 @@ use rustc_target::abi::{self, Size, VariantIdx};
 use tracing::{debug, instrument};
 
 use super::{
-    throw_ub, throw_unsup, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
+    err_ub, throw_ub, throw_unsup, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
     Provenance, Scalar,
 };
 
@@ -229,7 +229,11 @@ where
                     // This can only be reached in ConstProp and non-rustc-MIR.
                     throw_ub!(BoundsCheckFailed { len, index });
                 }
-                let offset = stride * index; // `Size` multiplication
+                // With raw slices, `len` can be so big that this *can* overflow.
+                let offset = self
+                    .compute_size_in_bytes(stride, index)
+                    .ok_or_else(|| err_ub!(PointerArithOverflow))?;
+
                 // All fields have the same layout.
                 let field_layout = base.layout().field(self, 0);
                 (offset, field_layout)

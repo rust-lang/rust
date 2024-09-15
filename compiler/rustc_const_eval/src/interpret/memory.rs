@@ -222,7 +222,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         } else {
             Allocation::try_uninit(size, align)?
         };
-        self.allocate_raw_ptr(alloc, kind)
+        self.insert_allocation(alloc, kind)
     }
 
     pub fn allocate_bytes_ptr(
@@ -233,14 +233,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         mutability: Mutability,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let alloc = Allocation::from_bytes(bytes, align, mutability);
-        self.allocate_raw_ptr(alloc, kind)
+        self.insert_allocation(alloc, kind)
     }
 
-    pub fn allocate_raw_ptr(
+    pub fn insert_allocation(
         &mut self,
         alloc: Allocation<M::Provenance, (), M::Bytes>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
+        assert!(alloc.size() <= self.max_size_of_val());
         let id = self.tcx.reserve_alloc_id();
         debug_assert_ne!(
             Some(kind),
