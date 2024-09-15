@@ -11,7 +11,7 @@ use crate::*;
 #[inline]
 fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "macos" | "freebsd" => 0,
+        "linux" | "illumos" | "solaris" | "macos" | "freebsd" | "android" => 0,
         os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
     })
 }
@@ -76,7 +76,7 @@ fn mutex_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     // When adding a new OS, make sure we also support all its static initializers in
     // `mutex_kind_from_static_initializer`!
     let offset = match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "freebsd" => 0,
+        "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
@@ -105,7 +105,7 @@ fn mutex_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
                 check_static_initializer("PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP");
                 check_static_initializer("PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP");
             }
-            "illumos" | "solaris" | "macos" | "freebsd" => {
+            "illumos" | "solaris" | "macos" | "freebsd" | "android" => {
                 // No non-standard initializers.
             }
             os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
@@ -216,7 +216,7 @@ pub struct AdditionalRwLockData {
 
 fn rwlock_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "freebsd" => 0,
+        "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_rwlock` is not supported on {os}"),
@@ -269,7 +269,7 @@ fn rwlock_get_id<'tcx>(
 #[inline]
 fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "freebsd" => 0,
+        "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
         // macOS does not have a clock attribute.
         os => throw_unsup_format!("`pthread_condattr` clock field is not supported on {os}"),
     })
@@ -321,7 +321,7 @@ fn condattr_set_clock_id<'tcx>(
 
 fn cond_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "freebsd" => 0,
+        "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_cond` is not supported on {os}"),

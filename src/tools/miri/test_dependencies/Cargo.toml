@@ -11,6 +11,7 @@ edition = "2021"
 # all dependencies (and their transitive ones) listed here can be used in `tests/`.
 libc = "0.2"
 num_cpus = "1.10.1"
+cfg-if = "1"
 
 getrandom_01 = { package = "getrandom", version = "0.1" }
 getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
