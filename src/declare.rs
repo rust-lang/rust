@@ -168,7 +168,23 @@ fn declare_raw_fn<'gcc>(
     variadic: bool,
 ) -> Function<'gcc> {
     if name.starts_with("llvm.") {
-        let intrinsic = llvm::intrinsic(name, cx);
+        let intrinsic = match name {
+            "llvm.fma.f16" => {
+                let param1 = cx.context.new_parameter(None, cx.double_type, "x");
+                let param2 = cx.context.new_parameter(None, cx.double_type, "y");
+                let param3 = cx.context.new_parameter(None, cx.double_type, "z");
+                cx.context.new_function(
+                    None,
+                    FunctionType::Extern,
+                    cx.double_type,
+                    &[param1, param2, param3],
+                    "fma",
+                    false,
+                )
+            }
+            _ => llvm::intrinsic(name, cx),
+        };
+
         cx.intrinsics.borrow_mut().insert(name.to_string(), intrinsic);
         return intrinsic;
     }

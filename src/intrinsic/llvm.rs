@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use gccjit::CType;
 use gccjit::{Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
 use rustc_codegen_ssa::traits::BuilderMethods;
 
@@ -320,7 +321,9 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             | "__builtin_ia32_vpmadd52luq512_mask"
             | "__builtin_ia32_vpmadd52huq256_mask"
             | "__builtin_ia32_vpmadd52luq256_mask"
-            | "__builtin_ia32_vpmadd52huq128_mask" => {
+            | "__builtin_ia32_vpmadd52huq128_mask"
+            | "__builtin_ia32_vfmaddsubph128_mask"
+            | "__builtin_ia32_vfmaddsubph256_mask" => {
                 let mut new_args = args.to_vec();
                 let arg4_type = gcc_func.get_param_type(3);
                 let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
@@ -440,6 +443,19 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 new_args.push(last_arg);
                 args = new_args.into();
             }
+            // NOTE: the LLVM intrinsics receive 3 floats, but the GCC builtin requires 3 vectors.
+            "__builtin_ia32_vfmaddsh3_mask" => {
+                let new_args = args.to_vec();
+                let arg1_type = gcc_func.get_param_type(0);
+                let arg2_type = gcc_func.get_param_type(1);
+                let arg3_type = gcc_func.get_param_type(2);
+                let arg5_type = gcc_func.get_param_type(4);
+                let a = builder.context.new_rvalue_from_vector(None, arg1_type, &[new_args[0]; 8]);
+                let b = builder.context.new_rvalue_from_vector(None, arg2_type, &[new_args[1]; 8]);
+                let c = builder.context.new_rvalue_from_vector(None, arg3_type, &[new_args[2]; 8]);
+                let arg5 = builder.context.new_rvalue_from_int(arg5_type, 4);
+                args = vec![a, b, c, new_args[3], arg5].into();
+            }
             _ => (),
         }
     } else {
@@ -452,7 +468,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let arg4 = builder.context.new_bitcast(None, new_args[2], arg4_type);
                 args = vec![new_args[0], new_args[1], arg3, arg4, new_args[3], new_args[5]].into();
             }
-            // NOTE: the LLVM intrinsic receives 3 floats, but the GCC builtin requires 3 vectors.
+            // NOTE: the LLVM intrinsics receive 3 floats, but the GCC builtin requires 3 vectors.
             // FIXME: the intrinsics like _mm_mask_fmadd_sd should probably directly call the GCC
             // intrinsic to avoid this.
             "__builtin_ia32_vfmaddss3_round" => {
@@ -550,6 +566,25 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 ]
                 .into();
             }
+            "__builtin_ia32_rndscalesh_mask_round" => {
+                let new_args = args.to_vec();
+                args = vec![
+                    new_args[0],
+                    new_args[1],
+                    new_args[4],
+                    new_args[2],
+                    new_args[3],
+                    new_args[5],
+                ]
+                .into();
+            }
+            "fma" => {
+                let mut new_args = args.to_vec();
+                new_args[0] = builder.context.new_cast(None, new_args[0], builder.double_type);
+                new_args[1] = builder.context.new_cast(None, new_args[1], builder.double_type);
+                new_args[2] = builder.context.new_cast(None, new_args[2], builder.double_type);
+                args = new_args.into();
+            }
             _ => (),
         }
     }
@@ -566,7 +601,9 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
     orig_args: &[RValue<'gcc>],
 ) -> RValue<'gcc> {
     match func_name {
-        "__builtin_ia32_vfmaddss3_round" | "__builtin_ia32_vfmaddsd3_round" => {
+        "__builtin_ia32_vfmaddss3_round"
+        | "__builtin_ia32_vfmaddsd3_round"
+        | "__builtin_ia32_vfmaddsh3_mask" => {
             #[cfg(feature = "master")]
             {
                 let zero = builder.context.new_rvalue_zero(builder.int_type);
@@ -624,6 +661,10 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
                 None,
                 &[random_number, success_variable.to_rvalue()],
             );
+        }
+        "fma" => {
+            let f16_type = builder.context.new_c_type(CType::Float16);
+            return_value = builder.context.new_cast(None, return_value, f16_type);
         }
         _ => (),
     }
@@ -1165,6 +1206,9 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.mask.store.q.128" => "__builtin_ia32_movdqa64store128_mask",
         "llvm.x86.avx512.mask.store.ps.128" => "__builtin_ia32_storeaps128_mask",
         "llvm.x86.avx512.mask.store.pd.128" => "__builtin_ia32_storeapd128_mask",
+        "llvm.x86.avx512fp16.vfmadd.f16" => "__builtin_ia32_vfmaddsh3_mask",
+        "llvm.x86.avx512fp16.vfmaddsub.ph.128" => "__builtin_ia32_vfmaddsubph128_mask",
+        "llvm.x86.avx512fp16.vfmaddsub.ph.256" => "__builtin_ia32_vfmaddsubph256_mask",
 
         // TODO: support the tile builtins:
         "llvm.x86.ldtilecfg" => "__builtin_trap",
