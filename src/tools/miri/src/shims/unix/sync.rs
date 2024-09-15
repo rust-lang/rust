@@ -11,7 +11,7 @@ use crate::*;
 #[inline]
 fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "macos" => 0,
+        "linux" | "illumos" | "solaris" | "macos" | "freebsd" => 0,
         os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
     })
 }
@@ -43,12 +43,11 @@ fn mutexattr_set_kind<'tcx>(
     )
 }
 
-/// A flag that allows to distinguish `PTHREAD_MUTEX_NORMAL` from
-/// `PTHREAD_MUTEX_DEFAULT`. Since in `glibc` they have the same numeric values,
-/// but different behaviour, we need a way to distinguish them. We do this by
-/// setting this bit flag to the `PTHREAD_MUTEX_NORMAL` mutexes. See the comment
-/// in `pthread_mutexattr_settype` function.
-const PTHREAD_MUTEX_NORMAL_FLAG: i32 = 0x8000000;
+/// To differentiate "the mutex kind has not been changed" from
+/// "the mutex kind has been set to PTHREAD_MUTEX_DEFAULT and that is
+/// equal to some other mutex kind", we make the default value of this
+/// field *not* PTHREAD_MUTEX_DEFAULT but this special flag.
+const PTHREAD_MUTEX_KIND_UNCHANGED: i32 = 0x8000000;
 
 /// The mutex kind.
 #[derive(Debug, Clone, Copy)]
@@ -74,8 +73,10 @@ pub struct AdditionalMutexData {
 // - id: u32
 
 fn mutex_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
+    // When adding a new OS, make sure we also support all its static initializers in
+    // `mutex_kind_from_static_initializer`!
     let offset = match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" => 0,
+        "linux" | "illumos" | "solaris" | "freebsd" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
@@ -104,7 +105,7 @@ fn mutex_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
                 check_static_initializer("PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP");
                 check_static_initializer("PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP");
             }
-            "illumos" | "solaris" | "macos" => {
+            "illumos" | "solaris" | "macos" | "freebsd" => {
                 // No non-standard initializers.
             }
             os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
@@ -118,11 +119,10 @@ fn mutex_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
 fn mutex_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     mutex_ptr: &OpTy<'tcx>,
-    kind: i32,
+    kind: MutexKind,
 ) -> InterpResult<'tcx> {
     let mutex = ecx.deref_pointer(mutex_ptr)?;
     let address = mutex.ptr().addr().bytes();
-    let kind = mutex_translate_kind(ecx, kind)?;
     let data = Box::new(AdditionalMutexData { address, kind });
     ecx.mutex_create(&mutex, mutex_id_offset(ecx)?, Some(data))?;
     Ok(())
@@ -163,33 +163,41 @@ fn mutex_kind_from_static_initializer<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     mutex: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, MutexKind> {
-    let kind = match &*ecx.tcx.sess.target.os {
+    Ok(match &*ecx.tcx.sess.target.os {
         // Only linux has static initializers other than PTHREAD_MUTEX_DEFAULT.
         "linux" => {
             let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
             let kind_place =
                 mutex.offset(Size::from_bytes(offset), ecx.machine.layouts.i32, ecx)?;
-            ecx.read_scalar(&kind_place)?.to_i32()?
+            let kind = ecx.read_scalar(&kind_place)?.to_i32()?;
+            // Here we give PTHREAD_MUTEX_DEFAULT priority so that
+            // PTHREAD_MUTEX_INITIALIZER behaves like `pthread_mutex_init` with a NULL argument.
+            if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT") {
+                MutexKind::Default
+            } else {
+                mutex_translate_kind(ecx, kind)?
+            }
         }
-        "illumos" | "solaris" | "macos" => ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"),
-        os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
-    };
-
-    mutex_translate_kind(ecx, kind)
+        _ => MutexKind::Default,
+    })
 }
 
 fn mutex_translate_kind<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx, MutexKind> {
-    Ok(if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT") {
-        MutexKind::Default
-    } else if kind == (ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL") | PTHREAD_MUTEX_NORMAL_FLAG) {
+    Ok(if kind == (ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL")) {
         MutexKind::Normal
     } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK") {
         MutexKind::ErrorCheck
     } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE") {
         MutexKind::Recursive
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
+        || kind == PTHREAD_MUTEX_KIND_UNCHANGED
+    {
+        // We check this *last* since PTHREAD_MUTEX_DEFAULT may be numerically equal to one of the
+        // others, and we want an explicit `mutexattr_settype` to work as expected.
+        MutexKind::Default
     } else {
         throw_unsup_format!("unsupported type of mutex: {kind}");
     })
@@ -208,7 +216,7 @@ pub struct AdditionalRwLockData {
 
 fn rwlock_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" => 0,
+        "linux" | "illumos" | "solaris" | "freebsd" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_rwlock` is not supported on {os}"),
@@ -261,7 +269,7 @@ fn rwlock_get_id<'tcx>(
 #[inline]
 fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     Ok(match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" => 0,
+        "linux" | "illumos" | "solaris" | "freebsd" => 0,
         // macOS does not have a clock attribute.
         os => throw_unsup_format!("`pthread_condattr` clock field is not supported on {os}"),
     })
@@ -313,7 +321,7 @@ fn condattr_set_clock_id<'tcx>(
 
 fn cond_id_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     let offset = match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" => 0,
+        "linux" | "illumos" | "solaris" | "freebsd" => 0,
         // macOS stores a signature in the first bytes, so we have to move to offset 4.
         "macos" => 4,
         os => throw_unsup_format!("`pthread_cond` is not supported on {os}"),
@@ -380,8 +388,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_mutexattr_init(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
 
-        let default_kind = this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT");
-        mutexattr_set_kind(this, attr_op, default_kind)?;
+        mutexattr_set_kind(this, attr_op, PTHREAD_MUTEX_KIND_UNCHANGED)?;
 
         Ok(())
     }
@@ -394,30 +401,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let kind = this.read_scalar(kind_op)?.to_i32()?;
-        if kind == this.eval_libc_i32("PTHREAD_MUTEX_NORMAL") {
-            // In `glibc` implementation, the numeric values of
-            // `PTHREAD_MUTEX_NORMAL` and `PTHREAD_MUTEX_DEFAULT` are equal.
-            // However, a mutex created by explicitly passing
-            // `PTHREAD_MUTEX_NORMAL` type has in some cases different behaviour
-            // from the default mutex for which the type was not explicitly
-            // specified. For a more detailed discussion, please see
-            // https://github.com/rust-lang/miri/issues/1419.
-            //
-            // To distinguish these two cases in already constructed mutexes, we
-            // use the same trick as glibc: for the case when
-            // `pthread_mutexattr_settype` is called explicitly, we set the
-            // `PTHREAD_MUTEX_NORMAL_FLAG` flag.
-            let normal_kind = kind | PTHREAD_MUTEX_NORMAL_FLAG;
-            // Check that after setting the flag, the kind is distinguishable
-            // from all other kinds.
-            assert_ne!(normal_kind, this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"));
-            assert_ne!(normal_kind, this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK"));
-            assert_ne!(normal_kind, this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE"));
-            mutexattr_set_kind(this, attr_op, normal_kind)?;
-        } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
+        if kind == this.eval_libc_i32("PTHREAD_MUTEX_NORMAL")
+            || kind == this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
             || kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")
             || kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE")
         {
+            // Make sure we do not mix this up with the "unchanged" kind.
+            assert_ne!(kind, PTHREAD_MUTEX_KIND_UNCHANGED);
             mutexattr_set_kind(this, attr_op, kind)?;
         } else {
             let einval = this.eval_libc_i32("EINVAL");
@@ -461,9 +451,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let attr = this.read_pointer(attr_op)?;
         let kind = if this.ptr_is_null(attr)? {
-            this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
+            MutexKind::Default
         } else {
-            mutexattr_get_kind(this, attr_op)?
+            mutex_translate_kind(this, mutexattr_get_kind(this, attr_op)?)?
         };
 
         mutex_create(this, mutex_op, kind)?;
