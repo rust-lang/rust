@@ -392,6 +392,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
+        if bx.has_range_metadata(imm) {
+            return;
+        }
+
         let abi::WrappingRange { start, end } = scalar.valid_range(self.cx);
 
         if start <= end {

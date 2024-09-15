@@ -181,6 +181,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     );
 
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
+    fn has_range_metadata(&self, load: Self::Value) -> bool;
     fn nonnull_metadata(&mut self, load: Self::Value);
 
     fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;

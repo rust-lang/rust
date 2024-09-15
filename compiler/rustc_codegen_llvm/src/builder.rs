@@ -8,6 +8,7 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -39,6 +40,7 @@ use crate::{attributes, llvm_util};
 pub(crate) struct Builder<'a, 'll, 'tcx> {
     pub llbuilder: &'ll mut llvm::Builder<'ll>,
     pub cx: &'a CodegenCx<'ll, 'tcx>,
+    range_metadata: FxHashSet<&'ll Value>,
 }
 
 impl Drop for Builder<'_, '_, '_> {
@@ -693,7 +695,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::MD_range as c_uint,
                 llvm::LLVMMDNodeInContext(self.cx.llcx, v.as_ptr(), v.len() as c_uint),
             );
+            assert!(self.range_metadata.insert(load));
         }
+    }
+
+    fn has_range_metadata(&self, load: &'ll Value) -> bool {
+        self.range_metadata.contains(load)
     }
 
     fn nonnull_metadata(&mut self, load: &'ll Value) {
@@ -1340,7 +1347,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
         // Create a fresh builder from the crate context.
         let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };
-        Builder { llbuilder, cx }
+        Builder { llbuilder, cx, range_metadata: FxHashSet::default() }
     }
 
     pub(crate) fn llfn(&self) -> &'ll Value {
