@@ -1870,6 +1870,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
+    /// # #[cfg_attr(bootstrap)] compile_error!(); // Remove this in bootstrap bump.
     /// #![deny(elided_named_lifetimes)]
     /// struct Foo;
     /// impl Foo {
