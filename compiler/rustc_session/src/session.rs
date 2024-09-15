@@ -1348,6 +1348,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             }
         }
     }
+
+    if sess.opts.cg.soft_float {
+        if sess.target.arch == "arm" && sess.target.abi == "eabihf" {
+            sess.dcx().emit_warn(errors::SoftFloatDeprecated);
+        } else {
+            // All `use_softfp` does is the equivalent of `-mfloat-abi` in GCC/clang, which only exists on ARM targets.
+            // We document this flag to only affect `*eabihf` targets, so let's show a warning for all other targets.
+            sess.dcx().emit_warn(errors::SoftFloatIgnored);
+        }
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.
