@@ -9,11 +9,6 @@
     allow(dead_code)
 )]
 
-/// Key to access the CPU Hardware capabilities bitfield.
-pub(crate) const AT_HWCAP: usize = 25;
-/// Key to access the CPU Hardware capabilities 2 bitfield.
-pub(crate) const AT_HWCAP2: usize = 26;
-
 /// Cache HWCAP bitfields of the ELF Auxiliary Vector.
 ///
 /// If an entry cannot be read all the bits in the bitfield are set to zero.
@@ -38,65 +33,34 @@ pub(crate) struct AuxVec {
 ///
 /// [elf_common.h]: https://svnweb.freebsd.org/base/release/12.0.0/sys/sys/elf_common.h?revision=341707
 pub(crate) fn auxv() -> Result<AuxVec, ()> {
-    if let Ok(hwcap) = archauxv(AT_HWCAP) {
-        if let Ok(hwcap2) = archauxv(AT_HWCAP2) {
-            if hwcap != 0 && hwcap2 != 0 {
-                return Ok(AuxVec { hwcap, hwcap2 });
-            }
-        }
+    let hwcap = archauxv(libc::AT_HWCAP);
+    let hwcap2 = archauxv(libc::AT_HWCAP2);
+    // Zero could indicate that no features were detected, but it's also used to
+    // indicate an error. In particular, on many platforms AT_HWCAP2 will be
+    // legitimately zero, since it contains the most recent feature flags.
+    if hwcap != 0 || hwcap2 != 0 {
+        return Ok(AuxVec { hwcap, hwcap2 });
     }
     Err(())
 }
 
 /// Tries to read the `key` from the auxiliary vector.
-fn archauxv(key: usize) -> Result<usize, ()> {
-    use core::mem;
-
-    #[derive(Copy, Clone)]
-    #[repr(C)]
-    pub struct Elf_Auxinfo {
-        pub a_type: usize,
-        pub a_un: unnamed,
-    }
-    #[derive(Copy, Clone)]
-    #[repr(C)]
-    pub union unnamed {
-        pub a_val: libc::c_long,
-        pub a_ptr: *mut libc::c_void,
-        pub a_fcn: Option<unsafe extern "C" fn() -> ()>,
-    }
-
-    let mut auxv: [Elf_Auxinfo; 27] = [Elf_Auxinfo {
-        a_type: 0,
-        a_un: unnamed { a_val: 0 },
-    }; 27];
-
-    let mut len: libc::c_uint = mem::size_of_val(&auxv) as libc::c_uint;
-
+fn archauxv(key: libc::c_int) -> usize {
+    const OUT_LEN: libc::c_int = core::mem::size_of::<libc::c_ulong>() as libc::c_int;
+    let mut out: libc::c_ulong = 0;
     unsafe {
-        let mut mib = [
-            libc::CTL_KERN,
-            libc::KERN_PROC,
-            libc::KERN_PROC_AUXV,
-            libc::getpid(),
-        ];
-
-        let ret = libc::sysctl(
-            mib.as_mut_ptr(),
-            mib.len() as u32,
-            &mut auxv as *mut _ as *mut _,
-            &mut len as *mut _ as *mut _,
-            0 as *mut libc::c_void,
-            0,
+        // elf_aux_info is available on FreeBSD 12.0+ and 11.4+:
+        // https://github.com/freebsd/freebsd-src/commit/0b08ae2120cdd08c20a2b806e2fcef4d0a36c470
+        // https://github.com/freebsd/freebsd-src/blob/release/11.4.0/sys/sys/auxv.h
+        // FreeBSD 11 support in std has been removed in Rust 1.75 (https://github.com/rust-lang/rust/pull/114521),
+        // so we can safely use this function.
+        let res = libc::elf_aux_info(
+            key,
+            &mut out as *mut libc::c_ulong as *mut libc::c_void,
+            OUT_LEN,
         );
-
-        if ret != -1 {
-            for i in 0..auxv.len() {
-                if auxv[i].a_type == key {
-                    return Ok(auxv[i].a_un.a_val as usize);
-                }
-            }
-        }
+        // If elf_aux_info fails, `out` will be left at zero (which is the proper default value).
+        debug_assert!(res == 0 || out == 0);
     }
-    return Ok(0);
+    out as usize
 }
