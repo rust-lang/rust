@@ -255,11 +255,9 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
         intravisit::walk_foreign_item(self, it);
     }
 
-    fn visit_stmt(&mut self, e: &'tcx hir::Stmt<'tcx>) {
-        // We will call `add_id` when we walk
-        // the `StmtKind`. The outer statement itself doesn't
-        // define the lint levels.
-        intravisit::walk_stmt(self, e);
+    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
+        self.add_id(s.hir_id);
+        intravisit::walk_stmt(self, s);
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
