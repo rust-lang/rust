@@ -1,3 +1,4 @@
+use rustc_errors::E0799;
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 
@@ -43,7 +44,7 @@ pub(crate) struct BadPreciseCapture {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_precise_capture_self_alias)]
+#[diag(hir_analysis_precise_capture_self_alias, code = E0799)]
 pub(crate) struct PreciseCaptureSelfAlias {
     #[primary_span]
     pub span: Span,

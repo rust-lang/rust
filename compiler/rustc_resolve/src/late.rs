@@ -557,9 +557,8 @@ impl<'a> PathSource<'a> {
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => E0404,
             (PathSource::Trait(_), false) => E0405,
-            // TODO:
-            (PathSource::Type | PathSource::PreciseCapturingArg(..), true) => E0573,
-            (PathSource::Type | PathSource::PreciseCapturingArg(..), false) => E0412,
+            (PathSource::Type, true) => E0573,
+            (PathSource::Type, false) => E0412,
             (PathSource::Struct, true) => E0574,
             (PathSource::Struct, false) => E0422,
             (PathSource::Expr(..), true) | (PathSource::Delegation, true) => E0423,
@@ -568,6 +567,8 @@ impl<'a> PathSource<'a> {
             (PathSource::Pat | PathSource::TupleStruct(..), false) => E0531,
             (PathSource::TraitItem(..), true) => E0575,
             (PathSource::TraitItem(..), false) => E0576,
+            (PathSource::PreciseCapturingArg(..), true) => E0799,
+            (PathSource::PreciseCapturingArg(..), false) => E0800,
         }
     }
 }
