@@ -95,7 +95,9 @@ impl CoverageCounters {
         this
     }
 
-    fn make_counter(&mut self, site: CounterIncrementSite) -> BcbCounter {
+    /// Shared helper used by [`Self::make_phys_node_counter`] and
+    /// [`Self::make_phys_edge_counter`]. Don't call this directly.
+    fn make_counter_inner(&mut self, site: CounterIncrementSite) -> BcbCounter {
         let id = self.counter_increment_sites.push(site);
         BcbCounter::Counter { id }
     }
@@ -103,9 +105,21 @@ impl CoverageCounters {
     /// Creates a new physical counter attached a BCB node.
     /// The node must not already have a counter.
     fn make_phys_node_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
-        let counter = self.make_counter(CounterIncrementSite::Node { bcb });
+        let counter = self.make_counter_inner(CounterIncrementSite::Node { bcb });
         debug!(?bcb, ?counter, "node gets a physical counter");
         self.set_bcb_counter(bcb, counter)
+    }
+
+    /// Creates a new physical counter attached to a BCB edge.
+    /// The edge must not already have a counter.
+    fn make_phys_edge_counter(
+        &mut self,
+        from_bcb: BasicCoverageBlock,
+        to_bcb: BasicCoverageBlock,
+    ) -> BcbCounter {
+        let counter = self.make_counter_inner(CounterIncrementSite::Edge { from_bcb, to_bcb });
+        debug!(?from_bcb, ?to_bcb, ?counter, "edge gets a physical counter");
+        self.set_bcb_edge_counter(from_bcb, to_bcb, counter)
     }
 
     fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
@@ -417,10 +431,7 @@ impl<'a> MakeBcbCounters<'a> {
         }
 
         // Make a new counter to count this edge.
-        let counter_kind =
-            self.coverage_counters.make_counter(CounterIncrementSite::Edge { from_bcb, to_bcb });
-        debug!("Edge {from_bcb:?}->{to_bcb:?} gets a new counter: {counter_kind:?}");
-        self.coverage_counters.set_bcb_edge_counter(from_bcb, to_bcb, counter_kind)
+        self.coverage_counters.make_phys_edge_counter(from_bcb, to_bcb)
     }
 
     /// Choose one of the out-edges of `from_bcb` to receive an expression
