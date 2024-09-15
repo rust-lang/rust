@@ -1101,6 +1101,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
+    fn has_range_metadata(&self, _load: RValue<'gcc>) -> bool {
+        false
+    }
+
     fn nonnull_metadata(&mut self, _load: RValue<'gcc>) {
         // TODO(antoyo)
     }
