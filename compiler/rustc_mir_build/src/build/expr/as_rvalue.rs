@@ -8,12 +8,11 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
-use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{Abi, FieldIdx, Primitive};
+use rustc_target::abi::FieldIdx;
 use tracing::debug;
 
 use crate::build::expr::as_place::PlaceBase;
@@ -200,7 +199,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
                     let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
-                    let layout = this.tcx.layout_of(this.param_env.and(source_expr.ty));
                     let discr = this.temp(discr_ty, source_expr.span);
                     this.cfg.push_assign(
                         block,
