@@ -154,3 +154,12 @@ fn no_niche() {
     assert::is_transmutable::<Pair<V1, MaybeUninit<u8>>, OptionLike>();
     assert::is_transmutable::<Pair<V2, MaybeUninit<u8>>, OptionLike>();
 }
+
+fn niche_fields() {
+    enum Kind {
+        A(bool, bool),
+        B(bool),
+    }
+
+    assert::is_maybe_transmutable::<u16, Kind>();
+}
