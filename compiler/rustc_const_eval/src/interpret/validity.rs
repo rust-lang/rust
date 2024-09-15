@@ -940,7 +940,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     ) -> Cow<'e, RangeSet> {
         assert!(layout.ty.is_union());
         assert!(layout.abi.is_sized(), "there are no unsized unions");
-        let layout_cx = LayoutCx { tcx: *ecx.tcx, param_env: ecx.param_env };
+        let layout_cx = LayoutCx::new(*ecx.tcx, ecx.param_env);
         return M::cached_union_data_range(ecx, layout.ty, || {
             let mut out = RangeSet(Vec::new());
             union_data_range_uncached(&layout_cx, layout, Size::ZERO, &mut out);

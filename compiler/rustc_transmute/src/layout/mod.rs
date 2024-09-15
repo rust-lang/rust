@@ -63,7 +63,7 @@ pub mod rustc {
     use std::fmt::{self, Write};
 
     use rustc_middle::mir::Mutability;
-    use rustc_middle::ty::layout::{LayoutCx, LayoutError};
+    use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
     use rustc_middle::ty::{self, Ty};
     use rustc_target::abi::Layout;
 
@@ -128,7 +128,7 @@ pub mod rustc {
         ty: Ty<'tcx>,
     ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
         use rustc_middle::ty::layout::LayoutOf;
-        let ty = cx.tcx.erase_regions(ty);
+        let ty = cx.tcx().erase_regions(ty);
         cx.layout_of(ty).map(|tl| tl.layout)
     }
 }

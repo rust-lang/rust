@@ -212,7 +212,7 @@ pub(crate) mod rustc {
                 return Err(Err::TypeError(e));
             }
 
-            let target = cx.tcx.data_layout();
+            let target = cx.data_layout();
             let pointer_size = target.pointer_size;
 
             match ty.kind() {
@@ -320,7 +320,7 @@ pub(crate) mod rustc {
 
             // Computes the variant of a given index.
             let layout_of_variant = |index, encoding: Option<TagEncoding<VariantIdx>>| {
-                let tag = cx.tcx.tag_for_variant((cx.tcx.erase_regions(ty), index));
+                let tag = cx.tcx().tag_for_variant((cx.tcx().erase_regions(ty), index));
                 let variant_def = Def::Variant(def.variant(index));
                 let variant_layout = ty_variant(cx, (ty, layout), index);
                 Self::from_variant(
@@ -417,7 +417,7 @@ pub(crate) mod rustc {
                         }
                     }
                 }
-                struct_tree = struct_tree.then(Self::from_tag(*tag, cx.tcx));
+                struct_tree = struct_tree.then(Self::from_tag(*tag, cx.tcx()));
             }
 
             // Append the fields, in memory order, to the layout.
@@ -509,12 +509,12 @@ pub(crate) mod rustc {
                 match layout.variants {
                     Variants::Single { index } => {
                         let field = &def.variant(index).fields[i];
-                        field.ty(cx.tcx, args)
+                        field.ty(cx.tcx(), args)
                     }
                     // Discriminant field for enums (where applicable).
                     Variants::Multiple { tag, .. } => {
                         assert_eq!(i.as_usize(), 0);
-                        ty::layout::PrimitiveExt::to_ty(&tag.primitive(), cx.tcx)
+                        ty::layout::PrimitiveExt::to_ty(&tag.primitive(), cx.tcx())
                     }
                 }
             }
@@ -531,7 +531,7 @@ pub(crate) mod rustc {
         (ty, layout): (Ty<'tcx>, Layout<'tcx>),
         i: VariantIdx,
     ) -> Layout<'tcx> {
-        let ty = cx.tcx.erase_regions(ty);
+        let ty = cx.tcx().erase_regions(ty);
         TyAndLayout { ty, layout }.for_variant(&cx, i).layout
     }
 }

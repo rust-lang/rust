@@ -319,7 +319,7 @@ pub fn valtree_to_const_value<'tcx>(
                 let branches = valtree.unwrap_branch();
                 // Find the non-ZST field. (There can be aligned ZST!)
                 for (i, &inner_valtree) in branches.iter().enumerate() {
-                    let field = layout.field(&LayoutCx { tcx, param_env }, i);
+                    let field = layout.field(&LayoutCx::new(tcx, param_env), i);
                     if !field.is_zst() {
                         return valtree_to_const_value(tcx, param_env.and(field.ty), inner_valtree);
                     }

@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::num::NonZero;
 use std::ops::Bound;
 use std::{cmp, fmt};
@@ -287,19 +286,13 @@ impl<'tcx> IntoDiagArg for LayoutError<'tcx> {
 
 #[derive(Clone, Copy)]
 pub struct LayoutCx<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
+    pub calc: LayoutCalculator<TyCtxt<'tcx>>,
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'tcx> LayoutCalculator for LayoutCx<'tcx> {
-    type TargetDataLayoutRef = &'tcx TargetDataLayout;
-
-    fn delayed_bug(&self, txt: impl Into<Cow<'static, str>>) {
-        self.tcx.dcx().delayed_bug(txt);
-    }
-
-    fn current_data_layout(&self) -> Self::TargetDataLayoutRef {
-        &self.tcx.data_layout
+impl<'tcx> LayoutCx<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+        Self { calc: LayoutCalculator::new(tcx), param_env }
     }
 }
 
@@ -576,25 +569,25 @@ impl<'tcx> HasParamEnv<'tcx> for LayoutCx<'tcx> {
 
 impl<'tcx> HasDataLayout for LayoutCx<'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
-        self.tcx.data_layout()
+        self.calc.cx.data_layout()
     }
 }
 
 impl<'tcx> HasTargetSpec for LayoutCx<'tcx> {
     fn target_spec(&self) -> &Target {
-        self.tcx.target_spec()
+        self.calc.cx.target_spec()
     }
 }
 
 impl<'tcx> HasWasmCAbiOpt for LayoutCx<'tcx> {
     fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.tcx.wasm_c_abi_opt()
+        self.calc.cx.wasm_c_abi_opt()
     }
 }
 
 impl<'tcx> HasTyCtxt<'tcx> for LayoutCx<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx.tcx()
+        self.calc.cx
     }
 }
 
@@ -695,7 +688,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx> {
         _: Span,
         _: Ty<'tcx>,
     ) -> &'tcx LayoutError<'tcx> {
-        self.tcx.arena.alloc(err)
+        self.tcx().arena.alloc(err)
     }
 }
 
@@ -1323,7 +1316,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         I: Iterator<Item = (VariantIdx, FieldIdx)>,
     {
-        let cx = LayoutCx { tcx: self, param_env };
+        let cx = LayoutCx::new(self, param_env);
         let mut offset = Size::ZERO;
 
         for (variant, field) in indices {

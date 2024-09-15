@@ -1,21 +1,12 @@
 //@ known-bug: rust-lang/rust#126939
 
-struct MySlice<T: Copy>(bool, T);
+struct MySlice<T>(T);
 type MySliceBool = MySlice<[bool]>;
 
-use std::mem;
-
-struct P2<T> {
-    a: T,
+struct P2 {
     b: MySliceBool,
 }
 
-macro_rules! check {
-    ($t:ty, $align:expr) => ({
-        assert_eq!(mem::align_of::<$t>(), $align);
-    });
-}
+static CHECK: () = assert!(align_of::<P2>() == 1);
 
-pub fn main() {
-    check!(P2<u8>, 1);
-}
+fn main() {}
