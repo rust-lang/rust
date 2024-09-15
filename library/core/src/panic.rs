@@ -160,14 +160,9 @@ pub macro unreachable_2021 {
 /// to prevent unwinds. However, note that `extern "C" fn` will automatically
 /// convert unwinds to aborts, so using this function isn't necessary for FFI.
 #[unstable(feature = "abort_unwind", issue = "130338")]
+#[rustc_nounwind]
 pub fn abort_unwind<F: FnOnce() -> R, R>(f: F) -> R {
-    // This attribute adds the "unwinding out of nounwind function" guard.
-    #[rustc_nounwind]
-    fn abort_unwind_inner<F: FnOnce() -> R, R>(f: F) -> R {
-        f()
-    }
-
-    abort_unwind_inner(f)
+    f()
 }
 
 /// An internal trait used by std to pass data from std to `panic_unwind` and
