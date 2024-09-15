@@ -80,7 +80,7 @@ use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::{Edition, EditionedFileId, FileId, MacroCallId, SyntaxContextId};
-use stdx::{impl_from, never};
+use stdx::{format_to, impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasGenericParams, HasName},
     format_smolstr, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, ToSmolStr, T,
@@ -2578,10 +2578,16 @@ impl Const {
                         let value = u128::from_le_bytes(mir::pad16(b, false));
                         let value_signed =
                             i128::from_le_bytes(mir::pad16(b, matches!(s, Scalar::Int(_))));
-                        if value >= 10 {
-                            return Ok(format!("{value_signed} ({value:#X})"));
+                        let mut result = if let Scalar::Int(_) = s {
+                            value_signed.to_string()
                         } else {
-                            return Ok(format!("{value_signed}"));
+                            value.to_string()
+                        };
+                        if value >= 10 {
+                            format_to!(result, " ({value:#X})");
+                            return Ok(result);
+                        } else {
+                            return Ok(result);
                         }
                     }
                 }

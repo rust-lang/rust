@@ -1497,6 +1497,24 @@ const foo$0: u32 = {
 }
 
 #[test]
+fn hover_unsigned_max_const() {
+    check(
+        r#"const $0A: u128 = -1_i128 as u128;"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const A: u128 = 340282366920938463463374607431768211455 (0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_eval_complex_constants() {
     check(
         r#"
