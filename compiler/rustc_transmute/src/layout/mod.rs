@@ -64,7 +64,7 @@ pub mod rustc {
 
     use rustc_middle::mir::Mutability;
     use rustc_middle::ty::layout::{LayoutCx, LayoutError};
-    use rustc_middle::ty::{self, Ty, TyCtxt};
+    use rustc_middle::ty::{self, Ty};
     use rustc_target::abi::Layout;
 
     /// A reference in the layout.
@@ -124,7 +124,7 @@ pub mod rustc {
     }
 
     pub(crate) fn layout_of<'tcx>(
-        cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+        cx: LayoutCx<'tcx>,
         ty: Ty<'tcx>,
     ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
         use rustc_middle::ty::layout::LayoutOf;

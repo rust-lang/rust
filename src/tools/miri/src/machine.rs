@@ -381,7 +381,7 @@ pub struct PrimitiveLayouts<'tcx> {
 }
 
 impl<'tcx> PrimitiveLayouts<'tcx> {
-    fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, &'tcx LayoutError<'tcx>> {
+    fn new(layout_cx: LayoutCx<'tcx>) -> Result<Self, &'tcx LayoutError<'tcx>> {
         let tcx = layout_cx.tcx;
         let mut_raw_ptr = Ty::new_mut_ptr(tcx, tcx.types.unit);
         let const_raw_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
@@ -596,7 +596,7 @@ pub struct MiriMachine<'tcx> {
 }
 
 impl<'tcx> MiriMachine<'tcx> {
-    pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
+    pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx>) -> Self {
         let tcx = layout_cx.tcx;
         let local_crates = helpers::get_local_crates(tcx);
         let layouts =

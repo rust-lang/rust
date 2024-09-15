@@ -204,7 +204,7 @@ pub(crate) mod rustc {
     }
 
     impl<'tcx> Tree<Def<'tcx>, Ref<'tcx>> {
-        pub(crate) fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, Err> {
+        pub(crate) fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx>) -> Result<Self, Err> {
             use rustc_target::abi::HasDataLayout;
             let layout = layout_of(cx, ty)?;
 
@@ -274,7 +274,7 @@ pub(crate) mod rustc {
         fn from_tuple(
             (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             members: &'tcx List<Ty<'tcx>>,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
             match &layout.fields {
                 FieldsShape::Primitive => {
@@ -299,7 +299,7 @@ pub(crate) mod rustc {
         fn from_struct(
             (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             def: AdtDef<'tcx>,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
             assert!(def.is_struct());
             let def = Def::Adt(def);
@@ -314,7 +314,7 @@ pub(crate) mod rustc {
         fn from_enum(
             (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             def: AdtDef<'tcx>,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
             assert!(def.is_enum());
 
@@ -389,7 +389,7 @@ pub(crate) mod rustc {
             tag: Option<(ScalarInt, VariantIdx, TagEncoding<VariantIdx>)>,
             (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             total_size: Size,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
             // This constructor does not support non-`FieldsShape::Arbitrary`
             // layouts.
@@ -470,7 +470,7 @@ pub(crate) mod rustc {
         fn from_union(
             (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             def: AdtDef<'tcx>,
-            cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: LayoutCx<'tcx>,
         ) -> Result<Self, Err> {
             assert!(def.is_union());
 
@@ -500,7 +500,7 @@ pub(crate) mod rustc {
     }
 
     fn ty_field<'tcx>(
-        cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+        cx: LayoutCx<'tcx>,
         (ty, layout): (Ty<'tcx>, Layout<'tcx>),
         i: FieldIdx,
     ) -> Ty<'tcx> {
@@ -527,7 +527,7 @@ pub(crate) mod rustc {
     }
 
     fn ty_variant<'tcx>(
-        cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+        cx: LayoutCx<'tcx>,
         (ty, layout): (Ty<'tcx>, Layout<'tcx>),
         i: VariantIdx,
     ) -> Layout<'tcx> {

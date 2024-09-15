@@ -358,7 +358,7 @@ fn fn_abi_of_instance<'tcx>(
 
 // Handle safe Rust thin and fat pointers.
 fn adjust_for_rust_scalar<'tcx>(
-    cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: LayoutCx<'tcx>,
     attrs: &mut ArgAttributes,
     scalar: Scalar,
     layout: TyAndLayout<'tcx>,
@@ -448,12 +448,12 @@ fn adjust_for_rust_scalar<'tcx>(
 
 /// Ensure that the ABI makes basic sense.
 fn fn_abi_sanity_check<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     spec_abi: SpecAbi,
 ) {
     fn fn_arg_sanity_check<'tcx>(
-        cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+        cx: &LayoutCx<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         spec_abi: SpecAbi,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
@@ -538,7 +538,7 @@ fn fn_abi_sanity_check<'tcx>(
 // arguments of this method, into a separate `struct`.
 #[tracing::instrument(level = "debug", skip(cx, caller_location, fn_def_id, force_thin_self_ptr))]
 fn fn_abi_new_uncached<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     sig: ty::PolyFnSig<'tcx>,
     extra_args: &[Ty<'tcx>],
     caller_location: Option<Ty<'tcx>>,
@@ -643,7 +643,7 @@ fn fn_abi_new_uncached<'tcx>(
 
 #[tracing::instrument(level = "trace", skip(cx))]
 fn fn_abi_adjust_for_abi<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: SpecAbi,
     fn_def_id: Option<DefId>,

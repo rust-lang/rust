@@ -79,15 +79,12 @@ fn layout_of<'tcx>(
     Ok(layout)
 }
 
-fn error<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
-    err: LayoutError<'tcx>,
-) -> &'tcx LayoutError<'tcx> {
+fn error<'tcx>(cx: &LayoutCx<'tcx>, err: LayoutError<'tcx>) -> &'tcx LayoutError<'tcx> {
     cx.tcx.arena.alloc(err)
 }
 
 fn univariant_uninterned<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
     fields: &IndexSlice<FieldIdx, Layout<'_>>,
     repr: &ReprOptions,
@@ -103,7 +100,7 @@ fn univariant_uninterned<'tcx>(
 }
 
 fn layout_of_uncached<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
     // Types that reference `ty::Error` pessimistically don't have a meaningful layout.
@@ -809,7 +806,7 @@ fn coroutine_saved_local_eligibility(
 
 /// Compute the full coroutine layout.
 fn coroutine_layout<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
     def_id: hir::def_id::DefId,
     args: GenericArgsRef<'tcx>,
@@ -1017,7 +1014,7 @@ fn coroutine_layout<'tcx>(
     Ok(layout)
 }
 
-fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: TyAndLayout<'tcx>) {
+fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx>, layout: TyAndLayout<'tcx>) {
     // Ignore layouts that are done with non-empty environments or
     // non-monomorphic layouts, as the user only wants to see the stuff
     // resulting from the final codegen session.
@@ -1068,7 +1065,7 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: T
 }
 
 fn variant_info_for_adt<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     layout: TyAndLayout<'tcx>,
     adt_def: AdtDef<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
@@ -1140,7 +1137,7 @@ fn variant_info_for_adt<'tcx>(
 }
 
 fn variant_info_for_coroutine<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     layout: TyAndLayout<'tcx>,
     def_id: DefId,
     args: ty::GenericArgsRef<'tcx>,

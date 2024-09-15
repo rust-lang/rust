@@ -286,12 +286,12 @@ impl<'tcx> IntoDiagArg for LayoutError<'tcx> {
 }
 
 #[derive(Clone, Copy)]
-pub struct LayoutCx<'tcx, C> {
-    pub tcx: C,
+pub struct LayoutCx<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
+impl<'tcx> LayoutCalculator for LayoutCx<'tcx> {
     type TargetDataLayoutRef = &'tcx TargetDataLayout;
 
     fn delayed_bug(&self, txt: impl Into<Cow<'static, str>>) {
@@ -568,31 +568,31 @@ impl<'tcx> HasTyCtxt<'tcx> for TyCtxtAt<'tcx> {
     }
 }
 
-impl<'tcx, C> HasParamEnv<'tcx> for LayoutCx<'tcx, C> {
+impl<'tcx> HasParamEnv<'tcx> for LayoutCx<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
 }
 
-impl<'tcx, T: HasDataLayout> HasDataLayout for LayoutCx<'tcx, T> {
+impl<'tcx> HasDataLayout for LayoutCx<'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
         self.tcx.data_layout()
     }
 }
 
-impl<'tcx, T: HasTargetSpec> HasTargetSpec for LayoutCx<'tcx, T> {
+impl<'tcx> HasTargetSpec for LayoutCx<'tcx> {
     fn target_spec(&self) -> &Target {
         self.tcx.target_spec()
     }
 }
 
-impl<'tcx, T: HasWasmCAbiOpt> HasWasmCAbiOpt for LayoutCx<'tcx, T> {
+impl<'tcx> HasWasmCAbiOpt for LayoutCx<'tcx> {
     fn wasm_c_abi_opt(&self) -> WasmCAbi {
         self.tcx.wasm_c_abi_opt()
     }
 }
 
-impl<'tcx, T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for LayoutCx<'tcx, T> {
+impl<'tcx> HasTyCtxt<'tcx> for LayoutCx<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx.tcx()
     }
@@ -685,27 +685,8 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 
 impl<'tcx, C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
 
-impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
+impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
-
-    #[inline]
-    fn handle_layout_err(
-        &self,
-        err: LayoutError<'tcx>,
-        _: Span,
-        _: Ty<'tcx>,
-    ) -> &'tcx LayoutError<'tcx> {
-        self.tcx.arena.alloc(err)
-    }
-}
-
-impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxtAt<'tcx>> {
-    type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
-
-    #[inline]
-    fn layout_tcx_at_span(&self) -> Span {
-        self.tcx.span
-    }
 
     #[inline]
     fn handle_layout_err(

@@ -42,7 +42,7 @@ pub fn check_validity_requirement<'tcx>(
 /// for details.
 fn check_validity_requirement_strict<'tcx>(
     ty: TyAndLayout<'tcx>,
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let machine = CompileTimeMachine::new(CanAccessMutGlobal::No, CheckAlignment::Error);
@@ -80,7 +80,7 @@ fn check_validity_requirement_strict<'tcx>(
 /// function for details.
 fn check_validity_requirement_lax<'tcx>(
     this: TyAndLayout<'tcx>,
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     init_kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let scalar_allows_raw_init = move |s: Scalar| -> bool {
