@@ -6,7 +6,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_resolve::rustdoc::span_of_fragments;
@@ -63,7 +62,6 @@ impl DocTestVisitor for RustCollector {
 }
 
 pub(super) struct HirCollector<'tcx> {
-    map: Map<'tcx>,
     codes: ErrorCodes,
     tcx: TyCtxt<'tcx>,
     enable_per_target_ignores: bool,
@@ -71,19 +69,14 @@ pub(super) struct HirCollector<'tcx> {
 }
 
 impl<'tcx> HirCollector<'tcx> {
-    pub fn new(
-        map: Map<'tcx>,
-        codes: ErrorCodes,
-        enable_per_target_ignores: bool,
-        tcx: TyCtxt<'tcx>,
-    ) -> Self {
+    pub fn new(codes: ErrorCodes, enable_per_target_ignores: bool, tcx: TyCtxt<'tcx>) -> Self {
         let collector = RustCollector {
             source_map: tcx.sess.psess.clone_source_map(),
             cur_path: vec![],
             position: DUMMY_SP,
             tests: vec![],
         };
-        Self { map, codes, enable_per_target_ignores, tcx, collector }
+        Self { codes, enable_per_target_ignores, tcx, collector }
     }
 
     pub fn collect_crate(mut self) -> Vec<ScrapedDocTest> {
@@ -142,13 +135,13 @@ impl<'tcx> intravisit::Visitor<'tcx> for HirCollector<'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn nested_visit_map(&mut self) -> Self::Map {
-        self.map
+        self.tcx.hir()
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'_>) {
         let name = match &item.kind {
             hir::ItemKind::Impl(impl_) => {
-                rustc_hir_pretty::id_to_string(&self.map, impl_.self_ty.hir_id)
+                rustc_hir_pretty::id_to_string(&self.tcx.hir(), impl_.self_ty.hir_id)
             }
             _ => item.ident.to_string(),
         };
