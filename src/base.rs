@@ -770,7 +770,11 @@ fn codegen_stmt<'tcx>(
                     let operand = codegen_operand(fx, operand);
                     crate::unsize::coerce_unsized_into(fx, operand, lval);
                 }
-                Rvalue::Cast(CastKind::DynStar, ref operand, _) => {
+                Rvalue::Cast(
+                    CastKind::PointerCoercion(PointerCoercion::DynStar),
+                    ref operand,
+                    _,
+                ) => {
                     let operand = codegen_operand(fx, operand);
                     crate::unsize::coerce_dyn_star(fx, operand, lval);
                 }
