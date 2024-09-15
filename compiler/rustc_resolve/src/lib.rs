@@ -190,6 +190,11 @@ impl InvocationParent {
 
 #[derive(Copy, Debug, Clone)]
 struct PendingAnonConstInfo {
+    // A const arg is only a "trivial" const arg if it has at *most* one set of braces
+    // around the argument. We track whether we have stripped an outter brace so that
+    // if a macro expands to a braced expression *and* the macro was itself inside of
+    // some braces then we can consider it to be a non-trivial const argument.
+    block_was_stripped: bool,
     id: NodeId,
     span: Span,
 }
