@@ -921,6 +921,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.visit_primary_bindings(subpattern, pattern_user_ty, f)
             }
 
+            PatKind::Guard { ref subpattern, .. } => {
+                self.visit_primary_bindings(subpattern, pattern_user_ty, f);
+            }
+
             PatKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
