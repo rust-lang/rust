@@ -225,31 +225,20 @@ pub fn find_stability(
     attrs: &[Attribute],
     item_sp: Span,
 ) -> Option<(Stability, Span)> {
-    let mut stab: Option<(Stability, Span)> = None;
+    let mut level: Option<(StabilityLevel, Span)> = None;
     let mut allowed_through_unstable_modules = false;
 
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_allowed_through_unstable_modules => allowed_through_unstable_modules = true,
             sym::unstable => {
-                if stab.is_some() {
-                    sess.dcx()
-                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                if try_add_unstability(sess, attr, &mut level).is_err() {
                     break;
-                }
-
-                if let Some(level) = parse_unstability(sess, attr) {
-                    stab = Some((Stability { level }, attr.span));
                 }
             }
             sym::stable => {
-                if stab.is_some() {
-                    sess.dcx()
-                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                if try_add_stability(sess, attr, &mut level).is_err() {
                     break;
-                }
-                if let Some(level) = parse_stability(sess, attr) {
-                    stab = Some((Stability { level }, attr.span));
                 }
             }
             _ => {}
@@ -257,14 +246,10 @@ pub fn find_stability(
     }
 
     if allowed_through_unstable_modules {
-        match &mut stab {
-            Some((
-                Stability {
-                    level: StabilityLevel::Stable { allowed_through_unstable_modules, .. },
-                    ..
-                },
-                _,
-            )) => *allowed_through_unstable_modules = true,
+        match &mut level {
+            Some((StabilityLevel::Stable { allowed_through_unstable_modules, .. }, _)) => {
+                *allowed_through_unstable_modules = true
+            }
             _ => {
                 sess.dcx()
                     .emit_err(session_diagnostics::RustcAllowedUnstablePairing { span: item_sp });
@@ -272,7 +257,8 @@ pub fn find_stability(
         }
     }
 
-    stab
+    let (level, stab_sp) = level?;
+    Some((Stability { level }, stab_sp))
 }
 
 /// Collects stability info from `rustc_const_stable`/`rustc_const_unstable`/`rustc_promotable`
@@ -282,7 +268,7 @@ pub fn find_const_stability(
     attrs: &[Attribute],
     item_sp: Span,
 ) -> Option<(ConstStability, Span)> {
-    let mut const_stab: Option<(ConstStability, Span)> = None;
+    let mut level: Option<(StabilityLevel, Span)> = None;
     let mut promotable = false;
     let mut const_stable_indirect = false;
 
@@ -291,30 +277,13 @@ pub fn find_const_stability(
             sym::rustc_promotable => promotable = true,
             sym::rustc_const_stable_indirect => const_stable_indirect = true,
             sym::rustc_const_unstable => {
-                if const_stab.is_some() {
-                    sess.dcx()
-                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                if try_add_unstability(sess, attr, &mut level).is_err() {
                     break;
-                }
-
-                if let Some(level) = parse_unstability(sess, attr) {
-                    const_stab = Some((
-                        ConstStability { level, const_stable_indirect: false, promotable: false },
-                        attr.span,
-                    ));
                 }
             }
             sym::rustc_const_stable => {
-                if const_stab.is_some() {
-                    sess.dcx()
-                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                if try_add_stability(sess, attr, &mut level).is_err() {
                     break;
-                }
-                if let Some(level) = parse_stability(sess, attr) {
-                    const_stab = Some((
-                        ConstStability { level, const_stable_indirect: false, promotable: false },
-                        attr.span,
-                    ));
                 }
             }
             _ => {}
@@ -322,36 +291,24 @@ pub fn find_const_stability(
     }
 
     // Merge promotable and const_stable_indirect into stability info
-    if promotable {
-        match &mut const_stab {
-            Some((stab, _)) => stab.promotable = promotable,
-            _ => {
-                _ = sess
-                    .dcx()
-                    .emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp })
-            }
+    if let Some((level, stab_sp)) = level {
+        if level.is_stable() && const_stable_indirect {
+            sess.dcx()
+                .emit_err(session_diagnostics::RustcConstStableIndirectPairing { span: item_sp });
+            const_stable_indirect = false;
         }
-    }
-    if const_stable_indirect {
-        match &mut const_stab {
-            Some((stab, _)) => {
-                if stab.is_const_unstable() {
-                    stab.const_stable_indirect = true;
-                } else {
-                    _ = sess.dcx().emit_err(session_diagnostics::RustcConstStableIndirectPairing {
-                        span: item_sp,
-                    })
-                }
-            }
-            _ => {
-                // This function has no const stability attribute, but has `const_stable_indirect`.
-                // We ignore that; unmarked functions are subject to recursive const stability
-                // checks by default so we do carry out the user's intent.
-            }
-        }
-    }
+        let const_stab = ConstStability { level, const_stable_indirect, promotable };
 
-    const_stab
+        Some((const_stab, stab_sp))
+    } else {
+        if promotable {
+            sess.dcx().emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp });
+        }
+        // This function has no const stability attribute, but may have `const_stable_indirect`.
+        // We ignore that; unmarked functions are subject to recursive const stability
+        // checks by default so we do carry out the user's intent.
+        None
+    }
 }
 
 /// Calculates the const stability for a const function in a `-Zforce-unstable-if-unmarked` crate
@@ -375,23 +332,54 @@ pub fn find_body_stability(
     sess: &Session,
     attrs: &[Attribute],
 ) -> Option<(DefaultBodyStability, Span)> {
-    let mut body_stab: Option<(DefaultBodyStability, Span)> = None;
+    let mut level: Option<(StabilityLevel, Span)> = None;
 
     for attr in attrs {
         if attr.has_name(sym::rustc_default_body_unstable) {
-            if body_stab.is_some() {
-                sess.dcx()
-                    .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+            if try_add_unstability(sess, attr, &mut level).is_err() {
                 break;
-            }
-
-            if let Some(level) = parse_unstability(sess, attr) {
-                body_stab = Some((DefaultBodyStability { level }, attr.span));
             }
         }
     }
 
-    body_stab
+    let (level, stab_sp) = level?;
+    Some((DefaultBodyStability { level }, stab_sp))
+}
+
+/// Collects stability info from one `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
+/// attribute, `attr`. Emits an error if the info it collects is inconsistent.
+fn try_add_unstability(
+    sess: &Session,
+    attr: &Attribute,
+    level: &mut Option<(StabilityLevel, Span)>,
+) -> Result<(), ErrorGuaranteed> {
+    if level.is_some() {
+        return Err(sess
+            .dcx()
+            .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span }));
+    }
+    if let Some(new_level) = parse_unstability(sess, attr) {
+        *level = Some((new_level, attr.span));
+    }
+    Ok(())
+}
+
+/// Collects stability info from a single `stable`/`rustc_const_stable` attribute, `attr`.
+/// Emits an error if the info it collects is inconsistent.
+fn try_add_stability(
+    sess: &Session,
+    attr: &Attribute,
+    level: &mut Option<(StabilityLevel, Span)>,
+) -> Result<(), ErrorGuaranteed> {
+    if level.is_some() {
+        return Err(sess
+            .dcx()
+            .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span }));
+    }
+    if let Some(new_level) = parse_stability(sess, attr) {
+        *level = Some((new_level, attr.span));
+    }
+    Ok(())
 }
 
 fn insert_or_error(sess: &Session, meta: &MetaItem, item: &mut Option<Symbol>) -> Option<()> {
