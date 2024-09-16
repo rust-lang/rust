@@ -1148,7 +1148,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             }
 
             if field.is_unsized() {
-                unsized_field = Some(field);
+                if let StructKind::MaybeUnsized = kind {
+                    unsized_field = Some(field);
+                } else {
+                    return Err(LayoutCalculatorError::UnexpectedUnsized(*field));
+                }
             }
 
             // Invariant: offset < dl.obj_size_bound() <= 1<<61

@@ -13,8 +13,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AdtDef, CoroutineArgsExt, EarlyBinder, FieldDef, GenericArgsRef, Ty, TyCtxt,
-    TypeVisitableExt,
+    self, AdtDef, CoroutineArgsExt, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::sym;
@@ -572,40 +571,6 @@ fn layout_of_uncached<'tcx>(
                 ));
             }
 
-            let err_if_unsized = |field: &FieldDef, err_msg: &str| {
-                let field_ty = tcx.type_of(field.did);
-                let is_unsized = tcx
-                    .try_instantiate_and_normalize_erasing_regions(args, cx.param_env, field_ty)
-                    .map(|f| !f.is_sized(tcx, cx.param_env))
-                    .map_err(|e| {
-                        error(
-                            cx,
-                            LayoutError::NormalizationFailure(field_ty.instantiate_identity(), e),
-                        )
-                    })?;
-
-                if is_unsized {
-                    tcx.dcx().span_delayed_bug(tcx.def_span(def.did()), err_msg.to_owned());
-                    Err(error(cx, LayoutError::Unknown(ty)))
-                } else {
-                    Ok(())
-                }
-            };
-
-            if def.is_struct() {
-                if let Some((_, fields_except_last)) =
-                    def.non_enum_variant().fields.raw.split_last()
-                {
-                    for f in fields_except_last {
-                        err_if_unsized(f, "only the last field of a struct can be unsized")?;
-                    }
-                }
-            } else {
-                for f in def.all_fields() {
-                    err_if_unsized(f, &format!("{}s cannot have unsized fields", def.descr()))?;
-                }
-            }
-
             let get_discriminant_type =
                 |min, max| Integer::repr_discr(tcx, ty, &def.repr(), min, max);
 
@@ -642,6 +607,10 @@ fn layout_of_uncached<'tcx>(
                     !maybe_unsized,
                 )
                 .map_err(|err| map_error(cx, ty, err))?;
+
+            if !maybe_unsized && layout.is_unsized() {
+                bug!("got unsized layout for type that cannot be unsized {ty:?}: {layout:#?}");
+            }
 
             // If the struct tail is sized and can be unsized, check that unsizing doesn't move the fields around.
             if cfg!(debug_assertions)
