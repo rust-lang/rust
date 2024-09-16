@@ -5,7 +5,7 @@ use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Float, Integer};
 
 use super::misc::MiscMethods;
-use super::{Backend, HasCodegen};
+use super::{Backend, BackendTypes};
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 
@@ -156,7 +156,7 @@ pub trait TypeMembershipMethods<'tcx>: Backend<'tcx> {
     fn set_kcfi_type_metadata(&self, _function: Self::Function, _typeid: u32) {}
 }
 
-pub trait ArgAbiMethods<'tcx>: HasCodegen<'tcx> {
+pub trait ArgAbiMethods<'tcx>: BackendTypes {
     fn store_fn_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
