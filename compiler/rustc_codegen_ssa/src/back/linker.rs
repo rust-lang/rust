@@ -7,7 +7,9 @@ use std::{env, iter, mem, str};
 
 use cc::windows_registry;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::{find_native_static_library, try_find_native_static_library};
+use rustc_metadata::{
+    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
+};
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols;
@@ -876,7 +878,13 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, _as_needed: bool) {
-        self.link_arg(format!("{}{}", name, if verbatim { "" } else { ".lib" }));
+        // On MSVC-like targets rustc supports import libraries using alternative naming
+        // scheme (`libfoo.a`) unsupported by linker, search for such libraries manually.
+        if let Some(path) = try_find_native_dynamic_library(self.sess, name, verbatim) {
+            self.link_arg(path);
+        } else {
+            self.link_arg(format!("{}{}", name, if verbatim { "" } else { ".lib" }));
+        }
     }
 
     fn link_dylib_by_path(&mut self, path: &Path, _as_needed: bool) {
