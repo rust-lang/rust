@@ -213,18 +213,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Special handling of higher-ranked regions.
                 if !self.scc_universe(scc).is_root() {
-                    if self
-                        .constraint_sccs
-                        .annotation(scc)
-                        .placeholder_representative()
-                        .is_some_and(|scc_placeholder| vid == scc_placeholder)
-                    {
-                        // FIXME: somehow construct the right type out of the representative!
-                        return region;
-                    } else {
-                        // Fallback: this will produce a cryptic error message.
-                        return region;
-                    }
+                    // FIXME: the original logic was: if this SCC contains one single
+                    // placeholder, equal to vid, then construct a
+                    // ty::Region::new_placeholder out of it, somehow. This no longer
+                    // works as an approach, since we cannot get the prerequisite indices.
+                    debug!("Cannot get a nice name for higher-ranked region {vid:?} as {region:?}");
+                    return region;
                 }
 
                 // Find something that we can name

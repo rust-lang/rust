@@ -494,7 +494,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &BorrowckInferCtxt<'tcx>,
         var_infos: VarInfos,
         universal_regions: Rc<UniversalRegions<'tcx>>,
-        placeholder_indices: Rc<PlaceholderIndices>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
         mut outlives_constraints: OutlivesConstraintSet<'tcx>,
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
@@ -505,7 +504,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Self {
         debug!("universal_regions: {:#?}", universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
-        debug!("placeholder_indices: {:#?}", placeholder_indices);
         debug!("type tests: {:#?}", type_tests);
 
         // Create a RegionDefinition for each inference variable.
@@ -1673,9 +1671,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             debug!(
                 "check_bound_universal_region, error_element: {error_element:?} for placeholder {placeholder:?} in scc: {longer_fr_scc:?}"
             );
-            match error_element {
-                RegionElement::Location(_) | RegionElement::RootUniversalRegion(_) => {}
-            }
 
             errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
                 longer_fr,
