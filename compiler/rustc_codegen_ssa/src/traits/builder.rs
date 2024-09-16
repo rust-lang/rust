@@ -2,13 +2,12 @@ use std::assert_matches::assert_matches;
 use std::ops::Deref;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::ty::layout::{FnAbiOf, HasParamEnv, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
-use rustc_target::spec::HasTargetSpec;
 
 use super::abi::AbiBuilderMethods;
 use super::asm::AsmBuilderMethods;
@@ -45,8 +44,6 @@ pub trait BuilderMethods<'a, 'tcx>:
     + IntrinsicCallBuilderMethods<'tcx>
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods
-    + HasParamEnv<'tcx>
-    + HasTargetSpec
 {
     type CodegenCx: CodegenMethods<'tcx>
         + BackendTypes<

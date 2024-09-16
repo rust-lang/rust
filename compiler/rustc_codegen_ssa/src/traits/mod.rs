@@ -27,9 +27,6 @@ mod write;
 
 use std::fmt;
 
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt};
-use rustc_target::spec::HasTargetSpec;
-
 pub use self::abi::AbiBuilderMethods;
 pub use self::asm::{AsmBuilderMethods, AsmMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
 pub use self::backend::{BackendTypes, CodegenBackend, ExtraBackendMethods};
@@ -50,12 +47,8 @@ pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethod
 pub trait CodegenObject = Copy + PartialEq + fmt::Debug;
 
 pub trait CodegenMethods<'tcx> = TypeMethods<'tcx>
-    + MiscMethods<'tcx>
     + ConstMethods<'tcx>
     + StaticMethods
     + DebugInfoMethods<'tcx>
     + AsmMethods<'tcx>
-    + PreDefineMethods<'tcx>
-    + HasParamEnv<'tcx>
-    + HasTyCtxt<'tcx>
-    + HasTargetSpec;
+    + PreDefineMethods<'tcx>;
