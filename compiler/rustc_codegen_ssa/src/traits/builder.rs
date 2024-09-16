@@ -17,7 +17,7 @@ use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallBuilderMethods;
 use super::misc::MiscMethods;
 use super::type_::{ArgAbiBuilderMethods, BaseTypeMethods, LayoutTypeMethods};
-use super::{BackendTypes, CodegenMethods, StaticBuilderMethods};
+use super::{CodegenMethods, StaticBuilderMethods};
 use crate::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
@@ -45,8 +45,11 @@ pub trait BuilderMethods<'a, 'tcx>:
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods
 {
-    type CodegenCx: CodegenMethods<'tcx>
-        + BackendTypes<
+    // `BackendTypes` is a supertrait of both `CodegenMethods` and
+    // `BuilderMethods`. This bound ensures all impls agree on the associated
+    // types within.
+    type CodegenCx: CodegenMethods<
+            'tcx,
             Value = Self::Value,
             Function = Self::Function,
             BasicBlock = Self::BasicBlock,
