@@ -375,7 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If our autoderef loop had reached the recursion limit,
         // report an overflow error, but continue going on with
         // the truncated autoderef list.
-        if steps.reached_recursion_limit {
+        if steps.reached_recursion_limit && !is_suggestion.0 {
             self.probe(|_| {
                 let ty = &steps
                     .steps
