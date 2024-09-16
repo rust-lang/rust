@@ -14,8 +14,8 @@ use rustc_codegen_ssa::common::{
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
-    BackendTypes, BaseTypeMethods, BuilderMethods, ConstMethods, HasCodegen, LayoutTypeMethods,
-    OverflowOp, StaticBuilderMethods,
+    BackendTypes, BaseTypeMethods, BuilderMethods, ConstMethods, LayoutTypeMethods, OverflowOp,
+    StaticBuilderMethods,
 };
 use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::fx::FxHashSet;
@@ -460,10 +460,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-impl<'gcc, 'tcx> HasCodegen<'tcx> for Builder<'_, 'gcc, 'tcx> {
-    type CodegenCx = CodegenCx<'gcc, 'tcx>;
-}
-
 impl<'tcx> HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.cx.tcx()
@@ -531,6 +527,8 @@ fn set_rvalue_location<'a, 'gcc, 'tcx>(
 }
 
 impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
+    type CodegenCx = CodegenCx<'gcc, 'tcx>;
+
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Builder<'a, 'gcc, 'tcx> {
         Builder::with_cx(cx, block)
     }

@@ -1,4 +1,5 @@
 use std::assert_matches::assert_matches;
+use std::ops::Deref;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
@@ -17,7 +18,7 @@ use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
 use super::misc::MiscMethods;
 use super::type_::{ArgAbiMethods, BaseTypeMethods, LayoutTypeMethods};
-use super::{HasCodegen, StaticBuilderMethods};
+use super::{Backend, BackendTypes, CodegenMethods, StaticBuilderMethods};
 use crate::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
@@ -33,7 +34,8 @@ pub enum OverflowOp {
 }
 
 pub trait BuilderMethods<'a, 'tcx>:
-    HasCodegen<'tcx>
+    Backend<'tcx>
+    + Deref<Target = Self::CodegenCx>
     + CoverageInfoBuilderMethods<'tcx>
     + DebugInfoBuilderMethods
     + ArgAbiMethods<'tcx>
@@ -44,6 +46,18 @@ pub trait BuilderMethods<'a, 'tcx>:
     + HasParamEnv<'tcx>
     + HasTargetSpec
 {
+    type CodegenCx: CodegenMethods<'tcx>
+        + BackendTypes<
+            Value = Self::Value,
+            Function = Self::Function,
+            BasicBlock = Self::BasicBlock,
+            Type = Self::Type,
+            Funclet = Self::Funclet,
+            DIScope = Self::DIScope,
+            DILocation = Self::DILocation,
+            DIVariable = Self::DIVariable,
+        >;
+
     fn build(cx: &'a Self::CodegenCx, llbb: Self::BasicBlock) -> Self;
 
     fn cx(&self) -> &Self::CodegenCx;

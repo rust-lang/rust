@@ -124,10 +124,6 @@ impl<'ll, 'tcx> Deref for Builder<'_, 'll, 'tcx> {
     }
 }
 
-impl<'ll, 'tcx> HasCodegen<'tcx> for Builder<'_, 'll, 'tcx> {
-    type CodegenCx = CodegenCx<'ll, 'tcx>;
-}
-
 macro_rules! builder_methods_for_value_instructions {
     ($($name:ident($($arg:ident),*) => $llvm_capi:ident),+ $(,)?) => {
         $(fn $name(&mut self, $($arg: &'ll Value),*) -> &'ll Value {
@@ -139,6 +135,8 @@ macro_rules! builder_methods_for_value_instructions {
 }
 
 impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
+    type CodegenCx = CodegenCx<'ll, 'tcx>;
+
     fn build(cx: &'a CodegenCx<'ll, 'tcx>, llbb: &'ll BasicBlock) -> Self {
         let bx = Builder::with_cx(cx);
         unsafe {

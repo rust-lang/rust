@@ -63,19 +63,3 @@ pub trait CodegenMethods<'tcx> = Backend<'tcx>
     + HasParamEnv<'tcx>
     + HasTyCtxt<'tcx>
     + HasTargetSpec;
-
-pub trait HasCodegen<'tcx>:
-    Backend<'tcx> + std::ops::Deref<Target = <Self as HasCodegen<'tcx>>::CodegenCx>
-{
-    type CodegenCx: CodegenMethods<'tcx>
-        + BackendTypes<
-            Value = Self::Value,
-            Function = Self::Function,
-            BasicBlock = Self::BasicBlock,
-            Type = Self::Type,
-            Funclet = Self::Funclet,
-            DIScope = Self::DIScope,
-            DILocation = Self::DILocation,
-            DIVariable = Self::DIVariable,
-        >;
-}
