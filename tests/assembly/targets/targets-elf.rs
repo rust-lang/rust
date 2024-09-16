@@ -591,6 +591,9 @@
 //@ revisions: x86_64_unknown_redox
 //@ [x86_64_unknown_redox] compile-flags: --target x86_64-unknown-redox
 //@ [x86_64_unknown_redox] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_trusty
+//@ [x86_64_unknown_trusty] compile-flags: --target x86_64-unknown-trusty
+//@ [x86_64_unknown_trusty] needs-llvm-components: x86
 //@ revisions: x86_64_wrs_vxworks
 //@ [x86_64_wrs_vxworks] compile-flags: --target x86_64-wrs-vxworks
 //@ [x86_64_wrs_vxworks] needs-llvm-components: x86
