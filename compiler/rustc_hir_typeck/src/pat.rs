@@ -9,7 +9,9 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, LangItem, Mutability, Pat, PatKind};
+use rustc_hir::{
+    self as hir, BindingMode, ByRef, HirId, LangItem, Mutability, Node, Pat, PatKind, QPath,
+};
 use rustc_infer::infer;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -2542,9 +2544,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.is_slice_or_array_or_vector(resolved_ty);
             match resolved_ty.kind() {
                 ty::Adt(adt_def, _)
-                    if self.tcx.is_diagnostic_item(sym::Option, adt_def.did())
-                        || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
-                {
+                    if (self.tcx.is_diagnostic_item(sym::Option, adt_def.did())
+                        || self.tcx.is_diagnostic_item(sym::Result, adt_def.did())) =>
+                'sugg_as_deref: {
+                    // `as_deref` doesn't make sense for `Result::Err`.
+                    if let Node::Pat(top_pat) = self.tcx.hir_node(ti.hir_id)
+                        && let PatKind::TupleStruct(QPath::Resolved(_, path), ..) = top_pat.kind
+                        && let Some(def_id) = path.res.opt_def_id()
+                        && let Some(def_id) = self.tcx.opt_parent(def_id)
+                        && self.tcx.is_lang_item(def_id, LangItem::ResultErr)
+                    {
+                        break 'sugg_as_deref;
+                    }
+
+                    // `&T` in `Option<&T>` or `Result<&T, E>` can't be
+                    // dereferenced to array or slice by `as_deref`,
+                    // e.g. `Result<&Vec<T>, E>` would be `Result<&Vec<T>, &E>`.
+                    if let Some(first_generic_arg) = resolved_ty.walk().nth(1)
+                        && self
+                            .autoderef(span, first_generic_arg.expect_ty())
+                            .any(|(ty, _)| ty.has_erasable_regions())
+                    {
+                        break 'sugg_as_deref;
+                    }
+
                     // Slicing won't work here, but `.as_deref()` might (issue #91328).
                     err.span_suggestion_verbose(
                         span.shrink_to_hi(),

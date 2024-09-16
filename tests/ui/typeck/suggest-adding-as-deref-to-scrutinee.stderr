@@ -1,0 +1,72 @@
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:8:12
+   |
+LL |         Ok([1]) => true,
+   |            ^^^ pattern cannot match with input type `Vec<i32>`
+   |
+help: consider using `as_deref` here
+   |
+LL |     match res.as_deref() {
+   |              +++++++++++
+
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:15:12
+   |
+LL |         Ok([1]) => true,
+   |            ^^^ pattern cannot match with input type `Vec<i32>`
+   |
+help: consider using `as_deref` here
+   |
+LL |     match res.as_deref() {
+   |              +++++++++++
+
+error[E0529]: expected an array or slice, found `Vec<ErrorKind>`
+  --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:17:13
+   |
+LL |         Err([ErrorKind::NotFound]) => false,
+   |             ^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Vec<ErrorKind>`
+
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:25:14
+   |
+LL |         Some([1]) => true,
+   |              ^^^ pattern cannot match with input type `Vec<i32>`
+   |
+help: consider using `as_deref` here
+   |
+LL |     match opt.as_deref() {
+   |              +++++++++++
+
+error[E0529]: expected an array or slice, found `Vec<ErrorKind>`
+  --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:35:13
+   |
+LL |         Err([ErrorKind::NotFound]) => true,
+   |             ^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Vec<ErrorKind>`
+
+error[E0529]: expected an array or slice, found `i32`
+  --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:45:12
+   |
+LL |         Ok([1]) => true,
+   |            ^^^ pattern cannot match with input type `i32`
+
+error[E0529]: expected an array or slice, found `i32`
+  --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:55:14
+   |
+LL |         Some([1]) => true,
+   |              ^^^ pattern cannot match with input type `i32`
+
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:65:12
+   |
+LL |         Ok([1]) => true,
+   |            ^^^ pattern cannot match with input type `Vec<i32>`
+
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:75:14
+   |
+LL |         Some([1]) => true,
+   |              ^^^ pattern cannot match with input type `Vec<i32>`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0529`.
