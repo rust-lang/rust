@@ -414,9 +414,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: attr::Unstable { reason, issue, is_soft, implied_by },
-                feature,
-                ..
+                level: attr::Unstable { feature, reason, issue, is_soft, implied_by },
             }) => {
                 if span.allows_unstable(feature) {
                     debug!("stability: skipping span={:?} since it is internal", span);
@@ -502,8 +500,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(DefaultBodyStability {
-                level: attr::Unstable { reason, issue, is_soft, .. },
-                feature,
+                level: attr::Unstable { feature, reason, issue, is_soft, .. },
             }) => {
                 if span.allows_unstable(feature) {
                     debug!("body stability: skipping span={:?} since it is internal", span);

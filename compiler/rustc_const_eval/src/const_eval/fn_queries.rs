@@ -11,8 +11,8 @@ pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<(Symbol, O
     if tcx.is_const_fn_raw(def_id) {
         let const_stab = tcx.lookup_const_stability(def_id)?;
         match const_stab.level {
-            attr::StabilityLevel::Unstable { implied_by, .. } => {
-                Some((const_stab.feature, implied_by))
+            attr::StabilityLevel::Unstable { feature, implied_by, .. } => {
+                Some((feature, implied_by))
             }
             attr::StabilityLevel::Stable { .. } => None,
         }

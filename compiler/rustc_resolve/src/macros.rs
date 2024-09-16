@@ -1003,10 +1003,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue, is_soft, implied_by } = stability.level
+            if let StabilityLevel::Unstable { feature, reason, issue, is_soft, implied_by } =
+                stability.level
             {
-                let feature = stability.feature;
-
                 let is_allowed =
                     |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
                 let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));

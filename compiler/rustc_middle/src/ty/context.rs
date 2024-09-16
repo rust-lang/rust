@@ -3110,10 +3110,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_const_fn(self, def_id: DefId) -> bool {
         if self.is_const_fn_raw(def_id) {
             match self.lookup_const_stability(def_id) {
-                Some(stability) if stability.is_const_unstable() => {
+                Some(rustc_attr::ConstStability {
+                    level: rustc_attr::Unstable { feature, .. },
+                    ..
+                }) => {
                     // has a `rustc_const_unstable` attribute, check whether the user enabled the
                     // corresponding feature gate.
-                    self.features().enabled(stability.feature)
+                    self.features().enabled(feature)
                 }
                 // functions without const stability are either stable user written
                 // const fn or the user is using feature gates and we thus don't

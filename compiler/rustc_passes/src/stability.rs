@@ -247,20 +247,18 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 }
             }
 
-            if let Stability { level: Unstable { .. }, feature } = stab {
+            if let Unstable { feature, .. } = stab.level {
                 if ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some() {
                     self.tcx
                         .dcx()
                         .emit_err(errors::UnstableAttrForAlreadyStableFeature { span, item_sp });
                 }
             }
-            if let Stability { level: Unstable { implied_by: Some(implied_by), .. }, feature } =
-                stab
-            {
+            if let Unstable { feature, implied_by: Some(implied_by), .. } = stab.level {
                 self.index.implications.insert(implied_by, feature);
             }
 
-            if let Some(ConstStability { level: Unstable { .. }, feature, .. }) = const_stab {
+            if let Some(ConstStability { level: Unstable { feature, .. }, .. }) = const_stab {
                 if ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some() {
                     self.tcx.dcx().emit_err(errors::UnstableAttrForAlreadyStableFeature {
                         span: const_span.unwrap(), // If const_stab contains Some(..), same is true for const_span
@@ -269,8 +267,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 }
             }
             if let Some(ConstStability {
-                level: Unstable { implied_by: Some(implied_by), .. },
-                feature,
+                level: Unstable { feature, implied_by: Some(implied_by), .. },
                 ..
             }) = const_stab
             {
@@ -656,12 +653,12 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
         if tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
             let stability = Stability {
                 level: attr::StabilityLevel::Unstable {
+                    feature: sym::rustc_private,
                     reason: UnstableReason::Default,
                     issue: NonZero::new(27812),
                     is_soft: false,
                     implied_by: None,
                 },
-                feature: sym::rustc_private,
             };
             annotator.parent_stab = Some(stability);
         }

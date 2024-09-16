@@ -70,7 +70,6 @@ pub enum OptimizeAttr {
 #[derive(HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
-    pub feature: Symbol,
 }
 
 impl Stability {
@@ -92,7 +91,6 @@ impl Stability {
 #[derive(HashStable_Generic)]
 pub struct ConstStability {
     pub level: StabilityLevel,
-    pub feature: Symbol,
     /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
 }
@@ -112,7 +110,6 @@ impl ConstStability {
 #[derive(HashStable_Generic)]
 pub struct DefaultBodyStability {
     pub level: StabilityLevel,
-    pub feature: Symbol,
 }
 
 /// The available stability levels.
@@ -121,6 +118,7 @@ pub struct DefaultBodyStability {
 pub enum StabilityLevel {
     /// `#[unstable]`
     Unstable {
+        feature: Symbol,
         /// Reason for the current stability level.
         reason: UnstableReason,
         /// Relevant `rust-lang/rust` issue.
@@ -229,8 +227,8 @@ pub fn find_stability(
                     break;
                 }
 
-                if let Some((feature, level)) = parse_unstability(sess, attr) {
-                    stab = Some((Stability { level, feature }, attr.span));
+                if let Some(level) = parse_unstability(sess, attr) {
+                    stab = Some((Stability { level }, attr.span));
                 }
             }
             sym::stable => {
@@ -239,8 +237,8 @@ pub fn find_stability(
                         .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
-                if let Some((feature, level)) = parse_stability(sess, attr) {
-                    stab = Some((Stability { level, feature }, attr.span));
+                if let Some(level) = parse_stability(sess, attr) {
+                    stab = Some((Stability { level }, attr.span));
                 }
             }
             _ => {}
@@ -286,9 +284,8 @@ pub fn find_const_stability(
                     break;
                 }
 
-                if let Some((feature, level)) = parse_unstability(sess, attr) {
-                    const_stab =
-                        Some((ConstStability { level, feature, promotable: false }, attr.span));
+                if let Some(level) = parse_unstability(sess, attr) {
+                    const_stab = Some((ConstStability { level, promotable: false }, attr.span));
                 }
             }
             sym::rustc_const_stable => {
@@ -297,9 +294,8 @@ pub fn find_const_stability(
                         .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
-                if let Some((feature, level)) = parse_stability(sess, attr) {
-                    const_stab =
-                        Some((ConstStability { level, feature, promotable: false }, attr.span));
+                if let Some(level) = parse_stability(sess, attr) {
+                    const_stab = Some((ConstStability { level, promotable: false }, attr.span));
                 }
             }
             _ => {}
@@ -337,8 +333,8 @@ pub fn find_body_stability(
                 break;
             }
 
-            if let Some((feature, level)) = parse_unstability(sess, attr) {
-                body_stab = Some((DefaultBodyStability { level, feature }, attr.span));
+            if let Some(level) = parse_unstability(sess, attr) {
+                body_stab = Some((DefaultBodyStability { level }, attr.span));
             }
         }
     }
@@ -364,7 +360,7 @@ fn insert_or_error(sess: &Session, meta: &MetaItem, item: &mut Option<Symbol>) -
 
 /// Read the content of a `stable`/`rustc_const_stable` attribute, and return the feature name and
 /// its stability information.
-fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, StabilityLevel)> {
+fn parse_stability(sess: &Session, attr: &Attribute) -> Option<StabilityLevel> {
     let meta = attr.meta()?;
     let MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else { return None };
 
@@ -418,9 +414,8 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
     };
 
     match feature {
-        Ok(feature) => {
-            let level = StabilityLevel::Stable { since, allowed_through_unstable_modules: false };
-            Some((feature, level))
+        Ok(_feature) => {
+            Some(StabilityLevel::Stable { since, allowed_through_unstable_modules: false })
         }
         Err(ErrorGuaranteed { .. }) => None,
     }
@@ -428,7 +423,7 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
 
 /// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
 /// attribute, and return the feature name and its stability information.
-fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, StabilityLevel)> {
+fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<StabilityLevel> {
     let meta = attr.meta()?;
     let MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else { return None };
 
@@ -508,12 +503,13 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
             let level = StabilityLevel::Unstable {
+                feature,
                 reason: UnstableReason::from_opt_reason(reason),
                 issue: issue_num,
                 is_soft,
                 implied_by,
             };
-            Some((feature, level))
+            Some(level)
         }
         (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
     }
