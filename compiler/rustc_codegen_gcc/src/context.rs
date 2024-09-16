@@ -20,7 +20,9 @@ use rustc_span::source_map::respan;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
-use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, TlsModel, WasmCAbi};
+use rustc_target::spec::{
+    HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, TlsModel, WasmCAbi, X86Abi,
+};
 
 use crate::callee::get_fn;
 use crate::common::SignType;
@@ -568,6 +570,12 @@ impl<'gcc, 'tcx> HasTargetSpec for CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> HasWasmCAbiOpt for CodegenCx<'gcc, 'tcx> {
     fn wasm_c_abi_opt(&self) -> WasmCAbi {
         self.tcx.sess.opts.unstable_opts.wasm_c_abi
+    }
+}
+
+impl<'gcc, 'tcx> HasX86AbiOpt for CodegenCx<'gcc, 'tcx> {
+    fn x86_abi_opt(&self) -> X86Abi {
+        X86Abi { regparm: self.tcx.sess.opts.unstable_opts.regparm }
     }
 }
 
