@@ -76,7 +76,7 @@ pub struct RegionTracker {
     max_universe_placeholder_reached: ReachablePlaceholder,
 
     /// The smallest universe index reachable form the nodes of this SCC.
-    min_reachable_universe: UniverseIndex,
+    min_reachable_universe: (UniverseIndex, RegionVid),
 
     /// The representative Region Variable Id for this SCC. We prefer
     /// placeholders over existentially quantified variables, otherwise
@@ -87,10 +87,10 @@ pub struct RegionTracker {
     representative_origin: RepresentativeOrigin,
 
     /// The smallest reachable placeholder from this SCC (including in it).
-    min_reachable_placeholder: Option<RegionVid>,
+    pub(crate) min_reachable_placeholder: Option<RegionVid>,
 
     /// The largest reachable placeholder from this SCC (including in it).
-    max_reachable_placeholder: Option<RegionVid>,
+    pub(crate) max_reachable_placeholder: Option<RegionVid>,
 
     /// Is there at least one placeholder in this SCC?
     contains_placeholder: bool,
@@ -143,31 +143,13 @@ impl RegionTracker {
 
         Self {
             max_universe_placeholder_reached,
-            min_reachable_universe: definition.universe,
+            min_reachable_universe: (definition.universe, rvid),
             representative: rvid,
             representative_origin,
             min_reachable_placeholder: representative_if_placeholder,
             max_reachable_placeholder: representative_if_placeholder,
             contains_placeholder: rvid_is_placeholder,
         }
-    }
-
-    /// Return true if this SCC contains a placeholder that
-    /// reaches another placeholder, through other SCCs or within
-    /// it.
-    fn placeholder_reaches_placeholder(&self) -> bool {
-        // If min and max are different then at least two placeholders
-        // must be reachable from us. It remains to determine if and
-        // whose problem that is.
-        //
-        // If we are not a placeholder
-        // we are seeing upstream placeholders, which may be fine, or
-        // if it is a problem it's the problem for other placeholders.
-        //
-        // If we *are* a placeholder, we are reaching at least one other
-        // placeholder upstream.
-        self.contains_placeholder
-            && self.min_reachable_placeholder != self.max_reachable_placeholder
     }
 
     /// If the representative is a placeholder, return it,
@@ -182,7 +164,7 @@ impl RegionTracker {
 
     /// The smallest-indexed universe reachable from and/or in this SCC.
     fn min_universe(self) -> UniverseIndex {
-        self.min_reachable_universe
+        self.min_reachable_universe.0
     }
 
     fn merge_reachable_placeholders(&mut self, other: &Self) {
@@ -216,58 +198,37 @@ impl RegionTracker {
             std::cmp::min(self.min_reachable_universe, other.min_reachable_universe);
     }
 
-    /// Returns an offending region if the annotated SCC reaches a placeholder
-    /// with a universe larger than the smallest reachable one,
-    /// or if a placeholder reaches another placeholder, `None` otherwise.
-    pub(crate) fn placeholder_violation(
-        &self,
-        sccs: &Sccs<RegionVid, ConstraintSccIndex, Self>,
-    ) -> Option<RegionVid> {
-        // Note: we arbitrarily prefer universe violations
-        // to placeholder-reaches-placeholder violations.
-        // violations.
-
-        // Case 1: a universe violation
-        if let ReachablePlaceholder::Placeholder {
+    /// Figure out if there is a universe violation going on.
+    /// This can happen in two cases: either one of our placeholders
+    /// had its universe lowered from reaching a region with a lower universe,
+    /// (in which case we blame the lower universe's region), or because we reached
+    /// a larger universe (in which case we blame the larger universe's region).
+    pub(crate) fn universe_violation(&self) -> Option<RegionVid> {
+        let ReachablePlaceholder::Placeholder {
             universe: max_reached_universe,
-            rvid: belonging_to_rvid,
+            rvid: large_u_rvid,
         } = self.max_universe_placeholder_reached
-        {
-            if self.min_universe().cannot_name(max_reached_universe) {
-                return Some(belonging_to_rvid);
-            }
-        }
+        else {
+            return None;
+        };
 
-        // Case 2: a placeholder (in our SCC) reaches another placeholder
-        if self.placeholder_reaches_placeholder() {
-            // We know that this SCC contains at least one placeholder
-            // and that at least two placeholders are reachable from
-            // this SCC.
-            //
-            // We try to pick one that isn't in our SCC, if possible.
-            // We *always* pick one that is not equal to the representative.
+        if !self.min_universe().cannot_name(max_reached_universe) {
+            return None;
+        };
 
-            // Unwrap safety: we know both these values are Some, since
-            // there are two reachable placeholders at least.
-            let min_reachable = self.min_reachable_placeholder.unwrap();
+        debug!("Universe {max_reached_universe:?} is too large for its SCC!");
+        // We originally had a large enough universe to fit all our reachable
+        // placeholders, but had it lowered because we also reached something
+        // small-universed. In this case, that's to blame!
+        let to_blame = if self.representative == large_u_rvid {
+            debug!("{:?} lowered our universe!", self.min_reachable_universe);
+            self.min_reachable_universe.1
+        } else {
+            // The problem is that we, who have a small universe, reach a large one.
+            large_u_rvid
+        };
 
-            if sccs.scc(min_reachable) != sccs.scc(self.representative) {
-                return Some(min_reachable);
-            }
-
-            // Either the largest reachable placeholder is outside our SCC,
-            // or we *must* blame a placeholder in our SCC since the violation
-            // happens inside of it. It's slightly easier to always arbitrarily
-            // pick the largest one, so we do. This also nicely guarantees that
-            // we don't pick the representative, since the representative is the
-            // smallest placeholder by index in the SCC if it is a placeholder
-            // so in order for it to also be the largest reachable min would
-            // have to be equal to max, but then we would only have reached one
-            // placeholder.
-            return Some(self.max_reachable_placeholder.unwrap());
-        }
-
-        None
+        Some(to_blame)
     }
 }
 
@@ -1949,14 +1910,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // relation, redirect the search to the placeholder to blame.
         if self.is_static(to) {
             for constraint in path.iter() {
-                let ConstraintCategory::IllegalPlaceholder(culprit_r) = constraint.category else {
+                let ConstraintCategory::IllegalPlaceholder(culprit_from, culprit_to) =
+                    constraint.category
+                else {
                     continue;
                 };
 
-                debug!("{culprit_r:?} is the reason {from:?}: 'static!");
+                debug!("{culprit_from:?}: {culprit_to:?} is the reason {from:?}: 'static!");
                 // FIXME: think: this may be for transitive reasons and
                 // we may have to do this arbitrarily many times. Or may we?
-                return self.find_constraint_path_to(from, |r| r == culprit_r, false).unwrap();
+                return self
+                    .find_constraint_path_to(culprit_from, |r| r == culprit_to, false)
+                    .unwrap();
             }
         }
         // No funny business; just return the path!

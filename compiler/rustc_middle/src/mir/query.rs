@@ -275,8 +275,9 @@ pub enum ConstraintCategory<'tcx> {
     Internal,
 
     /// An internal constraint derived from an illegal placeholder relation
-    /// to this region.
-    IllegalPlaceholder(RegionVid),
+    /// to this region. The arguments are a source -> drain of a path
+    /// that caused the problem, used when reporting errors.
+    IllegalPlaceholder(RegionVid, RegionVid),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]

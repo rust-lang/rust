@@ -12,8 +12,8 @@ use rustc_middle::ty::UniverseIndex;
 use super::*;
 
 fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> String {
-    if let ConstraintCategory::IllegalPlaceholder(p) = constraint.category {
-        return format!("b/c {p:?}");
+    if let ConstraintCategory::IllegalPlaceholder(from, to) = constraint.category {
+        return format!("b/c {from:?}: {to:?}");
     }
     match constraint.locations {
         Locations::All(_) => "All(...)".to_string(),

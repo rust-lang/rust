@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::Index;
 
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, TyCtxt, VarianceDiagInfo};
 use rustc_span::Span;
@@ -69,6 +70,27 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         })
     }
 
+    /// There is a placeholder violation; add a requirement
+    /// that some SCC outlive static and explain which region
+    /// reaching which other region caused that.
+    fn add_placeholder_violation_constraint(
+        &mut self,
+        outlives_static: RegionVid,
+        blame_from: RegionVid,
+        blame_to: RegionVid,
+        fr_static: RegionVid,
+    ) {
+        self.push(OutlivesConstraint {
+            sup: outlives_static,
+            sub: fr_static,
+            category: ConstraintCategory::IllegalPlaceholder(blame_from, blame_to),
+            locations: Locations::All(rustc_span::DUMMY_SP),
+            span: rustc_span::DUMMY_SP,
+            variance_info: VarianceDiagInfo::None,
+            from_closure: false,
+        });
+    }
+
     /// This method handles Universe errors by rewriting the constraint
     /// graph. For each strongly connected component in the constraint
     /// graph such that there is a series of constraints
@@ -117,41 +139,67 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         let mut added_constraints = false;
 
         for scc in sccs.all_sccs() {
-            // No point in adding 'static: 'static!
-            // This micro-optimisation makes somewhat sense
-            // because static outlives *everything*.
-            if scc == sccs.scc(fr_static) {
-                continue;
-            }
-
             let annotation = sccs.annotation(scc);
 
             // If this SCC participates in a universe violation
             // e.g. if it reaches a region with a universe smaller than
-            // the largest region reached, or if this placeholder
-            // reaches another placeholder, add a requirement that it must
-            // outlive `'static`.
-            if let Some(offending_region) = annotation.placeholder_violation(&sccs) {
-                assert!(
-                    annotation.representative != offending_region,
-                    "Attemtping to blame a constraint for itself!"
-                );
-                // Optimisation opportunity: this will add more constraints than
-                // needed for correctness, since an SCC upstream of another with
+            // the largest region reached, add a requirement that it must
+            // outlive `'static`. Here we get to know which reachable region
+            // caused the violation.
+            if let Some(to) = annotation.universe_violation() {
+                // Optimisation opportunity: this will potentially add more constraints
+                // than needed for correctness, since an SCC upstream of another with
                 // a universe violation will "infect" its downstream SCCs to also
-                // outlive static.
+                // outlive static. However, some of those may be useful for error
+                // reporting.
                 added_constraints = true;
-                let scc_representative_outlives_static = OutlivesConstraint {
-                    sup: annotation.representative,
-                    sub: fr_static,
-                    category: ConstraintCategory::IllegalPlaceholder(offending_region),
-                    locations: Locations::All(rustc_span::DUMMY_SP),
-                    span: rustc_span::DUMMY_SP,
-                    variance_info: VarianceDiagInfo::None,
-                    from_closure: false,
-                };
-                self.push(scc_representative_outlives_static);
+                self.add_placeholder_violation_constraint(
+                    annotation.representative,
+                    annotation.representative,
+                    to,
+                    fr_static,
+                );
             }
+        }
+
+        // The second kind of violation: a placeholder reaching another placeholder.
+        // OPTIMIZATION: This one is even more optimisable since it adds constraints for every
+        // placeholder in an SCC.
+        for rvid in definitions.iter_enumerated().filter_map(|(rvid, definition)| {
+            if matches!(definition.origin, NllRegionVariableOrigin::Placeholder { .. }) {
+                Some(rvid)
+            } else {
+                None
+            }
+        }) {
+            let scc = sccs.scc(rvid);
+            let annotation = sccs.annotation(scc);
+
+            // Unwrap safety: since this is our SCC it must contain us, which is
+            // at worst min AND max, but it has at least one or there is a bug.
+            let min = annotation.min_reachable_placeholder.unwrap();
+            let max = annotation.max_reachable_placeholder.unwrap();
+
+            // Good path: Nothing to see here, at least no other placeholders!
+            if min == max {
+                continue;
+            }
+
+            // Bad path: figure out who we illegally reached.
+            // Note that this will prefer the representative if it is a
+            // placeholder, since the representative has the smallest index!
+            let other_placeholder = if min != rvid { min } else { max };
+
+            debug!(
+                "Placeholder {rvid:?} of SCC {scc:?} reaches other placeholder {other_placeholder:?}"
+            );
+            added_constraints = true;
+            self.add_placeholder_violation_constraint(
+                annotation.representative,
+                rvid,
+                other_placeholder,
+                fr_static,
+            );
         }
 
         if added_constraints {
