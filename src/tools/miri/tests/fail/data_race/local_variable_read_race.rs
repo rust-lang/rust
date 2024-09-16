@@ -29,7 +29,7 @@ fn main() {
     // when it actually happened), we'd miss the UB in this test.
     // Also, the UB error should point at the write above, not the addr-of here.
     P.store(std::ptr::addr_of_mut!(val), Relaxed);
-    
+
     // Wait for the thread to be done.
     t1.join().unwrap();
 
