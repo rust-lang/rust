@@ -27,6 +27,11 @@ mod write;
 
 use std::fmt;
 
+use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::Ty;
+use rustc_target::abi::call::FnAbi;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+
 pub use self::abi::AbiBuilderMethods;
 pub use self::asm::{AsmBuilderMethods, AsmMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
 pub use self::backend::{BackendTypes, CodegenBackend, ExtraBackendMethods};
@@ -46,7 +51,9 @@ pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethod
 
 pub trait CodegenObject = Copy + PartialEq + fmt::Debug;
 
-pub trait CodegenMethods<'tcx> = TypeMethods<'tcx>
+pub trait CodegenMethods<'tcx> = LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
+    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
+    + TypeMethods<'tcx>
     + ConstMethods<'tcx>
     + StaticMethods
     + DebugInfoMethods<'tcx>

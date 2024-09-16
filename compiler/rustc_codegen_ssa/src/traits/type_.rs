@@ -1,5 +1,5 @@
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Float, Integer};
@@ -9,7 +9,7 @@ use super::BackendTypes;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 
-pub trait BaseTypeMethods<'tcx>: BackendTypes + HasTyCtxt<'tcx> {
+pub trait BaseTypeMethods<'tcx>: BackendTypes {
     fn type_i8(&self) -> Self::Type;
     fn type_i16(&self) -> Self::Type;
     fn type_i32(&self) -> Self::Type;
@@ -40,7 +40,9 @@ pub trait BaseTypeMethods<'tcx>: BackendTypes + HasTyCtxt<'tcx> {
     fn val_ty(&self, v: Self::Value) -> Self::Type;
 }
 
-pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
+pub trait DerivedTypeMethods<'tcx>:
+    BaseTypeMethods<'tcx> + MiscMethods<'tcx> + HasTyCtxt<'tcx>
+{
     fn type_int(&self) -> Self::Type {
         match &self.sess().target.c_int_width[..] {
             "16" => self.type_i16(),
@@ -98,13 +100,12 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     }
 }
 
-impl<'tcx, T> DerivedTypeMethods<'tcx> for T where Self: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {}
-
-pub trait LayoutTypeMethods<'tcx>:
-    BackendTypes
-    + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
-    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
+impl<'tcx, T> DerivedTypeMethods<'tcx> for T where
+    Self: BaseTypeMethods<'tcx> + MiscMethods<'tcx> + HasTyCtxt<'tcx>
 {
+}
+
+pub trait LayoutTypeMethods<'tcx>: BackendTypes {
     /// The backend type used for a rust type when it's in memory,
     /// such as when it's stack-allocated or when it's being loaded or stored.
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;

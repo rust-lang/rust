@@ -280,7 +280,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     ///
     /// If you don't need the type, see [`OperandValue::pointer_parts`]
     /// or [`OperandValue::deref`].
-    pub fn deref<Cx: LayoutTypeMethods<'tcx>>(self, cx: &Cx) -> PlaceRef<'tcx, V> {
+    pub fn deref<Cx: CodegenMethods<'tcx>>(self, cx: &Cx) -> PlaceRef<'tcx, V> {
         if self.layout.ty.is_box() {
             // Derefer should have removed all Box derefs
             bug!("dereferencing {:?} in codegen", self.layout.ty);
