@@ -2227,9 +2227,13 @@ in src-script.js and main.js
 		left: -11px;
 	}
 
-	/* We don't display these buttons on mobile devices. */
-	#copy-path, #help-button {
+	/* On mobile, don't show keyboard shortcuts */
+	.shortcuts {
 		display: none;
+	}
+	/* since the keyboard shortcuts aren't shown, allow the search tricks to use the full width */
+	div#help div.side-by-side > div {
+		width: 100%;
 	}
 
 	/* sidebar button becomes topbar button */
