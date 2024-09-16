@@ -1819,7 +1819,7 @@ impl RawTableInner {
     /// Attempt to write data at the `index` returned by this function when the table is
     /// less than the group width and if there was not at least one empty or deleted bucket in
     /// the table will cause immediate [`undefined behavior`]. This is because in this case the
-    /// function will return `self.bucket_mask + 1` as an index due to the trailing [`EMPTY]
+    /// function will return `self.bucket_mask + 1` as an index due to the trailing [`EMPTY`]
     /// control bytes outside the table range.
     ///
     /// The caller must independently increase the `items` field of the table, and also,
@@ -1873,7 +1873,7 @@ impl RawTableInner {
     /// Attempt to write data at the [`InsertSlot`] returned by this function when the table is
     /// less than the group width and if there was not at least one empty or deleted bucket in
     /// the table will cause immediate [`undefined behavior`]. This is because in this case the
-    /// function will return `self.bucket_mask + 1` as an index due to the trailing [`EMPTY]
+    /// function will return `self.bucket_mask + 1` as an index due to the trailing [`EMPTY`]
     /// control bytes outside the table range.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html

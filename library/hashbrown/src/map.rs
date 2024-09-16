@@ -4003,7 +4003,7 @@ impl<'a, K, V, S, A: Allocator> VacantEntry<'a, K, V, S, A> {
     }
 
     /// Sets the value of the entry with the [`VacantEntry`]'s key,
-    /// and returns an [`OccupiedEntry`]`.
+    /// and returns an [`OccupiedEntry`].
     ///
     /// # Examples
     ///
@@ -4303,7 +4303,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'a, 'b, K, Q, V, S
     }
 
     /// Sets the value of the entry with the [`VacantEntryRef`]'s key,
-    /// and returns an [`OccupiedEntry`]`.
+    /// and returns an [`OccupiedEntry`].
     ///
     /// # Examples
     ///
