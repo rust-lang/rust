@@ -126,14 +126,18 @@ impl FileDescription for AnonSocket {
         &self,
         _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        bytes: &mut [u8],
+        ptr: Pointer,
+        len: u64,
+        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<usize>> {
-        let request_byte_size = bytes.len();
+    ) -> InterpResult<'tcx> {
+        let request_byte_size = len;
+        let mut bytes = vec![0; usize::try_from(len).unwrap()];
 
         // Always succeed on read size 0.
         if request_byte_size == 0 {
-            return Ok(Ok(0));
+            let result = Ok(0);
+            return ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest);
         }
 
         let Some(readbuf) = &self.readbuf else {
@@ -146,7 +150,8 @@ impl FileDescription for AnonSocket {
             if self.peer_fd().upgrade().is_none() {
                 // Socketpair with no peer and empty buffer.
                 // 0 bytes successfully read indicates end-of-file.
-                return Ok(Ok(0));
+                let result = Ok(0);
+                return ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest);
             } else {
                 if self.is_nonblock {
                     // Non-blocking socketpair with writer and empty buffer.
@@ -154,7 +159,8 @@ impl FileDescription for AnonSocket {
                     // EAGAIN or EWOULDBLOCK can be returned for socket,
                     // POSIX.1-2001 allows either error to be returned for this case.
                     // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
-                    return Ok(Err(Error::from(ErrorKind::WouldBlock)));
+                    let result = Err(Error::from(ErrorKind::WouldBlock));
+                    return ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest);
                 } else {
                     // Blocking socketpair with writer and empty buffer.
                     // FIXME: blocking is currently not supported
@@ -170,7 +176,7 @@ impl FileDescription for AnonSocket {
 
         // Do full read / partial read based on the space available.
         // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
-        let actual_read_size = readbuf.buf.read(bytes).unwrap();
+        let actual_read_size = readbuf.buf.read(&mut bytes).unwrap();
 
         // Need to drop before others can access the readbuf again.
         drop(readbuf);
@@ -186,7 +192,8 @@ impl FileDescription for AnonSocket {
             ecx.check_and_update_readiness(&peer_fd)?;
         }
 
-        return Ok(Ok(actual_read_size));
+        let result = Ok(actual_read_size);
+        ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest)
     }
 
     fn write<'tcx>(
@@ -194,20 +201,23 @@ impl FileDescription for AnonSocket {
         _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
         bytes: &[u8],
+        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<usize>> {
+    ) -> InterpResult<'tcx> {
         let write_size = bytes.len();
         // Always succeed on write size 0.
         // ("If count is zero and fd refers to a file other than a regular file, the results are not specified.")
         if write_size == 0 {
-            return Ok(Ok(0));
+            let result = Ok(0);
+            return ecx.return_written_byte_count_or_error(result, dest);
         }
 
         // We are writing to our peer's readbuf.
         let Some(peer_fd) = self.peer_fd().upgrade() else {
             // If the upgrade from Weak to Rc fails, it indicates that all read ends have been
             // closed.
-            return Ok(Err(Error::from(ErrorKind::BrokenPipe)));
+            let result = Err(Error::from(ErrorKind::BrokenPipe));
+            return ecx.return_written_byte_count_or_error(result, dest);
         };
 
         let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf else {
@@ -221,7 +231,8 @@ impl FileDescription for AnonSocket {
         if available_space == 0 {
             if self.is_nonblock {
                 // Non-blocking socketpair with a full buffer.
-                return Ok(Err(Error::from(ErrorKind::WouldBlock)));
+                let result = Err(Error::from(ErrorKind::WouldBlock));
+                return ecx.return_written_byte_count_or_error(result, dest);
             } else {
                 // Blocking socketpair with a full buffer.
                 throw_unsup_format!("socketpair write: blocking isn't supported yet");
@@ -242,7 +253,8 @@ impl FileDescription for AnonSocket {
         // The kernel does this even if the fd was already readable before, so we follow suit.
         ecx.check_and_update_readiness(&peer_fd)?;
 
-        return Ok(Ok(actual_write_size));
+        let result = Ok(actual_write_size);
+        ecx.return_written_byte_count_or_error(result, dest)
     }
 }
 
