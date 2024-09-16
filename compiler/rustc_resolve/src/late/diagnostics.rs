@@ -2538,8 +2538,13 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
 
                     let (msg, sugg) = match source {
-                        PathSource::Type => ("you might be missing a type parameter", ident),
-                        PathSource::Expr(_) => ("you might be missing a const parameter", format!("const {ident}: /* Type */")),
+                        PathSource::Type | PathSource::PreciseCapturingArg(TypeNS) => {
+                            ("you might be missing a type parameter", ident)
+                        }
+                        PathSource::Expr(_) | PathSource::PreciseCapturingArg(ValueNS) => (
+                            "you might be missing a const parameter",
+                            format!("const {ident}: /* Type */"),
+                        ),
                         _ => return None,
                     };
                     let (span, sugg) = if let [.., param] = &generics.params[..] {

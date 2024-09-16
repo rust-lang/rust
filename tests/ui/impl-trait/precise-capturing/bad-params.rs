@@ -1,8 +1,8 @@
 fn missing() -> impl Sized + use<T> {}
-//~^ ERROR cannot find type `T` in this scope
+//~^ ERROR cannot find type or const parameter `T` in this scope
 
 fn missing_self() -> impl Sized + use<Self> {}
-//~^ ERROR cannot find type `Self` in this scope
+//~^ ERROR cannot find type or const parameter `Self` in this scope
 
 struct MyType;
 impl MyType {
@@ -11,6 +11,9 @@ impl MyType {
 }
 
 fn hello() -> impl Sized + use<hello> {}
-//~^ ERROR expected type or const parameter in `use<...>` precise captures list, found function
+//~^ ERROR expected type or const parameter, found function `hello`
+
+fn arg(x: ()) -> impl Sized + use<x> {}
+//~^ ERROR expected type or const parameter, found local variable `x`
 
 fn main() {}
