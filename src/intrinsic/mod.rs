@@ -13,7 +13,7 @@ use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::{
-    ArgAbiMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods,
+    ArgAbiBuilderMethods, BuilderMethods, ConstMethods, IntrinsicCallBuilderMethods,
 };
 #[cfg(feature = "master")]
 use rustc_codegen_ssa::traits::{BaseTypeMethods, MiscMethods};
@@ -94,7 +94,7 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     Some(cx.context.get_builtin_function(gcc_name))
 }
 
-impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
+impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
         instance: Instance<'tcx>,
@@ -448,7 +448,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-impl<'a, 'gcc, 'tcx> ArgAbiMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
+impl<'a, 'gcc, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn store_fn_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
