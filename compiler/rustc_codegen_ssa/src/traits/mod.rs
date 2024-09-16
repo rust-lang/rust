@@ -8,9 +8,6 @@
 //! actual codegen, while the builder stores the information about the function during codegen and
 //! is used to produce the instructions of the backend IR.
 //!
-//! Finally, a third `Backend` structure has to implement methods related to how codegen information
-//! is passed to the backend, especially for asynchronous compilation.
-//!
 //! The traits contain associated types that are backend-specific, such as the backend's value or
 //! basic blocks.
 
@@ -35,7 +32,7 @@ use rustc_target::spec::HasTargetSpec;
 
 pub use self::abi::AbiBuilderMethods;
 pub use self::asm::{AsmBuilderMethods, AsmMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
-pub use self::backend::{Backend, BackendTypes, CodegenBackend, ExtraBackendMethods};
+pub use self::backend::{BackendTypes, CodegenBackend, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
 pub use self::coverageinfo::CoverageInfoBuilderMethods;
@@ -52,8 +49,7 @@ pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethod
 
 pub trait CodegenObject = Copy + PartialEq + fmt::Debug;
 
-pub trait CodegenMethods<'tcx> = Backend<'tcx>
-    + TypeMethods<'tcx>
+pub trait CodegenMethods<'tcx> = TypeMethods<'tcx>
     + MiscMethods<'tcx>
     + ConstMethods<'tcx>
     + StaticMethods

@@ -2,7 +2,7 @@ use std::assert_matches::assert_matches;
 use std::ops::Deref;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, HasParamEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
@@ -18,7 +18,7 @@ use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
 use super::misc::MiscMethods;
 use super::type_::{ArgAbiMethods, BaseTypeMethods, LayoutTypeMethods};
-use super::{Backend, BackendTypes, CodegenMethods, StaticBuilderMethods};
+use super::{BackendTypes, CodegenMethods, StaticBuilderMethods};
 use crate::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
@@ -34,7 +34,9 @@ pub enum OverflowOp {
 }
 
 pub trait BuilderMethods<'a, 'tcx>:
-    Backend<'tcx>
+    Sized
+    + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
+    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
     + Deref<Target = Self::CodegenCx>
     + CoverageInfoBuilderMethods<'tcx>
     + DebugInfoBuilderMethods

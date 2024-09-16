@@ -1,17 +1,15 @@
 use rustc_middle::bug;
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Float, Integer};
 
 use super::misc::MiscMethods;
-use super::{Backend, BackendTypes};
+use super::BackendTypes;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 
-// This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
-// `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
-pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
+pub trait BaseTypeMethods<'tcx>: BackendTypes + HasTyCtxt<'tcx> {
     fn type_i8(&self) -> Self::Type;
     fn type_i16(&self) -> Self::Type;
     fn type_i32(&self) -> Self::Type;
@@ -102,7 +100,11 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
 
 impl<'tcx, T> DerivedTypeMethods<'tcx> for T where Self: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {}
 
-pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
+pub trait LayoutTypeMethods<'tcx>:
+    BackendTypes
+    + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
+    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
+{
     /// The backend type used for a rust type when it's in memory,
     /// such as when it's stack-allocated or when it's being loaded or stored.
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
@@ -146,7 +148,7 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
 
 // For backends that support CFI using type membership (i.e., testing whether a given pointer is
 // associated with a type identifier).
-pub trait TypeMembershipMethods<'tcx>: Backend<'tcx> {
+pub trait TypeMembershipMethods<'tcx>: BackendTypes {
     fn add_type_metadata(&self, _function: Self::Function, _typeid: String) {}
     fn set_type_metadata(&self, _function: Self::Function, _typeid: String) {}
     fn typeid_metadata(&self, _typeid: String) -> Option<Self::Value> {

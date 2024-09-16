@@ -8,13 +8,11 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::creader::MetadataLoaderDyn;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::config::{self, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::call::FnAbi;
 
 use super::write::WriteBackendMethods;
 use super::CodegenObject;
@@ -35,12 +33,6 @@ pub trait BackendTypes {
     type DILocation: Copy;
     type DIVariable: Copy;
 }
-
-pub trait Backend<'tcx> = Sized
-    + BackendTypes
-    + HasTyCtxt<'tcx>
-    + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
-    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>;
 
 pub trait CodegenBackend {
     /// Locale resources for diagnostic messages - a string the content of the Fluent resource.
