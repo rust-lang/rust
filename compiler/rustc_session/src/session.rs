@@ -1337,6 +1337,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    if let Some(regparm) = sess.opts.unstable_opts.regparm {
+        if regparm > 3 {
+            sess.dcx().emit_err(errors::UnsupportedRegparm { regparm });
+        }
+        if sess.target.arch != "x86" {
+            sess.dcx().emit_err(errors::UnsupportedRegparmArch);
+        }
+    }
+
     // The code model check applies to `thunk` and `thunk-extern`, but not `thunk-inline`, so it is
     // kept as a `match` to force a change if new ones are added, even if we currently only support
     // `thunk-extern` like Clang.

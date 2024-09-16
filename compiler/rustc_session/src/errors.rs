@@ -486,6 +486,16 @@ pub(crate) struct FunctionReturnRequiresX86OrX8664;
 pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 
 #[derive(Diagnostic)]
+#[diag(session_unsupported_regparm)]
+pub(crate) struct UnsupportedRegparm {
+    pub(crate) regparm: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_unsupported_regparm_arch)]
+pub(crate) struct UnsupportedRegparmArch;
+
+#[derive(Diagnostic)]
 #[diag(session_failed_to_create_profiler)]
 pub(crate) struct FailedToCreateProfiler {
     pub(crate) err: String,
