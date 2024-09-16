@@ -337,6 +337,7 @@ fn run_dep_mode(target: String, args: impl Iterator<Item = OsString>) -> Result<
 
     let build_manager = BuildManager::one_off(config);
     let mut cmd = test_config.config.program.build(&test_config.config.out_dir);
+    cmd.arg("--target").arg(test_config.config.target.as_ref().unwrap());
     // Build dependencies
     test_config.apply_custom(&mut cmd, &build_manager).unwrap();
 
