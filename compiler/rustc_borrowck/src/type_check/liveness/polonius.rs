@@ -11,13 +11,13 @@ use crate::location::{LocationIndex, LocationTable};
 type VarPointRelation = Vec<(Local, LocationIndex)>;
 type PathPointRelation = Vec<(MovePathIndex, LocationIndex)>;
 
-struct UseFactsExtractor<'me, 'tcx> {
-    var_defined_at: &'me mut VarPointRelation,
-    var_used_at: &'me mut VarPointRelation,
-    location_table: &'me LocationTable,
-    var_dropped_at: &'me mut VarPointRelation,
-    move_data: &'me MoveData<'tcx>,
-    path_accessed_at_base: &'me mut PathPointRelation,
+struct UseFactsExtractor<'a, 'tcx> {
+    var_defined_at: &'a mut VarPointRelation,
+    var_used_at: &'a mut VarPointRelation,
+    location_table: &'a LocationTable,
+    var_dropped_at: &'a mut VarPointRelation,
+    move_data: &'a MoveData<'tcx>,
+    path_accessed_at_base: &'a mut PathPointRelation,
 }
 
 // A Visitor to walk through the MIR and extract point-wise facts

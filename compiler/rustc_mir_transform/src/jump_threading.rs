@@ -117,7 +117,7 @@ struct ThreadingOpportunity {
     target: BasicBlock,
 }
 
-struct TOFinder<'tcx, 'a> {
+struct TOFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
@@ -183,7 +183,7 @@ impl<'a> ConditionSet<'a> {
     }
 }
 
-impl<'tcx, 'a> TOFinder<'tcx, 'a> {
+impl<'a, 'tcx> TOFinder<'a, 'tcx> {
     fn is_empty(&self, state: &State<ConditionSet<'a>>) -> bool {
         state.all_bottom()
     }

@@ -1,10 +1,11 @@
+//@ compile-flags: --edition 2018
 #![unstable(feature = "humans",
             reason = "who ever let humans program computers,
             we're apparently really bad at it",
             issue = "none")]
 
-#![feature(const_refs_to_cell, foo, foo2)]
-#![feature(staged_api)]
+#![feature(foo, foo2)]
+#![feature(const_async_blocks, staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature="foo", issue = "none")]
@@ -27,10 +28,8 @@ const fn bar2() -> u32 { foo2() } //~ ERROR not yet stable as a const fn
 #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
 // conformity is required
 const fn bar3() -> u32 {
-    let x = std::cell::Cell::new(0u32);
-    x.get();
-    //~^ ERROR const-stable function cannot use `#[feature(const_refs_to_cell)]`
-    //~| ERROR cannot call non-const fn
+    let x = async { 13 };
+    //~^ ERROR const-stable function cannot use `#[feature(const_async_blocks)]`
     foo()
     //~^ ERROR is not yet stable as a const fn
 }

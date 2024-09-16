@@ -9,7 +9,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{BytePos, Span};
 use Context::*;
@@ -64,8 +63,7 @@ impl fmt::Display for BreakContextKind {
 }
 
 #[derive(Clone)]
-struct CheckLoopVisitor<'a, 'tcx> {
-    sess: &'a Session,
+struct CheckLoopVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     // Keep track of a stack of contexts, so that suggestions
     // are not made for contexts where it would be incorrect,
@@ -76,12 +74,8 @@ struct CheckLoopVisitor<'a, 'tcx> {
 }
 
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    let mut check = CheckLoopVisitor {
-        sess: tcx.sess,
-        tcx,
-        cx_stack: vec![Normal],
-        block_breaks: Default::default(),
-    };
+    let mut check =
+        CheckLoopVisitor { tcx, cx_stack: vec![Normal], block_breaks: Default::default() };
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut check);
     check.report_outside_loop_error();
 }
@@ -90,7 +84,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_loops, ..*providers };
 }
 
-impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
+impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -129,7 +123,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::If(cond, then, else_opt) => {
                 self.visit_expr(cond);
 
-                let get_block = |ck_loop: &CheckLoopVisitor<'a, 'hir>,
+                let get_block = |ck_loop: &CheckLoopVisitor<'hir>,
                                  expr: &hir::Expr<'hir>|
                  -> Option<&hir::Block<'hir>> {
                     if let hir::ExprKind::Block(b, None) = expr.kind
@@ -213,7 +207,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Ok(loop_id) => Some(loop_id),
                     Err(hir::LoopIdError::OutsideLoopScope) => None,
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                        self.sess.dcx().emit_err(UnlabeledCfInWhileCondition {
+                        self.tcx.dcx().emit_err(UnlabeledCfInWhileCondition {
                             span: e.span,
                             cf_type: "break",
                         });
@@ -248,7 +242,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                     .label
                                     .map_or_else(String::new, |l| format!(" {}", l.ident))
                             );
-                            self.sess.dcx().emit_err(BreakNonLoop {
+                            self.tcx.dcx().emit_err(BreakNonLoop {
                                 span: e.span,
                                 head,
                                 kind: kind.name(),
@@ -280,14 +274,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 match destination.target_id {
                     Ok(loop_id) => {
                         if let Node::Block(block) = self.tcx.hir_node(loop_id) {
-                            self.sess.dcx().emit_err(ContinueLabeledBlock {
+                            self.tcx.dcx().emit_err(ContinueLabeledBlock {
                                 span: e.span,
                                 block_span: block.span,
                             });
                         }
                     }
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                        self.sess.dcx().emit_err(UnlabeledCfInWhileCondition {
+                        self.tcx.dcx().emit_err(UnlabeledCfInWhileCondition {
                             span: e.span,
                             cf_type: "continue",
                         });
@@ -306,10 +300,10 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     }
 }
 
-impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
+impl<'hir> CheckLoopVisitor<'hir> {
     fn with_context<F>(&mut self, cx: Context, f: F)
     where
-        F: FnOnce(&mut CheckLoopVisitor<'a, 'hir>),
+        F: FnOnce(&mut CheckLoopVisitor<'hir>),
     {
         self.cx_stack.push(cx);
         f(self);
@@ -326,7 +320,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         match self.cx_stack[cx_pos] {
             LabeledBlock | Loop(_) => {}
             Closure(closure_span) => {
-                self.sess.dcx().emit_err(BreakInsideClosure {
+                self.tcx.dcx().emit_err(BreakInsideClosure {
                     span,
                     closure_span,
                     name: &br_cx_kind.to_string(),
@@ -343,7 +337,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                     hir::CoroutineSource::Closure => "closure",
                     hir::CoroutineSource::Fn => "function",
                 };
-                self.sess.dcx().emit_err(BreakInsideCoroutine {
+                self.tcx.dcx().emit_err(BreakInsideCoroutine {
                     span,
                     coroutine_span,
                     name: &br_cx_kind.to_string(),
@@ -366,7 +360,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                 self.require_break_cx(br_cx_kind, span, break_span, cx_pos - 1);
             }
             Normal | AnonConst | Fn | UnlabeledBlock(_) | UnlabeledIfBlock(_) | ConstBlock => {
-                self.sess.dcx().emit_err(OutsideLoop {
+                self.tcx.dcx().emit_err(OutsideLoop {
                     spans: vec![span],
                     name: &br_cx_kind.to_string(),
                     is_break: br_cx_kind == BreakContextKind::Break,
@@ -386,7 +380,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             && self.cx_stack.last() == Some(&LabeledBlock)
             && label.label.is_none()
         {
-            self.sess.dcx().emit_err(UnlabeledInLabeledBlock { span, cf_type });
+            self.tcx.dcx().emit_err(UnlabeledInLabeledBlock { span, cf_type });
             return true;
         }
         false
@@ -394,7 +388,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
 
     fn report_outside_loop_error(&self) {
         for (s, block) in &self.block_breaks {
-            self.sess.dcx().emit_err(OutsideLoop {
+            self.tcx.dcx().emit_err(OutsideLoop {
                 spans: block.spans.clone(),
                 name: &block.name,
                 is_break: true,

@@ -1,5 +1,8 @@
 //@aux-build:proc_macro_derive.rs
 
+#![feature(f128)]
+#![feature(f16)]
+
 #![allow(
     clippy::assign_op_pattern,
     clippy::erasing_op,
@@ -10,9 +13,6 @@
     arithmetic_overflow,
     unconditional_panic
 )]
-#![feature(const_mut_refs)]
-#![feature(f128)]
-#![feature(f16)]
 #![warn(clippy::arithmetic_side_effects)]
 
 extern crate proc_macro_derive;

@@ -148,12 +148,12 @@ fn record_regular_live_regions<'tcx>(
 }
 
 /// Visitor looking for regions that should be live within rvalues or calls.
-struct LiveVariablesVisitor<'cx, 'tcx> {
+struct LiveVariablesVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    liveness_constraints: &'cx mut LivenessValues,
+    liveness_constraints: &'a mut LivenessValues,
 }
 
-impl<'cx, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'cx, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'a, 'tcx> {
     /// We sometimes have `args` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
     fn visit_args(&mut self, args: &GenericArgsRef<'tcx>, location: Location) {
@@ -188,7 +188,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> LiveVariablesVisitor<'cx, 'tcx> {
+impl<'a, 'tcx> LiveVariablesVisitor<'a, 'tcx> {
     /// Some variable is "regular live" at `location` -- i.e., it may be used later. This means that
     /// all regions appearing in the type of `value` must be live at `location`.
     fn record_regions_live_at<T>(&mut self, value: T, location: Location)

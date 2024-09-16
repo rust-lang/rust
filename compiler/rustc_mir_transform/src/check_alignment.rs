@@ -62,14 +62,14 @@ impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
     }
 }
 
-struct PointerFinder<'tcx, 'a> {
+struct PointerFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a mut LocalDecls<'tcx>,
     param_env: ParamEnv<'tcx>,
     pointers: Vec<(Place<'tcx>, Ty<'tcx>)>,
 }
 
-impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
+impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
         // We want to only check reads and writes to Places, so we specifically exclude
         // Borrow and RawBorrow.

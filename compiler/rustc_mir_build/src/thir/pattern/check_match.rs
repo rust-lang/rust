@@ -413,7 +413,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 // Emit lints in the order in which they occur in the file.
                 redundant_subpats.sort_unstable_by_key(|(pat, _)| pat.data().span);
                 for (pat, explanation) in redundant_subpats {
-                    report_unreachable_pattern(cx, arm.arm_data, pat, &explanation)
+                    report_unreachable_pattern(cx, arm.arm_data, pat, &explanation, None)
                 }
             }
         }
@@ -474,7 +474,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             hir::MatchSource::ForLoopDesugar
             | hir::MatchSource::Postfix
             | hir::MatchSource::Normal
-            | hir::MatchSource::FormatArgs => report_arm_reachability(&cx, &report),
+            | hir::MatchSource::FormatArgs => {
+                let is_match_arm =
+                    matches!(source, hir::MatchSource::Postfix | hir::MatchSource::Normal);
+                report_arm_reachability(&cx, &report, is_match_arm);
+            }
             // Unreachable patterns in try and await expressions occur when one of
             // the arms are an uninhabited type. Which is OK.
             hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar(_) => {}
@@ -626,7 +630,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     ) -> Result<RefutableFlag, ErrorGuaranteed> {
         let (cx, report) = self.analyze_binding(pat, Refutable, scrut)?;
         // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
-        report_arm_reachability(&cx, &report);
+        report_arm_reachability(&cx, &report, false);
         // If the list of witnesses is empty, the match is exhaustive, i.e. the `if let` pattern is
         // irrefutable.
         Ok(if report.non_exhaustiveness_witnesses.is_empty() { Irrefutable } else { Refutable })
@@ -916,6 +920,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
     hir_id: HirId,
     pat: &DeconstructedPat<'p, 'tcx>,
     explanation: &RedundancyExplanation<'p, 'tcx>,
+    whole_arm_span: Option<Span>,
 ) {
     static CAP_COVERED_BY_MANY: usize = 4;
     let pat_span = pat.data().span;
@@ -928,6 +933,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
         covered_by_one: None,
         covered_by_many: None,
         covered_by_many_n_more_count: 0,
+        suggest_remove: None,
     };
     match explanation.covered_by.as_slice() {
         [] => {
@@ -935,6 +941,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
             lint.span = None; // Don't label the pattern itself
             lint.uninhabited_note = Some(()); // Give a link about empty types
             lint.matches_no_values = Some(pat_span);
+            lint.suggest_remove = whole_arm_span; // Suggest to remove the match arm
             pat.walk(&mut |subpat| {
                 let ty = **subpat.ty();
                 if cx.is_uninhabited(ty) {
@@ -982,10 +989,28 @@ fn report_unreachable_pattern<'p, 'tcx>(
 }
 
 /// Report unreachable arms, if any.
-fn report_arm_reachability<'p, 'tcx>(cx: &PatCtxt<'p, 'tcx>, report: &UsefulnessReport<'p, 'tcx>) {
+fn report_arm_reachability<'p, 'tcx>(
+    cx: &PatCtxt<'p, 'tcx>,
+    report: &UsefulnessReport<'p, 'tcx>,
+    is_match_arm: bool,
+) {
+    let sm = cx.tcx.sess.source_map();
     for (arm, is_useful) in report.arm_usefulness.iter() {
         if let Usefulness::Redundant(explanation) = is_useful {
-            report_unreachable_pattern(cx, arm.arm_data, arm.pat, explanation)
+            let hir_id = arm.arm_data;
+            let arm_span = cx.tcx.hir().span(hir_id);
+            let whole_arm_span = if is_match_arm {
+                // If the arm is followed by a comma, extend the span to include it.
+                let with_whitespace = sm.span_extend_while_whitespace(arm_span);
+                if let Some(comma) = sm.span_look_ahead(with_whitespace, ",", Some(1)) {
+                    Some(arm_span.to(comma))
+                } else {
+                    Some(arm_span)
+                }
+            } else {
+                None
+            };
+            report_unreachable_pattern(cx, hir_id, arm.pat, explanation, whole_arm_span)
         }
     }
 }

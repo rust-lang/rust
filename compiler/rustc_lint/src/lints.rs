@@ -267,16 +267,16 @@ pub(crate) struct MacroExprFragment2024 {
     pub suggestion: Span,
 }
 
-pub(crate) struct BuiltinTypeAliasBounds<'a, 'hir> {
+pub(crate) struct BuiltinTypeAliasBounds<'hir> {
     pub in_where_clause: bool,
     pub label: Span,
     pub enable_feat_help: bool,
     pub suggestions: Vec<(Span, String)>,
     pub preds: &'hir [hir::WherePredicate<'hir>],
-    pub ty: Option<&'a hir::Ty<'hir>>,
+    pub ty: Option<&'hir hir::Ty<'hir>>,
 }
 
-impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_, '_> {
+impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.primary_message(if self.in_where_clause {
             fluent::lint_builtin_type_alias_bounds_where_clause

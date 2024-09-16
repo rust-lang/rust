@@ -401,16 +401,10 @@ declare_features! (
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
-    /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
-    (unstable, const_extern_fn, "1.40.0", Some(64926)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
-    /// Allows using `&mut` in constant functions.
-    (unstable, const_mut_refs, "1.41.0", Some(57349)),
     /// Be more precise when looking for live drops in a const context.
     (unstable, const_precise_live_drops, "1.46.0", Some(73255)),
-    /// Allows references to types with interior mutability within constants
-    (unstable, const_refs_to_cell, "1.51.0", Some(80384)),
     /// Allows creating pointers and references to `static` items in constants.
     (unstable, const_refs_to_static, "1.78.0", Some(119618)),
     /// Allows `impl const Trait for T` syntax.

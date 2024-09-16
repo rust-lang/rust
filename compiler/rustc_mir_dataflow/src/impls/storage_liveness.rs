@@ -17,7 +17,7 @@ impl<'a> MaybeStorageLive<'a> {
     }
 }
 
-impl<'tcx, 'a> crate::AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
+impl<'a, 'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_live";
@@ -39,7 +39,7 @@ impl<'tcx, 'a> crate::AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
     }
 }
 
-impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
+impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
     type Idx = Local;
 
     fn domain_size(&self, body: &Body<'tcx>) -> usize {
@@ -89,7 +89,7 @@ impl<'a> MaybeStorageDead<'a> {
     }
 }
 
-impl<'tcx, 'a> crate::AnalysisDomain<'tcx> for MaybeStorageDead<'a> {
+impl<'a, 'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageDead<'a> {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_dead";
@@ -110,7 +110,7 @@ impl<'tcx, 'a> crate::AnalysisDomain<'tcx> for MaybeStorageDead<'a> {
     }
 }
 
-impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageDead<'a> {
+impl<'a, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead<'a> {
     type Idx = Local;
 
     fn domain_size(&self, body: &Body<'tcx>) -> usize {

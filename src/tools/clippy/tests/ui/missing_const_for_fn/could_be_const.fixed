@@ -1,6 +1,6 @@
 #![warn(clippy::missing_const_for_fn)]
 #![allow(incomplete_features, clippy::let_and_return, clippy::missing_transmute_annotations)]
-#![feature(const_mut_refs)]
+#![allow(unsupported_calling_conventions)]
 #![feature(const_trait_impl)]
 
 use std::mem::transmute;
@@ -203,4 +203,17 @@ mod with_ty_alias {
     // is. Because the associate ty could have no default, therefore would cause ICE, as demonstrated
     // in this test.
     const fn alias_ty_is_projection(bar: <() as FooTrait>::Foo) {}
+}
+
+mod extern_fn {
+    const extern "C-unwind" fn c_unwind() {}
+    //~^ ERROR: this could be a `const fn`
+    const extern "system" fn system() {}
+    //~^ ERROR: this could be a `const fn`
+    const extern "system-unwind" fn system_unwind() {}
+    //~^ ERROR: this could be a `const fn`
+    pub const extern "stdcall" fn std_call() {}
+    //~^ ERROR: this could be a `const fn`
+    pub const extern "stdcall-unwind" fn std_call_unwind() {}
+    //~^ ERROR: this could be a `const fn`
 }

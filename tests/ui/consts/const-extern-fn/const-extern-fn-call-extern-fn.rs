@@ -1,5 +1,3 @@
-#![feature(const_extern_fn)]
-
 extern "C" {
     fn regular_in_block();
 }
