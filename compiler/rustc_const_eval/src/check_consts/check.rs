@@ -6,7 +6,7 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
-use rustc_attr::{ConstStability, StabilityLevel};
+use rustc_attr::{ConstStability, StabilityLevel, Unstability};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
@@ -744,13 +744,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
                         }
                         Some(ConstStability {
-                            level: StabilityLevel::Unstable { .. },
-                            feature,
+                            level: StabilityLevel::Unstable { unstables, .. },
                             ..
                         }) => {
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
-                                feature,
+                                feature: unstables.feature,
                                 const_stable_indirect: is_const_stable,
                             });
                         }
@@ -796,10 +795,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                     }
                     Some(ConstStability {
-                        level: StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
-                        feature,
+                        level: StabilityLevel::Unstable { unstables, .. },
                         ..
                     }) => {
+                        let Unstability { feature, implied_by: implied_feature, issue, .. } =
+                            unstables;
                         // An unstable const fn with a feature gate.
                         let callee_safe_to_expose_on_stable =
                             is_safe_to_expose_on_stable_const_fn(tcx, callee);
