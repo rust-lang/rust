@@ -36,22 +36,11 @@ pub trait BackendTypes {
     type DIVariable: Copy;
 }
 
-pub trait Backend<'tcx>:
-    Sized
+pub trait Backend<'tcx> = Sized
     + BackendTypes
     + HasTyCtxt<'tcx>
     + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
-    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
-{
-}
-
-impl<'tcx, T> Backend<'tcx> for T where
-    Self: BackendTypes
-        + HasTyCtxt<'tcx>
-        + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
-        + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
-{
-}
+    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>;
 
 pub trait CodegenBackend {
     /// Locale resources for diagnostic messages - a string the content of the Fluent resource.

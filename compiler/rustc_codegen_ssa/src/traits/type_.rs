@@ -172,12 +172,5 @@ pub trait ArgAbiMethods<'tcx>: HasCodegen<'tcx> {
     fn arg_memory_ty(&self, arg_abi: &ArgAbi<'tcx, Ty<'tcx>>) -> Self::Type;
 }
 
-pub trait TypeMethods<'tcx>:
-    DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> + TypeMembershipMethods<'tcx>
-{
-}
-
-impl<'tcx, T> TypeMethods<'tcx> for T where
-    Self: DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> + TypeMembershipMethods<'tcx>
-{
-}
+pub trait TypeMethods<'tcx> =
+    DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> + TypeMembershipMethods<'tcx>;

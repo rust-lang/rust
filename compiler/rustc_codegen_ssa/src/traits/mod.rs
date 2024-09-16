@@ -50,11 +50,9 @@ pub use self::type_::{
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 
-pub trait CodegenObject: Copy + PartialEq + fmt::Debug {}
-impl<T: Copy + PartialEq + fmt::Debug> CodegenObject for T {}
+pub trait CodegenObject = Copy + PartialEq + fmt::Debug;
 
-pub trait CodegenMethods<'tcx>:
-    Backend<'tcx>
+pub trait CodegenMethods<'tcx> = Backend<'tcx>
     + TypeMethods<'tcx>
     + MiscMethods<'tcx>
     + ConstMethods<'tcx>
@@ -64,24 +62,7 @@ pub trait CodegenMethods<'tcx>:
     + PreDefineMethods<'tcx>
     + HasParamEnv<'tcx>
     + HasTyCtxt<'tcx>
-    + HasTargetSpec
-{
-}
-
-impl<'tcx, T> CodegenMethods<'tcx> for T where
-    Self: Backend<'tcx>
-        + TypeMethods<'tcx>
-        + MiscMethods<'tcx>
-        + ConstMethods<'tcx>
-        + StaticMethods
-        + DebugInfoMethods<'tcx>
-        + AsmMethods<'tcx>
-        + PreDefineMethods<'tcx>
-        + HasParamEnv<'tcx>
-        + HasTyCtxt<'tcx>
-        + HasTargetSpec
-{
-}
+    + HasTargetSpec;
 
 pub trait HasCodegen<'tcx>:
     Backend<'tcx> + std::ops::Deref<Target = <Self as HasCodegen<'tcx>>::CodegenCx>
