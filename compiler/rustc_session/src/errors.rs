@@ -490,3 +490,14 @@ pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 pub(crate) struct FailedToCreateProfiler {
     pub(crate) err: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(session_soft_float_ignored)]
+#[note]
+pub(crate) struct SoftFloatIgnored;
+
+#[derive(Diagnostic)]
+#[diag(session_soft_float_deprecated)]
+#[note]
+#[note(session_soft_float_deprecated_issue)]
+pub(crate) struct SoftFloatDeprecated;

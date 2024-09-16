@@ -1,6 +1,6 @@
 //@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 
-use std::sync::atomic::{fence, AtomicUsize, Ordering};
+use std::sync::atomic::*;
 use std::thread::spawn;
 
 #[derive(Copy, Clone)]
@@ -112,9 +112,41 @@ pub fn test_simple_release() {
     }
 }
 
+fn test_local_variable_lazy_write() {
+    static P: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
+
+    // Create the local variable, and initialize it.
+    // This write happens before the thread is spanwed, so there is no data race.
+    let mut val: u8 = 0;
+
+    let t1 = std::thread::spawn(|| {
+        while P.load(Ordering::Relaxed).is_null() {
+            std::hint::spin_loop();
+        }
+        unsafe {
+            // Initialize `*P`.
+            let ptr = P.load(Ordering::Relaxed);
+            *ptr = 127;
+        }
+    });
+
+    // Actually generate memory for the local variable.
+    // This is the time its value is actually written to memory:
+    // that's *after* the thread above was spawned!
+    // This may hence look like a data race wrt the access in the thread above.
+    P.store(std::ptr::addr_of_mut!(val), Ordering::Relaxed);
+
+    // Wait for the thread to be done.
+    t1.join().unwrap();
+
+    // Read initialized value.
+    assert_eq!(val, 127);
+}
+
 pub fn main() {
     test_fence_sync();
     test_multiple_reads();
     test_rmw_no_block();
     test_simple_release();
+    test_local_variable_lazy_write();
 }

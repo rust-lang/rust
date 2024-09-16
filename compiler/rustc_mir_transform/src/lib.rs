@@ -330,7 +330,7 @@ fn mir_promoted(
     tcx.ensure_with_value().has_ffi_unwind_calls(def);
 
     // the `by_move_body` query uses the raw mir, so make sure it is run.
-    if tcx.needs_coroutine_by_move_body_def_id(def) {
+    if tcx.needs_coroutine_by_move_body_def_id(def.to_def_id()) {
         tcx.ensure_with_value().coroutine_by_move_body_def_id(def);
     }
 

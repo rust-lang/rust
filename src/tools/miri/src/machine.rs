@@ -81,24 +81,42 @@ pub struct FrameExtra<'tcx> {
     /// an additional bit of "salt" into the cache key. This salt is fixed per-frame
     /// so that within a call, a const will have a stable address.
     salt: usize,
+
+    /// Data race detector per-frame data.
+    pub data_race: Option<data_race::FrameState>,
 }
 
 impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _, salt: _ } =
-            self;
+        let FrameExtra {
+            borrow_tracker,
+            catch_unwind,
+            timing: _,
+            is_user_relevant,
+            salt,
+            data_race,
+        } = self;
         f.debug_struct("FrameData")
             .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
+            .field("is_user_relevant", is_user_relevant)
+            .field("salt", salt)
+            .field("data_race", data_race)
             .finish()
     }
 }
 
 impl VisitProvenance for FrameExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _, salt: _ } =
-            self;
+        let FrameExtra {
+            catch_unwind,
+            borrow_tracker,
+            timing: _,
+            is_user_relevant: _,
+            salt: _,
+            data_race: _,
+        } = self;
 
         catch_unwind.visit_provenance(visit);
         borrow_tracker.visit_provenance(visit);
@@ -1446,6 +1464,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
             salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL,
+            data_race: ecx.machine.data_race.as_ref().map(|_| data_race::FrameState::default()),
         };
 
         Ok(frame.with_extra(extra))
@@ -1551,7 +1570,25 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         res
     }
 
-    fn after_local_allocated(
+    fn after_local_read(ecx: &InterpCx<'tcx, Self>, local: mir::Local) -> InterpResult<'tcx> {
+        if let Some(data_race) = &ecx.frame().extra.data_race {
+            data_race.local_read(local, &ecx.machine);
+        }
+        Ok(())
+    }
+
+    fn after_local_write(
+        ecx: &mut InterpCx<'tcx, Self>,
+        local: mir::Local,
+        storage_live: bool,
+    ) -> InterpResult<'tcx> {
+        if let Some(data_race) = &ecx.frame().extra.data_race {
+            data_race.local_write(local, storage_live, &ecx.machine);
+        }
+        Ok(())
+    }
+
+    fn after_local_moved_to_memory(
         ecx: &mut InterpCx<'tcx, Self>,
         local: mir::Local,
         mplace: &MPlaceTy<'tcx>,
@@ -1559,9 +1596,17 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         let Some(Provenance::Concrete { alloc_id, .. }) = mplace.ptr().provenance else {
             panic!("after_local_allocated should only be called on fresh allocations");
         };
+        // Record the span where this was allocated: the declaration of the local.
         let local_decl = &ecx.frame().body().local_decls[local];
         let span = local_decl.source_info.span;
         ecx.machine.allocation_spans.borrow_mut().insert(alloc_id, (span, None));
+        // The data race system has to fix the clocks used for this write.
+        let (alloc_info, machine) = ecx.get_alloc_extra_mut(alloc_id)?;
+        if let Some(data_race) =
+            &machine.threads.active_thread_stack().last().unwrap().extra.data_race
+        {
+            data_race.local_moved_to_memory(local, alloc_info.data_race.as_mut().unwrap(), machine);
+        }
         Ok(())
     }
 

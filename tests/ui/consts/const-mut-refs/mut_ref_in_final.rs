@@ -1,4 +1,9 @@
-#![feature(const_mut_refs)]
+//@ normalize-stderr-test: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+//@ normalize-stderr-test: "( 0x[0-9a-f][0-9a-f] │)? ([0-9a-f][0-9a-f] |__ |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> " HEX_DUMP"
+//@ normalize-stderr-test: "HEX_DUMP\s*\n\s*HEX_DUMP" -> "HEX_DUMP"
+
+use std::cell::UnsafeCell;
+use std::mem;
 
 const NULL: *mut i32 = std::ptr::null_mut();
 const A: *const i32 = &4;
@@ -17,6 +22,11 @@ const B3: Option<&mut i32> = Some(&mut 42); //~ ERROR temporary value dropped wh
 const fn helper(x: &mut i32) -> Option<&mut i32> { Some(x) }
 const B4: Option<&mut i32> = helper(&mut 42); //~ ERROR temporary value dropped while borrowed
 
+// Not ok, since it points to read-only memory.
+const IMMUT_MUT_REF: &mut u16 = unsafe { mem::transmute(&13) };
+//~^ ERROR undefined behavior to use this value
+//~| pointing to read-only memory
+
 // Ok, because no references to mutable data exist here, since the `{}` moves
 // its value and then takes a reference to that.
 const C: *const i32 = &{
@@ -25,7 +35,14 @@ const C: *const i32 = &{
     x
 };
 
-use std::cell::UnsafeCell;
+// Still ok, since `x` will be moved before the final pointer is crated,
+// so `_ref` doesn't actually point to the memory that escapes.
+const C_NO: *const i32 = &{
+    let mut x = 42;
+    let _ref = &mut x;
+    x
+};
+
 struct NotAMutex<T>(UnsafeCell<T>);
 
 unsafe impl<T> Sync for NotAMutex<T> {}

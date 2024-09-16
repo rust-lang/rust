@@ -19,18 +19,18 @@ impl QueryKeyStringCache {
     }
 }
 
-struct QueryKeyStringBuilder<'p, 'tcx> {
-    profiler: &'p SelfProfiler,
+struct QueryKeyStringBuilder<'a, 'tcx> {
+    profiler: &'a SelfProfiler,
     tcx: TyCtxt<'tcx>,
-    string_cache: &'p mut QueryKeyStringCache,
+    string_cache: &'a mut QueryKeyStringCache,
 }
 
-impl<'p, 'tcx> QueryKeyStringBuilder<'p, 'tcx> {
+impl<'a, 'tcx> QueryKeyStringBuilder<'a, 'tcx> {
     fn new(
-        profiler: &'p SelfProfiler,
+        profiler: &'a SelfProfiler,
         tcx: TyCtxt<'tcx>,
-        string_cache: &'p mut QueryKeyStringCache,
-    ) -> QueryKeyStringBuilder<'p, 'tcx> {
+        string_cache: &'a mut QueryKeyStringCache,
+    ) -> QueryKeyStringBuilder<'a, 'tcx> {
         QueryKeyStringBuilder { profiler, tcx, string_cache }
     }
 

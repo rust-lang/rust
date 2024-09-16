@@ -598,6 +598,8 @@ pub(crate) struct UnreachablePattern<'tcx> {
     #[note(mir_build_unreachable_covered_by_many)]
     pub(crate) covered_by_many: Option<MultiSpan>,
     pub(crate) covered_by_many_n_more_count: usize,
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub(crate) suggest_remove: Option<Span>,
 }
 
 #[derive(Diagnostic)]

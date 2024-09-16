@@ -61,7 +61,7 @@ struct Exception {
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let exception = Box::new(Exception {
         _uwe: uw::_Unwind_Exception {
-            exception_class: rust_exception_class(),
+            exception_class: RUST_EXCEPTION_CLASS,
             exception_cleanup: Some(exception_cleanup),
             private: [core::ptr::null(); uw::unwinder_private_data_size],
         },
@@ -84,7 +84,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let exception = ptr as *mut uw::_Unwind_Exception;
-    if (*exception).exception_class != rust_exception_class() {
+    if (*exception).exception_class != RUST_EXCEPTION_CLASS {
         uw::_Unwind_DeleteException(exception);
         super::__rust_foreign_exception();
     }
@@ -107,7 +107,4 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
 
 // Rust's exception class identifier.  This is used by personality routines to
 // determine whether the exception was thrown by their own runtime.
-fn rust_exception_class() -> uw::_Unwind_Exception_Class {
-    // M O Z \0  R U S T -- vendor, language
-    0x4d4f5a_00_52555354
-}
+const RUST_EXCEPTION_CLASS: uw::_Unwind_Exception_Class = u64::from_be_bytes(*b"MOZ\0RUST");

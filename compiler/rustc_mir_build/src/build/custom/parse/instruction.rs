@@ -12,7 +12,7 @@ use super::{parse_by_kind, PResult, ParseCtxt};
 use crate::build::custom::ParseError;
 use crate::build::expr::as_constant::as_constant_inner;
 
-impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
+impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
     pub(crate) fn parse_statement(&self, expr_id: ExprId) -> PResult<StatementKind<'tcx>> {
         parse_by_kind!(self, expr_id, _, "statement",
             @call(mir_storage_live, args) => {

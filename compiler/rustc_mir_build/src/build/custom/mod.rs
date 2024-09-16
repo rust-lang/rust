@@ -134,13 +134,12 @@ fn parse_attribute(attr: &Attribute) -> MirPhase {
     MirPhase::parse(dialect, phase)
 }
 
-struct ParseCtxt<'tcx, 'body> {
+struct ParseCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    thir: &'body Thir<'tcx>,
+    thir: &'a Thir<'tcx>,
     source_scope: SourceScope,
-
-    body: &'body mut Body<'tcx>,
+    body: &'a mut Body<'tcx>,
     local_map: FxHashMap<LocalVarId, Local>,
     block_map: FxHashMap<LocalVarId, BasicBlock>,
 }
@@ -151,7 +150,7 @@ struct ParseError {
     expected: String,
 }
 
-impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
+impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
     fn expr_error(&self, expr: ExprId, expected: &'static str) -> ParseError {
         let expr = &self.thir[expr];
         ParseError {

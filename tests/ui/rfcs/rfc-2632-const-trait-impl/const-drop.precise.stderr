@@ -1,5 +1,5 @@
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/const-drop.rs:13:16
+  --> $DIR/const-drop.rs:12:16
    |
 LL | impl<'a> const Drop for S<'a> {
    |                ^^^^
@@ -8,7 +8,7 @@ LL | impl<'a> const Drop for S<'a> {
    = note: adding a non-const method body in the future would be a breaking change
 
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/const-drop.rs:47:16
+  --> $DIR/const-drop.rs:46:16
    |
 LL |     impl const Drop for ConstDrop {
    |                ^^^^
@@ -17,7 +17,7 @@ LL |     impl const Drop for ConstDrop {
    = note: adding a non-const method body in the future would be a breaking change
 
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/const-drop.rs:68:37
+  --> $DIR/const-drop.rs:67:37
    |
 LL |     impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
    |                                     ^^^^
@@ -26,7 +26,7 @@ LL |     impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
    = note: adding a non-const method body in the future would be a breaking change
 
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/const-drop.rs:76:30
+  --> $DIR/const-drop.rs:75:30
    |
 LL |     impl<T: SomeTrait> const Drop for ConstDropWithNonconstBound<T> {
    |                              ^^^^
@@ -35,13 +35,13 @@ LL |     impl<T: SomeTrait> const Drop for ConstDropWithNonconstBound<T> {
    = note: adding a non-const method body in the future would be a breaking change
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop.rs:19:22
+  --> $DIR/const-drop.rs:18:22
    |
 LL | const fn a<T: ~const Destruct>(_: T) {}
    |                      ^^^^^^^^
 
 error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
-  --> $DIR/const-drop.rs:54:5
+  --> $DIR/const-drop.rs:53:5
    |
 LL |     #[const_trait]
    |     ^^^^^^^^^^^^^^ found 1 const parameter
@@ -50,7 +50,7 @@ LL |         fn foo();
    |               - expected 0 const parameters
 
 error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
-  --> $DIR/const-drop.rs:54:5
+  --> $DIR/const-drop.rs:53:5
    |
 LL |     #[const_trait]
    |     ^^^^^^^^^^^^^^ found 1 const parameter
@@ -61,13 +61,13 @@ LL |         fn foo();
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/const-drop.rs:19:32
+  --> $DIR/const-drop.rs:18:32
    |
 LL | const fn a<T: ~const Destruct>(_: T) {}
    |                                ^ the destructor for this type cannot be evaluated in constant functions
 
 error[E0015]: cannot call non-const fn `<T as SomeTrait>::foo` in constant functions
-  --> $DIR/const-drop.rs:70:13
+  --> $DIR/const-drop.rs:69:13
    |
 LL |             T::foo();
    |             ^^^^^^^^

@@ -2,7 +2,10 @@ error: unreachable pattern
   --> $DIR/unreachable.rs:15:9
    |
 LL |         Err(!),
-   |         ^^^^^^ matches no values because `Void` is uninhabited
+   |         ^^^^^^-
+   |         |
+   |         matches no values because `Void` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here

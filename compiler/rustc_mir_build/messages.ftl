@@ -338,6 +338,7 @@ mir_build_unreachable_pattern = unreachable pattern
     .unreachable_covered_by_catchall = matches any value
     .unreachable_covered_by_one = matches all the relevant values
     .unreachable_covered_by_many = multiple earlier patterns match some of the same values
+    .suggestion = remove the match arm
 
 mir_build_unsafe_fn_safe_body = an unsafe function restricts its caller, but its body is safe by default
 mir_build_unsafe_not_inherited = items do not inherit unsafety from separate enclosing items

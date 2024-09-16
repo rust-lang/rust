@@ -1,5 +1,7 @@
 //@ compile-flags: -O -Z merge-functions=disabled --edition=2021
 //@ only-x86_64
+// FIXME: Remove the `min-llvm-version`.
+//@ min-llvm-version: 19
 
 #![crate_type = "lib"]
 #![feature(try_blocks)]
@@ -7,11 +9,14 @@
 use std::ops::ControlFlow::{self, Break, Continue};
 use std::ptr::NonNull;
 
+// FIXME: The `trunc` and `select` instructions can be eliminated.
 // CHECK-LABEL: @option_nop_match_32
 #[no_mangle]
 pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // CHECK-NEXT: insertvalue { i32, i32 }
+    // CHECK-NEXT: [[TRUNC:%.*]] = trunc nuw i32 %0 to i1
+    // CHECK-NEXT: [[FIRST:%.*]] = select i1 [[TRUNC]], i32 %0
+    // CHECK-NEXT: insertvalue { i32, i32 } poison, i32 [[FIRST]]
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: ret { i32, i32 }
     match x {

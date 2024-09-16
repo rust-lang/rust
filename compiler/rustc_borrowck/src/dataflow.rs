@@ -112,16 +112,16 @@ pub struct Borrows<'a, 'tcx> {
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-struct OutOfScopePrecomputer<'mir, 'tcx> {
+struct OutOfScopePrecomputer<'a, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
-    body: &'mir Body<'tcx>,
-    regioncx: &'mir RegionInferenceContext<'tcx>,
+    body: &'a Body<'tcx>,
+    regioncx: &'a RegionInferenceContext<'tcx>,
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-impl<'mir, 'tcx> OutOfScopePrecomputer<'mir, 'tcx> {
-    fn new(body: &'mir Body<'tcx>, regioncx: &'mir RegionInferenceContext<'tcx>) -> Self {
+impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
+    fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         OutOfScopePrecomputer {
             visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
@@ -224,17 +224,17 @@ pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
     prec.borrows_out_of_scope_at_location
 }
 
-struct PoloniusOutOfScopePrecomputer<'mir, 'tcx> {
+struct PoloniusOutOfScopePrecomputer<'a, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
-    body: &'mir Body<'tcx>,
-    regioncx: &'mir RegionInferenceContext<'tcx>,
+    body: &'a Body<'tcx>,
+    regioncx: &'a RegionInferenceContext<'tcx>,
 
     loans_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-impl<'mir, 'tcx> PoloniusOutOfScopePrecomputer<'mir, 'tcx> {
-    fn new(body: &'mir Body<'tcx>, regioncx: &'mir RegionInferenceContext<'tcx>) -> Self {
+impl<'a, 'tcx> PoloniusOutOfScopePrecomputer<'a, 'tcx> {
+    fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         Self {
             visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],

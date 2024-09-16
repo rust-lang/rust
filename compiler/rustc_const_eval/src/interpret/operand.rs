@@ -697,6 +697,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if matches!(op, Operand::Immediate(_)) {
             assert!(!layout.is_unsized());
         }
+        M::after_local_read(self, local)?;
         Ok(OpTy { op, layout })
     }
 

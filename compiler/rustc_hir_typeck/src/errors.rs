@@ -711,7 +711,7 @@ pub(crate) struct CastThinPointerToFatPointer<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_pass_to_variadic_function, code = E0617)]
-pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
+pub(crate) struct PassToVariadicFunction<'a, 'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,

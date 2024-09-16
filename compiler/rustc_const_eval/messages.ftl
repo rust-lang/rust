@@ -134,9 +134,6 @@ const_eval_incompatible_return_types =
 const_eval_incompatible_types =
     calling a function with argument of type {$callee_ty} passing data of type {$caller_ty}
 
-const_eval_interior_mutability_borrow =
-    cannot borrow here, since the borrowed element may contain interior mutability
-
 const_eval_interior_mutable_data_refer =
     {const_eval_const_context}s cannot refer to interior mutable data
     .label = this borrow of an interior mutable value may end up in the final value
@@ -229,9 +226,6 @@ const_eval_memory_exhausted =
 
 const_eval_modified_global =
     modifying a static's initial value from another static's initializer
-
-const_eval_mut_deref =
-    mutation through a reference is not allowed in {const_eval_const_context}s
 
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
@@ -362,10 +356,6 @@ const_eval_too_generic =
     encountered overly generic constant
 const_eval_too_many_caller_args =
     calling a function with more arguments than it expected
-
-const_eval_transient_mut_borrow = mutable references are not allowed in {const_eval_const_context}s
-
-const_eval_transient_mut_raw = raw mutable pointers are not allowed in {const_eval_const_context}s
 
 const_eval_try_block_from_output_non_const =
     `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s

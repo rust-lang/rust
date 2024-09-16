@@ -175,7 +175,7 @@ pub(crate) mod rustc {
     use rustc_middle::ty::{self, AdtDef, AdtKind, List, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
     use rustc_span::ErrorGuaranteed;
     use rustc_target::abi::{
-        FieldIdx, FieldsShape, Layout, Size, TyAndLayout, VariantIdx, Variants,
+        FieldIdx, FieldsShape, Layout, Size, TagEncoding, TyAndLayout, VariantIdx, Variants,
     };
 
     use super::Tree;
@@ -319,11 +319,17 @@ pub(crate) mod rustc {
             assert!(def.is_enum());
 
             // Computes the variant of a given index.
-            let layout_of_variant = |index| {
+            let layout_of_variant = |index, encoding: Option<TagEncoding<VariantIdx>>| {
                 let tag = cx.tcx.tag_for_variant((cx.tcx.erase_regions(ty), index));
                 let variant_def = Def::Variant(def.variant(index));
                 let variant_layout = ty_variant(cx, (ty, layout), index);
-                Self::from_variant(variant_def, tag, (ty, variant_layout), layout.size, cx)
+                Self::from_variant(
+                    variant_def,
+                    tag.map(|tag| (tag, index, encoding.unwrap())),
+                    (ty, variant_layout),
+                    layout.size,
+                    cx,
+                )
             };
 
             // We consider three kinds of enums, each demanding a different
@@ -345,9 +351,9 @@ pub(crate) mod rustc {
                 Variants::Single { index } => {
                     // `Variants::Single` on enums with variants denotes that
                     // the enum delegates its layout to the variant at `index`.
-                    layout_of_variant(*index)
+                    layout_of_variant(*index, None)
                 }
-                Variants::Multiple { tag_field, .. } => {
+                Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
                     // `Variants::Multiple` denotes an enum with multiple
                     // variants. The layout of such an enum is the disjunction
                     // of the layouts of its tagged variants.
@@ -359,7 +365,7 @@ pub(crate) mod rustc {
                     let variants = def.discriminants(cx.tcx()).try_fold(
                         Self::uninhabited(),
                         |variants, (idx, ref discriminant)| {
-                            let variant = layout_of_variant(idx)?;
+                            let variant = layout_of_variant(idx, Some(tag_encoding.clone()))?;
                             Result::<Self, Err>::Ok(variants.or(variant))
                         },
                     )?;
@@ -380,7 +386,7 @@ pub(crate) mod rustc {
         /// `0`.
         fn from_variant(
             def: Def<'tcx>,
-            tag: Option<ScalarInt>,
+            tag: Option<(ScalarInt, VariantIdx, TagEncoding<VariantIdx>)>,
             (ty, layout): (Ty<'tcx>, Layout<'tcx>),
             total_size: Size,
             cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
@@ -400,9 +406,18 @@ pub(crate) mod rustc {
             let mut struct_tree = Self::def(def);
 
             // If a `tag` is provided, place it at the start of the layout.
-            if let Some(tag) = tag {
-                size += tag.size();
-                struct_tree = struct_tree.then(Self::from_tag(tag, cx.tcx));
+            if let Some((tag, index, encoding)) = &tag {
+                match encoding {
+                    TagEncoding::Direct => {
+                        size += tag.size();
+                    }
+                    TagEncoding::Niche { niche_variants, .. } => {
+                        if !niche_variants.contains(index) {
+                            size += tag.size();
+                        }
+                    }
+                }
+                struct_tree = struct_tree.then(Self::from_tag(*tag, cx.tcx));
             }
 
             // Append the fields, in memory order, to the layout.

@@ -49,7 +49,7 @@ enum DestructuredFloat {
     /// 1.2 | 1.2e3
     MiddleDot(Symbol, Span, Span, Symbol, Span),
     /// Invalid
-    Error,
+    Error(ErrorGuaranteed),
 }
 
 impl<'a> Parser<'a> {
@@ -1008,7 +1008,7 @@ impl<'a> Parser<'a> {
                             self.mk_expr_tuple_field_access(lo, ident1_span, base, sym1, None);
                         self.mk_expr_tuple_field_access(lo, ident2_span, base1, sym2, suffix)
                     }
-                    DestructuredFloat::Error => base,
+                    DestructuredFloat::Error(_) => base,
                 })
             }
             _ => {
@@ -1018,7 +1018,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error_unexpected_after_dot(&self) {
+    fn error_unexpected_after_dot(&self) -> ErrorGuaranteed {
         let actual = pprust::token_to_string(&self.token);
         let span = self.token.span;
         let sm = self.psess.source_map();
@@ -1028,17 +1028,19 @@ impl<'a> Parser<'a> {
             }
             _ => (span, actual),
         };
-        self.dcx().emit_err(errors::UnexpectedTokenAfterDot { span, actual });
+        self.dcx().emit_err(errors::UnexpectedTokenAfterDot { span, actual })
     }
 
-    // We need an identifier or integer, but the next token is a float.
-    // Break the float into components to extract the identifier or integer.
+    /// We need an identifier or integer, but the next token is a float.
+    /// Break the float into components to extract the identifier or integer.
+    ///
+    /// See also [`TokenKind::break_two_token_op`] which does similar splitting of `>>` into `>`.
+    //
     // FIXME: With current `TokenCursor` it's hard to break tokens into more than 2
-    // parts unless those parts are processed immediately. `TokenCursor` should either
-    // support pushing "future tokens" (would be also helpful to `break_and_eat`), or
-    // we should break everything including floats into more basic proc-macro style
-    // tokens in the lexer (probably preferable).
-    // See also `TokenKind::break_two_token_op` which does similar splitting of `>>` into `>`.
+    //  parts unless those parts are processed immediately. `TokenCursor` should either
+    //  support pushing "future tokens" (would be also helpful to `break_and_eat`), or
+    //  we should break everything including floats into more basic proc-macro style
+    //  tokens in the lexer (probably preferable).
     fn break_up_float(&self, float: Symbol, span: Span) -> DestructuredFloat {
         #[derive(Debug)]
         enum FloatComponent {
@@ -1078,34 +1080,30 @@ impl<'a> Parser<'a> {
                 DestructuredFloat::Single(Symbol::intern(i), span)
             }
             // 1.
-            [IdentLike(i), Punct('.')] => {
-                let (ident_span, dot_span) = if can_take_span_apart() {
-                    let (span, ident_len) = (span.data(), BytePos::from_usize(i.len()));
-                    let ident_span = span.with_hi(span.lo + ident_len);
-                    let dot_span = span.with_lo(span.lo + ident_len);
-                    (ident_span, dot_span)
+            [IdentLike(left), Punct('.')] => {
+                let (left_span, dot_span) = if can_take_span_apart() {
+                    let left_span = span.with_hi(span.lo() + BytePos::from_usize(left.len()));
+                    let dot_span = span.with_lo(left_span.hi());
+                    (left_span, dot_span)
                 } else {
                     (span, span)
                 };
-                let symbol = Symbol::intern(i);
-                DestructuredFloat::TrailingDot(symbol, ident_span, dot_span)
+                let left = Symbol::intern(left);
+                DestructuredFloat::TrailingDot(left, left_span, dot_span)
             }
             // 1.2 | 1.2e3
-            [IdentLike(i1), Punct('.'), IdentLike(i2)] => {
-                let (ident1_span, dot_span, ident2_span) = if can_take_span_apart() {
-                    let (span, ident1_len) = (span.data(), BytePos::from_usize(i1.len()));
-                    let ident1_span = span.with_hi(span.lo + ident1_len);
-                    let dot_span = span
-                        .with_lo(span.lo + ident1_len)
-                        .with_hi(span.lo + ident1_len + BytePos(1));
-                    let ident2_span = self.token.span.with_lo(span.lo + ident1_len + BytePos(1));
-                    (ident1_span, dot_span, ident2_span)
+            [IdentLike(left), Punct('.'), IdentLike(right)] => {
+                let (left_span, dot_span, right_span) = if can_take_span_apart() {
+                    let left_span = span.with_hi(span.lo() + BytePos::from_usize(left.len()));
+                    let dot_span = span.with_lo(left_span.hi()).with_hi(left_span.hi() + BytePos(1));
+                    let right_span = span.with_lo(dot_span.hi());
+                    (left_span, dot_span, right_span)
                 } else {
                     (span, span, span)
                 };
-                let symbol1 = Symbol::intern(i1);
-                let symbol2 = Symbol::intern(i2);
-                DestructuredFloat::MiddleDot(symbol1, ident1_span, dot_span, symbol2, ident2_span)
+                let left = Symbol::intern(left);
+                let right = Symbol::intern(right);
+                DestructuredFloat::MiddleDot(left, left_span, dot_span, right, right_span)
             }
             // 1e+ | 1e- (recovered)
             [IdentLike(_), Punct('+' | '-')] |
@@ -1116,8 +1114,8 @@ impl<'a> Parser<'a> {
             // 1.2e+3 | 1.2e-3
             [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-'), IdentLike(_)] => {
                 // See the FIXME about `TokenCursor` above.
-                self.error_unexpected_after_dot();
-                DestructuredFloat::Error
+                let guar = self.error_unexpected_after_dot();
+                DestructuredFloat::Error(guar)
             }
             _ => panic!("unexpected components in a float token: {components:?}"),
         }
@@ -1183,7 +1181,7 @@ impl<'a> Parser<'a> {
                                 fields.insert(start_idx, Ident::new(symbol2, span2));
                                 fields.insert(start_idx, Ident::new(symbol1, span1));
                             }
-                            DestructuredFloat::Error => {
+                            DestructuredFloat::Error(_) => {
                                 trailing_dot = None;
                                 fields.insert(start_idx, Ident::new(symbol, self.prev_token.span));
                             }

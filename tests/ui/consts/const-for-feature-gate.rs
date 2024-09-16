@@ -5,7 +5,6 @@ const _: () = {
     //~^ error: `for` is not allowed in a `const`
     //~| ERROR: cannot convert
     //~| ERROR: cannot call
-    //~| ERROR: mutable references
 };
 
 fn main() {}

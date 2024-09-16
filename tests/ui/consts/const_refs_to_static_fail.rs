@@ -1,6 +1,6 @@
 //@ normalize-stderr-test: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr-test: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
-#![feature(const_refs_to_static, const_mut_refs, sync_unsafe_cell)]
+#![feature(const_refs_to_static, sync_unsafe_cell)]
 use std::cell::SyncUnsafeCell;
 
 static S: SyncUnsafeCell<i32> = SyncUnsafeCell::new(0);

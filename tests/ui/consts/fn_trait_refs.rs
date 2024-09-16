@@ -4,9 +4,7 @@
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]
 #![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
 #![feature(const_cmp)]
-#![feature(const_refs_to_cell)]
 
 use std::marker::Destruct;
 

@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_memory_validation.rs:16:1
+  --> $DIR/mutable_memory_validation.rs:15:1
    |
 LL | const MUH: Meh = Meh { x: unsafe { &mut *(&READONLY as *const _ as *mut _) } };
    | ^^^^^^^^^^^^^^ constructing invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory

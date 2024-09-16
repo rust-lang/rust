@@ -540,10 +540,29 @@ pub trait Machine<'tcx>: Sized {
         Ok(ReturnAction::Normal)
     }
 
+    /// Called immediately after an "immediate" local variable is read
+    /// (i.e., this is called for reads that do not end up accessing addressable memory).
+    #[inline(always)]
+    fn after_local_read(_ecx: &InterpCx<'tcx, Self>, _local: mir::Local) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called immediately after an "immediate" local variable is assigned a new value
+    /// (i.e., this is called for writes that do not end up in memory).
+    /// `storage_live` indicates whether this is the initial write upon `StorageLive`.
+    #[inline(always)]
+    fn after_local_write(
+        _ecx: &mut InterpCx<'tcx, Self>,
+        _local: mir::Local,
+        _storage_live: bool,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
     /// Called immediately after actual memory was allocated for a local
     /// but before the local's stack frame is updated to point to that memory.
     #[inline(always)]
-    fn after_local_allocated(
+    fn after_local_moved_to_memory(
         _ecx: &mut InterpCx<'tcx, Self>,
         _local: mir::Local,
         _mplace: &MPlaceTy<'tcx, Self::Provenance>,
