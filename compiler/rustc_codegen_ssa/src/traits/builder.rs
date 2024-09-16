@@ -15,9 +15,9 @@ use super::asm::AsmBuilderMethods;
 use super::consts::ConstMethods;
 use super::coverageinfo::CoverageInfoBuilderMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
-use super::intrinsic::IntrinsicCallMethods;
+use super::intrinsic::IntrinsicCallBuilderMethods;
 use super::misc::MiscMethods;
-use super::type_::{ArgAbiMethods, BaseTypeMethods, LayoutTypeMethods};
+use super::type_::{ArgAbiBuilderMethods, BaseTypeMethods, LayoutTypeMethods};
 use super::{BackendTypes, CodegenMethods, StaticBuilderMethods};
 use crate::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
@@ -40,9 +40,9 @@ pub trait BuilderMethods<'a, 'tcx>:
     + Deref<Target = Self::CodegenCx>
     + CoverageInfoBuilderMethods<'tcx>
     + DebugInfoBuilderMethods
-    + ArgAbiMethods<'tcx>
+    + ArgAbiBuilderMethods<'tcx>
     + AbiBuilderMethods<'tcx>
-    + IntrinsicCallMethods<'tcx>
+    + IntrinsicCallBuilderMethods<'tcx>
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods
     + HasParamEnv<'tcx>

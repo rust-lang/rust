@@ -158,7 +158,7 @@ pub trait TypeMembershipMethods<'tcx>: BackendTypes {
     fn set_kcfi_type_metadata(&self, _function: Self::Function, _typeid: u32) {}
 }
 
-pub trait ArgAbiMethods<'tcx>: BackendTypes {
+pub trait ArgAbiBuilderMethods<'tcx>: BackendTypes {
     fn store_fn_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,

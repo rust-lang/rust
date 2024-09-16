@@ -38,12 +38,12 @@ pub use self::consts::ConstMethods;
 pub use self::coverageinfo::CoverageInfoBuilderMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
 pub use self::declare::PreDefineMethods;
-pub use self::intrinsic::IntrinsicCallMethods;
+pub use self::intrinsic::IntrinsicCallBuilderMethods;
 pub use self::misc::MiscMethods;
 pub use self::statics::{StaticBuilderMethods, StaticMethods};
 pub use self::type_::{
-    ArgAbiMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMembershipMethods,
-    TypeMethods,
+    ArgAbiBuilderMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods,
+    TypeMembershipMethods, TypeMethods,
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 
