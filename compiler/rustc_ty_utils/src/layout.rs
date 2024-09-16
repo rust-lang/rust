@@ -86,19 +86,21 @@ fn error<'tcx>(cx: &LayoutCx<'tcx>, err: LayoutError<'tcx>) -> &'tcx LayoutError
 fn map_error<'tcx>(
     cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
-    err: LayoutCalculatorError,
+    err: LayoutCalculatorError<TyAndLayout<'tcx>>,
 ) -> &'tcx LayoutError<'tcx> {
     let err = match err {
         LayoutCalculatorError::SizeOverflow => {
             // This is sometimes not a compile error in `check` builds.
+            // See `tests/ui/limits/huge-enum.rs` for an example.
             LayoutError::SizeOverflow(ty)
         }
-        LayoutCalculatorError::UnexpectedUnsized => {
-            // This is sometimes not a compile error if there are trivially false where
-            // clauses, but it is always a compiler error in the empty environment.
-            if cx.param_env.caller_bounds().is_empty() {
+        LayoutCalculatorError::UnexpectedUnsized(field) => {
+            // This is sometimes not a compile error if there are trivially false where clauses.
+            // See `tests/ui/layout/trivial-bounds-sized.rs` for an example.
+            assert!(field.layout.is_unsized(), "invalid layout error {err:#?}");
+            if !field.ty.is_sized(cx.tcx(), cx.param_env) {
                 cx.tcx().dcx().delayed_bug(format!(
-                    "encountered unexpected unsized field in layout of {ty:?}"
+                    "encountered unexpected unsized field in layout of {ty:?}: {field:#?}"
                 ));
             }
             LayoutError::Unknown(ty)
@@ -115,7 +117,7 @@ fn map_error<'tcx>(
 fn univariant_uninterned<'tcx>(
     cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
-    fields: &IndexSlice<FieldIdx, Layout<'_>>,
+    fields: &IndexSlice<FieldIdx, TyAndLayout<'tcx>>,
     repr: &ReprOptions,
     kind: StructKind,
 ) -> Result<LayoutS<FieldIdx, VariantIdx>, &'tcx LayoutError<'tcx>> {
@@ -148,9 +150,10 @@ fn layout_of_uncached<'tcx>(
     };
     let scalar = |value: Primitive| tcx.mk_layout(LayoutS::scalar(cx, scalar_unit(value)));
 
-    let univariant = |fields: &IndexSlice<FieldIdx, Layout<'_>>, repr: &ReprOptions, kind| {
-        Ok(tcx.mk_layout(univariant_uninterned(cx, ty, fields, repr, kind)?))
-    };
+    let univariant =
+        |fields: &IndexSlice<FieldIdx, TyAndLayout<'tcx>>, repr: &ReprOptions, kind| {
+            Ok(tcx.mk_layout(univariant_uninterned(cx, ty, fields, repr, kind)?))
+        };
     debug_assert!(!ty.has_non_region_infer());
 
     Ok(match *ty.kind() {
@@ -388,9 +391,7 @@ fn layout_of_uncached<'tcx>(
         ty::Closure(_, args) => {
             let tys = args.as_closure().upvar_tys();
             univariant(
-                &tys.iter()
-                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
-                    .try_collect::<IndexVec<_, _>>()?,
+                &tys.iter().map(|ty| cx.layout_of(ty)).try_collect::<IndexVec<_, _>>()?,
                 &ReprOptions::default(),
                 StructKind::AlwaysSized,
             )?
@@ -399,9 +400,7 @@ fn layout_of_uncached<'tcx>(
         ty::CoroutineClosure(_, args) => {
             let tys = args.as_coroutine_closure().upvar_tys();
             univariant(
-                &tys.iter()
-                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
-                    .try_collect::<IndexVec<_, _>>()?,
+                &tys.iter().map(|ty| cx.layout_of(ty)).try_collect::<IndexVec<_, _>>()?,
                 &ReprOptions::default(),
                 StructKind::AlwaysSized,
             )?
@@ -412,7 +411,7 @@ fn layout_of_uncached<'tcx>(
                 if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
             univariant(
-                &tys.iter().map(|k| Ok(cx.layout_of(k)?.layout)).try_collect::<IndexVec<_, _>>()?,
+                &tys.iter().map(|k| cx.layout_of(k)).try_collect::<IndexVec<_, _>>()?,
                 &ReprOptions::default(),
                 kind,
             )?
@@ -552,7 +551,7 @@ fn layout_of_uncached<'tcx>(
                 .map(|v| {
                     v.fields
                         .iter()
-                        .map(|field| Ok(cx.layout_of(field.ty(tcx, args))?.layout))
+                        .map(|field| cx.layout_of(field.ty(tcx, args)))
                         .try_collect::<IndexVec<_, _>>()
                 })
                 .try_collect::<IndexVec<VariantIdx, _>>()?;
@@ -651,7 +650,7 @@ fn layout_of_uncached<'tcx>(
             {
                 let mut variants = variants;
                 let tail_replacement = cx.layout_of(Ty::new_slice(tcx, tcx.types.u8)).unwrap();
-                *variants[FIRST_VARIANT].raw.last_mut().unwrap() = tail_replacement.layout;
+                *variants[FIRST_VARIANT].raw.last_mut().unwrap() = tail_replacement;
 
                 let Ok(unsized_layout) = cx.calc.layout_of_struct_or_enum(
                     &def.repr(),
@@ -859,21 +858,24 @@ fn coroutine_layout<'tcx>(
     let max_discr = (info.variant_fields.len() - 1) as u128;
     let discr_int = Integer::fit_unsigned(max_discr);
     let tag = Scalar::Initialized {
-        value: Primitive::Int(discr_int, false),
+        value: Primitive::Int(discr_int, /* signed = */ false),
         valid_range: WrappingRange { start: 0, end: max_discr },
     };
-    let tag_layout = tcx.mk_layout(LayoutS::scalar(cx, tag));
+    let tag_layout = TyAndLayout {
+        ty: discr_int.to_ty(tcx, /* signed = */ false),
+        layout: tcx.mk_layout(LayoutS::scalar(cx, tag)),
+    };
 
     let promoted_layouts = ineligible_locals.iter().map(|local| {
         let field_ty = instantiate_field(info.field_tys[local].ty);
         let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty);
-        Ok(cx.spanned_layout_of(uninit_ty, info.field_tys[local].source_info.span)?.layout)
+        cx.spanned_layout_of(uninit_ty, info.field_tys[local].source_info.span)
     });
     let prefix_layouts = args
         .as_coroutine()
         .prefix_tys()
         .iter()
-        .map(|ty| Ok(cx.layout_of(ty)?.layout))
+        .map(|ty| cx.layout_of(ty))
         .chain(iter::once(Ok(tag_layout)))
         .chain(promoted_layouts)
         .try_collect::<IndexVec<_, _>>()?;
@@ -947,9 +949,7 @@ fn coroutine_layout<'tcx>(
             let mut variant = univariant_uninterned(
                 cx,
                 ty,
-                &variant_only_tys
-                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
-                    .try_collect::<IndexVec<_, _>>()?,
+                &variant_only_tys.map(|ty| cx.layout_of(ty)).try_collect::<IndexVec<_, _>>()?,
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),
             )?;

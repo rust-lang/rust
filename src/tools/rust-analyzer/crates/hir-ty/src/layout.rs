@@ -106,10 +106,10 @@ impl fmt::Display for LayoutError {
     }
 }
 
-impl From<LayoutCalculatorError> for LayoutError {
-    fn from(err: LayoutCalculatorError) -> Self {
+impl<F> From<LayoutCalculatorError<F>> for LayoutError {
+    fn from(err: LayoutCalculatorError<F>) -> Self {
         match err {
-            LayoutCalculatorError::UnexpectedUnsized | LayoutCalculatorError::EmptyUnion => {
+            LayoutCalculatorError::UnexpectedUnsized(_) | LayoutCalculatorError::EmptyUnion => {
                 LayoutError::Unknown
             }
             LayoutCalculatorError::SizeOverflow => LayoutError::SizeOverflow,

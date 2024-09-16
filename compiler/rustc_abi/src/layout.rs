@@ -36,12 +36,14 @@ enum NicheBias {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum LayoutCalculatorError {
+pub enum LayoutCalculatorError<F> {
     /// An unsized type was found in a location where a sized type was expected.
     ///
     /// This is not always a compile error, for example if there is a `[T]: Sized`
     /// bound in a where clause.
-    UnexpectedUnsized,
+    ///
+    /// Contains the field that was unexpectedly unsized.
+    UnexpectedUnsized(F),
 
     /// A type was too large for the target platform.
     SizeOverflow,
@@ -50,8 +52,8 @@ pub enum LayoutCalculatorError {
     EmptyUnion,
 }
 
-type LayoutCalculatorResult<FieldIdx, VariantIdx> =
-    Result<LayoutS<FieldIdx, VariantIdx>, LayoutCalculatorError>;
+type LayoutCalculatorResult<FieldIdx, VariantIdx, F> =
+    Result<LayoutS<FieldIdx, VariantIdx>, LayoutCalculatorError<F>>;
 
 #[derive(Clone, Copy, Debug)]
 pub struct LayoutCalculator<Cx> {
@@ -100,13 +102,13 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
         repr: &ReprOptions,
         kind: StructKind,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let dl = self.cx.data_layout();
         let layout = self.univariant_biased(fields, repr, kind, NicheBias::Start);
         // Enums prefer niches close to the beginning or the end of the variants so that other
@@ -191,7 +193,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
@@ -203,7 +205,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
         dont_niche_optimize_enum: bool,
         always_sized: bool,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let (present_first, present_second) = {
             let mut present_variants = variants
                 .iter_enumerated()
@@ -254,12 +256,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let dl = self.cx.data_layout();
         let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
         let mut max_repr_align = repr.align;
@@ -279,7 +281,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let only_variant = &variants[only_variant_idx];
         for field in only_variant {
             if field.is_unsized() {
-                return Err(LayoutCalculatorError::UnexpectedUnsized);
+                return Err(LayoutCalculatorError::UnexpectedUnsized(*field));
             }
 
             align = align.max(field.align);
@@ -359,7 +361,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     }
 
     /// single-variant enums are just structs, if you think about it
-    fn layout_of_struct<'a, FieldIdx: Idx, VariantIdx: Idx, F>(
+    fn layout_of_struct<
+        'a,
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+    >(
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
@@ -368,10 +375,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         scalar_valid_range: (Bound<u128>, Bound<u128>),
         always_sized: bool,
         present_first: VariantIdx,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx>
-    where
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
-    {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         // Struct, or univariant enum equivalent to a struct.
         // (Typechecking will reject discriminant-sizing attrs.)
 
@@ -457,17 +461,19 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         Ok(st)
     }
 
-    fn layout_of_enum<'a, FieldIdx: Idx, VariantIdx: Idx, F>(
+    fn layout_of_enum<
+        'a,
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+    >(
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
         dont_niche_optimize_enum: bool,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx>
-    where
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
-    {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         // Until we've decided whether to use the tagged or
         // niche filling LayoutS, we don't want to intern the
         // variant layouts, so we can't store them in the
@@ -972,14 +978,14 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
         repr: &ReprOptions,
         kind: StructKind,
         niche_bias: NicheBias,
-    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx> {
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let dl = self.cx.data_layout();
         let pack = repr.pack;
         let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
@@ -1124,7 +1130,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         // field 5 with offset 0 puts 0 in offsets[5].
         // At the bottom of this function, we invert `inverse_memory_index` to
         // produce `memory_index` (see `invert_mapping`).
-        let mut sized = true;
+        let mut unsized_field = None::<&F>;
         let mut offsets = IndexVec::from_elem(Size::ZERO, fields);
         let mut offset = Size::ZERO;
         let mut largest_niche = None;
@@ -1137,12 +1143,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
         for &i in &inverse_memory_index {
             let field = &fields[i];
-            if !sized {
-                return Err(LayoutCalculatorError::UnexpectedUnsized);
+            if let Some(unsized_field) = unsized_field {
+                return Err(LayoutCalculatorError::UnexpectedUnsized(*unsized_field));
             }
 
             if field.is_unsized() {
-                sized = false;
+                unsized_field = Some(field);
             }
 
             // Invariant: offset < dl.obj_size_bound() <= 1<<61
@@ -1206,6 +1212,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             return Err(LayoutCalculatorError::SizeOverflow);
         }
         let mut layout_of_single_non_zst_field = None;
+        let sized = unsized_field.is_none();
         let mut abi = Abi::Aggregate { sized };
 
         let optimize_abi = !repr.inhibit_newtype_abi_optimization();
