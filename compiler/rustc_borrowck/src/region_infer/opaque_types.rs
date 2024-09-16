@@ -213,10 +213,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Special handling of higher-ranked regions.
                 if !self.scc_universe(scc).is_root() {
-                    // FIXME: the original logic was: if this SCC contains one single
-                    // placeholder, equal to vid, then construct a
-                    // ty::Region::new_placeholder out of it, somehow. This no longer
-                    // works as an approach, since we cannot get the prerequisite indices.
+                    if self
+                        .constraint_sccs
+                        .annotation(scc)
+                        .placeholder_representative()
+                        .is_some_and(|representative| representative == vid)
+                    {
+                        if let NllRegionVariableOrigin::Placeholder(p) =
+                            self.definitions[vid].origin
+                        {
+                            return ty::Region::new_placeholder(tcx, p);
+                        }
+                    }
                     debug!("Cannot get a nice name for higher-ranked region {vid:?} as {region:?}");
                     return region;
                 }

@@ -31,9 +31,8 @@ use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
 use crate::nll::PoloniusOutput;
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
-use crate::region_infer::values::{
-    LivenessValues, PlaceholderIndices, RegionElement, RegionValues, ToElementIndex,
-};
+use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
+use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::Locations;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
