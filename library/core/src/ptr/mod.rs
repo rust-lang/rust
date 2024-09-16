@@ -18,10 +18,11 @@
 //! * For operations of [size zero][zst], *every* pointer is valid, including the [null] pointer.
 //!   The following points are only concerned with non-zero-sized accesses.
 //! * A [null] pointer is *never* valid.
-//! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer
-//!   be *dereferenceable*: the memory range of the given size starting at the pointer must all be
-//!   within the bounds of a single allocated object. Note that in Rust,
-//!   every (stack-allocated) variable is considered a separate allocated object.
+//! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer be
+//!   *dereferenceable*. The [provenance] of the pointer is used to determine which [allocated
+//!   object] it is derived from; a pointer is dereferenceable if the memory range of the given size
+//!   starting at the pointer is entirely contained within the bounds of that allocated object. Note
+//!   that in Rust, every (stack-allocated) variable is considered a separate allocated object.
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
@@ -142,12 +143,18 @@
 //! To rationalize claims like this, pointers need to somehow be *more* than just their addresses:
 //! they must have **provenance**.
 //!
-//! When an allocation is created, that allocation has a unique Original Pointer. For alloc
+//! A pointer value in Rust semantically contains the following information:
+//!
+//! * The **address** it points to, which can be represented by a `usize`.
+//! * The **provenance** it has, defining the memory it has permission to access. Provenance can be
+//!   absent, in which case the pointer does not have permission to access any memory.
+//!
+//! When an [allocated object] is created, it has a unique Original Pointer. For alloc
 //! APIs this is literally the pointer the call returns, and for local variables and statics,
 //! this is the name of the variable/static. (This is mildly overloading the term "pointer"
 //! for the sake of brevity/exposition.)
 //!
-//! The Original Pointer for an allocation is guaranteed to have unique access to the entire
+//! The Original Pointer for an allocated object is guaranteed to have unique access to the entire
 //! allocation and *only* that allocation. In this sense, an allocation can be thought of as a
 //! "sandbox" that the pointer must not leave (at penalty of undefined behavior). *Provenance* is
 //! about tracking each pointer's lineage back to the Original Pointer that it got derived from.
@@ -178,23 +185,54 @@
 //! If an allocation is deallocated, all pointers with provenance to that allocation become
 //! invalidated, and effectively lose their provenance.
 //!
+//! Provenance can affect whether a program has undefined behavior:
+//!
+//! * It is undefined behavior to access memory through a pointer that does not have provenance over
+//!   that memory. Note that a pointer "at the end" of its provenance is not actually outside its
+//!   provenance, it just has 0 bytes it can load/store. Zero-sized accesses do not require any
+//!   provenance since they access an empty range of memory.
+//!
+//! * It is undefined behavior to [`offset`] a pointer across a memory range that is not contained
+//!   in the allocated object it is derived from, or to [`offset_from`] two pointers not derived
+//!   from the same allocated object. Provenance is used to say what excatly "derived from" even
+//!   means: the lineage of a pointer is traced back to the Original Pointer it descends from, and
+//!   that identifies the relevant allocated object. In particular, it's always UB to offset a
+//!   pointer derived from something that is now deallocated, except if the offset is 0.
+//!
+//! But it *is* still sound to:
+//!
+//! * Create a pointer without provenance from just an address (see [`ptr::dangling`]). Such a
+//!   pointer cannot be used for memory accesses (except for zero-sized accesses). This can still be
+//!   useful for sentinel values like `null` *or* to represent a tagged pointer that will never be
+//!   dereferenceable. In general, it is always sound for an integer to pretend to be a pointer "for
+//!   fun" as long as you don't use operations on it which require it to be valid (non-zero-sized
+//!   offset, read, write, etc).
+//!
+//! * Forge an allocation of size zero at any sufficiently aligned non-null address.
+//!   i.e. the usual "ZSTs are fake, do what you want" rules apply.
+//!
+//! * [`wrapping_offset`] a pointer outside its provenance. This includes pointers
+//!   which have "no" provenance. In particular, this makes it sound to do pointer tagging tricks.
+//!
+//! * Compare arbitrary pointers by address. Pointer comparison ignores provenance and addresses
+//!   *are* just integers, so there is always a coherent answer, even if the pointers are dangling
+//!   or from different provenances. Note that if you get "lucky" and notice that a pointer at the
+//!   end of one allocated object is the "same" address as the start of another allocatted object,
+//!   anything you do with that fact is *probably* going to be gibberish. The scope of that
+//!   gibberish is kept under control by the fact that the two pointers *still* aren't allowed to
+//!   access the other's allocation (bytes), because they still have different provenance.
+//!
 //! Note that the full definition of provenance in Rust is not decided yet, as this interacts
 //! with the as-yet undecided [aliasing] rules.
 //!
-//! ## Pointers Vs Addresses
+//! ## Pointers Vs Integers
 //!
-//! A pointer value in Rust semantically contains the following information:
-//!
-//! * The **address** it points to, which can be represented by a `usize`.
-//! * The **provenance** it has, defining the memory it has permission to access. Provenance can be
-//!   absent, in which case the pointer does not have permission to access any memory.
-//!
-//! From this list, it becomes very clear that a `usize` *cannot* accurately represent a pointer,
+//! From this discussion, it becomes very clear that a `usize` *cannot* accurately represent a pointer,
 //! and converting from a pointer to a `usize` is generally an operation which *only* extracts the
 //! address. Converting this address back into pointer requires somehow answering the question:
 //! which provenance should the resulting pointer have?
 //!
-//! Rust provides two answers to this: *Strict Provenance* and *Exposed Provenance*.
+//! Rust provides two ways of dealing with this situation: *Strict Provenance* and *Exposed Provenance*.
 //!
 //! ## Strict Provenance
 //!
@@ -281,56 +319,6 @@
 //! accessing a memory-mapped interface at a fixed address, cannot currently be handled with strict
 //! provenance APIs and should use [exposed provenance](#exposed-provenance).
 //!
-//! Under [Strict Provenance] it is Undefined Behaviour to:
-//!
-//! * Access memory through a pointer that does not have provenance over that memory.
-//!
-//! * [`offset`] a pointer to or from an address it doesn't have provenance over.
-//!   This means it's always UB to offset a pointer derived from something deallocated,
-//!   even if the offset is 0. Note that a pointer "one past the end" of its provenance
-//!   is not actually outside its provenance, it just has 0 bytes it can load/store.
-//!
-//! But it *is* still sound to:
-//!
-//! * Create a pointer without provenance from just an address (see [`ptr::dangling`]). Such a
-//!   pointer cannot be used for memory accesses (except for zero-sized accesses). This can still be
-//!   useful for sentinel values like `null` *or* to represent a tagged pointer that will never be
-//!   dereferenceable. In general, it is always sound for an integer to pretend to be a pointer "for
-//!   fun" as long as you don't use operations on it which require it to be valid (non-zero-sized
-//!   offset, read, write, etc).
-//!
-//! * Forge an allocation of size zero at any sufficiently aligned non-null address.
-//!   i.e. the usual "ZSTs are fake, do what you want" rules apply.
-//!
-//! * [`wrapping_offset`] a pointer outside its provenance. This includes pointers
-//!   which have "no" provenance. Unfortunately there may be practical limits on this for a
-//!   particular platform, and it's an open question as to how to specify this (if at all).
-//!   Notably, [CHERI] relies on a compression scheme that can't handle a
-//!   pointer getting offset "too far" out of bounds. If this happens, the address
-//!   returned by `addr` will be the value you expect, but the provenance will get invalidated
-//!   and using it to read/write will fault. The details of this are architecture-specific
-//!   and based on alignment, but the buffer on either side of the pointer's range is pretty
-//!   generous (think kilobytes, not bytes).
-//!
-//! * Compare arbitrary pointers by address. Addresses *are* just integers and so there is
-//!   always a coherent answer, even if the pointers are dangling or from different
-//!   address-spaces/provenances. Of course, comparing addresses from different address-spaces
-//!   is generally going to be *meaningless*, but so is comparing Kilograms to Meters, and Rust
-//!   doesn't prevent that either. Similarly, if you get "lucky" and notice that a pointer
-//!   one-past-the-end is the "same" address as the start of an unrelated allocation, anything
-//!   you do with that fact is *probably* going to be gibberish. The scope of that gibberish
-//!   is kept under control by the fact that the two pointers *still* aren't allowed to access
-//!   the other's allocation (bytes), because they still have different provenance.
-//!
-//! * Perform pointer tagging tricks. This falls out of [`wrapping_offset`] but is worth
-//!   mentioning in more detail because of the limitations of [CHERI]. Low-bit tagging
-//!   is very robust, and often doesn't even go out of bounds because types ensure
-//!   size >= align (and over-aligning actually gives CHERI more flexibility). Anything
-//!   more complex than this rapidly enters "extremely platform-specific" territory as
-//!   certain things may or may not be allowed based on specific supported operations.
-//!   For instance, ARM explicitly supports high-bit tagging, and so CHERI on ARM inherits
-//!   that and should support it.
-//!
 //! ## Exposed Provenance
 //!
 //! As discussed above, integer-to-pointer casts are not possible with Strict Provenance APIs.
@@ -378,11 +366,14 @@
 //! integer-to-pointer casts.
 //!
 //! [aliasing]: ../../nomicon/aliasing.html
+//! [allocated object]: #allocated-object
+//! [provenance]: #provenance
 //! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
 //! [atomic operations]: crate::sync::atomic
 //! [`offset`]: pointer::offset
+//! [`offset_from`]: pointer::offset_from
 //! [`wrapping_offset`]: pointer::wrapping_offset
 //! [`with_addr`]: pointer::with_addr
 //! [`map_addr`]: pointer::map_addr
