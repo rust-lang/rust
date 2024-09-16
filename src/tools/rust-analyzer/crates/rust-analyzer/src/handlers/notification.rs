@@ -357,7 +357,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                             .targets
                             .iter()
                             .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()));
-                        has_target_with_root.then(|| cargo[pkg].name.clone())
+                        has_target_with_root.then(|| cargo.package_flag(&cargo[pkg]))
                     }),
                     project_model::ProjectWorkspaceKind::Json(project) => {
                         if !project.crates().any(|(_, krate)| {
