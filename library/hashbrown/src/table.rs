@@ -1681,7 +1681,7 @@ where
         unsafe { self.bucket.as_mut() }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the value in the entry
     /// with a lifetime bound to the table itself.
     ///
     /// If you need multiple references to the `OccupiedEntry`, see [`get_mut`].
@@ -1732,7 +1732,7 @@ where
         unsafe { self.bucket.as_mut() }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the underlying
+    /// Converts the `OccupiedEntry` into a mutable reference to the underlying
     /// table.
     pub fn into_table(self) -> &'a mut HashTable<T, A> {
         self.table
@@ -1842,7 +1842,7 @@ where
         }
     }
 
-    /// Converts the VacantEntry into a mutable reference to the underlying
+    /// Converts the `VacantEntry` into a mutable reference to the underlying
     /// table.
     pub fn into_table(self) -> &'a mut HashTable<T, A> {
         self.table
@@ -1907,7 +1907,7 @@ impl<'a, T, A> AbsentEntry<'a, T, A>
 where
     A: Allocator,
 {
-    /// Converts the AbsentEntry into a mutable reference to the underlying
+    /// Converts the `AbsentEntry` into a mutable reference to the underlying
     /// table.
     pub fn into_table(self) -> &'a mut HashTable<T, A> {
         self.table

@@ -228,7 +228,7 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
     }
 }
 
-/// Helper which allows the max calculation for ctrl_align to be statically computed for each T
+/// Helper which allows the max calculation for `ctrl_align` to be statically computed for each `T`
 /// while keeping the rest of `calculate_layout_for` independent of `T`
 #[derive(Copy, Clone)]
 struct TableLayout {
@@ -2582,7 +2582,7 @@ impl RawTableInner {
 
     /// Attempts to allocate a new hash table with at least enough capacity
     /// for inserting the given number of elements without reallocating,
-    /// and return it inside ScopeGuard to protect against panic in the hash
+    /// and return it inside `ScopeGuard` to protect against panic in the hash
     /// function.
     ///
     /// # Note
@@ -3294,7 +3294,7 @@ impl<T: Copy, A: Allocator + Clone> RawTableClone for RawTable<T, A> {
 }
 
 impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
-    /// Common code for clone and clone_from. Assumes:
+    /// Common code for `clone` and `clone_from`. Assumes:
     /// - `self.buckets() == source.buckets()`.
     /// - Any existing elements have been dropped.
     /// - The control bytes are not initialized yet.
@@ -3419,7 +3419,7 @@ impl<T> RawIterRange<T> {
     ///
     /// * `ctrl` must be [valid] for reads, i.e. table outlives the `RawIterRange`;
     ///
-    /// * `ctrl` must be properly aligned to the group size (Group::WIDTH);
+    /// * `ctrl` must be properly aligned to the group size (`Group::WIDTH`);
     ///
     /// * `ctrl` must point to the array of properly initialized control bytes;
     ///
@@ -3501,7 +3501,7 @@ impl<T> RawIterRange<T> {
     }
 
     /// # Safety
-    /// If DO_CHECK_PTR_RANGE is false, caller must ensure that we never try to iterate
+    /// If `DO_CHECK_PTR_RANGE` is false, caller must ensure that we never try to iterate
     /// after yielding all elements.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn next_impl<const DO_CHECK_PTR_RANGE: bool>(&mut self) -> Option<Bucket<T>> {

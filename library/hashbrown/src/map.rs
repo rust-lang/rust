@@ -204,7 +204,7 @@ impl<K: Clone, V: Clone, S: Clone, A: Allocator + Clone> Clone for HashMap<K, V,
 }
 
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
-/// instances of any functions like RawTable::reserve from being generated
+/// instances of any functions like `RawTable::reserve` from being generated
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hasher<Q, V, S>(hash_builder: &S) -> impl Fn(&(Q, V)) -> u64 + '_
 where
@@ -215,7 +215,7 @@ where
 }
 
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
-/// instances of any functions like RawTable::reserve from being generated
+/// instances of any functions like `RawTable::reserve` from being generated
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn equivalent_key<Q, K, V>(k: &Q) -> impl Fn(&(K, V)) -> bool + '_
 where
@@ -225,7 +225,7 @@ where
 }
 
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
-/// instances of any functions like RawTable::reserve from being generated
+/// instances of any functions like `RawTable::reserve` from being generated
 #[cfg_attr(feature = "inline-more", inline)]
 #[allow(dead_code)]
 pub(crate) fn equivalent<Q, K>(k: &Q) -> impl Fn(&K) -> bool + '_
@@ -433,7 +433,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// as the hasher when creating a [`HashMap`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
+    /// the `HashMap` to be useful, see its documentation for details.
     ///
     /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
     /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
@@ -475,7 +475,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// as the hasher when creating a [`HashMap`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
+    /// the `HashMap` to be useful, see its documentation for details.
     ///
     /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
     /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
@@ -3774,7 +3774,7 @@ impl<'a, K, V, S, A: Allocator> OccupiedEntry<'a, K, V, S, A> {
         unsafe { &mut self.elem.as_mut().1 }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
     ///
     /// If you need multiple references to the `OccupiedEntry`, see [`get_mut`].
@@ -4270,7 +4270,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'a, 'b, K, Q, V, S
         self.key
     }
 
-    /// Sets the value of the entry with the VacantEntryRef's key,
+    /// Sets the value of the entry with the `VacantEntryRef`'s key,
     /// and returns a mutable reference to it.
     ///
     /// # Examples

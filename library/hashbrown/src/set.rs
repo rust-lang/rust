@@ -449,7 +449,7 @@ impl<T, S> HashSet<T, S, Global> {
     /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashSet to be useful, see its documentation for details.
+    /// the `HashSet` to be useful, see its documentation for details.
     ///
     /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
     /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
@@ -487,7 +487,7 @@ impl<T, S> HashSet<T, S, Global> {
     /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashSet to be useful, see its documentation for details.
+    /// the `HashSet` to be useful, see its documentation for details.
     ///
     /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
     /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
@@ -536,7 +536,7 @@ where
     /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashSet to be useful, see its documentation for details.
+    /// the `HashSet` to be useful, see its documentation for details.
     ///
     /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
     /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
@@ -574,7 +574,7 @@ where
     /// as the hasher when creating a [`HashSet`].
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashSet to be useful, see its documentation for details.
+    /// the `HashSet` to be useful, see its documentation for details.
     ///
     /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
     /// [`std::collections::hash_map::RandomState`]: https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
@@ -2523,7 +2523,7 @@ impl<'a, T, S, A: Allocator> VacantEntry<'a, T, S, A> {
         self.inner.into_key()
     }
 
-    /// Sets the value of the entry with the VacantEntry's value.
+    /// Sets the value of the entry with the `VacantEntry`'s value.
     ///
     /// # Examples
     ///
