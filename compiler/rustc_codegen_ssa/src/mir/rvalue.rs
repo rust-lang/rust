@@ -298,7 +298,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // valid ranges. For example, `char`s are passed as just `i32`, with no
         // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
         // the range of the input value too, not just the output range.
-        self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+        if !from_scalar.is_bool() {
+            self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+        }
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(_, is_signed), Int(..)) => bx.intcast(imm, to_backend_ty, is_signed),
