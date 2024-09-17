@@ -15,11 +15,6 @@ use crate::value::Value;
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
-///
-/// # Parameters
-///
-/// - `cx`: the crate context
-/// - `instance`: the instance to be instantiated
 pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value {
     let tcx = cx.tcx();
 
