@@ -6,7 +6,7 @@ use core::hash::{BuildHasher, Hash};
 use core::mem;
 
 impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
-    /// Creates a raw entry builder for the HashMap.
+    /// Creates a raw entry builder for the `HashMap`.
     ///
     /// Raw entries provide the lowest level of control for searching and
     /// manipulating a map. They must be manually initialized with a hash and
@@ -21,13 +21,13 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// * Using custom comparison logic without newtype wrappers
     ///
     /// Because raw entries provide much more low-level control, it's much easier
-    /// to put the HashMap into an inconsistent state which, while memory-safe,
+    /// to put the `HashMap` into an inconsistent state which, while memory-safe,
     /// will cause the map to produce seemingly random results. Higher-level and
     /// more foolproof APIs like `entry` should be preferred when possible.
     ///
     /// In particular, the hash used to initialized the raw entry must still be
     /// consistent with the hash of the key that is ultimately stored in the entry.
-    /// This is because implementations of HashMap may need to recompute hashes
+    /// This is because implementations of `HashMap` may need to recompute hashes
     /// when resizing, at which point only the keys are available.
     ///
     /// Raw entries give mutable access to the keys. This must not be used
@@ -108,7 +108,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
         RawEntryBuilderMut { map: self }
     }
 
-    /// Creates a raw immutable entry builder for the HashMap.
+    /// Creates a raw immutable entry builder for the `HashMap`.
     ///
     /// Raw entries provide the lowest level of control for searching and
     /// manipulating a map. They must be manually initialized with a hash and
@@ -708,7 +708,7 @@ impl<'a, K, V, S, A: Allocator> RawEntryBuilder<'a, K, V, S, A> {
 }
 
 impl<'a, K, V, S, A: Allocator> RawEntryMut<'a, K, V, S, A> {
-    /// Sets the value of the entry, and returns a RawOccupiedEntryMut.
+    /// Sets the value of the entry, and returns a `RawOccupiedEntryMut`.
     ///
     /// # Examples
     ///
@@ -1005,7 +1005,7 @@ impl<'a, K, V, S, A: Allocator> RawOccupiedEntryMut<'a, K, V, S, A> {
         unsafe { &self.elem.as_ref().1 }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
     ///
     /// # Examples
@@ -1109,7 +1109,7 @@ impl<'a, K, V, S, A: Allocator> RawOccupiedEntryMut<'a, K, V, S, A> {
         }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the key and value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the key and value in the entry
     /// with a lifetime bound to the map itself.
     ///
     /// # Examples
@@ -1301,7 +1301,7 @@ impl<'a, K, V, S, A: Allocator> RawOccupiedEntryMut<'a, K, V, S, A> {
 }
 
 impl<'a, K, V, S, A: Allocator> RawVacantEntryMut<'a, K, V, S, A> {
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     ///
     /// # Examples
@@ -1328,7 +1328,7 @@ impl<'a, K, V, S, A: Allocator> RawVacantEntryMut<'a, K, V, S, A> {
         self.insert_hashed_nocheck(hash, key, value)
     }
 
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     ///
     /// # Examples
