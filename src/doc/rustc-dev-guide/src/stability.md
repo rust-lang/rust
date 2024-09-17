@@ -30,10 +30,11 @@ them. The stability scheme works similarly to how `pub` works. You can have
 public functions of nonpublic modules and you can have stable functions in
 unstable modules or vice versa.
 
-Note, however, that due to a [rustc bug], stable items inside unstable modules
-*are* available to stable code in that location!  So, for example, stable code
-can import `core::intrinsics::transmute` even though `intrinsics` is an
-unstable module.  Thus, this kind of nesting should be avoided when possible.
+Previously, due to a [rustc bug], stable items inside unstable modules were
+available to stable code in that location.
+As of <!-- date-check --> September 2024, items with [accidentally stabilized
+paths] are marked with the `#[rustc_allowed_through_unstable_modules]` attribute
+to prevent code dependent on those paths from breaking.
 
 The `unstable` attribute may also have the `soft` value, which makes it a
 future-incompatible deny-by-default lint instead of a hard error. This is used
@@ -42,6 +43,7 @@ prevents breaking dependencies by leveraging Cargo's lint capping.
 
 [issue number]: https://github.com/rust-lang/rust/issues
 [rustc bug]: https://github.com/rust-lang/rust/issues/15702
+[accidentally stabilized paths]: https://github.com/rust-lang/rust/issues/113387
 
 ## stable
 The `#[stable(feature = "foo", since = "1.420.69")]` attribute explicitly
