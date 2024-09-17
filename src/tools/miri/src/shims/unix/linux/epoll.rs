@@ -51,6 +51,9 @@ impl EpollEventInstance {
 #[derive(Clone, Debug)]
 pub struct EpollEventInterest {
     /// The file descriptor value of the file description registered.
+    /// This is only used for ready_list, to inform userspace which FD triggered an event.
+    /// For that, it is crucial to preserve the original FD number.
+    /// This FD number must never be "dereferenced" to a file description inside Miri.
     fd_num: i32,
     /// The events bitmask retrieved from `epoll_event`.
     events: u32,
@@ -61,8 +64,8 @@ pub struct EpollEventInterest {
     data: u64,
     /// Ready list of the epoll instance under which this EpollEventInterest is registered.
     ready_list: Rc<RefCell<BTreeMap<(FdId, i32), EpollEventInstance>>>,
-    /// The file descriptor value that this EpollEventInterest is registered under.
-    epfd_num: i32,
+    /// The epoll file description that this EpollEventInterest is registered under.
+    weak_epfd: WeakFileDescriptionRef,
 }
 
 /// EpollReadyEvents reflects the readiness of a file description.
@@ -343,7 +346,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 events,
                 data,
                 ready_list: Rc::clone(ready_list),
-                epfd_num: epfd_value,
+                weak_epfd: epfd.downgrade(),
             }));
 
             if op == epoll_ctl_add {
@@ -553,12 +556,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     if is_updated {
                         // Edge-triggered notification only notify one thread even if there are
                         // multiple threads block on the same epfd.
-                        let epfd = this.machine.fds.get(epoll_interest.borrow().epfd_num).unwrap();
 
                         // This unwrap can never fail because if the current epoll instance were
-                        // closed and its epfd value reused, the upgrade of weak_epoll_interest
+                        // closed, the upgrade of weak_epoll_interest
                         // above would fail. This guarantee holds because only the epoll instance
                         // holds a strong ref to epoll_interest.
+                        let epfd = epoll_interest.borrow().weak_epfd.upgrade().unwrap();
                         // FIXME: We can randomly pick a thread to unblock.
                         if let Some(thread_id) =
                             epfd.downcast::<Epoll>().unwrap().thread_id.borrow_mut().pop()
