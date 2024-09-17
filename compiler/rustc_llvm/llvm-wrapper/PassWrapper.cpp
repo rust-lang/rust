@@ -26,21 +26,19 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/TargetParser/Host.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/IPO/LowerTypeTests.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
-#include "llvm/Transforms/Utils/AddDiscriminators.h"
-#include "llvm/Transforms/Utils/FunctionImportUtils.h"
-#if LLVM_VERSION_GE(18, 0)
-#include "llvm/TargetParser/Host.h"
-#endif
-#include "llvm/Support/TimeProfiler.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/DataFlowSanitizer.h"
+#include "llvm/Transforms/Utils/AddDiscriminators.h"
+#include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #if LLVM_VERSION_GE(19, 0)
 #include "llvm/Support/PGOOptions.h"
 #endif
@@ -240,11 +238,7 @@ enum class LLVMRustCodeGenOptLevel {
   Aggressive,
 };
 
-#if LLVM_VERSION_GE(18, 0)
 using CodeGenOptLevelEnum = llvm::CodeGenOptLevel;
-#else
-using CodeGenOptLevelEnum = llvm::CodeGenOpt::Level;
-#endif
 
 static CodeGenOptLevelEnum fromRust(LLVMRustCodeGenOptLevel Level) {
   switch (Level) {
@@ -370,21 +364,16 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
 }
 
 extern "C" size_t LLVMRustGetTargetFeaturesCount(LLVMTargetMachineRef TM) {
-#if LLVM_VERSION_GE(18, 0)
   const TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const ArrayRef<SubtargetFeatureKV> FeatTable =
       MCInfo->getAllProcessorFeatures();
   return FeatTable.size();
-#else
-  return 0;
-#endif
 }
 
 extern "C" void LLVMRustGetTargetFeature(LLVMTargetMachineRef TM, size_t Index,
                                          const char **Feature,
                                          const char **Desc) {
-#if LLVM_VERSION_GE(18, 0)
   const TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const ArrayRef<SubtargetFeatureKV> FeatTable =
@@ -392,7 +381,6 @@ extern "C" void LLVMRustGetTargetFeature(LLVMTargetMachineRef TM, size_t Index,
   const SubtargetFeatureKV Feat = FeatTable[Index];
   *Feature = Feat.Key;
   *Desc = Feat.Desc;
-#endif
 }
 
 extern "C" const char *LLVMRustGetHostCPUName(size_t *len) {
@@ -569,17 +557,9 @@ enum class LLVMRustFileType {
 static CodeGenFileType fromRust(LLVMRustFileType Type) {
   switch (Type) {
   case LLVMRustFileType::AssemblyFile:
-#if LLVM_VERSION_GE(18, 0)
     return CodeGenFileType::AssemblyFile;
-#else
-    return CGFT_AssemblyFile;
-#endif
   case LLVMRustFileType::ObjectFile:
-#if LLVM_VERSION_GE(18, 0)
     return CodeGenFileType::ObjectFile;
-#else
-    return CGFT_ObjectFile;
-#endif
   default:
     report_fatal_error("Bad FileType.");
   }
@@ -865,11 +845,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
           // cargo run tests in multhreading mode by default
           // so use atomics for coverage counters
           Options.Atomic = true;
-#if LLVM_VERSION_GE(18, 0)
           MPM.addPass(InstrProfilingLoweringPass(Options, false));
-#else
-          MPM.addPass(InstrProfiling(Options, false));
-#endif
         });
   }
 
@@ -1210,7 +1186,6 @@ struct LLVMRustThinLTOData {
 
   // Not 100% sure what these are, but they impact what's internalized and
   // what's inlined across modules, I believe.
-#if LLVM_VERSION_GE(18, 0)
 #if LLVM_VERSION_GE(20, 0)
   FunctionImporter::ImportListsTy ImportLists;
 #else
@@ -1218,11 +1193,6 @@ struct LLVMRustThinLTOData {
 #endif
   DenseMap<StringRef, FunctionImporter::ExportSetTy> ExportLists;
   DenseMap<StringRef, GVSummaryMapTy> ModuleToDefinedGVSummaries;
-#else
-  StringMap<FunctionImporter::ImportMapTy> ImportLists;
-  StringMap<FunctionImporter::ExportSetTy> ExportLists;
-  StringMap<GVSummaryMapTy> ModuleToDefinedGVSummaries;
-#endif
   StringMap<std::map<GlobalValue::GUID, GlobalValue::LinkageTypes>> ResolvedODR;
 
   LLVMRustThinLTOData() : Index(/* HaveGVs = */ false) {}
@@ -1274,11 +1244,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, int num_modules,
 
     Ret->ModuleMap[module->identifier] = mem_buffer;
 
-#if LLVM_VERSION_GE(18, 0)
     if (Error Err = readModuleSummaryIndex(mem_buffer, Ret->Index)) {
-#else
-    if (Error Err = readModuleSummaryIndex(mem_buffer, Ret->Index, i)) {
-#endif
       LLVMRustSetLastError(toString(std::move(Err)).c_str());
       return nullptr;
     }
