@@ -450,54 +450,7 @@ impl<T> Arc<T> {
     where
         F: FnOnce(&Weak<T>) -> T,
     {
-        // Construct the inner in the "uninitialized" state with a single
-        // weak reference.
-        let uninit_ptr: NonNull<_> = Box::leak(Box::new(ArcInner {
-            strong: atomic::AtomicUsize::new(0),
-            weak: atomic::AtomicUsize::new(1),
-            data: mem::MaybeUninit::<T>::uninit(),
-        }))
-        .into();
-        let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
-
-        let weak = Weak { ptr: init_ptr, alloc: Global };
-
-        // It's important we don't give up ownership of the weak pointer, or
-        // else the memory might be freed by the time `data_fn` returns. If
-        // we really wanted to pass ownership, we could create an additional
-        // weak pointer for ourselves, but this would result in additional
-        // updates to the weak reference count which might not be necessary
-        // otherwise.
-        let data = data_fn(&weak);
-
-        // Now we can properly initialize the inner value and turn our weak
-        // reference into a strong reference.
-        let strong = unsafe {
-            let inner = init_ptr.as_ptr();
-            ptr::write(ptr::addr_of_mut!((*inner).data), data);
-
-            // The above write to the data field must be visible to any threads which
-            // observe a non-zero strong count. Therefore we need at least "Release" ordering
-            // in order to synchronize with the `compare_exchange_weak` in `Weak::upgrade`.
-            //
-            // "Acquire" ordering is not required. When considering the possible behaviours
-            // of `data_fn` we only need to look at what it could do with a reference to a
-            // non-upgradeable `Weak`:
-            // - It can *clone* the `Weak`, increasing the weak reference count.
-            // - It can drop those clones, decreasing the weak reference count (but never to zero).
-            //
-            // These side effects do not impact us in any way, and no other side effects are
-            // possible with safe code alone.
-            let prev_value = (*inner).strong.fetch_add(1, Release);
-            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-
-            Arc::from_inner(init_ptr)
-        };
-
-        // Strong references should collectively own a shared weak reference,
-        // so don't run the destructor for our old weak reference.
-        mem::forget(weak);
-        strong
+        Self::new_cyclic_in(data_fn, Global)
     }
 
     /// Constructs a new `Arc` with uninitialized contents.
@@ -779,6 +732,98 @@ impl<T, A: Allocator> Arc<T, A> {
                 alloc,
             )
         }
+    }
+
+    /// Constructs a new `Arc<T, A>` in the given allocator while giving you a `Weak<T, A>` to the allocation,
+    /// to allow you to construct a `T` which holds a weak pointer to itself.
+    ///
+    /// Generally, a structure circularly referencing itself, either directly or
+    /// indirectly, should not hold a strong reference to itself to prevent a memory leak.
+    /// Using this function, you get access to the weak pointer during the
+    /// initialization of `T`, before the `Arc<T, A>` is created, such that you can
+    /// clone and store it inside the `T`.
+    ///
+    /// `new_cyclic_in` first allocates the managed allocation for the `Arc<T, A>`,
+    /// then calls your closure, giving it a `Weak<T, A>` to this allocation,
+    /// and only afterwards completes the construction of the `Arc<T, A>` by placing
+    /// the `T` returned from your closure into the allocation.
+    ///
+    /// Since the new `Arc<T, A>` is not fully-constructed until `Arc<T, A>::new_cyclic_in`
+    /// returns, calling [`upgrade`] on the weak reference inside your closure will
+    /// fail and result in a `None` value.
+    ///
+    /// # Panics
+    ///
+    /// If `data_fn` panics, the panic is propagated to the caller, and the
+    /// temporary [`Weak<T>`] is dropped normally.
+    ///
+    /// # Example
+    ///
+    /// See [`new_cyclic`]
+    ///
+    /// [`new_cyclic`]: Arc::new_cyclic
+    /// [`upgrade`]: Weak::upgrade
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn new_cyclic_in<F>(data_fn: F, alloc: A) -> Arc<T, A>
+    where
+        F: FnOnce(&Weak<T, A>) -> T,
+    {
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
+        let (uninit_raw_ptr, alloc) = Box::into_raw_with_allocator(Box::new_in(
+            ArcInner {
+                strong: atomic::AtomicUsize::new(0),
+                weak: atomic::AtomicUsize::new(1),
+                data: mem::MaybeUninit::<T>::uninit(),
+            },
+            alloc,
+        ));
+        let uninit_ptr: NonNull<_> = (unsafe { &mut *uninit_raw_ptr }).into();
+        let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
+
+        let weak = Weak { ptr: init_ptr, alloc: alloc };
+
+        // It's important we don't give up ownership of the weak pointer, or
+        // else the memory might be freed by the time `data_fn` returns. If
+        // we really wanted to pass ownership, we could create an additional
+        // weak pointer for ourselves, but this would result in additional
+        // updates to the weak reference count which might not be necessary
+        // otherwise.
+        let data = data_fn(&weak);
+
+        // Now we can properly initialize the inner value and turn our weak
+        // reference into a strong reference.
+        let strong = unsafe {
+            let inner = init_ptr.as_ptr();
+            ptr::write(ptr::addr_of_mut!((*inner).data), data);
+
+            // The above write to the data field must be visible to any threads which
+            // observe a non-zero strong count. Therefore we need at least "Release" ordering
+            // in order to synchronize with the `compare_exchange_weak` in `Weak::upgrade`.
+            //
+            // "Acquire" ordering is not required. When considering the possible behaviours
+            // of `data_fn` we only need to look at what it could do with a reference to a
+            // non-upgradeable `Weak`:
+            // - It can *clone* the `Weak`, increasing the weak reference count.
+            // - It can drop those clones, decreasing the weak reference count (but never to zero).
+            //
+            // These side effects do not impact us in any way, and no other side effects are
+            // possible with safe code alone.
+            let prev_value = (*inner).strong.fetch_add(1, Release);
+            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+
+            // Strong references should collectively own a shared weak reference,
+            // so don't run the destructor for our old weak reference.
+            // Calling into_raw_with_allocator has the double effect of giving us back the allocator,
+            // and forgetting the weak reference.
+            let alloc = weak.into_raw_with_allocator().1;
+
+            Arc::from_inner_in(init_ptr, alloc)
+        };
+
+        strong
     }
 
     /// Constructs a new `Pin<Arc<T, A>>` in the provided allocator. If `T` does not implement `Unpin`,
