@@ -3,9 +3,9 @@ use std::{mem, ops::Not};
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AsExternAssocItem, CaptureKind, HasCrate, HasSource, HirDisplay, Layout,
-    LayoutError, MethodViolationCode, Name, ObjectSafetyViolation, Semantics, Trait, Type,
-    TypeInfo,
+    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, CaptureKind, HasCrate, HasSource,
+    HirDisplay, Layout, LayoutError, MethodViolationCode, Name, ObjectSafetyViolation, Semantics,
+    Trait, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -13,7 +13,7 @@ use ide_db::{
     documentation::HasDocs,
     famous_defs::FamousDefs,
     generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
-    syntax_helpers::insert_whitespace_into_node,
+    syntax_helpers::prettify_macro_expansion,
     RootDatabase,
 };
 use itertools::Itertools;
@@ -476,8 +476,9 @@ pub(super) fn definition(
                 Err(_) => {
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
-                    if source.file_id.is_macro() {
-                        body = insert_whitespace_into_node::insert_ws_into(body);
+                    if let Some(macro_file) = source.file_id.macro_file() {
+                        let span_map = db.expansion_span_map(macro_file);
+                        body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
                     }
                     Some(body.to_string())
                 }
@@ -486,8 +487,9 @@ pub(super) fn definition(
         Definition::Static(it) => {
             let source = it.source(db)?;
             let mut body = source.value.body()?.syntax().clone();
-            if source.file_id.is_macro() {
-                body = insert_whitespace_into_node::insert_ws_into(body);
+            if let Some(macro_file) = source.file_id.macro_file() {
+                let span_map = db.expansion_span_map(macro_file);
+                body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
             }
             Some(body.to_string())
         }

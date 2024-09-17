@@ -36,7 +36,7 @@ pub mod generated {
 pub mod syntax_helpers {
     pub mod format_string;
     pub mod format_string_exprs;
-    pub use hir::insert_whitespace_into_node;
+    pub use hir::prettify_macro_expansion;
     pub mod node_ext;
     pub mod suggest_name;
 
