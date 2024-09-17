@@ -4,8 +4,6 @@ use std::io;
 use std::io::{Error, ErrorKind};
 use std::mem;
 
-use rustc_target::abi::Endian;
-
 use crate::shims::unix::fd::FileDescriptionRef;
 use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
@@ -63,14 +61,14 @@ impl FileDescription for Event {
         self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: u64,
+        len: usize,
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
         // eventfd read at the size of u64.
         let buf_place = ecx.ptr_to_mplace_unaligned(ptr, ecx.machine.layouts.u64);
         // Check the size of slice, and return error only if the size of the slice < 8.
-        if len < U64_ARRAY_SIZE.try_into().unwrap() {
+        if len < U64_ARRAY_SIZE {
             let result = Err(Error::from(ErrorKind::InvalidInput));
             return return_read_bytes_and_count_ev(&buf_place, None, result, dest, ecx);
         }
@@ -114,20 +112,21 @@ impl FileDescription for Event {
         &self,
         self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        bytes: &[u8],
+        ptr: Pointer,
+        len: usize,
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
         // Check the size of slice, and return error only if the size of the slice < 8.
-        let Some(bytes) = bytes.first_chunk::<U64_ARRAY_SIZE>() else {
+        if len < U64_ARRAY_SIZE {
             let result = Err(Error::from(ErrorKind::InvalidInput));
             return ecx.return_written_byte_count_or_error(result, dest);
-        };
-        // Convert from bytes to int according to host endianness.
-        let num = match ecx.tcx.sess.target.endian {
-            Endian::Little => u64::from_le_bytes(*bytes),
-            Endian::Big => u64::from_be_bytes(*bytes),
-        };
+        }
+
+        // Read the user supplied value from the pointer.
+        let buf_place = ecx.ptr_to_mplace_unaligned(ptr, ecx.machine.layouts.u64);
+        let num = ecx.read_scalar(&buf_place)?.to_u64()?;
+
         // u64::MAX as input is invalid because the maximum value of counter is u64::MAX - 1.
         if num == u64::MAX {
             let result = Err(Error::from(ErrorKind::InvalidInput));

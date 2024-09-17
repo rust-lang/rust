@@ -35,12 +35,12 @@ impl FileDescription for FileHandle {
         _self_ref: &FileDescriptionRef,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: u64,
+        len: usize,
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        let mut bytes = vec![0; usize::try_from(len).unwrap()];
+        let mut bytes = vec![0; len];
         let result = (&mut &self.file).read(&mut bytes);
         ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
     }
@@ -49,12 +49,14 @@ impl FileDescription for FileHandle {
         &self,
         _self_ref: &FileDescriptionRef,
         communicate_allowed: bool,
-        bytes: &[u8],
+        ptr: Pointer,
+        len: usize,
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        let result = (&mut &self.file).write(bytes);
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?.to_owned();
+        let result = (&mut &self.file).write(&bytes);
         ecx.return_written_byte_count_or_error(result, dest)
     }
 
@@ -63,12 +65,12 @@ impl FileDescription for FileHandle {
         communicate_allowed: bool,
         offset: u64,
         ptr: Pointer,
-        len: u64,
+        len: usize,
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        let mut bytes = vec![0; usize::try_from(len).unwrap()];
+        let mut bytes = vec![0; len];
         // Emulates pread using seek + read + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
         // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
@@ -89,7 +91,8 @@ impl FileDescription for FileHandle {
     fn pwrite<'tcx>(
         &self,
         communicate_allowed: bool,
-        bytes: &[u8],
+        ptr: Pointer,
+        len: usize,
         offset: u64,
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
@@ -99,10 +102,11 @@ impl FileDescription for FileHandle {
         // Correctness of this emulation relies on sequential nature of Miri execution.
         // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
         let file = &mut &self.file;
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?.to_owned();
         let mut f = || {
             let cursor_pos = file.stream_position()?;
             file.seek(SeekFrom::Start(offset))?;
-            let res = file.write(bytes);
+            let res = file.write(&bytes);
             // Attempt to restore cursor position even if the write has failed
             file.seek(SeekFrom::Start(cursor_pos))
                 .expect("failed to restore file position, this shouldn't be possible");

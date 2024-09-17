@@ -7,6 +7,8 @@ use std::collections::VecDeque;
 use std::io;
 use std::io::{Error, ErrorKind, Read};
 
+use rustc_target::abi::Size;
+
 use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
 use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
@@ -127,15 +129,14 @@ impl FileDescription for AnonSocket {
         _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: u64,
+        len: usize,
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
-        let request_byte_size = len;
-        let mut bytes = vec![0; usize::try_from(len).unwrap()];
+        let mut bytes = vec![0; len];
 
         // Always succeed on read size 0.
-        if request_byte_size == 0 {
+        if len == 0 {
             let result = Ok(0);
             return ecx.return_read_bytes_and_count(ptr, &bytes, result, dest);
         }
@@ -200,14 +201,14 @@ impl FileDescription for AnonSocket {
         &self,
         _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        bytes: &[u8],
+        ptr: Pointer,
+        len: usize,
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
-        let write_size = bytes.len();
         // Always succeed on write size 0.
         // ("If count is zero and fd refers to a file other than a regular file, the results are not specified.")
-        if write_size == 0 {
+        if len == 0 {
             let result = Ok(0);
             return ecx.return_written_byte_count_or_error(result, dest);
         }
@@ -243,7 +244,8 @@ impl FileDescription for AnonSocket {
             writebuf.clock.join(clock);
         }
         // Do full write / partial write based on the space available.
-        let actual_write_size = write_size.min(available_space);
+        let actual_write_size = len.min(available_space);
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?.to_owned();
         writebuf.buf.extend(&bytes[..actual_write_size]);
 
         // Need to stop accessing peer_fd so that it can be notified.
