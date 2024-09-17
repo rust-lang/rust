@@ -128,7 +128,7 @@ impl CompiledModule {
     }
 }
 
-pub struct CachedModuleCodegen {
+pub(crate) struct CachedModuleCodegen {
     pub name: String,
     pub source: WorkProduct,
 }

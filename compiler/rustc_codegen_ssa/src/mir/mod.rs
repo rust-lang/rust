@@ -15,8 +15,8 @@ use crate::traits::*;
 
 mod analyze;
 mod block;
-pub mod constant;
-pub mod coverageinfo;
+mod constant;
+mod coverageinfo;
 pub mod debuginfo;
 mod intrinsic;
 mod locals;

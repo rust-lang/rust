@@ -583,6 +583,11 @@ fn register_builtins(store: &mut LintStore) {
         "const_eval_mutable_ptr_in_final_value",
         "partially allowed now, otherwise turned into a hard error",
     );
+    store.register_removed(
+        "where_clauses_object_safety",
+        "converted into hard error, see PR #125380 \
+         <https://github.com/rust-lang/rust/pull/125380> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

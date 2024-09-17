@@ -44,47 +44,23 @@ use crate::{
     errors, meth, mir, CachedModuleCodegen, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
 };
 
-pub fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
-    match op {
-        BinOp::Eq => IntPredicate::IntEQ,
-        BinOp::Ne => IntPredicate::IntNE,
-        BinOp::Lt => {
-            if signed {
-                IntPredicate::IntSLT
-            } else {
-                IntPredicate::IntULT
-            }
-        }
-        BinOp::Le => {
-            if signed {
-                IntPredicate::IntSLE
-            } else {
-                IntPredicate::IntULE
-            }
-        }
-        BinOp::Gt => {
-            if signed {
-                IntPredicate::IntSGT
-            } else {
-                IntPredicate::IntUGT
-            }
-        }
-        BinOp::Ge => {
-            if signed {
-                IntPredicate::IntSGE
-            } else {
-                IntPredicate::IntUGE
-            }
-        }
-        op => bug!(
-            "comparison_op_to_icmp_predicate: expected comparison operator, \
-             found {:?}",
-            op
-        ),
+pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
+    match (op, signed) {
+        (BinOp::Eq, _) => IntPredicate::IntEQ,
+        (BinOp::Ne, _) => IntPredicate::IntNE,
+        (BinOp::Lt, true) => IntPredicate::IntSLT,
+        (BinOp::Lt, false) => IntPredicate::IntULT,
+        (BinOp::Le, true) => IntPredicate::IntSLE,
+        (BinOp::Le, false) => IntPredicate::IntULE,
+        (BinOp::Gt, true) => IntPredicate::IntSGT,
+        (BinOp::Gt, false) => IntPredicate::IntUGT,
+        (BinOp::Ge, true) => IntPredicate::IntSGE,
+        (BinOp::Ge, false) => IntPredicate::IntUGE,
+        op => bug!("bin_op_to_icmp_predicate: expected comparison operator, found {:?}", op),
     }
 }
 
-pub fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
+pub(crate) fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
     match op {
         BinOp::Eq => RealPredicate::RealOEQ,
         BinOp::Ne => RealPredicate::RealUNE,
@@ -92,13 +68,7 @@ pub fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
         BinOp::Le => RealPredicate::RealOLE,
         BinOp::Gt => RealPredicate::RealOGT,
         BinOp::Ge => RealPredicate::RealOGE,
-        op => {
-            bug!(
-                "comparison_op_to_fcmp_predicate: expected comparison operator, \
-                 found {:?}",
-                op
-            );
-        }
+        op => bug!("bin_op_to_fcmp_predicate: expected comparison operator, found {:?}", op),
     }
 }
 
@@ -135,7 +105,7 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ///
 /// The `old_info` argument is a bit odd. It is intended for use in an upcast,
 /// where the new vtable for an object will be derived from the old one.
-pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
@@ -154,7 +124,8 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
-                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
+                // A NOP cast that doesn't actually change anything, should be allowed even with
+                // invalid vtables.
                 return old_info;
             }
 
@@ -182,7 +153,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 /// Coerces `src` to `dst_ty`. `src_ty` must be a pointer.
-pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty: Ty<'tcx>,
@@ -227,7 +198,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 /// Coerces `src` to `dst_ty` which is guaranteed to be a `dyn*` type.
-pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty_and_layout: TyAndLayout<'tcx>,
@@ -250,7 +221,7 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 /// Coerces `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty`, and stores the result in `dst`.
-pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: PlaceRef<'tcx, Bx::Value>,
     dst: PlaceRef<'tcx, Bx::Value>,
@@ -305,7 +276,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ///
 /// If `is_unchecked` is true, this does no masking, and adds sufficient `assume`
 /// calls or operation flags to preserve as much freedom to optimize as possible.
-pub fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs: Bx::Value,
     mut rhs: Bx::Value,
@@ -369,11 +340,11 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 /// Returns `true` if this session's target requires the new exception
 /// handling LLVM IR instructions (catchpad / cleanuppad / ... instead
 /// of landingpad)
-pub fn wants_new_eh_instructions(sess: &Session) -> bool {
+pub(crate) fn wants_new_eh_instructions(sess: &Session) -> bool {
     wants_wasm_eh(sess) || wants_msvc_seh(sess)
 }
 
-pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
@@ -454,7 +425,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         let isize_ty = cx.type_isize();
         let ptr_ty = cx.type_ptr();
-        let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
+        let (arg_argc, arg_argv) = get_argc_argv(&mut bx);
 
         let (start_fn, start_ty, args, instance) = if let EntryFnType::Main { sigpipe } = entry_type
         {
@@ -497,33 +468,30 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 /// Obtain the `argc` and `argv` values to pass to the rust start function.
-fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    cx: &'a Bx::CodegenCx,
-    bx: &mut Bx,
-) -> (Bx::Value, Bx::Value) {
-    if cx.sess().target.os.contains("uefi") {
+fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> (Bx::Value, Bx::Value) {
+    if bx.cx().sess().target.os.contains("uefi") {
         // Params for UEFI
         let param_handle = bx.get_param(0);
         let param_system_table = bx.get_param(1);
         let ptr_size = bx.tcx().data_layout.pointer_size;
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let arg_argc = bx.const_int(cx.type_isize(), 2);
+        let arg_argc = bx.const_int(bx.cx().type_isize(), 2);
         let arg_argv = bx.alloca(2 * ptr_size, ptr_align);
         bx.store(param_handle, arg_argv, ptr_align);
         let arg_argv_el1 = bx.inbounds_ptradd(arg_argv, bx.const_usize(ptr_size.bytes()));
         bx.store(param_system_table, arg_argv_el1, ptr_align);
         (arg_argc, arg_argv)
-    } else if cx.sess().target.main_needs_argc_argv {
+    } else if bx.cx().sess().target.main_needs_argc_argv {
         // Params from native `main()` used as args for rust start function
         let param_argc = bx.get_param(0);
         let param_argv = bx.get_param(1);
-        let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
+        let arg_argc = bx.intcast(param_argc, bx.cx().type_isize(), true);
         let arg_argv = param_argv;
         (arg_argc, arg_argv)
     } else {
         // The Rust start function doesn't need `argc` and `argv`, so just pass zeros.
-        let arg_argc = bx.const_int(cx.type_int(), 0);
-        let arg_argv = bx.const_null(cx.type_ptr());
+        let arg_argc = bx.const_int(bx.cx().type_int(), 0);
+        let arg_argv = bx.const_null(bx.cx().type_ptr());
         (arg_argc, arg_argv)
     }
 }
@@ -985,7 +953,8 @@ impl CrateInfo {
                 false
             }
             CrateType::Staticlib | CrateType::Rlib => {
-                // We don't invoke the linker for these, so we don't need to collect the NatVis for them.
+                // We don't invoke the linker for these, so we don't need to collect the NatVis for
+                // them.
                 false
             }
         });
@@ -999,7 +968,7 @@ impl CrateInfo {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.backend_optimization_level = |tcx, cratenum| {
         let for_speed = match tcx.sess.opts.optimize {
             // If globally no optimisation is done, #[optimize] has no effect.

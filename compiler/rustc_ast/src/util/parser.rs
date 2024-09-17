@@ -265,10 +265,7 @@ pub enum ExprPrecedence {
     Field,
     Index,
     Try,
-    InlineAsm,
-    OffsetOf,
     Mac,
-    FormatArgs,
 
     Array,
     Repeat,
@@ -333,17 +330,14 @@ impl ExprPrecedence {
             | ExprPrecedence::ConstBlock
             | ExprPrecedence::Field
             | ExprPrecedence::ForLoop
-            | ExprPrecedence::FormatArgs
             | ExprPrecedence::Gen
             | ExprPrecedence::If
             | ExprPrecedence::Index
-            | ExprPrecedence::InlineAsm
             | ExprPrecedence::Lit
             | ExprPrecedence::Loop
             | ExprPrecedence::Mac
             | ExprPrecedence::Match
             | ExprPrecedence::MethodCall
-            | ExprPrecedence::OffsetOf
             | ExprPrecedence::Paren
             | ExprPrecedence::Path
             | ExprPrecedence::PostfixMatch

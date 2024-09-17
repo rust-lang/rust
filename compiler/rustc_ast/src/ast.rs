@@ -1293,7 +1293,7 @@ impl Expr {
             ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
             ExprKind::Unary(..) => ExprPrecedence::Unary,
             ExprKind::Lit(_) | ExprKind::IncludedBytes(..) => ExprPrecedence::Lit,
-            ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
+            ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::Let(..) => ExprPrecedence::Let,
             ExprKind::If(..) => ExprPrecedence::If,
             ExprKind::While(..) => ExprPrecedence::While,
@@ -1317,17 +1317,18 @@ impl Expr {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
-            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
-            ExprKind::OffsetOf(..) => ExprPrecedence::OffsetOf,
-            ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Paren(..) => ExprPrecedence::Paren,
             ExprKind::Try(..) => ExprPrecedence::Try,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Yeet(..) => ExprPrecedence::Yeet,
-            ExprKind::FormatArgs(..) => ExprPrecedence::FormatArgs,
             ExprKind::Become(..) => ExprPrecedence::Become,
+            ExprKind::InlineAsm(..)
+            | ExprKind::Type(..)
+            | ExprKind::OffsetOf(..)
+            | ExprKind::FormatArgs(..)
+            | ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Err(_) | ExprKind::Dummy => ExprPrecedence::Err,
         }
     }
