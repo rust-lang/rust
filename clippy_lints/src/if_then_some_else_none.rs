@@ -105,6 +105,8 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
                             snippet_with_context(cx, first_stmt.span.until(then_arg.span), ctxt, "..", &mut app);
                         let closure = if method_name == "then" { "|| " } else { "" };
                         format!("{closure} {{ {block_snippet}; {arg_snip} }}")
+                    } else if method_name == "then" {
+                        (std::borrow::Cow::Borrowed("|| ") + arg_snip).into_owned()
                     } else {
                         arg_snip.into_owned()
                     };

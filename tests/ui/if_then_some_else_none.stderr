@@ -52,5 +52,11 @@ LL | |         None
 LL | |     };
    | |_____^ help: try: `foo().then(||  { println!("true!"); 150 })`
 
-error: aborting due to 5 previous errors
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:135:5
+   |
+LL |     if s == "1" { Some(true) } else { None }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(s == "1").then(|| true)`
+
+error: aborting due to 6 previous errors
 
