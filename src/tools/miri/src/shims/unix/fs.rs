@@ -554,10 +554,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
     }
 
-    fn lseek64(&mut self, fd: i32, offset: i128, whence: i32) -> InterpResult<'tcx, Scalar> {
+    fn lseek64(&mut self, fd_num: i32, offset: i128, whence: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // Isolation check is done via `FileDescriptor` trait.
+        // Isolation check is done via `FileDescription` trait.
 
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET") {
             if offset < 0 {
@@ -580,13 +580,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let communicate = this.machine.communicate();
 
-        let Some(file_description) = this.machine.fds.get(fd) else {
+        let Some(fd) = this.machine.fds.get(fd_num) else {
             return Ok(Scalar::from_i64(this.fd_not_found()?));
         };
-        let result = file_description
-            .seek(communicate, seek_from)?
-            .map(|offset| i64::try_from(offset).unwrap());
-        drop(file_description);
+        let result = fd.seek(communicate, seek_from)?.map(|offset| i64::try_from(offset).unwrap());
+        drop(fd);
 
         let result = this.try_unwrap_io_result(result)?;
         Ok(Scalar::from_i64(result))
@@ -721,7 +719,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         }
 
-        let metadata = match FileMetadata::from_fd(this, fd)? {
+        let metadata = match FileMetadata::from_fd_num(this, fd)? {
             Some(metadata) => metadata,
             None => return Ok(Scalar::from_i32(-1)),
         };
@@ -808,7 +806,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
         // represented by dirfd, whether it's a directory or otherwise.
         let metadata = if path.as_os_str().is_empty() && empty_path_flag {
-            FileMetadata::from_fd(this, dirfd)?
+            FileMetadata::from_fd_num(this, dirfd)?
         } else {
             FileMetadata::from_path(this, &path, follow_symlink)?
         };
@@ -1260,7 +1258,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }))
     }
 
-    fn ftruncate64(&mut self, fd: i32, length: i128) -> InterpResult<'tcx, Scalar> {
+    fn ftruncate64(&mut self, fd_num: i32, length: i128) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         // Reject if isolation is enabled.
@@ -1270,30 +1268,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         }
 
-        let Some(file_description) = this.machine.fds.get(fd) else {
+        let Some(fd) = this.machine.fds.get(fd_num) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
 
         // FIXME: Support ftruncate64 for all FDs
-        let FileHandle { file, writable } =
-            file_description.downcast::<FileHandle>().ok_or_else(|| {
-                err_unsup_format!("`ftruncate64` is only supported on file-backed file descriptors")
-            })?;
+        let FileHandle { file, writable } = fd.downcast::<FileHandle>().ok_or_else(|| {
+            err_unsup_format!("`ftruncate64` is only supported on file-backed file descriptors")
+        })?;
 
         if *writable {
             if let Ok(length) = length.try_into() {
                 let result = file.set_len(length);
-                drop(file_description);
+                drop(fd);
                 let result = this.try_unwrap_io_result(result.map(|_| 0i32))?;
                 Ok(Scalar::from_i32(result))
             } else {
-                drop(file_description);
+                drop(fd);
                 let einval = this.eval_libc("EINVAL");
                 this.set_last_error(einval)?;
                 Ok(Scalar::from_i32(-1))
             }
         } else {
-            drop(file_description);
+            drop(fd);
             // The file is not writable
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
@@ -1321,18 +1318,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         self.ffullsync_fd(fd)
     }
 
-    fn ffullsync_fd(&mut self, fd: i32) -> InterpResult<'tcx, Scalar> {
+    fn ffullsync_fd(&mut self, fd_num: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        let Some(file_description) = this.machine.fds.get(fd) else {
+        let Some(fd) = this.machine.fds.get(fd_num) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         // Only regular files support synchronization.
-        let FileHandle { file, writable } =
-            file_description.downcast::<FileHandle>().ok_or_else(|| {
-                err_unsup_format!("`fsync` is only supported on file-backed file descriptors")
-            })?;
+        let FileHandle { file, writable } = fd.downcast::<FileHandle>().ok_or_else(|| {
+            err_unsup_format!("`fsync` is only supported on file-backed file descriptors")
+        })?;
         let io_result = maybe_sync_file(file, *writable, File::sync_all);
-        drop(file_description);
+        drop(fd);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1348,16 +1344,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         }
 
-        let Some(file_description) = this.machine.fds.get(fd) else {
+        let Some(fd) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         // Only regular files support synchronization.
-        let FileHandle { file, writable } =
-            file_description.downcast::<FileHandle>().ok_or_else(|| {
-                err_unsup_format!("`fdatasync` is only supported on file-backed file descriptors")
-            })?;
+        let FileHandle { file, writable } = fd.downcast::<FileHandle>().ok_or_else(|| {
+            err_unsup_format!("`fdatasync` is only supported on file-backed file descriptors")
+        })?;
         let io_result = maybe_sync_file(file, *writable, File::sync_data);
-        drop(file_description);
+        drop(fd);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1396,18 +1391,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         }
 
-        let Some(file_description) = this.machine.fds.get(fd) else {
+        let Some(fd) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         // Only regular files support synchronization.
-        let FileHandle { file, writable } =
-            file_description.downcast::<FileHandle>().ok_or_else(|| {
-                err_unsup_format!(
-                    "`sync_data_range` is only supported on file-backed file descriptors"
-                )
-            })?;
+        let FileHandle { file, writable } = fd.downcast::<FileHandle>().ok_or_else(|| {
+            err_unsup_format!("`sync_data_range` is only supported on file-backed file descriptors")
+        })?;
         let io_result = maybe_sync_file(file, *writable, File::sync_data);
-        drop(file_description);
+        drop(fd);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1699,15 +1691,15 @@ impl FileMetadata {
         FileMetadata::from_meta(ecx, metadata)
     }
 
-    fn from_fd<'tcx>(
+    fn from_fd_num<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
-        fd: i32,
+        fd_num: i32,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
-        let Some(file_description) = ecx.machine.fds.get(fd) else {
+        let Some(fd) = ecx.machine.fds.get(fd_num) else {
             return ecx.fd_not_found().map(|_: i32| None);
         };
 
-        let file = &file_description
+        let file = &fd
             .downcast::<FileHandle>()
             .ok_or_else(|| {
                 err_unsup_format!(
@@ -1717,7 +1709,7 @@ impl FileMetadata {
             .file;
 
         let metadata = file.metadata();
-        drop(file_description);
+        drop(fd);
         FileMetadata::from_meta(ecx, metadata)
     }
 

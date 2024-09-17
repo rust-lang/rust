@@ -1,4 +1,4 @@
-//@only-target-linux
+//@only-target: linux
 
 #![feature(strict_provenance)]
 use std::convert::TryInto;
@@ -23,6 +23,7 @@ fn main() {
     test_ready_list_fetching_logic();
     test_epoll_ctl_epfd_equal_fd();
     test_epoll_ctl_notification();
+    test_issue_3858();
 }
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -682,4 +683,41 @@ fn test_epoll_ctl_notification() {
     // Previously this epoll_wait will receive a notification, but we shouldn't return notification
     // for this epfd, because there is no I/O event between the two epoll_wait.
     check_epoll_wait::<1>(epfd0, &[]);
+}
+
+// Test for ICE caused by weak epoll interest upgrade succeed, but the attempt to retrieve
+// the epoll instance based on the epoll file descriptor value failed. EpollEventInterest
+// should store a WeakFileDescriptionRef instead of the file descriptor number, so if the
+// epoll instance is duped, it'd still be usable after `close` is called on the original
+// epoll file descriptor.
+// https://github.com/rust-lang/miri/issues/3858
+fn test_issue_3858() {
+    // Create an eventfd instance.
+    let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
+    let fd = unsafe { libc::eventfd(0, flags) };
+
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    // Register eventfd with EPOLLIN | EPOLLET.
+    let mut ev = libc::epoll_event {
+        events: (libc::EPOLLIN | libc::EPOLLET) as _,
+        u64: u64::try_from(fd).unwrap(),
+    };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &mut ev) };
+    assert_eq!(res, 0);
+
+    // Dup the epoll instance.
+    let newfd = unsafe { libc::dup(epfd) };
+    assert_ne!(newfd, -1);
+
+    // Close the old epoll instance, so the new FD is now the only FD.
+    let res = unsafe { libc::close(epfd) };
+    assert_eq!(res, 0);
+
+    // Write to the eventfd instance.
+    let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
+    let res = unsafe { libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
+    assert_eq!(res, 8);
 }

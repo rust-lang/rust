@@ -1,12 +1,12 @@
 error: unsupported operation: epoll: epoll does not support this file description
-  --> $DIR/libc_epoll_unsupported_fd.rs:LL:CC
+  --> tests/fail-dep/libc/libc_epoll_unsupported_fd.rs:LL:CC
    |
 LL |     let res = unsafe { libc::epoll_ctl(epfd0, libc::EPOLL_CTL_ADD, epfd1, &mut ev) };
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ epoll: epoll does not support this file description
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/libc_epoll_unsupported_fd.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/libc/libc_epoll_unsupported_fd.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

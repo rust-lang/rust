@@ -1,5 +1,5 @@
 error: Undefined Behavior: memory access failed: expected a pointer to 1 byte of memory, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
-  --> $DIR/provenance_transmute.rs:LL:CC
+  --> tests/fail/provenance/provenance_transmute.rs:LL:CC
    |
 LL |         let _val = *left_ptr;
    |                    ^^^^^^^^^ memory access failed: expected a pointer to 1 byte of memory, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
@@ -7,9 +7,9 @@ LL |         let _val = *left_ptr;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `deref` at $DIR/provenance_transmute.rs:LL:CC
+   = note: inside `deref` at tests/fail/provenance/provenance_transmute.rs:LL:CC
 note: inside `main`
-  --> $DIR/provenance_transmute.rs:LL:CC
+  --> tests/fail/provenance/provenance_transmute.rs:LL:CC
    |
 LL |         deref(ptr1, ptr2.with_addr(ptr1.addr()));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

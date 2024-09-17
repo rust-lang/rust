@@ -1,4 +1,4 @@
-//@only-target-linux
+//@only-target: linux
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 

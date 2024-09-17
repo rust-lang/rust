@@ -62,7 +62,9 @@ fn debug() {
 }
 
 fn huge_zst() {
-    fn id<T>(x: T) -> T { x }
+    fn id<T>(x: T) -> T {
+        x
+    }
 
     // A "huge" zero-sized array. Make sure we don't loop over it in any part of Miri.
     let val = [(); usize::MAX];

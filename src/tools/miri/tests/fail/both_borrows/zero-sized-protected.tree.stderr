@@ -1,5 +1,5 @@
 error: Undefined Behavior: deallocation through <TAG> (root of the allocation) at ALLOC[0x0] is forbidden
-  --> $DIR/zero-sized-protected.rs:LL:CC
+  --> tests/fail/both_borrows/zero-sized-protected.rs:LL:CC
    |
 LL |     unsafe { dealloc(ptr, l) };
    |              ^^^^^^^^^^^^^^^ deallocation through <TAG> (root of the allocation) at ALLOC[0x0] is forbidden
@@ -8,19 +8,19 @@ LL |     unsafe { dealloc(ptr, l) };
    = help: the allocation of the accessed tag <TAG> (root of the allocation) also contains the strongly protected tag <TAG>
    = help: the strongly protected tag <TAG> disallows deallocations
 help: the accessed tag <TAG> was created here
-  --> $DIR/zero-sized-protected.rs:LL:CC
+  --> tests/fail/both_borrows/zero-sized-protected.rs:LL:CC
    |
 LL |     let ptr = unsafe { alloc(l) };
    |                        ^^^^^^^^
 help: the strongly protected tag <TAG> was created here, in the initial state Reserved
-  --> $DIR/zero-sized-protected.rs:LL:CC
+  --> tests/fail/both_borrows/zero-sized-protected.rs:LL:CC
    |
 LL | fn test(_x: &mut (), ptr: *mut u8, l: Layout) {
    |         ^^
    = note: BACKTRACE (of the first span):
-   = note: inside `test` at $DIR/zero-sized-protected.rs:LL:CC
+   = note: inside `test` at tests/fail/both_borrows/zero-sized-protected.rs:LL:CC
 note: inside `main`
-  --> $DIR/zero-sized-protected.rs:LL:CC
+  --> tests/fail/both_borrows/zero-sized-protected.rs:LL:CC
    |
 LL |     unsafe { test(&mut *ptr.cast::<()>(), ptr, l) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

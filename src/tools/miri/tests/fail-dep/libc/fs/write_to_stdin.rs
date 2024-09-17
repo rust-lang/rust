@@ -1,4 +1,4 @@
-//@ignore-target-windows: No libc IO on Windows
+//@ignore-target: windows # No libc IO on Windows
 
 fn main() -> std::io::Result<()> {
     let bytes = b"hello";

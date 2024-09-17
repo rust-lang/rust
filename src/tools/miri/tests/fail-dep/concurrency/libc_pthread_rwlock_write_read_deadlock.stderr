@@ -1,11 +1,11 @@
 error: deadlock: the evaluated program deadlocked
-  --> $DIR/libc_pthread_rwlock_write_read_deadlock.rs:LL:CC
+  --> tests/fail-dep/concurrency/libc_pthread_rwlock_write_read_deadlock.rs:LL:CC
    |
 LL |             assert_eq!(libc::pthread_rwlock_wrlock(lock_copy.0.get() as *mut _), 0);
    |                                                                               ^ the evaluated program deadlocked
    |
    = note: BACKTRACE on thread `unnamed-ID`:
-   = note: inside closure at $DIR/libc_pthread_rwlock_write_read_deadlock.rs:LL:CC
+   = note: inside closure at tests/fail-dep/concurrency/libc_pthread_rwlock_write_read_deadlock.rs:LL:CC
 
 error: deadlock: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
@@ -18,7 +18,7 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
    = note: inside `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
    = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
 note: inside `main`
-  --> $DIR/libc_pthread_rwlock_write_read_deadlock.rs:LL:CC
+  --> tests/fail-dep/concurrency/libc_pthread_rwlock_write_read_deadlock.rs:LL:CC
    |
 LL | /         thread::spawn(move || {
 LL | |             assert_eq!(libc::pthread_rwlock_wrlock(lock_copy.0.get() as *mut _), 0);

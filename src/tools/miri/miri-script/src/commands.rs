@@ -494,23 +494,25 @@ impl Command {
         flags: Vec<String>,
     ) -> Result<()> {
         let mut e = MiriEnv::new()?;
+
+        // Preparation: get a sysroot, and get the miri binary.
+        let miri_sysroot = e.build_miri_sysroot(/* quiet */ !verbose, target.as_deref())?;
+        let miri_bin =
+            e.build_get_binary(".").context("failed to get filename of miri executable")?;
+
         // More flags that we will pass before `flags`
         // (because `flags` may contain `--`).
         let mut early_flags = Vec::<OsString>::new();
 
-        // Add target, edition to flags.
-        if let Some(target) = &target {
-            early_flags.push("--target".into());
-            early_flags.push(target.into());
-        }
-        if verbose {
-            early_flags.push("--verbose".into());
+        // In `dep` mode, the target is already passed via `MIRI_TEST_TARGET`
+        if !dep {
+            if let Some(target) = &target {
+                early_flags.push("--target".into());
+                early_flags.push(target.into());
+            }
         }
         early_flags.push("--edition".into());
         early_flags.push(edition.as_deref().unwrap_or("2021").into());
-
-        // Prepare a sysroot, add it to the flags. (Also builds cargo-miri, which we need.)
-        let miri_sysroot = e.build_miri_sysroot(/* quiet */ !verbose, target.as_deref())?;
         early_flags.push("--sysroot".into());
         early_flags.push(miri_sysroot.into());
 
@@ -523,18 +525,19 @@ impl Command {
         let run_miri = |e: &MiriEnv, seed_flag: Option<String>| -> Result<()> {
             // The basic command that executes the Miri driver.
             let mut cmd = if dep {
+                // We invoke the test suite as that has all the logic for running with dependencies.
                 e.cargo_cmd(".", "test")
                     .args(&["--test", "ui"])
                     .args(quiet_flag)
                     .arg("--")
                     .args(&["--miri-run-dep-mode"])
             } else {
-                e.cargo_cmd(".", "run").args(quiet_flag).arg("--")
+                cmd!(e.sh, "{miri_bin}")
             };
             cmd.set_quiet(!verbose);
             // Add Miri flags
             let mut cmd = cmd.args(&miri_flags).args(&seed_flag).args(&early_flags).args(&flags);
-            // For `--dep` we also need to set the env var.
+            // For `--dep` we also need to set the target in the env var.
             if dep {
                 if let Some(target) = &target {
                     cmd = cmd.env("MIRI_TEST_TARGET", target);

@@ -10,7 +10,7 @@ LL |         let mut order = unsafe { compare_bytes(left, right, len) as isize }
    = note: inside `<u8 as core::slice::cmp::SliceOrd>::compare` at RUSTLIB/core/src/slice/cmp.rs:LL:CC
    = note: inside `core::slice::cmp::<impl std::cmp::Ord for [u8]>::cmp` at RUSTLIB/core/src/slice/cmp.rs:LL:CC
 note: inside `main`
-  --> $DIR/uninit_alloc_diagnostic.rs:LL:CC
+  --> tests/fail/uninit/uninit_alloc_diagnostic.rs:LL:CC
    |
 LL |         drop(slice1.cmp(slice2));
    |              ^^^^^^^^^^^^^^^^^^

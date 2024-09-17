@@ -1,10 +1,11 @@
 use std::ffi::{OsStr, OsString};
+use std::io::BufRead;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::thread;
+use std::{env, iter, thread};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use dunce::canonicalize;
 use path_macro::path;
 use xshell::{cmd, Cmd, Shell};
@@ -73,8 +74,11 @@ impl MiriEnv {
         let rustflags = {
             let mut flags = OsString::new();
             // We set the rpath so that Miri finds the private rustc libraries it needs.
-            flags.push("-C link-args=-Wl,-rpath,");
-            flags.push(libdir);
+            // (This only makes sense on Unix.)
+            if cfg!(unix) {
+                flags.push("-C link-args=-Wl,-rpath,");
+                flags.push(&libdir);
+            }
             // Enable rustc-specific lints (ignored without `-Zunstable-options`).
             flags.push(
                 " -Zunstable-options -Wrustc::internal -Wrust_2018_idioms -Wunused_lifetimes",
@@ -87,6 +91,14 @@ impl MiriEnv {
             flags
         };
         sh.set_var("RUSTFLAGS", rustflags);
+
+        // On Windows, the `-Wl,-rpath,` above does not help. Instead we add the libdir to the PATH,
+        // so that Windows can find the DLLs.
+        if cfg!(windows) {
+            let old_path = sh.var("PATH")?;
+            let new_path = env::join_paths(iter::once(libdir).chain(env::split_paths(&old_path)))?;
+            sh.set_var("PATH", new_path);
+        }
 
         // Get extra flags for cargo.
         let cargo_extra_flags = std::env::var("CARGO_EXTRA_FLAGS").unwrap_or_default();
@@ -126,19 +138,38 @@ impl MiriEnv {
 
     pub fn build(&self, crate_dir: impl AsRef<OsStr>, args: &[String], quiet: bool) -> Result<()> {
         let quiet_flag = if quiet { Some("--quiet") } else { None };
-        // We build the tests as well, (a) to avoid having rebuilds when building the tests later
-        // and (b) to have more parallelism during the build of Miri and its tests.
-        // This means `./miri run` without `--dep` will build Miri twice (for the sysroot with
-        // dev-dependencies, and then for running without dev-dependencies), but the way more common
-        // `./miri test` will avoid building Miri twice.
-        let mut cmd = self
-            .cargo_cmd(crate_dir, "build")
-            .args(&["--bins", "--tests"])
-            .args(quiet_flag)
-            .args(args);
+        // We build all targets, since building *just* the bin target doesnot include
+        // `dev-dependencies` and that changes feature resolution. This also gets us more
+        // parallelism in `./miri test` as we build Miri and its tests together.
+        let mut cmd =
+            self.cargo_cmd(crate_dir, "build").args(&["--all-targets"]).args(quiet_flag).args(args);
         cmd.set_quiet(quiet);
         cmd.run()?;
         Ok(())
+    }
+
+    /// Returns the path to the main crate binary. Assumes that `build` has been called before.
+    pub fn build_get_binary(&self, crate_dir: impl AsRef<OsStr>) -> Result<PathBuf> {
+        let cmd =
+            self.cargo_cmd(crate_dir, "build").args(&["--all-targets", "--message-format=json"]);
+        let output = cmd.output()?;
+        let mut bin = None;
+        for line in output.stdout.lines() {
+            let line = line?;
+            if line.starts_with("{") {
+                let json: serde_json::Value = serde_json::from_str(&line)?;
+                if json["reason"] == "compiler-artifact"
+                    && !json["profile"]["test"].as_bool().unwrap()
+                    && !json["executable"].is_null()
+                {
+                    if bin.is_some() {
+                        bail!("found two binaries in cargo output");
+                    }
+                    bin = Some(PathBuf::from(json["executable"].as_str().unwrap()))
+                }
+            }
+        }
+        bin.ok_or_else(|| anyhow!("found no binary in cargo output"))
     }
 
     pub fn check(&self, crate_dir: impl AsRef<OsStr>, args: &[String]) -> Result<()> {

@@ -1,4 +1,4 @@
-//@ignore-target-windows: No pthreads on Windows
+//@ignore-target: windows # No pthreads on Windows
 //@error-in-other-file: the main thread terminated without waiting for all remaining threads
 
 // Check that we terminate the program when the main thread terminates.

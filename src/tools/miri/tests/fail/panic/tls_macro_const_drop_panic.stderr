@@ -1,4 +1,4 @@
-thread $NAME panicked at $DIR/tls_macro_const_drop_panic.rs:LL:CC:
+thread $NAME panicked at tests/fail/panic/tls_macro_const_drop_panic.rs:LL:CC:
 ow
 fatal runtime error: thread local panicked on drop
 error: abnormal termination: the program aborted execution

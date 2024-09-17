@@ -1,4 +1,4 @@
-//@only-target-linux
+//@only-target: linux
 //@revisions: with_isolation without_isolation
 //@[without_isolation] compile-flags: -Zmiri-disable-isolation
 

@@ -1,5 +1,5 @@
 error: Undefined Behavior: using vtable for trait `T1` but trait `T2` was expected
-  --> $DIR/dyn-call-trait-mismatch.rs:LL:CC
+  --> tests/fail/dyn-call-trait-mismatch.rs:LL:CC
    |
 LL |     r2.method2();
    |     ^^^^^^^^^^^^ using vtable for trait `T1` but trait `T2` was expected
@@ -7,7 +7,7 @@ LL |     r2.method2();
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/dyn-call-trait-mismatch.rs:LL:CC
+   = note: inside `main` at tests/fail/dyn-call-trait-mismatch.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

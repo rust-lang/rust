@@ -1,5 +1,5 @@
 error: Undefined Behavior: using vtable for trait `Baz` but trait `Bar` was expected
-  --> $DIR/dyn-upcast-trait-mismatch.rs:LL:CC
+  --> tests/fail/dyn-upcast-trait-mismatch.rs:LL:CC
    |
 LL |         let _err = baz_fake as *const dyn Foo;
    |                    ^^^^^^^^ using vtable for trait `Baz` but trait `Bar` was expected
@@ -7,7 +7,7 @@ LL |         let _err = baz_fake as *const dyn Foo;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/dyn-upcast-trait-mismatch.rs:LL:CC
+   = note: inside `main` at tests/fail/dyn-upcast-trait-mismatch.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

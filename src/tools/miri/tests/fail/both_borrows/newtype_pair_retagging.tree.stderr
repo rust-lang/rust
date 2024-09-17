@@ -9,17 +9,17 @@ LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
    = help: this deallocation (acting as a foreign write access) would cause the protected tag <TAG> (currently Reserved (conflicted)) to become Disabled
    = help: protected tags must never be Disabled
 help: the accessed tag <TAG> was created here
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL |             || drop(Box::from_raw(ptr)),
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 help: the protected tag <TAG> was created here, in the initial state Reserved
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL | fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
    |                          ^^
 help: the protected tag <TAG> later transitioned to Reserved (conflicted) due to a reborrow (acting as a foreign read access) at offsets [0x0..0x4]
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL |             || drop(Box::from_raw(ptr)),
    |                     ^^^^^^^^^^^^^^^^^^
@@ -29,17 +29,17 @@ LL |             || drop(Box::from_raw(ptr)),
    = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
    = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
 note: inside closure
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL |             || drop(Box::from_raw(ptr)),
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `dealloc_while_running::<{closure@$DIR/newtype_pair_retagging.rs:LL:CC}>`
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+note: inside `dealloc_while_running::<{closure@tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC}>`
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL |     dealloc();
    |     ^^^^^^^^^
 note: inside `main`
-  --> $DIR/newtype_pair_retagging.rs:LL:CC
+  --> tests/fail/both_borrows/newtype_pair_retagging.rs:LL:CC
    |
 LL | /         dealloc_while_running(
 LL | |             Newtype(&mut *ptr, 0),
