@@ -1,5 +1,6 @@
 use std::assert_matches::assert_matches;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
@@ -45,6 +46,11 @@ pub trait BuilderMethods<'a, 'tcx>:
     + HasTargetSpec
 {
     fn build(cx: &'a Self::CodegenCx, llbb: Self::BasicBlock) -> Self;
+
+    fn record_range_metadata(&mut self, _: FxHashSet<Self::Value>) {}
+    fn take_range_metadata(self) -> FxHashSet<Self::Value> {
+        FxHashSet::default()
+    }
 
     fn cx(&self) -> &Self::CodegenCx;
     fn llbb(&self) -> Self::BasicBlock;

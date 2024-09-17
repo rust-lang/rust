@@ -2,6 +2,7 @@ use std::cmp;
 
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{self, AssertKind, BasicBlock, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
@@ -1214,12 +1215,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         )
     }
 
-    pub(crate) fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
+    pub(crate) fn codegen_block(
+        &mut self,
+        mut bb: mir::BasicBlock,
+        range_metadata: FxHashSet<Bx::Value>,
+    ) -> FxHashSet<Bx::Value> {
         let llbb = match self.try_llbb(bb) {
             Some(llbb) => llbb,
-            None => return,
+            None => return range_metadata,
         };
-        let bx = &mut Bx::build(self.cx, llbb);
+        let mut builder = Bx::build(self.cx, llbb);
+        let bx = &mut builder;
+        bx.record_range_metadata(range_metadata);
         let mir = self.mir;
 
         // MIR basic blocks stop at any function call. This may not be the case
@@ -1252,6 +1259,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.cached_llbbs[succ] = CachedLlbb::Skip;
             bb = succ;
         }
+        builder.take_range_metadata()
     }
 
     pub(crate) fn codegen_block_as_unreachable(&mut self, bb: mir::BasicBlock) {

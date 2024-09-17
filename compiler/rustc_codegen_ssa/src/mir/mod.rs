@@ -1,5 +1,6 @@
 use std::iter;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -220,10 +221,20 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 
+    let args = arg_local_refs(&mut start_bx, &mut fx, &memory_locals);
+    let mut range_metadata = FxHashSet::default();
+    for arg in &args {
+        if let LocalRef::Operand(OperandRef { layout, val: OperandValue::Immediate(local) }) = arg {
+            if let rustc_target::abi::Abi::Scalar(scalar) = layout.abi {
+                if !scalar.is_always_valid(&cx.tcx()) {
+                    range_metadata.insert(*local);
+                }
+            }
+        }
+    }
+
     // Allocate variable and temp allocas
     let local_values = {
-        let args = arg_local_refs(&mut start_bx, &mut fx, &memory_locals);
-
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
             let layout = start_bx.layout_of(fx.monomorphize(decl.ty));
@@ -282,7 +293,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // Codegen the body of each block using reverse postorder
     for (bb, _) in traversal::reverse_postorder(mir) {
         if reachable_blocks.contains(bb) {
-            fx.codegen_block(bb);
+            range_metadata = fx.codegen_block(bb, range_metadata);
         } else {
             // We want to skip this block, because it's not reachable. But we still create
             // the block so terminators in other blocks can reference it.

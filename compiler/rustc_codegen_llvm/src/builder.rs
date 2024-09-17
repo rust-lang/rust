@@ -149,6 +149,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         bx
     }
 
+    fn record_range_metadata(&mut self, meta: FxHashSet<Self::Value>) {
+        self.range_metadata = meta;
+    }
+
+    fn take_range_metadata(mut self) -> FxHashSet<Self::Value> {
+        core::mem::take(&mut self.range_metadata)
+    }
+
     fn cx(&self) -> &CodegenCx<'ll, 'tcx> {
         self.cx
     }

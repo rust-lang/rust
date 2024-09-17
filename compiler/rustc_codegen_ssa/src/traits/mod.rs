@@ -29,6 +29,7 @@ mod type_;
 mod write;
 
 use std::fmt;
+use std::hash::Hash;
 
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt};
 use rustc_target::spec::HasTargetSpec;
@@ -50,8 +51,8 @@ pub use self::type_::{
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 
-pub trait CodegenObject: Copy + PartialEq + fmt::Debug {}
-impl<T: Copy + PartialEq + fmt::Debug> CodegenObject for T {}
+pub trait CodegenObject: Copy + PartialEq + Eq + Hash + fmt::Debug {}
+impl<T: Copy + PartialEq + Eq + Hash + fmt::Debug> CodegenObject for T {}
 
 pub trait CodegenMethods<'tcx>:
     Backend<'tcx>

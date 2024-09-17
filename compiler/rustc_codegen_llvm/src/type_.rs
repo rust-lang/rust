@@ -24,6 +24,17 @@ impl PartialEq for Type {
     }
 }
 
+impl Eq for Type {}
+
+impl std::hash::Hash for Type {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
+        ptr::hash(self, state)
+    }
+}
+
 impl fmt::Debug for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(
