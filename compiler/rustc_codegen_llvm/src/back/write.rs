@@ -944,11 +944,12 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
 }
 
 fn target_is_apple(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
-    cgcx.opts.target_triple.triple().contains("-ios")
-        || cgcx.opts.target_triple.triple().contains("-darwin")
-        || cgcx.opts.target_triple.triple().contains("-tvos")
-        || cgcx.opts.target_triple.triple().contains("-watchos")
-        || cgcx.opts.target_triple.triple().contains("-visionos")
+    let triple = cgcx.opts.target_triple.triple();
+    triple.contains("-ios")
+        || triple.contains("-darwin")
+        || triple.contains("-tvos")
+        || triple.contains("-watchos")
+        || triple.contains("-visionos")
 }
 
 fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
