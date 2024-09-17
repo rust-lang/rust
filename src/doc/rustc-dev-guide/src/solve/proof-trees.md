@@ -1,25 +1,16 @@
 # Proof trees
 
-The trait solver can optionally emit a "proof tree", a tree representation of what
-happened while trying to prove a goal.
+While the trait solver itself only returns whether a goal holds and the necessary
+constraints, we sometimes also want to know what happened while trying to prove
+it. While the trait solver should generally be treated as a black box by the rest
+of the compiler, we cannot completely ignore its internals and provide "proof trees"
+as an interface for this. To use them you implement the [`ProofTreeVisitor`] trait,
+see its existing implementations for examples. The most notable uses are to compute
+the [intercrate ambiguity causes for coherence errors][intercrate-ambig],
+[improving trait solver errors][solver-errors], and
+[eagerly inferring closure signatures][closure-sig].
 
-The used datastructures for which are currently stored in
-[`rustc_middle::traits::solve::inspect`].
-
-## What are they used for
-
-There are 3 intended uses for proof trees. These uses are not yet implemented as
-the representation of proof trees itself is currently still unstable.
-
-They should be used by type system diagnostics to get information about
-why a goal failed or remained ambiguous. They should be used by rustdoc to get the
-auto-trait implementations for user-defined types, and they should be usable to
-vastly improve the debugging experience of the trait solver.
-
-For debugging you can use `-Zdump-solver-proof-tree` which dumps the proof tree
-for all goals proven by the trait solver in the current session.
-
-## Requirements and design constraints for proof trees
+## Computing proof trees
 
 The trait solver uses [Canonicalization] and uses completely separate `InferCtxt` for
 each nested goal. Both diagnostics and auto-traits in rustdoc need to correctly
@@ -29,22 +20,28 @@ canonicalize to `exists<T0> Vec<Vec<T0>>: Debug`, instantiate that goal as
 `exists<T0> Vec<T0>: Debug`, instantiate this as `Vec<?0>: Debug` which then results
 in a nested `?0: Debug` goal which is ambiguous.
 
-We need to be able to figure out that `?x` corresponds to `?0` in the nested queries.
+We compute proof trees by passing a [`ProofTreeBuilder`] to the search graph which is
+converting the evaluation steps of the trait solver into a tree. When storing any
+data using inference variables or placeholders, the data is canonicalized together
+with the list of all unconstrained inference variables created during this computation.
+This [`CanonicalState`] is then instantiated in the parent inference context while
+walking the proof tree, using the list of inference variables to connect all the
+canonicalized values created during this evaluation.
 
-The debug output should also accurately represent the state at each point in the solver.
-This means that even though a goal like `fn(?0): FnOnce(i32)` infers `?0` to `i32`, the
-proof tree should still store `fn(<some infer var>): FnOnce(i32)` instead of
-`fn(i32): FnOnce(i32)` until we actually infer `?0` to `i32`.
+## Debugging the solver
 
-## The current implementation and how to extract information from proof trees.
+We previously also tried to use proof trees to debug the solver implementation. This
+has different design requirements than analyzing it programmatically. The recommended
+way to debug the trait solver is by using `tracing`. The trait solver only uses the
+`debug` tracing level for its general 'shape' and `trace` for additional detail.
+`RUSTC_LOG=rustc_next_trait_solver=debug` therefore gives you a general outline
+and `RUSTC_LOG=rustc_next_trait_solver=trace` can then be used if more precise
+information is required.
 
-Proof trees will be quite involved as they should accurately represent everything the
-trait solver does, which includes fixpoint iterations and performance optimizations.
-
-We intend to provide a lossy user interface for all usecases.
-
-TODO: implement this user interface and explain how it can be used here.
-
-
-[`rustc_middle::traits::solve::inspect`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/traits/solve/inspect/index.html
+[`ProofTreeVisitor`]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_trait_selection/src/solve/inspect/analyse.rs#L403
+[`ProofTreeBuilder`]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_next_trait_solver/src/solve/inspect/build.rs#L40
+[`CanonicalState`]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_type_ir/src/solve/inspect.rs#L31-L47
+[intercrate-ambig]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_trait_selection/src/traits/coherence.rs#L742-L748
+[solver-errors]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_trait_selection/src/solve/fulfill.rs#L343-L356
+[closure-sig]: https://github.com/rust-lang/rust/blob/d6c8169c186ab16a3404cd0d0866674018e8a19e/compiler/rustc_hir_typeck/src/closure.rs#L333-L339
 [Canonicalization]: ./canonicalization.md
