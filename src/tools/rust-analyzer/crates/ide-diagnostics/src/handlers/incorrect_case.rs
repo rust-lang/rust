@@ -370,6 +370,23 @@ mod F {
     }
 
     #[test]
+    fn external_macro() {
+        check_diagnostics(
+            r#"
+//- /library.rs library crate:library
+#[macro_export]
+macro_rules! trigger_lint {
+    () => { let FOO: () };
+}
+//- /user.rs crate:user deps:library
+fn foo() {
+    library::trigger_lint!();
+}
+    "#,
+        );
+    }
+
+    #[test]
     fn complex_ignore() {
         check_diagnostics(
             r#"
