@@ -42,7 +42,7 @@ impl FileDescription for FileHandle {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         let mut bytes = vec![0; usize::try_from(len).unwrap()];
         let result = (&mut &self.file).read(&mut bytes);
-        ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest)
+        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
     }
 
     fn write<'tcx>(
@@ -83,7 +83,7 @@ impl FileDescription for FileHandle {
             res
         };
         let result = f();
-        ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest)
+        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
     }
 
     fn pwrite<'tcx>(

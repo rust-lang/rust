@@ -137,7 +137,7 @@ impl FileDescription for AnonSocket {
         // Always succeed on read size 0.
         if request_byte_size == 0 {
             let result = Ok(0);
-            return ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest);
+            return ecx.return_read_bytes_and_count(ptr, &bytes, result, dest);
         }
 
         let Some(readbuf) = &self.readbuf else {
@@ -151,7 +151,7 @@ impl FileDescription for AnonSocket {
                 // Socketpair with no peer and empty buffer.
                 // 0 bytes successfully read indicates end-of-file.
                 let result = Ok(0);
-                return ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest);
+                return ecx.return_read_bytes_and_count(ptr, &bytes, result, dest);
             } else {
                 if self.is_nonblock {
                     // Non-blocking socketpair with writer and empty buffer.
@@ -160,7 +160,7 @@ impl FileDescription for AnonSocket {
                     // POSIX.1-2001 allows either error to be returned for this case.
                     // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
                     let result = Err(Error::from(ErrorKind::WouldBlock));
-                    return ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest);
+                    return ecx.return_read_bytes_and_count(ptr, &bytes, result, dest);
                 } else {
                     // Blocking socketpair with writer and empty buffer.
                     // FIXME: blocking is currently not supported
@@ -193,7 +193,7 @@ impl FileDescription for AnonSocket {
         }
 
         let result = Ok(actual_read_size);
-        ecx.return_read_bytes_and_count(ptr, bytes.to_vec(), result, dest)
+        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
     }
 
     fn write<'tcx>(

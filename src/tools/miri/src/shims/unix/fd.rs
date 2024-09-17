@@ -26,7 +26,9 @@ pub trait FileDescription: std::fmt::Debug + Any {
     fn name(&self) -> &'static str;
 
     /// Reads as much as possible into the given buffer, and returns the number of bytes read.
-    /// `ptr` is the pointer to user supplied read buffer.
+    /// `ptr` is the pointer to the user supplied read buffer.
+    /// `len` indicates how many bytes the user requested.
+    /// `dest` is where the return value should be stored.
     fn read<'tcx>(
         &self,
         _self_ref: &FileDescriptionRef,
@@ -40,6 +42,8 @@ pub trait FileDescription: std::fmt::Debug + Any {
     }
 
     /// Writes as much as possible from the given buffer, and returns the number of bytes written.
+    /// `bytes` is the buffer of bytes supplied by the caller to be written.
+    /// `dest` is where the return value should be stored.
     fn write<'tcx>(
         &self,
         _self_ref: &FileDescriptionRef,
@@ -53,6 +57,9 @@ pub trait FileDescription: std::fmt::Debug + Any {
 
     /// Reads as much as possible into the given buffer from a given offset,
     /// and returns the number of bytes read.
+    /// `ptr` is the pointer to the user supplied read buffer.
+    /// `len` indicates how many bytes the user requested.
+    /// `dest` is where the return value should be stored.
     fn pread<'tcx>(
         &self,
         _communicate_allowed: bool,
@@ -67,6 +74,8 @@ pub trait FileDescription: std::fmt::Debug + Any {
 
     /// Writes as much as possible from the given buffer starting at a given offset,
     /// and returns the number of bytes written.
+    /// `bytes` is the buffer of bytes supplied by the caller to be written.
+    /// `dest` is where the return value should be stored.
     fn pwrite<'tcx>(
         &self,
         _communicate_allowed: bool,
@@ -143,7 +152,7 @@ impl FileDescription for io::Stdin {
             helpers::isolation_abort_error("`read` from stdin")?;
         }
         let result = Read::read(&mut { self }, &mut bytes);
-        ecx.return_read_bytes_and_count(ptr, bytes, result, dest)
+        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -641,12 +650,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    /// This function either writes to the user supplied buffer and to dest place, or sets the
-    /// last libc error and writes -1 to dest.
+    /// Helper to implement `FileDescription::read`:
+    /// `result` should be the return value of some underlying `read` call that used `bytes` as its output buffer.
+    /// The length of `bytes` must not exceed either the host's or the target's `isize`.
+    /// If `Result` indicates success, `bytes` is written to `buf` and the size is written to `dest`.
+    /// Otherwise, `-1` is written to `dest` and the last libc error is set appropriately.
     fn return_read_bytes_and_count(
         &mut self,
         buf: Pointer,
-        bytes: Vec<u8>,
+        bytes: &[u8],
         result: io::Result<usize>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
@@ -657,7 +669,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Crucially, if fewer than `bytes.len()` bytes were read, only write
                 // that much into the output buffer!
                 this.write_bytes_ptr(buf, bytes[..read_bytes].iter().copied())?;
-                // The actual read size is always lesser than `count` so this cannot fail.
+                // The actual read size is always less than what got originally requested so this cannot fail.
                 this.write_int(u64::try_from(read_bytes).unwrap(), dest)?;
                 return Ok(());
             }
@@ -669,7 +681,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    /// This function writes the number of written bytes to dest place, or sets the
+    /// This function writes the number of written bytes (given in `result`) to `dest`, or sets the
     /// last libc error and writes -1 to dest.
     fn return_written_byte_count_or_error(
         &mut self,
