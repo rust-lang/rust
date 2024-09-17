@@ -1,13 +1,13 @@
 //! Compute the binary representation of a type
 
-use std::{borrow::Cow, fmt};
+use std::fmt;
 
 use base_db::salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
-        Abi, FieldsShape, Float, Integer, LayoutCalculator, LayoutS, Primitive, ReprOptions,
-        Scalar, Size, StructKind, TargetDataLayout, WrappingRange,
+        Abi, FieldsShape, Float, Integer, LayoutCalculator, LayoutCalculatorError, LayoutS,
+        Primitive, ReprOptions, Scalar, Size, StructKind, TargetDataLayout, WrappingRange,
     },
     LocalFieldId, StructId,
 };
@@ -15,7 +15,6 @@ use la_arena::{Idx, RawIdx};
 use rustc_abi::AddressSpace;
 use rustc_index::{IndexSlice, IndexVec};
 
-use stdx::never;
 use triomphe::Arc;
 
 use crate::{
@@ -107,19 +106,24 @@ impl fmt::Display for LayoutError {
     }
 }
 
-struct LayoutCx<'a> {
-    target: &'a TargetDataLayout,
+impl<F> From<LayoutCalculatorError<F>> for LayoutError {
+    fn from(err: LayoutCalculatorError<F>) -> Self {
+        match err {
+            LayoutCalculatorError::UnexpectedUnsized(_) | LayoutCalculatorError::EmptyUnion => {
+                LayoutError::Unknown
+            }
+            LayoutCalculatorError::SizeOverflow => LayoutError::SizeOverflow,
+        }
+    }
 }
 
-impl<'a> LayoutCalculator for LayoutCx<'a> {
-    type TargetDataLayoutRef = &'a TargetDataLayout;
+struct LayoutCx<'a> {
+    calc: LayoutCalculator<&'a TargetDataLayout>,
+}
 
-    fn delayed_bug(&self, txt: impl Into<Cow<'static, str>>) {
-        never!("{}", txt.into());
-    }
-
-    fn current_data_layout(&self) -> &'a TargetDataLayout {
-        self.target
+impl<'a> LayoutCx<'a> {
+    fn new(target: &'a TargetDataLayout) -> Self {
+        Self { calc: LayoutCalculator::new(target) }
     }
 }
 
@@ -205,8 +209,8 @@ pub fn layout_of_ty_query(
     let Ok(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
-    let cx = LayoutCx { target: &target };
-    let dl = cx.current_data_layout();
+    let dl = &*target;
+    let cx = LayoutCx::new(dl);
     let ty = normalize(db, trait_env.clone(), ty);
     let result = match ty.kind(Interner) {
         TyKind::Adt(AdtId(def), subst) => {
@@ -281,7 +285,7 @@ pub fn layout_of_ty_query(
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<IndexVec<_, _>>();
-            cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
+            cx.calc.univariant(&fields, &ReprOptions::default(), kind)?
         }
         TyKind::Array(element, count) => {
             let count = try_const_usize(db, count).ok_or(LayoutError::HasErrorConst)? as u64;
@@ -367,12 +371,12 @@ pub fn layout_of_ty_query(
             };
 
             // Effectively a (ptr, meta) tuple.
-            cx.scalar_pair(data_ptr, metadata)
+            cx.calc.scalar_pair(data_ptr, metadata)
         }
-        TyKind::FnDef(_, _) => layout_of_unit(&cx, dl)?,
-        TyKind::Never => cx.layout_of_never_type(),
+        TyKind::FnDef(_, _) => layout_of_unit(&cx)?,
+        TyKind::Never => cx.calc.layout_of_never_type(),
         TyKind::Dyn(_) | TyKind::Foreign(_) => {
-            let mut unit = layout_of_unit(&cx, dl)?;
+            let mut unit = layout_of_unit(&cx)?;
             match &mut unit.abi {
                 Abi::Aggregate { sized } => *sized = false,
                 _ => return Err(LayoutError::Unknown),
@@ -414,8 +418,7 @@ pub fn layout_of_ty_query(
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<IndexVec<_, _>>();
-            cx.univariant(dl, &fields, &ReprOptions::default(), StructKind::AlwaysSized)
-                .ok_or(LayoutError::Unknown)?
+            cx.calc.univariant(&fields, &ReprOptions::default(), StructKind::AlwaysSized)?
         }
         TyKind::Coroutine(_, _) | TyKind::CoroutineWitness(_, _) => {
             return Err(LayoutError::NotImplemented)
@@ -447,14 +450,14 @@ pub fn layout_of_ty_recover(
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }
 
-fn layout_of_unit(cx: &LayoutCx<'_>, dl: &TargetDataLayout) -> Result<Layout, LayoutError> {
-    cx.univariant::<RustcFieldIdx, RustcEnumVariantIdx, &&Layout>(
-        dl,
-        IndexSlice::empty(),
-        &ReprOptions::default(),
-        StructKind::AlwaysSized,
-    )
-    .ok_or(LayoutError::Unknown)
+fn layout_of_unit(cx: &LayoutCx<'_>) -> Result<Layout, LayoutError> {
+    cx.calc
+        .univariant::<RustcFieldIdx, RustcEnumVariantIdx, &&Layout>(
+            IndexSlice::empty(),
+            &ReprOptions::default(),
+            StructKind::AlwaysSized,
+        )
+        .map_err(Into::into)
 }
 
 fn struct_tail_erasing_lifetimes(db: &dyn HirDatabase, pointee: Ty) -> Ty {

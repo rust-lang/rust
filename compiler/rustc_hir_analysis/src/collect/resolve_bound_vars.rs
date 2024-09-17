@@ -584,7 +584,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 | Res::SelfTyParam { trait_: def_id } => {
                     self.resolve_type_ref(def_id.expect_local(), param.hir_id);
                 }
-                Res::Err => {}
                 Res::SelfTyAlias { alias_to, .. } => {
                     self.tcx.dcx().emit_err(errors::PreciseCaptureSelfAlias {
                         span: param.ident.span,
@@ -593,11 +592,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     });
                 }
                 res => {
-                    self.tcx.dcx().emit_err(errors::BadPreciseCapture {
-                        span: param.ident.span,
-                        kind: "type or const",
-                        found: res.descr().to_string(),
-                    });
+                    self.tcx.dcx().span_delayed_bug(
+                        param.ident.span,
+                        format!("expected type or const param, found {res:?}"),
+                    );
                 }
             },
         }

@@ -331,7 +331,7 @@ fn fn_abi_of_fn_ptr<'tcx>(
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let (param_env, (sig, extra_args)) = query.into_parts();
 
-    let cx = LayoutCx { tcx, param_env };
+    let cx = LayoutCx::new(tcx, param_env);
     fn_abi_new_uncached(&cx, sig, extra_args, None, None, false)
 }
 
@@ -347,7 +347,7 @@ fn fn_abi_of_instance<'tcx>(
         instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty());
 
     fn_abi_new_uncached(
-        &LayoutCx { tcx, param_env },
+        &LayoutCx::new(tcx, param_env),
         sig,
         extra_args,
         caller_location,
@@ -358,7 +358,7 @@ fn fn_abi_of_instance<'tcx>(
 
 // Handle safe Rust thin and fat pointers.
 fn adjust_for_rust_scalar<'tcx>(
-    cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: LayoutCx<'tcx>,
     attrs: &mut ArgAttributes,
     scalar: Scalar,
     layout: TyAndLayout<'tcx>,
@@ -386,12 +386,14 @@ fn adjust_for_rust_scalar<'tcx>(
         attrs.set(ArgAttribute::NonNull);
     }
 
+    let tcx = cx.tcx();
+
     if let Some(pointee) = layout.pointee_info_at(&cx, offset) {
         let kind = if let Some(kind) = pointee.safe {
             Some(kind)
         } else if let Some(pointee) = drop_target_pointee {
             // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
-            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(cx.tcx, cx.param_env()) })
+            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(tcx, cx.param_env()) })
         } else {
             None
         };
@@ -415,12 +417,12 @@ fn adjust_for_rust_scalar<'tcx>(
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
             // `noalias` for it. This can be turned off using an unstable flag.
             // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
-            let noalias_for_box = cx.tcx.sess.opts.unstable_opts.box_noalias;
+            let noalias_for_box = tcx.sess.opts.unstable_opts.box_noalias;
 
             // LLVM prior to version 12 had known miscompiles in the presence of noalias attributes
             // (see #54878), so it was conditionally disabled, but we don't support earlier
             // versions at all anymore. We still support turning it off using -Zmutable-noalias.
-            let noalias_mut_ref = cx.tcx.sess.opts.unstable_opts.mutable_noalias;
+            let noalias_mut_ref = tcx.sess.opts.unstable_opts.mutable_noalias;
 
             // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
             // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on memory
@@ -448,16 +450,17 @@ fn adjust_for_rust_scalar<'tcx>(
 
 /// Ensure that the ABI makes basic sense.
 fn fn_abi_sanity_check<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     spec_abi: SpecAbi,
 ) {
     fn fn_arg_sanity_check<'tcx>(
-        cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+        cx: &LayoutCx<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         spec_abi: SpecAbi,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
     ) {
+        let tcx = cx.tcx();
         match &arg.mode {
             PassMode::Ignore => {}
             PassMode::Direct(_) => {
@@ -484,7 +487,7 @@ fn fn_abi_sanity_check<'tcx>(
                     // It needs to switch to something else before stabilization can happen.
                     // (See issue: https://github.com/rust-lang/rust/issues/117271)
                     assert!(
-                        matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64")
+                        matches!(&*tcx.sess.target.arch, "wasm32" | "wasm64")
                             || matches!(spec_abi, SpecAbi::PtxKernel | SpecAbi::Unadjusted),
                         "`PassMode::Direct` for aggregates only allowed for \"unadjusted\" and \"ptx-kernel\" functions and on wasm\n\
                           Problematic type: {:#?}",
@@ -516,7 +519,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // With metadata. Must be unsized and not on the stack.
                 assert!(arg.layout.is_unsized() && !on_stack);
                 // Also, must not be `extern` type.
-                let tail = cx.tcx.struct_tail_for_codegen(arg.layout.ty, cx.param_env());
+                let tail = tcx.struct_tail_for_codegen(arg.layout.ty, cx.param_env());
                 if matches!(tail.kind(), ty::Foreign(..)) {
                     // These types do not have metadata, so having `meta_attrs` is bogus.
                     // Conceptually, unsized arguments must be copied around, which requires dynamically
@@ -538,7 +541,7 @@ fn fn_abi_sanity_check<'tcx>(
 // arguments of this method, into a separate `struct`.
 #[tracing::instrument(level = "debug", skip(cx, caller_location, fn_def_id, force_thin_self_ptr))]
 fn fn_abi_new_uncached<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     sig: ty::PolyFnSig<'tcx>,
     extra_args: &[Ty<'tcx>],
     caller_location: Option<Ty<'tcx>>,
@@ -546,7 +549,8 @@ fn fn_abi_new_uncached<'tcx>(
     // FIXME(eddyb) replace this with something typed, like an `enum`.
     force_thin_self_ptr: bool,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
-    let sig = cx.tcx.normalize_erasing_late_bound_regions(cx.param_env, sig);
+    let tcx = cx.tcx();
+    let sig = tcx.normalize_erasing_late_bound_regions(cx.param_env, sig);
 
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
 
@@ -576,7 +580,7 @@ fn fn_abi_new_uncached<'tcx>(
     };
 
     let is_drop_in_place =
-        fn_def_id.is_some_and(|def_id| cx.tcx.is_lang_item(def_id, LangItem::DropInPlace));
+        fn_def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::DropInPlace));
 
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
@@ -588,8 +592,7 @@ fn fn_abi_new_uncached<'tcx>(
             _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
         });
 
-        let layout =
-            cx.layout_of(ty).map_err(|err| &*cx.tcx.arena.alloc(FnAbiError::Layout(*err)))?;
+        let layout = cx.layout_of(ty).map_err(|err| &*tcx.arena.alloc(FnAbiError::Layout(*err)))?;
         let layout = if force_thin_self_ptr && arg_idx == Some(0) {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
@@ -638,12 +641,12 @@ fn fn_abi_new_uncached<'tcx>(
     fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id)?;
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     fn_abi_sanity_check(cx, &fn_abi, sig.abi);
-    Ok(cx.tcx.arena.alloc(fn_abi))
+    Ok(tcx.arena.alloc(fn_abi))
 }
 
 #[tracing::instrument(level = "trace", skip(cx))]
 fn fn_abi_adjust_for_abi<'tcx>(
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: SpecAbi,
     fn_def_id: Option<DefId>,
@@ -670,17 +673,18 @@ fn fn_abi_adjust_for_abi<'tcx>(
         return Ok(());
     }
 
+    let tcx = cx.tcx();
+
     if abi == SpecAbi::Rust || abi == SpecAbi::RustCall || abi == SpecAbi::RustIntrinsic {
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
         // as appropriate.
-        let deduced_param_attrs = if cx.tcx.sess.opts.optimize != OptLevel::No
-            && cx.tcx.sess.opts.incremental.is_none()
-        {
-            fn_def_id.map(|fn_def_id| cx.tcx.deduced_param_attrs(fn_def_id)).unwrap_or_default()
-        } else {
-            &[]
-        };
+        let deduced_param_attrs =
+            if tcx.sess.opts.optimize != OptLevel::No && tcx.sess.opts.incremental.is_none() {
+                fn_def_id.map(|fn_def_id| tcx.deduced_param_attrs(fn_def_id)).unwrap_or_default()
+            } else {
+                &[]
+            };
 
         let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>, arg_idx: Option<usize>| {
             if arg.is_ignore() {
@@ -689,7 +693,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
             // Avoid returning floats in x87 registers on x86 as loading and storing from x87
             // registers will quiet signalling NaNs.
-            if cx.tcx.sess.target.arch == "x86"
+            if tcx.sess.target.arch == "x86"
                 && arg_idx.is_none()
                 // Intrinsics themselves are not actual "real" functions, so theres no need to
                 // change their ABIs.
@@ -744,7 +748,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // that's how we connect up to LLVM and it's unstable
                 // anyway, we control all calls to it in libstd.
                 Abi::Vector { .. }
-                    if abi != SpecAbi::RustIntrinsic && cx.tcx.sess.target.simd_types_indirect =>
+                    if abi != SpecAbi::RustIntrinsic && tcx.sess.target.simd_types_indirect =>
                 {
                     arg.make_indirect();
                     return;
@@ -793,7 +797,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
     } else {
         fn_abi
             .adjust_for_foreign_abi(cx, abi)
-            .map_err(|err| &*cx.tcx.arena.alloc(FnAbiError::AdjustForForeignAbi(err)))?;
+            .map_err(|err| &*tcx.arena.alloc(FnAbiError::AdjustForForeignAbi(err)))?;
     }
 
     Ok(())

@@ -1,4 +1,3 @@
-//@ known-bug: rust-lang/rust#129262
 //@ compile-flags: -Zvalidate-mir --edition=2018 --crate-type=lib -Copt-level=3
 
 #![feature(async_closure)]
@@ -11,6 +10,7 @@ fn needs_fn_mut<T>(mut x: impl FnMut() -> T) {
 
 fn hello(x: Ty) {
     needs_fn_mut(async || {
+        //~^ ERROR cannot move out of `x`
         x.hello();
     });
 }

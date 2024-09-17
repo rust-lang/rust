@@ -1013,6 +1013,14 @@ macro_rules! tool_doc {
     }
 }
 
+// NOTE: make sure to register these in `Builder::get_step_description`.
+tool_doc!(
+    BuildHelper,
+    "src/tools/build_helper",
+    rustc_tool = false,
+    is_library = true,
+    crates = ["build_helper"]
+);
 tool_doc!(Rustdoc, "src/tools/rustdoc", crates = ["rustdoc", "rustdoc-json-types"]);
 tool_doc!(Rustfmt, "src/tools/rustfmt", crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]);
 tool_doc!(Clippy, "src/tools/clippy", crates = ["clippy_config", "clippy_utils"]);

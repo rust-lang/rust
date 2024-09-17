@@ -76,3 +76,8 @@ impl S {
 
 #[rustc_layout(debug)]
 type Impossible = (str, str); //~ ERROR: cannot be known at compilation time
+
+// Test that computing the layout of an empty union doesn't ICE.
+#[rustc_layout(debug)]
+union EmptyUnion {} //~ ERROR: has an unknown layout
+//~^ ERROR: unions cannot have zero fields

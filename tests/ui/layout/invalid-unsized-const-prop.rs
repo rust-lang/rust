@@ -1,5 +1,9 @@
-//@ known-bug: #127737
+// issue: #127737
+//@ check-pass
 //@ compile-flags: -Zmir-opt-level=5 --crate-type lib
+
+//! This test is very similar to `invalid-unsized-const-eval.rs`, but also requires
+//! checking for unsized types in the last field of each enum variant.
 
 pub trait TestTrait {
     type MyType;

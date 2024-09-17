@@ -255,7 +255,9 @@ impl<'tcx> Generics {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Lifetime => param,
-            _ => bug!("expected lifetime parameter, but found another generic parameter"),
+            _ => {
+                bug!("expected lifetime parameter, but found another generic parameter: {param:#?}")
+            }
         }
     }
 
@@ -264,7 +266,7 @@ impl<'tcx> Generics {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Type { .. } => param,
-            _ => bug!("expected type parameter, but found another generic parameter"),
+            _ => bug!("expected type parameter, but found another generic parameter: {param:#?}"),
         }
     }
 
@@ -273,7 +275,7 @@ impl<'tcx> Generics {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Const { .. } => param,
-            _ => bug!("expected const parameter, but found another generic parameter"),
+            _ => bug!("expected const parameter, but found another generic parameter: {param:#?}"),
         }
     }
 

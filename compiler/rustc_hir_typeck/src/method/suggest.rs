@@ -62,14 +62,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // It might seem that we can use `predicate_must_hold_modulo_regions`,
                 // but since a Dummy binder is used to fill in the FnOnce trait's arguments,
                 // type resolution always gives a "maybe" here.
-                if self.autoderef(span, ty).any(|(ty, _)| {
+                if self.autoderef(span, ty).silence_errors().any(|(ty, _)| {
                     info!("check deref {:?} error", ty);
                     matches!(ty.kind(), ty::Error(_) | ty::Infer(_))
                 }) {
                     return false;
                 }
 
-                self.autoderef(span, ty).any(|(ty, _)| {
+                self.autoderef(span, ty).silence_errors().any(|(ty, _)| {
                     info!("check deref {:?} impl FnOnce", ty);
                     self.probe(|_| {
                         let trait_ref =
@@ -90,7 +90,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn is_slice_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        self.autoderef(span, ty).any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
+        self.autoderef(span, ty)
+            .silence_errors()
+            .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
     }
 
     fn impl_into_iterator_should_be_iterator(
@@ -672,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut ty_str_reported = ty_str.clone();
         if let ty::Adt(_, generics) = rcvr_ty.kind() {
             if generics.len() > 0 {
-                let mut autoderef = self.autoderef(span, rcvr_ty);
+                let mut autoderef = self.autoderef(span, rcvr_ty).silence_errors();
                 let candidate_found = autoderef.any(|(ty, _)| {
                     if let ty::Adt(adt_def, _) = ty.kind() {
                         self.tcx
@@ -2237,6 +2239,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let impl_ty = self.tcx.type_of(*impl_did).instantiate_identity();
             let target_ty = self
                 .autoderef(sugg_span, rcvr_ty)
+                .silence_errors()
                 .find(|(rcvr_ty, _)| {
                     DeepRejectCtxt::relate_rigid_infer(self.tcx).types_may_unify(*rcvr_ty, impl_ty)
                 })
@@ -2352,17 +2355,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
     ) -> bool {
         let tcx = self.tcx;
-        let field_receiver = self.autoderef(span, rcvr_ty).find_map(|(ty, _)| match ty.kind() {
-            ty::Adt(def, args) if !def.is_enum() => {
-                let variant = &def.non_enum_variant();
-                tcx.find_field_index(item_name, variant).map(|index| {
-                    let field = &variant.fields[index];
-                    let field_ty = field.ty(tcx, args);
-                    (field, field_ty)
-                })
-            }
-            _ => None,
-        });
+        let field_receiver =
+            self.autoderef(span, rcvr_ty).silence_errors().find_map(|(ty, _)| match ty.kind() {
+                ty::Adt(def, args) if !def.is_enum() => {
+                    let variant = &def.non_enum_variant();
+                    tcx.find_field_index(item_name, variant).map(|index| {
+                        let field = &variant.fields[index];
+                        let field_ty = field.ty(tcx, args);
+                        (field, field_ty)
+                    })
+                }
+                _ => None,
+            });
         if let Some((field, field_ty)) = field_receiver {
             let scope = tcx.parent_module_from_def_id(self.body_id);
             let is_accessible = field.vis.is_accessible_from(scope, tcx);
@@ -2675,9 +2679,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if let SelfSource::MethodCall(expr) = source {
             let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
-            for (fields, args) in
-                self.get_field_candidates_considering_privacy(span, actual, mod_id, expr.hir_id)
-            {
+            for (fields, args) in self.get_field_candidates_considering_privacy_for_diag(
+                span,
+                actual,
+                mod_id,
+                expr.hir_id,
+            ) {
                 let call_expr = self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id));
 
                 let lang_items = self.tcx.lang_items();
@@ -2693,7 +2700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut candidate_fields: Vec<_> = fields
                     .into_iter()
                     .filter_map(|candidate_field| {
-                        self.check_for_nested_field_satisfying(
+                        self.check_for_nested_field_satisfying_condition_for_diag(
                             span,
                             &|_, field_ty| {
                                 self.lookup_probe_for_diagnostic(
@@ -3195,7 +3202,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let SelfSource::QPath(ty) = self_source else {
             return;
         };
-        for (deref_ty, _) in self.autoderef(DUMMY_SP, rcvr_ty).skip(1) {
+        for (deref_ty, _) in self.autoderef(DUMMY_SP, rcvr_ty).silence_errors().skip(1) {
             if let Ok(pick) = self.probe_for_name(
                 Mode::Path,
                 item_name,
@@ -4221,7 +4228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return is_local(rcvr_ty);
         }
 
-        self.autoderef(span, rcvr_ty).any(|(ty, _)| is_local(ty))
+        self.autoderef(span, rcvr_ty).silence_errors().any(|(ty, _)| is_local(ty))
     }
 }
 

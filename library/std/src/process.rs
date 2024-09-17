@@ -1910,10 +1910,14 @@ impl crate::error::Error for ExitStatusError {}
 /// to its parent under normal termination.
 ///
 /// `ExitCode` is intended to be consumed only by the standard library (via
-/// [`Termination::report()`]), and intentionally does not provide accessors like
-/// `PartialEq`, `Eq`, or `Hash`. Instead the standard library provides the
-/// canonical `SUCCESS` and `FAILURE` exit codes as well as `From<u8> for
-/// ExitCode` for constructing other arbitrary exit codes.
+/// [`Termination::report()`]). For forwards compatibility with potentially
+/// unusual targets, this type currently does not provide `Eq`, `Hash`, or
+/// access to the raw value. This type does provide `PartialEq` for
+/// comparison, but note that there may potentially be multiple failure
+/// codes, some of which will _not_ compare equal to `ExitCode::FAILURE`.
+/// The standard library provides the canonical `SUCCESS` and `FAILURE`
+/// exit codes as well as `From<u8> for ExitCode` for constructing other
+/// arbitrary exit codes.
 ///
 /// # Portability
 ///
@@ -1952,7 +1956,7 @@ impl crate::error::Error for ExitStatusError {}
 ///     ExitCode::SUCCESS
 /// }
 /// ```
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 pub struct ExitCode(imp::ExitCode);
 

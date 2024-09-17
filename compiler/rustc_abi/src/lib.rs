@@ -26,7 +26,7 @@ mod layout;
 #[cfg(test)]
 mod tests;
 
-pub use layout::LayoutCalculator;
+pub use layout::{LayoutCalculator, LayoutCalculatorError};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
@@ -390,6 +390,14 @@ impl HasDataLayout for TargetDataLayout {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self
+    }
+}
+
+// used by rust-analyzer
+impl HasDataLayout for &TargetDataLayout {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        (**self).data_layout()
     }
 }
 

@@ -1,3 +1,9 @@
+error: unions cannot have zero fields
+  --> $DIR/debug.rs:82:1
+   |
+LL | union EmptyUnion {}
+   | ^^^^^^^^^^^^^^^^^^^
+
 error: layout_of(E) = Layout {
            size: Size(12 bytes),
            align: AbiAndPrefAlign {
@@ -566,12 +572,18 @@ LL | type Impossible = (str, str);
    = help: the trait `Sized` is not implemented for `str`
    = note: only the last element of a tuple may have a dynamically sized type
 
+error: the type `EmptyUnion` has an unknown layout
+  --> $DIR/debug.rs:82:1
+   |
+LL | union EmptyUnion {}
+   | ^^^^^^^^^^^^^^^^
+
 error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
   --> $DIR/debug.rs:74:5
    |
 LL |     const C: () = ();
    |     ^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error: aborting due to 19 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

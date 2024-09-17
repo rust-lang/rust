@@ -1,5 +1,7 @@
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement};
+use rustc_middle::ty::layout::{
+    HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement,
+};
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
 
@@ -30,7 +32,7 @@ pub fn check_validity_requirement<'tcx>(
         return Ok(!layout.abi.is_uninhabited());
     }
 
-    let layout_cx = LayoutCx { tcx, param_env: param_env_and_ty.param_env };
+    let layout_cx = LayoutCx::new(tcx, param_env_and_ty.param_env);
     if kind == ValidityRequirement::Uninit || tcx.sess.opts.unstable_opts.strict_init_checks {
         check_validity_requirement_strict(layout, &layout_cx, kind)
     } else {
@@ -42,12 +44,12 @@ pub fn check_validity_requirement<'tcx>(
 /// for details.
 fn check_validity_requirement_strict<'tcx>(
     ty: TyAndLayout<'tcx>,
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let machine = CompileTimeMachine::new(CanAccessMutGlobal::No, CheckAlignment::Error);
 
-    let mut cx = InterpCx::new(cx.tcx, rustc_span::DUMMY_SP, cx.param_env, machine);
+    let mut cx = InterpCx::new(cx.tcx(), rustc_span::DUMMY_SP, cx.param_env, machine);
 
     let allocated = cx
         .allocate(ty, MemoryKind::Machine(crate::const_eval::MemoryKind::Heap))
@@ -80,7 +82,7 @@ fn check_validity_requirement_strict<'tcx>(
 /// function for details.
 fn check_validity_requirement_lax<'tcx>(
     this: TyAndLayout<'tcx>,
-    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    cx: &LayoutCx<'tcx>,
     init_kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let scalar_allows_raw_init = move |s: Scalar| -> bool {
