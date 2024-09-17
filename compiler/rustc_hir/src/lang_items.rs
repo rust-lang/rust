@@ -45,7 +45,16 @@ impl LanguageItems {
 
     pub fn set(&mut self, item: LangItem, def_id: DefId) {
         self.items[item as usize] = Some(def_id);
-        self.reverse_items.insert(def_id, item);
+        let preexisting = self.reverse_items.insert(def_id, item);
+
+        // This needs to be a bijection.
+        if let Some(preexisting) = preexisting {
+            panic!(
+                "For the bijection of LangItem <=> DefId to work,\
+                one item DefId may only be assigned one LangItem. \
+                Separate the LangItem definitions for {item:?} and {preexisting:?}."
+            );
+        }
     }
 
     pub fn from_def_id(&self, def_id: DefId) -> Option<LangItem> {
