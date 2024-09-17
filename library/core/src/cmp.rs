@@ -25,8 +25,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-mod bytewise;
-pub(crate) use bytewise::BytewiseEq;
+mod spec;
+pub(crate) use spec::{AlwaysApplicableOrd, BytewiseEq, UnsignedBytewiseOrd};
 
 use self::Ordering::*;
 
@@ -817,7 +817,9 @@ impl<T: Clone> Clone for Reverse<T> {
 #[doc(alias = ">=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Ord"]
-pub trait Ord: Eq + PartialOrd<Self> {
+pub trait Ord<#[unstable(feature = "generic_ord", issue = "none")] Rhs: ?Sized = Self>:
+    Eq + PartialOrd<Rhs>
+{
     /// This method returns an [`Ordering`] between `self` and `other`.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching the expression
@@ -835,7 +837,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "ord_cmp_method"]
-    fn cmp(&self, other: &Self) -> Ordering;
+    fn cmp(&self, other: &Rhs) -> Ordering;
 
     /// Compares and returns the maximum of two values.
     ///
@@ -851,11 +853,12 @@ pub trait Ord: Eq + PartialOrd<Self> {
     #[inline]
     #[must_use]
     #[rustc_diagnostic_item = "cmp_ord_max"]
-    fn max(self, other: Self) -> Self
+    fn max(self, other: Rhs) -> Self
     where
         Self: Sized,
+        Rhs: Sized + Into<Self>,
     {
-        max_by(self, other, Ord::cmp)
+        if self > other { self } else { other.into() }
     }
 
     /// Compares and returns the minimum of two values.
@@ -872,11 +875,12 @@ pub trait Ord: Eq + PartialOrd<Self> {
     #[inline]
     #[must_use]
     #[rustc_diagnostic_item = "cmp_ord_min"]
-    fn min(self, other: Self) -> Self
+    fn min(self, other: Rhs) -> Self
     where
         Self: Sized,
+        Rhs: Sized + Into<Self>,
     {
-        min_by(self, other, Ord::cmp)
+        if self <= other { self } else { other.into() }
     }
 
     /// Restrict a value to a certain interval.
@@ -898,16 +902,16 @@ pub trait Ord: Eq + PartialOrd<Self> {
     #[must_use]
     #[inline]
     #[stable(feature = "clamp", since = "1.50.0")]
-    fn clamp(self, min: Self, max: Self) -> Self
+    fn clamp(self, min: Rhs, max: Rhs) -> Self
     where
         Self: Sized,
-        Self: PartialOrd,
+        Rhs: Sized + PartialOrd + Into<Self>,
     {
         assert!(min <= max);
         if self < min {
-            min
+            min.into()
         } else if self > max {
-            max
+            max.into()
         } else {
             self
         }
@@ -1692,12 +1696,12 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized> Ord for &A
+    impl<A: ?Sized, B: ?Sized> Ord<&B> for &A
     where
-        A: Ord,
+        A: Ord<B>,
     {
         #[inline]
-        fn cmp(&self, other: &Self) -> Ordering {
+        fn cmp(&self, other: &&B) -> Ordering {
             Ord::cmp(*self, *other)
         }
     }
@@ -1747,12 +1751,12 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized> Ord for &mut A
+    impl<A: ?Sized, B: ?Sized> Ord<&mut B> for &mut A
     where
-        A: Ord,
+        A: Ord<B>,
     {
         #[inline]
-        fn cmp(&self, other: &Self) -> Ordering {
+        fn cmp(&self, other: &&mut B) -> Ordering {
             Ord::cmp(*self, *other)
         }
     }

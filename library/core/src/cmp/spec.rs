@@ -1,3 +1,4 @@
+use crate::ascii;
 use crate::num::NonZero;
 
 /// Types where `==` & `!=` are equivalent to comparing their underlying bytes.
@@ -80,3 +81,40 @@ macro_rules! is_bytewise_comparable_array_length {
 //    error: specializing impl repeats parameter `N`
 // so just do it for a couple of plausibly-common ones.
 is_bytewise_comparable_array_length!(0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64);
+
+/// Marks that a type should be treated as an unsigned byte for comparisons.
+///
+/// # Safety
+/// * The type must be readable as an `u8`, meaning it has to have the same
+///   layout as `u8` and always be initialized.
+/// * For every `x` and `y` of this type, `Ord(x, y)` must return the same
+///   value as `Ord::cmp(transmute::<_, u8>(x), transmute::<_, u8>(y))`.
+#[rustc_specialization_trait]
+pub(crate) unsafe trait UnsignedBytewiseOrd<Rhs = Self>: Ord<Rhs> + Sized {}
+
+unsafe impl UnsignedBytewiseOrd for bool {}
+unsafe impl UnsignedBytewiseOrd for u8 {}
+unsafe impl UnsignedBytewiseOrd for NonZero<u8> {}
+unsafe impl UnsignedBytewiseOrd for Option<NonZero<u8>> {}
+unsafe impl UnsignedBytewiseOrd for ascii::Char {}
+
+/// Marks that a type's [`Ord`] impl can always be used instead of its [`PartialOrd`] impl,
+/// so that we can specialize slice `Ord`.
+#[rustc_specialization_trait]
+pub(crate) trait AlwaysApplicableOrd<Rhs: ?Sized = Self>: Ord<Rhs> {}
+
+macro_rules! always_applicable_ord {
+    ($($t:ty,)*) => {
+        $(impl AlwaysApplicableOrd for $t {})*
+    }
+}
+
+always_applicable_ord! {
+    u8, u16, u32, u64, u128, usize,
+    i8, i16, i32, i64, i128, isize,
+    bool, char,
+}
+
+// to ensure soundness, these must have differing types
+impl<T: ?Sized, U: ?Sized> AlwaysApplicableOrd<&U> for &T where T: AlwaysApplicableOrd<U> {}
+impl<T: ?Sized, U: ?Sized> AlwaysApplicableOrd<&mut U> for &mut T where T: AlwaysApplicableOrd<U> {}
