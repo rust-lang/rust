@@ -332,6 +332,11 @@ impl CheckCfg {
         // Note that symbols inserted conditionally in `default_configuration`
         // are inserted unconditionally here.
         //
+        // One exception is the `test` cfg which is consider to be a "user-space"
+        // cfg, despite being also set by in `default_configuration` above.
+        // It allows the build system to "deny" using the config by not marking it
+        // as expected (e.g. `lib.test = false` for Cargo).
+        //
         // When adding a new config here you should also update
         // `tests/ui/check-cfg/well-known-values.rs` (in order to test the
         // expected values of the new config) and bless the all directory.
@@ -452,8 +457,6 @@ impl CheckCfg {
         }
 
         ins!(sym::target_thread_local, no_values);
-
-        ins!(sym::test, no_values);
 
         ins!(sym::ub_checks, no_values);
 
