@@ -290,6 +290,7 @@ provide! { tcx, def_id, other, cdata,
     fn_arg_names => { table }
     coroutine_kind => { table_direct }
     coroutine_for_closure => { table }
+    coroutine_by_move_body_def_id => { table }
     eval_static_initializer => {
         Ok(cdata
             .root
