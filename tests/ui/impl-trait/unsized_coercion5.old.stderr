@@ -1,16 +1,5 @@
-error[E0308]: mismatched types
-  --> $DIR/unsized_coercion5.rs:16:32
-   |
-LL |         let y: Box<dyn Send> = x as Box<dyn Trait + Send>;
-   |                -------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait `Send`, found trait `Trait + Send`
-   |                |
-   |                expected due to this
-   |
-   = note: expected struct `Box<dyn Send>`
-              found struct `Box<dyn Trait + Send>`
-
 error[E0277]: the size for values of type `impl Trait + ?Sized` cannot be known at compilation time
-  --> $DIR/unsized_coercion5.rs:16:32
+  --> $DIR/unsized_coercion5.rs:17:32
    |
 LL |         let y: Box<dyn Send> = x as Box<dyn Trait + Send>;
    |                                ^ doesn't have a size known at compile-time
@@ -18,7 +7,6 @@ LL |         let y: Box<dyn Send> = x as Box<dyn Trait + Send>;
    = help: the trait `Sized` is not implemented for `impl Trait + ?Sized`
    = note: required for the cast from `Box<impl Trait + ?Sized>` to `Box<dyn Trait + Send>`
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0277, E0308.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.
