@@ -1,7 +1,11 @@
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutFileName, OutputType};
 use rustc_session::output::filename_for_metadata;
@@ -92,9 +96,35 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
             }
         };
         if tcx.sess.opts.json_artifact_notifications {
-            let krate = tcx.hir_crate(());
-            let hash = krate.api_hash.to_string();
-            tcx.dcx().emit_artifact_notification(out_filename.as_path(), "metadata", Some(&hash));
+            let hash: Fingerprint = {
+                let symbols = tcx
+                    .exported_symbols(LOCAL_CRATE)
+                    .iter()
+                    .filter_map(|&(exported_symbol, k)| {
+                        if !matches!(exported_symbol, ExportedSymbol::NoDefId(_)) {
+                            Some((
+                                exported_symbol,
+                                k,
+                                &exported_symbol.mir_body_for_local_instance(tcx).basic_blocks,
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                tcx.with_stable_hashing_context(|mut hcx| {
+                    use rustc_data_structures::stable_hasher::HashStable;
+                    let mut stable_hasher = StableHasher::new();
+                    symbols.hash_stable(&mut hcx, &mut stable_hasher);
+                    stable_hasher.finish()
+                })
+            };
+            tcx.dcx().emit_artifact_notification(
+                out_filename.as_path(),
+                "metadata",
+                Some(&hash.to_string()),
+            );
         }
         (filename, None)
     } else {

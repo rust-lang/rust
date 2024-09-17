@@ -421,30 +421,6 @@ fn index_crate<'a>(
 
 /// Compute the hash for the HIR of the full crate.
 /// This hash will then be part of the crate_hash which is stored in the metadata.
-fn compute_public_hir_hash(
-    tcx: TyCtxt<'_>,
-    owners: &IndexSlice<LocalDefId, hir::MaybeOwner<'_>>,
-) -> Fingerprint {
-    let mut hir_body_nodes: Vec<_> = owners
-        .iter_enumerated()
-        .filter_map(|(def_id, info)| {
-            let info = info.as_owner()?;
-            tcx.visibility(def_id).is_public().then_some(())?;
-            let def_path_hash = tcx.hir().def_path_hash(def_id);
-            Some((def_path_hash, info))
-        })
-        .collect();
-    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
-
-    tcx.with_stable_hashing_context(|mut hcx| {
-        let mut stable_hasher = StableHasher::new();
-        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
-        stable_hasher.finish()
-    })
-}
-
-/// Compute the hash for the HIR of the full crate.
-/// This hash will then be part of the crate_hash which is stored in the metadata.
 fn compute_hir_hash(
     tcx: TyCtxt<'_>,
     owners: &IndexSlice<LocalDefId, hir::MaybeOwner<'_>>,
@@ -498,12 +474,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =
         if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
-    let api_hash = if tcx.needs_crate_hash() {
-        compute_public_hir_hash(tcx, &owners)
-    } else {
-        Fingerprint::ZERO
-    };
-    hir::Crate { owners, opt_hir_hash, api_hash }
+    hir::Crate { owners, opt_hir_hash }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

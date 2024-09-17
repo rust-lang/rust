@@ -1058,7 +1058,6 @@ pub struct Crate<'hir> {
     pub owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
     // Only present when incr. comp. is enabled.
     pub opt_hir_hash: Option<Fingerprint>,
-    pub api_hash: Fingerprint,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]

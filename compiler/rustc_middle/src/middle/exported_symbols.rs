@@ -1,6 +1,7 @@
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
 
+use crate::mir::Body;
 use crate::ty::{self, GenericArgsRef, Ty, TyCtxt};
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
@@ -68,6 +69,26 @@ impl<'tcx> ExportedSymbol<'tcx> {
                 args: ty::GenericArgs::empty(),
             }),
             ExportedSymbol::NoDefId(symbol_name) => symbol_name,
+        }
+    }
+    pub fn mir_body_for_local_instance(&self, tcx: TyCtxt<'tcx>) -> &'tcx Body<'tcx> {
+        match *self {
+            ExportedSymbol::NonGeneric(def_id) => {
+                tcx.instance_mir(ty::Instance::mono(tcx, def_id).def)
+            }
+            ExportedSymbol::Generic(def_id, args) => {
+                tcx.instance_mir(ty::Instance::new(def_id, args).def)
+            }
+            ExportedSymbol::DropGlue(ty) => {
+                tcx.instance_mir(ty::Instance::resolve_drop_in_place(tcx, ty).def)
+            }
+            ExportedSymbol::AsyncDropGlueCtorShim(ty) => {
+                tcx.instance_mir(ty::Instance::resolve_async_drop_in_place(tcx, ty).def)
+            }
+            ExportedSymbol::ThreadLocalShim(def_id) => {
+                tcx.instance_mir(ty::InstanceKind::ThreadLocalShim(def_id))
+            }
+            ExportedSymbol::NoDefId(_) => panic!("Cannot find "),
         }
     }
 }
