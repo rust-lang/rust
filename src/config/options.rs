@@ -255,12 +255,12 @@ impl WidthHeuristics {
     // Using this WidthHeuristics means we ignore heuristics.
     pub fn null() -> WidthHeuristics {
         WidthHeuristics {
-            fn_call_width: usize::max_value(),
-            attr_fn_like_width: usize::max_value(),
+            fn_call_width: usize::MAX,
+            attr_fn_like_width: usize::MAX,
             struct_lit_width: 0,
             struct_variant_width: 0,
-            array_width: usize::max_value(),
-            chain_width: usize::max_value(),
+            array_width: usize::MAX,
+            chain_width: usize::MAX,
             single_line_if_else_max_width: 0,
             single_line_let_else_max_width: 0,
         }

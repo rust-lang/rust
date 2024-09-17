@@ -1163,9 +1163,9 @@ pub(crate) fn convert_try_mac(
 
 pub(crate) fn macro_style(mac: &ast::MacCall, context: &RewriteContext<'_>) -> Delimiter {
     let snippet = context.snippet(mac.span());
-    let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::max_value());
-    let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::max_value());
-    let brace_pos = snippet.find_uncommented("{").unwrap_or(usize::max_value());
+    let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::MAX);
+    let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::MAX);
+    let brace_pos = snippet.find_uncommented("{").unwrap_or(usize::MAX);
 
     if paren_pos < bracket_pos && paren_pos < brace_pos {
         Delimiter::Parenthesis

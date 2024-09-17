@@ -1049,10 +1049,10 @@ make_backup = false
                 max_width = 100
             "#;
             let config = Config::from_toml(toml, Path::new("./rustfmt.toml")).unwrap();
-            assert_eq!(config.array_width(), usize::max_value());
-            assert_eq!(config.attr_fn_like_width(), usize::max_value());
-            assert_eq!(config.chain_width(), usize::max_value());
-            assert_eq!(config.fn_call_width(), usize::max_value());
+            assert_eq!(config.array_width(), usize::MAX);
+            assert_eq!(config.attr_fn_like_width(), usize::MAX);
+            assert_eq!(config.chain_width(), usize::MAX);
+            assert_eq!(config.fn_call_width(), usize::MAX);
             assert_eq!(config.single_line_if_else_max_width(), 0);
             assert_eq!(config.struct_lit_width(), 0);
             assert_eq!(config.struct_variant_width(), 0);

@@ -84,7 +84,7 @@ pub(crate) fn rewrite_string<'a>(
         stripped_str
             .len()
             .checked_next_power_of_two()
-            .unwrap_or(usize::max_value()),
+            .unwrap_or(usize::MAX),
     );
     result.push_str(fmt.opener);
 
