@@ -15,6 +15,7 @@ mod aesni;
 mod avx;
 mod avx2;
 mod bmi;
+mod gfni;
 mod sha;
 mod sse;
 mod sse2;
@@ -103,6 +104,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             name if name.starts_with("bmi.") => {
                 return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            // The GFNI extension does not get its own namespace.
+            // Check for instruction names instead.
+            name if name.starts_with("vgf2p8affine") || name.starts_with("vgf2p8mulb") => {
+                return gfni::EvalContextExt::emulate_x86_gfni_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
