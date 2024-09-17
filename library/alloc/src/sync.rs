@@ -769,7 +769,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// [`upgrade`]: Weak::upgrade
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "arc_new_cyclic", since = "1.60.0")]
+    #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_cyclic_in<F>(data_fn: F, alloc: A) -> Arc<T, A>
     where
         F: FnOnce(&Weak<T, A>) -> T,
