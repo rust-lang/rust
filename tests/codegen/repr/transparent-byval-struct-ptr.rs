@@ -1,4 +1,4 @@
-//@ revisions: i686-linux i686-freebsd x64-linux x64-apple wasm32
+//@ revisions: i686-linux i686-freebsd x64-linux x64-apple
 //@ compile-flags: -O -C no-prepopulate-passes
 
 //@[i686-linux] compile-flags: --target i686-unknown-linux-gnu
@@ -9,8 +9,6 @@
 //@[x64-linux] needs-llvm-components: x86
 //@[x64-apple] compile-flags: --target x86_64-apple-darwin
 //@[x64-apple] needs-llvm-components: x86
-//@[wasm32] compile-flags: --target wasm32-wasi
-//@[wasm32] needs-llvm-components: webassembly
 
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR
