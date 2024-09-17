@@ -310,16 +310,10 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::SafeStack;
   case FnRetThunkExtern:
     return Attribute::FnRetThunkExtern;
-#if LLVM_VERSION_GE(18, 0)
   case Writable:
     return Attribute::Writable;
   case DeadOnUnwind:
     return Attribute::DeadOnUnwind;
-#else
-  case Writable:
-  case DeadOnUnwind:
-    report_fatal_error("Not supported on this LLVM version");
-#endif
   }
   report_fatal_error("bad AttributeKind");
 }
@@ -1061,11 +1055,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
   return wrap(Builder->createStaticMemberType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), fromRust(Flags),
-      unwrap<llvm::ConstantInt>(val),
-#if LLVM_VERSION_GE(18, 0)
-      llvm::dwarf::DW_TAG_member,
-#endif
-      AlignInBits));
+      unwrap<llvm::ConstantInt>(val), llvm::dwarf::DW_TAG_member, AlignInBits));
 }
 
 extern "C" LLVMMetadataRef
@@ -1182,10 +1172,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
       DINodeArray(unwrapDI<MDTuple>(Elements)), unwrapDI<DIType>(ClassTy),
-#if LLVM_VERSION_GE(18, 0)
-      /* RunTimeLang */ 0,
-#endif
-      "", IsScoped));
+      /* RunTimeLang */ 0, "", IsScoped));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
@@ -1552,27 +1539,19 @@ LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(18, 0)
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
-#else
-  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
-#endif
 }
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(18, 0)
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
-#else
-  report_fatal_error("LLVM 18.0 is required for mcdc intrinsic functions");
-#endif
 }
 
 extern "C" LLVMValueRef
 LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(18, 0) && LLVM_VERSION_LT(19, 0)
+#if LLVM_VERSION_LT(19, 0)
   return wrap(llvm::Intrinsic::getDeclaration(
       unwrap(M), llvm::Intrinsic::instrprof_mcdc_condbitmap_update));
 #else
