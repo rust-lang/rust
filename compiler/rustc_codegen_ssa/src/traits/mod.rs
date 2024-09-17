@@ -27,25 +27,26 @@ mod write;
 
 use std::fmt;
 
-use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::call::FnAbi;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 
 pub use self::abi::AbiBuilderMethods;
-pub use self::asm::{AsmBuilderMethods, AsmMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
+pub use self::asm::{
+    AsmBuilderMethods, AsmCodegenMethods, GlobalAsmOperandRef, InlineAsmOperandRef,
+};
 pub use self::backend::{BackendTypes, CodegenBackend, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};
-pub use self::consts::ConstMethods;
+pub use self::consts::ConstCodegenMethods;
 pub use self::coverageinfo::CoverageInfoBuilderMethods;
-pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
-pub use self::declare::PreDefineMethods;
+pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
+pub use self::declare::PreDefineCodegenMethods;
 pub use self::intrinsic::IntrinsicCallBuilderMethods;
-pub use self::misc::MiscMethods;
-pub use self::statics::{StaticBuilderMethods, StaticMethods};
+pub use self::misc::MiscCodegenMethods;
+pub use self::statics::{StaticBuilderMethods, StaticCodegenMethods};
 pub use self::type_::{
-    ArgAbiBuilderMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods,
-    TypeMembershipMethods, TypeMethods,
+    ArgAbiBuilderMethods, BaseTypeCodegenMethods, DerivedTypeCodegenMethods,
+    LayoutTypeCodegenMethods, TypeCodegenMethods, TypeMembershipCodegenMethods,
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 
@@ -53,9 +54,9 @@ pub trait CodegenObject = Copy + PartialEq + fmt::Debug;
 
 pub trait CodegenMethods<'tcx> = LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
     + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
-    + TypeMethods<'tcx>
-    + ConstMethods<'tcx>
-    + StaticMethods
-    + DebugInfoMethods<'tcx>
-    + AsmMethods<'tcx>
-    + PreDefineMethods<'tcx>;
+    + TypeCodegenMethods<'tcx>
+    + ConstCodegenMethods<'tcx>
+    + StaticCodegenMethods
+    + DebugInfoCodegenMethods<'tcx>
+    + AsmCodegenMethods<'tcx>
+    + PreDefineCodegenMethods<'tcx>;

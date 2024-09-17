@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
