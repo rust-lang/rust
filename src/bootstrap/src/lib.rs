@@ -552,11 +552,7 @@ impl Build {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
             let submodule = line.split_once(' ').unwrap().1;
-            let path = Path::new(submodule);
-            // Don't update the submodule unless it's already been cloned.
-            if GitInfo::new(false, path).is_managed_git_subrepository() {
-                self.config.update_submodule(submodule);
-            }
+            self.update_existing_submodule(submodule);
         }
     }
 

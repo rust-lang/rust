@@ -1070,19 +1070,26 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
     let locals = local_decls_for_sig(&sig, span);
 
     let mut fields = vec![];
+
+    // Move all of the closure args.
     for idx in 1..sig.inputs().len() {
         fields.push(Operand::Move(Local::from_usize(idx + 1).into()));
     }
+
     for (idx, ty) in args.as_coroutine_closure().upvar_tys().iter().enumerate() {
         if receiver_by_ref {
             // The only situation where it's possible is when we capture immuatable references,
             // since those don't need to be reborrowed with the closure's env lifetime. Since
             // references are always `Copy`, just emit a copy.
-            assert_matches!(
-                ty.kind(),
-                ty::Ref(_, _, hir::Mutability::Not),
-                "field should be captured by immutable ref if we have an `Fn` instance"
-            );
+            if !matches!(ty.kind(), ty::Ref(_, _, hir::Mutability::Not)) {
+                // This copy is only sound if it's a `&T`. This may be
+                // reachable e.g. when eagerly computing the `Fn` instance
+                // of an async closure that doesn't borrowck.
+                tcx.dcx().delayed_bug(format!(
+                    "field should be captured by immutable ref if we have \
+                    an `Fn` instance, but it was: {ty}"
+                ));
+            }
             fields.push(Operand::Copy(tcx.mk_place_field(
                 self_local,
                 FieldIdx::from_usize(idx),

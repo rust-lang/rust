@@ -2619,9 +2619,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_method: bool,
     ) -> Option<Vec<(Option<&hir::GenericParam<'_>>, &hir::Param<'_>)>> {
         let fn_node = self.tcx.hir().get_if_local(def_id)?;
+        let fn_decl = fn_node.fn_decl()?;
 
-        let generic_params: Vec<Option<&hir::GenericParam<'_>>> = fn_node
-            .fn_decl()?
+        let generic_params: Vec<Option<&hir::GenericParam<'_>>> = fn_decl
             .inputs
             .into_iter()
             .skip(if is_method { 1 } else { 0 })
@@ -2642,7 +2642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .collect();
 
-        let params: Vec<&hir::Param<'_>> = self
+        let mut params: Vec<&hir::Param<'_>> = self
             .tcx
             .hir()
             .body(fn_node.body_id()?)
@@ -2651,7 +2651,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .skip(if is_method { 1 } else { 0 })
             .collect();
 
-        Some(generic_params.into_iter().zip_eq(params).collect())
+        // The surrounding code expects variadic functions to not have a parameter representing
+        // the "..." parameter. This is already true of the FnDecl but not of the body params, so
+        // we drop it if it exists.
+
+        if fn_decl.c_variadic {
+            params.pop();
+        }
+
+        debug_assert_eq!(params.len(), generic_params.len());
+        Some(generic_params.into_iter().zip(params).collect())
     }
 }
 

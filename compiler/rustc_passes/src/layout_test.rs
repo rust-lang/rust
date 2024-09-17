@@ -128,7 +128,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
         }
 
         Err(layout_error) => {
-            tcx.dcx().emit_fatal(Spanned { node: layout_error.into_diagnostic(), span });
+            tcx.dcx().emit_err(Spanned { node: layout_error.into_diagnostic(), span });
         }
     }
 }

@@ -571,7 +571,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if `def_id` refers to a definition that does not have its own
     /// type-checking context, i.e. closure, coroutine or inline const.
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::InlineConst)
+        matches!(
+            self.def_kind(def_id),
+            DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody
+        )
     }
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).

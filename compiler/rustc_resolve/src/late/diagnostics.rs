@@ -2068,33 +2068,34 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             ) {
                 let res = binding.res();
                 if filter_fn(res) {
-                    let def_id = res.def_id();
-                    let has_self = match def_id.as_local() {
-                        Some(def_id) => {
-                            self.r.delegation_fn_sigs.get(&def_id).map_or(false, |sig| sig.has_self)
-                        }
-                        None => self
-                            .r
-                            .tcx
-                            .fn_arg_names(def_id)
-                            .first()
-                            .is_some_and(|ident| ident.name == kw::SelfLower),
-                    };
-                    if has_self {
-                        return Some(AssocSuggestion::MethodWithSelf { called });
-                    } else {
-                        match res {
-                            Res::Def(DefKind::AssocFn, _) => {
+                    match res {
+                        Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => {
+                            let has_self = match def_id.as_local() {
+                                Some(def_id) => self
+                                    .r
+                                    .delegation_fn_sigs
+                                    .get(&def_id)
+                                    .map_or(false, |sig| sig.has_self),
+                                None => self
+                                    .r
+                                    .tcx
+                                    .fn_arg_names(def_id)
+                                    .first()
+                                    .is_some_and(|ident| ident.name == kw::SelfLower),
+                            };
+                            if has_self {
+                                return Some(AssocSuggestion::MethodWithSelf { called });
+                            } else {
                                 return Some(AssocSuggestion::AssocFn { called });
                             }
-                            Res::Def(DefKind::AssocConst, _) => {
-                                return Some(AssocSuggestion::AssocConst);
-                            }
-                            Res::Def(DefKind::AssocTy, _) => {
-                                return Some(AssocSuggestion::AssocType);
-                            }
-                            _ => {}
                         }
+                        Res::Def(DefKind::AssocConst, _) => {
+                            return Some(AssocSuggestion::AssocConst);
+                        }
+                        Res::Def(DefKind::AssocTy, _) => {
+                            return Some(AssocSuggestion::AssocType);
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -2538,8 +2539,13 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
 
                     let (msg, sugg) = match source {
-                        PathSource::Type => ("you might be missing a type parameter", ident),
-                        PathSource::Expr(_) => ("you might be missing a const parameter", format!("const {ident}: /* Type */")),
+                        PathSource::Type | PathSource::PreciseCapturingArg(TypeNS) => {
+                            ("you might be missing a type parameter", ident)
+                        }
+                        PathSource::Expr(_) | PathSource::PreciseCapturingArg(ValueNS) => (
+                            "you might be missing a const parameter",
+                            format!("const {ident}: /* Type */"),
+                        ),
                         _ => return None,
                     };
                     let (span, sugg) = if let [.., param] = &generics.params[..] {

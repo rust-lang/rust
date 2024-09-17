@@ -37,7 +37,8 @@ pub mod locator;
 pub use creader::{load_symbol_from_dylib, DylibError};
 pub use fs::{emit_wrapper_file, METADATA_FILENAME};
 pub use native_libs::{
-    find_native_static_library, try_find_native_static_library, walk_native_lib_search_dirs,
+    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
+    walk_native_lib_search_dirs,
 };
 pub use rmeta::{encode_metadata, rendered_const, EncodedMetadata, METADATA_HEADER};
 

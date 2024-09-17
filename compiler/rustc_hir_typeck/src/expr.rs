@@ -2864,13 +2864,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (expr_t, "")
         };
         for (found_fields, args) in
-            self.get_field_candidates_considering_privacy(span, ty, mod_id, id)
+            self.get_field_candidates_considering_privacy_for_diag(span, ty, mod_id, id)
         {
             let field_names = found_fields.iter().map(|field| field.name).collect::<Vec<_>>();
             let mut candidate_fields: Vec<_> = found_fields
                 .into_iter()
                 .filter_map(|candidate_field| {
-                    self.check_for_nested_field_satisfying(
+                    self.check_for_nested_field_satisfying_condition_for_diag(
                         span,
                         &|candidate_field, _| candidate_field.ident(self.tcx()) == field,
                         candidate_field,
@@ -2933,7 +2933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .with_span_label(field.span, "private field")
     }
 
-    pub(crate) fn get_field_candidates_considering_privacy(
+    pub(crate) fn get_field_candidates_considering_privacy_for_diag(
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
@@ -2942,7 +2942,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Vec<(Vec<&'tcx ty::FieldDef>, GenericArgsRef<'tcx>)> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
-        self.autoderef(span, base_ty)
+        let mut autoderef = self.autoderef(span, base_ty).silence_errors();
+        let deref_chain: Vec<_> = autoderef.by_ref().collect();
+
+        // Don't probe if we hit the recursion limit, since it may result in
+        // quadratic blowup if we then try to further deref the results of this
+        // function. This is a best-effort method, after all.
+        if autoderef.reached_recursion_limit() {
+            return vec![];
+        }
+
+        deref_chain
+            .into_iter()
             .filter_map(move |(base_t, _)| {
                 match base_t.kind() {
                     ty::Adt(base_def, args) if !base_def.is_enum() => {
@@ -2975,7 +2986,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// This method is called after we have encountered a missing field error to recursively
     /// search for the field
-    pub(crate) fn check_for_nested_field_satisfying(
+    pub(crate) fn check_for_nested_field_satisfying_condition_for_diag(
         &self,
         span: Span,
         matches: &impl Fn(&ty::FieldDef, Ty<'tcx>) -> bool,
@@ -3000,20 +3011,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if matches(candidate_field, field_ty) {
                 return Some(field_path);
             } else {
-                for (nested_fields, subst) in
-                    self.get_field_candidates_considering_privacy(span, field_ty, mod_id, hir_id)
+                for (nested_fields, subst) in self
+                    .get_field_candidates_considering_privacy_for_diag(
+                        span, field_ty, mod_id, hir_id,
+                    )
                 {
                     // recursively search fields of `candidate_field` if it's a ty::Adt
                     for field in nested_fields {
-                        if let Some(field_path) = self.check_for_nested_field_satisfying(
-                            span,
-                            matches,
-                            field,
-                            subst,
-                            field_path.clone(),
-                            mod_id,
-                            hir_id,
-                        ) {
+                        if let Some(field_path) = self
+                            .check_for_nested_field_satisfying_condition_for_diag(
+                                span,
+                                matches,
+                                field,
+                                subst,
+                                field_path.clone(),
+                                mod_id,
+                                hir_id,
+                            )
+                        {
                             return Some(field_path);
                         }
                     }
