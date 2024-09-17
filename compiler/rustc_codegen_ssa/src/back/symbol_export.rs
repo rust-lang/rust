@@ -18,7 +18,7 @@ use tracing::debug;
 
 use crate::base::allocator_kind_for_codegen;
 
-pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
+fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(tcx.crate_types())
 }
 
@@ -484,7 +484,7 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId)
     !tcx.reachable_set(()).contains(&def_id)
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.reachable_non_generics = reachable_non_generics_provider;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
     providers.exported_symbols = exported_symbols_provider_local;
@@ -525,7 +525,7 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
 }
 
 /// This is the symbol name of the given instance instantiated in a specific crate.
-pub fn symbol_name_for_instance_in_crate<'tcx>(
+pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
@@ -582,7 +582,7 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
 /// This is the symbol name of the given instance as seen by the linker.
 ///
 /// On 32-bit Windows symbols are decorated according to their calling conventions.
-pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
+pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
@@ -661,7 +661,7 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
     format!("{prefix}{undecorated}{suffix}{args_in_bytes}")
 }
 
-pub fn exporting_symbol_name_for_instance_in_crate<'tcx>(
+pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
     cnum: CrateNum,

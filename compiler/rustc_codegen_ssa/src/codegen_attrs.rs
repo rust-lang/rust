@@ -317,9 +317,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                 "extern mutable statics are not allowed with `#[linkage]`",
                             );
                             diag.note(
-                                "marking the extern static mutable would allow changing which symbol \
-                                 the static references rather than make the target of the symbol \
-                                 mutable",
+                                "marking the extern static mutable would allow changing which \
+                                 symbol the static references rather than make the target of the \
+                                 symbol mutable",
                             );
                             diag.emit();
                         }
@@ -711,18 +711,19 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
     if let Some(MetaItemLit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) =
         sole_meta_list
     {
-        // According to the table at https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header,
-        // the ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
-        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import information
-        // to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
+        // According to the table at
+        // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header, the
+        // ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
+        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import
+        // information to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
         //
-        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for this:
-        // both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that specifies
-        // a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import library
-        // for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an import
-        // library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I don't know yet
-        // if the resulting EXE runs, as I haven't yet built the necessary DLL -- see earlier comment
-        // about LINK.EXE failing.)
+        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for
+        // this: both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that
+        // specifies a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import
+        // library for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an
+        // import library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I
+        // don't know yet if the resulting EXE runs, as I haven't yet built the necessary DLL --
+        // see earlier comment about LINK.EXE failing.)
         if *ordinal <= u16::MAX as u128 {
             Some(ordinal.get() as u16)
         } else {
@@ -755,6 +756,6 @@ fn check_link_name_xor_ordinal(
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
 }
