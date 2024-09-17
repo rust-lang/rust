@@ -472,32 +472,32 @@ mod test_par_map {
 
     use crate::hash_map::HashMap;
 
-    struct Dropable<'a> {
+    struct Droppable<'a> {
         k: usize,
         counter: &'a AtomicUsize,
     }
 
-    impl Dropable<'_> {
-        fn new(k: usize, counter: &AtomicUsize) -> Dropable<'_> {
+    impl Droppable<'_> {
+        fn new(k: usize, counter: &AtomicUsize) -> Droppable<'_> {
             counter.fetch_add(1, Ordering::Relaxed);
 
-            Dropable { k, counter }
+            Droppable { k, counter }
         }
     }
 
-    impl Drop for Dropable<'_> {
+    impl Drop for Droppable<'_> {
         fn drop(&mut self) {
             self.counter.fetch_sub(1, Ordering::Relaxed);
         }
     }
 
-    impl Clone for Dropable<'_> {
+    impl Clone for Droppable<'_> {
         fn clone(&self) -> Self {
-            Dropable::new(self.k, self.counter)
+            Droppable::new(self.k, self.counter)
         }
     }
 
-    impl Hash for Dropable<'_> {
+    impl Hash for Droppable<'_> {
         fn hash<H>(&self, state: &mut H)
         where
             H: Hasher,
@@ -506,13 +506,13 @@ mod test_par_map {
         }
     }
 
-    impl PartialEq for Dropable<'_> {
+    impl PartialEq for Droppable<'_> {
         fn eq(&self, other: &Self) -> bool {
             self.k == other.k
         }
     }
 
-    impl Eq for Dropable<'_> {}
+    impl Eq for Droppable<'_> {}
 
     #[test]
     fn test_into_iter_drops() {
@@ -526,8 +526,8 @@ mod test_par_map {
             assert_eq!(value.load(Ordering::Relaxed), 0);
 
             for i in 0..100 {
-                let d1 = Dropable::new(i, &key);
-                let d2 = Dropable::new(i + 100, &value);
+                let d1 = Droppable::new(i, &key);
+                let d2 = Droppable::new(i + 100, &value);
                 hm.insert(d1, d2);
             }
 
@@ -573,8 +573,8 @@ mod test_par_map {
             assert_eq!(value.load(Ordering::Relaxed), 0);
 
             for i in 0..100 {
-                let d1 = Dropable::new(i, &key);
-                let d2 = Dropable::new(i + 100, &value);
+                let d1 = Droppable::new(i, &key);
+                let d2 = Droppable::new(i + 100, &value);
                 hm.insert(d1, d2);
             }
 

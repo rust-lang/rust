@@ -68,7 +68,7 @@ This release was _yanked_ due to a breaking change.
 - Optimized implementation for ARM using NEON instructions. (#430)
 - Support for rkyv serialization. (#432)
 - `Equivalent` trait to look up values without `Borrow`. (#345)
-- `Hash{Map,Set}::raw_table_mut` is added whic returns a mutable reference. (#404)
+- `Hash{Map,Set}::raw_table_mut` is added which returns a mutable reference. (#404)
 - Fast path for `clear` on empty tables. (#428)
 
 ### Changed

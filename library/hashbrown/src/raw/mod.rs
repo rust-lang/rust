@@ -135,7 +135,7 @@ fn h1(hash: u64) -> usize {
     hash as usize
 }
 
-// Constant for h2 function that grabing the top 7 bits of the hash.
+// Constant for h2 function that grabs the top 7 bits of the hash.
 const MIN_HASH_LEN: usize = if mem::size_of::<usize>() < mem::size_of::<u64>() {
     mem::size_of::<usize>()
 } else {
@@ -433,7 +433,7 @@ impl<T> Bucket<T> {
         //                        mem::size_of::<T>()
         //                          |
         //                          |         `self = from_base_index(base, 5)` that returns pointer
-        //                          |         that points here in tha data part of the table
+        //                          |         that points here in the data part of the table
         //                          |         (to the end of T5)
         //                          |           |                    `base: NonNull<T>` must point here
         //                          v           |                    (to the end of T0 or to the start of C0)
@@ -504,15 +504,15 @@ impl<T> Bucket<T> {
     ///
     /// * `self` contained pointer must not be `dangling`;
     ///
-    /// * `self.to_base_index() + ofset` must not be greater than `RawTableInner.bucket_mask`,
-    ///   i.e. `(self.to_base_index() + ofset) <= RawTableInner.bucket_mask` or, in other
-    ///   words, `self.to_base_index() + ofset + 1` must be no greater than the number returned
+    /// * `self.to_base_index() + offset` must not be greater than `RawTableInner.bucket_mask`,
+    ///   i.e. `(self.to_base_index() + offset) <= RawTableInner.bucket_mask` or, in other
+    ///   words, `self.to_base_index() + offset + 1` must be no greater than the number returned
     ///   by the function [`RawTable::buckets`] or [`RawTableInner::buckets`].
     ///
     /// If `mem::size_of::<T>() == 0`, then the only requirement is that the
-    /// `self.to_base_index() + ofset` must not be greater than `RawTableInner.bucket_mask`,
-    /// i.e. `(self.to_base_index() + ofset) <= RawTableInner.bucket_mask` or, in other words,
-    /// `self.to_base_index() + ofset + 1` must be no greater than the number returned by the
+    /// `self.to_base_index() + offset` must not be greater than `RawTableInner.bucket_mask`,
+    /// i.e. `(self.to_base_index() + offset) <= RawTableInner.bucket_mask` or, in other words,
+    /// `self.to_base_index() + offset + 1` must be no greater than the number returned by the
     /// function [`RawTable::buckets`] or [`RawTableInner::buckets`].
     ///
     /// [`Bucket`]: crate::raw::Bucket
@@ -562,7 +562,7 @@ impl<T> Bucket<T> {
     ///
     /// You should use [`RawTable::remove`] instead of this function,
     /// or be careful with calling this function directly, because compiler
-    /// calls its destructor when readed `value` goes out of scope. It
+    /// calls its destructor when the read `value` goes out of scope. It
     /// can cause double dropping when [`RawTable`] goes out of scope,
     /// because of not erased `data control byte`.
     ///
@@ -1736,8 +1736,8 @@ impl RawTableInner {
             // * Caller of this function ensures that the control bytes are properly initialized.
             //
             // * `ProbeSeq.pos` cannot be greater than `self.bucket_mask = self.buckets() - 1`
-            //   of the table due to masking with `self.bucket_mask` and also because mumber of
-            //   buckets is a power of two (see `self.probe_seq` function).
+            //   of the table due to masking with `self.bucket_mask` and also because the number
+            //   of buckets is a power of two (see `self.probe_seq` function).
             //
             // * Even if `ProbeSeq.pos` returns `position == self.bucket_mask`, it is safe to
             //   call `Group::load` due to the extended control bytes range, which is
@@ -1788,7 +1788,7 @@ impl RawTableInner {
     ///
     /// This function does not check if the given element exists in the table. Also,
     /// this function does not check if there is enough space in the table to insert
-    /// a new element. Caller of the funtion must make ensure that the table has at
+    /// a new element. The caller of the function must make sure that the table has at
     /// least 1 empty or deleted `bucket`, otherwise this function will never return
     /// (will go into an infinite loop) for tables larger than the group width, or
     /// return an index outside of the table indices range if the table is less than
@@ -1885,8 +1885,8 @@ impl RawTableInner {
             // * Caller of this function ensures that the control bytes are properly initialized.
             //
             // * `ProbeSeq.pos` cannot be greater than `self.bucket_mask = self.buckets() - 1`
-            //   of the table due to masking with `self.bucket_mask` and also because mumber of
-            //   buckets is a power of two (see `self.probe_seq` function).
+            //   of the table due to masking with `self.bucket_mask` and also because the number
+            //   of buckets is a power of two (see `self.probe_seq` function).
             //
             // * Even if `ProbeSeq.pos` returns `position == self.bucket_mask`, it is safe to
             //   call `Group::load` due to the extended control bytes range, which is
@@ -3171,7 +3171,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
                 // Avoid `Result::ok_or_else` because it bloats LLVM IR.
                 //
                 // SAFETY: This is safe as we are taking the size of an already allocated table
-                // and therefore сapacity overflow cannot occur, `self.table.buckets()` is power
+                // and therefore capacity overflow cannot occur, `self.table.buckets()` is power
                 // of two and all allocator errors will be caught inside `RawTableInner::new_uninitialized`.
                 let mut new_table = match Self::new_uninitialized(
                     self.alloc.clone(),
@@ -3185,11 +3185,11 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
                 // Cloning elements may fail (the clone function may panic). But we don't
                 // need to worry about uninitialized control bits, since:
                 // 1. The number of items (elements) in the table is zero, which means that
-                //    the control bits will not be readed by Drop function.
+                //    the control bits will not be read by Drop function.
                 // 2. The `clone_from_spec` method will first copy all control bits from
                 //    `self` (thus initializing them). But this will not affect the `Drop`
                 //    function, since the `clone_from_spec` function sets `items` only after
-                //    successfully clonning all elements.
+                //    successfully cloning all elements.
                 new_table.clone_from_spec(self);
                 new_table
             }
@@ -3587,7 +3587,7 @@ impl<T> RawIterRange<T> {
             //    start of the array of control bytes, and never try to iterate after
             //    getting all the elements, the last `self.current_group` will read bytes
             //    from the `self.buckets() - Group::WIDTH` index.  We know also that
-            //    `self.current_group.next()` will always retun indices within the range
+            //    `self.current_group.next()` will always return indices within the range
             //    `0..Group::WIDTH`.
             //
             //    Knowing all of the above and taking into account that we are synchronizing
