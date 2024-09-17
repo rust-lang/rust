@@ -10,7 +10,7 @@ use crate::mir::operand::OperandRef;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn eval_mir_constant_to_operand(
+    pub(crate) fn eval_mir_constant_to_operand(
         &self,
         bx: &mut Bx,
         constant: &mir::ConstOperand<'tcx>,
@@ -32,27 +32,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// that the given `constant` is an `Const::Unevaluated` and must be convertible to
     /// a `ValTree`. If you want a more general version of this, talk to `wg-const-eval` on zulip.
     ///
-    /// Note that this function is cursed, since usually MIR consts should not be evaluated to valtrees!
-    pub fn eval_unevaluated_mir_constant_to_valtree(
+    /// Note that this function is cursed, since usually MIR consts should not be evaluated to
+    /// valtrees!
+    fn eval_unevaluated_mir_constant_to_valtree(
         &self,
         constant: &mir::ConstOperand<'tcx>,
     ) -> Result<Result<ty::ValTree<'tcx>, Ty<'tcx>>, ErrorHandled> {
         let uv = match self.monomorphize(constant.const_) {
             mir::Const::Unevaluated(uv, _) => uv.shrink(),
             mir::Const::Ty(_, c) => match c.kind() {
-                // A constant that came from a const generic but was then used as an argument to old-style
-                // simd_shuffle (passing as argument instead of as a generic param).
+                // A constant that came from a const generic but was then used as an argument to
+                // old-style simd_shuffle (passing as argument instead of as a generic param).
                 rustc_type_ir::ConstKind::Value(_, valtree) => return Ok(Ok(valtree)),
                 other => span_bug!(constant.span, "{other:#?}"),
             },
             // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
-            // a constant and write that value back into `Operand`s. This could happen, but is unlikely.
-            // Also: all users of `simd_shuffle` are on unstable and already need to take a lot of care
-            // around intrinsics. For an issue to happen here, it would require a macro expanding to a
-            // `simd_shuffle` call without wrapping the constant argument in a `const {}` block, but
-            // the user pass through arbitrary expressions.
-            // FIXME(oli-obk): replace the magic const generic argument of `simd_shuffle` with a real
-            // const generic, and get rid of this entire function.
+            // a constant and write that value back into `Operand`s. This could happen, but is
+            // unlikely. Also: all users of `simd_shuffle` are on unstable and already need to take
+            // a lot of care around intrinsics. For an issue to happen here, it would require a
+            // macro expanding to a `simd_shuffle` call without wrapping the constant argument in a
+            // `const {}` block, but the user pass through arbitrary expressions.
+            // FIXME(oli-obk): replace the magic const generic argument of `simd_shuffle` with a
+            // real const generic, and get rid of this entire function.
             other => span_bug!(constant.span, "{other:#?}"),
         };
         let uv = self.monomorphize(uv);

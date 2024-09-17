@@ -25,6 +25,7 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx>;
     fn set_frame_pointer_type(&self, llfn: Self::Function);
     fn apply_target_cpu_attr(&self, llfn: Self::Function);
-    /// Declares the extern "C" main function for the entry point. Returns None if the symbol already exists.
+    /// Declares the extern "C" main function for the entry point. Returns None if the symbol
+    /// already exists.
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function>;
 }

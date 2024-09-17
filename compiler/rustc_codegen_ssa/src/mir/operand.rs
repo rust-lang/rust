@@ -64,7 +64,7 @@ impl<V: CodegenObject> OperandValue<V> {
     /// If this is ZeroSized/Immediate/Pair, return an array of the 0/1/2 values.
     /// If this is Ref, return the place.
     #[inline]
-    pub fn immediates_or_place(self) -> Either<ArrayVec<V, 2>, PlaceValue<V>> {
+    pub(crate) fn immediates_or_place(self) -> Either<ArrayVec<V, 2>, PlaceValue<V>> {
         match self {
             OperandValue::ZeroSized => Either::Left(ArrayVec::new()),
             OperandValue::Immediate(a) => Either::Left(ArrayVec::from_iter([a])),
@@ -75,7 +75,7 @@ impl<V: CodegenObject> OperandValue<V> {
 
     /// Given an array of 0/1/2 immediate values, return ZeroSized/Immediate/Pair.
     #[inline]
-    pub fn from_immediates(immediates: ArrayVec<V, 2>) -> Self {
+    pub(crate) fn from_immediates(immediates: ArrayVec<V, 2>) -> Self {
         let mut it = immediates.into_iter();
         let Some(a) = it.next() else {
             return OperandValue::ZeroSized;
@@ -90,7 +90,7 @@ impl<V: CodegenObject> OperandValue<V> {
     /// optional metadata as backend values.
     ///
     /// If you're making a place, use [`Self::deref`] instead.
-    pub fn pointer_parts(self) -> (V, Option<V>) {
+    pub(crate) fn pointer_parts(self) -> (V, Option<V>) {
         match self {
             OperandValue::Immediate(llptr) => (llptr, None),
             OperandValue::Pair(llptr, llextra) => (llptr, Some(llextra)),
@@ -105,7 +105,7 @@ impl<V: CodegenObject> OperandValue<V> {
     /// alignment, then maybe you want [`OperandRef::deref`] instead.
     ///
     /// This is the inverse of [`PlaceValue::address`].
-    pub fn deref(self, align: Align) -> PlaceValue<V> {
+    pub(crate) fn deref(self, align: Align) -> PlaceValue<V> {
         let (llval, llextra) = self.pointer_parts();
         PlaceValue { llval, llextra, align }
     }
@@ -153,7 +153,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         OperandRef { val: OperandValue::ZeroSized, layout }
     }
 
-    pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub(crate) fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         val: mir::ConstValue<'tcx>,
         ty: Ty<'tcx>,
@@ -334,7 +334,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         OperandRef { val, layout }
     }
 
-    pub fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub(crate) fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
         bx: &mut Bx,
         i: usize,
@@ -478,8 +478,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         match self {
             OperandValue::ZeroSized => {
-                // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
-                // value is through `undef`/`poison`, and the store itself is useless.
+                // Avoid generating stores of zero-sized values, because the only way to have a
+                // zero-sized value is through `undef`/`poison`, and the store itself is useless.
             }
             OperandValue::Ref(val) => {
                 assert!(dest.layout.is_sized(), "cannot directly store unsized values");

@@ -8,10 +8,10 @@ use tracing::{debug, instrument};
 use crate::traits::*;
 
 #[derive(Copy, Clone, Debug)]
-pub struct VirtualIndex(u64);
+pub(crate) struct VirtualIndex(u64);
 
 impl<'a, 'tcx> VirtualIndex {
-    pub fn from_index(index: usize) -> Self {
+    pub(crate) fn from_index(index: usize) -> Self {
         VirtualIndex(index as u64)
     }
 
@@ -51,7 +51,7 @@ impl<'a, 'tcx> VirtualIndex {
         }
     }
 
-    pub fn get_optional_fn<Bx: BuilderMethods<'a, 'tcx>>(
+    pub(crate) fn get_optional_fn<Bx: BuilderMethods<'a, 'tcx>>(
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
@@ -61,7 +61,7 @@ impl<'a, 'tcx> VirtualIndex {
         self.get_fn_inner(bx, llvtable, ty, fn_abi, false)
     }
 
-    pub fn get_fn<Bx: BuilderMethods<'a, 'tcx>>(
+    pub(crate) fn get_fn<Bx: BuilderMethods<'a, 'tcx>>(
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
@@ -71,7 +71,7 @@ impl<'a, 'tcx> VirtualIndex {
         self.get_fn_inner(bx, llvtable, ty, fn_abi, true)
     }
 
-    pub fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
+    pub(crate) fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
@@ -115,7 +115,7 @@ fn expect_dyn_trait_in_self(ty: Ty<'_>) -> ty::PolyExistentialTraitRef<'_> {
 /// making an object `Foo<dyn Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T: Trait`.
 #[instrument(level = "debug", skip(cx))]
-pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
+pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,

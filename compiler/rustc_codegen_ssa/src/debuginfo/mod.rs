@@ -54,7 +54,7 @@ pub fn tag_base_type<'tcx>(tcx: TyCtxt<'tcx>, enum_type_and_layout: TyAndLayout<
     })
 }
 
-pub fn tag_base_type_opt<'tcx>(
+fn tag_base_type_opt<'tcx>(
     tcx: TyCtxt<'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> Option<Ty<'tcx>> {
@@ -76,9 +76,9 @@ pub fn tag_base_type_opt<'tcx>(
                     Primitive::Float(f) => Integer::from_size(f.size()).unwrap(),
                     // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
                     Primitive::Pointer(_) => {
-                        // If the niche is the NULL value of a reference, then `discr_enum_ty` will be
-                        // a RawPtr. CodeView doesn't know what to do with enums whose base type is a
-                        // pointer so we fix this up to just be `usize`.
+                        // If the niche is the NULL value of a reference, then `discr_enum_ty` will
+                        // be a RawPtr. CodeView doesn't know what to do with enums whose base type
+                        // is a pointer so we fix this up to just be `usize`.
                         // DWARF might be able to deal with this but with an integer type we are on
                         // the safe side there too.
                         tcx.data_layout.ptr_sized_integer()

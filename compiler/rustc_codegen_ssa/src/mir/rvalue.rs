@@ -19,7 +19,7 @@ use crate::{base, MemFlags};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
-    pub fn codegen_rvalue(
+    pub(crate) fn codegen_rvalue(
         &mut self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, Bx::Value>,
@@ -419,7 +419,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub fn codegen_rvalue_unsized(
+    pub(crate) fn codegen_rvalue_unsized(
         &mut self,
         bx: &mut Bx,
         indirect_dest: PlaceRef<'tcx, Bx::Value>,
@@ -440,7 +440,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub fn codegen_rvalue_operand(
+    pub(crate) fn codegen_rvalue_operand(
         &mut self,
         bx: &mut Bx,
         rvalue: &mir::Rvalue<'tcx>,
@@ -836,7 +836,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         OperandRef { val, layout: self.cx.layout_of(mk_ptr_ty(self.cx.tcx(), ty)) }
     }
 
-    pub fn codegen_scalar_binop(
+    fn codegen_scalar_binop(
         &mut self,
         bx: &mut Bx,
         op: mir::BinOp,
@@ -981,7 +981,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub fn codegen_fat_ptr_binop(
+    fn codegen_fat_ptr_binop(
         &mut self,
         bx: &mut Bx,
         op: mir::BinOp,
@@ -1023,7 +1023,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub fn codegen_scalar_checked_binop(
+    fn codegen_scalar_checked_binop(
         &mut self,
         bx: &mut Bx,
         op: mir::BinOp,
@@ -1047,10 +1047,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         OperandValue::Pair(val, of)
     }
-}
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
+    pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(self.mir, self.cx.tcx());
