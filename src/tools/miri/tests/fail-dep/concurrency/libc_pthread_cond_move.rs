@@ -1,5 +1,5 @@
 //@revisions: static_initializer init
-//@ignore-target-windows: No pthreads on Windows
+//@ignore-target: windows # No pthreads on Windows
 
 /// Test that moving a pthread_cond between uses fails.
 

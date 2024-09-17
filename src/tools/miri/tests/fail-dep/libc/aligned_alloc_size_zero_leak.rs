@@ -1,4 +1,4 @@
-//@ignore-target-windows: Windows does not support the standard C11 aligned_alloc.
+//@ignore-target: windows # Windows does not support the standard C11 aligned_alloc.
 
 fn main() {
     // libc doesn't have this function (https://github.com/rust-lang/libc/issues/3689),

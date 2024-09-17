@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
-//@ignore-target-windows: No mmap on Windows
+//@ignore-target: windows # No mmap on Windows
 
 #![feature(rustc_private)]
 

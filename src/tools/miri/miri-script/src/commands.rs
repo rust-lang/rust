@@ -503,9 +503,13 @@ impl Command {
         // More flags that we will pass before `flags`
         // (because `flags` may contain `--`).
         let mut early_flags = Vec::<OsString>::new();
-        if let Some(target) = &target {
-            early_flags.push("--target".into());
-            early_flags.push(target.into());
+
+        // In `dep` mode, the target is already passed via `MIRI_TEST_TARGET`
+        if !dep {
+            if let Some(target) = &target {
+                early_flags.push("--target".into());
+                early_flags.push(target.into());
+            }
         }
         early_flags.push("--edition".into());
         early_flags.push(edition.as_deref().unwrap_or("2021").into());

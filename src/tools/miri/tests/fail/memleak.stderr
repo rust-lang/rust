@@ -1,11 +1,11 @@
 error: memory leaked: ALLOC (Rust heap, size: 4, align: 4), allocated here:
-  --> $DIR/memleak.rs:LL:CC
+  --> tests/fail/memleak.rs:LL:CC
    |
 LL |     std::mem::forget(Box::new(42));
    |                      ^^^^^^^^^^^^
    |
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/memleak.rs:LL:CC
+   = note: inside `main` at tests/fail/memleak.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

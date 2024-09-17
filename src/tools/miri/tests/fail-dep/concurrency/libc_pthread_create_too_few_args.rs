@@ -1,4 +1,4 @@
-//@ignore-target-windows: No pthreads on Windows
+//@ignore-target: windows # No pthreads on Windows
 //~^ERROR: calling a function with more arguments than it expected
 
 //! The thread function must have exactly one argument.

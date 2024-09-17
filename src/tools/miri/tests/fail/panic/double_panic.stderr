@@ -1,8 +1,8 @@
-thread 'main' panicked at $DIR/double_panic.rs:LL:CC:
+thread 'main' panicked at tests/fail/panic/double_panic.rs:LL:CC:
 first
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
-thread 'main' panicked at $DIR/double_panic.rs:LL:CC:
+thread 'main' panicked at tests/fail/panic/double_panic.rs:LL:CC:
 second
 stack backtrace:
 thread 'main' panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
@@ -23,7 +23,7 @@ LL |     ABORT();
    = note: inside `core::panicking::panic_nounwind_nobacktrace` at RUSTLIB/core/src/panicking.rs:LL:CC
    = note: inside `core::panicking::panic_in_cleanup` at RUSTLIB/core/src/panicking.rs:LL:CC
 note: inside `main`
-  --> $DIR/double_panic.rs:LL:CC
+  --> tests/fail/panic/double_panic.rs:LL:CC
    |
 LL | / fn main() {
 LL | |     let _foo = Foo;

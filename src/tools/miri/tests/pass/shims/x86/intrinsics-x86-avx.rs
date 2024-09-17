@@ -1,12 +1,5 @@
-// Ignore everything except x86 and x86_64
-// Any new targets that are added to CI should be ignored here.
-// (We cannot use `cfg`-based tricks here since the `target-feature` flags below only work on x86.)
-//@ignore-target-aarch64
-//@ignore-target-arm
-//@ignore-target-avr
-//@ignore-target-s390x
-//@ignore-target-thumbv7em
-//@ignore-target-wasm
+// We're testing x86 target specific features
+//@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+avx
 
 #[cfg(target_arch = "x86")]

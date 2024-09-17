@@ -7,7 +7,7 @@ LL |         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/issue-miri-1050-1.rs:LL:CC
+  --> tests/fail/both_borrows/issue-miri-1050-1.rs:LL:CC
    |
 LL |         let ptr = Box::into_raw(Box::new(0u16));
    |                                 ^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |         let ptr = Box::into_raw(Box::new(0u16));
    = note: inside `std::boxed::Box::<u32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
    = note: inside `std::boxed::Box::<u32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC
 note: inside `main`
-  --> $DIR/issue-miri-1050-1.rs:LL:CC
+  --> tests/fail/both_borrows/issue-miri-1050-1.rs:LL:CC
    |
 LL |         drop(Box::from_raw(ptr as *mut u32));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

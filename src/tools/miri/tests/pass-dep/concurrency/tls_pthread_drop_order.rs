@@ -1,4 +1,4 @@
-//@ignore-target-windows: No pthreads on Windows
+//@ignore-target: windows # No pthreads on Windows
 //! Test that pthread_key destructors are run in the right order.
 //! Note that these are *not* used by actual `thread_local!` on Linux! Those use
 //! `destructors::register` from the stdlib instead. In Miri this ends up hitting

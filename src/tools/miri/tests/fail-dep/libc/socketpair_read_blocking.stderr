@@ -1,12 +1,12 @@
 error: unsupported operation: socketpair read: blocking isn't supported yet
-  --> $DIR/socketpair_read_blocking.rs:LL:CC
+  --> tests/fail-dep/libc/socketpair_read_blocking.rs:LL:CC
    |
 LL |     let _res = unsafe { libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ socketpair read: blocking isn't supported yet
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/socketpair_read_blocking.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/libc/socketpair_read_blocking.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
