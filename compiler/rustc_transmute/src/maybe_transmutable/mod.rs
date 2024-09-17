@@ -43,7 +43,7 @@ mod rustc {
         pub fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
             let Self { src, dst, assume, context } = self;
 
-            let layout_cx = LayoutCx { tcx: context, param_env: ParamEnv::reveal_all() };
+            let layout_cx = LayoutCx::new(context, ParamEnv::reveal_all());
 
             // Convert `src` and `dst` from their rustc representations, to `Tree`-based
             // representations.

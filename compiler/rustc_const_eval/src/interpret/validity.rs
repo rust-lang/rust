@@ -21,7 +21,7 @@ use rustc_middle::mir::interpret::{
     UnsupportedOpInfo, ValidationErrorInfo,
 };
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
     Abi, FieldIdx, FieldsShape, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
@@ -940,7 +940,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     ) -> Cow<'e, RangeSet> {
         assert!(layout.ty.is_union());
         assert!(layout.abi.is_sized(), "there are no unsized unions");
-        let layout_cx = LayoutCx { tcx: *ecx.tcx, param_env: ecx.param_env };
+        let layout_cx = LayoutCx::new(*ecx.tcx, ecx.param_env);
         return M::cached_union_data_range(ecx, layout.ty, || {
             let mut out = RangeSet(Vec::new());
             union_data_range_uncached(&layout_cx, layout, Size::ZERO, &mut out);
@@ -949,7 +949,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
 
         /// Helper for recursive traversal: add data ranges of the given type to `out`.
         fn union_data_range_uncached<'tcx>(
-            cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+            cx: &LayoutCx<'tcx>,
             layout: TyAndLayout<'tcx>,
             base_offset: Size,
             out: &mut RangeSet,

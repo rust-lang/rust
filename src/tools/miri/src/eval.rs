@@ -277,7 +277,7 @@ pub fn create_ecx<'tcx>(
     config: &MiriConfig,
 ) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
     let param_env = ty::ParamEnv::reveal_all();
-    let layout_cx = LayoutCx { tcx, param_env };
+    let layout_cx = LayoutCx::new(tcx, param_env);
     let mut ecx =
         InterpCx::new(tcx, rustc_span::DUMMY_SP, param_env, MiriMachine::new(config, layout_cx));
 
