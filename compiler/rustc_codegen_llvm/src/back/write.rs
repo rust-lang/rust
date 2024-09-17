@@ -38,7 +38,7 @@ use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
     WithLlvmError, WriteBytecode,
 };
-use crate::llvm::diagnostic::OptimizationDiagnosticKind;
+use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::type_::Type;
 use crate::{base, common, llvm_util, LlvmCodegenBackend, ModuleLlvm};
@@ -446,13 +446,12 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
                 column: opt.column,
                 pass_name: &opt.pass_name,
                 kind: match opt.kind {
-                    OptimizationDiagnosticKind::OptimizationRemark => "success",
-                    OptimizationDiagnosticKind::OptimizationMissed
-                    | OptimizationDiagnosticKind::OptimizationFailure => "missed",
-                    OptimizationDiagnosticKind::OptimizationAnalysis
-                    | OptimizationDiagnosticKind::OptimizationAnalysisFPCommute
-                    | OptimizationDiagnosticKind::OptimizationAnalysisAliasing => "analysis",
-                    OptimizationDiagnosticKind::OptimizationRemarkOther => "other",
+                    OptimizationRemark => "success",
+                    OptimizationMissed | OptimizationFailure => "missed",
+                    OptimizationAnalysis
+                    | OptimizationAnalysisFPCommute
+                    | OptimizationAnalysisAliasing => "analysis",
+                    OptimizationRemarkOther => "other",
                 },
                 message: &opt.message,
             });
