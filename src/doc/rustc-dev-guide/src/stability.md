@@ -68,6 +68,16 @@ even on an `unstable` function, if that function is called from another
 Furthermore this attribute is needed to mark an intrinsic as callable from
 `rustc_const_stable` functions.
 
+## rustc_default_body_unstable
+
+The `#[rustc_default_body_unstable(feature = "foo", issue = "1234", reason =
+"lorem ipsum")]` attribute has the same interface as the `unstable` attribute.
+It is used to mark the default implementation for an item within a trait as
+unstable.
+A trait with a default-body-unstable item can be implemented stably by providing
+an explicit body for any such item, or the default body can be used by enabling
+its corresponding `#![feature]`.
+
 ## Stabilizing a library feature
 
 To stabilize a feature, follow these steps:
