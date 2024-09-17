@@ -320,7 +320,7 @@ fn run_compiler(
         output_dir: odir,
         ice_file,
         file_loader,
-        locale_resources: DEFAULT_LOCALE_RESOURCES,
+        locale_resources: DEFAULT_LOCALE_RESOURCES.to_vec(),
         lint_caps: Default::default(),
         psess_created: None,
         hash_untracked_state: None,
