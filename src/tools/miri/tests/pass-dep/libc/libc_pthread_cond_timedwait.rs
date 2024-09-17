@@ -1,8 +1,9 @@
-//@ignore-target-windows: No pthreads on Windows
-//@ignore-target-apple: pthread_condattr_setclock is not supported on MacOS.
+//@ignore-target: windows # No pthreads on Windows
+//@ignore-target: apple # pthread_condattr_setclock is not supported on MacOS.
+//@compile-flags: -Zmiri-disable-isolation
 
-/// Test that conditional variable timeouts are working properly
-/// with monotonic clocks even under isolation.
+/// Test that conditional variable timeouts are working properly with both
+/// monotonic and system clocks.
 use std::mem::MaybeUninit;
 use std::time::Instant;
 
@@ -79,4 +80,5 @@ fn test_timed_wait_timeout(clock_id: i32) {
 
 fn main() {
     test_timed_wait_timeout(libc::CLOCK_MONOTONIC);
+    test_timed_wait_timeout(libc::CLOCK_REALTIME);
 }

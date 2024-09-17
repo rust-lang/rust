@@ -1,15 +1,15 @@
-panicked at $DIR/no_std.rs:LL:CC:
+panicked at tests/fail/panic/no_std.rs:LL:CC:
 blarg I am dead
 error: abnormal termination: the program aborted execution
-  --> $DIR/no_std.rs:LL:CC
+  --> tests/fail/panic/no_std.rs:LL:CC
    |
 LL |     core::intrinsics::abort();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
    |
    = note: BACKTRACE:
-   = note: inside `panic_handler` at $DIR/no_std.rs:LL:CC
+   = note: inside `panic_handler` at tests/fail/panic/no_std.rs:LL:CC
 note: inside `start`
-  --> $DIR/no_std.rs:LL:CC
+  --> tests/fail/panic/no_std.rs:LL:CC
    |
 LL |     panic!("blarg I am dead")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^

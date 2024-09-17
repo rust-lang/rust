@@ -1,17 +1,17 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-ub-checks.rs:LL:CC
+  --> tests/fail/const-ub-checks.rs:LL:CC
    |
 LL |     ptr.read();
    |     ^^^^^^^^^^ accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
 
 note: erroneous constant encountered
-  --> $DIR/const-ub-checks.rs:LL:CC
+  --> tests/fail/const-ub-checks.rs:LL:CC
    |
 LL |     let _x = UNALIGNED_READ;
    |              ^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/const-ub-checks.rs:LL:CC
+  --> tests/fail/const-ub-checks.rs:LL:CC
    |
 LL |     let _x = UNALIGNED_READ;
    |              ^^^^^^^^^^^^^^

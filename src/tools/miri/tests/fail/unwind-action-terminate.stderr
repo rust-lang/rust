@@ -1,4 +1,4 @@
-thread 'main' panicked at $DIR/unwind-action-terminate.rs:LL:CC:
+thread 'main' panicked at tests/fail/unwind-action-terminate.rs:LL:CC:
 explicit panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
@@ -21,14 +21,14 @@ LL |     ABORT();
    = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
    = note: inside `core::panicking::panic_cannot_unwind` at RUSTLIB/core/src/panicking.rs:LL:CC
 note: inside `panic_abort`
-  --> $DIR/unwind-action-terminate.rs:LL:CC
+  --> tests/fail/unwind-action-terminate.rs:LL:CC
    |
 LL | / extern "C" fn panic_abort() {
 LL | |     panic!()
 LL | | }
    | |_^
 note: inside `main`
-  --> $DIR/unwind-action-terminate.rs:LL:CC
+  --> tests/fail/unwind-action-terminate.rs:LL:CC
    |
 LL |     panic_abort();
    | ^

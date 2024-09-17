@@ -1,5 +1,5 @@
 error: Undefined Behavior: constructing invalid value: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
-  --> $DIR/reference_to_packed.rs:LL:CC
+  --> tests/fail/unaligned_pointers/reference_to_packed.rs:LL:CC
    |
 LL |     mem::transmute(x)
    |     ^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
@@ -7,9 +7,9 @@ LL |     mem::transmute(x)
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `raw_to_ref::<'_, i32>` at $DIR/reference_to_packed.rs:LL:CC
+   = note: inside `raw_to_ref::<'_, i32>` at tests/fail/unaligned_pointers/reference_to_packed.rs:LL:CC
 note: inside `main`
-  --> $DIR/reference_to_packed.rs:LL:CC
+  --> tests/fail/unaligned_pointers/reference_to_packed.rs:LL:CC
    |
 LL |         let p: &i32 = unsafe { raw_to_ref(ptr::addr_of!(foo.x)) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

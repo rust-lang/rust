@@ -1,4 +1,4 @@
-thread 'main' panicked at $DIR/panic_abort2.rs:LL:CC:
+thread 'main' panicked at tests/fail/panic/panic_abort2.rs:LL:CC:
 42-panicking from libstd
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
@@ -17,7 +17,7 @@ LL |                 ABORT();
    = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::begin_panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
    = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
 note: inside `main`
-  --> $DIR/panic_abort2.rs:LL:CC
+  --> tests/fail/panic/panic_abort2.rs:LL:CC
    |
 LL |     std::panic!("{}-panicking from libstd", 42);
    | ^

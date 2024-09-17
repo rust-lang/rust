@@ -1,5 +1,5 @@
 error: Undefined Behavior: pthread_mutex_t can't be moved after first use
-  --> $DIR/libc_pthread_mutex_move.rs:LL:CC
+  --> tests/fail-dep/concurrency/libc_pthread_mutex_move.rs:LL:CC
    |
 LL |         libc::pthread_mutex_lock(&mut m2 as *mut _);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pthread_mutex_t can't be moved after first use
@@ -7,9 +7,9 @@ LL |         libc::pthread_mutex_lock(&mut m2 as *mut _);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `check` at $DIR/libc_pthread_mutex_move.rs:LL:CC
+   = note: inside `check` at tests/fail-dep/concurrency/libc_pthread_mutex_move.rs:LL:CC
 note: inside `main`
-  --> $DIR/libc_pthread_mutex_move.rs:LL:CC
+  --> tests/fail-dep/concurrency/libc_pthread_mutex_move.rs:LL:CC
    |
 LL |     check();
    |     ^^^^^^^

@@ -1,5 +1,5 @@
-//@ignore-target-windows: No `memrchr` on Windows
-//@ignore-target-apple: No `memrchr` on some apple targets
+//@ignore-target: windows # No `memrchr` on Windows
+//@ignore-target: apple # No `memrchr` on some apple targets
 
 use std::ptr;
 

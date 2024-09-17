@@ -1,4 +1,4 @@
-//@only-target-x86_64
+//@only-target: x86_64
 #![allow(improper_ctypes_definitions)]
 use std::arch::x86_64::*;
 use std::mem::transmute;

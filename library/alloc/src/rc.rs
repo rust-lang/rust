@@ -460,42 +460,7 @@ impl<T> Rc<T> {
     where
         F: FnOnce(&Weak<T>) -> T,
     {
-        // Construct the inner in the "uninitialized" state with a single
-        // weak reference.
-        let uninit_ptr: NonNull<_> = Box::leak(Box::new(RcBox {
-            strong: Cell::new(0),
-            weak: Cell::new(1),
-            value: mem::MaybeUninit::<T>::uninit(),
-        }))
-        .into();
-
-        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
-
-        let weak = Weak { ptr: init_ptr, alloc: Global };
-
-        // It's important we don't give up ownership of the weak pointer, or
-        // else the memory might be freed by the time `data_fn` returns. If
-        // we really wanted to pass ownership, we could create an additional
-        // weak pointer for ourselves, but this would result in additional
-        // updates to the weak reference count which might not be necessary
-        // otherwise.
-        let data = data_fn(&weak);
-
-        let strong = unsafe {
-            let inner = init_ptr.as_ptr();
-            ptr::write(ptr::addr_of_mut!((*inner).value), data);
-
-            let prev_value = (*inner).strong.get();
-            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-            (*inner).strong.set(1);
-
-            Rc::from_inner(init_ptr)
-        };
-
-        // Strong references should collectively own a shared weak reference,
-        // so don't run the destructor for our old weak reference.
-        mem::forget(weak);
-        strong
+        Self::new_cyclic_in(data_fn, Global)
     }
 
     /// Constructs a new `Rc` with uninitialized contents.
@@ -760,6 +725,84 @@ impl<T, A: Allocator> Rc<T, A> {
                 alloc,
             )
         }
+    }
+
+    /// Constructs a new `Rc<T, A>` in the given allocator while giving you a `Weak<T, A>` to the allocation,
+    /// to allow you to construct a `T` which holds a weak pointer to itself.
+    ///
+    /// Generally, a structure circularly referencing itself, either directly or
+    /// indirectly, should not hold a strong reference to itself to prevent a memory leak.
+    /// Using this function, you get access to the weak pointer during the
+    /// initialization of `T`, before the `Rc<T, A>` is created, such that you can
+    /// clone and store it inside the `T`.
+    ///
+    /// `new_cyclic_in` first allocates the managed allocation for the `Rc<T, A>`,
+    /// then calls your closure, giving it a `Weak<T, A>` to this allocation,
+    /// and only afterwards completes the construction of the `Rc<T, A>` by placing
+    /// the `T` returned from your closure into the allocation.
+    ///
+    /// Since the new `Rc<T, A>` is not fully-constructed until `Rc<T, A>::new_cyclic_in`
+    /// returns, calling [`upgrade`] on the weak reference inside your closure will
+    /// fail and result in a `None` value.
+    ///
+    /// # Panics
+    ///
+    /// If `data_fn` panics, the panic is propagated to the caller, and the
+    /// temporary [`Weak<T, A>`] is dropped normally.
+    ///
+    /// # Examples
+    ///
+    /// See [`new_cyclic`].
+    ///
+    /// [`new_cyclic`]: Rc::new_cyclic
+    /// [`upgrade`]: Weak::upgrade
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn new_cyclic_in<F>(data_fn: F, alloc: A) -> Rc<T, A>
+    where
+        F: FnOnce(&Weak<T, A>) -> T,
+    {
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
+        let (uninit_raw_ptr, alloc) = Box::into_raw_with_allocator(Box::new_in(
+            RcBox {
+                strong: Cell::new(0),
+                weak: Cell::new(1),
+                value: mem::MaybeUninit::<T>::uninit(),
+            },
+            alloc,
+        ));
+        let uninit_ptr: NonNull<_> = (unsafe { &mut *uninit_raw_ptr }).into();
+        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
+
+        let weak = Weak { ptr: init_ptr, alloc: alloc };
+
+        // It's important we don't give up ownership of the weak pointer, or
+        // else the memory might be freed by the time `data_fn` returns. If
+        // we really wanted to pass ownership, we could create an additional
+        // weak pointer for ourselves, but this would result in additional
+        // updates to the weak reference count which might not be necessary
+        // otherwise.
+        let data = data_fn(&weak);
+
+        let strong = unsafe {
+            let inner = init_ptr.as_ptr();
+            ptr::write(ptr::addr_of_mut!((*inner).value), data);
+
+            let prev_value = (*inner).strong.get();
+            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+            (*inner).strong.set(1);
+
+            // Strong references should collectively own a shared weak reference,
+            // so don't run the destructor for our old weak reference.
+            // Calling into_raw_with_allocator has the double effect of giving us back the allocator,
+            // and forgetting the weak reference.
+            let alloc = weak.into_raw_with_allocator().1;
+
+            Rc::from_inner_in(init_ptr, alloc)
+        };
+
+        strong
     }
 
     /// Constructs a new `Rc<T>` in the provided allocator, returning an error if the allocation

@@ -1,4 +1,4 @@
-//@ignore-target-windows: No pthreads on Windows
+//@ignore-target: windows # No pthreads on Windows
 
 /// Test that destroying a pthread_rwlock twice fails, even without a check for number validity
 

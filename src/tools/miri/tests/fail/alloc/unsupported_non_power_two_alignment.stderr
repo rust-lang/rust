@@ -1,5 +1,5 @@
 error: Undefined Behavior: creating allocation with non-power-of-two alignment ALIGN
-  --> $DIR/unsupported_non_power_two_alignment.rs:LL:CC
+  --> tests/fail/alloc/unsupported_non_power_two_alignment.rs:LL:CC
    |
 LL |         __rust_alloc(1, 3);
    |         ^^^^^^^^^^^^^^^^^^ creating allocation with non-power-of-two alignment ALIGN
@@ -7,7 +7,7 @@ LL |         __rust_alloc(1, 3);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/unsupported_non_power_two_alignment.rs:LL:CC
+   = note: inside `main` at tests/fail/alloc/unsupported_non_power_two_alignment.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -21,7 +21,7 @@ pub(crate) enum FlockOp {
     Unlock,
 }
 
-/// Represents an open file descriptor.
+/// Represents an open file description.
 pub trait FileDescription: std::fmt::Debug + Any {
     fn name(&self) -> &'static str;
 
@@ -303,7 +303,7 @@ pub struct FdTable {
 
 impl VisitProvenance for FdTable {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // All our FileDescriptor do not have any tags.
+        // All our FileDescription instances do not have any tags.
     }
 }
 
@@ -337,18 +337,18 @@ impl FdTable {
     }
 
     pub fn insert(&mut self, fd_ref: FileDescriptionRef) -> i32 {
-        self.insert_ref_with_min_fd(fd_ref, 0)
+        self.insert_with_min_num(fd_ref, 0)
     }
 
-    /// Insert a file description, giving it a file descriptor that is at least `min_fd`.
-    fn insert_ref_with_min_fd(&mut self, file_handle: FileDescriptionRef, min_fd: i32) -> i32 {
+    /// Insert a file description, giving it a file descriptor that is at least `min_fd_num`.
+    fn insert_with_min_num(&mut self, file_handle: FileDescriptionRef, min_fd_num: i32) -> i32 {
         // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
         // between used FDs, the find_map combinator will return it. If the first such unused FD
         // is after all other used FDs, the find_map combinator will return None, and we will use
         // the FD following the greatest FD thus far.
         let candidate_new_fd =
-            self.fds.range(min_fd..).zip(min_fd..).find_map(|((fd, _fh), counter)| {
-                if *fd != counter {
+            self.fds.range(min_fd_num..).zip(min_fd_num..).find_map(|((fd_num, _fd), counter)| {
+                if *fd_num != counter {
                     // There was a gap in the fds stored, return the first unused one
                     // (note that this relies on BTreeMap iterating in key order)
                     Some(counter)
@@ -357,61 +357,61 @@ impl FdTable {
                     None
                 }
             });
-        let new_fd = candidate_new_fd.unwrap_or_else(|| {
+        let new_fd_num = candidate_new_fd.unwrap_or_else(|| {
             // find_map ran out of BTreeMap entries before finding a free fd, use one plus the
             // maximum fd in the map
-            self.fds.last_key_value().map(|(fd, _)| fd.strict_add(1)).unwrap_or(min_fd)
+            self.fds.last_key_value().map(|(fd_num, _)| fd_num.strict_add(1)).unwrap_or(min_fd_num)
         });
 
-        self.fds.try_insert(new_fd, file_handle).unwrap();
-        new_fd
+        self.fds.try_insert(new_fd_num, file_handle).unwrap();
+        new_fd_num
     }
 
-    pub fn get(&self, fd: i32) -> Option<FileDescriptionRef> {
-        let fd = self.fds.get(&fd)?;
+    pub fn get(&self, fd_num: i32) -> Option<FileDescriptionRef> {
+        let fd = self.fds.get(&fd_num)?;
         Some(fd.clone())
     }
 
-    pub fn remove(&mut self, fd: i32) -> Option<FileDescriptionRef> {
-        self.fds.remove(&fd)
+    pub fn remove(&mut self, fd_num: i32) -> Option<FileDescriptionRef> {
+        self.fds.remove(&fd_num)
     }
 
-    pub fn is_fd(&self, fd: i32) -> bool {
-        self.fds.contains_key(&fd)
+    pub fn is_fd_num(&self, fd_num: i32) -> bool {
+        self.fds.contains_key(&fd_num)
     }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn dup(&mut self, old_fd: i32) -> InterpResult<'tcx, Scalar> {
+    fn dup(&mut self, old_fd_num: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let Some(dup_fd) = this.machine.fds.get(old_fd) else {
+        let Some(fd) = this.machine.fds.get(old_fd_num) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        Ok(Scalar::from_i32(this.machine.fds.insert_ref_with_min_fd(dup_fd, 0)))
+        Ok(Scalar::from_i32(this.machine.fds.insert(fd)))
     }
 
-    fn dup2(&mut self, old_fd: i32, new_fd: i32) -> InterpResult<'tcx, Scalar> {
+    fn dup2(&mut self, old_fd_num: i32, new_fd_num: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let Some(dup_fd) = this.machine.fds.get(old_fd) else {
+        let Some(fd) = this.machine.fds.get(old_fd_num) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        if new_fd != old_fd {
+        if new_fd_num != old_fd_num {
             // Close new_fd if it is previously opened.
             // If old_fd and new_fd point to the same description, then `dup_fd` ensures we keep the underlying file description alive.
-            if let Some(file_description) = this.machine.fds.fds.insert(new_fd, dup_fd) {
+            if let Some(old_new_fd) = this.machine.fds.fds.insert(new_fd_num, fd) {
                 // Ignore close error (not interpreter's) according to dup2() doc.
-                file_description.close(this.machine.communicate(), this)?.ok();
+                old_new_fd.close(this.machine.communicate(), this)?.ok();
             }
         }
-        Ok(Scalar::from_i32(new_fd))
+        Ok(Scalar::from_i32(new_fd_num))
     }
 
-    fn flock(&mut self, fd: i32, op: i32) -> InterpResult<'tcx, Scalar> {
+    fn flock(&mut self, fd_num: i32, op: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        let Some(file_descriptor) = this.machine.fds.get(fd) else {
+        let Some(fd) = this.machine.fds.get(fd_num) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
 
@@ -436,8 +436,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported flags {:#x}", op);
         };
 
-        let result = file_descriptor.flock(this.machine.communicate(), parsed_op)?;
-        drop(file_descriptor);
+        let result = fd.flock(this.machine.communicate(), parsed_op)?;
+        drop(fd);
         // return `0` if flock is successful
         let result = result.map(|()| 0i32);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
@@ -452,7 +452,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 args.len()
             );
         }
-        let fd = this.read_scalar(&args[0])?.to_i32()?;
+        let fd_num = this.read_scalar(&args[0])?.to_i32()?;
         let cmd = this.read_scalar(&args[1])?.to_i32()?;
 
         // We only support getting the flags for a descriptor.
@@ -461,7 +461,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
             // always sets this flag when opening a file. However we still need to check that the
             // file itself is open.
-            Ok(Scalar::from_i32(if this.machine.fds.is_fd(fd) {
+            Ok(Scalar::from_i32(if this.machine.fds.is_fd_num(fd_num) {
                 this.eval_libc_i32("FD_CLOEXEC")
             } else {
                 this.fd_not_found()?
@@ -481,9 +481,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let start = this.read_scalar(&args[2])?.to_i32()?;
 
-            match this.machine.fds.get(fd) {
-                Some(dup_fd) =>
-                    Ok(Scalar::from_i32(this.machine.fds.insert_ref_with_min_fd(dup_fd, start))),
+            match this.machine.fds.get(fd_num) {
+                Some(fd) => Ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start))),
                 None => Ok(Scalar::from_i32(this.fd_not_found()?)),
             }
         } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC") {
@@ -494,7 +493,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return Ok(Scalar::from_i32(-1));
             }
 
-            this.ffullsync_fd(fd)
+            this.ffullsync_fd(fd_num)
         } else {
             throw_unsup_format!("the {:#x} command is not supported for `fcntl`)", cmd);
         }
@@ -503,12 +502,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn close(&mut self, fd_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        let fd_num = this.read_scalar(fd_op)?.to_i32()?;
 
-        let Some(file_description) = this.machine.fds.remove(fd) else {
+        let Some(fd) = this.machine.fds.remove(fd_num) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        let result = file_description.close(this.machine.communicate(), this)?;
+        let result = fd.close(this.machine.communicate(), this)?;
         // return `0` if close is successful
         let result = result.map(|()| 0i32);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
@@ -532,16 +531,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// and keeps the cursor unchanged.
     fn read(
         &mut self,
-        fd: i32,
+        fd_num: i32,
         buf: Pointer,
         count: u64,
         offset: Option<i128>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // Isolation check is done via `FileDescriptor` trait.
+        // Isolation check is done via `FileDescription` trait.
 
-        trace!("Reading from FD {}, size {}", fd, count);
+        trace!("Reading from FD {}, size {}", fd_num, count);
 
         // Check that the *entire* buffer is actually valid memory.
         this.check_ptr_access(buf, Size::from_bytes(count), CheckInAllocMsg::MemoryAccessTest)?;
@@ -554,7 +553,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let communicate = this.machine.communicate();
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(fd) = this.machine.fds.get(fd) else {
+        let Some(fd) = this.machine.fds.get(fd_num) else {
             trace!("read: FD not found");
             return Ok(Scalar::from_target_isize(this.fd_not_found()?, this));
         };
@@ -597,14 +596,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn write(
         &mut self,
-        fd: i32,
+        fd_num: i32,
         buf: Pointer,
         count: u64,
         offset: Option<i128>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // Isolation check is done via `FileDescriptor` trait.
+        // Isolation check is done via `FileDescription` trait.
 
         // Check that the *entire* buffer is actually valid memory.
         this.check_ptr_access(buf, Size::from_bytes(count), CheckInAllocMsg::MemoryAccessTest)?;
@@ -618,7 +617,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?.to_owned();
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(fd) = this.machine.fds.get(fd) else {
+        let Some(fd) = this.machine.fds.get(fd_num) else {
             return Ok(Scalar::from_target_isize(this.fd_not_found()?, this));
         };
 

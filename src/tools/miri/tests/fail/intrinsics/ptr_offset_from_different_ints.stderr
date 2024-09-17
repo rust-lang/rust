@@ -1,5 +1,5 @@
 error: Undefined Behavior: out-of-bounds `offset_from` origin: expected a pointer to the end of 1 byte of memory, but got 0xb[noalloc] which is a dangling pointer (it has no provenance)
-  --> $DIR/ptr_offset_from_different_ints.rs:LL:CC
+  --> tests/fail/intrinsics/ptr_offset_from_different_ints.rs:LL:CC
    |
 LL |         let _ = p1.byte_offset_from(p2);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from` origin: expected a pointer to the end of 1 byte of memory, but got 0xb[noalloc] which is a dangling pointer (it has no provenance)
@@ -7,7 +7,7 @@ LL |         let _ = p1.byte_offset_from(p2);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/ptr_offset_from_different_ints.rs:LL:CC
+   = note: inside `main` at tests/fail/intrinsics/ptr_offset_from_different_ints.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

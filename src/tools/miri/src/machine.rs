@@ -602,12 +602,8 @@ impl<'tcx> MiriMachine<'tcx> {
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
-            let crate_name = tcx
-                .sess
-                .opts
-                .crate_name
-                .clone()
-                .unwrap_or_else(|| "unknown-crate".to_string());
+            let crate_name =
+                tcx.sess.opts.crate_name.clone().unwrap_or_else(|| "unknown-crate".to_string());
             let pid = process::id();
             // We adopt the same naming scheme for the profiler output that rustc uses. In rustc,
             // the PID is padded so that the nondeterministic value of the PID does not spread

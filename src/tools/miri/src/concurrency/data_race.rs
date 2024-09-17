@@ -1165,7 +1165,7 @@ impl FrameState {
         } else {
             // This can fail to exist if `race_detecting` was false when the allocation
             // occurred, in which case we can backdate this to the beginning of time.
-            let clocks = clocks.entry(local).or_insert_with(Default::default);
+            let clocks = clocks.entry(local).or_default();
             clocks.write = thread_clocks.clock[index];
             clocks.write_type = NaWriteType::Write;
         }
@@ -1186,7 +1186,7 @@ impl FrameState {
         // This can fail to exist if `race_detecting` was false when the allocation
         // occurred, in which case we can backdate this to the beginning of time.
         let mut clocks = self.local_clocks.borrow_mut();
-        let clocks = clocks.entry(local).or_insert_with(Default::default);
+        let clocks = clocks.entry(local).or_default();
         clocks.read = thread_clocks.clock[index];
     }
 

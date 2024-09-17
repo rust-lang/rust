@@ -1,5 +1,5 @@
 error: Undefined Behavior: writing to ALLOC which is read-only
-  --> $DIR/static_memory_modification.rs:LL:CC
+  --> tests/fail/stacked_borrows/static_memory_modification.rs:LL:CC
    |
 LL |         std::mem::transmute::<&usize, &mut usize>(&X)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to ALLOC which is read-only
@@ -7,7 +7,7 @@ LL |         std::mem::transmute::<&usize, &mut usize>(&X)
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/static_memory_modification.rs:LL:CC
+   = note: inside `main` at tests/fail/stacked_borrows/static_memory_modification.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

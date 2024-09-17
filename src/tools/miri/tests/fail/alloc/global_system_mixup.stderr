@@ -10,7 +10,7 @@ LL |         FREE();
    = note: inside `std::sys::alloc::PLATFORM::<impl std::alloc::GlobalAlloc for std::alloc::System>::dealloc` at RUSTLIB/std/src/sys/alloc/PLATFORM.rs:LL:CC
    = note: inside `<std::alloc::System as std::alloc::Allocator>::deallocate` at RUSTLIB/std/src/alloc.rs:LL:CC
 note: inside `main`
-  --> $DIR/global_system_mixup.rs:LL:CC
+  --> tests/fail/alloc/global_system_mixup.rs:LL:CC
    |
 LL |     unsafe { System.deallocate(ptr, l) };
    | ^

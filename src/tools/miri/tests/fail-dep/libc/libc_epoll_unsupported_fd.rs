@@ -1,4 +1,4 @@
-//@only-target-linux
+//@only-target: linux
 
 // This is a test for registering unsupported fd with epoll.
 // Register epoll fd with epoll is allowed in real system, but we do not support this.

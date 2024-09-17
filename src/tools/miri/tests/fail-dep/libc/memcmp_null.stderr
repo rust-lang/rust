@@ -1,5 +1,5 @@
 error: Undefined Behavior: out-of-bounds pointer use: expected a pointer to some allocation, but got a null pointer
-  --> $DIR/memcmp_null.rs:LL:CC
+  --> tests/fail-dep/libc/memcmp_null.rs:LL:CC
    |
 LL |         libc::memcmp(ptr::null(), ptr::null(), 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: expected a pointer to some allocation, but got a null pointer
@@ -7,7 +7,7 @@ LL |         libc::memcmp(ptr::null(), ptr::null(), 0);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/memcmp_null.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/libc/memcmp_null.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

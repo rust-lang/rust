@@ -1,5 +1,5 @@
 error: Undefined Behavior: accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
-  --> $DIR/promise_alignment.rs:LL:CC
+  --> tests/fail/unaligned_pointers/promise_alignment.rs:LL:CC
    |
 LL |         let _val = unsafe { align8.cast::<Align16>().read() };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
@@ -7,7 +7,7 @@ LL |         let _val = unsafe { align8.cast::<Align16>().read() };
    = help: this usually indicates that your program performed an invalid operation and caused Undefined Behavior
    = help: but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/promise_alignment.rs:LL:CC
+   = note: inside `main` at tests/fail/unaligned_pointers/promise_alignment.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

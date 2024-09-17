@@ -11,7 +11,7 @@ enum E {
 // Doing a copy at integer type should lose provenance.
 // This tests the case where provenacne is hiding in the discriminant of an enum.
 fn main() {
-    assert_eq!(mem::size_of::<E>(), 2*mem::size_of::<usize>());
+    assert_eq!(mem::size_of::<E>(), 2 * mem::size_of::<usize>());
 
     // We want to store provenance in the enum discriminant, but the value still needs to
     // be valid atfor the type. So we split provenance and data.

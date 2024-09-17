@@ -6,11 +6,23 @@ use std::{env, process::Command};
 
 use colored::*;
 use regex::bytes::Regex;
+use ui_test::build_manager::BuildManager;
 use ui_test::color_eyre::eyre::{Context, Result};
-use ui_test::{
-    status_emitter, CommandBuilder, Config, Format, Match, Mode, OutputConflictHandling,
-    RustfixMode,
-};
+use ui_test::custom_flags::edition::Edition;
+use ui_test::dependencies::DependencyBuilder;
+use ui_test::per_test_config::TestConfig;
+use ui_test::spanned::Spanned;
+use ui_test::{status_emitter, CommandBuilder, Config, Format, Match, OutputConflictHandling};
+
+#[derive(Copy, Clone, Debug)]
+enum Mode {
+    Pass,
+    /// Requires annotations
+    Fail,
+    /// Not used for tests, but for `miri run --dep`
+    RunDep,
+    Panic,
+}
 
 fn miri_path() -> PathBuf {
     PathBuf::from(env::var("MIRI").unwrap_or_else(|_| env!("CARGO_BIN_EXE_miri").into()))
@@ -77,32 +89,53 @@ fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
 
     let mut config = Config {
         target: Some(target.to_owned()),
-        stderr_filters: stderr_filters().into(),
-        stdout_filters: stdout_filters().into(),
-        mode,
         program,
         out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri_ui"),
-        edition: Some("2021".into()), // keep in sync with `./miri run`
         threads: std::env::var("MIRI_TEST_THREADS")
             .ok()
             .map(|threads| NonZero::new(threads.parse().unwrap()).unwrap()),
         ..Config::rustc(path)
     };
 
+    config.comment_defaults.base().exit_status = match mode {
+        Mode::Pass => Some(0),
+        Mode::Fail => Some(1),
+        Mode::RunDep => None,
+        Mode::Panic => Some(101),
+    }
+    .map(Spanned::dummy)
+    .into();
+
+    config.comment_defaults.base().require_annotations =
+        Spanned::dummy(matches!(mode, Mode::Fail)).into();
+
+    config.comment_defaults.base().normalize_stderr =
+        stderr_filters().iter().map(|(m, p)| (m.clone(), p.to_vec())).collect();
+    config.comment_defaults.base().normalize_stdout =
+        stdout_filters().iter().map(|(m, p)| (m.clone(), p.to_vec())).collect();
+
+    // keep in sync with `./miri run`
+    config.comment_defaults.base().add_custom("edition", Edition("2021".into()));
+
     if with_dependencies {
-        // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
-        // (It's a separate crate, so we don't get an env var from cargo.)
-        config.dependency_builder.program = {
-            let mut prog = miri_path();
-            prog.set_file_name(format!("cargo-miri{}", env::consts::EXE_SUFFIX));
-            prog
-        };
-        let builder_args = ["miri", "run"]; // There is no `cargo miri build` so we just use `cargo miri run`.
-        config.dependency_builder.args = builder_args.into_iter().map(Into::into).collect();
-        config.dependencies_crate_manifest_path =
-            Some(Path::new("test_dependencies").join("Cargo.toml"));
-        // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
-        config.dependency_builder.envs.push(("RUSTFLAGS".into(), None));
+        config.comment_defaults.base().set_custom(
+            "dependencies",
+            DependencyBuilder {
+                program: CommandBuilder {
+                    // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
+                    // (It's a separate crate, so we don't get an env var from cargo.)
+                    program: miri_path()
+                        .with_file_name(format!("cargo-miri{}", env::consts::EXE_SUFFIX)),
+                    // There is no `cargo miri build` so we just use `cargo miri run`.
+                    args: ["miri", "run"].into_iter().map(Into::into).collect(),
+                    // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
+                    envs: vec![("RUSTFLAGS".into(), None)],
+                    ..CommandBuilder::cargo()
+                },
+                crate_manifest_path: Path::new("test_dependencies").join("Cargo.toml"),
+                build_std: None,
+            },
+        );
     }
     config
 }
@@ -140,8 +173,6 @@ fn run_tests(
         }
     }
     config.program.args.push("-Zui-testing".into());
-    config.program.args.push("--target".into());
-    config.program.args.push(target.into());
 
     // If we're testing the native-lib functionality, then build the shared object file for testing
     // external C function calls and push the relevant compiler flag.
@@ -153,14 +184,13 @@ fn run_tests(
     }
 
     // Handle command-line arguments.
-    let args = ui_test::Args::test()?;
-    let default_bless = env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
-    config.with_args(&args, default_bless);
-    if let OutputConflictHandling::Error(msg) = &mut config.output_conflict_handling {
-        *msg = "./miri test --bless".into();
-    }
+    let mut args = ui_test::Args::test()?;
+    args.bless |= env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
+    config.with_args(&args);
+    config.bless_command = Some("./miri test --bless".into());
+
     if env::var_os("MIRI_SKIP_UI_CHECKS").is_some() {
-        assert!(!default_bless, "cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time");
+        assert!(!args.bless, "cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time");
         config.output_conflict_handling = OutputConflictHandling::Ignore;
     }
     eprintln!("   Compiler: {}", config.program.display());
@@ -171,7 +201,7 @@ fn run_tests(
         // The files we're actually interested in (all `.rs` files).
         ui_test::default_file_filter,
         // This could be used to overwrite the `Config` on a per-test basis.
-        |_, _, _| {},
+        |_, _| {},
         (
             match args.format {
                 Format::Terse => status_emitter::Text::quiet(),
@@ -287,50 +317,29 @@ fn main() -> Result<()> {
     ui(Mode::Pass, "tests/pass", &target, WithoutDependencies, tmpdir.path())?;
     ui(Mode::Pass, "tests/pass-dep", &target, WithDependencies, tmpdir.path())?;
     ui(Mode::Panic, "tests/panic", &target, WithDependencies, tmpdir.path())?;
-    ui(
-        Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
-        "tests/fail",
-        &target,
-        WithoutDependencies,
-        tmpdir.path(),
-    )?;
-    ui(
-        Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
-        "tests/fail-dep",
-        &target,
-        WithDependencies,
-        tmpdir.path(),
-    )?;
+    ui(Mode::Fail, "tests/fail", &target, WithoutDependencies, tmpdir.path())?;
+    ui(Mode::Fail, "tests/fail-dep", &target, WithDependencies, tmpdir.path())?;
     if cfg!(unix) {
         ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
-        ui(
-            Mode::Fail { require_patterns: true, rustfix: RustfixMode::Disabled },
-            "tests/native-lib/fail",
-            &target,
-            WithoutDependencies,
-            tmpdir.path(),
-        )?;
+        ui(Mode::Fail, "tests/native-lib/fail", &target, WithoutDependencies, tmpdir.path())?;
     }
 
     Ok(())
 }
 
-fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
-    let path = args.next().expect("./miri run-dep must be followed by a file name");
-    let mut config = miri_config(
-        &target,
-        "",
-        Mode::Yolo { rustfix: RustfixMode::Disabled },
-        /* with dependencies */ true,
-    );
-    config.program.args.clear(); // remove the `--error-format` that ui_test adds by default
-    let dep_args = config.build_dependencies()?;
+fn run_dep_mode(target: String, args: impl Iterator<Item = OsString>) -> Result<()> {
+    let mut config = miri_config(&target, "", Mode::RunDep, /* with dependencies */ true);
+    config.comment_defaults.base().custom.remove("edition"); // `./miri` adds an `--edition` in `args`, so don't set it twice
+    config.fill_host_and_target()?;
+    config.program.args = args.collect();
 
-    let mut cmd = config.program.build(&config.out_dir);
-    cmd.args(dep_args);
+    let test_config = TestConfig::one_off_runner(config.clone(), PathBuf::new());
 
-    cmd.arg(path);
+    let build_manager = BuildManager::one_off(config);
+    let mut cmd = test_config.config.program.build(&test_config.config.out_dir);
+    cmd.arg("--target").arg(test_config.config.target.as_ref().unwrap());
+    // Build dependencies
+    test_config.apply_custom(&mut cmd, &build_manager).unwrap();
 
-    cmd.args(args);
     if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
 }

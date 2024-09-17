@@ -1,4 +1,4 @@
-//@only-target-windows: this directly tests windows-only functions
+//@only-target: windows # this directly tests windows-only functions
 
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
