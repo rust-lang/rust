@@ -181,12 +181,12 @@ trait TypeOpInfo<'tcx> {
             bound: placeholder.bound,
         });
 
-        let error_region = None;
-
         debug!(?placeholder_region);
 
+        // FIXME: this is obviously weird; this whole argument now does nothing and maybe
+        // it should?
         let span = cause.span;
-        let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_region);
+        let nice_error = self.nice_error(mbcx, cause, placeholder_region, None);
 
         debug!(?nice_error);
 

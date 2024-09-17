@@ -153,7 +153,7 @@ impl RegionTracker {
 
     /// If the representative is a placeholder, return it,
     /// otherwise return None.
-    fn placeholder_representative(&self) -> Option<RegionVid> {
+    pub(crate) fn placeholder_representative(&self) -> Option<RegionVid> {
         if self.representative_origin == RepresentativeOrigin::Placeholder {
             Some(self.representative)
         } else {
@@ -1666,7 +1666,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
         debug!("check_bound_universal_region: longer_fr_scc={:?}", longer_fr_scc,);
 
-        for error_element in self.scc_values.elements_contained_in(longer_fr_scc) {
+        if let Some(error_element) = self.scc_values.elements_contained_in(longer_fr_scc).next() {
             debug!(
                 "check_bound_universal_region, error_element: {error_element:?} for placeholder {placeholder:?} in scc: {longer_fr_scc:?}"
             );
@@ -1676,11 +1676,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 error_element,
                 placeholder,
             });
-
             // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
-            break;
+        } else {
+            debug!("check_bound_universal_region: all bounds satisfied");
         }
-        debug!("check_bound_universal_region: all bounds satisfied");
     }
 
     #[instrument(level = "debug", skip(self, infcx, errors_buffer))]

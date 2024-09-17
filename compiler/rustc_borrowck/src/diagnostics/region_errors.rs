@@ -210,33 +210,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let mut suggestions = vec![];
         let hir = self.infcx.tcx.hir();
 
-        // find generic associated types in the given region 'lower_bound'
-        // FIXME: this should find one of the special-case blamable
-        // new constraints instead!
-        //let gat_id_and_generics = vec![];
-        //debug!(?gat_id_and_generics);
-
         // find higher-ranked trait bounds bounded to the generic associated types
         let hrtb_bounds = vec![];
         /*
-        gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
-            for pred in generics.predicates {
-                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) = pred
-                else {
-                    continue;
-                };
-                if bound_generic_params
-                    .iter()
-                    .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
-                    .is_some()
-                {
-                    for bound in *bounds {
-                        hrtb_bounds.push(bound);
-                    }
-                }
-            }
-        });
-        debug!(?hrtb_bounds);
+        // FIXME: the best we can do is look at the representative, using something like:
+        let scc = self.regioncx.constraint_sccs().scc(lower_bound);
+        let Some(representative) =
+            self.regioncx.constraint_sccs().annotation(scc).placeholder_representative()
+        else {
+            return;
+        };
         */
 
         hrtb_bounds.iter().for_each(|bound| {
