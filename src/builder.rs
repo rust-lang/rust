@@ -14,8 +14,8 @@ use rustc_codegen_ssa::common::{
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
-    BackendTypes, BaseTypeMethods, BuilderMethods, ConstMethods, LayoutTypeMethods, OverflowOp,
-    StaticBuilderMethods,
+    BackendTypes, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
+    LayoutTypeCodegenMethods, OverflowOp, StaticBuilderMethods,
 };
 use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::fx::FxHashSet;

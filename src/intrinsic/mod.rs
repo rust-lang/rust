@@ -13,10 +13,10 @@ use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::{
-    ArgAbiBuilderMethods, BuilderMethods, ConstMethods, IntrinsicCallBuilderMethods,
+    ArgAbiBuilderMethods, BuilderMethods, ConstCodegenMethods, IntrinsicCallBuilderMethods,
 };
 #[cfg(feature = "master")]
-use rustc_codegen_ssa::traits::{BaseTypeMethods, MiscMethods};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, MiscCodegenMethods};
 use rustc_codegen_ssa::MemFlags;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
