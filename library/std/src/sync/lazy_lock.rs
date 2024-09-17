@@ -1,7 +1,7 @@
 use super::once::ExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::mem::ManuallyDrop;
-use crate::ops::{Deref, DerefMut};
+use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
 use crate::{fmt, ptr};
@@ -137,11 +137,10 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// Forces the evaluation of this lazy value and returns a mutable reference to
     /// the result.
     ///
-    /// This is equivalent to the `DerefMut` impl, but is explicit.
-    ///
     /// # Examples
     ///
     /// ```
+    /// #![feature(lazy_get)]
     /// use std::sync::LazyLock;
     ///
     /// let mut lazy = LazyLock::new(|| 92);
@@ -150,11 +149,9 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// assert_eq!(*p, 92);
     /// *p = 44;
     /// assert_eq!(*lazy, 44);
-    /// *lazy = 55; // Using `DerefMut`
-    /// assert_eq!(*lazy, 55);
     /// ```
     #[inline]
-    #[stable(feature = "lazy_deref_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "lazy_get", issue = "129333")]
     pub fn force_mut(this: &mut LazyLock<T, F>) -> &mut T {
         #[cold]
         /// # Safety
@@ -314,14 +311,6 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     #[inline]
     fn deref(&self) -> &T {
         LazyLock::force(self)
-    }
-}
-
-#[stable(feature = "lazy_deref_mut", since = "CURRENT_RUSTC_VERSION")]
-impl<T, F: FnOnce() -> T> DerefMut for LazyLock<T, F> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut T {
-        LazyLock::force_mut(self)
     }
 }
 

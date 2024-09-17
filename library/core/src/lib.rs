@@ -172,6 +172,7 @@
 #![feature(is_ascii_octdigit)]
 #![feature(is_val_statically_known)]
 #![feature(isqrt)]
+#![feature(lazy_get)]
 #![feature(link_cfg)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
