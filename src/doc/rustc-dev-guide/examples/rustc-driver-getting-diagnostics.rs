@@ -77,10 +77,10 @@ fn main() {
         locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps: rustc_hash::FxHashMap::default(),
         psess_created: Some(Box::new(|parse_sess| {
-            parse_sess.dcx = DiagCtxt::new(Box::new(DebugEmitter {
+            parse_sess.set_dcx(DiagCtxt::new(Box::new(DebugEmitter {
                 source_map: parse_sess.clone_source_map(),
                 diagnostics,
-            }))
+            })));
         })),
         register_lints: None,
         override_queries: None,
@@ -98,6 +98,9 @@ fn main() {
                 let _ = tcx.analysis(());
             });
         });
+        // If the compiler has encountered errors when this closure returns, it will abort (!) the program.
+        // We avoid this by resetting the error count before returning
+        compiler.sess.dcx().reset_err_count();
     });
     // Read buffered diagnostics.
     buffer.lock().unwrap().iter().for_each(|diagnostic| {
