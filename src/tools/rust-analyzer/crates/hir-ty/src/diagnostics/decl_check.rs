@@ -24,6 +24,7 @@ use hir_expand::{
     name::{AsName, Name},
     HirFileId, HirFileIdExt,
 };
+use intern::sym;
 use stdx::{always, never};
 use syntax::{
     ast::{self, HasName},
@@ -197,12 +198,20 @@ impl<'a> DeclValidator<'a> {
         // Skipped if function is an associated item of a trait implementation.
         if !self.is_trait_impl_container(container) {
             let data = self.db.function_data(func);
-            self.create_incorrect_case_diagnostic_for_item_name(
-                func,
-                &data.name,
-                CaseType::LowerSnakeCase,
-                IdentType::Function,
-            );
+
+            // Don't run the lint on extern "[not Rust]" fn items with the
+            // #[no_mangle] attribute.
+            let no_mangle = data.attrs.by_key(&sym::no_mangle).exists();
+            if no_mangle && data.abi.as_ref().is_some_and(|abi| *abi != sym::Rust) {
+                cov_mark::hit!(extern_func_no_mangle_ignored);
+            } else {
+                self.create_incorrect_case_diagnostic_for_item_name(
+                    func,
+                    &data.name,
+                    CaseType::LowerSnakeCase,
+                    IdentType::Function,
+                );
+            }
         } else {
             cov_mark::hit!(trait_impl_assoc_func_name_incorrect_case_ignored);
         }
