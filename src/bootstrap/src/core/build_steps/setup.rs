@@ -46,6 +46,7 @@ static SETTINGS_HASHES: &[&str] = &[
     "47d227f424bf889b0d899b9cc992d5695e1b78c406e183cd78eafefbe5488923",
     "b526bd58d0262dd4dda2bff5bc5515b705fb668a46235ace3e057f807963a11a",
     "828666b021d837a33e78d870b56d34c88a5e2c85de58b693607ec574f0c27000",
+    "811fb3b063c739d261fd8590dd30242e117908f5a095d594fa04585daa18ec4d",
 ];
 static RUST_ANALYZER_SETTINGS: &str = include_str!("../../../../etc/rust_analyzer_settings.json");
 
