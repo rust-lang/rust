@@ -56,7 +56,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
             && let Some(node) = tcx.hir().get_if_local(def_id)
             && let Some(sig) = node.fn_sig()
         {
-            sig.decl.inputs.len() + sig.decl.implicit_self.has_implicit_self() as usize
+            sig.decl.inputs.len()
         } else {
             tcx.dcx().abort_if_errors();
             unreachable!()
