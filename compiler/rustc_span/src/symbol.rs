@@ -1061,6 +1061,7 @@ symbols! {
         inline_const,
         inline_const_pat,
         inout,
+        instant_now,
         instruction_set,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,

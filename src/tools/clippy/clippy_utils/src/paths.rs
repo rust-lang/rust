@@ -72,4 +72,3 @@ pub const TOKIO_IO_ASYNCWRITEEXT: [&str; 5] = ["tokio", "io", "util", "async_wri
 pub const TOKIO_IO_OPEN_OPTIONS: [&str; 4] = ["tokio", "fs", "open_options", "OpenOptions"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_OPEN_OPTIONS_NEW: [&str; 5] = ["tokio", "fs", "open_options", "OpenOptions", "new"];
-pub const INSTANT_NOW: [&str; 4] = ["std", "time", "Instant", "now"];
