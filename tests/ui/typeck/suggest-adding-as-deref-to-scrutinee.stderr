@@ -25,6 +25,11 @@ error[E0529]: expected an array or slice, found `Vec<ErrorKind>`
    |
 LL |         Err([ErrorKind::NotFound]) => false,
    |             ^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Vec<ErrorKind>`
+   |
+help: consider using `as_deref` here
+   |
+LL |     match res.as_deref() {
+   |              +++++++++++
 
 error[E0529]: expected an array or slice, found `Vec<i32>`
   --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:25:14
@@ -42,6 +47,11 @@ error[E0529]: expected an array or slice, found `Vec<ErrorKind>`
    |
 LL |         Err([ErrorKind::NotFound]) => true,
    |             ^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Vec<ErrorKind>`
+   |
+help: consider using `as_deref` here
+   |
+LL |     match res.as_deref() {
+   |              +++++++++++
 
 error[E0529]: expected an array or slice, found `i32`
   --> $DIR/suggest-adding-as-deref-to-scrutinee.rs:45:12
