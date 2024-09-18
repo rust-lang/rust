@@ -142,3 +142,24 @@ fn is_sync_send() {
     fn assert_traits<T: Send + Sync>() {}
     assert_traits::<LazyLock<String>>();
 }
+
+#[test]
+#[should_panic = "has previously been poisoned"]
+fn lazy_force_mut_panic() {
+    let mut lazy = LazyLock::<String>::new(|| panic!());
+    crate::panic::catch_unwind(crate::panic::AssertUnwindSafe(|| {
+        let _ = LazyLock::force_mut(&mut lazy);
+    }))
+    .unwrap_err();
+    let _ = &*lazy;
+}
+
+#[test]
+fn lazy_force_mut() {
+    let s = "abc".to_owned();
+    let mut lazy = LazyLock::new(move || s);
+    LazyLock::force_mut(&mut lazy);
+    let p = LazyLock::force_mut(&mut lazy);
+    p.clear();
+    LazyLock::force_mut(&mut lazy);
+}
