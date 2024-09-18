@@ -40,7 +40,6 @@ pub const OPEN_OPTIONS_NEW: [&str; 4] = ["std", "fs", "OpenOptions", "new"];
 pub const PARKING_LOT_MUTEX_GUARD: [&str; 3] = ["lock_api", "mutex", "MutexGuard"];
 pub const PARKING_LOT_RWLOCK_READ_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwLockReadGuard"];
 pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwLockWriteGuard"];
-pub const PATH_MAIN_SEPARATOR: [&str; 3] = ["std", "path", "MAIN_SEPARATOR"];
 #[cfg_attr(not(unix), allow(clippy::invalid_paths))]
 pub const PERMISSIONS_FROM_MODE: [&str; 6] = ["std", "os", "unix", "fs", "PermissionsExt", "from_mode"];
 pub const PUSH_STR: [&str; 4] = ["alloc", "string", "String", "push_str"];
