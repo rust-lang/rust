@@ -73,8 +73,8 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
 
         // Generating partially-uninit consts is limited to small numbers of chunks,
         // to avoid the cost of generating large complex const expressions.
-        // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element,
-        // and would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
+        // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element, and
+        // would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
         let max = cx.sess().opts.unstable_opts.uninit_const_chunk_threshold;
         let allow_uninit_chunks = chunks.clone().take(max.saturating_add(1)).count() <= max;
 
@@ -249,8 +249,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         trace!(?instance);
 
         let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
-        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure out
-        // the llvm type from the actual evaluated initializer.
+        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure
+        // out the llvm type from the actual evaluated initializer.
         let llty = if nested {
             self.type_i8()
         } else {
@@ -320,15 +320,16 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
 
         if !def_id.is_local() {
-            let needs_dll_storage_attr = self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
+            let needs_dll_storage_attr = self.use_dll_storage_attrs
+                && !self.tcx.is_foreign_item(def_id)
                 // Local definitions can never be imported, so we must not apply
                 // the DLLImport annotation.
-                !dso_local &&
+                && !dso_local
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
                 // dynamic linking when linker plugin based LTO is enabled.
-                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
-                self.tcx.sess.lto() != Lto::Thin;
+                && !self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
+                && self.tcx.sess.lto() != Lto::Thin;
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
@@ -551,8 +552,8 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
                 // on other targets, in particular MachO targets have *their* static constructor
                 // lists broken if `llvm.compiler.used` is emitted rather than `llvm.used`. However,
-                // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_hir_analysis`,
-                // so we don't need to take care of it here.
+                // that check happens when assigning the `CodegenFnAttrFlags` in
+                // `rustc_hir_analysis`, so we don't need to take care of it here.
                 self.add_compiler_used_global(g);
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {

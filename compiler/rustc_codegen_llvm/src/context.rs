@@ -231,7 +231,8 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
-    // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
+    // Enable LTO unit splitting if specified or if CFI is enabled. (See
+    // https://reviews.llvm.org/D53891.)
     if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
         let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr();
         unsafe {

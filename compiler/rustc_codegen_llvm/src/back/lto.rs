@@ -156,15 +156,15 @@ fn get_bitcode_slice_from_object_data<'a>(
     obj: &'a [u8],
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<&'a [u8], LtoBitcodeFromRlib> {
-    // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR that
-    // won't work. Fortunately, if that's what we have we can just return the object directly, so we sniff
-    // the relevant magic strings here and return.
+    // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR
+    // that won't work. Fortunately, if that's what we have we can just return the object directly,
+    // so we sniff the relevant magic strings here and return.
     if obj.starts_with(b"\xDE\xC0\x17\x0B") || obj.starts_with(b"BC\xC0\xDE") {
         return Ok(obj);
     }
-    // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment name"
-    // which in the public API for sections gets treated as part of the section name, but internally
-    // in MachOObjectFile.cpp gets treated separately.
+    // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment
+    // name" which in the public API for sections gets treated as part of the section name, but
+    // internally in MachOObjectFile.cpp gets treated separately.
     let section_name = bitcode_section_name(cgcx).trim_start_matches("__LLVM,");
     let mut len = 0;
     let data = unsafe {

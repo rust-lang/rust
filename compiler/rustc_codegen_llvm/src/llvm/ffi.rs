@@ -2150,7 +2150,8 @@ unsafe extern "C" {
 
     pub fn LLVMRustGetHostCPUName(len: *mut usize) -> *const c_char;
 
-    // This function makes copies of pointed to data, so the data's lifetime may end after this function returns
+    // This function makes copies of pointed to data, so the data's lifetime may end after this
+    // function returns.
     pub fn LLVMRustCreateTargetMachine(
         Triple: *const c_char,
         CPU: *const c_char,

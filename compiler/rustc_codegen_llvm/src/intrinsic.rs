@@ -404,7 +404,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             let llvm_name =
                                 &format!("llvm.fsh{}.i{}", if is_left { 'l' } else { 'r' }, width);
 
-                            // llvm expects shift to be the same type as the values, but rust always uses `u32`
+                            // llvm expects shift to be the same type as the values, but rust
+                            // always uses `u32`.
                             let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
 
                             self.call_intrinsic(llvm_name, &[val, val, raw_shift])
@@ -573,8 +574,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     span,
                 ) {
                     Ok(llval) => llval,
-                    // If there was an error, just skip this invocation... we'll abort compilation anyway,
-                    // but we can keep codegen'ing to find more errors.
+                    // If there was an error, just skip this invocation... we'll abort compilation
+                    // anyway, but we can keep codegen'ing to find more errors.
                     Err(()) => return Ok(()),
                 }
             }
@@ -1847,7 +1848,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         require!(
             matches!(
                 *pointer_ty.kind(),
-                ty::RawPtr(p_ty, p_mutbl) if p_ty == values_elem && p_ty.kind() == values_elem.kind() && p_mutbl.is_mut()
+                ty::RawPtr(p_ty, p_mutbl)
+                    if p_ty == values_elem && p_ty.kind() == values_elem.kind() && p_mutbl.is_mut()
             ),
             InvalidMonomorphization::ExpectedElementType {
                 span,

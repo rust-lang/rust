@@ -86,15 +86,17 @@ impl Deref for OwnedTargetMachine {
     type Target = llvm::TargetMachine;
 
     fn deref(&self) -> &Self::Target {
-        // SAFETY: constructing ensures we have a valid pointer created by llvm::LLVMRustCreateTargetMachine
+        // SAFETY: constructing ensures we have a valid pointer created by
+        // llvm::LLVMRustCreateTargetMachine.
         unsafe { self.tm_unique.as_ref() }
     }
 }
 
 impl Drop for OwnedTargetMachine {
     fn drop(&mut self) {
-        // SAFETY: constructing ensures we have a valid pointer created by llvm::LLVMRustCreateTargetMachine
-        // OwnedTargetMachine is not copyable so there is no double free or use after free
+        // SAFETY: constructing ensures we have a valid pointer created by
+        // llvm::LLVMRustCreateTargetMachine OwnedTargetMachine is not copyable so there is no
+        // double free or use after free.
         unsafe {
             llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_mut());
         }

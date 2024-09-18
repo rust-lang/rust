@@ -157,7 +157,8 @@ fn to_pass_builder_opt_level(cfg: config::OptLevel) -> llvm::PassBuilderOptLevel
 fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
     match relocation_model {
         RelocModel::Static => llvm::RelocModel::Static,
-        // LLVM doesn't have a PIE relocation model, it represents PIE as PIC with an extra attribute.
+        // LLVM doesn't have a PIE relocation model, it represents PIE as PIC with an extra
+        // attribute.
         RelocModel::Pic | RelocModel::Pie => llvm::RelocModel::PIC,
         RelocModel::DynamicNoPic => llvm::RelocModel::DynamicNoPic,
         RelocModel::Ropi => llvm::RelocModel::ROPI,
@@ -188,8 +189,8 @@ pub(crate) fn target_machine_factory(
     let use_softfp = if sess.target.arch == "arm" && sess.target.abi == "eabihf" {
         sess.opts.cg.soft_float
     } else {
-        // `validate_commandline_args_with_session_available` has already warned about this being ignored.
-        // Let's make sure LLVM doesn't suddenly start using this flag on more targets.
+        // `validate_commandline_args_with_session_available` has already warned about this being
+        // ignored. Let's make sure LLVM doesn't suddenly start using this flag on more targets.
         false
     };
 
