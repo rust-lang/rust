@@ -1073,6 +1073,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_as_str")]
     pub fn as_str(&self) -> &str {
         self
     }
@@ -1092,6 +1093,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_as_mut_str")]
     pub fn as_mut_str(&mut self) -> &mut str {
         self
     }

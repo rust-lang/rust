@@ -1545,6 +1545,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_slice")]
     pub fn as_slice(&self) -> &[T] {
         self
     }
@@ -1562,6 +1563,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_mut_slice")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self
     }
