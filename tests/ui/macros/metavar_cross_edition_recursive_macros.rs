@@ -1,5 +1,6 @@
 //@ compile-flags: --edition=2024 -Z unstable-options
 //@ aux-build: metavar_2018.rs
+//@ known-bug: #130484
 //@ run-pass
 
 // This test captures the behavior of macro-generating-macros with fragment
@@ -23,10 +24,8 @@ fn main() {
     let from_2024 = is_expr_from_2024!(const { 0 });
     dbg!(from_2024);
 
-    // These capture the current, empirically determined behavior.
-    // It's not clear whether this is the desired behavior.
     assert!(!from_2018);
-    assert!(!from_2024);
+    assert!(!from_2024); // from_2024 will be true once #130484 is fixed
 
     // Check pat
     let from_2018 = is_pat_from_2018!(A | B);
@@ -34,8 +33,6 @@ fn main() {
     let from_2024 = is_pat_from_2024!(A | B);
     dbg!(from_2024);
 
-    // These capture the current, empirically determined behavior.
-    // It's not clear whether this is the desired behavior.
     assert!(!from_2018);
-    assert!(!from_2024);
+    assert!(!from_2024); // from_2024 will be true once #130484 is fixed
 }
