@@ -315,14 +315,15 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 | PatKind::DerefPattern { .. }
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
-                | PatKind::Array { .. } => {
+                | PatKind::Array { .. }
+                // Never constitutes a witness of uninhabitedness.
+                | PatKind::Never => {
                     self.requires_unsafe(pat.span, AccessToUnionField);
                     return; // we can return here since this already requires unsafe
                 }
-                // wildcard/never don't take anything
+                // wildcard doesn't read anything.
                 PatKind::Wild |
-                PatKind::Never |
-                // these just wrap other patterns
+                // these just wrap other patterns, which we recurse on below.
                 PatKind::Or { .. } |
                 PatKind::InlineConstant { .. } |
                 PatKind::AscribeUserType { .. } |
