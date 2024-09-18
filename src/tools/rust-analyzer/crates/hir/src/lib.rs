@@ -1884,9 +1884,10 @@ impl DefWithBody {
             );
         }
 
-        for expr in hir_ty::diagnostics::missing_unsafe(db, self.into()) {
+        let (unafe_exprs, only_lint) = hir_ty::diagnostics::missing_unsafe(db, self.into());
+        for expr in unafe_exprs {
             match source_map.expr_syntax(expr) {
-                Ok(expr) => acc.push(MissingUnsafe { expr }.into()),
+                Ok(expr) => acc.push(MissingUnsafe { expr, only_lint }.into()),
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and elsewhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.

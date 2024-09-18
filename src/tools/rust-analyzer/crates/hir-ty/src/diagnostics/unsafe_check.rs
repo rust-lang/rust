@@ -13,7 +13,10 @@ use crate::{
     db::HirDatabase, utils::is_fn_unsafe_to_call, InferenceResult, Interner, TyExt, TyKind,
 };
 
-pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
+/// Returns `(unsafe_exprs, fn_is_unsafe)`.
+///
+/// If `fn_is_unsafe` is false, `unsafe_exprs` are hard errors. If true, they're `unsafe_op_in_unsafe_fn`.
+pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> (Vec<ExprId>, bool) {
     let _p = tracing::info_span!("missing_unsafe").entered();
 
     let mut res = Vec::new();
@@ -24,9 +27,6 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
         | DefWithBodyId::VariantId(_)
         | DefWithBodyId::InTypeConstId(_) => false,
     };
-    if is_unsafe {
-        return res;
-    }
 
     let body = db.body(def);
     let infer = db.infer(def);
@@ -36,7 +36,7 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
         }
     });
 
-    res
+    (res, is_unsafe)
 }
 
 pub struct UnsafeExpr {

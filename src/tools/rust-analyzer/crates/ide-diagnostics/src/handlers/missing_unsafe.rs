@@ -11,9 +11,14 @@ use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
 pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Diagnostic {
+    let code = if d.only_lint {
+        DiagnosticCode::RustcLint("unsafe_op_in_unsafe_fn")
+    } else {
+        DiagnosticCode::RustcHardError("E0133")
+    };
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
-        DiagnosticCode::RustcHardError("E0133"),
+        code,
         "this operation is unsafe and requires an unsafe function or block",
         d.expr.map(|it| it.into()),
     )
@@ -562,6 +567,30 @@ fn main() {
     ed2021::safe();
     ed2024::not_safe();
   //^^^^^^^^^^^^^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn unsafe_op_in_unsafe_fn_allowed_by_default() {
+        check_diagnostics(
+            r#"
+unsafe fn foo(p: *mut i32) {
+    *p = 123;
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn unsafe_op_in_unsafe_fn() {
+        check_diagnostics(
+            r#"
+#![warn(unsafe_op_in_unsafe_fn)]
+unsafe fn foo(p: *mut i32) {
+    *p = 123;
+  //^^💡 warn: this operation is unsafe and requires an unsafe function or block
 }
             "#,
         )
