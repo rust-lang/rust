@@ -40,7 +40,7 @@ where
     }
     arg.extend_integer_width_to(32);
     if arg.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, arg) {
-        arg.make_indirect_byval(None);
+        arg.make_indirect();
     }
 }
 
