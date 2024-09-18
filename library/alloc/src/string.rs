@@ -571,6 +571,7 @@ impl String {
     /// [`into_bytes`]: String::into_bytes
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_from_utf8")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(&vec) {
             Ok(..) => Ok(String { vec }),

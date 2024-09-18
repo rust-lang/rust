@@ -1888,6 +1888,7 @@ symbols! {
         string_as_mut_str,
         string_as_str,
         string_deref_patterns,
+        string_from_utf8,
         string_insert_str,
         string_push_str,
         stringify,
