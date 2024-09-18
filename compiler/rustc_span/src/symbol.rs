@@ -501,6 +501,7 @@ symbols! {
         black_box,
         block,
         bool,
+        bool_then,
         borrowck_graphviz_format,
         borrowck_graphviz_postflow,
         box_new,

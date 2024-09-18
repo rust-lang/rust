@@ -55,6 +55,7 @@ impl bool {
     /// assert_eq!(a, 1);
     /// ```
     #[stable(feature = "lazy_bool_to_option", since = "1.50.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "bool_then")]
     #[inline]
     pub fn then<T, F: FnOnce() -> T>(self, f: F) -> Option<T> {
         if self { Some(f()) } else { None }

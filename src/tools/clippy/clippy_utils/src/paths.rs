@@ -74,4 +74,3 @@ pub const TOKIO_IO_OPEN_OPTIONS: [&str; 4] = ["tokio", "fs", "open_options", "Op
 pub const TOKIO_IO_OPEN_OPTIONS_NEW: [&str; 5] = ["tokio", "fs", "open_options", "OpenOptions", "new"];
 pub const INSTANT_NOW: [&str; 4] = ["std", "time", "Instant", "now"];
 pub const WAKER: [&str; 4] = ["core", "task", "wake", "Waker"];
-pub const BOOL_THEN: [&str; 4] = ["core", "bool", "<impl bool>", "then"];
