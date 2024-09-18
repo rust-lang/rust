@@ -1437,6 +1437,7 @@ symbols! {
         pattern_parentheses,
         pattern_type,
         pattern_types,
+        permissions_from_mode,
         phantom_data,
         pic,
         pie,
