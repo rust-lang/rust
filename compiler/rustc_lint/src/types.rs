@@ -696,7 +696,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// extern "C" {
+    /// unsafe extern "C" {
     ///     static STATIC: String;
     /// }
     /// ```
