@@ -147,8 +147,7 @@ There are a bunch of other projects that you can contribute to outside of the
 `rust-lang/rust` repo, including `cargo`, `miri`, `rustup`, and many others.
 
 These repos might have their own contributing guidelines and procedures. Many
-of them are owned by working groups (e.g. `chalk` is largely owned by
-WG-traits). For more info, see the documentation in those repos' READMEs.
+of them are owned by working groups. For more info, see the documentation in those repos' READMEs.
 
 ### Other ways to contribute
 
