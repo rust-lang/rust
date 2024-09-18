@@ -419,6 +419,64 @@ fn f((_O): u8) {}
     }
 
     #[test]
+    fn ignores_no_mangle_items() {
+        cov_mark::check!(extern_func_no_mangle_ignored);
+        check_diagnostics(
+            r#"
+#[no_mangle]
+extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+            "#,
+        );
+    }
+
+    #[test]
+    fn ignores_no_mangle_items_with_no_abi() {
+        cov_mark::check!(extern_func_no_mangle_ignored);
+        check_diagnostics(
+            r#"
+#[no_mangle]
+extern fn NonSnakeCaseName(some_var: u8) -> u8;
+            "#,
+        );
+    }
+
+    #[test]
+    fn no_mangle_items_with_rust_abi() {
+        check_diagnostics(
+            r#"
+#[no_mangle]
+extern "Rust" fn NonSnakeCaseName(some_var: u8) -> u8;
+              // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+            "#,
+        );
+    }
+
+    #[test]
+    fn no_mangle_items_non_extern() {
+        check_diagnostics(
+            r#"
+#[no_mangle]
+fn NonSnakeCaseName(some_var: u8) -> u8;
+// ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+            "#,
+        );
+    }
+
+    #[test]
+    fn extern_fn_name() {
+        check_diagnostics(
+            r#"
+extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+           // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+extern "Rust" fn NonSnakeCaseName(some_var: u8) -> u8;
+              // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+extern fn NonSnakeCaseName(some_var: u8) -> u8;
+       // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+            "#,
+        );
+    }
+
+    #[test]
     fn ignores_extern_items() {
         cov_mark::check!(extern_func_incorrect_case_ignored);
         cov_mark::check!(extern_static_incorrect_case_ignored);
