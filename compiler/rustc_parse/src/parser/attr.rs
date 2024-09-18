@@ -356,8 +356,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
-    pub fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
-        let cfg_predicate = self.parse_meta_item(AllowLeadingUnsafe::No)?;
+    pub fn parse_cfg_attr(
+        &mut self,
+    ) -> PResult<'a, (ast::NestedMetaItem, Vec<(ast::AttrItem, Span)>)> {
+        let cfg_predicate = self.parse_meta_item_inner()?;
         self.expect(&token::Comma)?;
 
         // Presumably, the majority of the time there will only be one attr.
@@ -452,7 +454,7 @@ impl<'a> Parser<'a> {
     /// ```ebnf
     /// MetaItemInner = UNSUFFIXED_LIT | MetaItem ;
     /// ```
-    fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
+    pub fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
         match self.parse_unsuffixed_meta_item_lit() {
             Ok(lit) => return Ok(ast::NestedMetaItem::Lit(lit)),
             Err(err) => err.cancel(), // we provide a better error below

@@ -1,7 +1,7 @@
 use std::iter;
 use std::path::PathBuf;
 
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, MetaItem, NestedMetaItem};
+use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
@@ -282,7 +282,7 @@ pub struct OnUnimplementedFormatString {
 
 #[derive(Debug)]
 pub struct OnUnimplementedDirective {
-    pub condition: Option<MetaItem>,
+    pub condition: Option<NestedMetaItem>,
     pub subcommands: Vec<OnUnimplementedDirective>,
     pub message: Option<OnUnimplementedFormatString>,
     pub label: Option<OnUnimplementedFormatString>,
@@ -413,9 +413,7 @@ impl<'tcx> OnUnimplementedDirective {
         } else {
             let cond = item_iter
                 .next()
-                .ok_or_else(|| tcx.dcx().emit_err(EmptyOnClauseInOnUnimplemented { span }))?
-                .meta_item()
-                .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
+                .ok_or_else(|| tcx.dcx().emit_err(EmptyOnClauseInOnUnimplemented { span }))?;
             attr::eval_condition(cond, &tcx.sess, Some(tcx.features()), &mut |cfg| {
                 if let Some(value) = cfg.value
                     && let Err(guar) = parse_value(value, cfg.span)
@@ -558,8 +556,8 @@ impl<'tcx> OnUnimplementedDirective {
                         IgnoredDiagnosticOption::maybe_emit_warning(
                             tcx,
                             item_def_id,
-                            directive.condition.as_ref().map(|i| i.span),
-                            aggr.condition.as_ref().map(|i| i.span),
+                            directive.condition.as_ref().map(|i| i.span()),
+                            aggr.condition.as_ref().map(|i| i.span()),
                             "condition",
                         );
                         IgnoredDiagnosticOption::maybe_emit_warning(

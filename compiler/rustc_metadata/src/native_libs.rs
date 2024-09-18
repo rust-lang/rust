@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 
-use rustc_ast::{CRATE_NODE_ID, NestedMetaItem};
+use rustc_ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::query::LocalCrate;
@@ -304,7 +304,12 @@ impl<'tcx> Collector<'tcx> {
                             sess.dcx().emit_err(errors::LinkCfgForm { span: item.span() });
                             continue;
                         };
-                        let [NestedMetaItem::MetaItem(link_cfg)] = link_cfg else {
+                        let [link_cfg] = link_cfg else {
+                            sess.dcx()
+                                .emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
+                            continue;
+                        };
+                        if !link_cfg.is_meta_item() {
                             sess.dcx()
                                 .emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
                             continue;

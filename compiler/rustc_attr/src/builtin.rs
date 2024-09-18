@@ -523,7 +523,7 @@ pub struct Condition {
 
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(
-    cfg: &ast::MetaItem,
+    cfg: &ast::NestedMetaItem,
     sess: &Session,
     lint_node_id: NodeId,
     features: Option<&Features>,
@@ -594,12 +594,26 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
 pub fn eval_condition(
-    cfg: &ast::MetaItem,
+    cfg: &ast::NestedMetaItem,
     sess: &Session,
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
     let dcx = sess.dcx();
+
+    let cfg = match cfg {
+        ast::NestedMetaItem::MetaItem(meta_item) => meta_item,
+        _ => {
+            dcx.emit_err(session_diagnostics::UnsupportedLiteral {
+                span: cfg.span(),
+                reason: UnsupportedLiteralReason::Generic,
+                is_bytestr: false,
+                start_point_span: sess.source_map().start_point(cfg.span()),
+            });
+            return false;
+        }
+    };
+
     match &cfg.kind {
         ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
@@ -653,23 +667,19 @@ pub fn eval_condition(
                     .iter()
                     // We don't use any() here, because we want to evaluate all cfg condition
                     // as eval_condition can (and does) extra checks
-                    .fold(false, |res, mi| {
-                        res | eval_condition(mi.meta_item().unwrap(), sess, features, eval)
-                    }),
+                    .fold(false, |res, mi| res | eval_condition(mi, sess, features, eval)),
                 sym::all => mis
                     .iter()
                     // We don't use all() here, because we want to evaluate all cfg condition
                     // as eval_condition can (and does) extra checks
-                    .fold(true, |res, mi| {
-                        res & eval_condition(mi.meta_item().unwrap(), sess, features, eval)
-                    }),
+                    .fold(true, |res, mi| res & eval_condition(mi, sess, features, eval)),
                 sym::not => {
                     let [mi] = mis.as_slice() else {
                         dcx.emit_err(session_diagnostics::ExpectedOneCfgPattern { span: cfg.span });
                         return false;
                     };
 
-                    !eval_condition(mi.meta_item().unwrap(), sess, features, eval)
+                    !eval_condition(mi, sess, features, eval)
                 }
                 sym::target => {
                     if let Some(features) = features
@@ -690,7 +700,12 @@ pub fn eval_condition(
                             seg.ident.name = Symbol::intern(&format!("target_{}", seg.ident.name));
                         }
 
-                        res & eval_condition(&mi, sess, features, eval)
+                        res & eval_condition(
+                            &ast::NestedMetaItem::MetaItem(mi),
+                            sess,
+                            features,
+                            eval,
+                        )
                     })
                 }
                 _ => {
