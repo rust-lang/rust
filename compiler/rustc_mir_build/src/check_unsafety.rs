@@ -218,6 +218,13 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 warnings: self.warnings,
                 suggest_unsafe_block: self.suggest_unsafe_block,
             };
+            // params in THIR may be unsafe, e.g. a union pattern.
+            for param in &inner_thir.params {
+                if let Some(param_pat) = param.pat.as_deref() {
+                    inner_visitor.visit_pat(param_pat);
+                }
+            }
+            // Visit the body.
             inner_visitor.visit_expr(&inner_thir[expr]);
             // Unsafe blocks can be used in the inner body, make sure to take it into account
             self.safety_context = inner_visitor.safety_context;
@@ -1066,6 +1073,13 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         warnings: &mut warnings,
         suggest_unsafe_block: true,
     };
+    // params in THIR may be unsafe, e.g. a union pattern.
+    for param in &thir.params {
+        if let Some(param_pat) = param.pat.as_deref() {
+            visitor.visit_pat(param_pat);
+        }
+    }
+    // Visit the body.
     visitor.visit_expr(&thir[expr]);
 
     warnings.sort_by_key(|w| w.block_span);
