@@ -156,7 +156,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         #[cold]
         /// # Safety
         /// May only be called when the state is `Incomplete`.
-        unsafe fn really_init<T, F: FnOnce() -> T>(this: &mut LazyLock<T, F>) -> &mut T {
+        unsafe fn really_init_mut<T, F: FnOnce() -> T>(this: &mut LazyLock<T, F>) -> &mut T {
             struct PoisonOnPanic<'a, T, F>(&'a mut LazyLock<T, F>);
             impl<T, F> Drop for PoisonOnPanic<'_, T, F> {
                 #[inline]
@@ -184,7 +184,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
             // SAFETY: The `Once` states we completed the initialization.
             ExclusiveState::Complete => unsafe { &mut this.data.get_mut().value },
             // SAFETY: The state is `Incomplete`.
-            ExclusiveState::Incomplete => unsafe { really_init(this) },
+            ExclusiveState::Incomplete => unsafe { really_init_mut(this) },
         }
     }
 

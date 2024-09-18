@@ -141,7 +141,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
         #[cold]
         /// # Safety
         /// May only be called when the state is `Uninit`.
-        unsafe fn really_init<T, F: FnOnce() -> T>(state: &mut State<T, F>) -> &mut T {
+        unsafe fn really_init_mut<T, F: FnOnce() -> T>(state: &mut State<T, F>) -> &mut T {
             // INVARIANT: Always valid, but the value may not be dropped.
             struct PoisonOnPanic<T, F>(*mut State<T, F>);
             impl<T, F> Drop for PoisonOnPanic<T, F> {
@@ -179,7 +179,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
         match state {
             State::Init(data) => data,
             // SAFETY: `state` is `Uninit`.
-            State::Uninit(_) => unsafe { really_init(state) },
+            State::Uninit(_) => unsafe { really_init_mut(state) },
             State::Poisoned => panic_poisoned(),
         }
     }
