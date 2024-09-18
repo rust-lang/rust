@@ -14,8 +14,6 @@ pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
 pub const DIAG: [&str; 2] = ["rustc_errors", "Diag"];
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
 pub const EARLY_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "EarlyLintPass"];
-pub const F32_EPSILON: [&str; 4] = ["core", "f32", "<impl f32>", "EPSILON"];
-pub const F64_EPSILON: [&str; 4] = ["core", "f64", "<impl f64>", "EPSILON"];
 pub const FILE_OPTIONS: [&str; 4] = ["std", "fs", "File", "options"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
