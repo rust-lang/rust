@@ -5,11 +5,11 @@
 use expect_test::expect;
 use span::{Edition, EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
 use stdx::format_to;
-use syntax_bridge::insert_whitespace_into_node::insert_ws_into;
 use tt::{TextRange, TextSize};
 
 use crate::DeclarativeMacro;
 
+#[expect(deprecated)]
 fn check_(
     def_edition: Edition,
     call_edition: Edition,
@@ -60,7 +60,14 @@ fn check_(
         format_to!(expect_res, "{:#?}\n\n", res.value.0);
     }
     let (node, _) = syntax_bridge::token_tree_to_syntax_node(&res.value.0, parse, def_edition);
-    format_to!(expect_res, "{}", insert_ws_into(node.syntax_node()));
+    format_to!(
+        expect_res,
+        "{}",
+        syntax_bridge::prettify_macro_expansion::prettify_macro_expansion(
+            node.syntax_node(),
+            &mut |it| it.clone()
+        )
+    );
     expect.assert_eq(&expect_res);
 }
 

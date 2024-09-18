@@ -104,6 +104,31 @@ where
     pub fn iter(&self) -> impl Iterator<Item = (TextSize, SpanData<S>)> + '_ {
         self.spans.iter().copied()
     }
+
+    /// Merges this span map with another span map, where `other` is inserted at (and replaces) `other_range`.
+    ///
+    /// The length of the replacement node needs to be `other_size`.
+    pub fn merge(&mut self, other_range: TextRange, other_size: TextSize, other: &SpanMap<S>) {
+        self.spans.retain_mut(|(offset, _)| {
+            if other_range.contains(*offset) {
+                false
+            } else {
+                if *offset >= other_range.end() {
+                    *offset += other_size;
+                    *offset -= other_range.len();
+                }
+                true
+            }
+        });
+
+        self.spans
+            .extend(other.spans.iter().map(|&(offset, span)| (offset + other_range.start(), span)));
+
+        self.spans.sort_unstable_by_key(|&(offset, _)| offset);
+
+        // Matched arm info is no longer correct once we have multiple macros.
+        self.matched_arm = None;
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]

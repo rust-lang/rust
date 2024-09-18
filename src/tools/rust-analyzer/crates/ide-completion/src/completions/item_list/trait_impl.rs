@@ -31,10 +31,10 @@
 //! }
 //! ```
 
-use hir::{HasAttrs, Name};
+use hir::{db::ExpandDatabase, HasAttrs, MacroFileId, Name};
 use ide_db::{
     documentation::HasDocs, path_transform::PathTransform,
-    syntax_helpers::insert_whitespace_into_node, traits::get_missing_assoc_items, SymbolKind,
+    syntax_helpers::prettify_macro_expansion, traits::get_missing_assoc_items, SymbolKind,
 };
 use syntax::{
     ast::{self, edit_in_place::AttrsOwnerEdit, make, HasGenericArgs, HasTypeBounds},
@@ -227,7 +227,8 @@ fn add_function_impl_(
         if let Some(transformed_fn) =
             get_transformed_fn(ctx, source.value, impl_def, async_sugaring)
         {
-            let function_decl = function_declaration(&transformed_fn, source.file_id.is_macro());
+            let function_decl =
+                function_declaration(ctx, &transformed_fn, source.file_id.macro_file());
             match ctx.config.snippet_cap {
                 Some(cap) => {
                     let snippet = format!("{function_decl} {{\n    $0\n}}");
@@ -432,7 +433,8 @@ fn add_const_impl(
                     _ => unreachable!(),
                 };
 
-                let label = make_const_compl_syntax(&transformed_const, source.file_id.is_macro());
+                let label =
+                    make_const_compl_syntax(ctx, &transformed_const, source.file_id.macro_file());
                 let replacement = format!("{label} ");
 
                 let mut item =
@@ -456,9 +458,14 @@ fn add_const_impl(
     }
 }
 
-fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> SmolStr {
-    let const_ = if needs_whitespace {
-        insert_whitespace_into_node::insert_ws_into(const_.syntax().clone())
+fn make_const_compl_syntax(
+    ctx: &CompletionContext<'_>,
+    const_: &ast::Const,
+    macro_file: Option<MacroFileId>,
+) -> SmolStr {
+    let const_ = if let Some(macro_file) = macro_file {
+        let span_map = ctx.db.expansion_span_map(macro_file);
+        prettify_macro_expansion(ctx.db, const_.syntax().clone(), &span_map, ctx.krate.into())
     } else {
         const_.syntax().clone()
     };
@@ -479,9 +486,14 @@ fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> SmolS
     format_smolstr!("{} =", syntax.trim_end())
 }
 
-fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {
-    let node = if needs_whitespace {
-        insert_whitespace_into_node::insert_ws_into(node.syntax().clone())
+fn function_declaration(
+    ctx: &CompletionContext<'_>,
+    node: &ast::Fn,
+    macro_file: Option<MacroFileId>,
+) -> String {
+    let node = if let Some(macro_file) = macro_file {
+        let span_map = ctx.db.expansion_span_map(macro_file);
+        prettify_macro_expansion(ctx.db, node.syntax().clone(), &span_map, ctx.krate.into())
     } else {
         node.syntax().clone()
     };
