@@ -6,7 +6,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
     pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey,
-    StringPart,
+    StringPart, Suggestions,
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
@@ -2137,8 +2137,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
                     self.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
-                && let Ok(ref mut s1) = err.suggestions
-                && let Ok(ref mut s2) = diag.suggestions
+                && let Suggestions::Enabled(ref mut s1) = err.suggestions
+                && let Suggestions::Enabled(ref mut s2) = diag.suggestions
             {
                 s1.append(s2);
                 diag.cancel()

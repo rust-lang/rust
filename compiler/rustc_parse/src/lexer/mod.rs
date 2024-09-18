@@ -299,6 +299,9 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                         lifetime_name += lifetime_name_without_tick;
                         let sym = Symbol::intern(&lifetime_name);
 
+                        // Make sure we mark this as a raw identifier.
+                        self.psess.raw_identifier_spans.push(self.mk_sp(start, self.pos));
+
                         token::Lifetime(sym, IdentIsRaw::Yes)
                     } else {
                         // Otherwise, this should be parsed like `'r`. Warn about it though.
