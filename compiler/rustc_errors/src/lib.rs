@@ -571,6 +571,8 @@ pub enum StashKey {
     /// Query cycle detected, stashing in favor of a better error.
     Cycle,
     UndeterminedMacroResolution,
+    /// Used by `Parser::maybe_recover_trailing_expr`
+    ExprInPat,
 }
 
 fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {

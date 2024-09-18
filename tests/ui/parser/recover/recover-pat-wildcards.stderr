@@ -59,12 +59,6 @@ error: expected one of `=>`, `if`, or `|`, found `(`
 LL |         ..(_) => ()
    |           ^ expected one of `=>`, `if`, or `|`
 
-error: expected a pattern range bound, found an expression
-  --> $DIR/recover-pat-wildcards.rs:55:14
-   |
-LL |         4..=(2 + _) => ()
-   |              ^^^^^ arbitrary expressions are not allowed in patterns
-
 error: range pattern bounds cannot have parentheses
   --> $DIR/recover-pat-wildcards.rs:55:13
    |
@@ -76,6 +70,23 @@ help: remove these parentheses
 LL -         4..=(2 + _) => ()
 LL +         4..=2 + _ => ()
    |
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-wildcards.rs:55:14
+   |
+LL |         4..=(2 + _) => ()
+   |              ^^^^^ arbitrary expressions are not allowed in patterns
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = 2 + _;
+LL ~     match 9 {
+LL ~         4..=(VAL) => ()
+   |
+help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
+   |
+LL |         4..=(const { 2 + _ }) => ()
+   |              +++++++       +
 
 error: aborting due to 11 previous errors
 

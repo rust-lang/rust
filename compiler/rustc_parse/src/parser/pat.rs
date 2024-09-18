@@ -1,12 +1,14 @@
-use rustc_ast::mut_visit::{walk_pat, MutVisitor};
+use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token};
+use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
-    self as ast, AttrVec, BindingMode, ByRef, Expr, ExprKind, MacCall, Mutability, Pat, PatField,
-    PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
+    self as ast, Arm, AttrVec, BinOpKind, BindingMode, ByRef, Expr, ExprKind, ExprPrecedence,
+    LocalKind, MacCall, Mutability, Pat, PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd,
+    RangeSyntax, Stmt, StmtKind,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, Diag, PResult};
+use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -21,8 +23,8 @@ use crate::errors::{
     InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
     ParenRangeSuggestion, PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern,
     SwitchRefBoxOrder, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
-    TrailingVertNotAllowed, UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern,
-    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
+    TrailingVertNotAllowed, UnexpectedExpressionInPattern, UnexpectedExpressionInPatternSugg,
+    UnexpectedLifetimeInPattern, UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
     UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
 };
 use crate::parser::expr::{could_be_unclosed_char_literal, DestructuredFloat};
@@ -448,10 +450,217 @@ impl<'a> Parser<'a> {
             || self.token == token::CloseDelim(Delimiter::Parenthesis)
                 && self.look_ahead(1, Token::is_range_separator);
 
+        let span = expr.span;
+
         Some((
-            self.dcx().emit_err(UnexpectedExpressionInPattern { span: expr.span, is_bound }),
-            expr.span,
+            self.dcx()
+                .create_err(UnexpectedExpressionInPattern {
+                    span,
+                    is_bound,
+                    expr_precedence: expr.precedence().order(),
+                })
+                .stash(span, StashKey::ExprInPat)
+                .unwrap(),
+            span,
         ))
+    }
+
+    /// Called by [`Parser::parse_stmt_without_recovery`], used to add statement-aware subdiagnostics to the errors stashed
+    /// by [`Parser::maybe_recover_trailing_expr`].
+    pub(super) fn maybe_augment_stashed_expr_in_pats_with_suggestions(&mut self, stmt: &Stmt) {
+        if self.dcx().has_errors().is_none() {
+            // No need to walk the statement if there's no stashed errors.
+            return;
+        }
+
+        struct PatVisitor<'a> {
+            /// `self`
+            parser: &'a Parser<'a>,
+            /// The freshly-parsed statement.
+            stmt: &'a Stmt,
+            /// The current match arm (for arm guard suggestions).
+            arm: Option<&'a Arm>,
+            /// The current struct field (for variable name suggestions).
+            field: Option<&'a PatField>,
+        }
+
+        impl<'a> PatVisitor<'a> {
+            /// Looks for stashed [`StashKey::ExprInPat`] errors in `stash_span`, and emit them with suggestions.
+            /// `stash_span` is contained in `expr_span`, the latter being larger in borrow patterns;
+            /// ```txt
+            /// &mut x.y
+            /// -----^^^ `stash_span`
+            /// |
+            /// `expr_span`
+            /// ```
+            /// `is_range_bound` is used to exclude arm guard suggestions in range pattern bounds.
+            fn maybe_add_suggestions_then_emit(
+                &self,
+                stash_span: Span,
+                expr_span: Span,
+                is_range_bound: bool,
+            ) {
+                self.parser.dcx().try_steal_modify_and_emit_err(
+                    stash_span,
+                    StashKey::ExprInPat,
+                    |err| {
+                        // Includes pre-pats (e.g. `&mut <err>`) in the diagnostic.
+                        err.span.replace(stash_span, expr_span);
+
+                        let sm = self.parser.psess.source_map();
+                        let stmt = self.stmt;
+                        let line_lo = sm.span_extend_to_line(stmt.span).shrink_to_lo();
+                        let indentation = sm.indentation_before(stmt.span).unwrap_or_default();
+                        let Ok(expr) = self.parser.span_to_snippet(expr_span) else {
+                            // FIXME: some suggestions don't actually need the snippet; see PR #123877's unresolved conversations.
+                            return;
+                        };
+
+                        if let StmtKind::Let(local) = &stmt.kind {
+                            match &local.kind {
+                                LocalKind::Decl | LocalKind::Init(_) => {
+                                    // It's kinda hard to guess what the user intended, so don't make suggestions.
+                                    return;
+                                }
+
+                                LocalKind::InitElse(_, _) => {}
+                            }
+                        }
+
+                        // help: use an arm guard `if val == expr`
+                        // FIXME(guard_patterns): suggest this regardless of a match arm.
+                        if let Some(arm) = &self.arm
+                            && !is_range_bound
+                        {
+                            let (ident, ident_span) = match self.field {
+                                Some(field) => {
+                                    (field.ident.to_string(), field.ident.span.to(expr_span))
+                                }
+                                None => ("val".to_owned(), expr_span),
+                            };
+
+                            // Are parentheses required around `expr`?
+                            // HACK: a neater way would be preferable.
+                            let expr = match &err.args["expr_precedence"] {
+                                DiagArgValue::Number(expr_precedence) => {
+                                    if *expr_precedence
+                                        <= ExprPrecedence::Binary(BinOpKind::Eq).order() as i32
+                                    {
+                                        format!("({expr})")
+                                    } else {
+                                        format!("{expr}")
+                                    }
+                                }
+                                _ => unreachable!(),
+                            };
+
+                            match &arm.guard {
+                                None => {
+                                    err.subdiagnostic(
+                                        UnexpectedExpressionInPatternSugg::CreateGuard {
+                                            ident_span,
+                                            pat_hi: arm.pat.span.shrink_to_hi(),
+                                            ident,
+                                            expr,
+                                        },
+                                    );
+                                }
+                                Some(guard) => {
+                                    // Are parentheses required around the old guard?
+                                    let wrap_guard = guard.precedence().order()
+                                        <= ExprPrecedence::Binary(BinOpKind::And).order();
+
+                                    err.subdiagnostic(
+                                        UnexpectedExpressionInPatternSugg::UpdateGuard {
+                                            ident_span,
+                                            guard_lo: if wrap_guard {
+                                                Some(guard.span.shrink_to_lo())
+                                            } else {
+                                                None
+                                            },
+                                            guard_hi: guard.span.shrink_to_hi(),
+                                            guard_hi_paren: if wrap_guard { ")" } else { "" },
+                                            ident,
+                                            expr,
+                                        },
+                                    );
+                                }
+                            }
+                        }
+
+                        // help: extract the expr into a `const VAL: _ = expr`
+                        let ident = match self.field {
+                            Some(field) => field.ident.as_str().to_uppercase(),
+                            None => "VAL".to_owned(),
+                        };
+                        err.subdiagnostic(UnexpectedExpressionInPatternSugg::Const {
+                            stmt_lo: line_lo,
+                            ident_span: expr_span,
+                            expr,
+                            ident,
+                            indentation,
+                        });
+
+                        // help: wrap the expr in a `const { expr }`
+                        // FIXME(inline_const_pat): once stabilized, remove this check and remove the `(requires #[feature(inline_const_pat)])` note from the message
+                        if self.parser.psess.unstable_features.is_nightly_build() {
+                            err.subdiagnostic(UnexpectedExpressionInPatternSugg::InlineConst {
+                                start_span: expr_span.shrink_to_lo(),
+                                end_span: expr_span.shrink_to_hi(),
+                            });
+                        }
+                    },
+                );
+            }
+        }
+
+        impl<'a> Visitor<'a> for PatVisitor<'a> {
+            fn visit_arm(&mut self, a: &'a Arm) -> Self::Result {
+                self.arm = Some(a);
+                visit::walk_arm(self, a);
+                self.arm = None;
+            }
+
+            fn visit_pat_field(&mut self, fp: &'a PatField) -> Self::Result {
+                self.field = Some(fp);
+                visit::walk_pat_field(self, fp);
+                self.field = None;
+            }
+
+            fn visit_pat(&mut self, p: &'a Pat) -> Self::Result {
+                match &p.kind {
+                    // Base expression
+                    PatKind::Err(_) | PatKind::Lit(_) => {
+                        self.maybe_add_suggestions_then_emit(p.span, p.span, false)
+                    }
+
+                    // Sub-patterns
+                    // FIXME: this doesn't work with recursive subpats (`&mut &mut <err>`)
+                    PatKind::Box(subpat) | PatKind::Ref(subpat, _)
+                        if matches!(subpat.kind, PatKind::Err(_) | PatKind::Lit(_)) =>
+                    {
+                        self.maybe_add_suggestions_then_emit(subpat.span, p.span, false)
+                    }
+
+                    // Sub-expressions
+                    PatKind::Range(start, end, _) => {
+                        if let Some(start) = start {
+                            self.maybe_add_suggestions_then_emit(start.span, start.span, true);
+                        }
+
+                        if let Some(end) = end {
+                            self.maybe_add_suggestions_then_emit(end.span, end.span, true);
+                        }
+                    }
+
+                    // Walk continuation
+                    _ => visit::walk_pat(self, p),
+                }
+            }
+        }
+
+        // Starts the visit.
+        PatVisitor { parser: self, stmt, arm: None, field: None }.visit_stmt(stmt);
     }
 
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
@@ -845,7 +1054,7 @@ impl<'a> Parser<'a> {
                     self.0 = true;
                     *m = Mutability::Mut;
                 }
-                walk_pat(self, pat);
+                mut_visit::walk_pat(self, pat);
             }
         }
 

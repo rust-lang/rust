@@ -53,13 +53,21 @@ fn type_cast() {
     }
 }
 
-// ArithmeticOrLogicalExpression
+// ArithmeticOrLogicalExpression, also check if parentheses are added as needed
 fn operator() {
     match 0 {
         1 + 1 => (), //~ error: expected a pattern, found an expression
         (1 + 2) * 3 => (),
         //~^ error: expected a pattern, found an expression
         //~| error: expected a pattern, found an expression
+        x.0 > 2 => (), //~ error: expected a pattern, found an expression
+        x.0 == 2 => (), //~ error: expected a pattern, found an expression
+    }
+
+    // preexisting match arm guard
+    match (0, 0) {
+        (x, y.0 > 2) if x != 0 => (), //~ error: expected a pattern, found an expression
+        (x, y.0 > 2) if x != 0 || x != 1 => (), //~ error: expected a pattern, found an expression
     }
 }
 
