@@ -105,7 +105,8 @@ pub enum Adjust<'tcx> {
     /// Cast into a dyn* object.
     DynStar,
 
-    /// Take a Pin<Ptr> and call either as_mut() or as_ref() to get a Pin<&mut T> or Pin<&T>.
+    /// Take a `Pin<Ptr>` and call either `as_mut()` or `as_ref()` to get a `Pin<&mut T>` or
+    /// `Pin<&T>`.
     ReborrowPin(AutoBorrow<'tcx>),
 }
 

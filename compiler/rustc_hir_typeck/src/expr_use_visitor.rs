@@ -791,8 +791,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         adjustment::AutoBorrow::RawPtr(m) => ty::BorrowKind::from_mutbl(*m),
                     };
                     self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
-
-                    self.walk_autoref(expr, &place_with_id, autoref);
                 }
             }
             place_with_id = self.cat_expr_adjusted(expr, place_with_id, adjustment)?;

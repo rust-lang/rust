@@ -216,7 +216,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             ty::Adt(pin, _)
                 if self.tcx.features().pin_ergonomics
-                    && pin.did() == self.tcx.lang_items().pin_type().unwrap() =>
+                    && self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) =>
             {
                 return self.coerce_pin(a, b);
             }
@@ -796,29 +796,29 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Then we will build a ReborrowPin adjustment and return that as an InferOk.
 
         // Right now we can only reborrow if this is a `Pin<&mut T>`.
-        let can_reborrow = |ty: Ty<'tcx>| {
+        let extract_pin_mut = |ty: Ty<'tcx>| {
             // Get the T out of Pin<T>
             let ty = match ty.kind() {
-                ty::Adt(pin, args) if pin.did() == self.tcx.lang_items().pin_type().unwrap() => {
+                ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) => {
                     args[0].expect_ty()
                 }
                 _ => {
                     debug!("can't reborrow {:?} as pinned", ty);
-                    return None;
+                    return Err(TypeError::Mismatch);
                 }
             };
             // Make sure the T is something we understand (just `&mut U` for now)
             match ty.kind() {
-                ty::Ref(region, ty, ty::Mutability::Mut) => Some((*region, *ty)),
+                ty::Ref(region, ty, ty::Mutability::Mut) => Ok((*region, *ty)),
                 _ => {
                     debug!("can't reborrow pin of inner type {:?}", ty);
-                    None
+                    Err(TypeError::Mismatch)
                 }
             }
         };
 
-        let (_, _a_ty) = can_reborrow(a).ok_or(TypeError::Mismatch)?;
-        let (b_region, _b_ty) = can_reborrow(b).ok_or(TypeError::Mismatch)?;
+        let (_, _a_ty) = extract_pin_mut(a)?;
+        let (b_region, _b_ty) = extract_pin_mut(b)?;
 
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
