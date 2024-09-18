@@ -2384,6 +2384,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Takes *O*(1) time.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_pop")]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -2577,6 +2578,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_is_empty")]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

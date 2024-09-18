@@ -73,9 +73,5 @@ pub const TOKIO_IO_OPEN_OPTIONS: [&str; 4] = ["tokio", "fs", "open_options", "Op
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_OPEN_OPTIONS_NEW: [&str; 5] = ["tokio", "fs", "open_options", "OpenOptions", "new"];
 pub const INSTANT_NOW: [&str; 4] = ["std", "time", "Instant", "now"];
-pub const VEC_IS_EMPTY: [&str; 4] = ["alloc", "vec", "Vec", "is_empty"];
-pub const VEC_POP: [&str; 4] = ["alloc", "vec", "Vec", "pop"];
 pub const WAKER: [&str; 4] = ["core", "task", "wake", "Waker"];
-pub const OPTION_UNWRAP: [&str; 4] = ["core", "option", "Option", "unwrap"];
-pub const OPTION_EXPECT: [&str; 4] = ["core", "option", "Option", "expect"];
 pub const BOOL_THEN: [&str; 4] = ["core", "bool", "<impl bool>", "then"];
