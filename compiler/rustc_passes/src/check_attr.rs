@@ -1779,6 +1779,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match hint.name_or_empty() {
                 sym::Rust => {
                     is_explicit_rust = true;
+                    match target {
+                        Target::Struct | Target::Union | Target::Enum => continue,
+                        _ => {
+                            self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
+                                hint_span: hint.span(),
+                                span,
+                            });
+                        }
+                    }
                 }
                 sym::C => {
                     is_c = true;
