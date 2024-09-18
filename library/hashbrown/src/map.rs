@@ -1929,6 +1929,16 @@ where
         let hash = make_hash::<Q, S>(&self.hash_builder, k);
         self.table.remove_entry(hash, equivalent_key(k))
     }
+
+    /// Returns the total amount of memory allocated internally by the hash
+    /// set, in bytes.
+    ///
+    /// The returned number is informational only. It is intended to be
+    /// primarily used for memory profiling.
+    #[inline]
+    pub fn allocation_size(&self) -> usize {
+        self.table.allocation_size()
+    }
 }
 
 impl<K, V, S, A> PartialEq for HashMap<K, V, S, A>
@@ -6415,5 +6425,14 @@ mod test_map {
 
         // All allocator clones should already be dropped.
         assert_eq!(dropped.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn test_allocation_info() {
+        assert_eq!(HashMap::<(), ()>::new().allocation_size(), 0);
+        assert_eq!(HashMap::<u32, u32>::new().allocation_size(), 0);
+        assert!(
+            HashMap::<u32, u32>::with_capacity(1).allocation_size() > core::mem::size_of::<u32>()
+        );
     }
 }

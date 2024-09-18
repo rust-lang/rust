@@ -1088,6 +1088,16 @@ where
     ) -> Option<[&'_ mut T; N]> {
         self.raw.get_many_unchecked_mut(hashes, eq)
     }
+
+    /// Returns the total amount of memory allocated internally by the hash
+    /// table, in bytes.
+    ///
+    /// The returned number is informational only. It is intended to be
+    /// primarily used for memory profiling.
+    #[inline]
+    pub fn allocation_size(&self) -> usize {
+        self.raw.allocation_size()
+    }
 }
 
 impl<T, A> IntoIterator for HashTable<T, A>
@@ -2208,3 +2218,15 @@ where
 }
 
 impl<T, F, A: Allocator> FusedIterator for ExtractIf<'_, T, F, A> where F: FnMut(&mut T) -> bool {}
+
+#[cfg(test)]
+mod tests {
+    use super::HashTable;
+
+    #[test]
+    fn test_allocation_info() {
+        assert_eq!(HashTable::<()>::new().allocation_size(), 0);
+        assert_eq!(HashTable::<u32>::new().allocation_size(), 0);
+        assert!(HashTable::<u32>::with_capacity(1).allocation_size() > core::mem::size_of::<u32>());
+    }
+}
