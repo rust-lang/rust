@@ -3,7 +3,7 @@ use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FusedIterator};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use core::{fmt, mem};
-use map::{equivalent_key, make_hash, make_hasher};
+use map::make_hash;
 
 use super::map::{self, HashMap, Keys};
 use crate::raw::{Allocator, Global, RawExtractIf};
@@ -911,11 +911,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert(&mut self, value: T) -> &T {
         let hash = make_hash(&self.map.hash_builder, &value);
-        let bucket = match self.map.table.find_or_find_insert_slot(
-            hash,
-            equivalent_key(&value),
-            make_hasher(&self.map.hash_builder),
-        ) {
+        let bucket = match self.map.find_or_find_insert_slot(hash, &value) {
             Ok(bucket) => bucket,
             Err(slot) => unsafe { self.map.table.insert_in_slot(hash, slot, (value, ())) },
         };
@@ -953,12 +949,8 @@ where
         Q: Hash + Equivalent<T> + ?Sized,
         F: FnOnce(&Q) -> T,
     {
-        let hash = make_hash(&self.map.hash_builder, &value);
-        let bucket = match self.map.table.find_or_find_insert_slot(
-            hash,
-            equivalent_key(value),
-            make_hasher(&self.map.hash_builder),
-        ) {
+        let hash = make_hash(&self.map.hash_builder, value);
+        let bucket = match self.map.find_or_find_insert_slot(hash, value) {
             Ok(bucket) => bucket,
             Err(slot) => {
                 let new = f(value);
@@ -1141,11 +1133,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace(&mut self, value: T) -> Option<T> {
         let hash = make_hash(&self.map.hash_builder, &value);
-        match self.map.table.find_or_find_insert_slot(
-            hash,
-            equivalent_key(&value),
-            make_hasher(&self.map.hash_builder),
-        ) {
+        match self.map.find_or_find_insert_slot(hash, &value) {
             Ok(bucket) => Some(mem::replace(unsafe { &mut bucket.as_mut().0 }, value)),
             Err(slot) => {
                 unsafe {
@@ -1591,12 +1579,8 @@ where
     /// ```
     fn bitxor_assign(&mut self, rhs: &HashSet<T, S, A>) {
         for item in rhs {
-            let hash = make_hash(&self.map.hash_builder, &item);
-            match self.map.table.find_or_find_insert_slot(
-                hash,
-                equivalent_key(item),
-                make_hasher(&self.map.hash_builder),
-            ) {
+            let hash = make_hash(&self.map.hash_builder, item);
+            match self.map.find_or_find_insert_slot(hash, item) {
                 Ok(bucket) => unsafe {
                     self.map.table.remove(bucket);
                 },

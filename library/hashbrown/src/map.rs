@@ -1741,11 +1741,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         let hash = make_hash::<K, S>(&self.hash_builder, &k);
-        let hasher = make_hasher::<_, V, S>(&self.hash_builder);
-        match self
-            .table
-            .find_or_find_insert_slot(hash, equivalent_key(&k), hasher)
-        {
+        match self.find_or_find_insert_slot(hash, &k) {
             Ok(bucket) => Some(mem::replace(unsafe { &mut bucket.as_mut().1 }, v)),
             Err(slot) => {
                 unsafe {
@@ -1754,6 +1750,22 @@ where
                 None
             }
         }
+    }
+
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub(crate) fn find_or_find_insert_slot<Q>(
+        &mut self,
+        hash: u64,
+        key: &Q,
+    ) -> Result<Bucket<(K, V)>, crate::raw::InsertSlot>
+    where
+        Q: Equivalent<K> + ?Sized,
+    {
+        self.table.find_or_find_insert_slot(
+            hash,
+            equivalent_key(key),
+            make_hasher(&self.hash_builder),
+        )
     }
 
     /// Insert a key-value pair into the map without checking
