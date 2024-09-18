@@ -1049,13 +1049,14 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             );
 
             if span.is_empty() {
-                // Avoid ICE when types with the same name with `derive`s are in the same scope:
-                // struct NotSM;
-                // #[derive(PartialEq, Eq)]
-                // struct NotSM<T>(T);
-                // With the above code, the suggestion is to remove the generics of the first
-                // `NotSM`, which doesn't *have* generics, so we're suggesting to remove no code
-                // with no code, which ICEs on nightly due to an `assert!`.
+                // HACK: Avoid ICE when types with the same name with `derive`s are in the same scope:
+                //     struct NotSM;
+                //     #[derive(PartialEq, Eq)]
+                //     struct NotSM<T>(T);
+                // With the above code, the suggestion would be to remove the generics of the first
+                // `NotSM`, which doesn't *have* generics, so we would suggest to remove no code with
+                // no code, which would trigger an `assert!` later. Ideally, we would do something a
+                // bit more principled. See closed PR #109082.
             } else {
                 err.span_suggestion(span, msg, "", Applicability::MaybeIncorrect);
             }
