@@ -560,13 +560,11 @@ pub enum ArchiveKind {
     K_AIXBIG,
 }
 
-// LLVMRustThinLTOData
 unsafe extern "C" {
+    // LLVMRustThinLTOData
     pub type ThinLTOData;
-}
 
-// LLVMRustThinLTOBuffer
-unsafe extern "C" {
+    // LLVMRustThinLTOBuffer
     pub type ThinLTOBuffer;
 }
 
@@ -630,26 +628,12 @@ struct InvariantOpaque<'a> {
 // Opaque pointer types
 unsafe extern "C" {
     pub type Module;
-}
-unsafe extern "C" {
     pub type Context;
-}
-unsafe extern "C" {
     pub type Type;
-}
-unsafe extern "C" {
     pub type Value;
-}
-unsafe extern "C" {
     pub type ConstantInt;
-}
-unsafe extern "C" {
     pub type Attribute;
-}
-unsafe extern "C" {
     pub type Metadata;
-}
-unsafe extern "C" {
     pub type BasicBlock;
 }
 #[repr(C)]
@@ -658,11 +642,7 @@ pub struct Builder<'a>(InvariantOpaque<'a>);
 pub struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type Pass;
-}
-unsafe extern "C" {
     pub type TargetMachine;
-}
-unsafe extern "C" {
     pub type Archive;
 }
 #[repr(C)]
@@ -671,11 +651,7 @@ pub struct ArchiveIterator<'a>(InvariantOpaque<'a>);
 pub struct ArchiveChild<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type Twine;
-}
-unsafe extern "C" {
     pub type DiagnosticInfo;
-}
-unsafe extern "C" {
     pub type SMDiagnostic;
 }
 #[repr(C)]
