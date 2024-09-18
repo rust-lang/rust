@@ -372,6 +372,7 @@ mod unnecessary_literal_bound;
 mod unnecessary_map_on_constructor;
 mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
+mod unnecessary_semicolon;
 mod unnecessary_struct_initialization;
 mod unnecessary_wraps;
 mod unneeded_struct_pattern;
@@ -972,5 +973,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(unnecessary_literal_bound::UnnecessaryLiteralBound));
     store.register_late_pass(move |_| Box::new(arbitrary_source_item_ordering::ArbitrarySourceItemOrdering::new(conf)));
     store.register_late_pass(|_| Box::new(unneeded_struct_pattern::UnneededStructPattern));
+    store.register_late_pass(|_| Box::new(unnecessary_semicolon::UnnecessarySemicolon));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
