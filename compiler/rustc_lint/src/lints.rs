@@ -2180,6 +2180,7 @@ pub(crate) struct UnexpectedCfgName {
 pub(crate) mod unexpected_cfg_name {
     use rustc_errors::DiagSymbolList;
     use rustc_macros::Subdiagnostic;
+    use rustc_span::symbol::Ident;
     use rustc_span::{Span, Symbol};
 
     #[derive(Subdiagnostic)]
@@ -2260,7 +2261,7 @@ pub(crate) mod unexpected_cfg_name {
     #[derive(Subdiagnostic)]
     #[help_once(lint_unexpected_cfg_name_expected_names)]
     pub(crate) struct ExpectedNames {
-        pub possibilities: DiagSymbolList,
+        pub possibilities: DiagSymbolList<Ident>,
         pub and_more: usize,
     }
 
