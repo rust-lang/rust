@@ -283,32 +283,30 @@ impl<'ll, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 impl<'ll, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn add_type_metadata(&self, function: &'ll Value, typeid: String) {
         let typeid_metadata = self.typeid_metadata(typeid).unwrap();
-        let v = [self.const_usize(0), typeid_metadata];
         unsafe {
+            let meta = [
+                llvm::LLVMValueAsMetadata(self.const_usize(0)),
+                llvm::LLVMValueAsMetadata(typeid_metadata),
+            ];
             llvm::LLVMRustGlobalAddMetadata(
                 function,
                 llvm::MD_type as c_uint,
-                llvm::LLVMValueAsMetadata(llvm::LLVMMDNodeInContext(
-                    self.llcx,
-                    v.as_ptr(),
-                    v.len() as c_uint,
-                )),
+                llvm::LLVMMDNodeInContext2(self.llcx, meta.as_ptr(), meta.len()),
             )
         }
     }
 
     fn set_type_metadata(&self, function: &'ll Value, typeid: String) {
         let typeid_metadata = self.typeid_metadata(typeid).unwrap();
-        let v = [self.const_usize(0), typeid_metadata];
         unsafe {
+            let meta = [
+                llvm::LLVMValueAsMetadata(self.const_usize(0)),
+                llvm::LLVMValueAsMetadata(typeid_metadata),
+            ];
             llvm::LLVMGlobalSetMetadata(
                 function,
                 llvm::MD_type as c_uint,
-                llvm::LLVMValueAsMetadata(llvm::LLVMMDNodeInContext(
-                    self.llcx,
-                    v.as_ptr(),
-                    v.len() as c_uint,
-                )),
+                llvm::LLVMMDNodeInContext2(self.llcx, meta.as_ptr(), meta.len()),
             )
         }
     }
