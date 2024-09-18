@@ -258,6 +258,8 @@ pub struct PrivateField {
 #[derive(Debug)]
 pub struct MissingUnsafe {
     pub expr: InFile<AstPtr<ast::Expr>>,
+    /// If true, the diagnostics is an `unsafe_op_in_unsafe_fn` lint instead of a hard error.
+    pub only_lint: bool,
 }
 
 #[derive(Debug)]

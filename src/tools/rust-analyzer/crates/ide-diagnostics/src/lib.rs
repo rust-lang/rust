@@ -491,7 +491,7 @@ pub fn semantic_diagnostics(
 
     // The edition isn't accurate (each diagnostics may have its own edition due to macros),
     // but it's okay as it's only being used for error recovery.
-    handle_lint_attributes(
+    handle_lints(
         &ctx.sema,
         &mut FxHashMap::default(),
         &mut lints,
@@ -551,7 +551,12 @@ fn build_group_dict(
     map_with_prefixes.into_iter().map(|(k, v)| (k.strip_prefix(prefix).unwrap(), v)).collect()
 }
 
-fn handle_lint_attributes(
+/// Thd default severity for lints that are not warn by default.
+// FIXME: Autogenerate this instead of write manually.
+static LINTS_DEFAULT_SEVERITY: LazyLock<FxHashMap<&str, Severity>> =
+    LazyLock::new(|| FxHashMap::from_iter([("unsafe_op_in_unsafe_fn", Severity::Allow)]));
+
+fn handle_lints(
     sema: &Semantics<'_, RootDatabase>,
     cache: &mut FxHashMap<HirFileId, FxHashMap<SmolStr, SeverityAttr>>,
     diagnostics: &mut [(InFile<SyntaxNode>, &mut Diagnostic)],
@@ -559,6 +564,14 @@ fn handle_lint_attributes(
     edition: Edition,
 ) {
     for (node, diag) in diagnostics {
+        let lint = match diag.code {
+            DiagnosticCode::RustcLint(lint) | DiagnosticCode::Clippy(lint) => lint,
+            _ => panic!("non-lint passed to `handle_lints()`"),
+        };
+        if let Some(&default_severity) = LINTS_DEFAULT_SEVERITY.get(lint) {
+            diag.severity = default_severity;
+        }
+
         let mut diag_severity = fill_lint_attrs(sema, node, cache, cache_stack, diag, edition);
 
         if let outline_diag_severity @ Some(_) =
