@@ -1048,7 +1048,18 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 },
             );
 
-            err.span_suggestion(span, msg, "", Applicability::MaybeIncorrect);
+            if span.is_empty() {
+                // HACK: Avoid ICE when types with the same name with `derive`s are in the same scope:
+                //     struct NotSM;
+                //     #[derive(PartialEq, Eq)]
+                //     struct NotSM<T>(T);
+                // With the above code, the suggestion would be to remove the generics of the first
+                // `NotSM`, which doesn't *have* generics, so we would suggest to remove no code with
+                // no code, which would trigger an `assert!` later. Ideally, we would do something a
+                // bit more principled. See closed PR #109082.
+            } else {
+                err.span_suggestion(span, msg, "", Applicability::MaybeIncorrect);
+            }
         } else if redundant_lifetime_args && redundant_type_or_const_args {
             remove_lifetime_args(err);
             remove_type_or_const_args(err);
