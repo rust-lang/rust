@@ -1,5 +1,5 @@
 #![warn(clippy::print_literal)]
-#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::uninlined_format_args, clippy::literal_string_with_formatting_arg)]
 
 fn main() {
     // these should be fine

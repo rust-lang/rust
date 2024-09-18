@@ -3,6 +3,7 @@
 //@[edition2021] edition:2021
 
 #![warn(clippy::uninlined_format_args)]
+#![allow(clippy::literal_string_with_formatting_arg)]
 
 fn main() {
     let var = 1;

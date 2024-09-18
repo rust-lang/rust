@@ -3,7 +3,8 @@
     clippy::needless_raw_strings,
     clippy::needless_raw_string_hashes,
     clippy::needless_borrow,
-    clippy::needless_borrows_for_generic_args
+    clippy::needless_borrows_for_generic_args,
+    clippy::literal_string_with_formatting_arg
 )]
 #![warn(clippy::invalid_regex, clippy::trivial_regex, clippy::regex_creation_in_loops)]
 
