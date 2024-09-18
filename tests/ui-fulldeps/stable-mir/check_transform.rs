@@ -8,7 +8,6 @@
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
-#![feature(control_flow_enum)]
 #![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_hir;
