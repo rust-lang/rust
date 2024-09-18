@@ -12,8 +12,6 @@ pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
     ["rustc_lint_defs", "Applicability", "MachineApplicable"],
 ];
 pub const DIAG: [&str; 2] = ["rustc_errors", "Diag"];
-pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
-pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
 pub const CORE_RESULT_OK_METHOD: [&str; 4] = ["core", "result", "Result", "ok"];
 pub const CSTRING_AS_C_STR: [&str; 5] = ["alloc", "ffi", "c_str", "CString", "as_c_str"];
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
@@ -25,8 +23,6 @@ pub const FILE_OPTIONS: [&str; 4] = ["std", "fs", "File", "options"];
 pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCWRITEEXT: [&str; 3] = ["futures_util", "io", "AsyncWriteExt"];
-pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
-pub const HASHMAP_INSERT: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "insert"];
 pub const HASHMAP_ITER: [&str; 5] = ["std", "collections", "hash", "map", "Iter"];
 pub const HASHMAP_ITER_MUT: [&str; 5] = ["std", "collections", "hash", "map", "IterMut"];
 pub const HASHMAP_KEYS: [&str; 5] = ["std", "collections", "hash", "map", "Keys"];
