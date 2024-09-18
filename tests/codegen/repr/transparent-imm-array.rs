@@ -18,7 +18,8 @@
 
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR
-// Other platforms pass large aggregates using struct pointer in LLVMIR
+// Other platforms pass large aggregates using by-value struct pointer in LLVMIR
+// Yet more platforms pass large aggregates using opaque pointer in LLVMIR
 // This covers the "immediate array" case.
 
 #![feature(no_core, lang_items, transparent_unions)]
