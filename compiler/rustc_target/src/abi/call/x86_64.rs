@@ -219,7 +219,7 @@ where
                 if is_arg {
                     // The x86_64 ABI doesn't have any special requirements for `byval` alignment,
                     // the type's alignment is always used.
-                    arg.make_indirect_byval(None);
+                    arg.pass_by_stack_offset(None);
                 } else {
                     // `sret` parameter thus one less integer register available
                     arg.make_indirect();

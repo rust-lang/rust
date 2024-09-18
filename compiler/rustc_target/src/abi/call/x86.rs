@@ -122,7 +122,7 @@ where
                 align_4
             };
 
-            arg.make_indirect_byval(Some(byval_align));
+            arg.pass_by_stack_offset(Some(byval_align));
         } else {
             arg.extend_integer_width_to(32);
         }
