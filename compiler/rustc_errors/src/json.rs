@@ -33,7 +33,8 @@ use crate::emitter::{
 use crate::registry::Registry;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, TerminalUrl,
+    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, Suggestions,
+    TerminalUrl,
 };
 
 #[cfg(test)]
@@ -292,7 +293,7 @@ impl Diagnostic {
     /// Converts from `rustc_errors::DiagInner` to `Diagnostic`.
     fn from_errors_diagnostic(diag: crate::DiagInner, je: &JsonEmitter) -> Diagnostic {
         let args = to_fluent_args(diag.args.iter());
-        let sugg = diag.suggestions.iter().flatten().map(|sugg| {
+        let sugg_to_diag = |sugg: &CodeSuggestion| {
             let translated_message =
                 je.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();
             Diagnostic {
@@ -303,7 +304,12 @@ impl Diagnostic {
                 children: vec![],
                 rendered: None,
             }
-        });
+        };
+        let sugg = match &diag.suggestions {
+            Suggestions::Enabled(suggestions) => suggestions.iter().map(sugg_to_diag),
+            Suggestions::Sealed(suggestions) => suggestions.iter().map(sugg_to_diag),
+            Suggestions::Disabled => [].iter().map(sugg_to_diag),
+        };
 
         // generate regular command line output and store it in the json
 

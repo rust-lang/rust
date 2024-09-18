@@ -17,7 +17,7 @@ use rustc_ast::visit::{visit_opt, walk_list, AssocCtxt, BoundKind, FnCtxt, FnKin
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, DiagArgValue, IntoDiagArg, StashKey};
+use rustc_errors::{Applicability, DiagArgValue, IntoDiagArg, StashKey, Suggestions};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -4085,17 +4085,23 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 err.sort_span = parent_err.sort_span;
                 err.is_lint = parent_err.is_lint.clone();
 
-                // merge the parent's suggestions with the typo suggestions
-                fn append_result<T, E>(res1: &mut Result<Vec<T>, E>, res2: Result<Vec<T>, E>) {
-                    match res1 {
-                        Ok(vec1) => match res2 {
-                            Ok(mut vec2) => vec1.append(&mut vec2),
-                            Err(e) => *res1 = Err(e),
-                        },
-                        Err(_) => (),
-                    };
+                // merge the parent_err's suggestions with the typo (err's) suggestions
+                match &mut err.suggestions {
+                    Suggestions::Enabled(typo_suggestions) => match &mut parent_err.suggestions {
+                        Suggestions::Enabled(parent_suggestions) => {
+                            // If both suggestions are enabled, append parent_err's suggestions to err's suggestions.
+                            typo_suggestions.append(parent_suggestions)
+                        }
+                        Suggestions::Sealed(_) | Suggestions::Disabled => {
+                            // If the parent's suggestions are either sealed or disabled, it signifies that
+                            // new suggestions cannot be added or removed from the diagnostic. Therefore,
+                            // we assign both types of suggestions to err's suggestions and discard the
+                            // existing suggestions in err.
+                            err.suggestions = std::mem::take(&mut parent_err.suggestions);
+                        }
+                    },
+                    Suggestions::Sealed(_) | Suggestions::Disabled => (),
                 }
-                append_result(&mut err.suggestions, parent_err.suggestions.clone());
 
                 parent_err.cancel();
 
