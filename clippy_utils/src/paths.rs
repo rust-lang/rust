@@ -12,7 +12,6 @@ pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
     ["rustc_lint_defs", "Applicability", "MachineApplicable"],
 ];
 pub const DIAG: [&str; 2] = ["rustc_errors", "Diag"];
-pub const CORE_RESULT_OK_METHOD: [&str; 4] = ["core", "result", "Result", "ok"];
 pub const CSTRING_AS_C_STR: [&str; 5] = ["alloc", "ffi", "c_str", "CString", "as_c_str"];
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
 pub const EARLY_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "EarlyLintPass"];
