@@ -342,6 +342,7 @@ symbols! {
         Upvars,
         Vec,
         VecDeque,
+        Waker,
         Wrapper,
         Wrapping,
         Yield,
