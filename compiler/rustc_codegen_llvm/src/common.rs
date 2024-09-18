@@ -113,7 +113,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 }
 
-impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstNull(t) }
     }

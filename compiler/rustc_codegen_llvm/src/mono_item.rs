@@ -14,7 +14,7 @@ use crate::errors::SymbolAlreadyDefined;
 use crate::type_of::LayoutLlvmExt;
 use crate::{base, llvm};
 
-impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
+impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(
         &self,
         def_id: DefId,

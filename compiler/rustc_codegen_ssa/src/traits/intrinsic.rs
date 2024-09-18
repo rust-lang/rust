@@ -5,7 +5,7 @@ use rustc_target::abi::call::FnAbi;
 use super::BackendTypes;
 use crate::mir::operand::OperandRef;
 
-pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
+pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     /// Remember to add all intrinsics here, in `compiler/rustc_hir_analysis/src/check/mod.rs`,
     /// and in `library/core/src/intrinsics.rs`; if you need access to any LLVM intrinsics,
     /// add them to `compiler/rustc_codegen_llvm/src/context.rs`.

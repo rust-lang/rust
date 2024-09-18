@@ -286,7 +286,7 @@ impl CodegenCx<'_, '_> {
     }
 }
 
-impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_function_debug_context(
         &self,
         instance: Instance<'tcx>,

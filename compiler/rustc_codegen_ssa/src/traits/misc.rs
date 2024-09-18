@@ -7,7 +7,7 @@ use rustc_session::Session;
 
 use super::BackendTypes;
 
-pub trait MiscMethods<'tcx>: BackendTypes {
+pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     fn vtables(
         &self,
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Self::Value>>;

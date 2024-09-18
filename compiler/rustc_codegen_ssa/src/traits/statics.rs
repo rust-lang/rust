@@ -3,7 +3,7 @@ use rustc_target::abi::Align;
 
 use super::BackendTypes;
 
-pub trait StaticMethods: BackendTypes {
+pub trait StaticCodegenMethods: BackendTypes {
     fn static_addr_of(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value;
     fn codegen_static(&self, def_id: DefId);
 

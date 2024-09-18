@@ -356,7 +356,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 }
 
-impl<'tcx> AsmMethods<'tcx> for CodegenCx<'_, 'tcx> {
+impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn codegen_global_asm(
         &self,
         template: &[InlineAsmTemplatePiece],

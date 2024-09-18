@@ -1,23 +1,23 @@
 use std::assert_matches::assert_matches;
+use std::ops::Deref;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
-use rustc_target::spec::HasTargetSpec;
 
 use super::abi::AbiBuilderMethods;
 use super::asm::AsmBuilderMethods;
-use super::consts::ConstMethods;
+use super::consts::ConstCodegenMethods;
 use super::coverageinfo::CoverageInfoBuilderMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
-use super::intrinsic::IntrinsicCallMethods;
-use super::misc::MiscMethods;
-use super::type_::{ArgAbiMethods, BaseTypeMethods, LayoutTypeMethods};
-use super::{HasCodegen, StaticBuilderMethods};
+use super::intrinsic::IntrinsicCallBuilderMethods;
+use super::misc::MiscCodegenMethods;
+use super::type_::{ArgAbiBuilderMethods, BaseTypeCodegenMethods, LayoutTypeCodegenMethods};
+use super::{CodegenMethods, StaticBuilderMethods};
 use crate::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
@@ -33,17 +33,33 @@ pub enum OverflowOp {
 }
 
 pub trait BuilderMethods<'a, 'tcx>:
-    HasCodegen<'tcx>
+    Sized
+    + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
+    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
+    + Deref<Target = Self::CodegenCx>
     + CoverageInfoBuilderMethods<'tcx>
     + DebugInfoBuilderMethods
-    + ArgAbiMethods<'tcx>
+    + ArgAbiBuilderMethods<'tcx>
     + AbiBuilderMethods<'tcx>
-    + IntrinsicCallMethods<'tcx>
+    + IntrinsicCallBuilderMethods<'tcx>
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods
-    + HasParamEnv<'tcx>
-    + HasTargetSpec
 {
+    // `BackendTypes` is a supertrait of both `CodegenMethods` and
+    // `BuilderMethods`. This bound ensures all impls agree on the associated
+    // types within.
+    type CodegenCx: CodegenMethods<
+            'tcx,
+            Value = Self::Value,
+            Function = Self::Function,
+            BasicBlock = Self::BasicBlock,
+            Type = Self::Type,
+            Funclet = Self::Funclet,
+            DIScope = Self::DIScope,
+            DILocation = Self::DILocation,
+            DIVariable = Self::DIVariable,
+        >;
+
     fn build(cx: &'a Self::CodegenCx, llbb: Self::BasicBlock) -> Self;
 
     fn cx(&self) -> &Self::CodegenCx;

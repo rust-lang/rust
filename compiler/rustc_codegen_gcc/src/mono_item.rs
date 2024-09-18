@@ -1,6 +1,6 @@
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute};
-use rustc_codegen_ssa::traits::PreDefineMethods;
+use rustc_codegen_ssa::traits::PreDefineCodegenMethods;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
@@ -13,7 +13,7 @@ use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
 use crate::{attributes, base};
 
-impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[cfg_attr(not(feature = "master"), allow(unused_variables))]
     fn predefine_static(
         &self,

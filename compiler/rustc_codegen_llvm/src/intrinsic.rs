@@ -148,7 +148,7 @@ fn get_simple_intrinsic<'ll>(
     Some(cx.get_intrinsic(llvm_name))
 }
 
-impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
+impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
