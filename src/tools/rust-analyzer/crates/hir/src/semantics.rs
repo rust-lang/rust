@@ -449,7 +449,7 @@ impl<'db> SemanticsImpl<'db> {
             Some(
                 calls
                     .into_iter()
-                    .map(|call| macro_call_to_macro_id(ctx, call?).map(|id| Macro { id }))
+                    .map(|call| macro_call_to_macro_id(self, ctx, call?).map(|id| Macro { id }))
                     .collect(),
             )
         })
@@ -892,16 +892,7 @@ impl<'db> SemanticsImpl<'db> {
             let InMacroFile { file_id, value: mapped_tokens } = self.with_ctx(|ctx| {
                 Some(
                     ctx.cache
-                        .expansion_info_cache
-                        .entry(macro_file)
-                        .or_insert_with(|| {
-                            let exp_info = macro_file.expansion_info(self.db.upcast());
-
-                            let InMacroFile { file_id, value } = exp_info.expanded();
-                            self.cache(value, file_id.into());
-
-                            exp_info
-                        })
+                        .get_or_insert_expansion(self, macro_file)
                         .map_range_down(span)?
                         .map(SmallVec::<[_; 2]>::from_iter),
                 )
@@ -1187,11 +1178,7 @@ impl<'db> SemanticsImpl<'db> {
                     let macro_file = file_id.macro_file()?;
 
                     self.with_ctx(|ctx| {
-                        let expansion_info = ctx
-                            .cache
-                            .expansion_info_cache
-                            .entry(macro_file)
-                            .or_insert_with(|| macro_file.expansion_info(self.db.upcast()));
+                        let expansion_info = ctx.cache.get_or_insert_expansion(self, macro_file);
                         expansion_info.arg().map(|node| node?.parent()).transpose()
                     })
                 }
@@ -1407,7 +1394,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
         self.with_ctx(|ctx| {
             ctx.macro_call_to_macro_call(macro_call)
-                .and_then(|call| macro_call_to_macro_id(ctx, call))
+                .and_then(|call| macro_call_to_macro_id(self, ctx, call))
                 .map(Into::into)
         })
         .or_else(|| {
@@ -1449,7 +1436,7 @@ impl<'db> SemanticsImpl<'db> {
         let item_in_file = self.wrap_node_infile(item.clone());
         let id = self.with_ctx(|ctx| {
             let macro_call_id = ctx.item_to_macro_call(item_in_file.as_ref())?;
-            macro_call_to_macro_id(ctx, macro_call_id)
+            macro_call_to_macro_id(self, ctx, macro_call_id)
         })?;
         Some(Macro { id })
     }
@@ -1769,6 +1756,7 @@ impl<'db> SemanticsImpl<'db> {
 }
 
 fn macro_call_to_macro_id(
+    sema: &SemanticsImpl<'_>,
     ctx: &mut SourceToDefCtx<'_, '_>,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
@@ -1784,11 +1772,7 @@ fn macro_call_to_macro_id(
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
-                    let expansion_info = ctx
-                        .cache
-                        .expansion_info_cache
-                        .entry(macro_file)
-                        .or_insert_with(|| macro_file.expansion_info(ctx.db.upcast()));
+                    let expansion_info = ctx.cache.get_or_insert_expansion(sema, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }
             };
@@ -1800,11 +1784,7 @@ fn macro_call_to_macro_id(
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
-                    let expansion_info = ctx
-                        .cache
-                        .expansion_info_cache
-                        .entry(macro_file)
-                        .or_insert_with(|| macro_file.expansion_info(ctx.db.upcast()));
+                    let expansion_info = ctx.cache.get_or_insert_expansion(sema, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }
             };

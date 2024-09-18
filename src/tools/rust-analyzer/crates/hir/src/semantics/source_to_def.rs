@@ -99,7 +99,8 @@ use hir_def::{
     VariantId,
 };
 use hir_expand::{
-    attrs::AttrId, name::AsName, ExpansionInfo, HirFileId, HirFileIdExt, MacroCallId,
+    attrs::AttrId, name::AsName, ExpansionInfo, HirFileId, HirFileIdExt, InMacroFile, MacroCallId,
+    MacroFileIdExt,
 };
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
@@ -110,13 +111,30 @@ use syntax::{
     AstNode, AstPtr, SyntaxNode,
 };
 
-use crate::{db::HirDatabase, InFile, InlineAsmOperand};
+use crate::{db::HirDatabase, InFile, InlineAsmOperand, SemanticsImpl};
 
 #[derive(Default)]
 pub(super) struct SourceToDefCache {
     pub(super) dynmap_cache: FxHashMap<(ChildContainer, HirFileId), DynMap>,
-    pub(super) expansion_info_cache: FxHashMap<MacroFileId, ExpansionInfo>,
+    expansion_info_cache: FxHashMap<MacroFileId, ExpansionInfo>,
     pub(super) file_to_def_cache: FxHashMap<FileId, SmallVec<[ModuleId; 1]>>,
+}
+
+impl SourceToDefCache {
+    pub(super) fn get_or_insert_expansion(
+        &mut self,
+        sema: &SemanticsImpl<'_>,
+        macro_file: MacroFileId,
+    ) -> &ExpansionInfo {
+        self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
+            let exp_info = macro_file.expansion_info(sema.db.upcast());
+
+            let InMacroFile { file_id, value } = exp_info.expanded();
+            sema.cache(value, file_id.into());
+
+            exp_info
+        })
+    }
 }
 
 pub(super) struct SourceToDefCtx<'db, 'cache> {

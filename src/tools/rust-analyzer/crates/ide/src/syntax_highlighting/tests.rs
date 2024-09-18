@@ -1358,3 +1358,20 @@ pub unsafe fn bootstrap(msp: *const u32, rv: *const u32) -> ! {
         false,
     );
 }
+
+#[test]
+fn issue_18089() {
+    check_highlighting(
+        r#"
+//- proc_macros: issue_18089
+fn main() {
+    template!(template);
+}
+
+#[proc_macros::issue_18089]
+fn template() {}
+"#,
+        expect_file!["./test_data/highlight_issue_18089.html"],
+        false,
+    );
+}

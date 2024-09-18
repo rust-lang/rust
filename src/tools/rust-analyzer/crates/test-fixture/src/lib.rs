@@ -13,7 +13,7 @@ use hir_expand::{
     proc_macro::{
         ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacrosBuilder,
     },
-    FileRange,
+    quote, FileRange,
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
@@ -374,7 +374,7 @@ impl ChangeFixture {
     }
 }
 
-fn default_test_proc_macros() -> [(String, ProcMacro); 5] {
+fn default_test_proc_macros() -> [(String, ProcMacro); 6] {
     [
         (
             r#"
@@ -448,6 +448,21 @@ pub fn shorten(input: TokenStream) -> TokenStream {
                 name: Symbol::intern("shorten"),
                 kind: ProcMacroKind::Bang,
                 expander: sync::Arc::new(ShortenProcMacroExpander),
+                disabled: false,
+            },
+        ),
+        (
+            r#"
+#[proc_macro_attribute]
+pub fn issue_18089(_attr: TokenStream, _item: TokenStream) -> TokenStream {
+    loop {}
+}
+"#
+            .into(),
+            ProcMacro {
+                name: Symbol::intern("issue_18089"),
+                kind: ProcMacroKind::Attr,
+                expander: sync::Arc::new(Issue18089ProcMacroExpander),
                 disabled: false,
             },
         ),
@@ -574,6 +589,35 @@ impl ProcMacroExpander for IdentityProcMacroExpander {
         _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         Ok(subtree.clone())
+    }
+}
+
+// Expands to a macro_rules! macro, for issue #18089.
+#[derive(Debug)]
+struct Issue18089ProcMacroExpander;
+impl ProcMacroExpander for Issue18089ProcMacroExpander {
+    fn expand(
+        &self,
+        subtree: &Subtree<Span>,
+        _: Option<&Subtree<Span>>,
+        _: &Env,
+        _: Span,
+        call_site: Span,
+        _: Span,
+        _: Option<String>,
+    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
+        let macro_name = &subtree.token_trees[1];
+        Ok(quote! { call_site =>
+            #[macro_export]
+            macro_rules! my_macro___ {
+                ($($token:tt)*) => {{
+                }};
+            }
+
+            pub use my_macro___ as #macro_name;
+
+            #subtree
+        })
     }
 }
 
