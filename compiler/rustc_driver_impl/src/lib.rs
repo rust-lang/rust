@@ -207,17 +207,17 @@ pub fn diagnostics_registry() -> Registry {
 }
 
 /// This is the primary entry point for rustc.
-pub struct RunCompiler<'a, 'b> {
+pub struct RunCompiler<'a> {
     at_args: &'a [String],
-    callbacks: &'b mut (dyn Callbacks + Send),
+    callbacks: &'a mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     make_codegen_backend:
         Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
     using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 }
 
-impl<'a, 'b> RunCompiler<'a, 'b> {
-    pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
+impl<'a> RunCompiler<'a> {
+    pub fn new(at_args: &'a [String], callbacks: &'a mut (dyn Callbacks + Send)) -> Self {
         Self {
             at_args,
             callbacks,
@@ -320,7 +320,7 @@ fn run_compiler(
         output_dir: odir,
         ice_file,
         file_loader,
-        locale_resources: DEFAULT_LOCALE_RESOURCES,
+        locale_resources: DEFAULT_LOCALE_RESOURCES.to_vec(),
         lint_caps: Default::default(),
         psess_created: None,
         hash_untracked_state: None,
@@ -1218,17 +1218,30 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
     // Parse with *all* options defined in the compiler, we don't worry about
     // option stability here we just want to parse as much as possible.
     let mut options = getopts::Options::new();
-    for option in config::rustc_optgroups() {
+    let optgroups = config::rustc_optgroups();
+    for option in &optgroups {
         (option.apply)(&mut options);
     }
     let matches = options.parse(args).unwrap_or_else(|e| {
-        let msg = match e {
+        let msg: Option<String> = match e {
             getopts::Fail::UnrecognizedOption(ref opt) => CG_OPTIONS
                 .iter()
                 .map(|&(name, ..)| ('C', name))
                 .chain(Z_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
                 .find(|&(_, name)| *opt == name.replace('_', "-"))
                 .map(|(flag, _)| format!("{e}. Did you mean `-{flag} {opt}`?")),
+            getopts::Fail::ArgumentMissing(ref opt) => {
+                optgroups.iter().find(|option| option.name == opt).map(|option| {
+                    // Print the help just for the option in question.
+                    let mut options = getopts::Options::new();
+                    (option.apply)(&mut options);
+                    // getopt requires us to pass a function for joining an iterator of
+                    // strings, even though in this case we expect exactly one string.
+                    options.usage_with_format(|it| {
+                        it.fold(format!("{e}\nUsage:"), |a, b| a + "\n" + &b)
+                    })
+                })
+            }
             _ => None,
         };
         early_dcx.early_fatal(msg.unwrap_or_else(|| e.to_string()));

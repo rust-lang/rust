@@ -1,5 +1,5 @@
 error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
-  --> $DIR/reallocate-change-alloc.rs:LL:CC
+  --> tests/fail/alloc/reallocate-change-alloc.rs:LL:CC
    |
 LL |         let _z = *x;
    |                  ^^ memory access failed: ALLOC has been freed, so this pointer is dangling
@@ -7,17 +7,17 @@ LL |         let _z = *x;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
 help: ALLOC was allocated here:
-  --> $DIR/reallocate-change-alloc.rs:LL:CC
+  --> tests/fail/alloc/reallocate-change-alloc.rs:LL:CC
    |
 LL |         let x = alloc(Layout::from_size_align_unchecked(1, 1));
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: ALLOC was deallocated here:
-  --> $DIR/reallocate-change-alloc.rs:LL:CC
+  --> tests/fail/alloc/reallocate-change-alloc.rs:LL:CC
    |
 LL |         let _y = realloc(x, Layout::from_size_align_unchecked(1, 1), 1);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/reallocate-change-alloc.rs:LL:CC
+   = note: inside `main` at tests/fail/alloc/reallocate-change-alloc.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

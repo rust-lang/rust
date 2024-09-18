@@ -170,7 +170,7 @@ impl TypoCandidate {
     }
 }
 
-impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
+impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn make_base_error(
         &mut self,
         path: &[Segment],
@@ -779,7 +779,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             candidates = self.smart_resolve_partial_mod_path_errors(path, following_seg);
         }
 
-        return (false, candidates);
+        (false, candidates)
     }
 
     fn suggest_trait_and_bounds(
@@ -2068,33 +2068,34 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             ) {
                 let res = binding.res();
                 if filter_fn(res) {
-                    let def_id = res.def_id();
-                    let has_self = match def_id.as_local() {
-                        Some(def_id) => {
-                            self.r.delegation_fn_sigs.get(&def_id).map_or(false, |sig| sig.has_self)
-                        }
-                        None => self
-                            .r
-                            .tcx
-                            .fn_arg_names(def_id)
-                            .first()
-                            .is_some_and(|ident| ident.name == kw::SelfLower),
-                    };
-                    if has_self {
-                        return Some(AssocSuggestion::MethodWithSelf { called });
-                    } else {
-                        match res {
-                            Res::Def(DefKind::AssocFn, _) => {
+                    match res {
+                        Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => {
+                            let has_self = match def_id.as_local() {
+                                Some(def_id) => self
+                                    .r
+                                    .delegation_fn_sigs
+                                    .get(&def_id)
+                                    .map_or(false, |sig| sig.has_self),
+                                None => self
+                                    .r
+                                    .tcx
+                                    .fn_arg_names(def_id)
+                                    .first()
+                                    .is_some_and(|ident| ident.name == kw::SelfLower),
+                            };
+                            if has_self {
+                                return Some(AssocSuggestion::MethodWithSelf { called });
+                            } else {
                                 return Some(AssocSuggestion::AssocFn { called });
                             }
-                            Res::Def(DefKind::AssocConst, _) => {
-                                return Some(AssocSuggestion::AssocConst);
-                            }
-                            Res::Def(DefKind::AssocTy, _) => {
-                                return Some(AssocSuggestion::AssocType);
-                            }
-                            _ => {}
                         }
+                        Res::Def(DefKind::AssocConst, _) => {
+                            return Some(AssocSuggestion::AssocConst);
+                        }
+                        Res::Def(DefKind::AssocTy, _) => {
+                            return Some(AssocSuggestion::AssocType);
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -2255,30 +2256,29 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn let_binding_suggestion(&mut self, err: &mut Diag<'_>, ident_span: Span) -> bool {
         if let Some(Expr { kind: ExprKind::Assign(lhs, ..), .. }) = self.diag_metadata.in_assignment
             && let ast::ExprKind::Path(None, ref path) = lhs.kind
+            && !ident_span.from_expansion()
         {
-            if !ident_span.from_expansion() {
-                let (span, text) = match path.segments.first() {
-                    Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
-                        // a special case for #117894
-                        let name = name.strip_prefix('_').unwrap_or(name);
-                        (ident_span, format!("let {name}"))
-                    }
-                    _ => (ident_span.shrink_to_lo(), "let ".to_string()),
-                };
+            let (span, text) = match path.segments.first() {
+                Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
+                    // a special case for #117894
+                    let name = name.strip_prefix('_').unwrap_or(name);
+                    (ident_span, format!("let {name}"))
+                }
+                _ => (ident_span.shrink_to_lo(), "let ".to_string()),
+            };
 
-                err.span_suggestion_verbose(
-                    span,
-                    "you might have meant to introduce a new binding",
-                    text,
-                    Applicability::MaybeIncorrect,
-                );
-                return true;
-            }
+            err.span_suggestion_verbose(
+                span,
+                "you might have meant to introduce a new binding",
+                text,
+                Applicability::MaybeIncorrect,
+            );
+            return true;
         }
         false
     }
 
-    fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
+    fn find_module(&mut self, def_id: DefId) -> Option<(Module<'ra>, ImportSuggestion)> {
         let mut result = None;
         let mut seen_modules = FxHashSet::default();
         let root_did = self.r.graph_root.def_id();
@@ -2539,8 +2539,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     }
 
                     let (msg, sugg) = match source {
-                        PathSource::Type => ("you might be missing a type parameter", ident),
-                        PathSource::Expr(_) => ("you might be missing a const parameter", format!("const {ident}: /* Type */")),
+                        PathSource::Type | PathSource::PreciseCapturingArg(TypeNS) => {
+                            ("you might be missing a type parameter", ident)
+                        }
+                        PathSource::Expr(_) | PathSource::PreciseCapturingArg(ValueNS) => (
+                            "you might be missing a const parameter",
+                            format!("const {ident}: /* Type */"),
+                        ),
                         _ => return None,
                     };
                     let (span, sugg) = if let [.., param] = &generics.params[..] {

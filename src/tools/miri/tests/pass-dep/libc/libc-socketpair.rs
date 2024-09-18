@@ -1,4 +1,4 @@
-//@ignore-target-windows: No libc socketpair on Windows
+//@ignore-target: windows # No libc socketpair on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 use std::thread;

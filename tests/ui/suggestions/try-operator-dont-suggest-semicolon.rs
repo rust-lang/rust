@@ -3,7 +3,6 @@
 
 fn main() -> Result<(), ()> {
     a(|| {
-        //~^ HELP: try adding a return type
         b()
         //~^ ERROR: mismatched types [E0308]
         //~| NOTE: expected `()`, found `i32`

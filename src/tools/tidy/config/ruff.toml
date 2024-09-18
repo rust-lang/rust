@@ -18,6 +18,7 @@ extend-exclude = [
     "library/backtrace/",
     "src/tools/enzyme/",
     "src/tools/rustc-perf/",
+    "src/gcc/",
     # Hack: CI runs from a subdirectory under the main checkout
     "../src/doc/nomicon/",
     "../src/tools/cargo/",
@@ -32,6 +33,7 @@ extend-exclude = [
     "../library/backtrace/",
     "../src/tools/enzyme/",
     "../src/tools/rustc-perf/",
+    "../src/gcc/",
 ]
 
 [lint]

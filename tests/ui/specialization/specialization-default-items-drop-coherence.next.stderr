@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Overlap` for type `u32`
-  --> $DIR/specialization-default-items-drop-coherence.rs:26:1
+  --> $DIR/specialization-default-items-drop-coherence.rs:29:1
    |
 LL | impl Overlap for u32 {
    | -------------------- first implementation here

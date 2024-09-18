@@ -10,13 +10,13 @@ note: inside `std::ptr::swap_nonoverlapping_simple_untyped::<MaybeUninit<u8>>`
 note: inside `swap_nonoverlapping::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `X`
-  --> $DIR/missing_span_in_backtrace.rs:17:9
+  --> $DIR/missing_span_in_backtrace.rs:16:9
    |
-17 | /         ptr::swap_nonoverlapping(
-18 | |             &mut ptr1 as *mut _ as *mut MaybeUninit<u8>,
-19 | |             &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
-20 | |             mem::size_of::<&i32>(),
-21 | |         );
+16 | /         ptr::swap_nonoverlapping(
+17 | |             &mut ptr1 as *mut _ as *mut MaybeUninit<u8>,
+18 | |             &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
+19 | |             mem::size_of::<&i32>(),
+20 | |         );
    | |_________^
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported

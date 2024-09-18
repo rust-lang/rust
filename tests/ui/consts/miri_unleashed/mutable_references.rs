@@ -3,7 +3,6 @@
 //@ normalize-stderr-test: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 
 #![allow(static_mut_refs)]
-#![deny(const_eval_mutable_ptr_in_final_value)]
 use std::cell::UnsafeCell;
 use std::sync::atomic::*;
 
@@ -18,13 +17,11 @@ static OH_YES: &mut i32 = &mut 42;
 //~| pointing to read-only memory
 static BAR: &mut () = &mut ();
 //~^ ERROR encountered mutable pointer in final value of static
-//~| WARNING this was previously accepted by the compiler
 
 struct Foo<T>(T);
 
 static BOO: &mut Foo<()> = &mut Foo(());
 //~^ ERROR encountered mutable pointer in final value of static
-//~| WARNING this was previously accepted by the compiler
 
 const BLUNT: &mut i32 = &mut 42;
 //~^ ERROR: it is undefined behavior to use this value
@@ -81,36 +78,32 @@ const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
 
 const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
 //~^ ERROR: mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
 
 const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
 //~^ ERROR: mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
 
+// This does *not* error since it uses a shared reference, and we have to ignore
+// those. See <https://github.com/rust-lang/rust/pull/128543>.
 const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
-//~^ ERROR: mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
 
 struct SyncPtr<T> {
     x: *const T,
 }
 unsafe impl<T> Sync for SyncPtr<T> {}
 
-// These pass the lifetime checks because of the "tail expression" / "outer scope" rule.
-// (This relies on `SyncPtr` being a curly brace struct.)
-// However, we intern the inner memory as read-only, so this must be rejected.
+// These pass the lifetime checks because of the "tail expression" / "outer scope" rule. (This
+// relies on `SyncPtr` being a curly brace struct.) However, we intern the inner memory as
+// read-only, so ideally this should be rejected. Unfortunately, as explained in
+// <https://github.com/rust-lang/rust/pull/128543>, we have to accept it.
 // (Also see `static-no-inner-mut` for similar tests on `static`.)
 const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
-//~^ ERROR mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
 
+// With mutable references at least, we can detect this and error.
 const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
 //~^ ERROR mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
 
 const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 //~^ ERROR mutable pointer in final value
-//~| WARNING this was previously accepted by the compiler
 
 
 fn main() {

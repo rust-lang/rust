@@ -353,7 +353,7 @@ fn build_options<O: Default>(
             None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
         }
     }
-    return op;
+    op
 }
 
 #[allow(non_upper_case_globals)]
@@ -403,7 +403,7 @@ mod desc {
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
-        "either `globally` (when used without an argument), `coherence` (default) or `no`";
+        "a comma separated list of solver configurations: `globally` (default), and `coherence`";
     pub(crate) const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub(crate) const parse_linker_plugin_lto: &str =
@@ -1105,16 +1105,27 @@ mod parse {
         }
     }
 
-    pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
+    pub(crate) fn parse_next_solver_config(
+        slot: &mut Option<NextSolverConfig>,
+        v: Option<&str>,
+    ) -> bool {
         if let Some(config) = v {
-            *slot = match config {
-                "no" => NextSolverConfig { coherence: false, globally: false },
-                "coherence" => NextSolverConfig { coherence: true, globally: false },
-                "globally" => NextSolverConfig { coherence: true, globally: true },
-                _ => return false,
-            };
+            let mut coherence = false;
+            let mut globally = true;
+            for c in config.split(',') {
+                match c {
+                    "globally" => globally = true,
+                    "coherence" => {
+                        globally = false;
+                        coherence = true;
+                    }
+                    _ => return false,
+                }
+            }
+
+            *slot = Some(NextSolverConfig { coherence: coherence || globally, globally });
         } else {
-            *slot = NextSolverConfig { coherence: true, globally: true };
+            *slot = Some(NextSolverConfig { coherence: true, globally: true });
         }
 
         true
@@ -1504,6 +1515,7 @@ options! {
     // - src/doc/rustc/src/codegen-options/index.md
 
     // tidy-alphabetical-start
+    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     ar: String = (String::new(), parse_string, [UNTRACKED],
         "this option is deprecated and does nothing"),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
@@ -1536,6 +1548,7 @@ options! {
         "force use of unwind tables"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
+    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
         "this option is deprecated and does nothing \
         (consider using `-Cllvm-args=--inline-threshold=...`)"),
@@ -1572,6 +1585,7 @@ options! {
         "give an empty list of passes to the pass manager"),
     no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "disable the use of the redzone"),
+    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     no_stack_check: bool = (false, parse_no_flag, [UNTRACKED],
         "this option is deprecated and does nothing"),
     no_vectorize_loops: bool = (false, parse_no_flag, [TRACKED],
@@ -1608,7 +1622,7 @@ options! {
     save_temps: bool = (false, parse_bool, [UNTRACKED],
         "save all temporary output files during compilation (default: no)"),
     soft_float: bool = (false, parse_bool, [TRACKED],
-        "use soft float ABI (*eabihf targets only) (default: no)"),
+        "deprecated option: use soft float ABI (*eabihf targets only) (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::split_debuginfo` instead of this field")]
     split_debuginfo: Option<SplitDebuginfo> = (None, parse_split_debuginfo, [TRACKED],
         "how to handle split-debuginfo, a platform-specific option"),
@@ -1867,7 +1881,7 @@ options! {
         "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
-    next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
+    next_solver: Option<NextSolverConfig> = (None, parse_next_solver_config, [TRACKED],
         "enable and configure the next generation trait solver used by rustc"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
@@ -2014,6 +2028,8 @@ written to standard error output)"),
     simulate_remapped_rust_src_base: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "simulate the effect of remap-debuginfo = true at bootstrapping by remapping path \
         to rust's source base directory. only meant for testing purposes"),
+    small_data_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "Set the threshold for objects to be stored in a \"small data\" section"),
     span_debug: bool = (false, parse_bool, [UNTRACKED],
         "forward proc_macro::Span's `Debug` impl to `Span`"),
     /// o/w tests have closure@path

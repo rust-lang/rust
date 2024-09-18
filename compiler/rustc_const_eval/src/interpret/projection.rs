@@ -17,7 +17,7 @@ use rustc_target::abi::{self, Size, VariantIdx};
 use tracing::{debug, instrument};
 
 use super::{
-    throw_ub, throw_unsup, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
+    err_ub, throw_ub, throw_unsup, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
     Provenance, Scalar,
 };
 
@@ -101,7 +101,7 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
 }
 
 /// A type representing iteration over the elements of an array.
-pub struct ArrayIterator<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> {
+pub struct ArrayIterator<'a, 'tcx, Prov: Provenance, P: Projectable<'tcx, Prov>> {
     base: &'a P,
     range: Range<u64>,
     stride: Size,
@@ -109,7 +109,7 @@ pub struct ArrayIterator<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>>
     _phantom: PhantomData<Prov>, // otherwise it says `Prov` is never used...
 }
 
-impl<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'tcx, 'a, Prov, P> {
+impl<'a, 'tcx, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'a, 'tcx, Prov, P> {
     /// Should be the same `ecx` on each call, and match the one used to create the iterator.
     pub fn next<M: Machine<'tcx, Provenance = Prov>>(
         &mut self,
@@ -229,7 +229,11 @@ where
                     // This can only be reached in ConstProp and non-rustc-MIR.
                     throw_ub!(BoundsCheckFailed { len, index });
                 }
-                let offset = stride * index; // `Size` multiplication
+                // With raw slices, `len` can be so big that this *can* overflow.
+                let offset = self
+                    .compute_size_in_bytes(stride, index)
+                    .ok_or_else(|| err_ub!(PointerArithOverflow))?;
+
                 // All fields have the same layout.
                 let field_layout = base.layout().field(self, 0);
                 (offset, field_layout)
@@ -242,6 +246,19 @@ where
         };
 
         base.offset(offset, field_layout, self)
+    }
+
+    /// Converts a repr(simd) value into an array of the right size, such that `project_index`
+    /// accesses the SIMD elements. Also returns the number of elements.
+    pub fn project_to_simd<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        base: &P,
+    ) -> InterpResult<'tcx, (P, u64)> {
+        assert!(base.layout().ty.ty_adt_def().unwrap().repr().simd());
+        // SIMD types must be newtypes around arrays, so all we have to do is project to their only field.
+        let array = self.project_field(base, 0)?;
+        let len = array.len(self)?;
+        Ok((array, len))
     }
 
     fn project_constant_index<P: Projectable<'tcx, M::Provenance>>(
@@ -273,7 +290,7 @@ where
     pub fn project_array_fields<'a, P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &'a P,
-    ) -> InterpResult<'tcx, ArrayIterator<'tcx, 'a, M::Provenance, P>> {
+    ) -> InterpResult<'tcx, ArrayIterator<'a, 'tcx, M::Provenance, P>> {
         let abi::FieldsShape::Array { stride, .. } = base.layout().fields else {
             span_bug!(self.cur_span(), "project_array_fields: expected an array layout");
         };

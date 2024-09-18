@@ -16,7 +16,7 @@ use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translate;
 use rustc_errors::{
     Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalError, FluentBundle, Level, MultiSpan,
-    Style,
+    Style, Suggestions,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -335,7 +335,7 @@ pub type TargetMachineFactoryFn<B> = Arc<
         + Sync,
 >;
 
-pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportInfo)>>>;
+type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportInfo)>>>;
 
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
@@ -437,9 +437,9 @@ fn generate_lto_work<B: ExtraBackendMethods>(
     }
 }
 
-pub struct CompiledModules {
-    pub modules: Vec<CompiledModule>,
-    pub allocator_module: Option<CompiledModule>,
+struct CompiledModules {
+    modules: Vec<CompiledModule>,
+    allocator_module: Option<CompiledModule>,
 }
 
 fn need_bitcode_in_object(tcx: TyCtxt<'_>) -> bool {
@@ -462,7 +462,7 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
     }
 }
 
-pub fn start_async_codegen<B: ExtraBackendMethods>(
+pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     target_cpu: String,
@@ -836,13 +836,13 @@ pub enum FatLtoInput<B: WriteBackendMethods> {
 }
 
 /// Actual LTO type we end up choosing based on multiple factors.
-pub enum ComputedLtoType {
+pub(crate) enum ComputedLtoType {
     No,
     Thin,
     Fat,
 }
 
-pub fn compute_per_cgu_lto_type(
+pub(crate) fn compute_per_cgu_lto_type(
     sess_lto: &Lto,
     opts: &config::Options,
     sess_crate_types: &[CrateType],
@@ -1087,7 +1087,7 @@ struct Diagnostic {
 // A cut-down version of `rustc_errors::Subdiag` that impls `Send`. It's
 // missing the following fields from `rustc_errors::Subdiag`.
 // - `span`: it doesn't impl `Send`.
-pub struct Subdiagnostic {
+pub(crate) struct Subdiagnostic {
     level: Level,
     messages: Vec<(DiagMessage, Style)>,
 }
@@ -1779,7 +1779,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
 /// `FatalError` is explicitly not `Send`.
 #[must_use]
-pub struct WorkerFatalError;
+pub(crate) struct WorkerFatalError;
 
 fn spawn_work<'a, B: ExtraBackendMethods>(
     cgcx: &'a CodegenContext<B>,
@@ -1867,7 +1867,7 @@ pub struct SharedEmitterMain {
 }
 
 impl SharedEmitter {
-    pub fn new() -> (SharedEmitter, SharedEmitterMain) {
+    fn new() -> (SharedEmitter, SharedEmitterMain) {
         let (sender, receiver) = channel();
 
         (SharedEmitter { sender }, SharedEmitterMain { receiver })
@@ -1883,7 +1883,7 @@ impl SharedEmitter {
         drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)));
     }
 
-    pub fn fatal(&self, msg: &str) {
+    fn fatal(&self, msg: &str) {
         drop(self.sender.send(SharedEmitterMessage::Fatal(msg.to_string())));
     }
 }
@@ -1903,7 +1903,7 @@ impl Emitter for SharedEmitter {
         // Check that we aren't missing anything interesting when converting to
         // the cut-down local `DiagInner`.
         assert_eq!(diag.span, MultiSpan::new());
-        assert_eq!(diag.suggestions, Ok(vec![]));
+        assert_eq!(diag.suggestions, Suggestions::Enabled(vec![]));
         assert_eq!(diag.sort_span, rustc_span::DUMMY_SP);
         assert_eq!(diag.is_lint, None);
         // No sensible check for `diag.emitted_at`.
@@ -1930,7 +1930,7 @@ impl Emitter for SharedEmitter {
 }
 
 impl SharedEmitterMain {
-    pub fn check(&self, sess: &Session, blocking: bool) {
+    fn check(&self, sess: &Session, blocking: bool) {
         loop {
             let message = if blocking {
                 match self.receiver.recv() {
@@ -2087,17 +2087,17 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         )
     }
 
-    pub fn codegen_finished(&self, tcx: TyCtxt<'_>) {
+    pub(crate) fn codegen_finished(&self, tcx: TyCtxt<'_>) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
         drop(self.coordinator.sender.send(Box::new(Message::CodegenComplete::<B>)));
     }
 
-    pub fn check_for_errors(&self, sess: &Session) {
+    pub(crate) fn check_for_errors(&self, sess: &Session) {
         self.shared_emitter_main.check(sess, false);
     }
 
-    pub fn wait_for_signal_to_codegen_item(&self) {
+    pub(crate) fn wait_for_signal_to_codegen_item(&self) {
         match self.codegen_worker_receive.recv() {
             Ok(CguMessage) => {
                 // Ok to proceed.
@@ -2110,7 +2110,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     }
 }
 
-pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
+pub(crate) fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
     tx_to_llvm_workers: &Sender<Box<dyn Any + Send>>,
     module: ModuleCodegen<B::Module>,
@@ -2120,7 +2120,7 @@ pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
     drop(tx_to_llvm_workers.send(Box::new(Message::CodegenDone::<B> { llvm_work_item, cost })));
 }
 
-pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
+pub(crate) fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
     tx_to_llvm_workers: &Sender<Box<dyn Any + Send>>,
     module: CachedModuleCodegen,
@@ -2129,7 +2129,7 @@ pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
     drop(tx_to_llvm_workers.send(Box::new(Message::CodegenDone::<B> { llvm_work_item, cost: 0 })));
 }
 
-pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
+pub(crate) fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
     tcx: TyCtxt<'_>,
     tx_to_llvm_workers: &Sender<Box<dyn Any + Send>>,

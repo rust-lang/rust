@@ -9,7 +9,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, GenKill, Results, ResultsVisitable};
+use rustc_mir_dataflow::{Analysis, AnalysisDomain, Forward, GenKill, Results, ResultsVisitable};
 use tracing::debug;
 
 use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
@@ -23,26 +23,25 @@ pub(crate) struct BorrowckResults<'a, 'tcx> {
 
 /// The transient state of the dataflow analyses used by the borrow checker.
 #[derive(Debug)]
-pub(crate) struct BorrowckFlowState<'a, 'tcx> {
+pub(crate) struct BorrowckDomain<'a, 'tcx> {
     pub(crate) borrows: <Borrows<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
     pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
     pub(crate) ever_inits: <EverInitializedPlaces<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
 }
 
 impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
-    // All three analyses are forward, but we have to use just one here.
-    type Direction = <Borrows<'a, 'tcx> as AnalysisDomain<'tcx>>::Direction;
-    type FlowState = BorrowckFlowState<'a, 'tcx>;
+    type Direction = Forward;
+    type Domain = BorrowckDomain<'a, 'tcx>;
 
-    fn new_flow_state(&self, body: &mir::Body<'tcx>) -> Self::FlowState {
-        BorrowckFlowState {
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        BorrowckDomain {
             borrows: self.borrows.analysis.bottom_value(body),
             uninits: self.uninits.analysis.bottom_value(body),
             ever_inits: self.ever_inits.analysis.bottom_value(body),
         }
     }
 
-    fn reset_to_block_entry(&self, state: &mut Self::FlowState, block: BasicBlock) {
+    fn reset_to_block_entry(&self, state: &mut Self::Domain, block: BasicBlock) {
         state.borrows.clone_from(self.borrows.entry_set_for_block(block));
         state.uninits.clone_from(self.uninits.entry_set_for_block(block));
         state.ever_inits.clone_from(self.ever_inits.entry_set_for_block(block));
@@ -50,7 +49,7 @@ impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
 
     fn reconstruct_before_statement_effect(
         &mut self,
-        state: &mut Self::FlowState,
+        state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
     ) {
@@ -61,7 +60,7 @@ impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
 
     fn reconstruct_statement_effect(
         &mut self,
-        state: &mut Self::FlowState,
+        state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
     ) {
@@ -72,7 +71,7 @@ impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
 
     fn reconstruct_before_terminator_effect(
         &mut self,
-        state: &mut Self::FlowState,
+        state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,
     ) {
@@ -83,7 +82,7 @@ impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
 
     fn reconstruct_terminator_effect(
         &mut self,
-        state: &mut Self::FlowState,
+        state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,
     ) {
@@ -113,16 +112,16 @@ pub struct Borrows<'a, 'tcx> {
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-struct OutOfScopePrecomputer<'mir, 'tcx> {
+struct OutOfScopePrecomputer<'a, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
-    body: &'mir Body<'tcx>,
-    regioncx: &'mir RegionInferenceContext<'tcx>,
+    body: &'a Body<'tcx>,
+    regioncx: &'a RegionInferenceContext<'tcx>,
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-impl<'mir, 'tcx> OutOfScopePrecomputer<'mir, 'tcx> {
-    fn new(body: &'mir Body<'tcx>, regioncx: &'mir RegionInferenceContext<'tcx>) -> Self {
+impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
+    fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         OutOfScopePrecomputer {
             visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
@@ -225,17 +224,17 @@ pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
     prec.borrows_out_of_scope_at_location
 }
 
-struct PoloniusOutOfScopePrecomputer<'mir, 'tcx> {
+struct PoloniusOutOfScopePrecomputer<'a, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
-    body: &'mir Body<'tcx>,
-    regioncx: &'mir RegionInferenceContext<'tcx>,
+    body: &'a Body<'tcx>,
+    regioncx: &'a RegionInferenceContext<'tcx>,
 
     loans_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-impl<'mir, 'tcx> PoloniusOutOfScopePrecomputer<'mir, 'tcx> {
-    fn new(body: &'mir Body<'tcx>, regioncx: &'mir RegionInferenceContext<'tcx>) -> Self {
+impl<'a, 'tcx> PoloniusOutOfScopePrecomputer<'a, 'tcx> {
+    fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         Self {
             visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],

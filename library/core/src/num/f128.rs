@@ -439,10 +439,6 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
-        // Other float types suffer from various platform bugs that violate the usual IEEE semantics
-        // and also make bitwise classification not always work reliably. However, `f128` cannot fit
-        // into any other float types so this is not a concern, and we can rely on bit patterns.
-
         let bits = self.to_bits();
         match (bits & Self::MAN_MASK, bits & Self::EXP_MASK) {
             (0, Self::EXP_MASK) => FpCategory::Infinite,

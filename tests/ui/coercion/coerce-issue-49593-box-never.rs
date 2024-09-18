@@ -1,5 +1,5 @@
 //@ revisions: nofallback fallback
-//@check-fail
+//@[fallback] check-pass
 
 #![feature(never_type)]
 #![cfg_attr(fallback, feature(never_type_fallback))]
@@ -13,10 +13,10 @@ fn raw_ptr_box<T>(t: T) -> *mut T {
 }
 
 fn foo(x: !) -> Box<dyn Error> {
-    // Subtyping during method resolution will generate new inference vars and
-    // subtype them. Thus fallback will not fall back to `!`, but `()` instead.
+    // Method resolution will generate new inference vars and relate them.
+    // Thus fallback will not fall back to `!`, but `()` instead.
     Box::<_ /* ! */>::new(x)
-    //~^ ERROR trait bound `(): std::error::Error` is not satisfied
+    //[nofallback]~^ ERROR trait bound `(): std::error::Error` is not satisfied
 }
 
 fn foo_raw_ptr(x: !) -> *mut dyn Error {

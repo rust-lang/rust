@@ -20,6 +20,7 @@ use rustc_hir as hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{ConstAllocation, CtfeProvenance, InterpResult};
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;
@@ -223,37 +224,52 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
             continue;
         }
 
-        // Crucially, we check this *before* checking whether the `alloc_id`
-        // has already been interned. The point of this check is to ensure that when
-        // there are multiple pointers to the same allocation, they are *all* immutable.
-        // Therefore it would be bad if we only checked the first pointer to any given
-        // allocation.
+        // Ensure that this is derived from a shared reference. Crucially, we check this *before*
+        // checking whether the `alloc_id` has already been interned. The point of this check is to
+        // ensure that when there are multiple pointers to the same allocation, they are *all*
+        // derived from a shared reference. Therefore it would be bad if we only checked the first
+        // pointer to any given allocation.
         // (It is likely not possible to actually have multiple pointers to the same allocation,
         // so alternatively we could also check that and ICE if there are multiple such pointers.)
+        // See <https://github.com/rust-lang/rust/pull/128543> for why we are checking for "shared
+        // reference" and not "immutable", i.e., for why we are allowing interior-mutable shared
+        // references: they can actually be created in safe code while pointing to apparently
+        // "immutable" values, via promotion or tail expression lifetime extension of
+        // `&None::<Cell<T>>`.
+        // We also exclude promoteds from this as `&mut []` can be promoted, which is a mutable
+        // reference pointing to an immutable (zero-sized) allocation. We rely on the promotion
+        // analysis not screwing up to ensure that it is sound to intern promoteds as immutable.
         if intern_kind != InternKind::Promoted
             && inner_mutability == Mutability::Not
-            && !prov.immutable()
+            && !prov.shared_ref()
         {
-            if ecx.tcx.try_get_global_alloc(alloc_id).is_some()
-                && !just_interned.contains(&alloc_id)
-            {
+            let is_already_global = ecx.tcx.try_get_global_alloc(alloc_id).is_some();
+            if is_already_global && !just_interned.contains(&alloc_id) {
                 // This is a pointer to some memory from another constant. We encounter mutable
                 // pointers to such memory since we do not always track immutability through
                 // these "global" pointers. Allowing them is harmless; the point of these checks
                 // during interning is to justify why we intern the *new* allocations immutably,
-                // so we can completely ignore existing allocations. We also don't need to add
-                // this to the todo list, since after all it is already interned.
+                // so we can completely ignore existing allocations.
+                // We can also skip the rest of this loop iteration, since after all it is already
+                // interned.
                 continue;
             }
-            // Found a mutable pointer inside a const where inner allocations should be
-            // immutable. We exclude promoteds from this, since things like `&mut []` and
-            // `&None::<Cell<i32>>` lead to promotion that can produce mutable pointers. We rely
-            // on the promotion analysis not screwing up to ensure that it is sound to intern
-            // promoteds as immutable.
-            trace!("found bad mutable pointer");
-            // Prefer dangling pointer errors over mutable pointer errors
-            if result.is_ok() {
-                result = Err(InternResult::FoundBadMutablePointer);
+            // If this is a dangling pointer, that's actually fine -- the problematic case is
+            // when there is memory there that someone might expect to be mutable, but we make it immutable.
+            let dangling = !is_already_global && !ecx.memory.alloc_map.contains_key(&alloc_id);
+            if !dangling {
+                // Found a mutable reference inside a const where inner allocations should be
+                // immutable.
+                if !ecx.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
+                    span_bug!(
+                        ecx.tcx.span,
+                        "the static const safety checks accepted mutable references they should not have accepted"
+                    );
+                }
+                // Prefer dangling pointer errors over mutable pointer errors
+                if result.is_ok() {
+                    result = Err(InternResult::FoundBadMutablePointer);
+                }
             }
         }
         if ecx.tcx.try_get_global_alloc(alloc_id).is_some() {
@@ -261,7 +277,6 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
             debug_assert!(!ecx.memory.alloc_map.contains_key(&alloc_id));
             continue;
         }
-        just_interned.insert(alloc_id);
         // We always intern with `inner_mutability`, and furthermore we ensured above that if
         // that is "immutable", then there are *no* mutable pointers anywhere in the newly
         // interned memory -- justifying that we can indeed intern immutably. However this also
@@ -272,6 +287,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
         // pointers before deciding which allocations can be made immutable; but for now we are
         // okay with losing some potential for immutability here. This can anyway only affect
         // `static mut`.
+        just_interned.insert(alloc_id);
         match intern_shallow(ecx, alloc_id, inner_mutability) {
             Ok(nested) => todo.extend(nested),
             Err(()) => {

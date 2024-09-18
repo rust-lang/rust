@@ -24,6 +24,7 @@ pub struct FunctionDebugContext<'tcx, S, L> {
     /// Maps from an inlined function to its debug info declaration.
     pub inlined_function_scopes: FxHashMap<Instance<'tcx>, S>,
 }
+
 #[derive(Copy, Clone)]
 pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
@@ -243,7 +244,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     /// Apply debuginfo and/or name, after creating the `alloca` for a local,
     /// or initializing the local with an operand (whichever applies).
-    pub fn debug_introduce_local(&self, bx: &mut Bx, local: mir::Local) {
+    pub(crate) fn debug_introduce_local(&self, bx: &mut Bx, local: mir::Local) {
         let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
 
         let vars = match &self.per_local_var_debug_info {
@@ -426,7 +427,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub fn debug_introduce_locals(&self, bx: &mut Bx) {
+    pub(crate) fn debug_introduce_locals(&self, bx: &mut Bx) {
         if bx.sess().opts.debuginfo == DebugInfo::Full || !bx.sess().fewer_names() {
             for local in self.locals.indices() {
                 self.debug_introduce_local(bx, local);
@@ -435,7 +436,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     /// Partition all `VarDebugInfo` in `self.mir`, by their base `Local`.
-    pub fn compute_per_local_var_debug_info(
+    pub(crate) fn compute_per_local_var_debug_info(
         &self,
         bx: &mut Bx,
     ) -> Option<IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, Bx::DIVariable>>>> {
@@ -547,6 +548,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         self.set_debug_loc(bx, var.source_info);
                         let base =
                             Self::spill_operand_to_stack(operand, Some(var.name.to_string()), bx);
+                        bx.clear_dbg_loc();
 
                         bx.dbg_var_addr(
                             dbg_var,

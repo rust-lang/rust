@@ -1,5 +1,5 @@
 error: Undefined Behavior: attempting a write access using <wildcard> at ALLOC[0x0], but no exposed tags have suitable permission in the borrow stack for this location
-  --> $DIR/exposed_only_ro.rs:LL:CC
+  --> tests/fail/stacked_borrows/exposed_only_ro.rs:LL:CC
    |
 LL |     unsafe { *ptr = 0 };
    |              ^^^^^^^^
@@ -10,7 +10,7 @@ LL |     unsafe { *ptr = 0 };
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/exposed_only_ro.rs:LL:CC
+   = note: inside `main` at tests/fail/stacked_borrows/exposed_only_ro.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

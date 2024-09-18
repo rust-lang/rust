@@ -11,18 +11,17 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
-use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
-use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
 use tracing::{debug, instrument, trace};
 
 use super::ops::{self, NonConstOp, Status};
@@ -166,24 +165,6 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     }
 }
 
-struct LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
-    kind: LocalKind,
-    checker: &'ck mut Checker<'mir, 'tcx>,
-}
-
-impl<'ck, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
-    fn visit_ty(&mut self, t: Ty<'tcx>) {
-        match t.kind() {
-            ty::FnPtr(..) => {}
-            ty::Ref(_, _, hir::Mutability::Mut) => {
-                self.checker.check_op(ops::mut_ref::MutRef(self.kind));
-                t.super_visit_with(self)
-            }
-            _ => t.super_visit_with(self),
-        }
-    }
-}
-
 pub struct Checker<'mir, 'tcx> {
     ccx: &'mir ConstCx<'mir, 'tcx>,
     qualifs: Qualifs<'mir, 'tcx>,
@@ -228,25 +209,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         if self.ccx.is_async() || body.coroutine.is_some() {
             tcx.dcx().span_delayed_bug(body.span, "`async` functions cannot be `const fn`");
             return;
-        }
-
-        // The local type and predicate checks are not free and only relevant for `const fn`s.
-        if self.const_kind() == hir::ConstContext::ConstFn {
-            for (idx, local) in body.local_decls.iter_enumerated() {
-                // Handle the return place below.
-                if idx == RETURN_PLACE {
-                    continue;
-                }
-
-                self.span = local.source_info.span;
-                self.check_local_or_return_ty(local.ty, idx);
-            }
-
-            // impl trait is gone in MIR, so check the return type of a const fn by its signature
-            // instead of the type of the return place.
-            self.span = body.local_decls[RETURN_PLACE].source_info.span;
-            let return_ty = self.ccx.fn_sig().output();
-            self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
         if !tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
@@ -358,16 +320,11 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         self.check_op_spanned(ops::StaticAccess, span)
     }
 
-    fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>, local: Local) {
-        let kind = self.body.local_kind(local);
-
-        let mut visitor = LocalReturnTyVisitor { kind, checker: self };
-
-        visitor.visit_ty(ty);
-    }
-
-    fn check_mut_borrow(&mut self, place: &Place<'_>, kind: hir::BorrowKind) {
-        match self.const_kind() {
+    /// Returns whether this place can possibly escape the evaluation of the current const/static
+    /// initializer. The check assumes that all already existing pointers and references point to
+    /// non-escaping places.
+    fn place_may_escape(&mut self, place: &Place<'_>) -> bool {
+        let is_transient = match self.const_kind() {
             // In a const fn all borrows are transient or point to the places given via
             // references in the arguments (so we already checked them with
             // TransientMutBorrow/MutBorrow as appropriate).
@@ -375,7 +332,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // NOTE: Once we have heap allocations during CTFE we need to figure out
             // how to prevent `const fn` to create long-lived allocations that point
             // to mutable memory.
-            hir::ConstContext::ConstFn => self.check_op(ops::TransientMutBorrow(kind)),
+            hir::ConstContext::ConstFn => true,
             _ => {
                 // For indirect places, we are not creating a new permanent borrow, it's just as
                 // transient as the already existing one. For reborrowing references this is handled
@@ -387,15 +344,16 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 // value of the constant.
                 // Note: This is only sound if every local that has a `StorageDead` has a
                 // `StorageDead` in every control flow path leading to a `return` terminator.
-                // The good news is that interning will detect if any unexpected mutable
-                // pointer slips through.
-                if place.is_indirect() || self.local_is_transient(place.local) {
-                    self.check_op(ops::TransientMutBorrow(kind));
-                } else {
-                    self.check_op(ops::MutBorrow(kind));
-                }
+                // If anything slips through, there's no safety net -- safe code can create
+                // references to variants of `!Freeze` enums as long as that variant is `Freeze`, so
+                // interning can't protect us here. (There *is* a safety net for mutable references
+                // though, interning will ICE if we miss something here.)
+                place.is_indirect() || self.local_is_transient(place.local)
             }
-        }
+        };
+        // Transient places cannot possibly escape because the place doesn't exist any more at the
+        // end of evaluation.
+        !is_transient
     }
 }
 
@@ -419,47 +377,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         trace!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
-
-        // Special-case reborrows to be more like a copy of a reference.
-        // FIXME: this does not actually handle all reborrows. It only detects cases where `*` is the outermost
-        // projection of the borrowed place, it skips deref'ing raw pointers and it skips `static`.
-        // All those cases are handled below with shared/mutable borrows.
-        // Once `const_mut_refs` is stable, we should be able to entirely remove this special case.
-        // (`const_refs_to_cell` is not needed, we already allow all borrows of indirect places anyway.)
-        match *rvalue {
-            Rvalue::Ref(_, kind, place) => {
-                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
-                    let ctx = match kind {
-                        BorrowKind::Shared => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-                        }
-                        BorrowKind::Fake(_) => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::FakeBorrow)
-                        }
-                        BorrowKind::Mut { .. } => {
-                            PlaceContext::MutatingUse(MutatingUseContext::Borrow)
-                        }
-                    };
-                    self.visit_local(reborrowed_place_ref.local, ctx, location);
-                    self.visit_projection(reborrowed_place_ref, ctx, location);
-                    return;
-                }
-            }
-            Rvalue::RawPtr(mutbl, place) => {
-                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
-                    let ctx = match mutbl {
-                        Mutability::Not => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow)
-                        }
-                        Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::RawBorrow),
-                    };
-                    self.visit_local(reborrowed_place_ref.local, ctx, location);
-                    self.visit_projection(reborrowed_place_ref, ctx, location);
-                    return;
-                }
-            }
-            _ => {}
-        }
 
         self.super_rvalue(rvalue, location);
 
@@ -494,15 +411,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let is_allowed =
                     self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut);
 
-                if !is_allowed {
-                    self.check_mut_borrow(
-                        place,
-                        if matches!(rvalue, Rvalue::Ref(..)) {
-                            hir::BorrowKind::Ref
-                        } else {
-                            hir::BorrowKind::Raw
-                        },
-                    );
+                if !is_allowed && self.place_may_escape(place) {
+                    self.check_op(ops::EscapingMutBorrow(if matches!(rvalue, Rvalue::Ref(..)) {
+                        hir::BorrowKind::Ref
+                    } else {
+                        hir::BorrowKind::Raw
+                    }));
                 }
             }
 
@@ -514,39 +428,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     place.as_ref(),
                 );
 
-                // If the place is indirect, this is basically a reborrow. We have a reborrow
-                // special case above, but for raw pointers and pointers/references to `static` and
-                // when the `*` is not the first projection, `place_as_reborrow` does not recognize
-                // them as such, so we end up here. This should probably be considered a
-                // `TransientCellBorrow` (we consider the equivalent mutable case a
-                // `TransientMutBorrow`), but such reborrows got accidentally stabilized already and
-                // it is too much of a breaking change to take back.
-                if borrowed_place_has_mut_interior && !place.is_indirect() {
-                    match self.const_kind() {
-                        // In a const fn all borrows are transient or point to the places given via
-                        // references in the arguments (so we already checked them with
-                        // TransientCellBorrow/CellBorrow as appropriate).
-                        // The borrow checker guarantees that no new non-transient borrows are created.
-                        // NOTE: Once we have heap allocations during CTFE we need to figure out
-                        // how to prevent `const fn` to create long-lived allocations that point
-                        // to (interior) mutable memory.
-                        hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
-                        _ => {
-                            // Locals with StorageDead are definitely not part of the final constant value, and
-                            // it is thus inherently safe to permit such locals to have their
-                            // address taken as we can't end up with a reference to them in the
-                            // final value.
-                            // Note: This is only sound if every local that has a `StorageDead` has a
-                            // `StorageDead` in every control flow path leading to a `return` terminator.
-                            // The good news is that interning will detect if any unexpected mutable
-                            // pointer slips through.
-                            if self.local_is_transient(place.local) {
-                                self.check_op(ops::TransientCellBorrow);
-                            } else {
-                                self.check_op(ops::CellBorrow);
-                            }
-                        }
-                    }
+                if borrowed_place_has_mut_interior && self.place_may_escape(place) {
+                    self.check_op(ops::EscapingCellBorrow);
                 }
             }
 
@@ -633,58 +516,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             if let Some(def_id) = c.check_static_ptr(self.tcx) {
                 self.check_static(def_id, self.span);
             }
-        }
-    }
-    fn visit_projection_elem(
-        &mut self,
-        place_ref: PlaceRef<'tcx>,
-        elem: PlaceElem<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        trace!(
-            "visit_projection_elem: place_ref={:?} elem={:?} \
-            context={:?} location={:?}",
-            place_ref, elem, context, location,
-        );
-
-        self.super_projection_elem(place_ref, elem, context, location);
-
-        match elem {
-            ProjectionElem::Deref => {
-                let base_ty = place_ref.ty(self.body, self.tcx).ty;
-                if base_ty.is_unsafe_ptr() {
-                    if place_ref.projection.is_empty() {
-                        let decl = &self.body.local_decls[place_ref.local];
-                        // If this is a static, then this is not really dereferencing a pointer,
-                        // just directly accessing a static. That is not subject to any feature
-                        // gates (except for the one about whether statics can even be used, but
-                        // that is checked already by `visit_operand`).
-                        if let LocalInfo::StaticRef { .. } = *decl.local_info() {
-                            return;
-                        }
-                    }
-
-                    // `*const T` is stable, `*mut T` is not
-                    if !base_ty.is_mutable_ptr() {
-                        return;
-                    }
-
-                    self.check_op(ops::RawMutPtrDeref);
-                }
-
-                if context.is_mutating_use() {
-                    self.check_op(ops::MutDeref);
-                }
-            }
-
-            ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Downcast(..)
-            | ProjectionElem::OpaqueCast(..)
-            | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Subtype(..)
-            | ProjectionElem::Field(..)
-            | ProjectionElem::Index(_) => {}
         }
     }
 
@@ -980,40 +811,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Unreachable => {}
         }
-    }
-}
-
-fn place_as_reborrow<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    place: Place<'tcx>,
-) -> Option<PlaceRef<'tcx>> {
-    match place.as_ref().last_projection() {
-        Some((place_base, ProjectionElem::Deref)) => {
-            // FIXME: why do statics and raw pointers get excluded here? This makes
-            // some code involving mutable pointers unstable, but it is unclear
-            // why that code is treated differently from mutable references.
-            // Once TransientMutBorrow and TransientCellBorrow are stable,
-            // this can probably be cleaned up without any behavioral changes.
-
-            // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
-            // that points to the allocation for the static. Don't treat these as reborrows.
-            if body.local_decls[place_base.local].is_ref_to_static() {
-                None
-            } else {
-                // Ensure the type being derefed is a reference and not a raw pointer.
-                // This is sufficient to prevent an access to a `static mut` from being marked as a
-                // reborrow, even if the check above were to disappear.
-                let inner_ty = place_base.ty(body, tcx).ty;
-
-                if let ty::Ref(..) = inner_ty.kind() {
-                    return Some(place_base);
-                } else {
-                    return None;
-                }
-            }
-        }
-        _ => None,
     }
 }
 

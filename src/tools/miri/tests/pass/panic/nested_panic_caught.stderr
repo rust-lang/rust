@@ -1,7 +1,7 @@
-thread 'main' panicked at $DIR/nested_panic_caught.rs:LL:CC:
+thread 'main' panicked at tests/pass/panic/nested_panic_caught.rs:LL:CC:
 once
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
-thread 'main' panicked at $DIR/nested_panic_caught.rs:LL:CC:
+thread 'main' panicked at tests/pass/panic/nested_panic_caught.rs:LL:CC:
 twice
 stack backtrace:

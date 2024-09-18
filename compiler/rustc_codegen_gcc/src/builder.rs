@@ -14,8 +14,8 @@ use rustc_codegen_ssa::common::{
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
-    BackendTypes, BaseTypeMethods, BuilderMethods, ConstMethods, HasCodegen, LayoutTypeMethods,
-    OverflowOp, StaticBuilderMethods,
+    BackendTypes, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
+    LayoutTypeCodegenMethods, OverflowOp, StaticBuilderMethods,
 };
 use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::fx::FxHashSet;
@@ -23,7 +23,6 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers,
-    TyAndLayout,
 };
 use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
@@ -460,10 +459,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-impl<'gcc, 'tcx> HasCodegen<'tcx> for Builder<'_, 'gcc, 'tcx> {
-    type CodegenCx = CodegenCx<'gcc, 'tcx>;
-}
-
 impl<'tcx> HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.cx.tcx()
@@ -477,8 +472,6 @@ impl HasDataLayout for Builder<'_, '_, '_> {
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
-    type LayoutOfResult = TyAndLayout<'tcx>;
-
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         self.cx.handle_layout_err(err, span, ty)
@@ -486,8 +479,6 @@ impl<'tcx> LayoutOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
 }
 
 impl<'tcx> FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
-    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
-
     #[inline]
     fn handle_fn_abi_err(
         &self,
@@ -531,6 +522,8 @@ fn set_rvalue_location<'a, 'gcc, 'tcx>(
 }
 
 impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
+    type CodegenCx = CodegenCx<'gcc, 'tcx>;
+
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Builder<'a, 'gcc, 'tcx> {
         Builder::with_cx(cx, block)
     }
@@ -1939,33 +1932,18 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.int_type
         };
 
-        let mut mask_elements = if let Some(vector_type) = mask.get_type().dyncast_vector() {
-            let mask_num_units = vector_type.get_num_units();
-            let mut mask_elements = vec![];
-            for i in 0..mask_num_units {
-                let index = self.context.new_rvalue_from_long(self.cx.type_u32(), i as _);
-                mask_elements.push(self.context.new_cast(
-                    self.location,
-                    self.extract_element(mask, index).to_rvalue(),
-                    mask_element_type,
-                ));
-            }
-            mask_elements
-        } else {
-            let struct_type = mask.get_type().is_struct().expect("mask should be of struct type");
-            let mask_num_units = struct_type.get_field_count();
-            let mut mask_elements = vec![];
-            for i in 0..mask_num_units {
-                let field = struct_type.get_field(i as i32);
-                mask_elements.push(self.context.new_cast(
-                    self.location,
-                    mask.access_field(self.location, field).to_rvalue(),
-                    mask_element_type,
-                ));
-            }
-            mask_elements
-        };
-        let mask_num_units = mask_elements.len();
+        let vector_type =
+            mask.get_type().dyncast_vector().expect("simd_shuffle mask should be of vector type");
+        let mask_num_units = vector_type.get_num_units();
+        let mut mask_elements = vec![];
+        for i in 0..mask_num_units {
+            let index = self.context.new_rvalue_from_long(self.cx.type_u32(), i as _);
+            mask_elements.push(self.context.new_cast(
+                self.location,
+                self.extract_element(mask, index).to_rvalue(),
+                mask_element_type,
+            ));
+        }
 
         // NOTE: the mask needs to be the same length as the input vectors, so add the missing
         // elements in the mask if needed.

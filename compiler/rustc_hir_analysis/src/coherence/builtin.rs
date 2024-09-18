@@ -274,7 +274,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         return false;
                     }
 
-                    return true;
+                    true
                 })
                 .collect::<Vec<_>>();
 

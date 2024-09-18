@@ -628,13 +628,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 .map_or(Const::No, |attr| Const::Yes(attr.span)),
                             _ => Const::No,
                         }
+                    } else if self.tcx.is_const_trait(def_id) {
+                        // FIXME(effects) span
+                        Const::Yes(self.tcx.def_ident_span(def_id).unwrap())
                     } else {
-                        if self.tcx.is_const_trait(def_id) {
-                            // FIXME(effects) span
-                            Const::Yes(self.tcx.def_ident_span(def_id).unwrap())
-                        } else {
-                            Const::No
-                        }
+                        Const::No
                     }
                 } else {
                     Const::No

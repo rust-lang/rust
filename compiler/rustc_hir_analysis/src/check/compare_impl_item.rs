@@ -726,7 +726,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     num_trait_args,
                     num_impl_args,
                     def_id,
-                    impl_def_id: impl_m.container_id(tcx),
+                    impl_m_def_id: impl_m.def_id,
                     ty,
                     return_span,
                 }) {
@@ -844,12 +844,18 @@ where
 
 struct RemapHiddenTyRegions<'tcx> {
     tcx: TyCtxt<'tcx>,
+    /// Map from early/late params of the impl to identity regions of the RPITIT (GAT)
+    /// in the trait.
     map: FxIndexMap<ty::Region<'tcx>, ty::Region<'tcx>>,
     num_trait_args: usize,
     num_impl_args: usize,
+    /// Def id of the RPITIT (GAT) in the *trait*.
     def_id: DefId,
-    impl_def_id: DefId,
+    /// Def id of the impl method which owns the opaque hidden type we're remapping.
+    impl_m_def_id: DefId,
+    /// The hidden type we're remapping. Useful for diagnostics.
     ty: Ty<'tcx>,
+    /// Span of the return type. Useful for diagnostics.
     return_span: Span,
 }
 
@@ -885,8 +891,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
             ty::ReLateParam(_) => {}
             // Remap early-bound regions as long as they don't come from the `impl` itself,
             // in which case we don't really need to renumber them.
-            ty::ReEarlyParam(ebr)
-                if ebr.index >= self.tcx.generics_of(self.impl_def_id).count() as u32 => {}
+            ty::ReEarlyParam(ebr) if ebr.index as usize >= self.num_impl_args => {}
             _ => return Ok(region),
         }
 
@@ -899,7 +904,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                 );
             }
         } else {
-            let guar = match region.opt_param_def_id(self.tcx, self.tcx.parent(self.def_id)) {
+            let guar = match region.opt_param_def_id(self.tcx, self.impl_m_def_id) {
                 Some(def_id) => {
                     let return_span = if let ty::Alias(ty::Opaque, opaque_ty) = self.ty.kind() {
                         self.tcx.def_span(opaque_ty.def_id)
@@ -1038,7 +1043,7 @@ fn report_trait_method_mismatch<'tcx>(
         false,
     );
 
-    return diag.emit();
+    diag.emit()
 }
 
 fn check_region_bounds_on_impl_item<'tcx>(

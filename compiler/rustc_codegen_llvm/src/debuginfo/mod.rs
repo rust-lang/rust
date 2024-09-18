@@ -1,8 +1,8 @@
 #![doc = include_str!("doc.md")]
 
 use std::cell::{OnceCell, RefCell};
-use std::iter;
 use std::ops::Range;
+use std::{iter, ptr};
 
 use libc::c_uint;
 use rustc_codegen_ssa::debuginfo::type_names;
@@ -209,6 +209,12 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         }
     }
 
+    fn clear_dbg_loc(&mut self) {
+        unsafe {
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
+        }
+    }
+
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
@@ -280,7 +286,7 @@ impl CodegenCx<'_, '_> {
     }
 }
 
-impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_function_debug_context(
         &self,
         instance: Instance<'tcx>,

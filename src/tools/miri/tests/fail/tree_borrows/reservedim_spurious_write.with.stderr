@@ -13,7 +13,7 @@ Thread 1 executing: ret x
 Thread 1 executing: write y
 Thread 2 executing: write y
 error: Undefined Behavior: write access through <TAG> at ALLOC[0x0] is forbidden
-  --> $DIR/reservedim_spurious_write.rs:LL:CC
+  --> tests/fail/tree_borrows/reservedim_spurious_write.rs:LL:CC
    |
 LL |         unsafe { *y = 13 }
    |                  ^^^^^^^ write access through <TAG> at ALLOC[0x0] is forbidden
@@ -21,18 +21,18 @@ LL |         unsafe { *y = 13 }
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> has state Disabled which forbids this child write access
 help: the accessed tag <TAG> was created here, in the initial state Reserved
-  --> $DIR/reservedim_spurious_write.rs:LL:CC
+  --> tests/fail/tree_borrows/reservedim_spurious_write.rs:LL:CC
    |
 LL |         fn inner(y: &mut Cell<()>, b: IdxBarrier) -> *mut u8 {
    |                  ^
 help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x1]
-  --> $DIR/reservedim_spurious_write.rs:LL:CC
+  --> tests/fail/tree_borrows/reservedim_spurious_write.rs:LL:CC
    |
 LL |                 *x = 64;
    |                 ^^^^^^^
    = help: this transition corresponds to a loss of read and write permissions
    = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
-   = note: inside closure at $DIR/reservedim_spurious_write.rs:LL:CC
+   = note: inside closure at tests/fail/tree_borrows/reservedim_spurious_write.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -332,8 +332,8 @@ pub fn with_replaced_escaping_bound_vars<
     }
 }
 
-pub struct BoundVarReplacer<'me, 'tcx> {
-    infcx: &'me InferCtxt<'tcx>,
+pub struct BoundVarReplacer<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
     // These three maps track the bound variable that were replaced by placeholders. It might be
     // nice to remove these since we already have the `kind` in the placeholder; we really just need
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
@@ -345,15 +345,15 @@ pub struct BoundVarReplacer<'me, 'tcx> {
     current_index: ty::DebruijnIndex,
     // The `UniverseIndex` of the binding levels above us. These are optional, since we are lazy:
     // we don't actually create a universe until we see a bound var we have to replace.
-    universe_indices: &'me mut Vec<Option<ty::UniverseIndex>>,
+    universe_indices: &'a mut Vec<Option<ty::UniverseIndex>>,
 }
 
-impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
+impl<'a, 'tcx> BoundVarReplacer<'a, 'tcx> {
     /// Returns `Some` if we *were* able to replace bound vars. If there are any bound vars that
     /// use a binding level above `universe_indices.len()`, we fail.
     pub fn replace_bound_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
-        infcx: &'me InferCtxt<'tcx>,
-        universe_indices: &'me mut Vec<Option<ty::UniverseIndex>>,
+        infcx: &'a InferCtxt<'tcx>,
+        universe_indices: &'a mut Vec<Option<ty::UniverseIndex>>,
         value: T,
     ) -> (
         T,
@@ -479,22 +479,22 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
 }
 
 /// The inverse of [`BoundVarReplacer`]: replaces placeholders with the bound vars from which they came.
-pub struct PlaceholderReplacer<'me, 'tcx> {
-    infcx: &'me InferCtxt<'tcx>,
+pub struct PlaceholderReplacer<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
     mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
-    universe_indices: &'me [Option<ty::UniverseIndex>],
+    universe_indices: &'a [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
 
-impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
+impl<'a, 'tcx> PlaceholderReplacer<'a, 'tcx> {
     pub fn replace_placeholders<T: TypeFoldable<TyCtxt<'tcx>>>(
-        infcx: &'me InferCtxt<'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
         mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
-        universe_indices: &'me [Option<ty::UniverseIndex>],
+        universe_indices: &'a [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {
         let mut replacer = PlaceholderReplacer {

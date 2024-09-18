@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// trait or region sub-obligations. (presumably we could, but it's not
     /// particularly important for diagnostics...)
     pub(crate) fn deref_once_mutably_for_diagnostic(&self, expr_ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        self.autoderef(DUMMY_SP, expr_ty).nth(1).and_then(|(deref_ty, _)| {
+        self.autoderef(DUMMY_SP, expr_ty).silence_errors().nth(1).and_then(|(deref_ty, _)| {
             self.infcx
                 .type_implements_trait(
                     self.tcx.lang_items().deref_mut_trait()?,
@@ -1860,10 +1860,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         };
 
         // If this is due to an explicit `return`, suggest adding a return type.
-        if let Some((fn_id, fn_decl, can_suggest)) = fcx.get_fn_decl(block_or_return_id)
+        if let Some((fn_id, fn_decl)) = fcx.get_fn_decl(block_or_return_id)
             && !due_to_block
         {
-            fcx.suggest_missing_return_type(&mut err, fn_decl, expected, found, can_suggest, fn_id);
+            fcx.suggest_missing_return_type(&mut err, fn_decl, expected, found, fn_id);
         }
 
         // If this is due to a block, then maybe we forgot a `return`/`break`.

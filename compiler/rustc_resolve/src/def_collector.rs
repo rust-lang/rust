@@ -12,28 +12,43 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use tracing::debug;
 
-use crate::{ImplTraitContext, Resolver};
+use crate::{ImplTraitContext, InvocationParent, PendingAnonConstInfo, Resolver};
 
 pub(crate) fn collect_definitions(
     resolver: &mut Resolver<'_, '_>,
     fragment: &AstFragment,
     expansion: LocalExpnId,
 ) {
-    let (parent_def, impl_trait_context, in_attr) = resolver.invocation_parents[&expansion];
-    let mut visitor = DefCollector { resolver, parent_def, expansion, impl_trait_context, in_attr };
+    let InvocationParent { parent_def, pending_anon_const_info, impl_trait_context, in_attr } =
+        resolver.invocation_parents[&expansion];
+    let mut visitor = DefCollector {
+        resolver,
+        parent_def,
+        pending_anon_const_info,
+        expansion,
+        impl_trait_context,
+        in_attr,
+    };
     fragment.visit_with(&mut visitor);
 }
 
 /// Creates `DefId`s for nodes in the AST.
-struct DefCollector<'a, 'b, 'tcx> {
-    resolver: &'a mut Resolver<'b, 'tcx>,
+struct DefCollector<'a, 'ra, 'tcx> {
+    resolver: &'a mut Resolver<'ra, 'tcx>,
     parent_def: LocalDefId,
+    /// If we have an anon const that consists of a macro invocation, e.g. `Foo<{ m!() }>`,
+    /// we need to wait until we know what the macro expands to before we create the def for
+    /// the anon const. That's because we lower some anon consts into `hir::ConstArgKind::Path`,
+    /// which don't have defs.
+    ///
+    /// See `Self::visit_anon_const()`.
+    pending_anon_const_info: Option<PendingAnonConstInfo>,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
     expansion: LocalExpnId,
 }
 
-impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
+impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     fn create_def(
         &mut self,
         node_id: NodeId,
@@ -111,15 +126,21 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
         let id = id.placeholder_to_expn_id();
-        let old_parent = self
-            .resolver
-            .invocation_parents
-            .insert(id, (self.parent_def, self.impl_trait_context, self.in_attr));
+        let pending_anon_const_info = self.pending_anon_const_info.take();
+        let old_parent = self.resolver.invocation_parents.insert(
+            id,
+            InvocationParent {
+                parent_def: self.parent_def,
+                pending_anon_const_info,
+                impl_trait_context: self.impl_trait_context,
+                in_attr: self.in_attr,
+            },
+        );
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
 }
 
-impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
+impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     fn visit_item(&mut self, i: &'a Item) {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
@@ -326,46 +347,65 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, constant: &'a AnonConst) {
-        if self.resolver.tcx.features().const_arg_path
-            && constant.value.is_potential_trivial_const_arg()
-        {
-            // HACK(min_generic_const_args): don't create defs for anon consts if we think they will
-            // later be turned into ConstArgKind::Path's. because this is before resolve is done, we
-            // may accidentally identify a construction of a unit struct as a param and not create a
-            // def. we'll then create a def later in ast lowering in this case. the parent of nested
-            // items will be messed up, but that's ok because there can't be any if we're just looking
-            // for bare idents.
-            visit::walk_anon_const(self, constant)
-        } else {
-            let def =
-                self.create_def(constant.id, kw::Empty, DefKind::AnonConst, constant.value.span);
-            self.with_parent(def, |this| visit::walk_anon_const(this, constant));
+        // HACK(min_generic_const_args): don't create defs for anon consts if we think they will
+        // later be turned into ConstArgKind::Path's. because this is before resolve is done, we
+        // may accidentally identify a construction of a unit struct as a param and not create a
+        // def. we'll then create a def later in ast lowering in this case. the parent of nested
+        // items will be messed up, but that's ok because there can't be any if we're just looking
+        // for bare idents.
+
+        if matches!(constant.value.maybe_unwrap_block().kind, ExprKind::MacCall(..)) {
+            // See self.pending_anon_const_info for explanation
+            self.pending_anon_const_info =
+                Some(PendingAnonConstInfo { id: constant.id, span: constant.value.span });
+            return visit::walk_anon_const(self, constant);
+        } else if constant.value.is_potential_trivial_const_arg() {
+            return visit::walk_anon_const(self, constant);
         }
+
+        let def = self.create_def(constant.id, kw::Empty, DefKind::AnonConst, constant.value.span);
+        self.with_parent(def, |this| visit::walk_anon_const(this, constant));
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        let parent_def = match expr.kind {
-            ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
-            ExprKind::Closure(..) | ExprKind::Gen(..) => {
-                self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
+        if matches!(expr.kind, ExprKind::MacCall(..)) {
+            return self.visit_macro_invoc(expr.id);
+        }
+
+        let grandparent_def = if let Some(pending_anon) = self.pending_anon_const_info.take() {
+            // See self.pending_anon_const_info for explanation
+            if !expr.is_potential_trivial_const_arg() {
+                self.create_def(pending_anon.id, kw::Empty, DefKind::AnonConst, pending_anon.span)
+            } else {
+                self.parent_def
             }
-            ExprKind::ConstBlock(ref constant) => {
-                for attr in &expr.attrs {
-                    visit::walk_attribute(self, attr);
-                }
-                let def = self.create_def(
-                    constant.id,
-                    kw::Empty,
-                    DefKind::InlineConst,
-                    constant.value.span,
-                );
-                self.with_parent(def, |this| visit::walk_anon_const(this, constant));
-                return;
-            }
-            _ => self.parent_def,
+        } else {
+            self.parent_def
         };
 
-        self.with_parent(parent_def, |this| visit::walk_expr(this, expr));
+        self.with_parent(grandparent_def, |this| {
+            let parent_def = match expr.kind {
+                ExprKind::Closure(..) | ExprKind::Gen(..) => {
+                    this.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
+                }
+                ExprKind::ConstBlock(ref constant) => {
+                    for attr in &expr.attrs {
+                        visit::walk_attribute(this, attr);
+                    }
+                    let def = this.create_def(
+                        constant.id,
+                        kw::Empty,
+                        DefKind::InlineConst,
+                        constant.value.span,
+                    );
+                    this.with_parent(def, |this| visit::walk_anon_const(this, constant));
+                    return;
+                }
+                _ => this.parent_def,
+            };
+
+            this.with_parent(parent_def, |this| visit::walk_expr(this, expr))
+        })
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {

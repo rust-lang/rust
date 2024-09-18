@@ -1,7 +1,7 @@
 #[cfg(feature = "master")]
 use gccjit::FnAttribute;
 use gccjit::{ToLValue, ToRValue, Type};
-use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeMethods};
+use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeCodegenMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;

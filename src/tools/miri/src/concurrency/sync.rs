@@ -1,10 +1,11 @@
+use std::any::Any;
 use std::collections::{hash_map::Entry, VecDeque};
 use std::ops::Not;
 use std::time::Duration;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_target::abi::Size;
 
 use super::init_once::InitOnce;
 use super::vector_clock::VClock;
@@ -66,27 +67,6 @@ pub(super) use declare_id;
 
 declare_id!(MutexId);
 
-/// The mutex kind.
-#[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
-pub enum MutexKind {
-    Invalid,
-    Normal,
-    Default,
-    Recursive,
-    ErrorCheck,
-}
-
-#[derive(Debug)]
-/// Additional data that may be used by shim implementations.
-pub struct AdditionalMutexData {
-    /// The mutex kind, used by some mutex implementations like pthreads mutexes.
-    pub kind: MutexKind,
-
-    /// The address of the mutex.
-    pub address: u64,
-}
-
 /// The mutex state.
 #[derive(Default, Debug)]
 struct Mutex {
@@ -100,7 +80,7 @@ struct Mutex {
     clock: VClock,
 
     /// Additional data that can be set by shim implementations.
-    data: Option<AdditionalMutexData>,
+    data: Option<Box<dyn Any>>,
 }
 
 declare_id!(RwLockId);
@@ -137,6 +117,9 @@ struct RwLock {
     /// locks.
     /// This is only relevant when there is an active reader.
     clock_current_readers: VClock,
+
+    /// Additional data that can be set by shim implementations.
+    data: Option<Box<dyn Any>>,
 }
 
 declare_id!(CondvarId);
@@ -151,6 +134,9 @@ struct Condvar {
     /// Contains the clock of the last thread to
     /// perform a condvar-signal.
     clock: VClock,
+
+    /// Additional data that can be set by shim implementations.
+    data: Option<Box<dyn Any>>,
 }
 
 /// The futex state.
@@ -196,21 +182,21 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn get_or_create_id<Id: SyncId + Idx, T>(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
         get_objs: impl for<'a> Fn(&'a mut MiriInterpCx<'tcx>) -> &'a mut IndexVec<Id, T>,
         create_obj: impl for<'a> FnOnce(&'a mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
     ) -> InterpResult<'tcx, Option<Id>> {
         let this = self.eval_context_mut();
-        let value_place =
-            this.deref_pointer_and_offset(lock_op, offset, lock_layout, this.machine.layouts.u32)?;
+        let offset = Size::from_bytes(offset);
+        assert!(lock.layout.size >= offset + this.machine.layouts.u32.size);
+        let id_place = lock.offset(offset, this.machine.layouts.u32, this)?;
         let next_index = get_objs(this).next_index();
 
         // Since we are lazy, this update has to be atomic.
         let (old, success) = this
             .atomic_compare_exchange_scalar(
-                &value_place,
+                &id_place,
                 &ImmTy::from_uint(0u32, this.machine.layouts.u32),
                 Scalar::from_u32(next_index.to_u32()),
                 AtomicRwOrd::Relaxed, // deliberately *no* synchronization
@@ -248,18 +234,18 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// - `obj` must be the new sync object.
     fn create_id<Id: SyncId + Idx, T>(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
         get_objs: impl for<'a> Fn(&'a mut MiriInterpCx<'tcx>) -> &'a mut IndexVec<Id, T>,
         obj: T,
     ) -> InterpResult<'tcx, Id> {
         let this = self.eval_context_mut();
-        let value_place =
-            this.deref_pointer_and_offset(lock_op, offset, lock_layout, this.machine.layouts.u32)?;
+        let offset = Size::from_bytes(offset);
+        assert!(lock.layout.size >= offset + this.machine.layouts.u32.size);
+        let id_place = lock.offset(offset, this.machine.layouts.u32, this)?;
 
         let new_index = get_objs(this).push(obj);
-        this.write_scalar(Scalar::from_u32(new_index.to_u32()), &value_place)?;
+        this.write_scalar(Scalar::from_u32(new_index.to_u32()), &id_place)?;
         Ok(new_index)
     }
 
@@ -292,15 +278,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Eagerly create and initialize a new mutex.
     fn mutex_create(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
-        data: Option<AdditionalMutexData>,
+        data: Option<Box<dyn Any>>,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
         this.create_id(
-            lock_op,
-            lock_layout,
+            lock,
             offset,
             |ecx| &mut ecx.machine.sync.mutexes,
             Mutex { data, ..Default::default() },
@@ -311,17 +295,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// `initialize_data` must return any additional data that a user wants to associate with the mutex.
     fn mutex_get_or_create_id(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
         initialize_data: impl for<'a> FnOnce(
             &'a mut MiriInterpCx<'tcx>,
-        ) -> InterpResult<'tcx, Option<AdditionalMutexData>>,
+        ) -> InterpResult<'tcx, Option<Box<dyn Any>>>,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
-            lock_op,
-            lock_layout,
+            lock,
             offset,
             |ecx| &mut ecx.machine.sync.mutexes,
             |ecx| initialize_data(ecx).map(|data| Mutex { data, ..Default::default() }),
@@ -330,46 +312,82 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Retrieve the additional data stored for a mutex.
-    fn mutex_get_data<'a>(&'a mut self, id: MutexId) -> Option<&'a AdditionalMutexData>
+    fn mutex_get_data<'a, T: 'static>(&'a mut self, id: MutexId) -> Option<&'a T>
     where
         'tcx: 'a,
     {
         let this = self.eval_context_ref();
-        this.machine.sync.mutexes[id].data.as_ref()
+        this.machine.sync.mutexes[id].data.as_deref().and_then(|p| p.downcast_ref::<T>())
     }
 
     fn rwlock_get_or_create_id(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
+        initialize_data: impl for<'a> FnOnce(
+            &'a mut MiriInterpCx<'tcx>,
+        ) -> InterpResult<'tcx, Option<Box<dyn Any>>>,
     ) -> InterpResult<'tcx, RwLockId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
-            lock_op,
-            lock_layout,
+            lock,
             offset,
             |ecx| &mut ecx.machine.sync.rwlocks,
-            |_| Ok(Default::default()),
+            |ecx| initialize_data(ecx).map(|data| RwLock { data, ..Default::default() }),
         )?
         .ok_or_else(|| err_ub_format!("rwlock has invalid ID").into())
     }
 
+    /// Retrieve the additional data stored for a rwlock.
+    fn rwlock_get_data<'a, T: 'static>(&'a mut self, id: RwLockId) -> Option<&'a T>
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_ref();
+        this.machine.sync.rwlocks[id].data.as_deref().and_then(|p| p.downcast_ref::<T>())
+    }
+
+    /// Eagerly create and initialize a new condvar.
+    fn condvar_create(
+        &mut self,
+        condvar: &MPlaceTy<'tcx>,
+        offset: u64,
+        data: Option<Box<dyn Any>>,
+    ) -> InterpResult<'tcx, CondvarId> {
+        let this = self.eval_context_mut();
+        this.create_id(
+            condvar,
+            offset,
+            |ecx| &mut ecx.machine.sync.condvars,
+            Condvar { data, ..Default::default() },
+        )
+    }
+
     fn condvar_get_or_create_id(
         &mut self,
-        lock_op: &OpTy<'tcx>,
-        lock_layout: TyAndLayout<'tcx>,
+        lock: &MPlaceTy<'tcx>,
         offset: u64,
+        initialize_data: impl for<'a> FnOnce(
+            &'a mut MiriInterpCx<'tcx>,
+        ) -> InterpResult<'tcx, Option<Box<dyn Any>>>,
     ) -> InterpResult<'tcx, CondvarId> {
         let this = self.eval_context_mut();
         this.get_or_create_id(
-            lock_op,
-            lock_layout,
+            lock,
             offset,
             |ecx| &mut ecx.machine.sync.condvars,
-            |_| Ok(Default::default()),
+            |ecx| initialize_data(ecx).map(|data| Condvar { data, ..Default::default() }),
         )?
         .ok_or_else(|| err_ub_format!("condvar has invalid ID").into())
+    }
+
+    /// Retrieve the additional data stored for a condvar.
+    fn condvar_get_data<'a, T: 'static>(&'a mut self, id: CondvarId) -> Option<&'a T>
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_ref();
+        this.machine.sync.condvars[id].data.as_deref().and_then(|p| p.downcast_ref::<T>())
     }
 
     #[inline]

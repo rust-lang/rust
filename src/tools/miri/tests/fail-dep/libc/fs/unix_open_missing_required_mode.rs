@@ -1,4 +1,4 @@
-//@ignore-target-windows: No libc IO on Windows
+//@ignore-target: windows # No libc IO on Windows
 //@compile-flags: -Zmiri-disable-isolation
 
 fn main() {

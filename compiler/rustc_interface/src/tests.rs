@@ -808,7 +808,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, false);
-    tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
+    tracked!(next_solver, Some(NextSolverConfig { coherence: true, globally: false }));
     tracked!(no_generate_arange_section, true);
     tracked!(no_jump_tables, true);
     tracked!(no_link, true);
@@ -847,6 +847,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(share_generics, Some(true));
     tracked!(show_span, Some(String::from("abc")));
     tracked!(simulate_remapped_rust_src_base, Some(PathBuf::from("/rustc/abc")));
+    tracked!(small_data_threshold, Some(16));
     tracked!(split_lto_unit, Some(true));
     tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
     tracked!(stack_protector, StackProtector::All);

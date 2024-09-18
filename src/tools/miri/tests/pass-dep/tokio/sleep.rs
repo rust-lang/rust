@@ -1,4 +1,4 @@
-//@only-target-linux: We only support tokio on Linux
+//@only-target: linux # We only support tokio on Linux
 
 use tokio::time::{sleep, Duration, Instant};
 

@@ -196,7 +196,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if size == 0 {
             throw_ub_format!("creating allocation with size 0");
         }
-        if i128::from(size) > this.tcx.data_layout.pointer_size.signed_int_max() {
+        if size > this.max_size_of_val().bytes() {
             throw_ub_format!("creating an allocation larger than half the address space");
         }
         if let Err(e) = Align::from_bytes(align) {
@@ -441,19 +441,34 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "malloc" => {
                 let [size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let size = this.read_target_usize(size)?;
-                let res = this.malloc(size, /*zero_init:*/ false)?;
-                this.write_pointer(res, dest)?;
+                if size <= this.max_size_of_val().bytes() {
+                    let res = this.malloc(size, /*zero_init:*/ false)?;
+                    this.write_pointer(res, dest)?;
+                } else {
+                    // If this does not fit in an isize, return null and, on Unix, set errno.
+                    if this.target_os_is_unix() {
+                        let einval = this.eval_libc("ENOMEM");
+                        this.set_last_error(einval)?;
+                    }
+                    this.write_null(dest)?;
+                }
             }
             "calloc" => {
-                let [items, len] =
+                let [items, elem_size] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let items = this.read_target_usize(items)?;
-                let len = this.read_target_usize(len)?;
-                let size = items
-                    .checked_mul(len)
-                    .ok_or_else(|| err_ub_format!("overflow during calloc size computation"))?;
-                let res = this.malloc(size, /*zero_init:*/ true)?;
-                this.write_pointer(res, dest)?;
+                let elem_size = this.read_target_usize(elem_size)?;
+                if let Some(size) = this.compute_size_in_bytes(Size::from_bytes(elem_size), items) {
+                    let res = this.malloc(size.bytes(), /*zero_init:*/ true)?;
+                    this.write_pointer(res, dest)?;
+                } else {
+                    // On size overflow, return null and, on Unix, set errno.
+                    if this.target_os_is_unix() {
+                        let einval = this.eval_libc("ENOMEM");
+                        this.set_last_error(einval)?;
+                    }
+                    this.write_null(dest)?;
+                }
             }
             "free" => {
                 let [ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -465,8 +480,17 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let old_ptr = this.read_pointer(old_ptr)?;
                 let new_size = this.read_target_usize(new_size)?;
-                let res = this.realloc(old_ptr, new_size)?;
-                this.write_pointer(res, dest)?;
+                if new_size <= this.max_size_of_val().bytes() {
+                    let res = this.realloc(old_ptr, new_size)?;
+                    this.write_pointer(res, dest)?;
+                } else {
+                    // If this does not fit in an isize, return null and, on Unix, set errno.
+                    if this.target_os_is_unix() {
+                        let einval = this.eval_libc("ENOMEM");
+                        this.set_last_error(einval)?;
+                    }
+                    this.write_null(dest)?;
+                }
             }
 
             // Rust allocation
@@ -903,8 +927,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             name if name.starts_with("llvm.ctpop.v") => {
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (op, op_len) = this.project_to_simd(op)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, op_len);
 

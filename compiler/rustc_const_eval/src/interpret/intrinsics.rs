@@ -216,7 +216,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
             }
             sym::write_bytes => {
-                self.write_bytes_intrinsic(&args[0], &args[1], &args[2])?;
+                self.write_bytes_intrinsic(&args[0], &args[1], &args[2], "write_bytes")?;
             }
             sym::compare_bytes => {
                 let result = self.compare_bytes_intrinsic(&args[0], &args[1], &args[2])?;
@@ -384,8 +384,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::simd_insert => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let elem = &args[2];
-                let (input, input_len) = self.operand_to_simd(&args[0])?;
-                let (dest, dest_len) = self.mplace_to_simd(dest)?;
+                let (input, input_len) = self.project_to_simd(&args[0])?;
+                let (dest, dest_len) = self.project_to_simd(dest)?;
                 assert_eq!(input_len, dest_len, "Return vector length must match input length");
                 // Bounds are not checked by typeck so we have to do it ourselves.
                 if index >= input_len {
@@ -406,7 +406,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::simd_extract => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
-                let (input, input_len) = self.operand_to_simd(&args[0])?;
+                let (input, input_len) = self.project_to_simd(&args[0])?;
                 // Bounds are not checked by typeck so we have to do it ourselves.
                 if index >= input_len {
                     throw_ub_format!(
@@ -599,9 +599,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let count = self.read_target_usize(count)?;
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap())?;
         let (size, align) = (layout.size, layout.align.abi);
-        // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
-        // but no actual allocation can be big enough for the difference to be noticeable.
-        let size = size.checked_mul(count, self).ok_or_else(|| {
+
+        let size = self.compute_size_in_bytes(size, count).ok_or_else(|| {
             err_ub_custom!(
                 fluent::const_eval_size_overflow,
                 name = if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
@@ -635,11 +634,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(())
     }
 
-    pub(crate) fn write_bytes_intrinsic(
+    pub fn write_bytes_intrinsic(
         &mut self,
         dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         byte: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        name: &'static str,
     ) -> InterpResult<'tcx> {
         let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap())?;
 
@@ -649,9 +649,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
-        let len = layout.size.checked_mul(count, self).ok_or_else(|| {
-            err_ub_custom!(fluent::const_eval_size_overflow, name = "write_bytes")
-        })?;
+        let len = self
+            .compute_size_in_bytes(layout.size, count)
+            .ok_or_else(|| err_ub_custom!(fluent::const_eval_size_overflow, name = name))?;
 
         let bytes = std::iter::repeat(byte).take(len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)

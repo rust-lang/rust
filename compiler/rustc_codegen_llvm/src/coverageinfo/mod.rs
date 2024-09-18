@@ -2,8 +2,8 @@ use std::cell::RefCell;
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
-    BaseTypeMethods, BuilderMethods, ConstMethods, CoverageInfoBuilderMethods, MiscMethods,
-    StaticMethods,
+    BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, CoverageInfoBuilderMethods,
+    MiscCodegenMethods, StaticCodegenMethods,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_llvm::RustString;

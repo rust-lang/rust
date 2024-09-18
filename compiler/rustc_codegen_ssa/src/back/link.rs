@@ -281,12 +281,10 @@ pub fn each_linked_rlib(
         let used_crate_source = &info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.rlib {
             f(cnum, path);
+        } else if used_crate_source.rmeta.is_some() {
+            return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
         } else {
-            if used_crate_source.rmeta.is_some() {
-                return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
-            } else {
-                return Err(errors::LinkRlibError::NotFound { crate_name });
-            }
+            return Err(errors::LinkRlibError::NotFound { crate_name });
         }
     }
     Ok(())
@@ -438,7 +436,7 @@ fn link_rlib<'a>(
         ab.add_file(&lib)
     }
 
-    return Ok(ab);
+    Ok(ab)
 }
 
 /// Extract all symbols defined in raw-dylib libraries, collated by library name.
@@ -628,12 +626,10 @@ fn link_staticlib(
         let used_crate_source = &codegen_results.crate_info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.dylib {
             all_rust_dylibs.push(&**path);
+        } else if used_crate_source.rmeta.is_some() {
+            sess.dcx().emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
         } else {
-            if used_crate_source.rmeta.is_some() {
-                sess.dcx().emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
-            } else {
-                sess.dcx().emit_fatal(errors::LinkRlibError::NotFound { crate_name });
-            }
+            sess.dcx().emit_fatal(errors::LinkRlibError::NotFound { crate_name });
         }
     }
 
@@ -1319,7 +1315,7 @@ fn link_sanitizer_runtime(
     fn find_sanitizer_runtime(sess: &Session, filename: &str) -> PathBuf {
         let path = sess.target_tlib_path.dir.join(filename);
         if path.exists() {
-            return sess.target_tlib_path.dir.clone();
+            sess.target_tlib_path.dir.clone()
         } else {
             let default_sysroot =
                 filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
@@ -1327,7 +1323,7 @@ fn link_sanitizer_runtime(
                 &default_sysroot,
                 sess.opts.target_triple.triple(),
             );
-            return default_tlib;
+            default_tlib
         }
     }
 
@@ -1972,10 +1968,8 @@ fn add_late_link_args(
         if let Some(args) = sess.target.late_link_args_dynamic.get(&flavor) {
             cmd.verbatim_args(args.iter().map(Deref::deref));
         }
-    } else {
-        if let Some(args) = sess.target.late_link_args_static.get(&flavor) {
-            cmd.verbatim_args(args.iter().map(Deref::deref));
-        }
+    } else if let Some(args) = sess.target.late_link_args_static.get(&flavor) {
+        cmd.verbatim_args(args.iter().map(Deref::deref));
     }
     if let Some(args) = sess.target.late_link_args.get(&flavor) {
         cmd.verbatim_args(args.iter().map(Deref::deref));
@@ -2635,10 +2629,8 @@ fn add_native_libs_from_crate(
                     if link_static {
                         cmd.link_staticlib_by_name(name, verbatim, false);
                     }
-                } else {
-                    if link_dynamic {
-                        cmd.link_dylib_by_name(name, verbatim, true);
-                    }
+                } else if link_dynamic {
+                    cmd.link_dylib_by_name(name, verbatim, true);
                 }
             }
             NativeLibKind::Framework { as_needed } => {
@@ -3052,7 +3044,7 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
             "iphonesimulator"
                 if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") => {
             }
-            "macosx10.15"
+            "macosx"
                 if sdkroot.contains("iPhoneOS.platform")
                     || sdkroot.contains("iPhoneSimulator.platform") => {}
             "watchos"

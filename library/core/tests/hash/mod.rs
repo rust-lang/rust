@@ -16,11 +16,8 @@ impl Default for MyHasher {
 
 impl Hasher for MyHasher {
     fn write(&mut self, buf: &[u8]) {
-        // FIXME(const_trait_impl): change to for loop
-        let mut i = 0;
-        while i < buf.len() {
-            self.hash += buf[i] as u64;
-            i += 1;
+        for byte in buf {
+            self.hash += *byte as u64;
         }
     }
     fn write_str(&mut self, s: &str) {

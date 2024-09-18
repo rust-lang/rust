@@ -554,13 +554,13 @@ impl<'tcx> Patch<'tcx> {
     }
 }
 
-struct Collector<'tcx, 'locals> {
+struct Collector<'a, 'tcx> {
     patch: Patch<'tcx>,
-    local_decls: &'locals LocalDecls<'tcx>,
+    local_decls: &'a LocalDecls<'tcx>,
 }
 
-impl<'tcx, 'locals> Collector<'tcx, 'locals> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, local_decls: &'locals LocalDecls<'tcx>) -> Self {
+impl<'a, 'tcx> Collector<'a, 'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, local_decls: &'a LocalDecls<'tcx>) -> Self {
         Self { patch: Patch::new(tcx), local_decls }
     }
 
@@ -722,15 +722,15 @@ fn try_write_constant<'tcx>(
 
 impl<'mir, 'tcx>
     ResultsVisitor<'mir, 'tcx, Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>>
-    for Collector<'tcx, '_>
+    for Collector<'_, 'tcx>
 {
-    type FlowState = State<FlatSet<Scalar>>;
+    type Domain = State<FlatSet<Scalar>>;
 
     #[instrument(level = "trace", skip(self, results, statement))]
     fn visit_statement_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         statement: &'mir Statement<'tcx>,
         location: Location,
     ) {
@@ -752,7 +752,7 @@ impl<'mir, 'tcx>
     fn visit_statement_after_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         statement: &'mir Statement<'tcx>,
         location: Location,
     ) {
@@ -777,7 +777,7 @@ impl<'mir, 'tcx>
     fn visit_terminator_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
-        state: &Self::FlowState,
+        state: &Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         location: Location,
     ) {
@@ -839,9 +839,9 @@ impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
     }
 }
 
-struct OperandCollector<'a, 'locals, 'tcx> {
+struct OperandCollector<'a, 'b, 'tcx> {
     state: &'a State<FlatSet<Scalar>>,
-    visitor: &'a mut Collector<'tcx, 'locals>,
+    visitor: &'a mut Collector<'b, 'tcx>,
     ecx: &'a mut InterpCx<'tcx, DummyMachine>,
     map: &'a Map<'tcx>,
 }

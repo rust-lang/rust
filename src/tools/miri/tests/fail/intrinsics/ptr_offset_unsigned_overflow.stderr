@@ -1,0 +1,15 @@
+error: Undefined Behavior: overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
+  --> tests/fail/intrinsics/ptr_offset_unsigned_overflow.rs:LL:CC
+   |
+LL |     unsafe { x.byte_add(!0).read() };
+   |              ^^^^^^^^^^^^^^ overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at tests/fail/intrinsics/ptr_offset_unsigned_overflow.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

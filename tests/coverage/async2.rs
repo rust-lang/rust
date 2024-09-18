@@ -2,6 +2,9 @@
 #![feature(noop_waker)]
 //@ edition: 2018
 
+//@ aux-build: executor.rs
+extern crate executor;
+
 fn non_async_func() {
     println!("non_async_func was covered");
     let b = true;
@@ -29,22 +32,4 @@ fn main() {
 
     executor::block_on(async_func());
     executor::block_on(async_func_just_println());
-}
-
-mod executor {
-    use core::future::Future;
-    use core::pin::pin;
-    use core::task::{Context, Poll, Waker};
-
-    #[coverage(off)]
-    pub fn block_on<F: Future>(mut future: F) -> F::Output {
-        let mut future = pin!(future);
-        let mut context = Context::from_waker(Waker::noop());
-
-        loop {
-            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
-                break val;
-            }
-        }
-    }
 }

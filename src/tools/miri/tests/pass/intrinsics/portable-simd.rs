@@ -619,13 +619,16 @@ fn simd_intrinsics() {
             i32x4::from_array([10, 2, 10, 10])
         );
         assert_eq!(simd_shuffle_generic::<_, i32x4, { &[3, 1, 0, 2] }>(a, b), a,);
-        assert_eq!(simd_shuffle::<_, _, i32x4>(a, b, const { [3u32, 1, 0, 2] }), a,);
+        assert_eq!(
+            simd_shuffle::<_, _, i32x4>(a, b, const { u32x4::from_array([3u32, 1, 0, 2]) }),
+            a,
+        );
         assert_eq!(
             simd_shuffle_generic::<_, i32x4, { &[7, 5, 4, 6] }>(a, b),
             i32x4::from_array([4, 2, 1, 10]),
         );
         assert_eq!(
-            simd_shuffle::<_, _, i32x4>(a, b, const { [7u32, 5, 4, 6] }),
+            simd_shuffle::<_, _, i32x4>(a, b, const { u32x4::from_array([7u32, 5, 4, 6]) }),
             i32x4::from_array([4, 2, 1, 10]),
         );
     }

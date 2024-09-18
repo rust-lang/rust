@@ -235,13 +235,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if self.layout_compat(caller_abi.layout, callee_abi.layout)? {
             // Ensure that our checks imply actual ABI compatibility for this concrete call.
             assert!(caller_abi.eq_abi(callee_abi));
-            return Ok(true);
+            Ok(true)
         } else {
             trace!(
                 "check_argument_compat: incompatible ABIs:\ncaller: {:?}\ncallee: {:?}",
                 caller_abi, callee_abi
             );
-            return Ok(false);
+            Ok(false)
         }
     }
 
@@ -823,7 +823,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             (Abi::Rust, fn_abi),
             &[FnArg::Copy(arg.into())],
             false,
-            &ret.into(),
+            &ret,
             Some(target),
             unwind,
         )

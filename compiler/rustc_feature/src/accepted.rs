@@ -115,6 +115,8 @@ declare_features! (
     (accepted, conservative_impl_trait, "1.26.0", Some(34511)),
     /// Allows calling constructor functions in `const fn`.
     (accepted, const_constructor, "1.40.0", Some(61456)),
+    /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
+    (accepted, const_extern_fn, "CURRENT_RUSTC_VERSION", Some(64926)),
     /// Allows basic arithmetic on floating point types in a `const fn`.
     (accepted, const_fn_floating_point_arithmetic, "1.82.0", Some(57241)),
     /// Allows using and casting function pointers in a `const fn`.
@@ -141,10 +143,14 @@ declare_features! (
     (accepted, const_let, "1.33.0", Some(48821)),
     /// Allows the use of `loop` and `while` in constants.
     (accepted, const_loop, "1.46.0", Some(52000)),
+    /// Allows using `&mut` in constant functions.
+    (accepted, const_mut_refs, "CURRENT_RUSTC_VERSION", Some(57349)),
     /// Allows panicking during const eval (producing compile-time errors).
     (accepted, const_panic, "1.57.0", Some(51999)),
     /// Allows dereferencing raw pointers during const eval.
     (accepted, const_raw_ptr_deref, "1.58.0", Some(51911)),
+    /// Allows references to types with interior mutability within constants
+    (accepted, const_refs_to_cell, "CURRENT_RUSTC_VERSION", Some(80384)),
     /// Allows implementing `Copy` for closures where possible (RFC 2132).
     (accepted, copy_closures, "1.26.0", Some(44490)),
     /// Allows `crate` in paths.

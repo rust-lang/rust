@@ -69,13 +69,13 @@ enum LocalKind {
     SSA(DefLocation),
 }
 
-struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
-    fx: &'mir FunctionCx<'a, 'tcx, Bx>,
-    dominators: &'mir Dominators<mir::BasicBlock>,
+struct LocalAnalyzer<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
+    fx: &'a FunctionCx<'b, 'tcx, Bx>,
+    dominators: &'a Dominators<mir::BasicBlock>,
     locals: IndexVec<mir::Local, LocalKind>,
 }
 
-impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
+impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx> {
     fn define(&mut self, local: mir::Local, location: DefLocation) {
         let kind = &mut self.locals[local];
         match *kind {
@@ -152,9 +152,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx,
     }
 }
 
-impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
-    for LocalAnalyzer<'mir, 'a, 'tcx, Bx>
-{
+impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer<'a, 'b, 'tcx, Bx> {
     fn visit_assign(
         &mut self,
         place: &mir::Place<'tcx>,

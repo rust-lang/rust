@@ -419,7 +419,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
-        Vec { buf: RawVec::NEW, len: 0 }
+        Vec { buf: RawVec::new(), len: 0 }
     }
 
     /// Constructs a new, empty `Vec<T>` with at least the specified capacity.
@@ -603,15 +603,116 @@ impl<T> Vec<T> {
         unsafe { Self::from_raw_parts_in(ptr, length, capacity, Global) }
     }
 
-    /// A convenience method for hoisting the non-null precondition out of [`Vec::from_raw_parts`].
+    #[doc(alias = "from_non_null_parts")]
+    /// Creates a `Vec<T>` directly from a `NonNull` pointer, a length, and a capacity.
     ///
     /// # Safety
     ///
-    /// See [`Vec::from_raw_parts`].
+    /// This is highly unsafe, due to the number of invariants that aren't
+    /// checked:
+    ///
+    /// * `ptr` must have been allocated using the global allocator, such as via
+    ///   the [`alloc::alloc`] function.
+    /// * `T` needs to have the same alignment as what `ptr` was allocated with.
+    ///   (`T` having a less strict alignment is not sufficient, the alignment really
+    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
+    ///   allocated and deallocated with the same layout.)
+    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    ///   to be the same size as the pointer was allocated with. (Because similar to
+    ///   alignment, [`dealloc`] must be called with the same layout `size`.)
+    /// * `length` needs to be less than or equal to `capacity`.
+    /// * The first `length` values must be properly initialized values of type `T`.
+    /// * `capacity` needs to be the capacity that the pointer was allocated with.
+    /// * The allocated size in bytes must be no larger than `isize::MAX`.
+    ///   See the safety documentation of [`pointer::offset`].
+    ///
+    /// These requirements are always upheld by any `ptr` that has been allocated
+    /// via `Vec<T>`. Other allocation sources are allowed if the invariants are
+    /// upheld.
+    ///
+    /// Violating these may cause problems like corrupting the allocator's
+    /// internal data structures. For example it is normally **not** safe
+    /// to build a `Vec<u8>` from a pointer to a C `char` array with length
+    /// `size_t`, doing so is only safe if the array was initially allocated by
+    /// a `Vec` or `String`.
+    /// It's also not safe to build one from a `Vec<u16>` and its length, because
+    /// the allocator cares about the alignment, and these two types have different
+    /// alignments. The buffer was allocated with alignment 2 (for `u16`), but after
+    /// turning it into a `Vec<u8>` it'll be deallocated with alignment 1. To avoid
+    /// these issues, it is often preferable to do casting/transmuting using
+    /// [`NonNull::slice_from_raw_parts`] instead.
+    ///
+    /// The ownership of `ptr` is effectively transferred to the
+    /// `Vec<T>` which may then deallocate, reallocate or change the
+    /// contents of memory pointed to by the pointer at will. Ensure
+    /// that nothing else uses the pointer after calling this
+    /// function.
+    ///
+    /// [`String`]: crate::string::String
+    /// [`alloc::alloc`]: crate::alloc::alloc
+    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// use std::ptr::NonNull;
+    /// use std::mem;
+    ///
+    /// let v = vec![1, 2, 3];
+    ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
+    /// // Prevent running `v`'s destructor so we are in complete control
+    /// // of the allocation.
+    /// let mut v = mem::ManuallyDrop::new(v);
+    ///
+    /// // Pull out the various important pieces of information about `v`
+    /// let p = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
+    /// let len = v.len();
+    /// let cap = v.capacity();
+    ///
+    /// unsafe {
+    ///     // Overwrite memory with 4, 5, 6
+    ///     for i in 0..len {
+    ///         p.add(i).write(4 + i);
+    ///     }
+    ///
+    ///     // Put everything back together into a Vec
+    ///     let rebuilt = Vec::from_parts(p, len, cap);
+    ///     assert_eq!(rebuilt, [4, 5, 6]);
+    /// }
+    /// ```
+    ///
+    /// Using memory that was allocated elsewhere:
+    ///
+    /// ```rust
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// use std::alloc::{alloc, Layout};
+    /// use std::ptr::NonNull;
+    ///
+    /// fn main() {
+    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///
+    ///     let vec = unsafe {
+    ///         let Some(mem) = NonNull::new(alloc(layout).cast::<u32>()) else {
+    ///             return;
+    ///         };
+    ///
+    ///         mem.write(1_000_000);
+    ///
+    ///         Vec::from_parts(mem, 1, 16)
+    ///     };
+    ///
+    ///     assert_eq!(vec, &[1_000_000]);
+    ///     assert_eq!(vec.capacity(), 16);
+    /// }
+    /// ```
     #[inline]
-    #[cfg(not(no_global_oom_handling))] // required by tests/run-make/alloc-no-oom-handling
-    pub(crate) unsafe fn from_nonnull(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
-        unsafe { Self::from_nonnull_in(ptr, length, capacity, Global) }
+    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    pub unsafe fn from_parts(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
+        unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
     }
 }
 
@@ -830,19 +931,119 @@ impl<T, A: Allocator> Vec<T, A> {
         unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
     }
 
-    /// A convenience method for hoisting the non-null precondition out of [`Vec::from_raw_parts_in`].
+    #[doc(alias = "from_non_null_parts_in")]
+    /// Creates a `Vec<T, A>` directly from a `NonNull` pointer, a length, a capacity,
+    /// and an allocator.
     ///
     /// # Safety
     ///
-    /// See [`Vec::from_raw_parts_in`].
+    /// This is highly unsafe, due to the number of invariants that aren't
+    /// checked:
+    ///
+    /// * `ptr` must be [*currently allocated*] via the given allocator `alloc`.
+    /// * `T` needs to have the same alignment as what `ptr` was allocated with.
+    ///   (`T` having a less strict alignment is not sufficient, the alignment really
+    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
+    ///   allocated and deallocated with the same layout.)
+    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    ///   to be the same size as the pointer was allocated with. (Because similar to
+    ///   alignment, [`dealloc`] must be called with the same layout `size`.)
+    /// * `length` needs to be less than or equal to `capacity`.
+    /// * The first `length` values must be properly initialized values of type `T`.
+    /// * `capacity` needs to [*fit*] the layout size that the pointer was allocated with.
+    /// * The allocated size in bytes must be no larger than `isize::MAX`.
+    ///   See the safety documentation of [`pointer::offset`].
+    ///
+    /// These requirements are always upheld by any `ptr` that has been allocated
+    /// via `Vec<T, A>`. Other allocation sources are allowed if the invariants are
+    /// upheld.
+    ///
+    /// Violating these may cause problems like corrupting the allocator's
+    /// internal data structures. For example it is **not** safe
+    /// to build a `Vec<u8>` from a pointer to a C `char` array with length `size_t`.
+    /// It's also not safe to build one from a `Vec<u16>` and its length, because
+    /// the allocator cares about the alignment, and these two types have different
+    /// alignments. The buffer was allocated with alignment 2 (for `u16`), but after
+    /// turning it into a `Vec<u8>` it'll be deallocated with alignment 1.
+    ///
+    /// The ownership of `ptr` is effectively transferred to the
+    /// `Vec<T>` which may then deallocate, reallocate or change the
+    /// contents of memory pointed to by the pointer at will. Ensure
+    /// that nothing else uses the pointer after calling this
+    /// function.
+    ///
+    /// [`String`]: crate::string::String
+    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
+    /// [*currently allocated*]: crate::alloc::Allocator#currently-allocated-memory
+    /// [*fit*]: crate::alloc::Allocator#memory-fitting
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, box_vec_non_null)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// use std::ptr::NonNull;
+    /// use std::mem;
+    ///
+    /// let mut v = Vec::with_capacity_in(3, System);
+    /// v.push(1);
+    /// v.push(2);
+    /// v.push(3);
+    ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
+    /// // Prevent running `v`'s destructor so we are in complete control
+    /// // of the allocation.
+    /// let mut v = mem::ManuallyDrop::new(v);
+    ///
+    /// // Pull out the various important pieces of information about `v`
+    /// let p = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
+    /// let len = v.len();
+    /// let cap = v.capacity();
+    /// let alloc = v.allocator();
+    ///
+    /// unsafe {
+    ///     // Overwrite memory with 4, 5, 6
+    ///     for i in 0..len {
+    ///         p.add(i).write(4 + i);
+    ///     }
+    ///
+    ///     // Put everything back together into a Vec
+    ///     let rebuilt = Vec::from_parts_in(p, len, cap, alloc.clone());
+    ///     assert_eq!(rebuilt, [4, 5, 6]);
+    /// }
+    /// ```
+    ///
+    /// Using memory that was allocated elsewhere:
+    ///
+    /// ```rust
+    /// #![feature(allocator_api, box_vec_non_null)]
+    ///
+    /// use std::alloc::{AllocError, Allocator, Global, Layout};
+    ///
+    /// fn main() {
+    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///
+    ///     let vec = unsafe {
+    ///         let mem = match Global.allocate(layout) {
+    ///             Ok(mem) => mem.cast::<u32>(),
+    ///             Err(AllocError) => return,
+    ///         };
+    ///
+    ///         mem.write(1_000_000);
+    ///
+    ///         Vec::from_parts_in(mem, 1, 16, Global)
+    ///     };
+    ///
+    ///     assert_eq!(vec, &[1_000_000]);
+    ///     assert_eq!(vec.capacity(), 16);
+    /// }
+    /// ```
     #[inline]
-    #[cfg(not(no_global_oom_handling))] // required by tests/run-make/alloc-no-oom-handling
-    pub(crate) unsafe fn from_nonnull_in(
-        ptr: NonNull<T>,
-        length: usize,
-        capacity: usize,
-        alloc: A,
-    ) -> Self {
+    #[unstable(feature = "allocator_api", reason = "new API", issue = "32838")]
+    // #[unstable(feature = "box_vec_non_null", issue = "130364")]
+    pub unsafe fn from_parts_in(ptr: NonNull<T>, length: usize, capacity: usize, alloc: A) -> Self {
         unsafe { Vec { buf: RawVec::from_nonnull_in(ptr, capacity, alloc), len: length } }
     }
 
@@ -883,6 +1084,49 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
         let mut me = ManuallyDrop::new(self);
         (me.as_mut_ptr(), me.len(), me.capacity())
+    }
+
+    #[doc(alias = "into_non_null_parts")]
+    /// Decomposes a `Vec<T>` into its raw components: `(NonNull pointer, length, capacity)`.
+    ///
+    /// Returns the `NonNull` pointer to the underlying data, the length of
+    /// the vector (in elements), and the allocated capacity of the
+    /// data (in elements). These are the same arguments in the same
+    /// order as the arguments to [`from_parts`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Vec`. The only way to do
+    /// this is to convert the `NonNull` pointer, length, and capacity back
+    /// into a `Vec` with the [`from_parts`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_parts`]: Vec::from_parts
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_raw_parts, box_vec_non_null)]
+    ///
+    /// let v: Vec<i32> = vec![-1, 0, 1];
+    ///
+    /// let (ptr, len, cap) = v.into_parts();
+    ///
+    /// let rebuilt = unsafe {
+    ///     // We can now make changes to the components, such as
+    ///     // transmuting the raw pointer to a compatible type.
+    ///     let ptr = ptr.cast::<u32>();
+    ///
+    ///     Vec::from_parts(ptr, len, cap)
+    /// };
+    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
+    /// ```
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    // #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_parts(self) -> (NonNull<T>, usize, usize) {
+        let (ptr, len, capacity) = self.into_raw_parts();
+        // SAFETY: A `Vec` always has a non-null pointer.
+        (unsafe { NonNull::new_unchecked(ptr) }, len, capacity)
     }
 
     /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity, allocator)`.
@@ -932,6 +1176,54 @@ impl<T, A: Allocator> Vec<T, A> {
         let ptr = me.as_mut_ptr();
         let alloc = unsafe { ptr::read(me.allocator()) };
         (ptr, len, capacity, alloc)
+    }
+
+    #[doc(alias = "into_non_null_parts_with_alloc")]
+    /// Decomposes a `Vec<T>` into its raw components: `(NonNull pointer, length, capacity, allocator)`.
+    ///
+    /// Returns the `NonNull` pointer to the underlying data, the length of the vector (in elements),
+    /// the allocated capacity of the data (in elements), and the allocator. These are the same
+    /// arguments in the same order as the arguments to [`from_parts_in`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Vec`. The only way to do
+    /// this is to convert the `NonNull` pointer, length, and capacity back
+    /// into a `Vec` with the [`from_parts_in`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_parts_in`]: Vec::from_parts_in
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, vec_into_raw_parts, box_vec_non_null)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let mut v: Vec<i32, System> = Vec::new_in(System);
+    /// v.push(-1);
+    /// v.push(0);
+    /// v.push(1);
+    ///
+    /// let (ptr, len, cap, alloc) = v.into_parts_with_alloc();
+    ///
+    /// let rebuilt = unsafe {
+    ///     // We can now make changes to the components, such as
+    ///     // transmuting the raw pointer to a compatible type.
+    ///     let ptr = ptr.cast::<u32>();
+    ///
+    ///     Vec::from_parts_in(ptr, len, cap, alloc)
+    /// };
+    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
+    /// ```
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    // #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_parts_with_alloc(self) -> (NonNull<T>, usize, usize, A) {
+        let (ptr, len, capacity, alloc) = self.into_raw_parts_with_alloc();
+        // SAFETY: A `Vec` always has a non-null pointer.
+        (unsafe { NonNull::new_unchecked(ptr) }, len, capacity, alloc)
     }
 
     /// Returns the total number of elements the vector can hold without

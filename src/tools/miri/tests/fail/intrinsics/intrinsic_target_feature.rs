@@ -2,12 +2,7 @@
 // Any new targets that are added to CI should be ignored here.
 // We cannot use `cfg`-based tricks here since the output would be
 // different for non-x86 targets.
-//@ignore-target-aarch64
-//@ignore-target-arm
-//@ignore-target-avr
-//@ignore-target-s390x
-//@ignore-target-thumbv7em
-//@ignore-target-wasm
+//@only-target: x86_64 i686
 // Explicitly disable SSE4.1 because it is enabled by default on macOS
 //@compile-flags: -C target-feature=-sse4.1
 

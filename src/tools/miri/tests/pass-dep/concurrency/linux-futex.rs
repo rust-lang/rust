@@ -1,4 +1,4 @@
-//@only-target-linux
+//@only-target: linux
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::mem::MaybeUninit;

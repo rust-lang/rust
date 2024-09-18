@@ -72,6 +72,18 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         let hir::ItemKind::OpaqueTy(opaque) = &item.kind else {
             return;
         };
+
+        // If this is an RPITIT from a trait method with no body, then skip.
+        // That's because although we may have an opaque type on the function,
+        // it won't have a hidden type, so proving predicates about it is
+        // not really meaningful.
+        if let hir::OpaqueTyOrigin::FnReturn(method_def_id) = opaque.origin
+            && let hir::Node::TraitItem(trait_item) = cx.tcx.hir_node_by_def_id(method_def_id)
+            && !trait_item.defaultness.has_value()
+        {
+            return;
+        }
+
         let def_id = item.owner_id.def_id.to_def_id();
         let infcx = &cx.tcx.infer_ctxt().build();
         // For every projection predicate in the opaque type's explicit bounds,

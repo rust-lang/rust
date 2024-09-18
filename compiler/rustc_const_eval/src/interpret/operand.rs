@@ -681,30 +681,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(str)
     }
 
-    /// Converts a repr(simd) operand into an operand where `place_index` accesses the SIMD elements.
-    /// Also returns the number of elements.
-    ///
-    /// Can (but does not always) trigger UB if `op` is uninitialized.
-    pub fn operand_to_simd(
-        &self,
-        op: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, u64)> {
-        // Basically we just transmute this place into an array following simd_size_and_type.
-        // This only works in memory, but repr(simd) types should never be immediates anyway.
-        assert!(op.layout.ty.is_simd());
-        match op.as_mplace_or_imm() {
-            Left(mplace) => self.mplace_to_simd(&mplace),
-            Right(imm) => match *imm {
-                Immediate::Uninit => {
-                    throw_ub!(InvalidUninitBytes(None))
-                }
-                Immediate::Scalar(..) | Immediate::ScalarPair(..) => {
-                    bug!("arrays/slices can never have Scalar/ScalarPair layout")
-                }
-            },
-        }
-    }
-
     /// Read from a local of the current frame.
     /// Will not access memory, instead an indirect `Operand` is returned.
     ///
@@ -721,6 +697,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if matches!(op, Operand::Immediate(_)) {
             assert!(!layout.is_unsized());
         }
+        M::after_local_read(self, local)?;
         Ok(OpTy { op, layout })
     }
 

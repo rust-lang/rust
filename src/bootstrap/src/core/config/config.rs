@@ -14,7 +14,7 @@ use std::sync::OnceLock;
 use std::{cmp, env, fs};
 
 use build_helper::exit;
-use build_helper::git::{output_result, GitConfig};
+use build_helper::git::{get_closest_merge_commit, output_result, GitConfig};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -24,7 +24,7 @@ pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
-use crate::utils::helpers::{self, exe, get_closest_merge_base_commit, output, t};
+use crate::utils::helpers::{self, exe, output, t};
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
@@ -308,6 +308,7 @@ pub struct Config {
     pub dist_compression_formats: Option<Vec<String>>,
     pub dist_compression_profile: String,
     pub dist_include_mingw_linker: bool,
+    pub dist_vendor: bool,
 
     // libstd features
     pub backtrace: bool, // support for RUST_BACKTRACE
@@ -933,6 +934,7 @@ define_config! {
         compression_formats: Option<Vec<String>> = "compression-formats",
         compression_profile: Option<String> = "compression-profile",
         include_mingw_linker: Option<bool> = "include-mingw-linker",
+        vendor: Option<bool> = "vendor",
     }
 }
 
@@ -2028,13 +2030,19 @@ impl Config {
                 compression_formats,
                 compression_profile,
                 include_mingw_linker,
+                vendor,
             } = dist;
             config.dist_sign_folder = sign_folder.map(PathBuf::from);
             config.dist_upload_addr = upload_addr;
             config.dist_compression_formats = compression_formats;
             set(&mut config.dist_compression_profile, compression_profile);
             set(&mut config.rust_dist_src, src_tarball);
-            set(&mut config.dist_include_mingw_linker, include_mingw_linker)
+            set(&mut config.dist_include_mingw_linker, include_mingw_linker);
+            config.dist_vendor = vendor.unwrap_or_else(|| {
+                // If we're building from git or tarball sources, enable it by default.
+                config.rust_info.is_managed_git_subrepository()
+                    || config.rust_info.is_from_tarball()
+            });
         }
 
         if let Some(r) = rustfmt {
@@ -2512,6 +2520,7 @@ impl Config {
         GitConfig {
             git_repository: &self.stage0_metadata.config.git_repository,
             nightly_branch: &self.stage0_metadata.config.nightly_branch,
+            git_merge_commit_email: &self.stage0_metadata.config.git_merge_commit_email,
         }
     }
 
@@ -2688,13 +2697,7 @@ impl Config {
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit = get_closest_merge_base_commit(
-            Some(&self.src),
-            &self.git_config(),
-            &self.stage0_metadata.config.git_merge_commit_email,
-            &[],
-        )
-        .unwrap();
+        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();
         if commit.is_empty() {
             println!("ERROR: could not find commit hash for downloading rustc");
             println!("HELP: maybe your repository history is too shallow?");
@@ -2744,6 +2747,8 @@ impl Config {
                 return false;
             }
 
+            // Fetching the LLVM submodule is unnecessary for self-tests.
+            #[cfg(not(feature = "bootstrap-self-test"))]
             self.update_submodule("src/llvm-project");
 
             // Check for untracked changes in `src/llvm-project`.
@@ -2786,13 +2791,7 @@ impl Config {
     ) -> Option<String> {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit = get_closest_merge_base_commit(
-            Some(&self.src),
-            &self.git_config(),
-            &self.stage0_metadata.config.git_merge_commit_email,
-            &[],
-        )
-        .unwrap();
+        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();
         if commit.is_empty() {
             println!("error: could not find commit hash for downloading components from CI");
             println!("help: maybe your repository history is too shallow?");

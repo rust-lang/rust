@@ -39,7 +39,6 @@
 #include "llvm/TargetParser/Host.h"
 #endif
 #include "llvm/Support/TimeProfiler.h"
-#include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/DataFlowSanitizer.h"
 #if LLVM_VERSION_GE(19, 0)
@@ -1425,13 +1424,13 @@ LLVMRustPrepareThinLTOInternalize(const LLVMRustThinLTOData *Data,
   return true;
 }
 
-extern "C" bool LLVMRustPrepareThinLTOImport(LLVMRustThinLTOData *Data,
+extern "C" bool LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data,
                                              LLVMModuleRef M,
                                              LLVMTargetMachineRef TM) {
   Module &Mod = *unwrap(M);
   TargetMachine &Target = *unwrap(TM);
 
-  const auto &ImportList = Data->ImportLists[Mod.getModuleIdentifier()];
+  const auto &ImportList = Data->ImportLists.lookup(Mod.getModuleIdentifier());
   auto Loader = [&](StringRef Identifier) {
     const auto &Memory = Data->ModuleMap.lookup(Identifier);
     auto &Context = Mod.getContext();
@@ -1614,7 +1613,7 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
                                            LLVMRustThinLTOData *Data) {
   SmallString<40> Key;
   llvm::lto::Config conf;
-  const auto &ImportList = Data->ImportLists[ModId];
+  const auto &ImportList = Data->ImportLists.lookup(ModId);
   const auto &ExportList = Data->ExportLists.lookup(ModId);
   const auto &ResolvedODR = Data->ResolvedODR.lookup(ModId);
   const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(ModId);

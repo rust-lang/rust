@@ -1905,10 +1905,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             || (int_reprs == 1
                 && is_c
                 && item.is_some_and(|item| {
-                    if let ItemLike::Item(item) = item {
-                        return is_c_like_enum(item);
-                    }
-                    return false;
+                    if let ItemLike::Item(item) = item { is_c_like_enum(item) } else { false }
                 }))
         {
             self.tcx.emit_node_span_lint(
@@ -2172,17 +2169,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     attr.span,
                     errors::MacroExport::TooManyItems,
                 );
-            } else {
-                if meta_item_list[0].name_or_empty() != sym::local_inner_macros {
-                    self.tcx.emit_node_span_lint(
-                        INVALID_MACRO_EXPORT_ARGUMENTS,
-                        hir_id,
-                        meta_item_list[0].span(),
-                        errors::MacroExport::UnknownItem {
-                            name: meta_item_list[0].name_or_empty(),
-                        },
-                    );
-                }
+            } else if meta_item_list[0].name_or_empty() != sym::local_inner_macros {
+                self.tcx.emit_node_span_lint(
+                    INVALID_MACRO_EXPORT_ARGUMENTS,
+                    hir_id,
+                    meta_item_list[0].span(),
+                    errors::MacroExport::UnknownItem { name: meta_item_list[0].name_or_empty() },
+                );
             }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0

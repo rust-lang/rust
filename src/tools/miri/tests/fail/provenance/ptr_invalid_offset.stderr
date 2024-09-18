@@ -1,5 +1,5 @@
 error: Undefined Behavior: out-of-bounds pointer arithmetic: expected a pointer to 1 byte of memory, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
-  --> $DIR/ptr_invalid_offset.rs:LL:CC
+  --> tests/fail/provenance/ptr_invalid_offset.rs:LL:CC
    |
 LL |     let _ = unsafe { roundtrip.offset(1) };
    |                      ^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: expected a pointer to 1 byte of memory, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
@@ -7,7 +7,7 @@ LL |     let _ = unsafe { roundtrip.offset(1) };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/ptr_invalid_offset.rs:LL:CC
+   = note: inside `main` at tests/fail/provenance/ptr_invalid_offset.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

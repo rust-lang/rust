@@ -1,5 +1,5 @@
 error: Undefined Behavior: attempted to call intrinsic `llvm.x86.sse41.dpps` that requires missing target feature sse4.1
-  --> $DIR/intrinsic_target_feature.rs:LL:CC
+  --> tests/fail/intrinsics/intrinsic_target_feature.rs:LL:CC
    |
 LL |         dpps(_mm_setzero_ps(), _mm_setzero_ps(), 0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to call intrinsic `llvm.x86.sse41.dpps` that requires missing target feature sse4.1
@@ -7,7 +7,7 @@ LL |         dpps(_mm_setzero_ps(), _mm_setzero_ps(), 0);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/intrinsic_target_feature.rs:LL:CC
+   = note: inside `main` at tests/fail/intrinsics/intrinsic_target_feature.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

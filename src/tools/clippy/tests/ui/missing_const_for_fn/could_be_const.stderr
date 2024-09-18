@@ -283,5 +283,60 @@ help: make the function `const`
 LL |     const fn alias_ty_is_projection(bar: <() as FooTrait>::Foo) {}
    |     +++++
 
-error: aborting due to 21 previous errors
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:209:5
+   |
+LL |     extern "C-unwind" fn c_unwind() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     const extern "C-unwind" fn c_unwind() {}
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:211:5
+   |
+LL |     extern "system" fn system() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     const extern "system" fn system() {}
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:213:5
+   |
+LL |     extern "system-unwind" fn system_unwind() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     const extern "system-unwind" fn system_unwind() {}
+   |     +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:215:5
+   |
+LL |     pub extern "stdcall" fn std_call() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     pub const extern "stdcall" fn std_call() {}
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:217:5
+   |
+LL |     pub extern "stdcall-unwind" fn std_call_unwind() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |     pub const extern "stdcall-unwind" fn std_call_unwind() {}
+   |         +++++
+
+error: aborting due to 26 previous errors
 

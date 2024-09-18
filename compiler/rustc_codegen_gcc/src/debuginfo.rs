@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use gccjit::{Location, RValue};
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
-use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoMethods};
+use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{Idx, IndexVec};
@@ -47,6 +47,10 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
 
     fn set_dbg_loc(&mut self, dbg_loc: Self::DILocation) {
         self.location = Some(dbg_loc);
+    }
+
+    fn clear_dbg_loc(&mut self) {
+        self.location = None;
     }
 }
 
@@ -202,7 +206,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn create_vtable_debuginfo(
         &self,
         _ty: Ty<'tcx>,

@@ -255,4 +255,14 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "`download-ci-llvm = true` now checks if CI llvm is available and has become the default for the compiler profile",
     },
+    ChangeInfo {
+        change_id: 130202,
+        severity: ChangeSeverity::Info,
+        summary: "'tools' and 'library' profiles switched `download-ci-llvm` option from `if-unchanged` to `true`.",
+    },
+    ChangeInfo {
+        change_id: 130110,
+        severity: ChangeSeverity::Info,
+        summary: "New option `dist.vendor` added to control whether bootstrap should vendor dependencies for dist tarball.",
+    },
 ];

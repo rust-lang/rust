@@ -1,9 +1,9 @@
-thread 'main' panicked at $DIR/exported_symbol_bad_unwind2.rs:LL:CC:
+thread 'main' panicked at tests/fail/function_calls/exported_symbol_bad_unwind2.rs:LL:CC:
 explicit panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 error: Undefined Behavior: unwinding past a stack frame that does not allow unwinding
-  --> $DIR/exported_symbol_bad_unwind2.rs:LL:CC
+  --> tests/fail/function_calls/exported_symbol_bad_unwind2.rs:LL:CC
    |
 LL |     unsafe { nounwind() }
    | ^ unwinding past a stack frame that does not allow unwinding
@@ -11,7 +11,7 @@ LL |     unsafe { nounwind() }
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/exported_symbol_bad_unwind2.rs:LL:CC
+   = note: inside `main` at tests/fail/function_calls/exported_symbol_bad_unwind2.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

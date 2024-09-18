@@ -10,11 +10,10 @@ use rustc_codegen_ssa::errors::ExpectedPointerMutability;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
-use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 #[cfg(feature = "master")]
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
-use rustc_middle::span_bug;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{sym, Span, Symbol};
@@ -353,24 +352,14 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     if name == sym::simd_shuffle {
-        // Make sure this is actually an array or SIMD vector, since typeck only checks the length-suffixed
-        // version of this intrinsic.
+        // Make sure this is actually a SIMD vector.
         let idx_ty = args[2].layout.ty;
-        let n: u64 = match idx_ty.kind() {
-            ty::Array(ty, len) if matches!(*ty.kind(), ty::Uint(ty::UintTy::U32)) => {
-                len.try_eval_target_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(
-                    || span_bug!(span, "could not evaluate shuffle index array length"),
-                )
-            }
-            _ if idx_ty.is_simd()
-                && matches!(
-                    idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(),
-                    ty::Uint(ty::UintTy::U32)
-                ) =>
-            {
-                idx_ty.simd_size_and_type(bx.cx.tcx).0
-            }
-            _ => return_error!(InvalidMonomorphization::SimdShuffle { span, name, ty: idx_ty }),
+        let n: u64 = if idx_ty.is_simd()
+            && matches!(idx_ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
+        {
+            idx_ty.simd_size_and_type(bx.cx.tcx).0
+        } else {
+            return_error!(InvalidMonomorphization::SimdShuffle { span, name, ty: idx_ty })
         };
         require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
 

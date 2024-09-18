@@ -30,8 +30,8 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo,
-    StackProtector, Target, TargetTriple, TlsModel,
+    CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    SmallDataThresholdSupport, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
 };
 
 use crate::code_stats::CodeStats;
@@ -1278,6 +1278,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    if sess.opts.unstable_opts.small_data_threshold.is_some() {
+        if sess.target.small_data_threshold_support() == SmallDataThresholdSupport::None {
+            sess.dcx().emit_warn(errors::SmallDataThresholdNotSupportedForTarget {
+                target_triple: &sess.opts.target_triple,
+            })
+        }
+    }
+
     if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch != "aarch64" {
         sess.dcx().emit_err(errors::BranchProtectionRequiresAArch64);
     }
@@ -1338,6 +1346,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             {
                 sess.dcx().emit_err(errors::FunctionReturnThunkExternRequiresNonLargeCodeModel);
             }
+        }
+    }
+
+    if sess.opts.cg.soft_float {
+        if sess.target.arch == "arm" && sess.target.abi == "eabihf" {
+            sess.dcx().emit_warn(errors::SoftFloatDeprecated);
+        } else {
+            // All `use_softfp` does is the equivalent of `-mfloat-abi` in GCC/clang, which only exists on ARM targets.
+            // We document this flag to only affect `*eabihf` targets, so let's show a warning for all other targets.
+            sess.dcx().emit_warn(errors::SoftFloatIgnored);
         }
     }
 }

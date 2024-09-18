@@ -30,7 +30,7 @@ use crate::{MirBorrowckCtxt, WriteKind};
 
 #[derive(Debug)]
 pub(crate) enum BorrowExplanation<'tcx> {
-    UsedLater(LaterUseKind, Span, Option<Span>),
+    UsedLater(Local, LaterUseKind, Span, Option<Span>),
     UsedLaterInLoop(LaterUseKind, Span, Option<Span>),
     UsedLaterWhenDropped {
         drop_loc: Location,
@@ -99,7 +99,12 @@ impl<'tcx> BorrowExplanation<'tcx> {
             }
         }
         match *self {
-            BorrowExplanation::UsedLater(later_use_kind, var_or_use_span, path_span) => {
+            BorrowExplanation::UsedLater(
+                dropped_local,
+                later_use_kind,
+                var_or_use_span,
+                path_span,
+            ) => {
                 let message = match later_use_kind {
                     LaterUseKind::TraitCapture => "captured here by trait object",
                     LaterUseKind::ClosureCapture => "captured here by closure",
@@ -107,9 +112,26 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     LaterUseKind::FakeLetRead => "stored here",
                     LaterUseKind::Other => "used here",
                 };
-                // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
-                if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
-                    if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
+                let local_decl = &body.local_decls[dropped_local];
+
+                if let &LocalInfo::IfThenRescopeTemp { if_then } = local_decl.local_info()
+                    && let Some((_, hir::Node::Expr(expr))) = tcx.hir().parent_iter(if_then).next()
+                    && let hir::ExprKind::If(cond, conseq, alt) = expr.kind
+                    && let hir::ExprKind::Let(&hir::LetExpr {
+                        span: _,
+                        pat,
+                        init,
+                        // FIXME(#101728): enable rewrite when type ascription is stabilized again
+                        ty: None,
+                        recovered: _,
+                    }) = cond.kind
+                    && pat.span.can_be_used_for_suggestions()
+                    && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
+                {
+                    suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
+                } else if path_span.map_or(true, |path_span| path_span == var_or_use_span) {
+                    // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
+                    if borrow_span.map_or(true, |sp| !sp.overlaps(var_or_use_span)) {
                         err.span_label(
                             var_or_use_span,
                             format!("{borrow_desc}borrow later {message}"),
@@ -255,6 +277,22 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             };
+                        } else if let &LocalInfo::IfThenRescopeTemp { if_then } =
+                            local_decl.local_info()
+                            && let hir::Node::Expr(expr) = tcx.hir_node(if_then)
+                            && let hir::ExprKind::If(cond, conseq, alt) = expr.kind
+                            && let hir::ExprKind::Let(&hir::LetExpr {
+                                span: _,
+                                pat,
+                                init,
+                                // FIXME(#101728): enable rewrite when type ascription is stabilized again
+                                ty: None,
+                                recovered: _,
+                            }) = cond.kind
+                            && pat.span.can_be_used_for_suggestions()
+                            && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
+                        {
+                            suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
                         }
                     }
                 }
@@ -390,6 +428,53 @@ impl<'tcx> BorrowExplanation<'tcx> {
     }
 }
 
+fn suggest_rewrite_if_let(
+    tcx: TyCtxt<'_>,
+    expr: &hir::Expr<'_>,
+    pat: &str,
+    init: &hir::Expr<'_>,
+    conseq: &hir::Expr<'_>,
+    alt: Option<&hir::Expr<'_>>,
+    err: &mut Diag<'_>,
+) {
+    let source_map = tcx.sess.source_map();
+    err.span_note(
+        source_map.end_point(conseq.span),
+        "lifetimes for temporaries generated in `if let`s have been shortened in Edition 2024 so that they are dropped here instead",
+    );
+    if expr.span.can_be_used_for_suggestions() && conseq.span.can_be_used_for_suggestions() {
+        let needs_block = if let Some(hir::Node::Expr(expr)) =
+            alt.and_then(|alt| tcx.hir().parent_iter(alt.hir_id).next()).map(|(_, node)| node)
+        {
+            matches!(expr.kind, hir::ExprKind::If(..))
+        } else {
+            false
+        };
+        let mut sugg = vec![
+            (
+                expr.span.shrink_to_lo().between(init.span),
+                if needs_block { "{ match ".into() } else { "match ".into() },
+            ),
+            (conseq.span.shrink_to_lo(), format!(" {{ {pat} => ")),
+        ];
+        let expr_end = expr.span.shrink_to_hi();
+        let mut expr_end_code;
+        if let Some(alt) = alt {
+            sugg.push((conseq.span.between(alt.span), " _ => ".into()));
+            expr_end_code = "}".to_string();
+        } else {
+            expr_end_code = " _ => {} }".into();
+        }
+        expr_end_code.push('}');
+        sugg.push((expr_end, expr_end_code));
+        err.multipart_suggestion(
+            "consider rewriting the `if` into `match` which preserves the extended lifetime",
+            sugg,
+            Applicability::MaybeIncorrect,
+        );
+    }
+}
+
 impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     fn free_region_constraint_info(
         &self,
@@ -465,14 +550,21 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     .or_else(|| self.borrow_spans(span, location));
 
                 if use_in_later_iteration_of_loop {
-                    let later_use = self.later_use_kind(borrow, spans, use_location);
-                    BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1, later_use.2)
+                    let (later_use_kind, var_or_use_span, path_span) =
+                        self.later_use_kind(borrow, spans, use_location);
+                    BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span, path_span)
                 } else {
                     // Check if the location represents a `FakeRead`, and adapt the error
                     // message to the `FakeReadCause` it is from: in particular,
                     // the ones inserted in optimized `let var = <expr>` patterns.
-                    let later_use = self.later_use_kind(borrow, spans, location);
-                    BorrowExplanation::UsedLater(later_use.0, later_use.1, later_use.2)
+                    let (later_use_kind, var_or_use_span, path_span) =
+                        self.later_use_kind(borrow, spans, location);
+                    BorrowExplanation::UsedLater(
+                        borrow.borrowed_place.local,
+                        later_use_kind,
+                        var_or_use_span,
+                        path_span,
+                    )
                 }
             }
 

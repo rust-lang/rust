@@ -35,13 +35,10 @@ pub(crate) struct NestedStaticInThreadLocal {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(const_eval_mutable_ptr_in_final)]
 pub(crate) struct MutablePtrInFinal {
-    // rust-lang/rust#122153: This was marked as `#[primary_span]` under
-    // `derive(Diagnostic)`. Since we expect we may hard-error in future, we are
-    // keeping the field (and skipping it under `derive(LintDiagnostic)`).
-    #[skip_arg]
+    #[primary_span]
     pub span: Span,
     pub kind: InternKind,
 }
@@ -94,30 +91,6 @@ pub(crate) struct RawPtrComparisonErr {
 pub(crate) struct PanicNonStrErr {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_mut_deref, code = E0658)]
-pub(crate) struct MutDerefErr {
-    #[primary_span]
-    pub span: Span,
-    pub kind: ConstContext,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_transient_mut_borrow, code = E0658)]
-pub(crate) struct TransientMutBorrowErr {
-    #[primary_span]
-    pub span: Span,
-    pub kind: ConstContext,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_transient_mut_raw, code = E0658)]
-pub(crate) struct TransientMutRawErr {
-    #[primary_span]
-    pub span: Span,
-    pub kind: ConstContext,
 }
 
 #[derive(Diagnostic)]
@@ -218,13 +191,6 @@ pub(crate) struct InteriorMutableDataRefer {
     pub kind: ConstContext,
     #[note(const_eval_teach_note)]
     pub teach: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_interior_mutability_borrow)]
-pub(crate) struct InteriorMutabilityBorrow {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]

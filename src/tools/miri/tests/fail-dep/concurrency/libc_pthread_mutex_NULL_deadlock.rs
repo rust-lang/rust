@@ -1,4 +1,4 @@
-//@ignore-target-windows: No pthreads on Windows
+//@ignore-target: windows # No pthreads on Windows
 //
 // Check that if we pass NULL attribute, then we get the default mutex type.
 

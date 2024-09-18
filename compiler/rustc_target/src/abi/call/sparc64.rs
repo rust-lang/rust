@@ -66,7 +66,7 @@ where
         data.last_offset = offset + Reg::f64().size;
     }
     data.prefix_index += 1;
-    return data;
+    data
 }
 
 fn arg_scalar_pair<C>(
@@ -92,7 +92,7 @@ where
         offset += Size::from_bytes(4 - (offset.bytes() % 4));
     }
     data = arg_scalar(cx, scalar2, offset, data);
-    return data;
+    data
 }
 
 fn parse_structure<'a, Ty, C>(
@@ -128,7 +128,7 @@ where
         }
     }
 
-    return data;
+    data
 }
 
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, in_registers_max: Size)

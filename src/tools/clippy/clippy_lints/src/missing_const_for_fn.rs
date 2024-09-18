@@ -119,9 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                     .iter()
                     .any(|param| matches!(param.kind, GenericParamKind::Const { .. }));
 
-                if already_const(header)
-                    || has_const_generic_params
-                    || !could_be_const_with_abi(cx, &self.msrv, header.abi)
+                if already_const(header) || has_const_generic_params || !could_be_const_with_abi(&self.msrv, header.abi)
                 {
                     return;
                 }
@@ -183,13 +181,13 @@ fn already_const(header: hir::FnHeader) -> bool {
     header.constness == Constness::Const
 }
 
-fn could_be_const_with_abi(cx: &LateContext<'_>, msrv: &Msrv, abi: Abi) -> bool {
+fn could_be_const_with_abi(msrv: &Msrv, abi: Abi) -> bool {
     match abi {
         Abi::Rust => true,
         // `const extern "C"` was stabilized after 1.62.0
-        Abi::C { unwind: false } => msrv.meets(msrvs::CONST_EXTERN_FN),
+        Abi::C { unwind: false } => msrv.meets(msrvs::CONST_EXTERN_C_FN),
         // Rest ABIs are still unstable and need the `const_extern_fn` feature enabled.
-        _ => cx.tcx.features().const_extern_fn,
+        _ => msrv.meets(msrvs::CONST_EXTERN_FN),
     }
 }
 

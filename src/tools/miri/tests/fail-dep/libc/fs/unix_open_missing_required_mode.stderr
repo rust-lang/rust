@@ -1,5 +1,5 @@
 error: Undefined Behavior: incorrect number of arguments for `open` with `O_CREAT`: got 2, expected at least 3
-  --> $DIR/unix_open_missing_required_mode.rs:LL:CC
+  --> tests/fail-dep/libc/fs/unix_open_missing_required_mode.rs:LL:CC
    |
 LL | ...safe { libc::open(name_ptr, libc::O_CREAT) };
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of arguments for `open` with `O_CREAT`: got 2, expected at least 3
@@ -7,9 +7,9 @@ LL | ...safe { libc::open(name_ptr, libc::O_CREAT) };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `test_file_open_missing_needed_mode` at $DIR/unix_open_missing_required_mode.rs:LL:CC
+   = note: inside `test_file_open_missing_needed_mode` at tests/fail-dep/libc/fs/unix_open_missing_required_mode.rs:LL:CC
 note: inside `main`
-  --> $DIR/unix_open_missing_required_mode.rs:LL:CC
+  --> tests/fail-dep/libc/fs/unix_open_missing_required_mode.rs:LL:CC
    |
 LL |     test_file_open_missing_needed_mode();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

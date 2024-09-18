@@ -14,10 +14,6 @@ help: there is a keyword `mut` with a similar name
    |
 LL |     fn foo(&mut Self) {}
    |             ~~~
-help: declare the type after the parameter binding
-   |
-LL |     fn foo(<identifier>: <type>) {}
-   |            ~~~~~~~~~~~~~~~~~~~~
 
 error: unexpected lifetime `'static` in pattern
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:8:13
@@ -47,10 +43,6 @@ help: there is a keyword `mut` with a similar name
    |
 LL |     fn bar(&'static mut Self) {}
    |                     ~~~
-help: declare the type after the parameter binding
-   |
-LL |     fn bar(<identifier>: <type>) {}
-   |            ~~~~~~~~~~~~~~~~~~~~
 
 error: expected one of `:`, `@`, or `|`, found keyword `Self`
   --> $DIR/issue-70549-resolve-after-recovered-self-ctor.rs:14:17

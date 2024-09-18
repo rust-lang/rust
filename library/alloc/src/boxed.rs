@@ -250,6 +250,7 @@ impl<T> Box<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[rustc_diagnostic_item = "box_new"]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
         #[rustc_box]
         Box::new(x)
@@ -1059,6 +1060,59 @@ impl<T: ?Sized> Box<T> {
     pub unsafe fn from_raw(raw: *mut T) -> Self {
         unsafe { Self::from_raw_in(raw, Global) }
     }
+
+    /// Constructs a box from a `NonNull` pointer.
+    ///
+    /// After calling this function, the `NonNull` pointer is owned by
+    /// the resulting `Box`. Specifically, the `Box` destructor will call
+    /// the destructor of `T` and free the allocated memory. For this
+    /// to be safe, the memory must have been allocated in accordance
+    /// with the [memory layout] used by `Box` .
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because improper use may lead to
+    /// memory problems. For example, a double-free may occur if the
+    /// function is called twice on the same `NonNull` pointer.
+    ///
+    /// The safety conditions are described in the [memory layout] section.
+    ///
+    /// # Examples
+    ///
+    /// Recreate a `Box` which was previously converted to a `NonNull`
+    /// pointer using [`Box::into_non_null`]:
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// let x = Box::new(5);
+    /// let non_null = Box::into_non_null(x);
+    /// let x = unsafe { Box::from_non_null(non_null) };
+    /// ```
+    /// Manually create a `Box` from scratch by using the global allocator:
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// use std::alloc::{alloc, Layout};
+    /// use std::ptr::NonNull;
+    ///
+    /// unsafe {
+    ///     let non_null = NonNull::new(alloc(Layout::new::<i32>()).cast::<i32>())
+    ///         .expect("allocation failed");
+    ///     // In general .write is required to avoid attempting to destruct
+    ///     // the (uninitialized) previous contents of `non_null`.
+    ///     non_null.write(5);
+    ///     let x = Box::from_non_null(non_null);
+    /// }
+    /// ```
+    ///
+    /// [memory layout]: self#memory-layout
+    /// [`Layout`]: crate::Layout
+    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[inline]
+    #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
+    pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
+        unsafe { Self::from_raw(ptr.as_ptr()) }
+    }
 }
 
 impl<T: ?Sized, A: Allocator> Box<T, A> {
@@ -1116,6 +1170,61 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
     }
 
+    /// Constructs a box from a `NonNull` pointer in the given allocator.
+    ///
+    /// After calling this function, the `NonNull` pointer is owned by
+    /// the resulting `Box`. Specifically, the `Box` destructor will call
+    /// the destructor of `T` and free the allocated memory. For this
+    /// to be safe, the memory must have been allocated in accordance
+    /// with the [memory layout] used by `Box` .
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because improper use may lead to
+    /// memory problems. For example, a double-free may occur if the
+    /// function is called twice on the same raw pointer.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// Recreate a `Box` which was previously converted to a `NonNull` pointer
+    /// using [`Box::into_non_null_with_allocator`]:
+    /// ```
+    /// #![feature(allocator_api, box_vec_non_null)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let x = Box::new_in(5, System);
+    /// let (non_null, alloc) = Box::into_non_null_with_allocator(x);
+    /// let x = unsafe { Box::from_non_null_in(non_null, alloc) };
+    /// ```
+    /// Manually create a `Box` from scratch by using the system allocator:
+    /// ```
+    /// #![feature(allocator_api, box_vec_non_null, slice_ptr_get)]
+    ///
+    /// use std::alloc::{Allocator, Layout, System};
+    ///
+    /// unsafe {
+    ///     let non_null = System.allocate(Layout::new::<i32>())?.cast::<i32>();
+    ///     // In general .write is required to avoid attempting to destruct
+    ///     // the (uninitialized) previous contents of `non_null`.
+    ///     non_null.write(5);
+    ///     let x = Box::from_non_null_in(non_null, System);
+    /// }
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    ///
+    /// [memory layout]: self#memory-layout
+    /// [`Layout`]: crate::Layout
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
+    #[inline]
+    pub const unsafe fn from_non_null_in(raw: NonNull<T>, alloc: A) -> Self {
+        // SAFETY: guaranteed by the caller.
+        unsafe { Box::from_raw_in(raw.as_ptr(), alloc) }
+    }
+
     /// Consumes the `Box`, returning a wrapped raw pointer.
     ///
     /// The pointer will be properly aligned and non-null.
@@ -1169,6 +1278,66 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     pub fn into_raw(b: Self) -> *mut T {
         // Make sure Miri realizes that we transition from a noalias pointer to a raw pointer here.
         unsafe { addr_of_mut!(*&mut *Self::into_raw_with_allocator(b).0) }
+    }
+
+    /// Consumes the `Box`, returning a wrapped `NonNull` pointer.
+    ///
+    /// The pointer will be properly aligned.
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Box`. In particular, the
+    /// caller should properly destroy `T` and release the memory, taking
+    /// into account the [memory layout] used by `Box`. The easiest way to
+    /// do this is to convert the `NonNull` pointer back into a `Box` with the
+    /// [`Box::from_non_null`] function, allowing the `Box` destructor to
+    /// perform the cleanup.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::into_non_null(b)` instead of `b.into_non_null()`.
+    /// This is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    /// Converting the `NonNull` pointer back into a `Box` with [`Box::from_non_null`]
+    /// for automatic cleanup:
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// let x = Box::new(String::from("Hello"));
+    /// let non_null = Box::into_non_null(x);
+    /// let x = unsafe { Box::from_non_null(non_null) };
+    /// ```
+    /// Manual cleanup by explicitly running the destructor and deallocating
+    /// the memory:
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// use std::alloc::{dealloc, Layout};
+    ///
+    /// let x = Box::new(String::from("Hello"));
+    /// let non_null = Box::into_non_null(x);
+    /// unsafe {
+    ///     non_null.drop_in_place();
+    ///     dealloc(non_null.as_ptr().cast::<u8>(), Layout::new::<String>());
+    /// }
+    /// ```
+    /// Note: This is equivalent to the following:
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// let x = Box::new(String::from("Hello"));
+    /// let non_null = Box::into_non_null(x);
+    /// unsafe {
+    ///     drop(Box::from_non_null(non_null));
+    /// }
+    /// ```
+    ///
+    /// [memory layout]: self#memory-layout
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[inline]
+    pub fn into_non_null(b: Self) -> NonNull<T> {
+        // SAFETY: `Box` is guaranteed to be non-null.
+        unsafe { NonNull::new_unchecked(Self::into_raw(b)) }
     }
 
     /// Consumes the `Box`, returning a wrapped raw pointer and the allocator.
@@ -1230,6 +1399,61 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         let ptr = addr_of_mut!(**b);
         let alloc = unsafe { ptr::read(&b.1) };
         (ptr, alloc)
+    }
+
+    /// Consumes the `Box`, returning a wrapped `NonNull` pointer and the allocator.
+    ///
+    /// The pointer will be properly aligned.
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Box`. In particular, the
+    /// caller should properly destroy `T` and release the memory, taking
+    /// into account the [memory layout] used by `Box`. The easiest way to
+    /// do this is to convert the `NonNull` pointer back into a `Box` with the
+    /// [`Box::from_non_null_in`] function, allowing the `Box` destructor to
+    /// perform the cleanup.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::into_non_null_with_allocator(b)` instead of
+    /// `b.into_non_null_with_allocator()`. This is so that there is no
+    /// conflict with a method on the inner type.
+    ///
+    /// # Examples
+    /// Converting the `NonNull` pointer back into a `Box` with
+    /// [`Box::from_non_null_in`] for automatic cleanup:
+    /// ```
+    /// #![feature(allocator_api, box_vec_non_null)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let x = Box::new_in(String::from("Hello"), System);
+    /// let (non_null, alloc) = Box::into_non_null_with_allocator(x);
+    /// let x = unsafe { Box::from_non_null_in(non_null, alloc) };
+    /// ```
+    /// Manual cleanup by explicitly running the destructor and deallocating
+    /// the memory:
+    /// ```
+    /// #![feature(allocator_api, box_vec_non_null)]
+    ///
+    /// use std::alloc::{Allocator, Layout, System};
+    ///
+    /// let x = Box::new_in(String::from("Hello"), System);
+    /// let (non_null, alloc) = Box::into_non_null_with_allocator(x);
+    /// unsafe {
+    ///     non_null.drop_in_place();
+    ///     alloc.deallocate(non_null.cast::<u8>(), Layout::new::<String>());
+    /// }
+    /// ```
+    ///
+    /// [memory layout]: self#memory-layout
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[inline]
+    pub fn into_non_null_with_allocator(b: Self) -> (NonNull<T>, A) {
+        let (ptr, alloc) = Box::into_raw_with_allocator(b);
+        // SAFETY: `Box` is guaranteed to be non-null.
+        unsafe { (NonNull::new_unchecked(ptr), alloc) }
     }
 
     #[unstable(

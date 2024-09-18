@@ -675,8 +675,6 @@ ui/consts/auxiliary/issue-17718-aux.rs
 ui/consts/auxiliary/issue-63226.rs
 ui/consts/const-eval/issue-100878.rs
 ui/consts/const-eval/issue-104390.rs
-ui/consts/const-eval/issue-114994-fail.rs
-ui/consts/const-eval/issue-114994.rs
 ui/consts/const-eval/issue-43197.rs
 ui/consts/const-eval/issue-44578.rs
 ui/consts/const-eval/issue-47971.rs
@@ -3182,7 +3180,6 @@ ui/nll/user-annotations/issue-55219.rs
 ui/nll/user-annotations/issue-55241.rs
 ui/nll/user-annotations/issue-55748-pat-types-constrain-bindings.rs
 ui/nll/user-annotations/issue-57731-ascibed-coupled-types.rs
-ui/numbers-arithmetic/issue-105626.rs
 ui/numbers-arithmetic/issue-8460.rs
 ui/object-safety/issue-102762.rs
 ui/object-safety/issue-102933.rs

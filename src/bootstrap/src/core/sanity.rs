@@ -233,7 +233,8 @@ than building it.
         }
 
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        if cfg!(not(feature = "bootstrap-self-test")) && !skip_target_sanity {
+        if cfg!(not(feature = "bootstrap-self-test")) && !skip_target_sanity && !build.local_rebuild
+        {
             let mut has_target = false;
             let target_str = target.to_string();
 
@@ -378,13 +379,5 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
         cmd_finder.must_have(s);
     }
 
-    // this warning is useless in CI,
-    // and CI probably won't have the right branches anyway.
-    if !build_helper::ci::CiEnv::is_ci() {
-        if let Err(e) = warn_old_master_branch(&build.config.git_config(), &build.config.src)
-            .map_err(|e| e.to_string())
-        {
-            eprintln!("unable to check if upstream branch is old: {e}");
-        }
-    }
+    warn_old_master_branch(&build.config.git_config(), &build.config.src);
 }

@@ -44,8 +44,6 @@ union Data<T, F> {
 ///
 /// // The `String` is built, stored in the `LazyLock`, and returned as `&String`.
 /// let _ = &*DEEP_THOUGHT;
-/// // The `String` is retrieved from the `LazyLock` and returned as `&String`.
-/// let _ = &*DEEP_THOUGHT;
 /// ```
 ///
 /// Initialize fields with `LazyLock`.

@@ -1,5 +1,5 @@
 error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is weakly protected
-  --> $DIR/box_noalias_violation.rs:LL:CC
+  --> tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
    |
 LL |     *y
    |     ^^ not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is weakly protected
@@ -7,19 +7,19 @@ LL |     *y
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
-  --> $DIR/box_noalias_violation.rs:LL:CC
+  --> tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
    |
 LL |         let ptr = &mut v as *mut i32;
    |                   ^^^^^^
 help: <TAG> is this argument
-  --> $DIR/box_noalias_violation.rs:LL:CC
+  --> tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
    |
 LL | unsafe fn test(mut x: Box<i32>, y: *const i32) -> i32 {
    |                ^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `test` at $DIR/box_noalias_violation.rs:LL:CC
+   = note: inside `test` at tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
 note: inside `main`
-  --> $DIR/box_noalias_violation.rs:LL:CC
+  --> tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
    |
 LL |         test(Box::from_raw(ptr), ptr);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

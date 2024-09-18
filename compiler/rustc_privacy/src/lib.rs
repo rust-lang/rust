@@ -852,12 +852,12 @@ impl<'tcx> DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx>
 ////////////////////////////////////////////////////////////////////////////////
 /// Visitor, used for EffectiveVisibilities table checking
 ////////////////////////////////////////////////////////////////////////////////
-pub struct TestReachabilityVisitor<'tcx, 'a> {
+pub struct TestReachabilityVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     effective_visibilities: &'a EffectiveVisibilities,
 }
 
-impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
+impl<'a, 'tcx> TestReachabilityVisitor<'a, 'tcx> {
     fn effective_visibility_diagnostic(&mut self, def_id: LocalDefId) {
         if self.tcx.has_attr(def_id, sym::rustc_effective_visibility) {
             let mut error_msg = String::new();
@@ -878,7 +878,7 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
     }
 }
 
-impl<'tcx, 'a> Visitor<'tcx> for TestReachabilityVisitor<'tcx, 'a> {
+impl<'a, 'tcx> Visitor<'tcx> for TestReachabilityVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         self.effective_visibility_diagnostic(item.owner_id.def_id);
 
@@ -1425,12 +1425,12 @@ impl<'tcx> DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
     }
 }
 
-struct PrivateItemsInPublicInterfacesChecker<'tcx, 'a> {
+struct PrivateItemsInPublicInterfacesChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     effective_visibilities: &'a EffectiveVisibilities,
 }
 
-impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
+impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
     fn check(
         &self,
         def_id: LocalDefId,

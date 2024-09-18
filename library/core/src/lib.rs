@@ -149,7 +149,6 @@
 #![feature(const_size_of_val_raw)]
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_from_ref)]
-#![feature(const_slice_index)]
 #![feature(const_slice_split_at_mut)]
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_strict_overflow_ops)]
@@ -192,6 +191,8 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(const_mut_refs))]
+#![cfg_attr(bootstrap, feature(const_refs_to_cell))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -202,9 +203,7 @@
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_ub_checks)]
 #![feature(const_for)]
-#![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
-#![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]

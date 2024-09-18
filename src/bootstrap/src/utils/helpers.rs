@@ -10,7 +10,6 @@ use std::sync::OnceLock;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, io, str};
 
-use build_helper::git::{get_git_merge_base, output_result, GitConfig};
 use build_helper::util::fail;
 
 use crate::core::builder::Builder;
@@ -523,28 +522,6 @@ pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     git
 }
 
-/// Returns the closest commit available from upstream for the given `author` and `target_paths`.
-///
-/// If it fails to find the commit from upstream using `git merge-base`, fallbacks to HEAD.
-pub fn get_closest_merge_base_commit(
-    source_dir: Option<&Path>,
-    config: &GitConfig<'_>,
-    author: &str,
-    target_paths: &[PathBuf],
-) -> Result<String, String> {
-    let mut git = git(source_dir);
-
-    let merge_base = get_git_merge_base(config, source_dir).unwrap_or_else(|_| "HEAD".into());
-
-    git.args(["rev-list", &format!("--author={author}"), "-n1", "--first-parent", &merge_base]);
-
-    if !target_paths.is_empty() {
-        git.arg("--").args(target_paths);
-    }
-
-    Ok(output_result(git.as_command_mut())?.trim().to_owned())
-}
-
 /// Sets the file times for a given file at `path`.
 pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Result<()> {
     // Windows requires file to be writable to modify file times. But on Linux CI the file does not
@@ -555,4 +532,42 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Resu
         fs::File::open(path)?
     };
     f.set_times(times)
+}
+
+pub struct HashStamp {
+    pub path: PathBuf,
+    pub hash: Option<Vec<u8>>,
+}
+
+impl HashStamp {
+    pub fn new(path: PathBuf, hash: Option<&str>) -> Self {
+        HashStamp { path, hash: hash.map(|s| s.as_bytes().to_owned()) }
+    }
+
+    pub fn is_done(&self) -> bool {
+        match fs::read(&self.path) {
+            Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => false,
+            Err(e) => {
+                panic!("failed to read stamp file `{}`: {}", self.path.display(), e);
+            }
+        }
+    }
+
+    pub fn remove(&self) -> io::Result<()> {
+        match fs::remove_file(&self.path) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    pub fn write(&self) -> io::Result<()> {
+        fs::write(&self.path, self.hash.as_deref().unwrap_or(b""))
+    }
 }

@@ -1,4 +1,4 @@
-//@ignore-target-windows: No pthreads on Windows
+//@ignore-target: windows # No pthreads on Windows
 
 // Joining an already joined thread is undefined behavior.
 

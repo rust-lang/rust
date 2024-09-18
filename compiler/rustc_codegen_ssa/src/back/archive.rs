@@ -157,7 +157,7 @@ pub trait ArchiveBuilderBuilder {
     }
 }
 
-pub fn create_mingw_dll_import_lib(
+fn create_mingw_dll_import_lib(
     sess: &Session,
     lib_name: &str,
     import_name_and_ordinal_vector: Vec<(String, Option<u16>)>,

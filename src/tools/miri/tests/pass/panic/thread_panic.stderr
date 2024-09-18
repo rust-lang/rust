@@ -1,6 +1,6 @@
-thread '<unnamed>' panicked at $DIR/thread_panic.rs:LL:CC:
+thread '<unnamed>' panicked at tests/pass/panic/thread_panic.rs:LL:CC:
 Hello!
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
-thread 'childthread' panicked at $DIR/thread_panic.rs:LL:CC:
+thread 'childthread' panicked at tests/pass/panic/thread_panic.rs:LL:CC:
 Hello, world!

@@ -15,7 +15,6 @@ use rustc_middle::middle::codegen_fn_attrs::PatchableFunctionEntry;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
-    TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -25,9 +24,8 @@ use rustc_session::config::{
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{HasDataLayout, TargetDataLayout, VariantIdx};
-use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
+use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
 use crate::back::write::to_llvm_code_model;
@@ -387,6 +385,24 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
+    match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
+    {
+        // Set up the small-data optimization limit for architectures that use
+        // an LLVM module flag to control this.
+        (Some(threshold), SmallDataThresholdSupport::LlvmModuleFlag(flag)) => {
+            let flag = SmallCStr::new(flag.as_ref());
+            unsafe {
+                llvm::LLVMRustAddModuleFlagU32(
+                    llmod,
+                    llvm::LLVMModFlagBehavior::Error,
+                    flag.as_c_str().as_ptr(),
+                    threshold as u32,
+                )
+            }
+        }
+        _ => (),
+    };
+
     // Insert `llvm.ident` metadata.
     //
     // On the wasm targets it will get hooked up to the "producer" sections
@@ -580,7 +596,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(
         &self,
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
@@ -1140,8 +1156,6 @@ impl<'tcx, 'll> HasParamEnv<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
-    type LayoutOfResult = TyAndLayout<'tcx>;
-
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
@@ -1153,8 +1167,6 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
 }
 
 impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
-    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
-
     #[inline]
     fn handle_fn_abi_err(
         &self,

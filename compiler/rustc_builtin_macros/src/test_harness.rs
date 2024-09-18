@@ -326,8 +326,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let main_attr = ecx.attr_word(sym::rustc_main, sp);
     // #[coverage(off)]
     let coverage_attr = ecx.attr_nested_word(sym::coverage, sym::off, sp);
-    // #[allow(missing_docs)]
-    let missing_docs_attr = ecx.attr_nested_word(sym::allow, sym::missing_docs, sp);
+    // #[doc(hidden)]
+    let doc_hidden_attr = ecx.attr_nested_word(sym::doc, sym::hidden, sp);
 
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()));
@@ -357,7 +357,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let main = P(ast::Item {
         ident: main_id,
-        attrs: thin_vec![main_attr, coverage_attr, missing_docs_attr],
+        attrs: thin_vec![main_attr, coverage_attr, doc_hidden_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },

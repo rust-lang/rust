@@ -1,5 +1,5 @@
 error: Undefined Behavior: read access through <TAG> at ALLOC[0x0] is forbidden
-  --> $DIR/illegal_write5.rs:LL:CC
+  --> tests/fail/both_borrows/illegal_write5.rs:LL:CC
    |
 LL |     let _val = *xref;
    |                ^^^^^ read access through <TAG> at ALLOC[0x0] is forbidden
@@ -7,18 +7,18 @@ LL |     let _val = *xref;
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> has state Disabled which forbids this child read access
 help: the accessed tag <TAG> was created here, in the initial state Reserved
-  --> $DIR/illegal_write5.rs:LL:CC
+  --> tests/fail/both_borrows/illegal_write5.rs:LL:CC
    |
 LL |     let xref = unsafe { &mut *xraw };
    |                         ^^^^^^^^^^
 help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x4]
-  --> $DIR/illegal_write5.rs:LL:CC
+  --> tests/fail/both_borrows/illegal_write5.rs:LL:CC
    |
 LL |     unsafe { *xraw = 15 };
    |              ^^^^^^^^^^
    = help: this transition corresponds to a loss of read and write permissions
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/illegal_write5.rs:LL:CC
+   = note: inside `main` at tests/fail/both_borrows/illegal_write5.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

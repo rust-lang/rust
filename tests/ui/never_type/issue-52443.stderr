@@ -55,16 +55,6 @@ help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 LL + #![feature(const_trait_impl)]
    |
 
-error[E0658]: mutable references are not allowed in constants
-  --> $DIR/issue-52443.rs:9:21
-   |
-LL |     [(); { for _ in 0usize.. {}; 0}];
-   |                     ^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0015]: cannot call non-const fn `<RangeFrom<usize> as Iterator>::next` in constants
   --> $DIR/issue-52443.rs:9:21
    |
@@ -77,7 +67,7 @@ help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 LL + #![feature(const_trait_impl)]
    |
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0015, E0308, E0658.
 For more information about an error, try `rustc --explain E0015`.

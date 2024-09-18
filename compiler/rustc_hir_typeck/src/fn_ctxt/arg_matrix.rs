@@ -307,7 +307,7 @@ impl<'tcx> ArgMatrix<'tcx> {
                 permutation.into_iter().map(|x| x.unwrap()).collect();
             return Some(Issue::Permutation(final_permutation));
         }
-        return None;
+        None
     }
 
     // Obviously, detecting exact user intention is impossible, so the goal here is to
@@ -410,6 +410,6 @@ impl<'tcx> ArgMatrix<'tcx> {
         // sort errors with same type by the order they appear in the source
         // so that suggestion will be handled properly, see #112507
         errors.sort();
-        return (errors, matched_inputs);
+        (errors, matched_inputs)
     }
 }

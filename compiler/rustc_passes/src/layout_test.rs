@@ -2,7 +2,7 @@ use rustc_ast::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
@@ -128,7 +128,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
         }
 
         Err(layout_error) => {
-            tcx.dcx().emit_fatal(Spanned { node: layout_error.into_diagnostic(), span });
+            tcx.dcx().emit_err(Spanned { node: layout_error.into_diagnostic(), span });
         }
     }
 }
@@ -139,8 +139,6 @@ struct UnwrapLayoutCx<'tcx> {
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for UnwrapLayoutCx<'tcx> {
-    type LayoutOfResult = TyAndLayout<'tcx>;
-
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         span_bug!(span, "`#[rustc_layout(..)]` test resulted in `layout_of({ty}) = Err({err})`",);
     }

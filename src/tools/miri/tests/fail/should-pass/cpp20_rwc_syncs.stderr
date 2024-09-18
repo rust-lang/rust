@@ -1,5 +1,5 @@
 error: Undefined Behavior: entering unreachable code
-  --> $DIR/cpp20_rwc_syncs.rs:LL:CC
+  --> tests/fail/should-pass/cpp20_rwc_syncs.rs:LL:CC
    |
 LL |             std::hint::unreachable_unchecked();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ entering unreachable code
@@ -7,9 +7,9 @@ LL |             std::hint::unreachable_unchecked();
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `test_cpp20_rwc_syncs` at $DIR/cpp20_rwc_syncs.rs:LL:CC
+   = note: inside `test_cpp20_rwc_syncs` at tests/fail/should-pass/cpp20_rwc_syncs.rs:LL:CC
 note: inside `main`
-  --> $DIR/cpp20_rwc_syncs.rs:LL:CC
+  --> tests/fail/should-pass/cpp20_rwc_syncs.rs:LL:CC
    |
 LL |         test_cpp20_rwc_syncs();
    |         ^^^^^^^^^^^^^^^^^^^^^^

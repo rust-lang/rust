@@ -607,9 +607,6 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
         if let ast::Const::Yes(span) = constness {
-            // If we ever start to allow `const fn()`, then update
-            // feature gating for `#![feature(const_extern_fn)]` to
-            // cover it.
             self.dcx().emit_err(FnPointerCannotBeConst { span: whole_span, qualifier: span });
         }
         if let Some(ast::CoroutineKind::Async { span, .. }) = coroutine_kind {

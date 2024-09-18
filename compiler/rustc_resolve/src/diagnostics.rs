@@ -123,7 +123,7 @@ fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
     sm.span_until_whitespace(impl_span)
 }
 
-impl<'a, 'tcx> Resolver<'a, 'tcx> {
+impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.tcx.dcx()
     }
@@ -208,8 +208,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent: Module<'_>,
         ident: Ident,
         ns: Namespace,
-        new_binding: NameBinding<'a>,
-        old_binding: NameBinding<'a>,
+        new_binding: NameBinding<'ra>,
+        old_binding: NameBinding<'ra>,
     ) {
         // Error on the second of two conflicting names
         if old_binding.span.lo() > new_binding.span.lo() {
@@ -531,7 +531,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn add_module_candidates(
         &mut self,
-        module: Module<'a>,
+        module: Module<'ra>,
         names: &mut Vec<TypoSuggestion>,
         filter_fn: &impl Fn(Res) -> bool,
         ctxt: Option<SyntaxContext>,
@@ -553,7 +553,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn report_error(
         &mut self,
         span: Span,
-        resolution_error: ResolutionError<'a>,
+        resolution_error: ResolutionError<'ra>,
     ) -> ErrorGuaranteed {
         self.into_struct_error(span, resolution_error).emit()
     }
@@ -561,7 +561,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn into_struct_error(
         &mut self,
         span: Span,
-        resolution_error: ResolutionError<'a>,
+        resolution_error: ResolutionError<'ra>,
     ) -> Diag<'_> {
         match resolution_error {
             ResolutionError::GenericParamsFromOuterItem(
@@ -1020,8 +1020,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Lookup typo candidate in scope for a macro or import.
     fn early_lookup_typo_candidate(
         &mut self,
-        scope_set: ScopeSet<'a>,
-        parent_scope: &ParentScope<'a>,
+        scope_set: ScopeSet<'ra>,
+        parent_scope: &ParentScope<'ra>,
         ident: Ident,
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
@@ -1156,8 +1156,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
-        parent_scope: &ParentScope<'a>,
-        start_module: Module<'a>,
+        parent_scope: &ParentScope<'ra>,
+        start_module: Module<'ra>,
         crate_path: ThinVec<ast::PathSegment>,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
@@ -1233,64 +1233,63 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     && ns == namespace
                     && in_module != parent_scope.module
                     && !ident.span.normalize_to_macros_2_0().from_expansion()
+                    && filter_fn(res)
                 {
-                    if filter_fn(res) {
-                        // create the path
-                        let mut segms = if lookup_ident.span.at_least_rust_2018() {
-                            // crate-local absolute paths start with `crate::` in edition 2018
-                            // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                            crate_path.clone()
+                    // create the path
+                    let mut segms = if lookup_ident.span.at_least_rust_2018() {
+                        // crate-local absolute paths start with `crate::` in edition 2018
+                        // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
+                        crate_path.clone()
+                    } else {
+                        ThinVec::new()
+                    };
+                    segms.append(&mut path_segments.clone());
+
+                    segms.push(ast::PathSegment::from_ident(ident));
+                    let path = Path { span: name_binding.span, segments: segms, tokens: None };
+
+                    if child_accessible {
+                        // Remove invisible match if exists
+                        if let Some(idx) = candidates
+                            .iter()
+                            .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
+                        {
+                            candidates.remove(idx);
+                        }
+                    }
+
+                    if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                        // See if we're recommending TryFrom, TryInto, or FromIterator and add
+                        // a note about editions
+                        let note = if let Some(did) = did {
+                            let requires_note = !did.is_local()
+                                && this.tcx.get_attrs(did, sym::rustc_diagnostic_item).any(
+                                    |attr| {
+                                        [sym::TryInto, sym::TryFrom, sym::FromIterator]
+                                            .map(|x| Some(x))
+                                            .contains(&attr.value_str())
+                                    },
+                                );
+
+                            requires_note.then(|| {
+                                format!(
+                                    "'{}' is included in the prelude starting in Edition 2021",
+                                    path_names_to_string(&path)
+                                )
+                            })
                         } else {
-                            ThinVec::new()
+                            None
                         };
-                        segms.append(&mut path_segments.clone());
 
-                        segms.push(ast::PathSegment::from_ident(ident));
-                        let path = Path { span: name_binding.span, segments: segms, tokens: None };
-
-                        if child_accessible {
-                            // Remove invisible match if exists
-                            if let Some(idx) = candidates
-                                .iter()
-                                .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
-                            {
-                                candidates.remove(idx);
-                            }
-                        }
-
-                        if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
-                            // See if we're recommending TryFrom, TryInto, or FromIterator and add
-                            // a note about editions
-                            let note = if let Some(did) = did {
-                                let requires_note = !did.is_local()
-                                    && this.tcx.get_attrs(did, sym::rustc_diagnostic_item).any(
-                                        |attr| {
-                                            [sym::TryInto, sym::TryFrom, sym::FromIterator]
-                                                .map(|x| Some(x))
-                                                .contains(&attr.value_str())
-                                        },
-                                    );
-
-                                requires_note.then(|| {
-                                    format!(
-                                        "'{}' is included in the prelude starting in Edition 2021",
-                                        path_names_to_string(&path)
-                                    )
-                                })
-                            } else {
-                                None
-                            };
-
-                            candidates.push(ImportSuggestion {
-                                did,
-                                descr: res.descr(),
-                                path,
-                                accessible: child_accessible,
-                                doc_visible: child_doc_visible,
-                                note,
-                                via_import,
-                            });
-                        }
+                        candidates.push(ImportSuggestion {
+                            did,
+                            descr: res.descr(),
+                            path,
+                            accessible: child_accessible,
+                            doc_visible: child_doc_visible,
+                            note,
+                            via_import,
+                        });
                     }
                 }
 
@@ -1343,7 +1342,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
     where
@@ -1421,7 +1420,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         err: &mut Diag<'_>,
         macro_kind: MacroKind,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
         ident: Ident,
         krate: &Crate,
     ) {
@@ -1749,7 +1748,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         None
     }
 
-    fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'a>) {
+    fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
         let PrivacyError { ident, binding, outermost_res, parent_scope, single_nested, dedup_span } =
             *privacy_error;
 
@@ -1954,7 +1953,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn find_similarly_named_module_or_crate(
         &mut self,
         ident: Symbol,
-        current_module: Module<'a>,
+        current_module: Module<'ra>,
     ) -> Option<Symbol> {
         let mut candidates = self
             .extern_prelude
@@ -1982,11 +1981,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
-        parent_scope: &ParentScope<'a>,
-        ribs: Option<&PerNS<Vec<Rib<'a>>>>,
-        ignore_binding: Option<NameBinding<'a>>,
-        ignore_import: Option<Import<'a>>,
-        module: Option<ModuleOrUniformRoot<'a>>,
+        parent_scope: &ParentScope<'ra>,
+        ribs: Option<&PerNS<Vec<Rib<'ra>>>>,
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+        module: Option<ModuleOrUniformRoot<'ra>>,
         failed_segment_idx: usize,
         ident: Ident,
     ) -> (String, Option<Suggestion>) {
@@ -2228,7 +2227,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         span: Span,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
@@ -2263,7 +2262,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn make_missing_self_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
@@ -2282,7 +2281,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn make_missing_crate_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
@@ -2313,7 +2312,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn make_missing_super_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
@@ -2335,7 +2334,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn make_external_crate_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'a>,
+        parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         if path[1].ident.span.is_rust_2015() {
             return None;
@@ -2378,8 +2377,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// ```
     pub(crate) fn check_for_module_export_macro(
         &mut self,
-        import: Import<'a>,
-        module: ModuleOrUniformRoot<'a>,
+        import: Import<'ra>,
+        module: ModuleOrUniformRoot<'ra>,
         ident: Ident,
     ) -> Option<(Option<Suggestion>, Option<String>)> {
         let ModuleOrUniformRoot::Module(mut crate_module) = module else {
@@ -3076,7 +3075,7 @@ fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
             }
         }
     }
-    return None;
+    None
 }
 
 fn is_span_suitable_for_use_injection(s: Span) -> bool {

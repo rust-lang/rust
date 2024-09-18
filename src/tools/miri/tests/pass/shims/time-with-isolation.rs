@@ -41,9 +41,9 @@ fn test_block_for_one_second() {
 /// Ensures that we get the same behavior across all targets.
 fn test_deterministic() {
     let begin = Instant::now();
-    for _ in 0..100_000 {}
+    for _ in 0..10_000 {}
     let time = begin.elapsed();
-    println!("The loop took around {}s", time.as_secs());
+    println!("The loop took around {}ms", time.as_millis());
     println!("(It's fine for this number to change when you `--bless` this test.)")
 }
 

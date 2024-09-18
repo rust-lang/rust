@@ -1,4 +1,4 @@
-//@only-target-linux: We only support tokio on Linux
+//@only-target: linux # We only support tokio on Linux
 use tokio::sync::mpsc;
 
 #[tokio::main]

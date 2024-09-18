@@ -3,10 +3,10 @@
 
 use std::{
     future::Future,
+    mem::MaybeUninit,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll, Wake},
-    mem::MaybeUninit,
 };
 
 struct ThingAdder<'a> {

@@ -142,7 +142,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
         // struct and then overwriting &mut self.
         // this creates less assembly
         self.cap = 0;
-        self.buf = RawVec::NEW.non_null();
+        self.buf = RawVec::new().non_null();
         self.ptr = self.buf;
         self.end = self.buf.as_ptr();
 

@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::num::NonZero;
 use std::ops::Bound;
 use std::{cmp, fmt};
@@ -286,20 +285,14 @@ impl<'tcx> IntoDiagArg for LayoutError<'tcx> {
 }
 
 #[derive(Clone, Copy)]
-pub struct LayoutCx<'tcx, C> {
-    pub tcx: C,
+pub struct LayoutCx<'tcx> {
+    pub calc: LayoutCalculator<TyCtxt<'tcx>>,
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
-    type TargetDataLayoutRef = &'tcx TargetDataLayout;
-
-    fn delayed_bug(&self, txt: impl Into<Cow<'static, str>>) {
-        self.tcx.dcx().delayed_bug(txt);
-    }
-
-    fn current_data_layout(&self) -> Self::TargetDataLayoutRef {
-        &self.tcx.data_layout
+impl<'tcx> LayoutCx<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+        Self { calc: LayoutCalculator::new(tcx), param_env }
     }
 }
 
@@ -568,33 +561,33 @@ impl<'tcx> HasTyCtxt<'tcx> for TyCtxtAt<'tcx> {
     }
 }
 
-impl<'tcx, C> HasParamEnv<'tcx> for LayoutCx<'tcx, C> {
+impl<'tcx> HasParamEnv<'tcx> for LayoutCx<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
 }
 
-impl<'tcx, T: HasDataLayout> HasDataLayout for LayoutCx<'tcx, T> {
+impl<'tcx> HasDataLayout for LayoutCx<'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
-        self.tcx.data_layout()
+        self.calc.cx.data_layout()
     }
 }
 
-impl<'tcx, T: HasTargetSpec> HasTargetSpec for LayoutCx<'tcx, T> {
+impl<'tcx> HasTargetSpec for LayoutCx<'tcx> {
     fn target_spec(&self) -> &Target {
-        self.tcx.target_spec()
+        self.calc.cx.target_spec()
     }
 }
 
-impl<'tcx, T: HasWasmCAbiOpt> HasWasmCAbiOpt for LayoutCx<'tcx, T> {
+impl<'tcx> HasWasmCAbiOpt for LayoutCx<'tcx> {
     fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.tcx.wasm_c_abi_opt()
+        self.calc.cx.wasm_c_abi_opt()
     }
 }
 
-impl<'tcx, T: HasTyCtxt<'tcx>> HasTyCtxt<'tcx> for LayoutCx<'tcx, T> {
+impl<'tcx> HasTyCtxt<'tcx> for LayoutCx<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx.tcx()
+        self.calc.cx
     }
 }
 
@@ -634,7 +627,7 @@ pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 pub trait LayoutOfHelpers<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
     /// The `TyAndLayout`-wrapping type (or `TyAndLayout` itself), which will be
     /// returned from `layout_of` (see also `handle_layout_err`).
-    type LayoutOfResult: MaybeResult<TyAndLayout<'tcx>>;
+    type LayoutOfResult: MaybeResult<TyAndLayout<'tcx>> = TyAndLayout<'tcx>;
 
     /// `Span` to use for `tcx.at(span)`, from `layout_of`.
     // FIXME(eddyb) perhaps make this mandatory to get contexts to track it better?
@@ -685,7 +678,7 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 
 impl<'tcx, C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
 
-impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
+impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
 
     #[inline]
@@ -695,26 +688,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
         _: Span,
         _: Ty<'tcx>,
     ) -> &'tcx LayoutError<'tcx> {
-        self.tcx.arena.alloc(err)
-    }
-}
-
-impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxtAt<'tcx>> {
-    type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
-
-    #[inline]
-    fn layout_tcx_at_span(&self) -> Span {
-        self.tcx.span
-    }
-
-    #[inline]
-    fn handle_layout_err(
-        &self,
-        err: LayoutError<'tcx>,
-        _: Span,
-        _: Ty<'tcx>,
-    ) -> &'tcx LayoutError<'tcx> {
-        self.tcx.arena.alloc(err)
+        self.tcx().arena.alloc(err)
     }
 }
 
@@ -1183,10 +1157,10 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         //
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.
-        if tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Abort {
-            if tcx.is_lang_item(did, LangItem::DropInPlace) {
-                return false;
-            }
+        if tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Abort
+            && tcx.is_lang_item(did, LangItem::DropInPlace)
+        {
+            return false;
         }
     }
 
@@ -1259,7 +1233,7 @@ pub enum FnAbiRequest<'tcx> {
 pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
     /// The `&FnAbi`-wrapping type (or `&FnAbi` itself), which will be
     /// returned from `fn_abi_of_*` (see also `handle_fn_abi_err`).
-    type FnAbiOfResult: MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>;
+    type FnAbiOfResult: MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>> = &'tcx FnAbi<'tcx, Ty<'tcx>>;
 
     /// Helper used for `fn_abi_of_*`, to adapt `tcx.fn_abi_of_*(...)` into a
     /// `Self::FnAbiOfResult` (which does not need to be a `Result<...>`).
@@ -1342,7 +1316,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         I: Iterator<Item = (VariantIdx, FieldIdx)>,
     {
-        let cx = LayoutCx { tcx: self, param_env };
+        let cx = LayoutCx::new(self, param_env);
         let mut offset = Size::ZERO;
 
         for (variant, field) in indices {

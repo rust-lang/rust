@@ -1,11 +1,12 @@
 use either::Either;
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::NullOp;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::symbol::sym;
+use rustc_target::abi::Size;
 use tracing::trace;
 
 use super::{throw_ub, ImmTy, InterpCx, Machine, MemPlaceMeta};
@@ -287,6 +288,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
+    /// Computes the total size of this access, `count * elem_size`,
+    /// checking for overflow beyond isize::MAX.
+    pub fn compute_size_in_bytes(&self, elem_size: Size, count: u64) -> Option<Size> {
+        // `checked_mul` applies `u64` limits independent of the target pointer size... but the
+        // subsequent check for `max_size_of_val` means we also handle 32bit targets correctly.
+        // (We cannot use `Size::checked_mul` as that enforces `obj_size_bound` as the limit, which
+        // would be wrong here.)
+        elem_size
+            .bytes()
+            .checked_mul(count)
+            .map(Size::from_bytes)
+            .filter(|&total| total <= self.max_size_of_val())
+    }
+
     fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
@@ -303,8 +318,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let pointee_layout = self.layout_of(pointee_ty)?;
                 assert!(pointee_layout.abi.is_sized());
 
-                // We cannot overflow i64 as a type's size must be <= isize::MAX.
+                // The size always fits in `i64` as it can be at most `isize::MAX`.
                 let pointee_size = i64::try_from(pointee_layout.size.bytes()).unwrap();
+                // This uses the same type as `right`, which can be `isize` or `usize`.
+                // `pointee_size` is guaranteed to fit into both types.
                 let pointee_size = ImmTy::from_int(pointee_size, right.layout);
                 // Multiply element size and element count.
                 let (val, overflowed) = self
@@ -316,6 +333,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
 
                 let offset_bytes = val.to_target_isize(self)?;
+                if !right.layout.abi.is_signed() && offset_bytes < 0 {
+                    // We were supposed to do an unsigned offset but the result is negative -- this
+                    // can only mean that the cast wrapped around.
+                    throw_ub!(PointerArithOverflow)
+                }
                 let offset_ptr = self.ptr_offset_inbounds(ptr, offset_bytes)?;
                 Ok(ImmTy::from_scalar(Scalar::from_maybe_pointer(offset_ptr, self), left.layout))
             }

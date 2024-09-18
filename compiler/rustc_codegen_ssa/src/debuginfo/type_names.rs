@@ -95,7 +95,8 @@ fn push_debuginfo_type_name<'tcx>(
                     }
                     Err(e) => {
                         // Computing the layout can still fail here, e.g. if the target architecture
-                        // cannot represent the type. See https://github.com/rust-lang/rust/issues/94961.
+                        // cannot represent the type. See
+                        // https://github.com/rust-lang/rust/issues/94961.
                         tcx.dcx().emit_fatal(e.into_diagnostic());
                     }
                 }
@@ -236,15 +237,13 @@ fn push_debuginfo_type_name<'tcx>(
             let has_enclosing_parens = if cpp_like_debuginfo {
                 output.push_str("dyn$<");
                 false
+            } else if trait_data.len() > 1 && auto_traits.len() != 0 {
+                // We need enclosing parens because there is more than one trait
+                output.push_str("(dyn ");
+                true
             } else {
-                if trait_data.len() > 1 && auto_traits.len() != 0 {
-                    // We need enclosing parens because there is more than one trait
-                    output.push_str("(dyn ");
-                    true
-                } else {
-                    output.push_str("dyn ");
-                    false
-                }
+                output.push_str("dyn ");
+                false
             };
 
             if let Some(principal) = trait_data.principal() {
@@ -577,33 +576,20 @@ pub fn push_item_name(tcx: TyCtxt<'_>, def_id: DefId, qualified: bool, output: &
 }
 
 fn coroutine_kind_label(coroutine_kind: Option<CoroutineKind>) -> &'static str {
+    use CoroutineDesugaring::*;
+    use CoroutineKind::*;
+    use CoroutineSource::*;
     match coroutine_kind {
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Block)) => {
-            "gen_block"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Closure)) => {
-            "gen_closure"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Fn)) => "gen_fn",
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block)) => {
-            "async_block"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Closure)) => {
-            "async_closure"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Fn)) => {
-            "async_fn"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Block)) => {
-            "async_gen_block"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Closure)) => {
-            "async_gen_closure"
-        }
-        Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Fn)) => {
-            "async_gen_fn"
-        }
-        Some(CoroutineKind::Coroutine(_)) => "coroutine",
+        Some(Desugared(Gen, Block)) => "gen_block",
+        Some(Desugared(Gen, Closure)) => "gen_closure",
+        Some(Desugared(Gen, Fn)) => "gen_fn",
+        Some(Desugared(Async, Block)) => "async_block",
+        Some(Desugared(Async, Closure)) => "async_closure",
+        Some(Desugared(Async, Fn)) => "async_fn",
+        Some(Desugared(AsyncGen, Block)) => "async_gen_block",
+        Some(Desugared(AsyncGen, Closure)) => "async_gen_closure",
+        Some(Desugared(AsyncGen, Fn)) => "async_gen_fn",
+        Some(Coroutine(_)) => "coroutine",
         None => "closure",
     }
 }

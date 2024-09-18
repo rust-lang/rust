@@ -193,8 +193,6 @@ declare_features! (
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
-    /// Gating for a new desugaring of const arguments of usages of const parameters
-    (internal, const_arg_path, "1.81.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
     /// Outputs useful `assert!` messages
@@ -403,16 +401,10 @@ declare_features! (
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
-    /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
-    (unstable, const_extern_fn, "1.40.0", Some(64926)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
-    /// Allows using `&mut` in constant functions.
-    (unstable, const_mut_refs, "1.41.0", Some(57349)),
     /// Be more precise when looking for live drops in a const context.
     (unstable, const_precise_live_drops, "1.46.0", Some(73255)),
-    /// Allows references to types with interior mutability within constants
-    (unstable, const_refs_to_cell, "1.51.0", Some(80384)),
     /// Allows creating pointers and references to `static` items in constants.
     (unstable, const_refs_to_static, "1.78.0", Some(119618)),
     /// Allows `impl const Trait for T` syntax.
@@ -497,6 +489,8 @@ declare_features! (
     (unstable, half_open_range_patterns_in_slices, "1.66.0", Some(67264)),
     /// Allows `if let` guard in match arms.
     (unstable, if_let_guard, "1.47.0", Some(51114)),
+    /// Rescoping temporaries in `if let` to align with Rust 2024.
+    (unstable, if_let_rescope, "CURRENT_RUSTC_VERSION", Some(124085)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.

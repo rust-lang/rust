@@ -14,7 +14,7 @@ use clap::ValueEnum;
 
 use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{
-    check, clean, clippy, compile, dist, doc, install, llvm, run, setup, test, vendor,
+    check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, vendor,
 };
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
@@ -793,6 +793,7 @@ impl<'a> Builder<'a> {
                 tool::Clippy,
                 tool::CargoClippy,
                 llvm::Llvm,
+                gcc::Gcc,
                 llvm::Sanitizers,
                 tool::Rustfmt,
                 tool::Miri,
@@ -943,6 +944,7 @@ impl<'a> Builder<'a> {
                 doc::Bootstrap,
                 doc::Releases,
                 doc::RunMakeSupport,
+                doc::BuildHelper,
             ),
             Kind::Dist => describe!(
                 dist::Docs,

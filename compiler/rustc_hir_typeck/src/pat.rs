@@ -83,7 +83,7 @@ struct TopInfo<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-struct PatInfo<'tcx, 'a> {
+struct PatInfo<'a, 'tcx> {
     binding_mode: ByRef,
     max_ref_mutbl: MutblCap,
     top_info: &'a TopInfo<'tcx>,
@@ -222,7 +222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Outside of this module, `check_pat_top` should always be used.
     /// Conversely, inside this module, `check_pat_top` should never be used.
     #[instrument(level = "debug", skip(self, pat_info))]
-    fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx, '_>) {
+    fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'_, 'tcx>) {
         let PatInfo { binding_mode, max_ref_mutbl, top_info: ti, current_depth, .. } = pat_info;
 
         let path_res = match &pat.kind {
@@ -668,7 +668,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ident: Ident,
         sub: Option<&'tcx Pat<'tcx>>,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let PatInfo { binding_mode: def_br, top_info: ti, .. } = pat_info;
 
@@ -981,7 +981,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         // Resolve the path and check the definition for errors.
         let (variant, pat_ty) = match self.check_struct_path(qpath, pat.hir_id) {
@@ -1184,7 +1184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         subpats: &'tcx [Pat<'tcx>],
         ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let on_error = |e| {
@@ -1441,7 +1441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         elements: &'tcx [Pat<'tcx>],
         ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let mut expected_len = elements.len();
@@ -1479,7 +1479,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &'tcx ty::VariantDef,
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx;
 
@@ -2070,7 +2070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         inner: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (box_ty, inner_ty) = self
@@ -2096,7 +2096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         inner: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         // Register a `DerefPure` bound, which is required by all `deref!()` pats.
@@ -2137,7 +2137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inner: &'tcx Pat<'tcx>,
         pat_mutbl: Mutability,
         mut expected: Ty<'tcx>,
-        mut pat_info: PatInfo<'tcx, '_>,
+        mut pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let features = tcx.features();
@@ -2345,7 +2345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         slice: Option<&'tcx Pat<'tcx>>,
         after: &'tcx [Pat<'tcx>],
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let expected = self.try_structurally_resolve_type(span, expected);
 
@@ -2517,7 +2517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         expected_ty: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> ErrorGuaranteed {
         let PatInfo { top_info: ti, current_depth, .. } = pat_info;
 
@@ -2533,6 +2533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.help("the semantics of slice patterns changed recently; see issue #62254");
         } else if self
             .autoderef(span, expected_ty)
+            .silence_errors()
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
             && let Some(span) = ti.span
             && let Some(_) = ti.origin_expr

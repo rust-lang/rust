@@ -8,21 +8,22 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
+use std::env;
 use std::env::consts::EXE_EXTENSION;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use std::{env, io};
 
 use build_helper::ci::CiEnv;
+use build_helper::git::get_closest_merge_commit;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::channel;
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    self, exe, get_clang_cl_resource_dir, output, t, unhashed_basename, up_to_date,
+    self, exe, get_clang_cl_resource_dir, output, t, unhashed_basename, up_to_date, HashStamp,
 };
 use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
 
@@ -153,10 +154,9 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
-        helpers::get_closest_merge_base_commit(
+        get_closest_merge_commit(
             Some(&config.src),
             &config.git_config(),
-            &config.stage0_metadata.config.git_merge_commit_email,
             &[
                 config.src.join("src/llvm-project"),
                 config.src.join("src/bootstrap/download-ci-llvm-stamp"),
@@ -1239,44 +1239,6 @@ fn supported_sanitizers(
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }
         _ => Vec::new(),
-    }
-}
-
-struct HashStamp {
-    path: PathBuf,
-    hash: Option<Vec<u8>>,
-}
-
-impl HashStamp {
-    fn new(path: PathBuf, hash: Option<&str>) -> Self {
-        HashStamp { path, hash: hash.map(|s| s.as_bytes().to_owned()) }
-    }
-
-    fn is_done(&self) -> bool {
-        match fs::read(&self.path) {
-            Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => false,
-            Err(e) => {
-                panic!("failed to read stamp file `{}`: {}", self.path.display(), e);
-            }
-        }
-    }
-
-    fn remove(&self) -> io::Result<()> {
-        match fs::remove_file(&self.path) {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                if e.kind() == io::ErrorKind::NotFound {
-                    Ok(())
-                } else {
-                    Err(e)
-                }
-            }
-        }
-    }
-
-    fn write(&self) -> io::Result<()> {
-        fs::write(&self.path, self.hash.as_deref().unwrap_or(b""))
     }
 }
 

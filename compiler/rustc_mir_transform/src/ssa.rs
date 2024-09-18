@@ -235,7 +235,7 @@ impl SsaLocals {
     }
 }
 
-struct SsaVisitor<'tcx, 'a> {
+struct SsaVisitor<'a, 'tcx> {
     body: &'a Body<'tcx>,
     dominators: &'a Dominators<BasicBlock>,
     assignments: IndexVec<Local, Set1<DefLocation>>,
@@ -261,7 +261,7 @@ impl SsaVisitor<'_, '_> {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for SsaVisitor<'tcx, '_> {
+impl<'tcx> Visitor<'tcx> for SsaVisitor<'_, 'tcx> {
     fn visit_local(&mut self, local: Local, ctxt: PlaceContext, loc: Location) {
         match ctxt {
             PlaceContext::MutatingUse(MutatingUseContext::Projection)

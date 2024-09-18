@@ -1,9 +1,9 @@
-thread 'main' panicked at $DIR/bad_unwind.rs:LL:CC:
+thread 'main' panicked at tests/fail/panic/bad_unwind.rs:LL:CC:
 explicit panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 error: Undefined Behavior: unwinding past a stack frame that does not allow unwinding
-  --> $DIR/bad_unwind.rs:LL:CC
+  --> tests/fail/panic/bad_unwind.rs:LL:CC
    |
 LL |     std::panic::catch_unwind(|| unwind()).unwrap_err();
    |                                 ^^^^^^^^ unwinding past a stack frame that does not allow unwinding
@@ -11,12 +11,12 @@ LL |     std::panic::catch_unwind(|| unwind()).unwrap_err();
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside closure at $DIR/bad_unwind.rs:LL:CC
-   = note: inside `std::panicking::r#try::do_call::<{closure@$DIR/bad_unwind.rs:LL:CC}, ()>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::r#try::<(), {closure@$DIR/bad_unwind.rs:LL:CC}>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panic::catch_unwind::<{closure@$DIR/bad_unwind.rs:LL:CC}, ()>` at RUSTLIB/std/src/panic.rs:LL:CC
+   = note: inside closure at tests/fail/panic/bad_unwind.rs:LL:CC
+   = note: inside `std::panicking::r#try::do_call::<{closure@tests/fail/panic/bad_unwind.rs:LL:CC}, ()>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::r#try::<(), {closure@tests/fail/panic/bad_unwind.rs:LL:CC}>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panic::catch_unwind::<{closure@tests/fail/panic/bad_unwind.rs:LL:CC}, ()>` at RUSTLIB/std/src/panic.rs:LL:CC
 note: inside `main`
-  --> $DIR/bad_unwind.rs:LL:CC
+  --> tests/fail/panic/bad_unwind.rs:LL:CC
    |
 LL |     std::panic::catch_unwind(|| unwind()).unwrap_err();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

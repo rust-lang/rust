@@ -118,7 +118,7 @@ mod temp_stable_hash_impls {
     }
 }
 
-pub fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &Bx,
     span: Option<Span>,
     li: LangItem,
@@ -129,7 +129,7 @@ pub fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance), instance)
 }
 
-pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     llty: Bx::Type,
     mask_llty: Bx::Type,
@@ -200,7 +200,8 @@ pub fn i686_decorated_name(
     let mut decorated_name = String::with_capacity(name.len() + 6);
 
     if disable_name_mangling {
-        // LLVM uses a binary 1 ('\x01') prefix to a name to indicate that mangling needs to be disabled.
+        // LLVM uses a binary 1 ('\x01') prefix to a name to indicate that mangling needs to be
+        // disabled.
         decorated_name.push('\x01');
     }
 

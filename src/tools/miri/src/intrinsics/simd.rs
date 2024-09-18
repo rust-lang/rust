@@ -50,8 +50,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "bitreverse"
             => {
                 let [op] = check_arg_count(args)?;
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (op, op_len) = this.project_to_simd(op)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, op_len);
 
@@ -200,9 +200,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 use mir::BinOp;
 
                 let [left, right] = check_arg_count(args)?;
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, left_len);
                 assert_eq!(dest_len, right_len);
@@ -291,10 +291,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "fma" => {
                 let [a, b, c] = check_arg_count(args)?;
-                let (a, a_len) = this.operand_to_simd(a)?;
-                let (b, b_len) = this.operand_to_simd(b)?;
-                let (c, c_len) = this.operand_to_simd(c)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (a, a_len) = this.project_to_simd(a)?;
+                let (b, b_len) = this.project_to_simd(b)?;
+                let (c, c_len) = this.project_to_simd(c)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, a_len);
                 assert_eq!(dest_len, b_len);
@@ -345,7 +345,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 use mir::BinOp;
 
                 let [op] = check_arg_count(args)?;
-                let (op, op_len) = this.operand_to_simd(op)?;
+                let (op, op_len) = this.project_to_simd(op)?;
 
                 let imm_from_bool =
                     |b| ImmTy::from_scalar(Scalar::from_bool(b), this.machine.layouts.bool);
@@ -408,7 +408,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 use mir::BinOp;
 
                 let [op, init] = check_arg_count(args)?;
-                let (op, op_len) = this.operand_to_simd(op)?;
+                let (op, op_len) = this.project_to_simd(op)?;
                 let init = this.read_immediate(init)?;
 
                 let mir_op = match intrinsic_name {
@@ -426,10 +426,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "select" => {
                 let [mask, yes, no] = check_arg_count(args)?;
-                let (mask, mask_len) = this.operand_to_simd(mask)?;
-                let (yes, yes_len) = this.operand_to_simd(yes)?;
-                let (no, no_len) = this.operand_to_simd(no)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (mask, mask_len) = this.project_to_simd(mask)?;
+                let (yes, yes_len) = this.project_to_simd(yes)?;
+                let (no, no_len) = this.project_to_simd(no)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, mask_len);
                 assert_eq!(dest_len, yes_len);
@@ -448,9 +448,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Variant of `select` that takes a bitmask rather than a "vector of bool".
             "select_bitmask" => {
                 let [mask, yes, no] = check_arg_count(args)?;
-                let (yes, yes_len) = this.operand_to_simd(yes)?;
-                let (no, no_len) = this.operand_to_simd(no)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (yes, yes_len) = this.project_to_simd(yes)?;
+                let (no, no_len) = this.project_to_simd(no)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
                 let bitmask_len = dest_len.next_multiple_of(8);
                 if bitmask_len > 64 {
                     throw_unsup_format!(
@@ -522,7 +522,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Converts a "vector of bool" into a bitmask.
             "bitmask" => {
                 let [op] = check_arg_count(args)?;
-                let (op, op_len) = this.operand_to_simd(op)?;
+                let (op, op_len) = this.project_to_simd(op)?;
                 let bitmask_len = op_len.next_multiple_of(8);
                 if bitmask_len > 64 {
                     throw_unsup_format!(
@@ -570,8 +570,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "cast" | "as" | "cast_ptr" | "expose_provenance" | "with_exposed_provenance" => {
                 let [op] = check_arg_count(args)?;
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (op, op_len) = this.project_to_simd(op)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, op_len);
 
@@ -627,9 +627,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "shuffle_generic" => {
                 let [left, right] = check_arg_count(args)?;
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 let index = generic_args[2]
                     .expect_const()
@@ -662,26 +662,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "shuffle" => {
                 let [left, right, index] = check_arg_count(args)?;
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
-
-                // `index` is an array, not a SIMD type
-                let ty::Array(_, index_len) = index.layout.ty.kind() else {
-                    span_bug!(
-                        this.cur_span(),
-                        "simd_shuffle index argument has non-array type {}",
-                        index.layout.ty
-                    )
-                };
-                let index_len = index_len.eval_target_usize(*this.tcx, this.param_env());
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
+                let (index, index_len) = this.project_to_simd(index)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
                 assert_eq!(index_len, dest_len);
 
                 for i in 0..dest_len {
                     let src_index: u64 = this
-                        .read_immediate(&this.project_index(index, i)?)?
+                        .read_immediate(&this.project_index(&index, i)?)?
                         .to_scalar()
                         .to_u32()?
                         .into();
@@ -702,10 +693,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "gather" => {
                 let [passthru, ptrs, mask] = check_arg_count(args)?;
-                let (passthru, passthru_len) = this.operand_to_simd(passthru)?;
-                let (ptrs, ptrs_len) = this.operand_to_simd(ptrs)?;
-                let (mask, mask_len) = this.operand_to_simd(mask)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (passthru, passthru_len) = this.project_to_simd(passthru)?;
+                let (ptrs, ptrs_len) = this.project_to_simd(ptrs)?;
+                let (mask, mask_len) = this.project_to_simd(mask)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, passthru_len);
                 assert_eq!(dest_len, ptrs_len);
@@ -728,9 +719,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "scatter" => {
                 let [value, ptrs, mask] = check_arg_count(args)?;
-                let (value, value_len) = this.operand_to_simd(value)?;
-                let (ptrs, ptrs_len) = this.operand_to_simd(ptrs)?;
-                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let (value, value_len) = this.project_to_simd(value)?;
+                let (ptrs, ptrs_len) = this.project_to_simd(ptrs)?;
+                let (mask, mask_len) = this.project_to_simd(mask)?;
 
                 assert_eq!(ptrs_len, value_len);
                 assert_eq!(ptrs_len, mask_len);
@@ -748,10 +739,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "masked_load" => {
                 let [mask, ptr, default] = check_arg_count(args)?;
-                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let (mask, mask_len) = this.project_to_simd(mask)?;
                 let ptr = this.read_pointer(ptr)?;
-                let (default, default_len) = this.operand_to_simd(default)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (default, default_len) = this.project_to_simd(default)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, mask_len);
                 assert_eq!(dest_len, default_len);
@@ -775,9 +766,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "masked_store" => {
                 let [mask, ptr, vals] = check_arg_count(args)?;
-                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let (mask, mask_len) = this.project_to_simd(mask)?;
                 let ptr = this.read_pointer(ptr)?;
-                let (vals, vals_len) = this.operand_to_simd(vals)?;
+                let (vals, vals_len) = this.project_to_simd(vals)?;
 
                 assert_eq!(mask_len, vals_len);
 
