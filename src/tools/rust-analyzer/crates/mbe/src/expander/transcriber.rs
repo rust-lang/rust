@@ -97,7 +97,7 @@ impl Bindings {
                     | MetaVarKind::Ty
                     | MetaVarKind::Pat
                     | MetaVarKind::PatParam
-                    | MetaVarKind::Expr
+                    | MetaVarKind::Expr(_)
                     | MetaVarKind::Ident => {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                             sym: sym::missing.clone(),

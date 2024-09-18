@@ -177,3 +177,149 @@ fn main() {
             }"#]],
     );
 }
+
+#[test]
+fn expr_2021() {
+    check(
+        Edition::Edition2024,
+        Edition::Edition2024,
+        r#"
+($($e:expr),* $(,)?) => {
+    $($e);* ;
+};
+"#,
+        r#"
+    _,
+    const { 1 },
+"#,
+        expect![[r#"
+            SUBTREE $$ 1:0@0..25#0 1:0@0..25#0
+              IDENT   _ 1:0@5..6#0
+              PUNCH   ; [joint] 0:0@36..37#0
+              SUBTREE () 0:0@34..35#0 0:0@34..35#0
+                IDENT   const 1:0@12..17#0
+                SUBTREE {} 1:0@18..19#0 1:0@22..23#0
+                  LITERAL Integer 1 1:0@20..21#0
+              PUNCH   ; [alone] 0:0@39..40#0
+
+            _;
+            (const  {
+                1
+            });"#]],
+    );
+    check(
+        Edition::Edition2021,
+        Edition::Edition2024,
+        r#"
+($($e:expr),* $(,)?) => {
+    $($e);* ;
+};
+"#,
+        r#"
+    _,
+"#,
+        expect![[r#"
+            ExpandError {
+                inner: (
+                    1:0@5..6#0,
+                    NoMatchingRule,
+                ),
+            }
+
+            SUBTREE $$ 1:0@0..8#0 1:0@0..8#0
+              PUNCH   ; [alone] 0:0@39..40#0
+
+            ;"#]],
+    );
+    check(
+        Edition::Edition2021,
+        Edition::Edition2024,
+        r#"
+($($e:expr),* $(,)?) => {
+    $($e);* ;
+};
+"#,
+        r#"
+    const { 1 },
+"#,
+        expect![[r#"
+            ExpandError {
+                inner: (
+                    1:0@5..10#0,
+                    NoMatchingRule,
+                ),
+            }
+
+            SUBTREE $$ 1:0@0..18#0 1:0@0..18#0
+              PUNCH   ; [alone] 0:0@39..40#0
+
+            ;"#]],
+    );
+    check(
+        Edition::Edition2024,
+        Edition::Edition2024,
+        r#"
+($($e:expr_2021),* $(,)?) => {
+    $($e);* ;
+};
+"#,
+        r#"
+    4,
+    "literal",
+    funcall(),
+    future.await,
+    break 'foo bar,
+"#,
+        expect![[r#"
+            SUBTREE $$ 1:0@0..76#0 1:0@0..76#0
+              LITERAL Integer 4 1:0@5..6#0
+              PUNCH   ; [joint] 0:0@41..42#0
+              LITERAL Str literal 1:0@12..21#0
+              PUNCH   ; [joint] 0:0@41..42#0
+              SUBTREE () 0:0@39..40#0 0:0@39..40#0
+                IDENT   funcall 1:0@27..34#0
+                SUBTREE () 1:0@34..35#0 1:0@35..36#0
+              PUNCH   ; [joint] 0:0@41..42#0
+              SUBTREE () 0:0@39..40#0 0:0@39..40#0
+                IDENT   future 1:0@42..48#0
+                PUNCH   . [alone] 1:0@48..49#0
+                IDENT   await 1:0@49..54#0
+              PUNCH   ; [joint] 0:0@41..42#0
+              SUBTREE () 0:0@39..40#0 0:0@39..40#0
+                IDENT   break 1:0@60..65#0
+                PUNCH   ' [joint] 1:0@66..67#0
+                IDENT   foo 1:0@67..70#0
+                IDENT   bar 1:0@71..74#0
+              PUNCH   ; [alone] 0:0@44..45#0
+
+            4;
+            "literal";
+            (funcall());
+            (future.await);
+            (break 'foo bar);"#]],
+    );
+    check(
+        Edition::Edition2024,
+        Edition::Edition2024,
+        r#"
+($($e:expr_2021),* $(,)?) => {
+    $($e);* ;
+};
+"#,
+        r#"
+    _,
+"#,
+        expect![[r#"
+            ExpandError {
+                inner: (
+                    1:0@5..6#0,
+                    NoMatchingRule,
+                ),
+            }
+
+            SUBTREE $$ 1:0@0..8#0 1:0@0..8#0
+              PUNCH   ; [alone] 0:0@44..45#0
+
+            ;"#]],
+    );
+}

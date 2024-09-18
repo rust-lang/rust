@@ -106,6 +106,16 @@ pub(crate) enum RepeatKind {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ExprKind {
+    // Matches expressions using the post-edition 2024. Was written using
+    // `expr` in edition 2024 or later.
+    Expr,
+    // Matches expressions using the pre-edition 2024 rules.
+    // Either written using `expr` in edition 2021 or earlier or.was written using `expr_2021`.
+    Expr2021,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum MetaVarKind {
     Path,
     Ty,
@@ -116,7 +126,7 @@ pub(crate) enum MetaVarKind {
     Meta,
     Item,
     Vis,
-    Expr,
+    Expr(ExprKind),
     Ident,
     Tt,
     Lifetime,
@@ -277,17 +287,27 @@ fn eat_fragment_kind(
         let kind = match ident.sym.as_str() {
             "path" => MetaVarKind::Path,
             "ty" => MetaVarKind::Ty,
-            "pat" => match edition(ident.span.ctx) {
-                Edition::Edition2015 | Edition::Edition2018 => MetaVarKind::PatParam,
-                Edition::Edition2021 | Edition::Edition2024 => MetaVarKind::Pat,
-            },
+            "pat" => {
+                if edition(ident.span.ctx).at_least_2021() {
+                    MetaVarKind::Pat
+                } else {
+                    MetaVarKind::PatParam
+                }
+            }
             "pat_param" => MetaVarKind::PatParam,
             "stmt" => MetaVarKind::Stmt,
             "block" => MetaVarKind::Block,
             "meta" => MetaVarKind::Meta,
             "item" => MetaVarKind::Item,
             "vis" => MetaVarKind::Vis,
-            "expr" => MetaVarKind::Expr,
+            "expr" => {
+                if edition(ident.span.ctx).at_least_2024() {
+                    MetaVarKind::Expr(ExprKind::Expr)
+                } else {
+                    MetaVarKind::Expr(ExprKind::Expr2021)
+                }
+            }
+            "expr_2021" => MetaVarKind::Expr(ExprKind::Expr2021),
             "ident" => MetaVarKind::Ident,
             "tt" => MetaVarKind::Tt,
             "lifetime" => MetaVarKind::Lifetime,
