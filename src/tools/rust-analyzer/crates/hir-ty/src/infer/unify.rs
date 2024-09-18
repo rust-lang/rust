@@ -266,14 +266,16 @@ impl<'a> InferenceTable<'a> {
             }
             let v = InferenceVar::from(i as u32);
             let root = self.var_unification_table.inference_var_root(v);
-            if let Some(data) = self.type_variable_table.get_mut(root.index() as usize) {
-                *data |= TypeVariableFlags::DIVERGING;
-            }
+            self.modify_type_variable_flag(root, |f| {
+                *f |= TypeVariableFlags::DIVERGING;
+            });
         }
     }
 
     pub(super) fn set_diverging(&mut self, iv: InferenceVar, diverging: bool) {
-        self.type_variable_table[iv.index() as usize].set(TypeVariableFlags::DIVERGING, diverging);
+        self.modify_type_variable_flag(iv, |f| {
+            f.set(TypeVariableFlags::DIVERGING, diverging);
+        });
     }
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
@@ -370,6 +372,18 @@ impl<'a> InferenceTable<'a> {
         var
     }
 
+    fn modify_type_variable_flag<F>(&mut self, var: InferenceVar, cb: F)
+    where
+        F: FnOnce(&mut TypeVariableFlags),
+    {
+        let idx = var.index() as usize;
+        if self.type_variable_table.len() <= idx {
+            self.extend_type_variable_table(idx);
+        }
+        if let Some(f) = self.type_variable_table.get_mut(idx) {
+            cb(f);
+        }
+    }
     fn extend_type_variable_table(&mut self, to_index: usize) {
         let count = to_index - self.type_variable_table.len() + 1;
         self.type_variable_table.extend(iter::repeat(TypeVariableFlags::default()).take(count));
