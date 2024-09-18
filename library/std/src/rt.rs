@@ -97,7 +97,7 @@ unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     };
 
     // Set up the current thread to give it the right name.
-    let thread = Thread::new_main();
+    let thread = unsafe { Thread::new_main() };
     thread::set_current(thread);
 }
 
