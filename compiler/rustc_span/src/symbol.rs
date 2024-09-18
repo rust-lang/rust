@@ -1893,6 +1893,7 @@ symbols! {
         string_deref_patterns,
         string_from_utf8,
         string_insert_str,
+        string_new,
         string_push_str,
         stringify,
         struct_field_attributes,
