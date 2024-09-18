@@ -262,7 +262,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     #[instrument(level = "debug", skip(self, llty))]
-    pub(crate) fn get_static_inner(&self, def_id: DefId, llty: &'ll Type) -> &'ll Value {
+    fn get_static_inner(&self, def_id: DefId, llty: &'ll Type) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
         if let Some(&g) = self.instances.borrow().get(&instance) {
             trace!("used cached value");
