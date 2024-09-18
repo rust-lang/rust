@@ -27,32 +27,32 @@ pub enum OperandValue<V> {
     /// which indicates that it refers to an unsized rvalue.
     ///
     /// An `OperandValue` *must* be this variant for any type for which
-    /// [`LayoutTypeMethods::is_backend_ref`] returns `true`.
+    /// [`LayoutTypeCodegenMethods::is_backend_ref`] returns `true`.
     /// (That basically amounts to "isn't one of the other variants".)
     ///
     /// This holds a [`PlaceValue`] (like a [`PlaceRef`] does) with a pointer
     /// to the location holding the value. The type behind that pointer is the
-    /// one returned by [`LayoutTypeMethods::backend_type`].
+    /// one returned by [`LayoutTypeCodegenMethods::backend_type`].
     Ref(PlaceValue<V>),
     /// A single LLVM immediate value.
     ///
     /// An `OperandValue` *must* be this variant for any type for which
-    /// [`LayoutTypeMethods::is_backend_immediate`] returns `true`.
+    /// [`LayoutTypeCodegenMethods::is_backend_immediate`] returns `true`.
     /// The backend value in this variant must be the *immediate* backend type,
-    /// as returned by [`LayoutTypeMethods::immediate_backend_type`].
+    /// as returned by [`LayoutTypeCodegenMethods::immediate_backend_type`].
     Immediate(V),
     /// A pair of immediate LLVM values. Used by fat pointers too.
     ///
     /// An `OperandValue` *must* be this variant for any type for which
-    /// [`LayoutTypeMethods::is_backend_scalar_pair`] returns `true`.
+    /// [`LayoutTypeCodegenMethods::is_backend_scalar_pair`] returns `true`.
     /// The backend values in this variant must be the *immediate* backend types,
-    /// as returned by [`LayoutTypeMethods::scalar_pair_element_backend_type`]
+    /// as returned by [`LayoutTypeCodegenMethods::scalar_pair_element_backend_type`]
     /// with `immediate: true`.
     Pair(V, V),
     /// A value taking no bytes, and which therefore needs no LLVM value at all.
     ///
     /// If you ever need a `V` to pass to something, get a fresh poison value
-    /// from [`ConstMethods::const_poison`].
+    /// from [`ConstCodegenMethods::const_poison`].
     ///
     /// An `OperandValue` *must* be this variant for any type for which
     /// `is_zst` on its `Layout` returns `true`. Note however that
@@ -110,7 +110,7 @@ impl<V: CodegenObject> OperandValue<V> {
         PlaceValue { llval, llextra, align }
     }
 
-    pub(crate) fn is_expected_variant_for_type<'tcx, Cx: LayoutTypeMethods<'tcx>>(
+    pub(crate) fn is_expected_variant_for_type<'tcx, Cx: LayoutTypeCodegenMethods<'tcx>>(
         &self,
         cx: &Cx,
         ty: TyAndLayout<'tcx>,
@@ -280,7 +280,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     ///
     /// If you don't need the type, see [`OperandValue::pointer_parts`]
     /// or [`OperandValue::deref`].
-    pub fn deref<Cx: LayoutTypeMethods<'tcx>>(self, cx: &Cx) -> PlaceRef<'tcx, V> {
+    pub fn deref<Cx: CodegenMethods<'tcx>>(self, cx: &Cx) -> PlaceRef<'tcx, V> {
         if self.layout.ty.is_box() {
             // Derefer should have removed all Box derefs
             bug!("dereferencing {:?} in codegen", self.layout.ty);

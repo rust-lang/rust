@@ -1378,7 +1378,8 @@ pub struct LetStmt<'hir> {
     pub hir_id: HirId,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
-    /// desugaring. Otherwise will be `Normal`.
+    /// desugaring, or `AssignDesugar` if it is the result of a complex
+    /// assignment desugaring. Otherwise will be `Normal`.
     pub source: LocalSource,
 }
 

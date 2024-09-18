@@ -9,7 +9,7 @@ use rustc_target::abi::Size;
 use super::BackendTypes;
 use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
 
-pub trait DebugInfoMethods<'tcx>: BackendTypes {
+pub trait DebugInfoCodegenMethods<'tcx>: BackendTypes {
     fn create_vtable_debuginfo(
         &self,
         ty: Ty<'tcx>,

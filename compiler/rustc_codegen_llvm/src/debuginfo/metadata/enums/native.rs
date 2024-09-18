@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use libc::c_uint;
 use rustc_codegen_ssa::debuginfo::type_names::compute_debuginfo_type_name;
 use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
-use rustc_codegen_ssa::traits::ConstMethods;
+use rustc_codegen_ssa::traits::ConstCodegenMethods;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self};

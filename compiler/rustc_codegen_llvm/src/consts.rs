@@ -565,7 +565,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 }
 
-impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
+impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
         if let Some(&gv) = self.const_globals.borrow().get(&cv) {
             unsafe {

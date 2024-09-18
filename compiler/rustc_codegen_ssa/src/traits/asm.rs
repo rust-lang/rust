@@ -60,7 +60,7 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
     );
 }
 
-pub trait AsmMethods<'tcx> {
+pub trait AsmCodegenMethods<'tcx> {
     fn codegen_global_asm(
         &self,
         template: &[InlineAsmTemplatePiece],

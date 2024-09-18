@@ -3,7 +3,7 @@ use rustc_target::abi;
 
 use super::BackendTypes;
 
-pub trait ConstMethods<'tcx>: BackendTypes {
+pub trait ConstCodegenMethods<'tcx>: BackendTypes {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     /// Generate an uninitialized value (matching uninitialized memory in MIR).
