@@ -835,7 +835,7 @@ impl Read for &File {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for &File {
-    /// Writes some bytes from the file.
+    /// Writes some bytes to the file.
     ///
     /// See [`Write::write`] docs for more info.
     ///
