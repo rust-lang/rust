@@ -209,6 +209,23 @@ struct ReorderEndNiche {
     b: MiddleNiche4,
 }
 
+// We want that the niche selection doesn't depend on order of the fields. See issue #125630.
+pub enum NicheFieldOrder1 {
+    A {
+        x: NonZero<u64>,
+        y: [NonZero<u64>; 2],
+    },
+    B([u64; 2]),
+}
+
+pub enum NicheFieldOrder2 {
+    A {
+        y: [NonZero<u64>; 2],
+        x: NonZero<u64>,
+    },
+    B([u64; 2]),
+}
+
 
 // standins for std types which we want to be laid out in a reasonable way
 struct RawVecDummy {
@@ -259,6 +276,9 @@ pub fn main() {
     assert_eq!(size_of::<EnumWithMaybeUninhabitedVariant<!>>(),
                size_of::<EnumWithMaybeUninhabitedVariant<()>>());
     assert_eq!(size_of::<NicheFilledEnumWithAbsentVariant>(), size_of::<&'static ()>());
+
+    assert_eq!(size_of::<NicheFieldOrder1>(), 24);
+    assert_eq!(size_of::<NicheFieldOrder2>(), 24);
 
     assert_eq!(size_of::<Option<Option<(bool, &())>>>(), size_of::<(bool, &())>());
     assert_eq!(size_of::<Option<Option<(&(), bool)>>>(), size_of::<(bool, &())>());
