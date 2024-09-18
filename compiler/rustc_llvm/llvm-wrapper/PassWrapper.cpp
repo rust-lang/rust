@@ -1211,7 +1211,11 @@ struct LLVMRustThinLTOData {
   // Not 100% sure what these are, but they impact what's internalized and
   // what's inlined across modules, I believe.
 #if LLVM_VERSION_GE(18, 0)
+#if LLVM_VERSION_GE(20, 0)
+  FunctionImporter::ImportListsTy ImportLists;
+#else
   DenseMap<StringRef, FunctionImporter::ImportMapTy> ImportLists;
+#endif
   DenseMap<StringRef, FunctionImporter::ExportSetTy> ExportLists;
   DenseMap<StringRef, GVSummaryMapTy> ModuleToDefinedGVSummaries;
 #else
