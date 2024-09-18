@@ -78,7 +78,7 @@ mod tests;
 
 use std::{collections::hash_map, sync::LazyLock};
 
-use hir::{diagnostics::AnyDiagnostic, HirFileId, InFile, Semantics};
+use hir::{db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, HirFileId, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
     base_db::SourceDatabase,
@@ -501,6 +501,17 @@ pub fn semantic_diagnostics(
 
     res.retain(|d| d.severity != Severity::Allow);
 
+    res.retain_mut(|diag| {
+        if let Some(node) = diag
+            .main_node
+            .map(|ptr| ptr.map(|node| node.to_node(&ctx.sema.parse_or_expand(ptr.file_id))))
+        {
+            handle_diag_from_macros(&ctx.sema, diag, &node)
+        } else {
+            true
+        }
+    });
+
     res
 }
 
@@ -517,6 +528,35 @@ pub fn full_diagnostics(
     res
 }
 
+/// Returns whether to keep this diagnostic (or remove it).
+fn handle_diag_from_macros(
+    sema: &Semantics<'_, RootDatabase>,
+    diag: &mut Diagnostic,
+    node: &InFile<SyntaxNode>,
+) -> bool {
+    let Some(macro_file) = node.file_id.macro_file() else { return true };
+    let span_map = sema.db.expansion_span_map(macro_file);
+    let mut spans = span_map.spans_for_range(node.text_range());
+    if spans.any(|span| {
+        sema.db.lookup_intern_syntax_context(span.ctx).outer_expn.is_some_and(|expansion| {
+            let macro_call =
+                sema.db.lookup_intern_macro_call(expansion.as_macro_file().macro_call_id);
+            !Crate::from(macro_call.def.krate).origin(sema.db).is_local()
+        })
+    }) {
+        // Disable suggestions for external macros, they'll change library code and it's just bad.
+        diag.fixes = None;
+
+        // All Clippy lints report in macros, see https://github.com/rust-lang/rust-clippy/blob/903293b199364/declare_clippy_lint/src/lib.rs#L172.
+        if let DiagnosticCode::RustcLint(lint) = diag.code {
+            if !LINTS_TO_REPORT_IN_EXTERNAL_MACROS.contains(lint) {
+                return false;
+            }
+        };
+    }
+    true
+}
+
 // `__RA_EVERY_LINT` is a fake lint group to allow every lint in proc macros
 
 static RUSTC_LINT_GROUPS_DICT: LazyLock<FxHashMap<&str, Vec<&str>>> =
@@ -524,6 +564,10 @@ static RUSTC_LINT_GROUPS_DICT: LazyLock<FxHashMap<&str, Vec<&str>>> =
 
 static CLIPPY_LINT_GROUPS_DICT: LazyLock<FxHashMap<&str, Vec<&str>>> =
     LazyLock::new(|| build_group_dict(CLIPPY_LINT_GROUPS, &["__RA_EVERY_LINT"], "clippy::"));
+
+// FIXME: Autogenerate this instead of enumerating by hand.
+static LINTS_TO_REPORT_IN_EXTERNAL_MACROS: LazyLock<FxHashSet<&str>> =
+    LazyLock::new(|| FxHashSet::from_iter([]));
 
 fn build_group_dict(
     lint_group: &'static [LintGroup],
