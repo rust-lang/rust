@@ -1,10 +1,9 @@
 use crate::{Equivalent, TryReserveError};
-use alloc::borrow::ToOwned;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FusedIterator};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use core::{fmt, mem};
-use map::{equivalent_key, make_hash, make_hasher};
+use map::make_hash;
 
 use super::map::{self, HashMap, Keys};
 use crate::raw::{Allocator, Global, RawExtractIf};
@@ -911,45 +910,12 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert(&mut self, value: T) -> &T {
-        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
-        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.map
-            .raw_entry_mut()
-            .from_key(&value)
-            .or_insert(value, ())
-            .0
-    }
-
-    /// Inserts an owned copy of the given `value` into the set if it is not
-    /// present, then returns a reference to the value in the set.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut set: HashSet<String> = ["cat", "dog", "horse"]
-    ///     .iter().map(|&pet| pet.to_owned()).collect();
-    ///
-    /// assert_eq!(set.len(), 3);
-    /// for &pet in &["cat", "dog", "fish"] {
-    ///     let value = set.get_or_insert_owned(pet);
-    ///     assert_eq!(value, pet);
-    /// }
-    /// assert_eq!(set.len(), 4); // a new "fish" was inserted
-    /// ```
-    #[inline]
-    pub fn get_or_insert_owned<Q>(&mut self, value: &Q) -> &T
-    where
-        Q: Hash + Equivalent<T> + ToOwned<Owned = T> + ?Sized,
-    {
-        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
-        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.map
-            .raw_entry_mut()
-            .from_key(value)
-            .or_insert_with(|| (value.to_owned(), ()))
-            .0
+        let hash = make_hash(&self.map.hash_builder, &value);
+        let bucket = match self.map.find_or_find_insert_slot(hash, &value) {
+            Ok(bucket) => bucket,
+            Err(slot) => unsafe { self.map.table.insert_in_slot(hash, slot, (value, ())) },
+        };
+        unsafe { &bucket.as_ref().0 }
     }
 
     /// Inserts a value computed from `f` into the set if the given `value` is
@@ -970,19 +936,29 @@ where
     /// }
     /// assert_eq!(set.len(), 4); // a new "fish" was inserted
     /// ```
+    ///
+    /// The following example will panic because the new value doesn't match.
+    ///
+    /// ```should_panic
+    /// let mut set = hashbrown::HashSet::new();
+    /// set.get_or_insert_with("rust", |_| String::new());
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert_with<Q, F>(&mut self, value: &Q, f: F) -> &T
     where
         Q: Hash + Equivalent<T> + ?Sized,
         F: FnOnce(&Q) -> T,
     {
-        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
-        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
-        self.map
-            .raw_entry_mut()
-            .from_key(value)
-            .or_insert_with(|| (f(value), ()))
-            .0
+        let hash = make_hash(&self.map.hash_builder, value);
+        let bucket = match self.map.find_or_find_insert_slot(hash, value) {
+            Ok(bucket) => bucket,
+            Err(slot) => {
+                let new = f(value);
+                assert!(value.equivalent(&new), "new value is not equivalent");
+                unsafe { self.map.table.insert_in_slot(hash, slot, (new, ())) }
+            }
+        };
+        unsafe { &bucket.as_ref().0 }
     }
 
     /// Gets the given value's corresponding entry in the set for in-place manipulation.
@@ -1157,11 +1133,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace(&mut self, value: T) -> Option<T> {
         let hash = make_hash(&self.map.hash_builder, &value);
-        match self.map.table.find_or_find_insert_slot(
-            hash,
-            equivalent_key(&value),
-            make_hasher(&self.map.hash_builder),
-        ) {
+        match self.map.find_or_find_insert_slot(hash, &value) {
             Ok(bucket) => Some(mem::replace(unsafe { &mut bucket.as_mut().0 }, value)),
             Err(slot) => {
                 unsafe {
@@ -1607,15 +1579,17 @@ where
     /// ```
     fn bitxor_assign(&mut self, rhs: &HashSet<T, S, A>) {
         for item in rhs {
-            let entry = self.map.raw_entry_mut().from_key(item);
-            match entry {
-                map::RawEntryMut::Occupied(e) => {
-                    e.remove();
-                }
-                map::RawEntryMut::Vacant(e) => {
-                    e.insert(item.to_owned(), ());
-                }
-            };
+            let hash = make_hash(&self.map.hash_builder, item);
+            match self.map.find_or_find_insert_slot(hash, item) {
+                Ok(bucket) => unsafe {
+                    self.map.table.remove(bucket);
+                },
+                Err(slot) => unsafe {
+                    self.map
+                        .table
+                        .insert_in_slot(hash, slot, (item.clone(), ()));
+                },
+            }
         }
     }
 }
@@ -2598,7 +2572,7 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use super::HashSet;
+    use super::{make_hash, Equivalent, HashSet};
     use crate::DefaultHashBuilder;
     use std::vec::Vec;
 
@@ -3071,5 +3045,58 @@ mod test_set {
         assert_eq!(HashSet::<()>::new().allocation_size(), 0);
         assert_eq!(HashSet::<u32>::new().allocation_size(), 0);
         assert!(HashSet::<u32>::with_capacity(1).allocation_size() > core::mem::size_of::<u32>());
+    }
+
+    #[test]
+    fn duplicate_insert() {
+        let mut set = HashSet::new();
+        set.insert(1);
+        set.get_or_insert_with(&1, |_| 1);
+        set.get_or_insert_with(&1, |_| 1);
+        assert!([1].iter().eq(set.iter()));
+    }
+
+    #[test]
+    #[should_panic]
+    fn some_invalid_equivalent() {
+        use core::hash::{Hash, Hasher};
+        struct Invalid {
+            count: u32,
+            other: u32,
+        }
+
+        struct InvalidRef {
+            count: u32,
+            other: u32,
+        }
+
+        impl PartialEq for Invalid {
+            fn eq(&self, other: &Self) -> bool {
+                self.count == other.count && self.other == other.other
+            }
+        }
+        impl Eq for Invalid {}
+
+        impl Equivalent<Invalid> for InvalidRef {
+            fn equivalent(&self, key: &Invalid) -> bool {
+                self.count == key.count && self.other == key.other
+            }
+        }
+        impl Hash for Invalid {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.count.hash(state);
+            }
+        }
+        impl Hash for InvalidRef {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.count.hash(state);
+            }
+        }
+        let mut set: HashSet<Invalid> = HashSet::new();
+        let key = InvalidRef { count: 1, other: 1 };
+        let value = Invalid { count: 1, other: 2 };
+        if make_hash(set.hasher(), &key) == make_hash(set.hasher(), &value) {
+            set.get_or_insert_with(&key, |_| value);
+        }
     }
 }
