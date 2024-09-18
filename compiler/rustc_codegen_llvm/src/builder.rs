@@ -26,13 +26,13 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
+use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use crate::{attributes, llvm_util};
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -1317,15 +1317,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: &'ll Value) {
-        if llvm_util::get_version() < (17, 0, 2) {
-            // Work around https://github.com/llvm/llvm-project/issues/66984.
-            let noinline = llvm::AttributeKind::NoInline.create_attr(self.llcx);
-            attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[noinline]);
-        } else {
-            // Cleanup is always the cold path.
-            let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
-            attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
-        }
+        // Cleanup is always the cold path.
+        let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
+        attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
     }
 }
 
@@ -1767,8 +1761,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) {
         debug!("mcdc_parameters() with args ({:?}, {:?}, {:?})", fn_name, hash, bitmap_bytes);
 
-        assert!(llvm_util::get_version() >= (18, 0, 0), "MCDC intrinsics require LLVM 18 or later");
-
         let llfn = unsafe { llvm::LLVMRustGetInstrProfMCDCParametersIntrinsic(self.cx().llmod) };
         let llty = self.cx.type_func(
             &[self.cx.type_ptr(), self.cx.type_i64(), self.cx.type_i32()],
@@ -1802,7 +1794,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             "mcdc_tvbitmap_update() with args ({:?}, {:?}, {:?}, {:?}, {:?})",
             fn_name, hash, bitmap_bytes, bitmap_index, mcdc_temp
         );
-        assert!(llvm_util::get_version() >= (18, 0, 0), "MCDC intrinsics require LLVM 18 or later");
 
         let llfn =
             unsafe { llvm::LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(self.cx().llmod) };
@@ -1844,7 +1835,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             "mcdc_condbitmap_update() with args ({:?}, {:?}, {:?}, {:?}, {:?})",
             fn_name, hash, cond_loc, mcdc_temp, bool_value
         );
-        assert!(llvm_util::get_version() >= (18, 0, 0), "MCDC intrinsics require LLVM 18 or later");
         let llfn = unsafe { llvm::LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(self.cx().llmod) };
         let llty = self.cx.type_func(
             &[

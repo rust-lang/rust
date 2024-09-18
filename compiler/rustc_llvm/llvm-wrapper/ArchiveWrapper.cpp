@@ -196,14 +196,10 @@ extern "C" LLVMRustResult LLVMRustWriteArchive(
     }
   }
 
-#if LLVM_VERSION_LT(18, 0)
-  auto Result = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
-#else
   auto SymtabMode = WriteSymbtab ? SymtabWritingMode::NormalSymtab
                                  : SymtabWritingMode::NoSymtab;
   auto Result =
       writeArchive(Dst, Members, SymtabMode, Kind, true, false, nullptr, isEC);
-#endif
   if (!Result)
     return LLVMRustResult::Success;
   LLVMRustSetLastError(toString(std::move(Result)).c_str());

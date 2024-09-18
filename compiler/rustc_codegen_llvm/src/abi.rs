@@ -465,9 +465,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     cx.type_array(cx.type_i8(), self.ret.layout.size.bytes()),
                 );
                 attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
-                if cx.sess().opts.optimize != config::OptLevel::No
-                    && llvm_util::get_version() >= (18, 0, 0)
-                {
+                if cx.sess().opts.optimize != config::OptLevel::No {
                     attributes::apply_to_llfn(
                         llfn,
                         llvm::AttributePlace::Argument(i),

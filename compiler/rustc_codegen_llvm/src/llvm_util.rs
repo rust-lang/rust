@@ -258,28 +258,14 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "fhm") => Some(LLVMFeature::new("fp16fml")),
         ("aarch64", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // Filter out features that are not supported by the current LLVM version
-        ("aarch64", "faminmax") if get_version().0 < 18 => None,
-        ("aarch64", "fp8") if get_version().0 < 18 => None,
-        ("aarch64", "fp8dot2") if get_version().0 < 18 => None,
-        ("aarch64", "fp8dot4") if get_version().0 < 18 => None,
-        ("aarch64", "fp8fma") if get_version().0 < 18 => None,
         ("aarch64", "fpmr") if get_version().0 != 18 => None,
-        ("aarch64", "lut") if get_version().0 < 18 => None,
-        ("aarch64", "sme-f8f16") if get_version().0 < 18 => None,
-        ("aarch64", "sme-f8f32") if get_version().0 < 18 => None,
-        ("aarch64", "sme-fa64") if get_version().0 < 18 => None,
-        ("aarch64", "sme-lutv2") if get_version().0 < 18 => None,
-        ("aarch64", "ssve-fp8dot2") if get_version().0 < 18 => None,
-        ("aarch64", "ssve-fp8dot4") if get_version().0 < 18 => None,
-        ("aarch64", "ssve-fp8fma") if get_version().0 < 18 => None,
-        ("aarch64", "v9.5a") if get_version().0 < 18 => None,
         // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single feature called
         // `fast-unaligned-access`. In LLVM 19, it was split back out.
         ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
             Some(LLVMFeature::new("fast-unaligned-access"))
         }
-        // For LLVM 18, enable the evex512 target feature if a avx512 target feature is enabled.
-        ("x86", s) if get_version().0 >= 18 && s.starts_with("avx512") => {
+        // Enable the evex512 target feature if an avx512 target feature is enabled.
+        ("x86", s) if s.starts_with("avx512") => {
             Some(LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512")))
         }
         (_, s) => Some(LLVMFeature::new(s)),
@@ -587,7 +573,6 @@ pub(crate) fn global_llvm_features(
     // -Ctarget-features
     if !only_base_features {
         let supported_features = sess.target.supported_target_features();
-        let (llvm_major, _, _) = get_version();
         let mut featsmap = FxHashMap::default();
 
         // insert implied features
@@ -664,12 +649,6 @@ pub(crate) fn global_llvm_features(
                     return None;
                 }
 
-                // if the target-feature is "backchain" and LLVM version is greater than 18
-                // then we also need to add "+backchain" to the target-features attribute.
-                // otherwise, we will only add the naked `backchain` attribute to the attribute-group.
-                if feature == "backchain" && llvm_major < 18 {
-                    return None;
-                }
                 // ... otherwise though we run through `to_llvm_features` when
                 // passing requests down to LLVM. This means that all in-language
                 // features also work on the command line instead of having two
