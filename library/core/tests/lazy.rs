@@ -114,6 +114,27 @@ fn lazy_type_inference() {
 }
 
 #[test]
+#[should_panic = "LazyCell instance has previously been poisoned"]
+fn lazy_force_mut_panic() {
+    let mut lazy = LazyCell::<String>::new(|| panic!());
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = LazyCell::force_mut(&mut lazy);
+    }))
+    .unwrap_err();
+    let _ = &*lazy;
+}
+
+#[test]
+fn lazy_force_mut() {
+    let s = "abc".to_owned();
+    let mut lazy = LazyCell::new(move || s);
+    LazyCell::force_mut(&mut lazy);
+    let p = LazyCell::force_mut(&mut lazy);
+    p.clear();
+    LazyCell::force_mut(&mut lazy);
+}
+
+#[test]
 fn aliasing_in_get() {
     let x = OnceCell::new();
     x.set(42).unwrap();

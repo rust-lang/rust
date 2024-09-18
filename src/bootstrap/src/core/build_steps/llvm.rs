@@ -580,11 +580,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = command(llvm_config).arg("--version").run_capture_stdout(builder).stdout();
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 17 {
+        if major >= 18 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {version}, need >=17.0\n\n")
+    panic!("\n\nbad LLVM version: {version}, need >=18\n\n")
 }
 
 fn configure_cmake(
