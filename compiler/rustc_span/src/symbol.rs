@@ -2094,6 +2094,7 @@ symbols! {
         vec_from_elem,
         vec_macro,
         vec_new,
+        vec_with_capacity,
         vecdeque_iter,
         version,
         vfp2,
