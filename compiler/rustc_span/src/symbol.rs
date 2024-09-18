@@ -1882,6 +1882,8 @@ symbols! {
         string_as_mut_str,
         string_as_str,
         string_deref_patterns,
+        string_insert_str,
+        string_push_str,
         stringify,
         struct_field_attributes,
         struct_inherit,

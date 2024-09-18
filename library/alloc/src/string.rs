@@ -1113,6 +1113,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("append", "push")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_push_str")]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
     }
@@ -1747,6 +1748,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "insert_str", since = "1.16.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_insert_str")]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         assert!(self.is_char_boundary(idx));
 

@@ -29,7 +29,6 @@ pub const HASHSET_ITER_TY: [&str; 5] = ["std", "collections", "hash", "set", "It
 pub const HASHSET_DRAIN: [&str; 5] = ["std", "collections", "hash", "set", "Drain"];
 pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];
 pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
-pub const INSERT_STR: [&str; 4] = ["alloc", "string", "String", "insert_str"];
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
@@ -42,7 +41,6 @@ pub const PARKING_LOT_RWLOCK_READ_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwL
 pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwLockWriteGuard"];
 #[cfg_attr(not(unix), allow(clippy::invalid_paths))]
 pub const PERMISSIONS_FROM_MODE: [&str; 6] = ["std", "os", "unix", "fs", "PermissionsExt", "from_mode"];
-pub const PUSH_STR: [&str; 4] = ["alloc", "string", "String", "push_str"];
 pub const REGEX_BUILDER_NEW: [&str; 3] = ["regex", "RegexBuilder", "new"];
 pub const REGEX_BYTES_BUILDER_NEW: [&str; 4] = ["regex", "bytes", "RegexBuilder", "new"];
 pub const REGEX_BYTES_NEW: [&str; 4] = ["regex", "bytes", "Regex", "new"];
