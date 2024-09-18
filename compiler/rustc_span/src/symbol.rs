@@ -1425,6 +1425,7 @@ symbols! {
         pat_param,
         patchable_function_entry,
         path,
+        path_main_separator,
         path_to_pathbuf,
         pathbuf_as_path,
         pattern_complexity,
