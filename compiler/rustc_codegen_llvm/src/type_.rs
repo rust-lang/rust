@@ -315,11 +315,12 @@ impl<'ll, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn typeid_metadata(&self, typeid: String) -> Option<&'ll Value> {
         Some(unsafe {
-            llvm::LLVMMDStringInContext(
+            let meta = llvm::LLVMMDStringInContext2(
                 self.llcx,
                 typeid.as_ptr() as *const c_char,
-                typeid.len() as c_uint,
-            )
+                typeid.len(),
+            );
+            llvm::LLVMMetadataAsValue(self.llcx, meta)
         })
     }
 

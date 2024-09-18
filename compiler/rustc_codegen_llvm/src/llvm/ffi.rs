@@ -912,9 +912,6 @@ unsafe extern "C" {
     pub fn LLVMGetPoison(Ty: &Type) -> &Value;
 
     // Operations on metadata
-    // FIXME: deprecated, replace with LLVMMDStringInContext2
-    pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> &Value;
-
     pub fn LLVMMDStringInContext2(C: &Context, Str: *const c_char, SLen: size_t) -> &Metadata;
 
     // FIXME: deprecated, replace with LLVMMDNodeInContext2
