@@ -119,9 +119,7 @@ impl Write for Buffer {
 }
 
 impl Drop for Buffer {
-    // HACK(nbdd0121): Hack to prevent LLVM < 17.0.4 from misoptimising,
-    // change to `#[inline]` if fixed.
-    #[inline(never)]
+    #[inline]
     fn drop(&mut self) {
         let b = self.take();
         (b.drop)(b);

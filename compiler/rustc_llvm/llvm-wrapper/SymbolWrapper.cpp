@@ -150,11 +150,9 @@ extern "C" bool LLVMRustIsECObject(char *BufPtr, size_t BufLen) {
     return cast<llvm::object::COFFObjectFile>(&*Obj)->getMachine() !=
            COFF::IMAGE_FILE_MACHINE_ARM64;
 
-#if LLVM_VERSION_GE(18, 0)
   if (Obj->isCOFFImportFile())
     return cast<llvm::object::COFFImportFile>(&*Obj)->getMachine() !=
            COFF::IMAGE_FILE_MACHINE_ARM64;
-#endif
 
   if (Obj->isIR()) {
     Expected<std::string> TripleStr =
