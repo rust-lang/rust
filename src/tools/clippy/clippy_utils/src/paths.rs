@@ -19,14 +19,6 @@ pub const FILE_OPTIONS: [&str; 4] = ["std", "fs", "File", "options"];
 pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCWRITEEXT: [&str; 3] = ["futures_util", "io", "AsyncWriteExt"];
-pub const HASHMAP_ITER: [&str; 5] = ["std", "collections", "hash", "map", "Iter"];
-pub const HASHMAP_ITER_MUT: [&str; 5] = ["std", "collections", "hash", "map", "IterMut"];
-pub const HASHMAP_KEYS: [&str; 5] = ["std", "collections", "hash", "map", "Keys"];
-pub const HASHMAP_VALUES: [&str; 5] = ["std", "collections", "hash", "map", "Values"];
-pub const HASHMAP_DRAIN: [&str; 5] = ["std", "collections", "hash", "map", "Drain"];
-pub const HASHMAP_VALUES_MUT: [&str; 5] = ["std", "collections", "hash", "map", "ValuesMut"];
-pub const HASHSET_ITER_TY: [&str; 5] = ["std", "collections", "hash", "set", "Iter"];
-pub const HASHSET_DRAIN: [&str; 5] = ["std", "collections", "hash", "set", "Drain"];
 pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];
 pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
