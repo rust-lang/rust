@@ -14,18 +14,20 @@ pub trait ConstCodegenMethods<'tcx>: BackendTypes {
     /// (including code that e.g. copies uninit memory with `MaybeUninit`) can never encounter a
     /// poison value.
     fn const_poison(&self, t: Self::Type) -> Self::Value;
-    fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
-    fn const_uint(&self, t: Self::Type, i: u64) -> Self::Value;
-    fn const_uint_big(&self, t: Self::Type, u: u128) -> Self::Value;
+
     fn const_bool(&self, val: bool) -> Self::Value;
+
+    fn const_i8(&self, i: i8) -> Self::Value;
     fn const_i16(&self, i: i16) -> Self::Value;
     fn const_i32(&self, i: i32) -> Self::Value;
-    fn const_i8(&self, i: i8) -> Self::Value;
+    fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
+    fn const_u8(&self, i: u8) -> Self::Value;
     fn const_u32(&self, i: u32) -> Self::Value;
     fn const_u64(&self, i: u64) -> Self::Value;
     fn const_u128(&self, i: u128) -> Self::Value;
     fn const_usize(&self, i: u64) -> Self::Value;
-    fn const_u8(&self, i: u8) -> Self::Value;
+    fn const_uint(&self, t: Self::Type, i: u64) -> Self::Value;
+    fn const_uint_big(&self, t: Self::Type, u: u128) -> Self::Value;
     fn const_real(&self, t: Self::Type, val: f64) -> Self::Value;
 
     fn const_str(&self, s: &str) -> (Self::Value, Self::Value);
