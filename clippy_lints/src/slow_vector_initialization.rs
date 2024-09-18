@@ -153,7 +153,7 @@ impl SlowVectorInit {
             && is_expr_path_def_path(cx, func, &paths::VEC_WITH_CAPACITY)
         {
             Some(InitializedSize::Initialized(len_expr))
-        } else if matches!(expr.kind, ExprKind::Call(func, _) if is_expr_path_def_path(cx, func, &paths::VEC_NEW)) {
+        } else if matches!(expr.kind, ExprKind::Call(func, _) if is_path_diagnostic_item(cx, func, sym::vec_new)) {
             Some(InitializedSize::Uninitialized)
         } else {
             None

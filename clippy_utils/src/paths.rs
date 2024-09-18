@@ -49,7 +49,6 @@ pub const REGEX_NEW: [&str; 3] = ["regex", "Regex", "new"];
 pub const REGEX_SET_NEW: [&str; 3] = ["regex", "RegexSet", "new"];
 pub const SERDE_DESERIALIZE: [&str; 3] = ["serde", "de", "Deserialize"];
 pub const SERDE_DE_VISITOR: [&str; 3] = ["serde", "de", "Visitor"];
-pub const SLICE_INTO_VEC: [&str; 4] = ["alloc", "slice", "<impl [T]>", "into_vec"];
 pub const STD_IO_SEEK_FROM_CURRENT: [&str; 4] = ["std", "io", "SeekFrom", "Current"];
 pub const STD_IO_SEEKFROM_START: [&str; 4] = ["std", "io", "SeekFrom", "Start"];
 pub const STRING_NEW: [&str; 4] = ["alloc", "string", "String", "new"];
@@ -73,8 +72,6 @@ pub const TOKIO_IO_ASYNCWRITEEXT: [&str; 5] = ["tokio", "io", "util", "async_wri
 pub const TOKIO_IO_OPEN_OPTIONS: [&str; 4] = ["tokio", "fs", "open_options", "OpenOptions"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_OPEN_OPTIONS_NEW: [&str; 5] = ["tokio", "fs", "open_options", "OpenOptions", "new"];
-pub const VEC_FROM_ELEM: [&str; 3] = ["alloc", "vec", "from_elem"];
-pub const VEC_NEW: [&str; 4] = ["alloc", "vec", "Vec", "new"];
 pub const VEC_WITH_CAPACITY: [&str; 4] = ["alloc", "vec", "Vec", "with_capacity"];
 pub const INSTANT_NOW: [&str; 4] = ["std", "time", "Instant", "now"];
 pub const VEC_IS_EMPTY: [&str; 4] = ["alloc", "vec", "Vec", "is_empty"];
