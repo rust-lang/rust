@@ -35,8 +35,8 @@ use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
 
-/// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
-/// `llvm::Context` so that several compilation units may be optimized in parallel.
+/// There is one `CodegenCx` per codegen unit. Each one has its own LLVM
+/// `llvm::Context` so that several codegen units may be processed in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
 pub(crate) struct CodegenCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
