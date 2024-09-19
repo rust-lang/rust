@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.8.0] 2024-09-20
 
 ### Fixed
 - Fix issue where rustfmt would crash on Windows when using the `ignore` option [#6178](https://github.com/rust-lang/rustfmt/issues/6178)
