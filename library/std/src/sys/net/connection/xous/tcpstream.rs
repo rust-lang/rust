@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
+use core::sync::atomic::{Atomic, AtomicBool, AtomicU32, AtomicUsize, Ordering};
 
 use super::*;
 use crate::fmt;
@@ -29,11 +29,11 @@ pub struct TcpStream {
     remote_port: u16,
     peer_addr: SocketAddr,
     // milliseconds
-    read_timeout: Arc<AtomicU32>,
+    read_timeout: Arc<Atomic<u32>>,
     // milliseconds
-    write_timeout: Arc<AtomicU32>,
-    handle_count: Arc<AtomicUsize>,
-    nonblocking: Arc<AtomicBool>,
+    write_timeout: Arc<Atomic<u32>>,
+    handle_count: Arc<Atomic<usize>>,
+    nonblocking: Arc<Atomic<bool>>,
 }
 
 fn sockaddr_to_buf(duration: Duration, addr: &SocketAddr, buf: &mut [u8]) {
