@@ -32,7 +32,7 @@ fn download_ci_llvm() {
     assert!(!parse_llvm("llvm.download-ci-llvm = false"));
     assert_eq!(parse_llvm(""), if_unchanged);
     assert_eq!(parse_llvm("rust.channel = \"dev\""), if_unchanged);
-    assert!(!parse_llvm("rust.channel = \"stable\""));
+    assert!(parse_llvm("rust.channel = \"stable\""));
     assert_eq!(parse_llvm("build.build = \"x86_64-unknown-linux-gnu\""), if_unchanged);
     assert_eq!(
         parse_llvm(
