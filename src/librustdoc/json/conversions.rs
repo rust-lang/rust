@@ -320,7 +320,9 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_tcx(tcx)),
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), tcx)),
+        FunctionItem(f) | TestItem(f) => {
+            ItemEnum::Function(from_function(f, true, header.unwrap(), tcx))
+        }
         ForeignFunctionItem(f, _) => {
             ItemEnum::Function(from_function(f, false, header.unwrap(), tcx))
         }
@@ -858,7 +860,7 @@ impl FromWithTcx<ItemType> for ItemKind {
             Struct => ItemKind::Struct,
             Union => ItemKind::Union,
             Enum => ItemKind::Enum,
-            Function | TyMethod | Method => ItemKind::Function,
+            Function | Test | TyMethod | Method => ItemKind::Function,
             TypeAlias => ItemKind::TypeAlias,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,

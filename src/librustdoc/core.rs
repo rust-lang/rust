@@ -198,7 +198,7 @@ pub(crate) fn create_config(
         remap_path_prefix,
         ..
     }: RustdocOptions,
-    RenderOptions { document_private, .. }: &RenderOptions,
+    RenderOptions { document_private, document_tests, .. }: &RenderOptions,
     using_internal_features: Arc<AtomicBool>,
 ) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
@@ -227,7 +227,8 @@ pub(crate) fn create_config(
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
     let resolve_doc_links =
         if *document_private { ResolveDocLinks::All } else { ResolveDocLinks::Exported };
-    let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
+    let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false)
+        || (cfgs.iter().any(|cfg| cfg == "test") && *document_tests);
     // plays with error output here!
     let sessopts = config::Options {
         maybe_sysroot,
@@ -341,7 +342,11 @@ pub(crate) fn run_global_ctxt(
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits,
-        cache: Cache::new(render_options.document_private, render_options.document_hidden),
+        cache: Cache::new(
+            render_options.document_private,
+            render_options.document_hidden,
+            render_options.document_tests,
+        ),
         inlined: FxHashSet::default(),
         output_format,
         render_options,
