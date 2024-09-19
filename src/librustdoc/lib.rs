@@ -699,6 +699,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
             "[rust]",
         ),
+        opt(Unstable, FlagMulti, "", "document-tests", "Generate documentation for tests", ""),
     ]
 }
 

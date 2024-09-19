@@ -283,6 +283,8 @@ pub(crate) struct RenderOptions {
     pub(crate) document_private: bool,
     /// Document items that have `doc(hidden)`.
     pub(crate) document_hidden: bool,
+    /// Document tests.
+    pub(crate) document_tests: bool,
     /// If `true`, generate a JSON file in the crate folder instead of HTML redirection files.
     pub(crate) generate_redirect_map: bool,
     /// Show the memory layout of types in the docs.
@@ -806,6 +808,7 @@ impl Options {
         }
 
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
+        let document_tests = matches.opt_present("document-tests");
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
         let doctest_compilation_args = matches.opt_strs("doctest-compilation-args");
@@ -880,6 +883,7 @@ impl Options {
             markdown_playground_url,
             document_private,
             document_hidden,
+            document_tests,
             generate_redirect_map,
             show_type_layout,
             unstable_features,

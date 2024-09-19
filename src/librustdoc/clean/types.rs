@@ -697,7 +697,8 @@ impl Item {
             }
             ItemKind::FunctionItem(_)
             | ItemKind::MethodItem(_, _)
-            | ItemKind::RequiredMethodItem(_) => {
+            | ItemKind::RequiredMethodItem(_)
+            | ItemKind::TestItem(_) => {
                 let def_id = self.def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
@@ -874,6 +875,7 @@ pub(crate) enum ItemKind {
     UnionItem(Union),
     EnumItem(Enum),
     FunctionItem(Box<Function>),
+    TestItem(Box<Function>),
     ModuleItem(Module),
     TypeAliasItem(Box<TypeAlias>),
     StaticItem(Static),
@@ -934,6 +936,7 @@ impl ItemKind {
             ExternCrateItem { .. }
             | ImportItem(_)
             | FunctionItem(_)
+            | TestItem(_)
             | TypeAliasItem(_)
             | StaticItem(_)
             | ConstantItem(_)
