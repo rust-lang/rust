@@ -213,20 +213,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Special handling of higher-ranked regions.
                 if !self.scc_universe(scc).is_root() {
-                    if self
-                        .constraint_sccs
-                        .annotation(scc)
-                        .placeholder_representative()
-                        .is_some_and(|representative| representative == vid)
+                    let higher_ranked_region = if let Some(representative) =
+                        self.placeholder_representative(scc)
                     {
-                        if let NllRegionVariableOrigin::Placeholder(p) =
-                            self.definitions[vid].origin
-                        {
-                            return ty::Region::new_placeholder(tcx, p);
-                        }
-                    }
-                    debug!("Cannot get a nice name for higher-ranked region {vid:?} as {region:?}");
-                    return region;
+                        // FIXME: remove this assertion once the tests pass!
+                        assert!(
+                            self.constraint_sccs
+                                .annotation(scc)
+                                .placeholder_representative()
+                                .is_some_and(|representative| representative == vid)
+                        );
+
+                        ty::Region::new_placeholder(tcx, representative)
+                    } else {
+                        debug!(
+                            "Cannot get a nice name for higher-ranked region {vid:?} as {region:?}"
+                        );
+
+                        region
+                    };
+                    return higher_ranked_region;
                 }
 
                 // Find something that we can name

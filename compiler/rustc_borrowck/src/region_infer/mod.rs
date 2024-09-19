@@ -18,7 +18,9 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex};
+use rustc_middle::ty::{
+    self, PlaceholderRegion, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex,
+};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
@@ -2227,6 +2229,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Returns true if `r` is `'static`.
     fn is_static(&self, r: RegionVid) -> bool {
         r == self.universal_regions.fr_static
+    }
+
+    pub(crate) fn placeholder_representative(
+        &self,
+        scc: ConstraintSccIndex,
+    ) -> Option<PlaceholderRegion> {
+        if let Some(representative) =
+            self.constraint_sccs.annotation(scc).placeholder_representative()
+            && let NllRegionVariableOrigin::Placeholder(p) = self.definitions[representative].origin
+        {
+            Some(p)
+        } else {
+            None
+        }
     }
 }
 

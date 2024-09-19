@@ -205,22 +205,36 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn suggest_static_lifetime_for_gat_from_hrtb(
         &self,
         diag: &mut Diag<'_>,
-        _lower_bound: RegionVid,
-    ) {
+        lower_bound: RegionVid,
+    ) -> Option<()> {
         let mut suggestions = vec![];
         let hir = self.infcx.tcx.hir();
 
         // find higher-ranked trait bounds bounded to the generic associated types
-        let hrtb_bounds = vec![];
-        /*
-        // FIXME: the best we can do is look at the representative, using something like:
         let scc = self.regioncx.constraint_sccs().scc(lower_bound);
-        let Some(representative) =
-            self.regioncx.constraint_sccs().annotation(scc).placeholder_representative()
-        else {
-            return;
-        };
-        */
+        let placeholder: ty::PlaceholderRegion = self.regioncx.placeholder_representative(scc)?;
+        let placeholder_id = placeholder.bound.kind.get_id()?.as_local()?;
+        let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id);
+        let generics_impl =
+            self.infcx.tcx.parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id)).generics()?;
+
+        let mut hrtb_bounds = vec![];
+
+        for pred in generics_impl.predicates {
+            let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) = pred
+            else {
+                continue;
+            };
+            if bound_generic_params
+                .iter()
+                .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                .is_some()
+            {
+                for bound in *bounds {
+                    hrtb_bounds.push(bound);
+                }
+            }
+        }
 
         hrtb_bounds.iter().for_each(|bound| {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else {
@@ -269,6 +283,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+        Some(())
     }
 
     /// Produces nice borrowck error diagnostics for all the errors collected in `nll_errors`.
