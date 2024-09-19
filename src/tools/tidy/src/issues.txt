@@ -552,7 +552,6 @@ ui/const-generics/infer/issue-77092.rs
 ui/const-generics/issue-102124.rs
 ui/const-generics/issue-105689.rs
 ui/const-generics/issue-106419-struct-with-multiple-const-params.rs
-ui/const-generics/issue-112505-overflow.rs
 ui/const-generics/issue-46511.rs
 ui/const-generics/issue-66451.rs
 ui/const-generics/issue-70408.rs
