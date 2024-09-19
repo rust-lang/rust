@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
-use std::ffi::CStr;
+use std::ffi::{c_uint, CStr};
 use std::str;
 
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
@@ -30,6 +30,7 @@ use smallvec::SmallVec;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
+use crate::llvm::Metadata;
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
@@ -583,6 +584,14 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::LLVMSetInitializer(g, array);
             llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
             llvm::LLVMSetSection(g, c"llvm.metadata".as_ptr());
+        }
+    }
+
+    /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
+    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: c_uint, md: &'a Metadata) {
+        unsafe {
+            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
+            llvm::LLVMSetMetadata(val, kind_id, node);
         }
     }
 }

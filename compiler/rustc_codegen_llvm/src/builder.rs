@@ -678,22 +678,20 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         unsafe {
             let llty = self.cx.val_ty(load);
-            let v = [
+            let md = [
                 llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.start)),
                 llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.end.wrapping_add(1))),
             ];
 
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, v.as_ptr(), v.len());
-            let md = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint, md);
+            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len());
+            self.set_metadata(load, llvm::MD_range as c_uint, md);
         }
     }
 
     fn nonnull_metadata(&mut self, load: &'ll Value) {
         unsafe {
             let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            let md = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(load, llvm::MD_nonnull as c_uint, md);
+            self.set_metadata(load, llvm::MD_nonnull as c_uint, md);
         }
     }
 
@@ -742,9 +740,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     //
                     // [1]: https://llvm.org/docs/LangRef.html#store-instruction
                     let one = llvm::LLVMValueAsMetadata(self.cx.const_i32(1));
-                    let node = llvm::LLVMMDNodeInContext2(self.cx.llcx, &one, 1);
-                    let node = llvm::LLVMMetadataAsValue(&self.llcx, node);
-                    llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
+                    let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, &one, 1);
+                    self.set_metadata(store, llvm::MD_nontemporal as c_uint, md);
                 }
             }
             store
@@ -1209,8 +1206,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn set_invariant_load(&mut self, load: &'ll Value) {
         unsafe {
             let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            let md = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(load, llvm::MD_invariant_load as c_uint, md);
+            self.set_metadata(load, llvm::MD_invariant_load as c_uint, md);
         }
     }
 
@@ -1339,26 +1335,23 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     fn align_metadata(&mut self, load: &'ll Value, align: Align) {
         unsafe {
-            let v = [llvm::LLVMValueAsMetadata(self.cx.const_u64(align.bytes()))];
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, v.as_ptr(), v.len());
-            let md = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(load, llvm::MD_align as c_uint, md);
+            let md = [llvm::LLVMValueAsMetadata(self.cx.const_u64(align.bytes()))];
+            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len());
+            self.set_metadata(load, llvm::MD_align as c_uint, md);
         }
     }
 
     fn noundef_metadata(&mut self, load: &'ll Value) {
         unsafe {
             let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            let md = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(load, llvm::MD_noundef as c_uint, md);
+            self.set_metadata(load, llvm::MD_noundef as c_uint, md);
         }
     }
 
     pub(crate) fn set_unpredictable(&mut self, inst: &'ll Value) {
         unsafe {
             let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            let md = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(inst, llvm::MD_unpredictable as c_uint, md);
+            self.set_metadata(inst, llvm::MD_unpredictable as c_uint, md);
         }
     }
 
