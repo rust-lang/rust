@@ -466,9 +466,9 @@ pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a Nest
             sess.dcx().emit_err(InvalidCfg::MultiplePredicates { span: l.span() });
             None
         }
-        Some([single]) => match single.is_meta_item() {
-            true => Some(single),
-            false => {
+        Some([single]) => match single.meta_item_or_bool() {
+            Some(meta_item) => Some(meta_item),
+            None => {
                 sess.dcx().emit_err(InvalidCfg::PredicateLiteral { span: single.span() });
                 None
             }

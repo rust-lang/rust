@@ -309,7 +309,7 @@ impl<'tcx> Collector<'tcx> {
                                 .emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
                             continue;
                         };
-                        if !link_cfg.is_meta_item() {
+                        let Some(link_cfg) = link_cfg.meta_item_or_bool() else {
                             sess.dcx()
                                 .emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
                             continue;

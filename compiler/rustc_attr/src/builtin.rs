@@ -603,6 +603,7 @@ pub fn eval_condition(
 
     let cfg = match cfg {
         ast::NestedMetaItem::MetaItem(meta_item) => meta_item,
+        ast::NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => return *b,
         _ => {
             dcx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: cfg.span(),
@@ -649,7 +650,7 @@ pub fn eval_condition(
         }
         ast::MetaItemKind::List(mis) => {
             for mi in mis.iter() {
-                if !mi.is_meta_item() {
+                if mi.meta_item_or_bool().is_none() {
                     dcx.emit_err(session_diagnostics::UnsupportedLiteral {
                         span: mi.span(),
                         reason: UnsupportedLiteralReason::Generic,

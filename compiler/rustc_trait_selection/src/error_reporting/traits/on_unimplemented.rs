@@ -413,7 +413,9 @@ impl<'tcx> OnUnimplementedDirective {
         } else {
             let cond = item_iter
                 .next()
-                .ok_or_else(|| tcx.dcx().emit_err(EmptyOnClauseInOnUnimplemented { span }))?;
+                .ok_or_else(|| tcx.dcx().emit_err(EmptyOnClauseInOnUnimplemented { span }))?
+                .meta_item_or_bool()
+                .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
             attr::eval_condition(cond, &tcx.sess, Some(tcx.features()), &mut |cfg| {
                 if let Some(value) = cfg.value
                     && let Err(guar) = parse_value(value, cfg.span)
