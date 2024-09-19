@@ -179,6 +179,9 @@ pub(crate) struct Pick<'tcx> {
 
     /// Unstable candidates alongside the stable ones.
     unstable_candidates: Vec<(Candidate<'tcx>, Symbol)>,
+
+    /// Candidates that were shadowed by supertraits.
+    pub shadowed_candidates: Vec<ty::AssocItem>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1262,18 +1265,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug!("applicable_candidates: {:?}", applicable_candidates);
 
         if applicable_candidates.len() > 1 {
-            if self.tcx.features().supertrait_item_shadowing {
-                if let Some(pick) =
-                    self.collapse_candidates_to_subtrait_pick(self_ty, &applicable_candidates)
-                {
-                    return Some(Ok(pick));
-                }
-            } else {
-                if let Some(pick) =
-                    self.collapse_candidates_to_trait_pick(self_ty, &applicable_candidates)
-                {
-                    return Some(Ok(pick));
-                }
+            if let Some(pick) =
+                self.collapse_candidates_to_trait_pick(self_ty, &applicable_candidates)
+            {
+                return Some(Ok(pick));
             }
         }
 
@@ -1290,6 +1285,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         if applicable_candidates.len() > 1 {
+            // We collapse to a subtrait pick *after* filtering unstable candidates
+            // to make sure we don't prefer a unstable subtrait method over a stable
+            // supertrait method.
+            if self.tcx.features().supertrait_item_shadowing {
+                if let Some(pick) =
+                    self.collapse_candidates_to_subtrait_pick(self_ty, &applicable_candidates)
+                {
+                    return Some(Ok(pick));
+                }
+            }
+
             let sources = candidates.iter().map(|p| self.candidate_source(p, self_ty)).collect();
             return Some(Err(MethodError::Ambiguity(sources)));
         }
@@ -1328,6 +1334,7 @@ impl<'tcx> Pick<'tcx> {
             autoref_or_ptr_adjustment: _,
             self_ty,
             unstable_candidates: _,
+            shadowed_candidates: _,
         } = *self;
         self_ty != other.self_ty || def_id != other.item.def_id
     }
@@ -1704,6 +1711,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             autoref_or_ptr_adjustment: None,
             self_ty,
             unstable_candidates: vec![],
+            shadowed_candidates: vec![],
         })
     }
 
@@ -1749,6 +1757,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             autoref_or_ptr_adjustment: None,
             self_ty,
             unstable_candidates: vec![],
+            shadowed_candidates: probes
+                .iter()
+                .map(|(c, _)| c.item)
+                .filter(|item| item.def_id != child_pick.item.def_id)
+                .collect(),
         })
     }
 
@@ -2042,6 +2055,7 @@ impl<'tcx> Candidate<'tcx> {
             autoref_or_ptr_adjustment: None,
             self_ty,
             unstable_candidates,
+            shadowed_candidates: vec![],
         }
     }
 }
