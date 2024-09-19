@@ -125,7 +125,7 @@ pub struct TestProps {
     // Build documentation for all specified aux-builds as well
     pub build_aux_docs: bool,
     /// Build the documentation for each crate in a unique output directory.
-    /// Uses <root output directory>/docs/<test name>/doc
+    /// Uses `<root output directory>/docs/<test name>/doc`.
     pub unique_doc_out_dir: bool,
     // Flag to force a crate to be built with the host architecture
     pub force_host: bool,
@@ -1304,12 +1304,12 @@ pub fn llvm_has_libzstd(config: &Config) -> bool {
     false
 }
 
-/// Takes a directive of the form "<version1> [- <version2>]",
-/// returns the numeric representation of <version1> and <version2> as
-/// tuple: (<version1> as u32, <version2> as u32)
+/// Takes a directive of the form `"<version1> [- <version2>]"`,
+/// returns the numeric representation of `<version1>` and `<version2>` as
+/// tuple: `(<version1> as u32, <version2> as u32)`.
 ///
-/// If the <version2> part is omitted, the second component of the tuple
-/// is the same as <version1>.
+/// If the `<version2>` part is omitted, the second component of the tuple
+/// is the same as `<version1>`.
 fn extract_version_range<F>(line: &str, parse: F) -> Option<(u32, u32)>
 where
     F: Fn(&str) -> Option<u32>,
