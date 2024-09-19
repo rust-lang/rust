@@ -15,7 +15,7 @@ impl Foo {
 fn foo(_: Pin<&mut Foo>) {
 }
 
-fn bar(mut x: Pin<&mut Foo>) {
+fn bar(x: Pin<&mut Foo>) {
     foo(x);
     foo(x); // for this to work we need to automatically reborrow,
             // as if the user had written `foo(x.as_mut())`.
