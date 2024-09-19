@@ -178,6 +178,7 @@ pub(super) fn print_item<'a, 'tcx>(
                 }
             }
             clean::FunctionItem(..) | clean::ForeignFunctionItem(..) => "Function ",
+            clean::TestItem(..) => "Test ",
             clean::TraitItem(..) => "Trait ",
             clean::StructItem(..) => "Struct ",
             clean::UnionItem(..) => "Union ",
@@ -244,7 +245,9 @@ pub(super) fn print_item<'a, 'tcx>(
             clean::ModuleItem(ref m) => {
                 write!(buf, "{}", item_module(cx, item, &m.items))
             }
-            clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f, _) => {
+            clean::FunctionItem(ref f)
+            | clean::ForeignFunctionItem(ref f, _)
+            | clean::TestItem(ref f) => {
                 write!(buf, "{}", item_function(cx, item, f))
             }
             clean::TraitItem(ref t) => write!(buf, "{}", item_trait(cx, item, t)),
@@ -346,6 +349,7 @@ fn item_module<'a, 'tcx>(
                 ItemType::Static => 8,
                 ItemType::Trait => 9,
                 ItemType::Function => 10,
+                ItemType::Test => 11,
                 ItemType::TypeAlias => 12,
                 ItemType::Union => 13,
                 _ => 14 + ty as u8,
