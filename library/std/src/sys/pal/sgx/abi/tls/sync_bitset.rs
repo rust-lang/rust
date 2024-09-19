@@ -4,10 +4,10 @@ mod tests;
 use super::{TLS_KEYS_BITSET_SIZE, USIZE_BITS};
 use crate::iter::{Enumerate, Peekable};
 use crate::slice::Iter;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 
 /// A bitset that can be used synchronously.
-pub(super) struct SyncBitset([AtomicUsize; TLS_KEYS_BITSET_SIZE]);
+pub(super) struct SyncBitset([Atomic<usize>; TLS_KEYS_BITSET_SIZE]);
 
 pub(super) const SYNC_BITSET_INIT: SyncBitset =
     SyncBitset([AtomicUsize::new(0), AtomicUsize::new(0)]);
@@ -58,7 +58,7 @@ impl SyncBitset {
 }
 
 pub(super) struct SyncBitsetIter<'a> {
-    iter: Peekable<Enumerate<Iter<'a, AtomicUsize>>>,
+    iter: Peekable<Enumerate<Iter<'a, Atomic<usize>>>>,
     elem_idx: usize,
 }
 

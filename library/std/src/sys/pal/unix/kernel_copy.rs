@@ -62,7 +62,7 @@ use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use crate::os::unix::net::UnixStream;
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
-use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
 use crate::sys::fs::CachedFileMetadata;
 use crate::sys::weak::syscall;
@@ -596,7 +596,7 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
 
     // Kernel prior to 4.5 don't have copy_file_range
     // We store the availability in a global to avoid unnecessary syscalls
-    static HAS_COPY_FILE_RANGE: AtomicU8 = AtomicU8::new(NOT_PROBED);
+    static HAS_COPY_FILE_RANGE: Atomic<u8> = AtomicU8::new(NOT_PROBED);
 
     let mut have_probed = match HAS_COPY_FILE_RANGE.load(Ordering::Relaxed) {
         NOT_PROBED => false,
@@ -721,8 +721,8 @@ enum SpliceMode {
 /// performs splice or sendfile between file descriptors
 /// Does _not_ fall back to a generic copy loop.
 fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> CopyResult {
-    static HAS_SENDFILE: AtomicBool = AtomicBool::new(true);
-    static HAS_SPLICE: AtomicBool = AtomicBool::new(true);
+    static HAS_SENDFILE: Atomic<bool> = AtomicBool::new(true);
+    static HAS_SPLICE: Atomic<bool> = AtomicBool::new(true);
 
     // Android builds use feature level 14, but the libc wrapper for splice is
     // gated on feature level 21+, so we have to invoke the syscall directly.
