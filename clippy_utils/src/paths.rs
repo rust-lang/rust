@@ -14,7 +14,6 @@ pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
 pub const DIAG: [&str; 2] = ["rustc_errors", "Diag"];
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
 pub const EARLY_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "EarlyLintPass"];
-pub const FILE_OPTIONS: [&str; 4] = ["std", "fs", "File", "options"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
@@ -27,7 +26,6 @@ pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const MSRV: [&str; 3] = ["clippy_config", "msrvs", "Msrv"];
-pub const OPEN_OPTIONS_NEW: [&str; 4] = ["std", "fs", "OpenOptions", "new"];
 pub const PARKING_LOT_MUTEX_GUARD: [&str; 3] = ["lock_api", "mutex", "MutexGuard"];
 pub const PARKING_LOT_RWLOCK_READ_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwLockReadGuard"];
 pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwLockWriteGuard"];
