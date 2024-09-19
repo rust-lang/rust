@@ -17,8 +17,8 @@ fn main() {
         assert!(matches!(*p.as_ptr(), E::None));
 
         // Turns out the discriminant is (currently) stored
-        // in the 2nd pointer, so the first half is padding.
-        let c = &p as *const _ as *const u8;
+        // in the 1st pointer, so the second half is padding.
+        let c = (&p as *const mem::MaybeUninit<E>).byte_add(mem::size_of::<&'static ()>()) as *const u8;
         // Read a padding byte.
         let _val = *c.add(0);
         //~^ERROR: uninitialized
