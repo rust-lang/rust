@@ -30,7 +30,7 @@ use smallvec::SmallVec;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::Metadata;
+use crate::llvm::{Metadata, MetadataType};
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
@@ -1120,10 +1120,10 @@ impl CodegenCx<'_, '_> {
     }
 
     /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
-    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: c_uint, md: &'a Metadata) {
+    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: MetadataType, md: &'a Metadata) {
         unsafe {
             let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(val, kind_id, node);
+            llvm::LLVMSetMetadata(val, kind_id as c_uint, node);
         }
     }
 }
