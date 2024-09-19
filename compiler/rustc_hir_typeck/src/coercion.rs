@@ -824,10 +824,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // add the adjustments.
         self.unify_and(a, b, |_inner_ty| {
             vec![Adjustment {
-                kind: Adjust::ReborrowPin(AutoBorrow::Ref(
-                    b_region,
-                    AutoBorrowMutability::Mut { allow_two_phase_borrow: AllowTwoPhase::No },
-                )),
+                kind: Adjust::ReborrowPin(b_region, hir::Mutability::Mut),
                 target: b,
             }]
         })

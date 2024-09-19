@@ -147,50 +147,64 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
             Adjust::DynStar => ExprKind::Cast { source: self.thir.exprs.push(expr) },
-            Adjust::ReborrowPin(AutoBorrow::Ref(region, m)) => {
+            Adjust::ReborrowPin(region, mutbl) => {
                 debug!("apply ReborrowPin adjustment");
-                match m {
-                    AutoBorrowMutability::Mut { .. } => {
-                        // Rewrite `$expr` as `Pin::as_mut(&mut $expr)`
-                        let as_mut_method =
-                            self.tcx().require_lang_item(rustc_hir::LangItem::PinAsMut, Some(span));
-                        let pin_ty_args = match expr.ty.kind() {
-                            ty::Adt(_, args) => args,
-                            _ => bug!("ReborrowPin with non-Pin type"),
-                        };
-                        let as_mut_ty =
-                            Ty::new_fn_def(self.tcx, as_mut_method, pin_ty_args.into_iter());
+                // Rewrite `$expr` as `Pin { __pointer: &(mut)? *($expr).__pointer }`
 
-                        let ty = Ty::new_ref(self.tcx, region, expr.ty, ty::Mutability::Mut);
-                        let arg = ExprKind::Borrow {
-                            borrow_kind: BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
-                            arg: self.thir.exprs.push(expr),
-                        };
-                        debug!(?arg, "borrow arg");
-                        let arg = self.thir.exprs.push(Expr { temp_lifetime, ty, span, kind: arg });
+                // We'll need these types later on
+                let pin_ty_args = match expr.ty.kind() {
+                    ty::Adt(_, args) => args,
+                    _ => bug!("ReborrowPin with non-Pin type"),
+                };
+                let pin_ty = pin_ty_args.iter().next().unwrap().expect_ty();
+                let ptr_target_ty = match pin_ty.kind() {
+                    ty::Ref(_, ty, _) => *ty,
+                    _ => bug!("ReborrowPin with non-Ref type"),
+                };
 
-                        let kind = ExprKind::Call {
-                            ty: as_mut_ty,
-                            fun: self.thir.exprs.push(Expr {
-                                temp_lifetime,
-                                ty: as_mut_ty,
-                                span,
-                                kind: ExprKind::ZstLiteral { user_ty: None },
-                            }),
-                            args: Box::new([arg]),
-                            from_hir_call: true,
-                            fn_span: span,
-                        };
-                        debug!(?kind);
-                        kind
-                    }
-                    AutoBorrowMutability::Not => {
-                        // FIXME: We need to call Pin::as_ref on the expression
-                        bug!("ReborrowPin with shared reference is not implemented yet")
-                    }
-                }
+                // pointer = ($expr).__pointer
+                let pointer_target = ExprKind::Field {
+                    lhs: self.thir.exprs.push(expr),
+                    variant_index: FIRST_VARIANT,
+                    name: FieldIdx::from(0u32),
+                };
+                let arg = Expr { temp_lifetime, ty: pin_ty, span, kind: pointer_target };
+                let arg = self.thir.exprs.push(arg);
+
+                // arg = *pointer
+                let expr = ExprKind::Deref { arg };
+                let arg = self.thir.exprs.push(Expr {
+                    temp_lifetime,
+                    ty: ptr_target_ty,
+                    span,
+                    kind: expr,
+                });
+
+                // expr = &mut target
+                let expr = self.thir.exprs.push(Expr {
+                    temp_lifetime,
+                    ty: Ty::new_ref(self.tcx, region, ptr_target_ty, mutbl),
+                    span,
+                    kind: ExprKind::Borrow {
+                        borrow_kind: BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
+                        arg,
+                    },
+                });
+
+                // kind = Pin { __pointer: pointer }
+                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, Some(span));
+                let kind = ExprKind::Adt(Box::new(AdtExpr {
+                    adt_def: self.tcx.adt_def(pin_did),
+                    variant_index: FIRST_VARIANT,
+                    args: pin_ty_args,
+                    fields: Box::new([FieldExpr { name: FieldIdx::from(0u32), expr }]),
+                    user_ty: None,
+                    base: None,
+                }));
+
+                debug!(?kind);
+                kind
             }
-            Adjust::ReborrowPin(AutoBorrow::RawPtr(_)) => bug!("ReborrowPin with raw pointer"),
         };
 
         Expr { temp_lifetime, ty: adjustment.target, span, kind }
@@ -1059,7 +1073,7 @@ impl<'tcx> Cx<'tcx> {
 
         // Reconstruct the output assuming it's a reference with the
         // same region and mutability as the receiver. This holds for
-        // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
+        // `Deref(Mut)::deref(_mut)` and `Index(Mut)::index(_mut)`.
         let ty::Ref(region, _, mutbl) = *self.thir[args[0]].ty.kind() else {
             span_bug!(span, "overloaded_place: receiver is not a reference");
         };

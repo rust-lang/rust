@@ -1408,7 +1408,6 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     ///     }
     /// }
     /// ```
-    #[cfg_attr(not(bootstrap), lang = "pin_as_mut")]
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn as_mut(&mut self) -> Pin<&mut Ptr::Target> {

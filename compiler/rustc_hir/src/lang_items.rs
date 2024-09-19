@@ -395,7 +395,6 @@ language_item_table! {
     IteratorNext,            sym::next,                next_fn,                    Target::Method(MethodKind::Trait { body: false}), GenericRequirement::None;
 
     PinNewUnchecked,         sym::new_unchecked,       new_unchecked_fn,           Target::Method(MethodKind::Inherent), GenericRequirement::None;
-    PinAsMut,                sym::pin_as_mut,              as_mut_fn,                  Target::Method(MethodKind::Inherent), GenericRequirement::None;
 
     RangeFrom,               sym::RangeFrom,           range_from_struct,          Target::Struct,         GenericRequirement::None;
     RangeFull,               sym::RangeFull,           range_full_struct,          Target::Struct,         GenericRequirement::None;
