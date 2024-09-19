@@ -121,7 +121,7 @@ pub(crate) mod instant_internal {
     use super::*;
     use crate::mem::MaybeUninit;
     use crate::ptr::NonNull;
-    use crate::sync::atomic::{AtomicPtr, Ordering};
+    use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
     use crate::sys_common::mul_div_u64;
 
     const NS_PER_SEC: u64 = 1_000_000_000;
@@ -142,7 +142,7 @@ pub(crate) mod instant_internal {
             Some(mul_div_u64(ts, NS_PER_SEC, freq))
         }
 
-        static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+        static LAST_VALID_HANDLE: Atomic<*mut crate::ffi::c_void> =
             AtomicPtr::new(crate::ptr::null_mut());
 
         if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {

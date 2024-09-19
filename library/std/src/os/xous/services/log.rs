@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{Atomic, AtomicU32, Ordering};
 
 use crate::os::xous::ffi::Connection;
 
@@ -64,7 +64,7 @@ impl Into<usize> for LogLend {
 /// running. It is safe to call this multiple times, because the address is
 /// shared among all threads in a process.
 pub(crate) fn log_server() -> Connection {
-    static LOG_SERVER_CONNECTION: AtomicU32 = AtomicU32::new(0);
+    static LOG_SERVER_CONNECTION: Atomic<u32> = AtomicU32::new(0);
 
     let cid = LOG_SERVER_CONNECTION.load(Ordering::Relaxed);
     if cid != 0 {

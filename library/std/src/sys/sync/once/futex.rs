@@ -1,7 +1,7 @@
 use crate::cell::Cell;
 use crate::sync as public;
-use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{Atomic, AtomicU32};
 use crate::sync::once::ExclusiveState;
 use crate::sys::futex::{futex_wait, futex_wake_all};
 
@@ -49,7 +49,7 @@ impl OnceState {
 }
 
 struct CompletionGuard<'a> {
-    state_and_queued: &'a AtomicU32,
+    state_and_queued: &'a Atomic<u32>,
     set_state_on_drop_to: u32,
 }
 
@@ -65,7 +65,7 @@ impl<'a> Drop for CompletionGuard<'a> {
 }
 
 pub struct Once {
-    state_and_queued: AtomicU32,
+    state_and_queued: Atomic<u32>,
 }
 
 impl Once {

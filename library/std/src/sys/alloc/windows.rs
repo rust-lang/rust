@@ -3,7 +3,7 @@ use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ffi::c_void;
 use crate::mem::MaybeUninit;
 use crate::ptr;
-use crate::sync::atomic::{AtomicPtr, Ordering};
+use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
 use crate::sys::c;
 
 #[cfg(test)]
@@ -83,7 +83,7 @@ windows_targets::link!("kernel32.dll" "system" fn HeapFree(hheap: c::HANDLE, dwf
 
 // Cached handle to the default heap of the current process.
 // Either a non-null handle returned by `GetProcessHeap`, or null when not yet initialized or `GetProcessHeap` failed.
-static HEAP: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
+static HEAP: Atomic<*mut c_void> = AtomicPtr::new(ptr::null_mut());
 
 // Get a handle to the default heap of the current process, or null if the operation fails.
 // If this operation is successful, `HEAP` will be successfully initialized and contain

@@ -18,10 +18,10 @@ macro_rules! unimpl {
 
 #[derive(Clone)]
 pub struct TcpListener {
-    fd: Arc<AtomicU16>,
+    fd: Arc<Atomic<u16>>,
     local: SocketAddr,
-    handle_count: Arc<AtomicUsize>,
-    nonblocking: Arc<AtomicBool>,
+    handle_count: Arc<Atomic<usize>>,
+    nonblocking: Arc<Atomic<bool>>,
 }
 
 impl TcpListener {

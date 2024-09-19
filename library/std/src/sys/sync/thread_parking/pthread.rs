@@ -4,8 +4,8 @@ use crate::cell::UnsafeCell;
 use crate::marker::PhantomPinned;
 use crate::pin::Pin;
 use crate::ptr::addr_of_mut;
-use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{Atomic, AtomicUsize};
 #[cfg(not(target_os = "nto"))]
 use crate::sys::time::TIMESPEC_MAX;
 #[cfg(target_os = "nto")]
@@ -84,7 +84,7 @@ unsafe fn wait_timeout(
 }
 
 pub struct Parker {
-    state: AtomicUsize,
+    state: Atomic<usize>,
     lock: UnsafeCell<libc::pthread_mutex_t>,
     cvar: UnsafeCell<libc::pthread_cond_t>,
     // The `pthread` primitives require a stable address, so make this struct `!Unpin`.

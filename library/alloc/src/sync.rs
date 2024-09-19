@@ -24,8 +24,8 @@ use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
-use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use core::sync::atomic::{self, Atomic};
 use core::{borrow, fmt, hint};
 
 #[cfg(not(no_global_oom_handling))]
@@ -346,12 +346,12 @@ impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {
 // inner types.
 #[repr(C)]
 struct ArcInner<T: ?Sized> {
-    strong: atomic::AtomicUsize,
+    strong: Atomic<usize>,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
     // ability to upgrade weak pointers or downgrade strong ones; this is used
     // to avoid races in `make_mut` and `get_mut`.
-    weak: atomic::AtomicUsize,
+    weak: Atomic<usize>,
 
     data: T,
 }
@@ -2706,8 +2706,8 @@ impl<T, A: Allocator> Weak<T, A> {
 /// Helper type to allow accessing the reference counts without
 /// making any assertions about the data field.
 struct WeakInner<'a> {
-    weak: &'a atomic::AtomicUsize,
-    strong: &'a atomic::AtomicUsize,
+    weak: &'a Atomic<usize>,
+    strong: &'a Atomic<usize>,
 }
 
 impl<T: ?Sized> Weak<T> {

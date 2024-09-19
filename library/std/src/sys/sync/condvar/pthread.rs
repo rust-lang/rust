@@ -1,7 +1,7 @@
 use crate::cell::UnsafeCell;
 use crate::ptr;
-use crate::sync::atomic::AtomicPtr;
 use crate::sync::atomic::Ordering::Relaxed;
+use crate::sync::atomic::{Atomic, AtomicPtr};
 use crate::sys::sync::{mutex, Mutex};
 #[cfg(not(target_os = "nto"))]
 use crate::sys::time::TIMESPEC_MAX;
@@ -14,7 +14,7 @@ struct AllocatedCondvar(UnsafeCell<libc::pthread_cond_t>);
 
 pub struct Condvar {
     inner: LazyBox<AllocatedCondvar>,
-    mutex: AtomicPtr<libc::pthread_mutex_t>,
+    mutex: Atomic<*mut libc::pthread_mutex_t>,
 }
 
 #[inline]

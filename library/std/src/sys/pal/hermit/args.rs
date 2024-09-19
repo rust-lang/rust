@@ -1,11 +1,11 @@
 use crate::ffi::{c_char, CStr, OsString};
 use crate::os::hermit::ffi::OsStringExt;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-use crate::sync::atomic::{AtomicIsize, AtomicPtr};
+use crate::sync::atomic::{Atomic, AtomicIsize, AtomicPtr};
 use crate::{fmt, ptr, vec};
 
-static ARGC: AtomicIsize = AtomicIsize::new(0);
-static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());
+static ARGC: Atomic<isize> = AtomicIsize::new(0);
+static ARGV: Atomic<*mut *const u8> = AtomicPtr::new(ptr::null_mut());
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {

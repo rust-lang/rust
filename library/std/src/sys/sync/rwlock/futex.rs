@@ -1,5 +1,5 @@
-use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{Atomic, AtomicU32};
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
 
 pub struct RwLock {
@@ -10,10 +10,10 @@ pub struct RwLock {
     //   0x3FFF_FFFF: Write locked
     // Bit 30: Readers are waiting on this futex.
     // Bit 31: Writers are waiting on the writer_notify futex.
-    state: AtomicU32,
+    state: Atomic<u32>,
     // The 'condition variable' to notify writers through.
     // Incremented on every signal.
-    writer_notify: AtomicU32,
+    writer_notify: Atomic<u32>,
 }
 
 const READ_LOCKED: u32 = 1;

@@ -1,14 +1,14 @@
 use super::hermit_abi;
 use crate::ptr::null;
-use crate::sync::atomic::AtomicU32;
+use crate::sync::atomic::Atomic;
 use crate::time::Duration;
 
 /// An atomic for use as a futex that is at least 8-bits but may be larger.
-pub type SmallAtomic = AtomicU32;
+pub type SmallAtomic = Atomic<u32>;
 /// Must be the underlying type of SmallAtomic
 pub type SmallPrimitive = u32;
 
-pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
     // Calculate the timeout as a relative timespec.
     //
     // Overflows are rounded up to an infinite timeout (None).
@@ -32,12 +32,12 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 }
 
 #[inline]
-pub fn futex_wake(futex: &AtomicU32) -> bool {
+pub fn futex_wake(futex: &Atomic<u32>) -> bool {
     unsafe { hermit_abi::futex_wake(futex.as_ptr(), 1) > 0 }
 }
 
 #[inline]
-pub fn futex_wake_all(futex: &AtomicU32) {
+pub fn futex_wake_all(futex: &Atomic<u32>) {
     unsafe {
         hermit_abi::futex_wake(futex.as_ptr(), i32::MAX);
     }

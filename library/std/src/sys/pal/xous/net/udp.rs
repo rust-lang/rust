@@ -27,7 +27,7 @@ pub struct UdpSocket {
     read_timeout: Cell<u64>,
     // in milliseconds. The setting applies only to `send` calls after the timeout is set.
     write_timeout: Cell<u64>,
-    handle_count: Arc<AtomicUsize>,
+    handle_count: Arc<Atomic<usize>>,
     nonblocking: Cell<bool>,
 }
 

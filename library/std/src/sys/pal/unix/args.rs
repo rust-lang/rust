@@ -117,7 +117,7 @@ impl DoubleEndedIterator for Args {
 mod imp {
     use crate::ffi::c_char;
     use crate::ptr;
-    use crate::sync::atomic::{AtomicIsize, AtomicPtr, Ordering};
+    use crate::sync::atomic::{Atomic, AtomicIsize, AtomicPtr, Ordering};
 
     // The system-provided argc and argv, which we store in static memory
     // here so that we can defer the work of parsing them until its actually
@@ -125,8 +125,8 @@ mod imp {
     //
     // Note that we never mutate argv/argc, the argv array, or the argv
     // strings, which allows the code in this file to be very simple.
-    static ARGC: AtomicIsize = AtomicIsize::new(0);
-    static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());
+    static ARGC: Atomic<isize> = AtomicIsize::new(0);
+    static ARGV: Atomic<*mut *const u8> = AtomicPtr::new(ptr::null_mut());
 
     unsafe fn really_init(argc: isize, argv: *const *const u8) {
         // These don't need to be ordered with each other or other stores,
