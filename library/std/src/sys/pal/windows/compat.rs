@@ -145,7 +145,7 @@ macro_rules! compat_fn_with_fallback {
             use super::*;
             use crate::mem;
             use crate::ffi::CStr;
-            use crate::sync::atomic::{AtomicPtr, Ordering};
+            use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
             use crate::sys::compat::Module;
 
             type F = unsafe extern "system" fn($($argtype),*) -> $rettype;
@@ -155,7 +155,7 @@ macro_rules! compat_fn_with_fallback {
             /// When that is called it attempts to load the requested symbol.
             /// If it succeeds, `PTR` is set to the address of that symbol.
             /// If it fails, then `PTR` is set to `fallback`.
-            static PTR: AtomicPtr<c_void> = AtomicPtr::new(load as *mut _);
+            static PTR: Atomic<*mut c_void> = AtomicPtr::new(load as *mut _);
 
             unsafe extern "system" fn load($($argname: $argtype),*) -> $rettype {
                 unsafe {
@@ -212,9 +212,9 @@ macro_rules! compat_fn_optional {
                 use crate::ffi::c_void;
                 use crate::mem;
                 use crate::ptr::{self, NonNull};
-                use crate::sync::atomic::{AtomicPtr, Ordering};
+                use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
 
-                pub(in crate::sys) static PTR: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
+                pub(in crate::sys) static PTR: Atomic<*mut c_void> = AtomicPtr::new(ptr::null_mut());
 
                 type F = unsafe extern "system" fn($($argtype),*) $(-> $rettype)?;
 

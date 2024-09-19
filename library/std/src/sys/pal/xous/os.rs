@@ -4,12 +4,12 @@ use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::xous::ffi::Error as XousError;
 use crate::path::{self, PathBuf};
-use crate::sync::atomic::{AtomicPtr, Ordering};
+use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
 use crate::{fmt, io};
 
 pub(crate) mod params;
 
-static PARAMS_ADDRESS: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
+static PARAMS_ADDRESS: Atomic<*mut u8> = AtomicPtr::new(core::ptr::null_mut());
 
 #[cfg(not(test))]
 #[cfg(feature = "panic_unwind")]

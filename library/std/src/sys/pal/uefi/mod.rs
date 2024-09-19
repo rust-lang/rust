@@ -28,9 +28,9 @@ pub type RawOsError = usize;
 use crate::io as std_io;
 use crate::os::uefi;
 use crate::ptr::NonNull;
-use crate::sync::atomic::{AtomicPtr, Ordering};
+use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
 
-static EXIT_BOOT_SERVICE_EVENT: AtomicPtr<crate::ffi::c_void> =
+static EXIT_BOOT_SERVICE_EVENT: Atomic<*mut crate::ffi::c_void> =
     AtomicPtr::new(crate::ptr::null_mut());
 
 /// # SAFETY

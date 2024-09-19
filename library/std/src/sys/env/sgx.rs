@@ -4,13 +4,13 @@ pub use super::common::Env;
 use crate::collections::HashMap;
 use crate::ffi::{OsStr, OsString};
 use crate::io;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::sync::{Mutex, Once};
 
 // Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
 #[unsafe(export_name = "_ZN16__rust_internals3std3sys3pal3sgx2os3ENVE")]
-static ENV: AtomicUsize = AtomicUsize::new(0);
+static ENV: Atomic<usize> = AtomicUsize::new(0);
 // Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
 #[unsafe(export_name = "_ZN16__rust_internals3std3sys3pal3sgx2os8ENV_INITE")]
