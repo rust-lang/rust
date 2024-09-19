@@ -2112,34 +2112,59 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         probes: &[(&Candidate<'tcx>, ProbeResult)],
     ) -> Option<Pick<'tcx>> {
-        let mut child_pick = probes[0].0;
-        let mut supertraits: SsoHashSet<_> =
-            supertrait_def_ids(self.tcx, child_pick.item.trait_container(self.tcx)?).collect();
+        let mut child_candidate = probes[0].0;
+        let mut child_trait = child_candidate.item.trait_container(self.tcx)?;
+        let mut supertraits: SsoHashSet<_> = supertrait_def_ids(self.tcx, child_trait).collect();
 
-        // All other picks should be a supertrait of the `child_pick`.
-        // If it's not, then we update the `child_pick` and the `supertraits`
-        // list.
-        for (p, _) in &probes[1..] {
-            let p_container = p.item.trait_container(self.tcx)?;
-            if !supertraits.contains(&p_container) {
-                // This pick is not a supertrait of the `child_pick`.
-                // Check if it's a subtrait of the `child_pick`, which
-                // is sufficient to imply that all of the previous picks
-                // are also supertraits of this pick.
-                supertraits = supertrait_def_ids(self.tcx, p_container).collect();
-                if supertraits.contains(&child_pick.item.trait_container(self.tcx).unwrap()) {
-                    child_pick = *p;
-                } else {
-                    // `child_pick` is not a supertrait of this pick. Bail.
-                    return None;
+        let mut remaining_candidates: Vec<_> = probes[1..].iter().map(|&(p, _)| p).collect();
+        while !remaining_candidates.is_empty() {
+            let mut made_progress = false;
+            let mut next_round = vec![];
+
+            for remaining_candidate in remaining_candidates {
+                let remaining_trait = remaining_candidate.item.trait_container(self.tcx)?;
+                if supertraits.contains(&remaining_trait) {
+                    made_progress = true;
+                    continue;
                 }
+
+                // This pick is not a supertrait of the `child_pick`.
+                // Check if it's a subtrait of the `child_pick`, instead.
+                // If it is, then it must have been a subtrait of every
+                // other pick we've eliminated at this point. It will
+                // take over at this point.
+                let remaining_trait_supertraits: SsoHashSet<_> =
+                    supertrait_def_ids(self.tcx, remaining_trait).collect();
+                if remaining_trait_supertraits.contains(&child_trait) {
+                    child_candidate = remaining_candidate;
+                    child_trait = remaining_trait;
+                    supertraits = remaining_trait_supertraits;
+                    made_progress = true;
+                    continue;
+                }
+
+                // `child_pick` is not a supertrait of this pick.
+                // Don't bail here, since we may be comparing two supertraits
+                // of a common subtrait. These two supertraits won't be related
+                // at all, but we will pick them up next round when we find their
+                // child as we continue iterating in this round.
+                next_round.push(remaining_candidate);
+            }
+
+            if made_progress {
+                // If we've made progress, iterate again.
+                remaining_candidates = next_round;
+            } else {
+                // Otherwise, we must have at least two candidates which
+                // are not related to each other at all.
+                return None;
             }
         }
 
         Some(Pick {
-            item: child_pick.item,
+            item: child_candidate.item,
             kind: TraitPick,
-            import_ids: child_pick.import_ids.clone(),
+            import_ids: child_candidate.import_ids.clone(),
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
@@ -2147,7 +2172,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             shadowed_candidates: probes
                 .iter()
                 .map(|(c, _)| c.item)
-                .filter(|item| item.def_id != child_pick.item.def_id)
+                .filter(|item| item.def_id != child_candidate.item.def_id)
                 .collect(),
             receiver_steps: None,
         })
