@@ -37,6 +37,9 @@ declare_lint_pass!(LiteralStringWithFormattingArg => [LITERAL_STRING_WITH_FORMAT
 
 impl EarlyLintPass for LiteralStringWithFormattingArg {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+        if expr.span.from_expansion() {
+            return;
+        }
         if let ExprKind::Lit(lit) = expr.kind {
             let add = match lit.kind {
                 LitKind::Str => 1,
