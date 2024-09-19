@@ -23,6 +23,16 @@ macro_rules! unlikely {
     };
 }
 
+// Use this when the generated code should differ between signed and unsigned types.
+macro_rules! sign_dependent_expr {
+    (signed ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
+        $signed_case
+    };
+    (unsigned ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
+        $unsigned_case
+    };
+}
+
 // All these modules are technically private and only exposed for coretests:
 #[cfg(not(no_fp_fmt_parse))]
 pub mod bignum;
@@ -1410,15 +1420,25 @@ const fn from_str_radix_panic(radix: u32) {
 }
 
 macro_rules! from_str_radix {
-    ($($int_ty:ty)+) => {$(
+    ($signedness:ident $($int_ty:ty)+) => {$(
         impl $int_ty {
             /// Converts a string slice in a given base to an integer.
             ///
-            /// The string is expected to be an optional `+` sign
-            /// followed by digits.
-            /// Leading and trailing whitespace represent an error.
-            /// Digits are a subset of these characters, depending on `radix`:
+            /// The string is expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in rust literals)
+            /// also represent an error.
             ///
+            /// Digits are a subset of these characters, depending on `radix`:
             /// * `0-9`
             /// * `a-z`
             /// * `A-Z`
@@ -1430,9 +1450,12 @@ macro_rules! from_str_radix {
             /// # Examples
             ///
             /// Basic usage:
-            ///
             /// ```
             #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_str_radix(\"A\", 16), Ok(10));")]
+            /// ```
+            /// Trailing space returns error:
+            /// ```
+            #[doc = concat!("assert!(", stringify!($int_ty), "::from_str_radix(\"1 \", 10).is_err());")]
             /// ```
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
@@ -1535,20 +1558,31 @@ macro_rules! from_str_radix {
     )+}
 }
 
-from_str_radix! { i8 u8 i16 u16 i32 u32 i64 u64 i128 u128 }
+from_str_radix! { unsigned u8 u16 u32 u64 u128 }
+from_str_radix! { signed i8 i16 i32 i64 i128 }
 
 // Re-use the relevant implementation of from_str_radix for isize and usize to avoid outputting two
 // identical functions.
 macro_rules! from_str_radix_size_impl {
-    ($($t:ident $size:ty),*) => {$(
+    ($($signedness:ident $t:ident $size:ty),*) => {$(
     impl $size {
         /// Converts a string slice in a given base to an integer.
         ///
-        /// The string is expected to be an optional `+` sign
-        /// followed by digits.
-        /// Leading and trailing whitespace represent an error.
-        /// Digits are a subset of these characters, depending on `radix`:
+        /// The string is expected to be an optional
+        #[doc = sign_dependent_expr!{
+            $signedness ?
+            if signed {
+                " `+` or `-` "
+            }
+            if unsigned {
+                " `+` "
+            }
+        }]
+        /// sign followed by only digits. Leading and trailing non-digit characters (including
+        /// whitespace) represent an error. Underscores (which are accepted in rust literals)
+        /// also represent an error.
         ///
+        /// Digits are a subset of these characters, depending on `radix`:
         /// * `0-9`
         /// * `a-z`
         /// * `A-Z`
@@ -1560,9 +1594,12 @@ macro_rules! from_str_radix_size_impl {
         /// # Examples
         ///
         /// Basic usage:
-        ///
         /// ```
         #[doc = concat!("assert_eq!(", stringify!($size), "::from_str_radix(\"A\", 16), Ok(10));")]
+        /// ```
+        /// Trailing space returns error:
+        /// ```
+        #[doc = concat!("assert!(", stringify!($size), "::from_str_radix(\"1 \", 10).is_err());")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
@@ -1576,8 +1613,8 @@ macro_rules! from_str_radix_size_impl {
 }
 
 #[cfg(target_pointer_width = "16")]
-from_str_radix_size_impl! { i16 isize, u16 usize }
+from_str_radix_size_impl! { signed i16 isize, unsigned u16 usize }
 #[cfg(target_pointer_width = "32")]
-from_str_radix_size_impl! { i32 isize, u32 usize }
+from_str_radix_size_impl! { signed i32 isize, unsigned u32 usize }
 #[cfg(target_pointer_width = "64")]
-from_str_radix_size_impl! { i64 isize, u64 usize }
+from_str_radix_size_impl! { signed i64 isize, unsigned u64 usize }
