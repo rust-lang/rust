@@ -149,14 +149,14 @@ cfg_has_statx! {{
         flags: i32,
         mask: u32,
     ) -> Option<io::Result<FileAttr>> {
-        use crate::sync::atomic::{AtomicU8, Ordering};
+        use crate::sync::atomic::{Atomic, AtomicU8, Ordering};
 
         // Linux kernel prior to 4.11 or glibc prior to glibc 2.28 don't support `statx`.
         // We check for it on first failure and remember availability to avoid having to
         // do it again.
         #[repr(u8)]
         enum STATX_STATE{ Unknown = 0, Present, Unavailable }
-        static STATX_SAVED_STATE: AtomicU8 = AtomicU8::new(STATX_STATE::Unknown as u8);
+        static STATX_SAVED_STATE: Atomic<u8> = AtomicU8::new(STATX_STATE::Unknown as u8);
 
         syscall! {
             fn statx(

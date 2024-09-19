@@ -1,13 +1,13 @@
 use crate::error::Error;
 use crate::fmt;
 #[cfg(panic = "unwind")]
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 #[cfg(panic = "unwind")]
 use crate::thread;
 
 pub struct Flag {
     #[cfg(panic = "unwind")]
-    failed: AtomicBool,
+    failed: Atomic<bool>,
 }
 
 // Note that the Ordering uses to access the `failed` field of `Flag` below is

@@ -8,7 +8,7 @@
     target_os = "fuchsia",
 ))]
 
-use crate::sync::atomic::AtomicU32;
+use crate::sync::atomic::{Atomic, AtomicU32};
 use crate::time::Duration;
 
 /// An atomic for use as a futex that is at least 8-bits but may be larger.
@@ -22,7 +22,7 @@ pub type SmallPrimitive = u32;
 ///
 /// Returns false on timeout, and true in all other cases.
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
-pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
     use super::time::Timespec;
     use crate::ptr::null;
     use crate::sync::atomic::Ordering::Relaxed;
@@ -55,7 +55,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
                     let umtx_timeout_ptr = umtx_timeout.as_ref().map_or(null(), |t| t as *const _);
                     let umtx_timeout_size = umtx_timeout.as_ref().map_or(0, |t| crate::mem::size_of_val(t));
                     libc::_umtx_op(
-                        futex as *const AtomicU32 as *mut _,
+                        futex as *const Atomic<u32> as *mut _,
                         libc::UMTX_OP_WAIT_UINT_PRIVATE,
                         expected as libc::c_ulong,
                         crate::ptr::without_provenance_mut(umtx_timeout_size),
@@ -66,7 +66,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
                     // absolute time rather than a relative time.
                     libc::syscall(
                         libc::SYS_futex,
-                        futex as *const AtomicU32,
+                        futex as *const Atomic<u32>,
                         libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
                         expected,
                         timespec.as_ref().map_or(null(), |t| t as *const libc::timespec),
@@ -94,16 +94,16 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 ///
 /// On some platforms, this always returns false.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn futex_wake(futex: &AtomicU32) -> bool {
-    let ptr = futex as *const AtomicU32;
+pub fn futex_wake(futex: &Atomic<u32>) -> bool {
+    let ptr = futex as *const Atomic<u32>;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
     unsafe { libc::syscall(libc::SYS_futex, ptr, op, 1) > 0 }
 }
 
 /// Wakes up all threads that are waiting on `futex_wait` on this futex.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn futex_wake_all(futex: &AtomicU32) {
-    let ptr = futex as *const AtomicU32;
+pub fn futex_wake_all(futex: &Atomic<u32>) {
+    let ptr = futex as *const Atomic<u32>;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
     unsafe {
         libc::syscall(libc::SYS_futex, ptr, op, i32::MAX);
@@ -112,11 +112,11 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 
 // FreeBSD doesn't tell us how many threads are woken up, so this always returns false.
 #[cfg(target_os = "freebsd")]
-pub fn futex_wake(futex: &AtomicU32) -> bool {
+pub fn futex_wake(futex: &Atomic<u32>) -> bool {
     use crate::ptr::null_mut;
     unsafe {
         libc::_umtx_op(
-            futex as *const AtomicU32 as *mut _,
+            futex as *const Atomic<u32> as *mut _,
             libc::UMTX_OP_WAKE_PRIVATE,
             1,
             null_mut(),
@@ -127,11 +127,11 @@ pub fn futex_wake(futex: &AtomicU32) -> bool {
 }
 
 #[cfg(target_os = "freebsd")]
-pub fn futex_wake_all(futex: &AtomicU32) {
+pub fn futex_wake_all(futex: &Atomic<u32>) {
     use crate::ptr::null_mut;
     unsafe {
         libc::_umtx_op(
-            futex as *const AtomicU32 as *mut _,
+            futex as *const Atomic<u32> as *mut _,
             libc::UMTX_OP_WAKE_PRIVATE,
             i32::MAX as libc::c_ulong,
             null_mut(),
@@ -141,7 +141,7 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 }
 
 #[cfg(target_os = "openbsd")]
-pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
     use super::time::Timespec;
     use crate::ptr::{null, null_mut};
 
@@ -152,7 +152,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 
     let r = unsafe {
         libc::futex(
-            futex as *const AtomicU32 as *mut u32,
+            futex as *const Atomic<u32> as *mut u32,
             libc::FUTEX_WAIT,
             expected as i32,
             timespec.as_ref().map_or(null(), |t| t as *const libc::timespec),
@@ -164,20 +164,25 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 }
 
 #[cfg(target_os = "openbsd")]
-pub fn futex_wake(futex: &AtomicU32) -> bool {
+pub fn futex_wake(futex: &Atomic<u32>) -> bool {
     use crate::ptr::{null, null_mut};
     unsafe {
-        libc::futex(futex as *const AtomicU32 as *mut u32, libc::FUTEX_WAKE, 1, null(), null_mut())
-            > 0
+        libc::futex(
+            futex as *const Atomic<u32> as *mut u32,
+            libc::FUTEX_WAKE,
+            1,
+            null(),
+            null_mut(),
+        ) > 0
     }
 }
 
 #[cfg(target_os = "openbsd")]
-pub fn futex_wake_all(futex: &AtomicU32) {
+pub fn futex_wake_all(futex: &Atomic<u32>) {
     use crate::ptr::{null, null_mut};
     unsafe {
         libc::futex(
-            futex as *const AtomicU32 as *mut u32,
+            futex as *const Atomic<u32> as *mut u32,
             libc::FUTEX_WAKE,
             i32::MAX,
             null(),
@@ -187,7 +192,7 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 }
 
 #[cfg(target_os = "dragonfly")]
-pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
     // A timeout of 0 means infinite.
     // We round smaller timeouts up to 1 millisecond.
     // Overflows are rounded up to an infinite timeout.
@@ -195,7 +200,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
         timeout.and_then(|d| Some(i32::try_from(d.as_millis()).ok()?.max(1))).unwrap_or(0);
 
     let r = unsafe {
-        libc::umtx_sleep(futex as *const AtomicU32 as *const i32, expected as i32, timeout_ms)
+        libc::umtx_sleep(futex as *const Atomic<u32> as *const i32, expected as i32, timeout_ms)
     };
 
     r == 0 || super::os::errno() != libc::ETIMEDOUT
@@ -203,28 +208,28 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 
 // DragonflyBSD doesn't tell us how many threads are woken up, so this always returns false.
 #[cfg(target_os = "dragonfly")]
-pub fn futex_wake(futex: &AtomicU32) -> bool {
-    unsafe { libc::umtx_wakeup(futex as *const AtomicU32 as *const i32, 1) };
+pub fn futex_wake(futex: &Atomic<u32>) -> bool {
+    unsafe { libc::umtx_wakeup(futex as *const Atomic<u32> as *const i32, 1) };
     false
 }
 
 #[cfg(target_os = "dragonfly")]
-pub fn futex_wake_all(futex: &AtomicU32) {
-    unsafe { libc::umtx_wakeup(futex as *const AtomicU32 as *const i32, i32::MAX) };
+pub fn futex_wake_all(futex: &Atomic<u32>) {
+    unsafe { libc::umtx_wakeup(futex as *const Atomic<u32> as *const i32, i32::MAX) };
 }
 
 #[cfg(target_os = "emscripten")]
 extern "C" {
-    fn emscripten_futex_wake(addr: *const AtomicU32, count: libc::c_int) -> libc::c_int;
+    fn emscripten_futex_wake(addr: *const Atomic<u32>, count: libc::c_int) -> libc::c_int;
     fn emscripten_futex_wait(
-        addr: *const AtomicU32,
+        addr: *const Atomic<u32>,
         val: libc::c_uint,
         max_wait_ms: libc::c_double,
     ) -> libc::c_int;
 }
 
 #[cfg(target_os = "emscripten")]
-pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
     unsafe {
         emscripten_futex_wait(
             futex,
@@ -235,18 +240,18 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 }
 
 #[cfg(target_os = "emscripten")]
-pub fn futex_wake(futex: &AtomicU32) -> bool {
+pub fn futex_wake(futex: &Atomic<u32>) -> bool {
     unsafe { emscripten_futex_wake(futex, 1) > 0 }
 }
 
 #[cfg(target_os = "emscripten")]
-pub fn futex_wake_all(futex: &AtomicU32) {
+pub fn futex_wake_all(futex: &Atomic<u32>) {
     unsafe { emscripten_futex_wake(futex, i32::MAX) };
 }
 
 #[cfg(target_os = "fuchsia")]
 pub mod zircon {
-    pub type zx_futex_t = crate::sync::atomic::AtomicU32;
+    pub type zx_futex_t = crate::sync::atomic::Atomic;
     pub type zx_handle_t = u32;
     pub type zx_status_t = i32;
     pub type zx_time_t = i64;
@@ -277,7 +282,7 @@ pub mod zircon {
 }
 
 #[cfg(target_os = "fuchsia")]
-pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
     // Sleep forever if the timeout is longer than fits in a i64.
     let deadline = timeout
         .and_then(|d| {
@@ -295,12 +300,12 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 
 // Fuchsia doesn't tell us how many threads are woken up, so this always returns false.
 #[cfg(target_os = "fuchsia")]
-pub fn futex_wake(futex: &AtomicU32) -> bool {
+pub fn futex_wake(futex: &Atomic<u32>) -> bool {
     unsafe { zircon::zx_futex_wake(futex, 1) };
     false
 }
 
 #[cfg(target_os = "fuchsia")]
-pub fn futex_wake_all(futex: &AtomicU32) {
+pub fn futex_wake_all(futex: &Atomic<u32>) {
     unsafe { zircon::zx_futex_wake(futex, u32::MAX) };
 }

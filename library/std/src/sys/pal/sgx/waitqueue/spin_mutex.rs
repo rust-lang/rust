@@ -7,12 +7,12 @@ mod tests;
 use crate::cell::UnsafeCell;
 use crate::hint;
 use crate::ops::{Deref, DerefMut};
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 
 #[derive(Default)]
 pub struct SpinMutex<T> {
     value: UnsafeCell<T>,
-    lock: AtomicBool,
+    lock: Atomic<bool>,
 }
 
 unsafe impl<T: Send> Send for SpinMutex<T> {}

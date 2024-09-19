@@ -13,8 +13,8 @@
 #![allow(non_camel_case_types)]
 
 use crate::pin::Pin;
-use crate::sync::atomic::AtomicI8;
 use crate::sync::atomic::Ordering::{Acquire, Release};
+use crate::sync::atomic::{Atomic, AtomicI8};
 use crate::time::Duration;
 
 type dispatch_semaphore_t = *mut crate::ffi::c_void;
@@ -38,7 +38,7 @@ const PARKED: i8 = -1;
 
 pub struct Parker {
     semaphore: dispatch_semaphore_t,
-    state: AtomicI8,
+    state: Atomic<i8>,
 }
 
 unsafe impl Sync for Parker {}

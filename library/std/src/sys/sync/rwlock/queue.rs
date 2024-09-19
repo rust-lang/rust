@@ -112,7 +112,7 @@ use crate::hint::spin_loop;
 use crate::mem;
 use crate::ptr::{self, null_mut, without_provenance_mut, NonNull};
 use crate::sync::atomic::Ordering::{AcqRel, Acquire, Relaxed, Release};
-use crate::sync::atomic::{AtomicBool, AtomicPtr};
+use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr};
 use crate::thread::{self, Thread};
 
 // Locking uses exponential backoff. `SPIN_COUNT` indicates how many times the
@@ -121,7 +121,7 @@ use crate::thread::{self, Thread};
 const SPIN_COUNT: usize = 7;
 
 type State = *mut ();
-type AtomicState = AtomicPtr<()>;
+type AtomicState = Atomic<*mut ()>;
 
 const UNLOCKED: State = without_provenance_mut(0);
 const LOCKED: usize = 1;
@@ -157,7 +157,7 @@ unsafe fn to_node(state: State) -> NonNull<Node> {
 }
 
 /// An atomic node pointer with relaxed operations.
-struct AtomicLink(AtomicPtr<Node>);
+struct AtomicLink(Atomic<*mut Node>);
 
 impl AtomicLink {
     fn new(v: Option<NonNull<Node>>) -> AtomicLink {
@@ -180,7 +180,7 @@ struct Node {
     tail: AtomicLink,
     write: bool,
     thread: OnceCell<Thread>,
-    completed: AtomicBool,
+    completed: Atomic<bool>,
 }
 
 impl Node {

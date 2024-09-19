@@ -166,7 +166,7 @@ use crate::mem::{self, forget, ManuallyDrop};
 use crate::num::NonZero;
 use crate::pin::Pin;
 use crate::ptr::addr_of_mut;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::sync::Arc;
 use crate::sys::sync::Parker;
 use crate::sys::thread as imp;
@@ -455,7 +455,7 @@ impl Builder {
         let Builder { name, stack_size } = self;
 
         let stack_size = stack_size.unwrap_or_else(|| {
-            static MIN: AtomicUsize = AtomicUsize::new(0);
+            static MIN: Atomic<usize> = AtomicUsize::new(0);
 
             match MIN.load(Ordering::Relaxed) {
                 0 => {}
@@ -1222,9 +1222,9 @@ impl ThreadId {
 
         cfg_if::cfg_if! {
             if #[cfg(target_has_atomic = "64")] {
-                use crate::sync::atomic::AtomicU64;
+                use crate::sync::atomic::{Atomic, AtomicU64};
 
-                static COUNTER: AtomicU64 = AtomicU64::new(0);
+                static COUNTER: Atomic<u64> = AtomicU64::new(0);
 
                 let mut last = COUNTER.load(Ordering::Relaxed);
                 loop {

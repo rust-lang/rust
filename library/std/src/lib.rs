@@ -334,6 +334,7 @@
 #![feature(float_minimum_maximum)]
 #![feature(float_next_up_down)]
 #![feature(fmt_internals)]
+#![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(ip)]

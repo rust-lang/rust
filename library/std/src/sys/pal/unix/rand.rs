@@ -78,7 +78,7 @@ cfg_if::cfg_if! {
 ))]
 mod imp {
     use crate::io::{Error, Result};
-    use crate::sync::atomic::{AtomicBool, Ordering};
+    use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
     use crate::sys::os::errno;
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -98,7 +98,7 @@ mod imp {
 
         // This provides the best quality random numbers available at the given moment
         // without ever blocking, and is preferable to falling back to /dev/urandom.
-        static GRND_INSECURE_AVAILABLE: AtomicBool = AtomicBool::new(true);
+        static GRND_INSECURE_AVAILABLE: Atomic<bool> = AtomicBool::new(true);
         if GRND_INSECURE_AVAILABLE.load(Ordering::Relaxed) {
             let ret = unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_INSECURE) };
             if ret == -1 && errno() as libc::c_int == libc::EINVAL {
@@ -125,7 +125,7 @@ mod imp {
     }
 
     pub fn syscall(v: &mut [u8]) -> Option<Result<()>> {
-        static GETRANDOM_UNAVAILABLE: AtomicBool = AtomicBool::new(false);
+        static GETRANDOM_UNAVAILABLE: Atomic<bool> = AtomicBool::new(false);
 
         if GETRANDOM_UNAVAILABLE.load(Ordering::Relaxed) {
             return None;
@@ -275,13 +275,13 @@ mod imp {
 
 #[cfg(target_os = "vxworks")]
 mod imp {
-    use core::sync::atomic::AtomicBool;
     use core::sync::atomic::Ordering::Relaxed;
+    use core::sync::atomic::{Atomic, AtomicBool};
 
     use crate::io::{Error, Result};
 
     pub fn syscall(v: &mut [u8]) -> Result<()> {
-        static RNG_INIT: AtomicBool = AtomicBool::new(false);
+        static RNG_INIT: Atomic<bool> = AtomicBool::new(false);
         while !RNG_INIT.load(Relaxed) {
             let ret = unsafe { libc::randSecure() };
             if ret < 0 {

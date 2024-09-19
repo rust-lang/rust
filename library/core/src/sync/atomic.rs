@@ -482,7 +482,7 @@ pub enum Ordering {
     note = "the `new` function is now preferred",
     suggestion = "AtomicBool::new(false)"
 )]
-pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
+pub const ATOMIC_BOOL_INIT: Atomic<bool> = AtomicBool::new(false);
 
 #[cfg(target_has_atomic_load_store = "8")]
 impl AtomicBool {
@@ -3347,7 +3347,7 @@ macro_rules! atomic_int_ptr_sized {
             note = "the `new` function is now preferred",
             suggestion = "AtomicIsize::new(0)",
         )]
-        pub const ATOMIC_ISIZE_INIT: AtomicIsize = AtomicIsize::new(0);
+        pub const ATOMIC_ISIZE_INIT: Atomic<isize> = AtomicIsize::new(0);
 
         /// An [`AtomicUsize`] initialized to `0`.
         #[cfg(target_pointer_width = $target_pointer_width)]
@@ -3357,7 +3357,7 @@ macro_rules! atomic_int_ptr_sized {
             note = "the `new` function is now preferred",
             suggestion = "AtomicUsize::new(0)",
         )]
-        pub const ATOMIC_USIZE_INIT: AtomicUsize = AtomicUsize::new(0);
+        pub const ATOMIC_USIZE_INIT: Atomic<usize> = AtomicUsize::new(0);
     )* };
 }
 
