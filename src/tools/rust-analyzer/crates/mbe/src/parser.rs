@@ -84,6 +84,10 @@ pub(crate) enum Op {
         // FIXME: `usize`` once we drop support for 1.76
         depth: Option<usize>,
     },
+    Concat {
+        elements: Box<[ConcatMetaVarExprElem]>,
+        span: Span,
+    },
     Repeat {
         tokens: MetaTemplate,
         kind: RepeatKind,
@@ -96,6 +100,18 @@ pub(crate) enum Op {
     Literal(tt::Literal<Span>),
     Punct(Box<ArrayVec<tt::Punct<Span>, 3>>),
     Ident(tt::Ident<Span>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ConcatMetaVarExprElem {
+    /// There is NO preceding dollar sign, which means that this identifier should be interpreted
+    /// as a literal.
+    Ident(tt::Ident<Span>),
+    /// There is a preceding dollar sign, which means that this identifier should be expanded
+    /// and interpreted as a variable.
+    Var(tt::Ident<Span>),
+    /// For example, a number or a string.
+    Literal(tt::Literal<Span>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -384,6 +400,32 @@ fn parse_metavar_expr(src: &mut TtIter<'_, Span>) -> Result<Op, ()> {
             let depth = if try_eat_comma(&mut args) { Some(parse_depth(&mut args)?) } else { None };
             Op::Count { name: ident.sym.clone(), depth }
         }
+        s if sym::concat == *s => {
+            let mut elements = Vec::new();
+            while let Some(next) = args.peek_n(0) {
+                let element = if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = next {
+                    args.next().expect("already peeked");
+                    ConcatMetaVarExprElem::Literal(lit.clone())
+                } else {
+                    let is_var = try_eat_dollar(&mut args);
+                    let ident = args.expect_ident_or_underscore()?.clone();
+
+                    if is_var {
+                        ConcatMetaVarExprElem::Var(ident)
+                    } else {
+                        ConcatMetaVarExprElem::Ident(ident)
+                    }
+                };
+                elements.push(element);
+                if args.peek_n(0).is_some() {
+                    args.expect_comma()?;
+                }
+            }
+            if elements.len() < 2 {
+                return Err(());
+            }
+            Op::Concat { elements: elements.into_boxed_slice(), span: func.span }
+        }
         _ => return Err(()),
     };
 
@@ -409,6 +451,14 @@ fn parse_depth(src: &mut TtIter<'_, Span>) -> Result<usize, ()> {
 
 fn try_eat_comma(src: &mut TtIter<'_, Span>) -> bool {
     if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', .. }))) = src.peek_n(0) {
+        let _ = src.next();
+        return true;
+    }
+    false
+}
+
+fn try_eat_dollar(src: &mut TtIter<'_, Span>) -> bool {
+    if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '$', .. }))) = src.peek_n(0) {
         let _ = src.next();
         return true;
     }

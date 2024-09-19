@@ -584,7 +584,11 @@ fn match_loop_inner<'t>(
                 error_items.push(item);
             }
             OpDelimited::Op(
-                Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Len { .. },
+                Op::Ignore { .. }
+                | Op::Index { .. }
+                | Op::Count { .. }
+                | Op::Len { .. }
+                | Op::Concat { .. },
             ) => {
                 stdx::never!("metavariable expression in lhs found");
             }
@@ -879,7 +883,11 @@ fn collect_vars(collector_fun: &mut impl FnMut(Symbol), pattern: &MetaTemplate) 
             Op::Subtree { tokens, .. } => collect_vars(collector_fun, tokens),
             Op::Repeat { tokens, .. } => collect_vars(collector_fun, tokens),
             Op::Literal(_) | Op::Ident(_) | Op::Punct(_) => {}
-            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Len { .. } => {
+            Op::Ignore { .. }
+            | Op::Index { .. }
+            | Op::Count { .. }
+            | Op::Len { .. }
+            | Op::Concat { .. } => {
                 stdx::never!("metavariable expression in lhs found");
             }
         }
