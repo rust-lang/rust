@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
     // ABI. Pass the -vector feature string to LLVM to respect this assumption. On LLVM < 16, we
     // also strip v128 from the data_layout below to match the older LLVM's expectation.
     base.features = "-vector".into();
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.min_global_align = Some(16);
     base.static_position_independent_executables = true;
     base.stack_probes = StackProbeType::Inline;
