@@ -3,7 +3,6 @@ use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
 use std::str;
 
-use libc::c_uint;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
@@ -403,17 +402,17 @@ pub(crate) unsafe fn create_module<'ll>(
     let rustc_producer =
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
     let name_metadata = unsafe {
-        llvm::LLVMMDStringInContext(
+        llvm::LLVMMDStringInContext2(
             llcx,
             rustc_producer.as_ptr().cast(),
-            rustc_producer.as_bytes().len() as c_uint,
+            rustc_producer.as_bytes().len(),
         )
     };
     unsafe {
         llvm::LLVMAddNamedMetadataOperand(
             llmod,
             c"llvm.ident".as_ptr(),
-            llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
+            &llvm::LLVMMetadataAsValue(llcx, llvm::LLVMMDNodeInContext2(llcx, &name_metadata, 1)),
         );
     }
 
