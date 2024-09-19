@@ -70,31 +70,40 @@ impl EarlyLintPass for LiteralStringWithFormattingArg {
                         continue;
                     }
 
-                    let mut end = fmt_str[pos.end..].find('}').map_or(pos.end, |found| found + pos.end);
-                    if fmt_str[start..end].contains(':') {
-                        end += 1;
+                    if fmt_str[start + 1..].trim_start().starts_with('}') {
+                        // For now, we ignore `{}`.
+                        continue;
                     }
+
+                    let end = fmt_str[start + 1..]
+                        .find('}')
+                        .map_or(pos.end, |found| start + 1 + found)
+                        + 1;
                     spans.push(
                         expr.span
-                            .with_hi(lo + BytePos((start + add) as _))
-                            .with_lo(lo + BytePos((end + add) as _)),
+                            .with_hi(lo + BytePos((start + add).try_into().unwrap()))
+                            .with_lo(lo + BytePos((end + add).try_into().unwrap())),
                     );
                 }
             }
-            if spans.len() == 1 {
-                span_lint(
-                    cx,
-                    LITERAL_STRING_WITH_FORMATTING_ARG,
-                    spans,
-                    "this looks like a formatting argument but it is not part of a formatting macro",
-                );
-            } else if spans.len() > 1 {
-                span_lint(
-                    cx,
-                    LITERAL_STRING_WITH_FORMATTING_ARG,
-                    spans,
-                    "these look like formatting arguments but are not part of a formatting macro",
-                );
+            match spans.len() {
+                0 => {},
+                1 => {
+                    span_lint(
+                        cx,
+                        LITERAL_STRING_WITH_FORMATTING_ARG,
+                        spans,
+                        "this looks like a formatting argument but it is not part of a formatting macro",
+                    );
+                },
+                _ => {
+                    span_lint(
+                        cx,
+                        LITERAL_STRING_WITH_FORMATTING_ARG,
+                        spans,
+                        "these look like formatting arguments but are not part of a formatting macro",
+                    );
+                },
             }
         }
     }
