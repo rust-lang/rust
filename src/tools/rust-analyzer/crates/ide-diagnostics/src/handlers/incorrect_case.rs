@@ -996,4 +996,17 @@ fn BAR() {
         "#,
         );
     }
+
+    #[test]
+    fn allow_with_comment() {
+        check_diagnostics(
+            r#"
+#[allow(
+    // Yo, sup
+    non_snake_case
+)]
+fn foo(_HelloWorld: ()) {}
+        "#,
+        );
+    }
 }
