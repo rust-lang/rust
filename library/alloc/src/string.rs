@@ -2004,7 +2004,7 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_replace_in_place", issue = "none")]
-    pub fn replace_first<P: for<'a> Pattern<'a>>(&mut self, from: P, to: &str) {
+    pub fn replace_first<P: Pattern>(&mut self, from: P, to: &str) {
         let range = match self.match_indices(from).next() {
             Some((start, match_str)) => start..start + match_str.len(),
             None => return,
@@ -2032,7 +2032,7 @@ impl String {
     #[unstable(feature = "string_replace_in_place", issue = "none")]
     pub fn replace_last<P>(&mut self, from: P, to: &str)
     where
-        P: for<'a> Pattern<'a, Searcher: str::pattern::ReverseSearcher<'a>>,
+        P: for<'a> Pattern<Searcher<'a>: str::pattern::ReverseSearcher<'a>>,
     {
         let range = match self.rmatch_indices(from).next() {
             Some((start, match_str)) => start..start + match_str.len(),
