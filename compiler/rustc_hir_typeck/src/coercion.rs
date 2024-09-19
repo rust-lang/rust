@@ -798,9 +798,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Right now we can only reborrow if this is a `Pin<&mut T>`.
         let extract_pin_mut = |ty: Ty<'tcx>| {
             // Get the T out of Pin<T>
-            let ty = match ty.kind() {
+            let (pin, ty) = match ty.kind() {
                 ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) => {
-                    args[0].expect_ty()
+                    (*pin, args[0].expect_ty())
                 }
                 _ => {
                     debug!("can't reborrow {:?} as pinned", ty);
@@ -809,7 +809,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             };
             // Make sure the T is something we understand (just `&mut U` for now)
             match ty.kind() {
-                ty::Ref(region, ty, ty::Mutability::Mut) => Ok((*region, *ty)),
+                ty::Ref(region, ty, mutbl) => Ok((pin, *region, *ty, *mutbl)),
                 _ => {
                     debug!("can't reborrow pin of inner type {:?}", ty);
                     Err(TypeError::Mismatch)
@@ -817,16 +817,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        let (_, _a_ty) = extract_pin_mut(a)?;
-        let (b_region, _b_ty) = extract_pin_mut(b)?;
+        let (pin, a_region, a_ty, mut_a) = extract_pin_mut(a)?;
+        let (_, b_region, _b_ty, mut_b) = extract_pin_mut(b)?;
+
+        coerce_mutbls(mut_a, mut_b)?;
+
+        // update a with b's mutability since we'll be coercing mutability
+        let a = Ty::new_adt(
+            self.tcx,
+            pin,
+            self.tcx.mk_args(&[Ty::new_ref(self.tcx, a_region, a_ty, mut_b).into()]),
+        );
 
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
         self.unify_and(a, b, |_inner_ty| {
-            vec![Adjustment {
-                kind: Adjust::ReborrowPin(b_region, hir::Mutability::Mut),
-                target: b,
-            }]
+            vec![Adjustment { kind: Adjust::ReborrowPin(b_region, mut_b), target: b }]
         })
     }
 

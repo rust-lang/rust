@@ -181,22 +181,25 @@ impl<'tcx> Cx<'tcx> {
                 });
 
                 // expr = &mut target
+                let borrow_kind = match mutbl {
+                    hir::Mutability::Mut => BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
+                    hir::Mutability::Not => BorrowKind::Shared,
+                };
+                let new_pin_target = Ty::new_ref(self.tcx, region, ptr_target_ty, mutbl);
                 let expr = self.thir.exprs.push(Expr {
                     temp_lifetime,
-                    ty: Ty::new_ref(self.tcx, region, ptr_target_ty, mutbl),
+                    ty: new_pin_target,
                     span,
-                    kind: ExprKind::Borrow {
-                        borrow_kind: BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
-                        arg,
-                    },
+                    kind: ExprKind::Borrow { borrow_kind, arg },
                 });
 
                 // kind = Pin { __pointer: pointer }
                 let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, Some(span));
+                let args = self.tcx.mk_args(&[new_pin_target.into()]);
                 let kind = ExprKind::Adt(Box::new(AdtExpr {
                     adt_def: self.tcx.adt_def(pin_did),
                     variant_index: FIRST_VARIANT,
-                    args: pin_ty_args,
+                    args,
                     fields: Box::new([FieldExpr { name: FieldIdx::from(0u32), expr }]),
                     user_ty: None,
                     base: None,

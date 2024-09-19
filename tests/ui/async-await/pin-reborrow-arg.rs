@@ -15,6 +15,9 @@ impl Foo {
 fn foo(_: Pin<&mut Foo>) {
 }
 
+fn foo_const(_: Pin<&Foo>) {
+}
+
 fn bar(x: Pin<&mut Foo>) {
     foo(x);
     foo(x); // for this to work we need to automatically reborrow,
@@ -22,6 +25,12 @@ fn bar(x: Pin<&mut Foo>) {
 
     Foo::baz(x);
     Foo::baz(x);
+
+    foo_const(x); // make sure we can reborrow &mut as &.
+
+    let x: Pin<&Foo> = Pin::new(&Foo);
+
+    foo_const(x); // make sure reborrowing from & to & works.
 }
 
 fn main() {}
