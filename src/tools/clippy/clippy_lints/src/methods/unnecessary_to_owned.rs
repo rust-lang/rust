@@ -6,7 +6,7 @@ use clippy_utils::source::{snippet, SpanRangeExt};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
-    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, match_def_path, paths, peel_middle_ty_refs,
+    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, peel_middle_ty_refs,
     return_ty,
 };
 use rustc_errors::Applicability;
@@ -250,7 +250,7 @@ fn check_string_from_utf8<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, 
     if let Some((call, arg)) = skip_addr_of_ancestors(cx, expr)
         && !arg.span.from_expansion()
         && let ExprKind::Call(callee, _) = call.kind
-        && fn_def_id(cx, call).is_some_and(|did| match_def_path(cx, did, &paths::STRING_FROM_UTF8))
+        && fn_def_id(cx, call).is_some_and(|did| cx.tcx.is_diagnostic_item(sym::string_from_utf8, did))
         && let Some(unwrap_call) = get_parent_expr(cx, call)
         && let ExprKind::MethodCall(unwrap_method_name, ..) = unwrap_call.kind
         && matches!(unwrap_method_name.ident.name, sym::unwrap | sym::expect)

@@ -2,8 +2,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    get_enclosing_block, is_expr_path_def_path, is_integer_literal, is_path_diagnostic_item, path_to_local,
-    path_to_local_id, paths, SpanlessEq,
+    get_enclosing_block, is_integer_literal, is_path_diagnostic_item, path_to_local,
+    path_to_local_id, SpanlessEq,
 };
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
@@ -150,10 +150,10 @@ impl SlowVectorInit {
         }
 
         if let ExprKind::Call(func, [len_expr]) = expr.kind
-            && is_expr_path_def_path(cx, func, &paths::VEC_WITH_CAPACITY)
+            && is_path_diagnostic_item(cx, func, sym::vec_with_capacity)
         {
             Some(InitializedSize::Initialized(len_expr))
-        } else if matches!(expr.kind, ExprKind::Call(func, _) if is_expr_path_def_path(cx, func, &paths::VEC_NEW)) {
+        } else if matches!(expr.kind, ExprKind::Call(func, _) if is_path_diagnostic_item(cx, func, sym::vec_new)) {
             Some(InitializedSize::Uninitialized)
         } else {
             None

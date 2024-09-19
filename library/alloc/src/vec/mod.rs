@@ -416,6 +416,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[rustc_const_stable(feature = "const_vec_new", since = "1.39.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_new")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
@@ -476,6 +477,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_with_capacity")]
     pub fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
     }
@@ -1545,6 +1547,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_slice")]
     pub fn as_slice(&self) -> &[T] {
         self
     }
@@ -1562,6 +1565,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_mut_slice")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self
     }
@@ -2380,6 +2384,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Takes *O*(1) time.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_pop")]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -2573,6 +2578,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_is_empty")]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -3044,6 +3050,7 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "vec_from_elem")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     <T as SpecFromElem>::from_elem(elem, n, Global)
 }
