@@ -581,6 +581,7 @@ function preLoadCss(cssUrl) {
             block("static", "static", "Statics");
             block("trait", "traits", "Traits");
             block("fn", "functions", "Functions");
+            block("test", "tests", "Tests");
             block("type", "types", "Type Aliases");
             block("union", "unions", "Unions");
             // No point, because these items don't appear in modules
