@@ -2,7 +2,7 @@ use super::{Builder, JoinInner, Result, Thread, current_or_unnamed};
 use crate::marker::PhantomData;
 use crate::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use crate::sync::Arc;
-use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, AtomicUsize, Ordering};
 use crate::{fmt, io};
 
 /// A scope to spawn scoped threads in.
@@ -35,8 +35,8 @@ pub struct Scope<'scope, 'env: 'scope> {
 pub struct ScopedJoinHandle<'scope, T>(JoinInner<'scope, T>);
 
 pub(super) struct ScopeData {
-    num_running_threads: AtomicUsize,
-    a_thread_panicked: AtomicBool,
+    num_running_threads: Atomic<usize>,
+    a_thread_panicked: Atomic<bool>,
     main_thread: Thread,
 }
 

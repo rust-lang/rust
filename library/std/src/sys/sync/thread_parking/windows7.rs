@@ -60,13 +60,13 @@
 use core::ffi::c_void;
 
 use crate::pin::Pin;
-use crate::sync::atomic::AtomicI8;
 use crate::sync::atomic::Ordering::{Acquire, Release};
+use crate::sync::atomic::{Atomic, AtomicI8};
 use crate::sys::{c, dur2timeout};
 use crate::time::Duration;
 
 pub struct Parker {
-    state: AtomicI8,
+    state: Atomic<i8>,
 }
 
 const PARKED: i8 = -1;
@@ -186,8 +186,8 @@ impl Parker {
 mod keyed_events {
     use core::pin::Pin;
     use core::ptr;
-    use core::sync::atomic::AtomicPtr;
     use core::sync::atomic::Ordering::{Acquire, Relaxed};
+    use core::sync::atomic::{Atomic, AtomicPtr};
     use core::time::Duration;
 
     use super::{EMPTY, NOTIFIED, Parker};
@@ -244,7 +244,7 @@ mod keyed_events {
 
     fn keyed_event_handle() -> c::HANDLE {
         const INVALID: c::HANDLE = ptr::without_provenance_mut(!0);
-        static HANDLE: AtomicPtr<crate::ffi::c_void> = AtomicPtr::new(INVALID);
+        static HANDLE: Atomic<*mut crate::ffi::c_void> = AtomicPtr::new(INVALID);
         match HANDLE.load(Relaxed) {
             INVALID => {
                 let mut handle = c::INVALID_HANDLE_VALUE;

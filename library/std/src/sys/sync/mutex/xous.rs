@@ -1,7 +1,7 @@
 use crate::os::xous::ffi::{blocking_scalar, do_yield};
 use crate::os::xous::services::{TicktimerScalar, ticktimer_server};
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-use crate::sync::atomic::{AtomicBool, AtomicUsize};
+use crate::sync::atomic::{Atomic, AtomicBool, AtomicUsize};
 
 pub struct Mutex {
     /// The "locked" value indicates how many threads are waiting on this
@@ -14,12 +14,12 @@ pub struct Mutex {
     /// for a lock, or it is locked for long periods of time. Rather than
     /// spinning, these locks send a Message to the ticktimer server
     /// requesting that they be woken up when a lock is unlocked.
-    locked: AtomicUsize,
+    locked: Atomic<usize>,
 
     /// Whether this Mutex ever was contended, and therefore made a trip
     /// to the ticktimer server. If this was never set, then we were never
     /// on the slow path and can skip deregistering the mutex.
-    contended: AtomicBool,
+    contended: Atomic<bool>,
 }
 
 impl Mutex {

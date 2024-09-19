@@ -4,7 +4,7 @@ use super::context::Context;
 use super::select::{Operation, Selected};
 use crate::ptr;
 use crate::sync::Mutex;
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 
 /// Represents a thread blocked on a specific channel operation.
 pub(crate) struct Entry {
@@ -137,7 +137,7 @@ pub(crate) struct SyncWaker {
     inner: Mutex<Waker>,
 
     /// `true` if the waker is empty.
-    is_empty: AtomicBool,
+    is_empty: Atomic<bool>,
 }
 
 impl SyncWaker {

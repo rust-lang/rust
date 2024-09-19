@@ -49,7 +49,7 @@ mod imp {
     use crate::cell::Cell;
     use crate::ops::Range;
     use crate::sync::OnceLock;
-    use crate::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
+    use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr, AtomicUsize, Ordering};
     use crate::sys::pal::unix::os;
     use crate::{io, mem, ptr, thread};
 
@@ -118,9 +118,9 @@ mod imp {
         }
     }
 
-    static PAGE_SIZE: AtomicUsize = AtomicUsize::new(0);
-    static MAIN_ALTSTACK: AtomicPtr<libc::c_void> = AtomicPtr::new(ptr::null_mut());
-    static NEED_ALTSTACK: AtomicBool = AtomicBool::new(false);
+    static PAGE_SIZE: Atomic<usize> = AtomicUsize::new(0);
+    static MAIN_ALTSTACK: Atomic<*mut libc::c_void> = AtomicPtr::new(ptr::null_mut());
+    static NEED_ALTSTACK: Atomic<bool> = AtomicBool::new(false);
 
     /// # Safety
     /// Must be called only once
