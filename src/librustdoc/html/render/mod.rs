@@ -2538,7 +2538,6 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
             &cx.root_path(),
             highlight::DecorationInfo(decoration_info),
             sources::SourceContext::Embedded(sources::ScrapedInfo {
-                needs_prev_next_buttons: line_ranges.len() > 1,
                 needs_expansion,
                 offset: line_min,
                 name: &call_data.display_name,
