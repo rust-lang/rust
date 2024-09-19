@@ -496,6 +496,7 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "slice_into_vec")]
     pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)

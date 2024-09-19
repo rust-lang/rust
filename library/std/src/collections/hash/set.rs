@@ -1271,6 +1271,7 @@ where
 /// let mut iter = a.iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "hashset_iter_ty")]
 pub struct Iter<'a, K: 'a> {
     base: base::Iter<'a, K>,
 }
@@ -1313,6 +1314,7 @@ pub struct IntoIter<K> {
 /// let mut drain = a.drain();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "hashset_drain_ty")]
 pub struct Drain<'a, K: 'a> {
     base: base::Drain<'a, K>,
 }

@@ -440,6 +440,7 @@ impl String {
     /// ```
     #[inline]
     #[rustc_const_stable(feature = "const_string_new", since = "1.39.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_new")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> String {
@@ -571,6 +572,7 @@ impl String {
     /// [`into_bytes`]: String::into_bytes
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_from_utf8")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(&vec) {
             Ok(..) => Ok(String { vec }),
@@ -1073,6 +1075,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_as_str")]
     pub fn as_str(&self) -> &str {
         self
     }
@@ -1092,6 +1095,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_as_mut_str")]
     pub fn as_mut_str(&mut self) -> &mut str {
         self
     }
@@ -1111,6 +1115,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("append", "push")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_push_str")]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
     }
@@ -1745,6 +1750,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "insert_str", since = "1.16.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "string_insert_str")]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         assert!(self.is_char_boundary(idx));
 

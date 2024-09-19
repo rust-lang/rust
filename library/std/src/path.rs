@@ -263,6 +263,7 @@ pub fn is_separator(c: char) -> bool {
 ///
 /// For example, `/` on Unix and `\` on Windows.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "path_main_separator")]
 pub const MAIN_SEPARATOR: char = crate::sys::path::MAIN_SEP;
 
 /// The primary separator of path components for the current platform.
@@ -1226,6 +1227,7 @@ impl PathBuf {
     /// let p = PathBuf::from("/test");
     /// assert_eq!(Path::new("/test"), p.as_path());
     /// ```
+    #[cfg_attr(not(test), rustc_diagnostic_item = "pathbuf_as_path")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
@@ -2264,6 +2266,7 @@ impl Path {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "path_to_pathbuf")]
     pub fn to_path_buf(&self) -> PathBuf {
         PathBuf::from(self.inner.to_os_string())
     }
