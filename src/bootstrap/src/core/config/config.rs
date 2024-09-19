@@ -2738,6 +2738,8 @@ impl Config {
         download_ci_llvm: Option<StringOrBool>,
         asserts: bool,
     ) -> bool {
+        let download_ci_llvm = download_ci_llvm.unwrap_or(StringOrBool::Bool(true));
+
         let if_unchanged = || {
             if self.rust_info.is_from_tarball() {
                 // Git is needed for running "if-unchanged" logic.
@@ -2761,10 +2763,7 @@ impl Config {
         };
 
         match download_ci_llvm {
-            None => {
-                (self.channel == "dev" || self.download_rustc_commit.is_some()) && if_unchanged()
-            }
-            Some(StringOrBool::Bool(b)) => {
+            StringOrBool::Bool(b) => {
                 if !b && self.download_rustc_commit.is_some() {
                     panic!(
                         "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
@@ -2774,8 +2773,8 @@ impl Config {
                 // If download-ci-llvm=true we also want to check that CI llvm is available
                 b && llvm::is_ci_llvm_available(self, asserts)
             }
-            Some(StringOrBool::String(s)) if s == "if-unchanged" => if_unchanged(),
-            Some(StringOrBool::String(other)) => {
+            StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
+            StringOrBool::String(other) => {
                 panic!("unrecognized option for download-ci-llvm: {:?}", other)
             }
         }
