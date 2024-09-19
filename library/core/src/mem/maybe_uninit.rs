@@ -393,7 +393,6 @@ impl<T> MaybeUninit<T> {
     // These are OK to allow since we do not leak &mut to user-visible API
     #[rustc_allow_const_fn_unstable(const_mut_refs)]
     #[rustc_allow_const_fn_unstable(const_ptr_write)]
-    #[rustc_allow_const_fn_unstable(const_maybe_uninit_as_mut_ptr)]
     #[rustc_const_stable(feature = "const_maybe_uninit_zeroed", since = "1.75.0")]
     pub const fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
@@ -570,7 +569,11 @@ impl<T> MaybeUninit<T> {
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_as_mut_ptr", issue = "75251")]
+    #[rustc_const_stable(
+        feature = "const_maybe_uninit_as_mut_ptr",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     #[inline(always)]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         // `MaybeUninit` and `ManuallyDrop` are both `repr(transparent)` so we can cast the pointer.
