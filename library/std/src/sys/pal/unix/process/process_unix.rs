@@ -438,7 +438,7 @@ impl Command {
         envp: Option<&CStringArray>,
     ) -> io::Result<Option<Process>> {
         #[cfg(target_os = "linux")]
-        use core::sync::atomic::{AtomicU8, Ordering};
+        use core::sync::atomic::{Atomic, AtomicU8, Ordering};
 
         use crate::mem::MaybeUninit;
         use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
@@ -469,7 +469,7 @@ impl Command {
 
                 weak! { fn pidfd_getpid(libc::c_int) -> libc::c_int }
 
-                static PIDFD_SUPPORTED: AtomicU8 = AtomicU8::new(0);
+                static PIDFD_SUPPORTED: Atomic<u8> = AtomicU8::new(0);
                 const UNKNOWN: u8 = 0;
                 const SPAWN: u8 = 1;
                 // Obtaining a pidfd via the fork+exec path might work

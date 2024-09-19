@@ -9,7 +9,7 @@ use crate::ffi::CStr;
 use crate::mem::ManuallyDrop;
 use crate::num::NonZero;
 use crate::ptr::NonNull;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::time::Duration;
 use crate::{hint, io};
 
@@ -64,7 +64,7 @@ struct ThreadInner {
     ///                 '--> JOIN_FINALIZE ---'
     ///                          (-1)
     ///
-    lifecycle: AtomicUsize,
+    lifecycle: Atomic<usize>,
 }
 
 // Safety: The only `!Sync` field, `ThreadInner::start`, is only touched by

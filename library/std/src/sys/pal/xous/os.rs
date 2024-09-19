@@ -5,13 +5,13 @@ use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::xous::ffi::Error as XousError;
 use crate::path::{self, PathBuf};
-use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicPtr, AtomicUsize, Ordering};
 use crate::sync::{Mutex, Once};
 use crate::{fmt, io, vec};
 
 pub(crate) mod params;
 
-static PARAMS_ADDRESS: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
+static PARAMS_ADDRESS: Atomic<*mut u8> = AtomicPtr::new(core::ptr::null_mut());
 
 #[cfg(not(test))]
 #[cfg(feature = "panic_unwind")]
@@ -137,7 +137,7 @@ pub(crate) fn get_application_parameters() -> Option<params::ApplicationParamete
 }
 
 // ---------- Environment handling ---------- //
-static ENV: AtomicUsize = AtomicUsize::new(0);
+static ENV: Atomic<usize> = AtomicUsize::new(0);
 static ENV_INIT: Once = Once::new();
 type EnvStore = Mutex<HashMap<OsString, OsString>>;
 

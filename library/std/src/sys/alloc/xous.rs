@@ -49,10 +49,10 @@ unsafe impl GlobalAlloc for System {
 }
 
 mod lock {
-    use crate::sync::atomic::AtomicI32;
     use crate::sync::atomic::Ordering::{Acquire, Release};
+    use crate::sync::atomic::{Atomic, AtomicI32};
 
-    static LOCKED: AtomicI32 = AtomicI32::new(0);
+    static LOCKED: Atomic<i32> = AtomicI32::new(0);
 
     pub struct DropLock;
 
