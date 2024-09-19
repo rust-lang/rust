@@ -110,7 +110,6 @@
 #![feature(const_cow_is_borrowed)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]
-#![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_write)]
 #![feature(const_option)]
 #![feature(const_pin)]
