@@ -18,9 +18,10 @@ fn main() {
 
         // Turns out the discriminant is (currently) stored
         // in the 1st pointer, so the second half is padding.
-        let c = (&p as *const mem::MaybeUninit<E>).byte_add(mem::size_of::<&'static ()>()) as *const u8;
+        let c = &p as *const _ as *const u8;
+        let padding_offset = mem::size_of::<&'static ()>();
         // Read a padding byte.
-        let _val = *c.add(0);
+        let _val = *c.add(padding_offset);
         //~^ERROR: uninitialized
     }
 }
