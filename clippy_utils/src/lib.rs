@@ -263,24 +263,18 @@ pub fn is_res_lang_ctor(cx: &LateContext<'_>, res: Res, lang_item: LangItem) -> 
     }
 }
 
-pub fn is_res_diagnostic_ctor(cx: &LateContext<'_>, res: Res, diag_item: Symbol) -> bool {
-    if let Res::Def(DefKind::Ctor(..), id) = res
-        && let Some(id) = cx.tcx.opt_parent(id)
-    {
-        cx.tcx.is_diagnostic_item(diag_item, id)
-    } else {
-        false
-    }
-}
 
-/// Checks if a `QPath` resolves to a constructor of a diagnostic item.
-pub fn is_diagnostic_ctor(cx: &LateContext<'_>, qpath: &QPath<'_>, diagnostic_item: Symbol) -> bool {
-    if let QPath::Resolved(_, path) = qpath {
-        if let Res::Def(DefKind::Ctor(..), ctor_id) = path.res {
-            return cx.tcx.is_diagnostic_item(diagnostic_item, cx.tcx.parent(ctor_id));
-        }
-    }
-    false
+/// Checks if `{ctor_call_id}(...)` is `{enum_item}::{variant_name}(...)`.
+pub fn is_enum_variant_ctor(cx: &LateContext<'_>, enum_item: Symbol, variant_name: Symbol, ctor_call_id: DefId) -> bool {
+    let Some(enum_def_id) = cx.tcx.get_diagnostic_item(enum_item) else {
+        return false;
+    };
+
+    let variants = cx.tcx.adt_def(enum_def_id).variants().iter();
+    variants
+        .filter(|variant| variant.name == variant_name)
+        .filter_map(|variant| variant.ctor.as_ref())
+        .any(|(_, ctor_def_id)| *ctor_def_id == ctor_call_id)
 }
 
 /// Checks if the `DefId` matches the given diagnostic item or it's constructor.
