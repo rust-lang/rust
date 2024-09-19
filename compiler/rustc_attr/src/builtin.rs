@@ -18,7 +18,7 @@ use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::Span;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::{Symbol, kw, sym};
 
 use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -603,7 +603,23 @@ pub fn eval_condition(
 
     let cfg = match cfg {
         ast::NestedMetaItem::MetaItem(meta_item) => meta_item,
-        ast::NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => return *b,
+        ast::NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => {
+            if let Some(features) = features {
+                // we can't use `try_gate_cfg` as symbols don't differentiate between `r#true`
+                // and `true`, and we want to keep the former working without feature gate
+                gate_cfg(
+                    &((
+                        if *b { kw::True } else { kw::False },
+                        sym::cfg_boolean_literals,
+                        |features: &Features| features.cfg_boolean_literals,
+                    )),
+                    cfg.span(),
+                    sess,
+                    features,
+                );
+            }
+            return *b;
+        }
         _ => {
             dcx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: cfg.span(),
