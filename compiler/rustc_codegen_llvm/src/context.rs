@@ -586,14 +586,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::LLVMSetSection(g, c"llvm.metadata".as_ptr());
         }
     }
-
-    /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
-    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: c_uint, md: &'a Metadata) {
-        unsafe {
-            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(val, kind_id, node);
-        }
-    }
 }
 
 impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -1125,6 +1117,14 @@ impl CodegenCx<'_, '_> {
         name.push('.');
         name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
+    }
+
+    /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
+    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: c_uint, md: &'a Metadata) {
+        unsafe {
+            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
+            llvm::LLVMSetMetadata(val, kind_id, node);
+        }
     }
 }
 
