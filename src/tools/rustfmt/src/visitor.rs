@@ -3,24 +3,23 @@ use std::rc::Rc;
 
 use rustc_ast::{ast, token::Delimiter, visit};
 use rustc_data_structures::sync::Lrc;
-use rustc_span::{symbol, BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span, symbol};
 use tracing::debug;
 
 use crate::attr::*;
-use crate::comment::{contains_comment, rewrite_comment, CodeCharKind, CommentCodeSlices};
-use crate::config::Version;
-use crate::config::{BraceStyle, Config, MacroSelector};
+use crate::comment::{CodeCharKind, CommentCodeSlices, contains_comment, rewrite_comment};
+use crate::config::{BraceStyle, Config, MacroSelector, StyleEdition};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
-    format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate,
-    rewrite_type_alias, FnBraceStyle, FnSig, ItemVisitorKind, StaticParts, StructParts,
+    FnBraceStyle, FnSig, ItemVisitorKind, StaticParts, StructParts, format_impl, format_trait,
+    format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate, rewrite_type_alias,
 };
-use crate::macros::{macro_style, rewrite_macro, rewrite_macro_def, MacroPosition};
+use crate::macros::{MacroPosition, macro_style, rewrite_macro, rewrite_macro_def};
 use crate::modules::Module;
 use crate::parse::session::ParseSess;
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
-use crate::skip::{is_skip_attr, SkipContext};
+use crate::skip::{SkipContext, is_skip_attr};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt::Stmt;
@@ -291,7 +290,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
                     let mut comment_shape =
                         Shape::indented(self.block_indent, config).comment(config);
-                    if self.config.version() == Version::Two && comment_on_same_line {
+                    if self.config.style_edition() >= StyleEdition::Edition2024
+                        && comment_on_same_line
+                    {
                         self.push_str(" ");
                         // put the first line of the comment on the same line as the
                         // block's last line
@@ -312,8 +313,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                                 let comment_str =
                                     rewrite_comment(other_lines, false, comment_shape, config);
                                 match comment_str {
-                                    Some(ref s) => self.push_str(s),
-                                    None => self.push_str(other_lines),
+                                    Ok(ref s) => self.push_str(s),
+                                    Err(_) => self.push_str(other_lines),
                                 }
                             }
                         }
@@ -342,8 +343,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
                         let comment_str = rewrite_comment(&sub_slice, false, comment_shape, config);
                         match comment_str {
-                            Some(ref s) => self.push_str(s),
-                            None => self.push_str(&sub_slice),
+                            Ok(ref s) => self.push_str(s),
+                            Err(_) => self.push_str(&sub_slice),
                         }
                     }
                 }
@@ -561,9 +562,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         )
                     } else {
                         let indent = self.block_indent;
-                        let rewrite = self.rewrite_required_fn(
-                            indent, item.ident, sig, &item.vis, generics, item.span,
-                        );
+                        let rewrite = self
+                            .rewrite_required_fn(
+                                indent, item.ident, sig, &item.vis, generics, item.span,
+                            )
+                            .ok();
                         self.push_rewrite(item.span, rewrite);
                     }
                 }
@@ -584,7 +587,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         item.ident,
                         &item.vis,
                         item.span,
-                    );
+                    )
+                    .ok();
                     self.push_rewrite(item.span, rewrite);
                 }
                 ast::ItemKind::Delegation(..) | ast::ItemKind::DelegationMac(..) => {
@@ -609,7 +613,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             self.block_indent,
             visitor_kind,
             span,
-        );
+        )
+        .ok();
         self.push_rewrite(span, rewrite);
     }
 
@@ -655,8 +660,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     );
                 } else {
                     let indent = self.block_indent;
-                    let rewrite =
-                        self.rewrite_required_fn(indent, ai.ident, sig, &ai.vis, generics, ai.span);
+                    let rewrite = self
+                        .rewrite_required_fn(indent, ai.ident, sig, &ai.vis, generics, ai.span)
+                        .ok();
                     self.push_rewrite(ai.span, rewrite);
                 }
             }
@@ -683,7 +689,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         // 1 = ;
         let shape = self.shape().saturating_sub_width(1);
-        let rewrite = self.with_context(|ctx| rewrite_macro(mac, ident, ctx, shape, pos));
+        let rewrite = self.with_context(|ctx| rewrite_macro(mac, ident, ctx, shape, pos).ok());
         // As of v638 of the rustc-ap-* crates, the associated span no longer includes
         // the trailing semicolon. This determines the correct span to ensure scenarios
         // with whitespace between the delimiters and trailing semi (i.e. `foo!(abc)     ;`)
