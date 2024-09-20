@@ -33,8 +33,8 @@ fn main() {
 
     let path = env_var("PATH");
     let rustc = env_var("RUSTC");
-    let bootstrap_cargo = env_var("BOOTSTRAP_CARGO");
-    let mut cmd = cmd(bootstrap_cargo);
+    let cargo = env_var("CARGO");
+    let mut cmd = cmd(cargo);
     cmd.args(&[
         "build",
         "--manifest-path",
