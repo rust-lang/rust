@@ -22,8 +22,7 @@ pub fn bar(x: Pin<&mut Foo>) {
 
     Foo::baz(x);
 
-    // FIXME: We should allow downgrading a Pin<&mut T> to Pin<&T>
-    // x.baz();
+    x.baz();
 }
 
 pub fn baaz(x: Pin<&Foo>) {

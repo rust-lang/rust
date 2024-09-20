@@ -1113,6 +1113,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 unstable_candidates.as_deref_mut(),
                             )
                         })
+                        .or_else(|| {
+                            self.pick_reborrow_pin_method(
+                                step,
+                                self_ty,
+                                unstable_candidates.as_deref_mut(),
+                            )
+                        })
                     })
             })
     }
@@ -1147,7 +1154,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         })
                     }
 
-                    ty::Adt(def, args) if self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) => {
+                    ty::Adt(def, args)
+                        if self.tcx.features().pin_ergonomics
+                            && self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) =>
+                    {
                         // make sure this is a pinned reference (and not a `Pin<Box>` or something)
                         if let ty::Ref(_, _, mutbl) = args[0].expect_ty().kind() {
                             pick.autoref_or_ptr_adjustment =
@@ -1181,6 +1191,43 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment =
                     Some(AutorefOrPtrAdjustment::Autoref { mutbl, unsize: step.unsize });
+                pick
+            })
+        })
+    }
+
+    /// Looks for applicable methods if we reborrow a `Pin<&mut T>` as a `Pin<&T>`.
+    #[instrument(level = "debug", skip(self, step, unstable_candidates))]
+    fn pick_reborrow_pin_method(
+        &self,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+    ) -> Option<PickResult<'tcx>> {
+        if !self.tcx.features().pin_ergonomics {
+            return None;
+        }
+
+        // make sure self is a Pin<&mut T>
+        let inner_ty = match self_ty.kind() {
+            ty::Adt(def, args) if self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) => {
+                match args[0].expect_ty().kind() {
+                    ty::Ref(_, ty, hir::Mutability::Mut) => *ty,
+                    _ => {
+                        return None;
+                    }
+                }
+            }
+            _ => return None,
+        };
+
+        let region = self.tcx.lifetimes.re_erased;
+        let autopin_ty = Ty::new_pinned_ref(self.tcx, region, inner_ty, hir::Mutability::Not);
+        self.pick_method(autopin_ty, unstable_candidates).map(|r| {
+            r.map(|mut pick| {
+                pick.autoderefs = step.autoderefs;
+                pick.autoref_or_ptr_adjustment =
+                    Some(AutorefOrPtrAdjustment::ReborrowPin(hir::Mutability::Not));
                 pick
             })
         })
