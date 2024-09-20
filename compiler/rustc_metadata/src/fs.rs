@@ -98,7 +98,6 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
             }
         };
         if tcx.sess.opts.json_artifact_notifications {
-            let start = std::time::Instant::now();
             let hash: Fingerprint = {
                 let symbols = tcx
                     .exported_symbols(LOCAL_CRATE)
@@ -119,8 +118,6 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
                         Some((exported_symbol, k, ty, body))
                     })
                     .collect::<Vec<_>>();
-                let first = start.elapsed();
-                dbg!(first);
                 tcx.with_stable_hashing_context(|mut hcx| {
                     use rustc_data_structures::stable_hasher::HashStable;
                     let mut stable_hasher = StableHasher::new();
@@ -128,7 +125,6 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
                     stable_hasher.finish()
                 })
             };
-            dbg!(start.elapsed());
             tcx.dcx().emit_artifact_notification(
                 out_filename.as_path(),
                 "metadata",
