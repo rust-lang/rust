@@ -62,6 +62,13 @@ Likewise, you can test a single file by passing its path:
 ./x test tests/ui/const-generics/const-test.rs
 ```
 
+`x` doesn't support running a single tool test by passing its path yet.
+You'll have to use the `--test-args` argument as describled [below](#running-an-individual-test).
+
+```bash
+./x test src/tools/miri --test-args tests/fail/uninit/padding-enum.rs
+```
+
 ### Run only the tidy script
 
 ```bash

@@ -124,6 +124,10 @@ To run the tool's tests, just pass its path to `./x test`.
 
 Usually these tools involve running `cargo test` within the tool's directory.
 
+If you want to run only a specified set of tests, append `--test-args FILTER_NAME` to the command.
+
+> Example: `./x test src/tools/miri --test-args padding`
+
 In CI, some tools are allowed to fail.
 Failures send notifications to the corresponding teams, and is tracked on the [toolstate website].
 More information can be found in the [toolstate documentation].
