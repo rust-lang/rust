@@ -376,6 +376,7 @@ mod unused_peekable;
 mod unused_result_ok;
 mod unused_rounding;
 mod unused_self;
+mod unused_trait_names;
 mod unused_unit;
 mod unwrap;
 mod unwrap_in_result;
@@ -942,5 +943,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(manual_div_ceil::ManualDivCeil::new(conf)));
     store.register_late_pass(|_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo));
     store.register_late_pass(|_| Box::new(non_zero_suggestions::NonZeroSuggestions));
+    store.register_late_pass(move |_| Box::new(unused_trait_names::UnusedTraitNames::new(conf)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
