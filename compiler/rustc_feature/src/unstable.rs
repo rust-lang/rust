@@ -204,7 +204,7 @@ declare_features! (
     /// Changes `impl Trait` to capture all lifetimes in scope.
     (unstable, lifetime_capture_rules_2024, "1.76.0", None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
-    (unstable, link_cfg, "1.14.0", None),
+    (internal, link_cfg, "1.14.0", None),
     /// Allows using `?Trait` trait bounds in more contexts.
     (internal, more_maybe_bounds, "1.82.0", None),
     /// Allows the `multiple_supertrait_upcastable` lint.

@@ -1,5 +1,4 @@
 //@ edition: 2021
-//@ min-llvm-version: 18
 //@ revisions: good bad
 //@ check-pass
 //@ compile-flags: -Cinstrument-coverage -Zcoverage-options=mcdc -Zno-profiler-runtime

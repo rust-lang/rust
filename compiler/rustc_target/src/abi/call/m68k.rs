@@ -14,7 +14,7 @@ fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
         return;
     }
     if arg.layout.is_aggregate() {
-        arg.make_indirect_byval(None);
+        arg.pass_by_stack_offset(None);
     } else {
         arg.extend_integer_width_to(32);
     }

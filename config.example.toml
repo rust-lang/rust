@@ -53,7 +53,7 @@
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
-#download-ci-llvm = if rust.channel == "dev" || rust.download-rustc != false { "if-unchanged" } else { false }
+#download-ci-llvm = true
 
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true

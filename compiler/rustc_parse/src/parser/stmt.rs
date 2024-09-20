@@ -29,6 +29,9 @@ use crate::{errors, maybe_whole};
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
+    ///
+    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of
+    /// whether or not we have attributes.
     // Public for rustfmt usage.
     pub(super) fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
         Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|e| {
@@ -66,7 +69,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        Ok(Some(if self.token.is_keyword(kw::Let) {
+        let stmt = if self.token.is_keyword(kw::Let) {
             self.collect_tokens(None, attrs, force_collect, |this, attrs| {
                 this.expect_keyword(kw::Let)?;
                 let local = this.parse_local(attrs)?;
@@ -163,7 +166,10 @@ impl<'a> Parser<'a> {
         } else {
             self.error_outer_attrs(attrs);
             return Ok(None);
-        }))
+        };
+
+        self.maybe_augment_stashed_expr_in_pats_with_suggestions(&stmt);
+        Ok(Some(stmt))
     }
 
     fn parse_stmt_path_start(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {

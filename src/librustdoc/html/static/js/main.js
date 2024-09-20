@@ -1855,12 +1855,8 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         // Since the button will be added, no need to keep this listener around.
         elem.removeEventListener("mouseover", addCopyButton);
 
-        // If this is a scrapped example, there will already be a "button-holder" element.
-        let parent = elem.querySelector(".button-holder");
-        if (!parent) {
-            parent = document.createElement("div");
-            parent.className = "button-holder";
-        }
+        const parent = document.createElement("div");
+        parent.className = "button-holder";
 
         const runButton = elem.querySelector(".test-arrow");
         if (runButton !== null) {
@@ -1876,6 +1872,12 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             copyButtonAnimation(copyButton);
         });
         parent.appendChild(copyButton);
+
+        if (!elem.parentElement.classList.contains("scraped-example")) {
+            return;
+        }
+        const scrapedWrapped = elem.parentElement;
+        window.updateScrapedExample(scrapedWrapped, parent);
     }
 
     function showHideCodeExampleButtons(event) {

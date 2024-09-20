@@ -1,11 +1,6 @@
 //@ ignore-windows
 //@ ignore-apple
 
-// LLVM 17's embed-source implementation requires that source code is attached
-// for all files in the output DWARF debug info. This restriction was lifted in
-// LLVM 18 (87e22bdd2bd6d77d782f9d64b3e3ae5bdcd5080d).
-//@ min-llvm-version: 18
-
 // This test should be replaced with one in tests/debuginfo once we can easily
 // tell via GDB or LLDB if debuginfo contains source code. Cheap tricks in LLDB
 // like setting an invalid source map path don't appear to work, maybe this'll

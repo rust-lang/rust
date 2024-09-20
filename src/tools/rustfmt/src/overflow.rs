@@ -9,22 +9,22 @@ use rustc_span::Span;
 use tracing::debug;
 
 use crate::closures;
-use crate::config::Version;
-use crate::config::{lists::*, Config};
+use crate::config::StyleEdition;
+use crate::config::{Config, lists::*};
 use crate::expr::{
     can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call, is_simple_expr,
     rewrite_cond,
 };
 use crate::lists::{
-    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+    ListFormatting, ListItem, Separator, definitive_tactic, itemize_list, write_list,
 };
 use crate::macros::MacroArg;
-use crate::patterns::{can_be_overflowed_pat, TuplePatField};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::patterns::{TuplePatField, can_be_overflowed_pat};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
-use crate::types::{can_be_overflowed_type, SegmentParam};
+use crate::types::{SegmentParam, can_be_overflowed_type};
 use crate::utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
 
 /// A list of `format!`-like macros, that take a long format string and a list of arguments to
@@ -90,6 +90,10 @@ pub(crate) enum OverflowableItem<'a> {
 impl<'a> Rewrite for OverflowableItem<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         self.map(|item| item.rewrite(context, shape))
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        self.map(|item| item.rewrite_result(context, shape))
     }
 }
 
@@ -201,8 +205,12 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::NestedMetaItem(..) => SPECIAL_CASE_ATTR,
             _ => &[],
         };
-        let additional_cases = match (self, config.version()) {
-            (OverflowableItem::MacroArg(..), Version::Two) => SPECIAL_CASE_MACROS_V2,
+        let additional_cases = match self {
+            OverflowableItem::MacroArg(..)
+                if config.style_edition() >= StyleEdition::Edition2024 =>
+            {
+                SPECIAL_CASE_MACROS_V2
+            }
             _ => &[],
         };
         base_cases.iter().chain(additional_cases)
@@ -278,7 +286,7 @@ pub(crate) fn rewrite_with_parens<'a, T: 'a + IntoOverflowableItem<'a>>(
     span: Span,
     item_max_width: usize,
     force_separator_tactic: Option<SeparatorTactic>,
-) -> Option<String> {
+) -> RewriteResult {
     Context::new(
         context,
         items,
@@ -300,7 +308,7 @@ pub(crate) fn rewrite_with_angle_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
     items: impl Iterator<Item = &'a T>,
     shape: Shape,
     span: Span,
-) -> Option<String> {
+) -> RewriteResult {
     Context::new(
         context,
         items,
@@ -324,7 +332,7 @@ pub(crate) fn rewrite_with_square_brackets<'a, T: 'a + IntoOverflowableItem<'a>>
     span: Span,
     force_separator_tactic: Option<SeparatorTactic>,
     delim_token: Option<Delimiter>,
-) -> Option<String> {
+) -> RewriteResult {
     let (lhs, rhs) = match delim_token {
         Some(Delimiter::Parenthesis) => ("(", ")"),
         Some(Delimiter::Brace) => ("{", "}"),
@@ -428,7 +436,7 @@ impl<'a> Context<'a> {
                         if closures::args_have_many_closure(&self.items) {
                             None
                         } else {
-                            closures::rewrite_last_closure(self.context, expr, shape)
+                            closures::rewrite_last_closure(self.context, expr, shape).ok()
                         }
                     }
 
@@ -457,7 +465,7 @@ impl<'a> Context<'a> {
 
         if let Some(rewrite) = rewrite {
             // splitn(2, *).next().unwrap() is always safe.
-            let rewrite_first_line = Some(rewrite.splitn(2, '\n').next().unwrap().to_owned());
+            let rewrite_first_line = Ok(rewrite.splitn(2, '\n').next().unwrap().to_owned());
             last_list_item.item = rewrite_first_line;
             Some(rewrite)
         } else {
@@ -495,7 +503,7 @@ impl<'a> Context<'a> {
                 Some(OverflowableItem::MacroArg(MacroArg::Expr(expr)))
                     if !combine_arg_with_callee
                         && is_method_call(expr)
-                        && self.context.config.version() == Version::Two =>
+                        && self.context.config.style_edition() >= StyleEdition::Edition2024 =>
                 {
                     self.context.force_one_line_chain.replace(true);
                 }
@@ -545,22 +553,23 @@ impl<'a> Context<'a> {
                         .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
                     let no_newline = rw.as_ref().map_or(false, |s| !s.contains('\n'));
                     if no_newline {
-                        list_items[self.items.len() - 1].item = rw;
+                        list_items[self.items.len() - 1].item = rw.unknown_error();
                     } else {
-                        list_items[self.items.len() - 1].item = Some(overflowed.to_owned());
+                        list_items[self.items.len() - 1].item = Ok(overflowed.to_owned());
                     }
                 } else {
-                    list_items[self.items.len() - 1].item = Some(overflowed.to_owned());
+                    list_items[self.items.len() - 1].item = Ok(overflowed.to_owned());
                 }
             }
             (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
-                list_items[self.items.len() - 1].item = placeholder;
+                list_items[self.items.len() - 1].item = placeholder.unknown_error();
             }
             _ if !self.items.is_empty() => {
                 list_items[self.items.len() - 1].item = self
                     .items
                     .last()
-                    .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
+                    .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape))
+                    .unknown_error();
 
                 // Use horizontal layout for a function with a single argument as long as
                 // everything fits in a single line.
@@ -613,7 +622,7 @@ impl<'a> Context<'a> {
         tactic
     }
 
-    fn rewrite_items(&self) -> Option<(bool, String)> {
+    fn rewrite_items(&self) -> Result<(bool, String), RewriteError> {
         let span = self.items_span();
         debug!("items: {:?}", self.items);
 
@@ -624,7 +633,7 @@ impl<'a> Context<'a> {
             ",",
             |item| item.span().lo(),
             |item| item.span().hi(),
-            |item| item.rewrite(self.context, self.nested_shape),
+            |item| item.rewrite_result(self.context, self.nested_shape),
             span.lo(),
             span.hi(),
             true,
@@ -689,7 +698,8 @@ impl<'a> Context<'a> {
         );
         result.push_str(self.ident);
         result.push_str(prefix);
-        let force_single_line = if self.context.config.version() == Version::Two {
+        let force_single_line = if self.context.config.style_edition() >= StyleEdition::Edition2024
+        {
             !self.context.use_block_indent() || (is_extendable && extend_width <= shape.width)
         } else {
             // 2 = `()`
@@ -711,7 +721,7 @@ impl<'a> Context<'a> {
         result
     }
 
-    fn rewrite(&self, shape: Shape) -> Option<String> {
+    fn rewrite(&self, shape: Shape) -> RewriteResult {
         let (extendable, items_str) = self.rewrite_items()?;
 
         // If we are using visual indent style and failed to format, retry with block indent.
@@ -725,7 +735,7 @@ impl<'a> Context<'a> {
             return result;
         }
 
-        Some(self.wrap_items(&items_str, shape, extendable))
+        Ok(self.wrap_items(&items_str, shape, extendable))
     }
 }
 

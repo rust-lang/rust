@@ -58,17 +58,10 @@ fromRust(LLVMRustCounterMappingRegionKind Kind) {
     return coverage::CounterMappingRegion::GapRegion;
   case LLVMRustCounterMappingRegionKind::BranchRegion:
     return coverage::CounterMappingRegion::BranchRegion;
-#if LLVM_VERSION_GE(18, 0)
   case LLVMRustCounterMappingRegionKind::MCDCDecisionRegion:
     return coverage::CounterMappingRegion::MCDCDecisionRegion;
   case LLVMRustCounterMappingRegionKind::MCDCBranchRegion:
     return coverage::CounterMappingRegion::MCDCBranchRegion;
-#else
-  case LLVMRustCounterMappingRegionKind::MCDCDecisionRegion:
-    break;
-  case LLVMRustCounterMappingRegionKind::MCDCBranchRegion:
-    break;
-#endif
   }
   report_fatal_error("Bad LLVMRustCounterMappingRegionKind!");
 }
@@ -100,7 +93,7 @@ struct LLVMRustMCDCParameters {
 // https://github.com/rust-lang/llvm-project/blob/66a2881a/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L253-L263
 // and representations in 19
 // https://github.com/llvm/llvm-project/blob/843cc474faefad1d639f4c44c1cf3ad7dbda76c8/llvm/include/llvm/ProfileData/Coverage/MCDCTypes.h
-#if LLVM_VERSION_GE(18, 0) && LLVM_VERSION_LT(19, 0)
+#if LLVM_VERSION_LT(19, 0)
 static coverage::CounterMappingRegion::MCDCParameters
 fromRust(LLVMRustMCDCParameters Params) {
   auto parameter = coverage::CounterMappingRegion::MCDCParameters{};
@@ -126,7 +119,7 @@ fromRust(LLVMRustMCDCParameters Params) {
   }
   report_fatal_error("Bad LLVMRustMCDCParametersTag!");
 }
-#elif LLVM_VERSION_GE(19, 0)
+#else
 static coverage::mcdc::Parameters fromRust(LLVMRustMCDCParameters Params) {
   switch (Params.Tag) {
   case LLVMRustMCDCParametersTag::None:
@@ -221,7 +214,7 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
            RustMappingRegions, NumMappingRegions)) {
     MappingRegions.emplace_back(
         fromRust(Region.Count), fromRust(Region.FalseCount),
-#if LLVM_VERSION_GE(18, 0) && LLVM_VERSION_LT(19, 0)
+#if LLVM_VERSION_LT(19, 0)
         // LLVM 19 may move this argument to last.
         fromRust(Region.MCDCParameters),
 #endif

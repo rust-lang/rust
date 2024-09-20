@@ -13,7 +13,9 @@ use rustfmt_nightly as rustfmt;
 use tracing::debug;
 use tracing_subscriber::EnvFilter;
 
-use crate::rustfmt::{load_config, CliOptions, FormatReportFormatterBuilder, Input, Session};
+use crate::rustfmt::{
+    CliOptions, FormatReportFormatterBuilder, Input, Session, Version, load_config,
+};
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files
@@ -85,6 +87,15 @@ impl CliOptions for NullOptions {
         unreachable!();
     }
     fn config_path(&self) -> Option<&Path> {
+        unreachable!();
+    }
+    fn edition(&self) -> Option<rustfmt_nightly::Edition> {
+        unreachable!();
+    }
+    fn style_edition(&self) -> Option<rustfmt_nightly::StyleEdition> {
+        unreachable!();
+    }
+    fn version(&self) -> Option<Version> {
         unreachable!();
     }
 }
