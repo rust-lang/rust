@@ -101,7 +101,7 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
     /// eventually go away.
     ///
     /// For a more precise definition, see the documentation for
-    /// [`RegionTracker::has_incompatible_universes()`].
+    /// [`RegionTracker`] and its methods!.
     ///
     /// This edge case used to be handled during constraint propagation
     /// by iterating over the strongly connected components in the constraint

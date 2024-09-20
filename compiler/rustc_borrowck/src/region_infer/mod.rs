@@ -34,7 +34,6 @@ use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
 use crate::nll::PoloniusOutput;
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
 use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
-use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::Locations;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
@@ -2215,7 +2214,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Returns the representative `RegionVid` for a given SCC.
-    /// See `RegionTracker` for how a region variable ID is chosen.
+    /// See [`RegionTracker`] for how a region variable ID is chosen.
     ///
     /// It is a hacky way to manage checking regions for equality,
     /// since we can 'canonicalize' each region to the representative
@@ -2231,6 +2230,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         r == self.universal_regions.fr_static
     }
 
+    /// If the representative of an SCC is a placeholder, return
+    /// its originating `PlaceholderRegion`.
     pub(crate) fn placeholder_representative(
         &self,
         scc: ConstraintSccIndex,
