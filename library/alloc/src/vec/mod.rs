@@ -1584,7 +1584,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// This method guarantees that for the purpose of the aliasing model, this method
     /// does not materialize a reference to the underlying slice, and thus the returned pointer
-    /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
+    /// will remain valid when mixed with other calls to [`as_ptr`], [`as_mut_ptr`],
+    /// and [`as_non_null`].
     /// Note that calling other methods that materialize mutable references to the slice,
     /// or mutable references to specific elements you are planning on accessing through this pointer,
     /// as well as writing to those elements, may still invalidate this pointer.
@@ -1621,6 +1622,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     /// [`as_ptr`]: Vec::as_ptr
+    /// [`as_non_null`]: Vec::as_non_null
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_never_returns_null_ptr]
     #[inline]
@@ -1640,7 +1642,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// This method guarantees that for the purpose of the aliasing model, this method
     /// does not materialize a reference to the underlying slice, and thus the returned pointer
-    /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
+    /// will remain valid when mixed with other calls to [`as_ptr`], [`as_mut_ptr`],
+    /// and [`as_non_null`].
     /// Note that calling other methods that materialize references to the slice,
     /// or references to specific elements you are planning on accessing through this pointer,
     /// may still invalidate this pointer.
@@ -1680,6 +1683,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     /// [`as_ptr`]: Vec::as_ptr
+    /// [`as_non_null`]: Vec::as_non_null
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_never_returns_null_ptr]
     #[inline]
@@ -1687,6 +1691,69 @@ impl<T, A: Allocator> Vec<T, A> {
         // We shadow the slice method of the same name to avoid going through
         // `deref_mut`, which creates an intermediate reference.
         self.buf.ptr()
+    }
+
+    /// Returns a `NonNull` pointer to the vector's buffer, or a dangling
+    /// `NonNull` pointer valid for zero sized reads if the vector didn't allocate.
+    ///
+    /// The caller must ensure that the vector outlives the pointer this
+    /// function returns, or else it will end up dangling.
+    /// Modifying the vector may cause its buffer to be reallocated,
+    /// which would also make any pointers to it invalid.
+    ///
+    /// This method guarantees that for the purpose of the aliasing model, this method
+    /// does not materialize a reference to the underlying slice, and thus the returned pointer
+    /// will remain valid when mixed with other calls to [`as_ptr`], [`as_mut_ptr`],
+    /// and [`as_non_null`].
+    /// Note that calling other methods that materialize references to the slice,
+    /// or references to specific elements you are planning on accessing through this pointer,
+    /// may still invalidate this pointer.
+    /// See the second example below for how this guarantee can be used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// // Allocate vector big enough for 4 elements.
+    /// let size = 4;
+    /// let mut x: Vec<i32> = Vec::with_capacity(size);
+    /// let x_ptr = x.as_non_null();
+    ///
+    /// // Initialize elements via raw pointer writes, then set length.
+    /// unsafe {
+    ///     for i in 0..size {
+    ///         x_ptr.add(i).write(i as i32);
+    ///     }
+    ///     x.set_len(size);
+    /// }
+    /// assert_eq!(&*x, &[0, 1, 2, 3]);
+    /// ```
+    ///
+    /// Due to the aliasing guarantee, the following code is legal:
+    ///
+    /// ```rust
+    /// #![feature(box_vec_non_null)]
+    ///
+    /// unsafe {
+    ///     let mut v = vec![0];
+    ///     let ptr1 = v.as_non_null();
+    ///     ptr1.write(1);
+    ///     let ptr2 = v.as_non_null();
+    ///     ptr2.write(2);
+    ///     // Notably, the write to `ptr2` did *not* invalidate `ptr1`:
+    ///     ptr1.write(3);
+    /// }
+    /// ```
+    ///
+    /// [`as_mut_ptr`]: Vec::as_mut_ptr
+    /// [`as_ptr`]: Vec::as_ptr
+    /// [`as_non_null`]: Vec::as_non_null
+    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[inline]
+    pub fn as_non_null(&mut self) -> NonNull<T> {
+        // SAFETY: A `Vec` always has a non-null pointer.
+        unsafe { NonNull::new_unchecked(self.as_mut_ptr()) }
     }
 
     /// Returns a reference to the underlying allocator.
