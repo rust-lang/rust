@@ -1,15 +1,15 @@
 //! Renderer for function calls.
 
-use std::ops::ControlFlow;
-
 use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
-use syntax::{ast, format_smolstr, AstNode, Edition, SmolStr, SyntaxKind, ToSmolStr, T};
+use syntax::{format_smolstr, AstNode, Edition, SmolStr, ToSmolStr};
 
 use crate::{
-    context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
+    context::{
+        CompleteSemicolon, CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind,
+    },
     item::{
         Builder, CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevanceFn,
         CompletionRelevanceReturnType, CompletionRelevanceTraitInfo,
@@ -277,32 +277,21 @@ pub(super) fn add_call_parens<'b>(
 
         (snippet, "(…)")
     };
-    if ret_type.is_unit() && ctx.config.add_semicolon_to_unit {
-        let next_non_trivia_token =
-            std::iter::successors(ctx.token.next_token(), |it| it.next_token())
-                .find(|it| !it.kind().is_trivia());
-        let in_match_arm = ctx.token.parent_ancestors().try_for_each(|ancestor| {
-            if ast::MatchArm::can_cast(ancestor.kind()) {
-                ControlFlow::Break(true)
-            } else if matches!(ancestor.kind(), SyntaxKind::EXPR_STMT | SyntaxKind::BLOCK_EXPR) {
-                ControlFlow::Break(false)
-            } else {
-                ControlFlow::Continue(())
-            }
-        });
-        // FIXME: This will assume expr macros are not inside match, we need to somehow go to the "parent" of the root node.
-        let in_match_arm = match in_match_arm {
-            ControlFlow::Continue(()) => false,
-            ControlFlow::Break(it) => it,
-        };
-        let complete_token = if in_match_arm { T![,] } else { T![;] };
-        if next_non_trivia_token.map(|it| it.kind()) != Some(complete_token) {
-            cov_mark::hit!(complete_semicolon);
-            let ch = if in_match_arm { ',' } else { ';' };
-            if snippet.ends_with("$0") {
-                snippet.insert(snippet.len() - "$0".len(), ch);
-            } else {
-                snippet.push(ch);
+    if ret_type.is_unit() {
+        match ctx.complete_semicolon {
+            CompleteSemicolon::DoNotComplete => {}
+            CompleteSemicolon::CompleteSemi | CompleteSemicolon::CompleteComma => {
+                cov_mark::hit!(complete_semicolon);
+                let ch = if matches!(ctx.complete_semicolon, CompleteSemicolon::CompleteComma) {
+                    ','
+                } else {
+                    ';'
+                };
+                if snippet.ends_with("$0") {
+                    snippet.insert(snippet.len() - "$0".len(), ch);
+                } else {
+                    snippet.push(ch);
+                }
             }
         }
     }
@@ -885,6 +874,27 @@ fn bar() {
     match Some(false) {
         v => foo()$0,
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_semicolon_in_closure_ret() {
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn baz(_: impl FnOnce()) {}
+fn bar() {
+    baz(|| fo$0);
+}
+"#,
+            r#"
+fn foo() {}
+fn baz(_: impl FnOnce()) {}
+fn bar() {
+    baz(|| foo()$0);
 }
 "#,
         );
