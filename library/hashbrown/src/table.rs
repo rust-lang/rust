@@ -776,7 +776,7 @@ where
     pub fn iter_hash(&self, hash: u64) -> IterHash<'_, T> {
         IterHash {
             inner: unsafe { self.raw.iter_hash(hash) },
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 
@@ -829,7 +829,7 @@ where
     pub fn iter_hash_mut(&mut self, hash: u64) -> IterHashMut<'_, T> {
         IterHashMut {
             inner: unsafe { self.raw.iter_hash(hash) },
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 
@@ -1946,6 +1946,7 @@ impl<'a, T> Default for Iter<'a, T> {
         }
     }
 }
+
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
@@ -2051,6 +2052,20 @@ impl<T> ExactSizeIterator for IterMut<'_, T> {
 
 impl<T> FusedIterator for IterMut<'_, T> {}
 
+impl<T> fmt::Debug for IterMut<'_, T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list()
+            .entries(Iter {
+                inner: self.inner.clone(),
+                marker: PhantomData,
+            })
+            .finish()
+    }
+}
+
 /// An iterator over the entries of a `HashTable` that could match a given hash.
 /// The iterator element type is `&'a T`.
 ///
@@ -2061,7 +2076,17 @@ impl<T> FusedIterator for IterMut<'_, T> {}
 /// [`HashTable`]: struct.HashTable.html
 pub struct IterHash<'a, T> {
     inner: RawIterHash<T>,
-    _marker: PhantomData<&'a T>,
+    marker: PhantomData<&'a T>,
+}
+
+impl<'a, T> Default for IterHash<'a, T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        IterHash {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<'a, T> Iterator for IterHash<'a, T> {
@@ -2073,6 +2098,37 @@ impl<'a, T> Iterator for IterHash<'a, T> {
             Some(bucket) => Some(unsafe { bucket.as_ref() }),
             None => None,
         }
+    }
+
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner
+            .fold(init, |acc, bucket| unsafe { f(acc, bucket.as_ref()) })
+    }
+}
+
+impl<T> FusedIterator for IterHash<'_, T> {}
+
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+impl<'a, T> Clone for IterHash<'a, T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn clone(&self) -> IterHash<'a, T> {
+        IterHash {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> fmt::Debug for IterHash<'_, T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
@@ -2086,7 +2142,17 @@ impl<'a, T> Iterator for IterHash<'a, T> {
 /// [`HashTable`]: struct.HashTable.html
 pub struct IterHashMut<'a, T> {
     inner: RawIterHash<T>,
-    _marker: PhantomData<&'a mut T>,
+    marker: PhantomData<&'a mut T>,
+}
+
+impl<'a, T> Default for IterHashMut<'a, T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        IterHashMut {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<'a, T> Iterator for IterHashMut<'a, T> {
@@ -2098,6 +2164,31 @@ impl<'a, T> Iterator for IterHashMut<'a, T> {
             Some(bucket) => Some(unsafe { bucket.as_mut() }),
             None => None,
         }
+    }
+
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner
+            .fold(init, |acc, bucket| unsafe { f(acc, bucket.as_mut()) })
+    }
+}
+
+impl<T> FusedIterator for IterHashMut<'_, T> {}
+
+impl<T> fmt::Debug for IterHashMut<'_, T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list()
+            .entries(IterHash {
+                inner: self.inner.clone(),
+                marker: PhantomData,
+            })
+            .finish()
     }
 }
 
@@ -2126,6 +2217,7 @@ impl<T, A: Allocator> Default for IntoIter<T, A> {
         }
     }
 }
+
 impl<T, A> Iterator for IntoIter<T, A>
 where
     A: Allocator,
@@ -2160,6 +2252,21 @@ where
 
 impl<T, A> FusedIterator for IntoIter<T, A> where A: Allocator {}
 
+impl<T, A> fmt::Debug for IntoIter<T, A>
+where
+    T: fmt::Debug,
+    A: Allocator,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list()
+            .entries(Iter {
+                inner: self.inner.iter(),
+                marker: PhantomData,
+            })
+            .finish()
+    }
+}
+
 /// A draining iterator over the items of a `HashTable`.
 ///
 /// This `struct` is created by the [`drain`] method on [`HashTable`].
@@ -2171,36 +2278,42 @@ pub struct Drain<'a, T, A: Allocator = Global> {
     inner: RawDrain<'a, T, A>,
 }
 
-impl<T, A: Allocator> Drain<'_, T, A> {
-    /// Returns a iterator of references over the remaining items.
-    fn iter(&self) -> Iter<'_, T> {
-        Iter {
-            inner: self.inner.iter(),
-            marker: PhantomData,
-        }
-    }
-}
-
 impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
         self.inner.next()
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, f)
+    }
 }
+
 impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
+
 impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
 
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.iter()).finish()
+        f.debug_list()
+            .entries(Iter {
+                inner: self.inner.iter(),
+                marker: PhantomData,
+            })
+            .finish()
     }
 }
 
