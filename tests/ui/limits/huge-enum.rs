@@ -10,5 +10,5 @@ type BIG = Option<[u32; (1<<59)-1]>;
 
 fn main() {
     let big: BIG = None;
-    //~^ ERROR are too big for the current architecture
+    //~^ ERROR are too big for the target architecture
 }

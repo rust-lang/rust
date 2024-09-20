@@ -34,8 +34,8 @@ error[E0512]: cannot transmute between types of different sizes, or dependently-
 LL |         std::mem::transmute(v)
    |         ^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type $REALLY_TOO_BIG are too big for the current architecture)
-   = note: target type: `[[[u32; 9999999]; 777777777]; 8888888]` (values of the type $REALLY_TOO_BIG are too big for the current architecture)
+   = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type $REALLY_TOO_BIG are too big for the target architecture)
+   = note: target type: `[[[u32; 9999999]; 777777777]; 8888888]` (values of the type $REALLY_TOO_BIG are too big for the target architecture)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/transmute-fail.rs:40:14
@@ -43,8 +43,8 @@ error[E0512]: cannot transmute between types of different sizes, or dependently-
 LL |     unsafe { std::mem::transmute(v) }
    |              ^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type $REALLY_TOO_BIG are too big for the current architecture)
-   = note: target type: `[[[u32; 9999999]; 777777777]; 239]` (values of the type $REALLY_TOO_BIG are too big for the current architecture)
+   = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type $REALLY_TOO_BIG are too big for the target architecture)
+   = note: target type: `[[[u32; 9999999]; 777777777]; 239]` (values of the type $REALLY_TOO_BIG are too big for the target architecture)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/transmute-fail.rs:46:9

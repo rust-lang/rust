@@ -264,7 +264,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
         match *self {
             LayoutError::Unknown(ty) => write!(f, "the type `{ty}` has an unknown layout"),
             LayoutError::SizeOverflow(ty) => {
-                write!(f, "values of the type `{ty}` are too big for the current architecture")
+                write!(f, "values of the type `{ty}` are too big for the target architecture")
             }
             LayoutError::NormalizationFailure(t, e) => write!(
                 f,
