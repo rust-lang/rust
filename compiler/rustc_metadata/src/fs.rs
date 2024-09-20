@@ -98,6 +98,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
             }
         };
         if tcx.sess.opts.json_artifact_notifications {
+            dbg!("Calculating hash");
             let hash: Fingerprint = {
                 let symbols = tcx
                     .exported_symbols(LOCAL_CRATE)
@@ -110,12 +111,28 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
                         let is_cross_crate_inlineable =
                             def_id.map_or(false, |id| tcx.cross_crate_inlinable(id));
                         let ty = def_id.map(|id| tcx.type_of(id));
-                        let body = is_cross_crate_inlineable.then(|| {
+                        let _body = is_cross_crate_inlineable.then(|| {
                             // Deref to avoid hashing cache of mir body.
-                            exported_symbol.mir_body_for_local_instance(tcx).basic_blocks.deref()
+                            exported_symbol
+                                .mir_body_for_local_instance(tcx)
+                                .basic_blocks
+                                .deref()
+                                .iter()
+                                .map(|bb| {
+                                    let kind = bb
+                                        .terminator
+                                        .as_ref()
+                                        .map(|terminator| terminator.kind.clone());
+                                    let statements = bb
+                                        .statements
+                                        .iter()
+                                        .map(|statement| statement.kind.clone())
+                                        .collect::<Vec<_>>();
+                                    (bb.is_cleanup, kind, statements)
+                                })
                         });
 
-                        Some((exported_symbol, k, ty, body))
+                        Some((exported_symbol, k, ty)) // body))
                     })
                     .collect::<Vec<_>>();
                 tcx.with_stable_hashing_context(|mut hcx| {
