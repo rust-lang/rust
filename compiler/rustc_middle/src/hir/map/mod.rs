@@ -598,8 +598,10 @@ impl<'hir> Map<'hir> {
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent_item(self, hir_id: HirId) -> OwnerId {
-        if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
-            def_id
+        if hir_id.local_id.index() != 0 || hir_id.owner == CRATE_OWNER_ID {
+            hir_id.owner
+        } else if let Some(local_def_index) = self.def_key(hir_id.owner.def_id).parent {
+            self.tcx.local_def_id_to_hir_id(LocalDefId { local_def_index }).owner
         } else {
             CRATE_OWNER_ID
         }
