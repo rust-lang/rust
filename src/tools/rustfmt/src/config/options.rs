@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 
-use std::collections::{hash_set, HashSet};
+use std::collections::{HashSet, hash_set};
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -11,8 +11,10 @@ use serde::de::{SeqAccess, Visitor};
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::config::lists::*;
 use crate::config::Config;
+use crate::config::file_lines::FileLines;
+use crate::config::lists::*;
+use crate::config::macro_names::MacroSelectors;
 
 #[config_type]
 pub enum NewlineStyle {
@@ -253,12 +255,12 @@ impl WidthHeuristics {
     // Using this WidthHeuristics means we ignore heuristics.
     pub fn null() -> WidthHeuristics {
         WidthHeuristics {
-            fn_call_width: usize::max_value(),
-            attr_fn_like_width: usize::max_value(),
+            fn_call_width: usize::MAX,
+            attr_fn_like_width: usize::MAX,
             struct_lit_width: 0,
             struct_variant_width: 0,
-            array_width: usize::max_value(),
-            chain_width: usize::max_value(),
+            array_width: usize::MAX,
+            chain_width: usize::MAX,
             single_line_if_else_max_width: 0,
             single_line_let_else_max_width: 0,
         }
@@ -413,7 +415,13 @@ impl FromStr for IgnoreList {
 /// values in a config with values from the command line.
 pub trait CliOptions {
     fn apply_to(self, config: &mut Config);
+
+    /// It is ok if the returned path doesn't exist or is not canonicalized
+    /// (i.e. the callers are expected to handle such cases).
     fn config_path(&self) -> Option<&Path>;
+    fn edition(&self) -> Option<Edition>;
+    fn style_edition(&self) -> Option<StyleEdition>;
+    fn version(&self) -> Option<Version>;
 }
 
 /// The edition of the syntax and semantics of code (RFC 2052).
@@ -454,6 +462,17 @@ impl From<Edition> for rustc_span::edition::Edition {
     }
 }
 
+impl From<Edition> for StyleEdition {
+    fn from(edition: Edition) -> Self {
+        match edition {
+            Edition::Edition2015 => StyleEdition::Edition2015,
+            Edition::Edition2018 => StyleEdition::Edition2018,
+            Edition::Edition2021 => StyleEdition::Edition2021,
+            Edition::Edition2024 => StyleEdition::Edition2024,
+        }
+    }
+}
+
 impl PartialOrd for Edition {
     fn partial_cmp(&self, other: &Edition) -> Option<std::cmp::Ordering> {
         rustc_span::edition::Edition::partial_cmp(&(*self).into(), &(*other).into())
@@ -471,10 +490,11 @@ pub enum MatchArmLeadingPipe {
     Preserve,
 }
 
-/// Defines the default values for each config according to [the style guide].
-/// rustfmt output may differ between style editions.
+/// Defines the default values for each config according to the edition of the
+/// [Style Guide] as per [RFC 3338]. Rustfmt output may differ between Style editions.
 ///
-/// [the style guide]: https://doc.rust-lang.org/nightly/style-guide/
+/// [Style Guide]: https://doc.rust-lang.org/nightly/style-guide/
+/// [RFC 3338]: https://rust-lang.github.io/rfcs/3338-style-evolution.html
 #[config_type]
 pub enum StyleEdition {
     #[value = "2015"]
@@ -491,6 +511,169 @@ pub enum StyleEdition {
     Edition2021,
     #[value = "2024"]
     #[doc_hint = "2024"]
+    #[unstable_variant]
     /// [Edition 2024]().
     Edition2024,
 }
+
+impl From<StyleEdition> for rustc_span::edition::Edition {
+    fn from(edition: StyleEdition) -> Self {
+        match edition {
+            StyleEdition::Edition2015 => Self::Edition2015,
+            StyleEdition::Edition2018 => Self::Edition2018,
+            StyleEdition::Edition2021 => Self::Edition2021,
+            StyleEdition::Edition2024 => Self::Edition2024,
+        }
+    }
+}
+
+impl PartialOrd for StyleEdition {
+    fn partial_cmp(&self, other: &StyleEdition) -> Option<std::cmp::Ordering> {
+        rustc_span::edition::Edition::partial_cmp(&(*self).into(), &(*other).into())
+    }
+}
+
+/// Defines unit structs to implement `StyleEditionDefault` for.
+#[macro_export]
+macro_rules! config_option_with_style_edition_default {
+    ($name:ident, $config_ty:ty, _ => $default:expr) => {
+        #[allow(unreachable_pub)]
+        pub struct $name;
+        $crate::style_edition_default!($name, $config_ty, _ => $default);
+    };
+    ($name:ident, $config_ty:ty, Edition2024 => $default_2024:expr, _ => $default_2015:expr) => {
+        pub struct $name;
+        $crate::style_edition_default!(
+            $name,
+            $config_ty,
+            Edition2024 => $default_2024,
+            _ => $default_2015
+        );
+    };
+    (
+        $($name:ident, $config_ty:ty, $(Edition2024 => $default_2024:expr,)? _ => $default:expr);*
+        $(;)*
+    ) => {
+        $(
+            config_option_with_style_edition_default!(
+                $name, $config_ty, $(Edition2024 => $default_2024,)? _ => $default
+            );
+        )*
+    };
+}
+
+// TODO(ytmimi) Some of the configuration values have a `Config` suffix, while others don't.
+// I chose to add a `Config` suffix in cases where a type for the config option was already
+// defined. For example, `NewlineStyle` and `NewlineStyleConfig`. There was some discussion
+// about using the `Config` suffix more consistently.
+config_option_with_style_edition_default!(
+    // Fundamental stuff
+    MaxWidth, usize, _ => 100;
+    HardTabs, bool, _ => false;
+    TabSpaces, usize, _ => 4;
+    NewlineStyleConfig, NewlineStyle, _ => NewlineStyle::Auto;
+    IndentStyleConfig, IndentStyle, _ => IndentStyle::Block;
+
+    // Width Heuristics
+    UseSmallHeuristics, Heuristics, _ => Heuristics::Default;
+    WidthHeuristicsConfig, WidthHeuristics, _ => WidthHeuristics::scaled(100);
+    FnCallWidth, usize, _ => 60;
+    AttrFnLikeWidth, usize, _ => 70;
+    StructLitWidth, usize, _ => 18;
+    StructVariantWidth, usize, _ => 35;
+    ArrayWidth, usize, _ => 60;
+    ChainWidth, usize, _ => 60;
+    SingleLineIfElseMaxWidth, usize, _ => 50;
+    SingleLineLetElseMaxWidth, usize, _ => 50;
+
+    // Comments. macros, and strings
+    WrapComments, bool, _ => false;
+    FormatCodeInDocComments, bool, _ => false;
+    DocCommentCodeBlockWidth, usize, _ => 100;
+    CommentWidth, usize, _ => 80;
+    NormalizeComments, bool, _ => false;
+    NormalizeDocAttributes, bool, _ => false;
+    FormatStrings, bool, _ => false;
+    FormatMacroMatchers, bool, _ => false;
+    FormatMacroBodies, bool, _ => true;
+    SkipMacroInvocations, MacroSelectors, _ => MacroSelectors::default();
+    HexLiteralCaseConfig, HexLiteralCase, _ => HexLiteralCase::Preserve;
+
+    // Single line expressions and items
+    EmptyItemSingleLine, bool, _ => true;
+    StructLitSingleLine, bool, _ => true;
+    FnSingleLine, bool, _ => false;
+    WhereSingleLine, bool, _ => false;
+
+    // Imports
+    ImportsIndent, IndentStyle, _ => IndentStyle::Block;
+    ImportsLayout, ListTactic, _ => ListTactic::Mixed;
+    ImportsGranularityConfig, ImportGranularity, _ => ImportGranularity::Preserve;
+    GroupImportsTacticConfig, GroupImportsTactic, _ => GroupImportsTactic::Preserve;
+    MergeImports, bool, _ => false;
+
+    // Ordering
+    ReorderImports, bool, _ => true;
+    ReorderModules, bool, _ => true;
+    ReorderImplItems, bool, _ => false;
+
+    // Spaces around punctuation
+    TypePunctuationDensity, TypeDensity, _ => TypeDensity::Wide;
+    SpaceBeforeColon, bool, _ => false;
+    SpaceAfterColon, bool, _ => true;
+    SpacesAroundRanges, bool, _ => false;
+    BinopSeparator, SeparatorPlace, _ => SeparatorPlace::Front;
+
+    // Misc.
+    RemoveNestedParens, bool, _ => true;
+    CombineControlExpr, bool, _ => true;
+    ShortArrayElementWidthThreshold, usize, _ => 10;
+    OverflowDelimitedExpr, bool, Edition2024 => true, _ => false;
+    StructFieldAlignThreshold, usize, _ => 0;
+    EnumDiscrimAlignThreshold, usize, _ => 0;
+    MatchArmBlocks, bool, _ => true;
+    MatchArmLeadingPipeConfig, MatchArmLeadingPipe, _ => MatchArmLeadingPipe::Never;
+    ForceMultilineBlocks, bool, _ => false;
+    FnArgsLayout, Density, _ => Density::Tall;
+    FnParamsLayout, Density, _ => Density::Tall;
+    BraceStyleConfig, BraceStyle, _ => BraceStyle::SameLineWhere;
+    ControlBraceStyleConfig, ControlBraceStyle, _ => ControlBraceStyle::AlwaysSameLine;
+    TrailingSemicolon, bool, _ => true;
+    TrailingComma, SeparatorTactic, _ => SeparatorTactic::Vertical;
+    MatchBlockTrailingComma, bool, _ => false;
+    BlankLinesUpperBound, usize, _ => 1;
+    BlankLinesLowerBound, usize, _ => 0;
+    EditionConfig, Edition, _ => Edition::Edition2015;
+    StyleEditionConfig, StyleEdition,
+        Edition2024 =>  StyleEdition::Edition2024, _ => StyleEdition::Edition2015;
+    VersionConfig, Version, Edition2024 => Version::Two, _ => Version::One;
+    InlineAttributeWidth, usize, _ => 0;
+    FormatGeneratedFiles, bool, _ => true;
+    GeneratedMarkerLineSearchLimit, usize, _ => 5;
+
+    // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
+    MergeDerives, bool, _ => true;
+    UseTryShorthand, bool, _ => false;
+    UseFieldInitShorthand, bool, _ => false;
+    ForceExplicitAbi, bool, _ => true;
+    CondenseWildcardSuffixes, bool, _ => false;
+
+    // Control options (changes the operation of rustfmt, rather than the formatting)
+    ColorConfig, Color, _ => Color::Auto;
+    RequiredVersion, String, _ => env!("CARGO_PKG_VERSION").to_owned();
+    UnstableFeatures, bool, _ => false;
+    DisableAllFormatting, bool, _ => false;
+    SkipChildren, bool, _ => false;
+    HideParseErrors, bool, _ => false;
+    ShowParseErrors, bool, _ => true;
+    ErrorOnLineOverflow, bool, _ => false;
+    ErrorOnUnformatted, bool, _ => false;
+    Ignore, IgnoreList, _ => IgnoreList::default();
+
+    // Not user-facing
+    Verbose, Verbosity, _ => Verbosity::Normal;
+    FileLinesConfig, FileLines, _ => FileLines::all();
+    EmitModeConfig, EmitMode, _ => EmitMode::Files;
+    MakeBackup, bool, _ => false;
+    PrintMisformattedFileNames, bool, _ => false;
+);
