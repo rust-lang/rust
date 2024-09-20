@@ -801,6 +801,9 @@ both the code example and the line numbers, so we need to remove the radius in t
 	 * and we include additional 10px for padding. */
 	max-height: calc(1.5em * 5 + 10px);
 }
+.more-scraped-examples .scraped-example:not(.expanded) .example-wrap {
+	max-height: calc(1.5em * 10 + 10px);
+}
 
 .rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers,
 .rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers > pre,
