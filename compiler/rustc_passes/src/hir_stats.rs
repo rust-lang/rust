@@ -574,29 +574,33 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_ty(&mut self, t: &'v ast::Ty) {
-        record_variants!((self, t, t.kind, Id::None, ast, Ty, TyKind), [
-            Slice,
-            Array,
-            Ptr,
-            Ref,
-            BareFn,
-            Never,
-            Tup,
-            AnonStruct,
-            AnonUnion,
-            Path,
-            Pat,
-            TraitObject,
-            ImplTrait,
-            Paren,
-            Typeof,
-            Infer,
-            ImplicitSelf,
-            MacCall,
-            CVarArgs,
-            Dummy,
-            Err
-        ]);
+        record_variants!(
+            (self, t, t.kind, Id::None, ast, Ty, TyKind),
+            [
+                Slice,
+                Array,
+                Ptr,
+                Ref,
+                PinnedRef,
+                BareFn,
+                Never,
+                Tup,
+                AnonStruct,
+                AnonUnion,
+                Path,
+                Pat,
+                TraitObject,
+                ImplTrait,
+                Paren,
+                Typeof,
+                Infer,
+                ImplicitSelf,
+                MacCall,
+                CVarArgs,
+                Dummy,
+                Err
+            ]
+        );
 
         ast_visit::walk_ty(self, t)
     }

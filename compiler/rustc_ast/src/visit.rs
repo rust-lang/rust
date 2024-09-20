@@ -499,7 +499,8 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
     match kind {
         TyKind::Slice(ty) | TyKind::Paren(ty) => try_visit!(visitor.visit_ty(ty)),
         TyKind::Ptr(MutTy { ty, mutbl: _ }) => try_visit!(visitor.visit_ty(ty)),
-        TyKind::Ref(opt_lifetime, MutTy { ty, mutbl: _ }) => {
+        TyKind::Ref(opt_lifetime, MutTy { ty, mutbl: _ })
+        | TyKind::PinnedRef(opt_lifetime, MutTy { ty, mutbl: _ }) => {
             visit_opt!(visitor, visit_lifetime, opt_lifetime, LifetimeCtxt::Ref);
             try_visit!(visitor.visit_ty(ty));
         }

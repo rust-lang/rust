@@ -1,10 +1,9 @@
 use std::fmt;
 
-use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
-    Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitKind,
-    TraitObjectSyntax, UintTy,
+    self as ast, Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label,
+    LitKind, TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, ByRef, CaptureBy, ImplPolarity, IsAuto, Movability,
