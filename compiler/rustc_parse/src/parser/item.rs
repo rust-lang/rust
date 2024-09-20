@@ -89,9 +89,11 @@ impl<'a> Parser<'a> {
                     let snapshot = self.create_snapshot_for_diagnostic();
                     match self.parse_const_block(span, false) {
                         Ok(_) => {
-                            err.span_label(
-                                span,
-                                "if you meant to create an anonymous const, use `const _: () = {};` instead"
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                "to evaluate a const expression, use an anonymous const",
+                                "const _: () = ",
+                                Applicability::MaybeIncorrect,
                             );
                         }
                         Err(diag) => {
