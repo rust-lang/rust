@@ -86,6 +86,7 @@ impl<'a> Parser<'a> {
                         "consider using `const` or `static` instead of `let` for global variables",
                     );
                 } else {
+                    let snapshot = self.create_snapshot_for_diagnostic();
                     match self.parse_const_block(span, false) {
                         Ok(_) => {
                             err.span_label(
@@ -93,8 +94,9 @@ impl<'a> Parser<'a> {
                                 "if you meant to create an anonymous const, use `const _: () = {};` instead"
                             );
                         }
-                        Err(bomb) => {
-                            bomb.cancel();
+                        Err(diag) => {
+                            diag.cancel();
+                            self.restore_snapshot(snapshot);
                             err.span_label(span, "expected item")
                                 .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
                         }
