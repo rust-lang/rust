@@ -85,15 +85,21 @@ impl<'a> Parser<'a> {
                         span,
                         "consider using `const` or `static` instead of `let` for global variables",
                     );
-                } else if self.parse_const_block(span, false).is_ok() {
-                    err.span_label(
-                        span,
-                        "if you meant to create an anonymous const, use `const _: () = {};` instead"
-                    );
                 } else {
-                    err.span_label(span, "expected item")
-                        .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
-                };
+                    match self.parse_const_block(span, false) {
+                        Ok(_) => {
+                            err.span_label(
+                                span,
+                                "if you meant to create an anonymous const, use `const _: () = {};` instead"
+                            );
+                        }
+                        Err(bomb) => {
+                            bomb.cancel();
+                            err.span_label(span, "expected item")
+                                .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
+                        }
+                    }
+                }
                 return Err(err);
             }
         }
