@@ -25,7 +25,9 @@ fn insert_unique_unchecked(b: &mut Bencher) {
     b.iter(|| {
         let mut m = HashMap::with_capacity(1000);
         for k in &keys {
-            m.insert_unique_unchecked(k, k);
+            unsafe {
+                m.insert_unique_unchecked(k, k);
+            }
         }
         m
     });
