@@ -71,6 +71,7 @@ cfg_if::cfg_if! {
         }
     } else {
         #[inline]
+        #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
             let mut out = ptr::null_mut();
             // We prefer posix_memalign over aligned_alloc since it is more widely available, and
