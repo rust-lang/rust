@@ -29,8 +29,7 @@ pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
 
 // Paths in `core`/`alloc`/`std`. This should be avoided and cleaned up by adding diagnostic items.
-pub const STD_IO_SEEK_FROM_CURRENT: [&str; 4] = ["std", "io", "SeekFrom", "Current"];
-pub const STD_IO_SEEKFROM_START: [&str; 4] = ["std", "io", "SeekFrom", "Start"];
+// ... none currently!
 
 // Paths in clippy itself
 pub const MSRV: [&str; 3] = ["clippy_config", "msrvs", "Msrv"];
