@@ -235,6 +235,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     target,
                 });
             }
+
+            Some(probe::AutorefOrPtrAdjustment::ReborrowPin(mutbl)) => {
+                let region = self.next_region_var(infer::Autoref(self.span));
+
+                adjustments.push(Adjustment {
+                    kind: Adjust::ReborrowPin(region, mutbl),
+                    target,
+                });
+            }
             None => {}
         }
 

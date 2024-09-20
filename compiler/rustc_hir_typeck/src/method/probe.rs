@@ -136,7 +136,7 @@ enum ProbeResult {
 /// `mut`), or it has type `*mut T` and we convert it to `*const T`.
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub(crate) enum AutorefOrPtrAdjustment {
-    /// Receiver has type `T`, add `&` or `&mut` (it `T` is `mut`), and maybe also "unsize" it.
+    /// Receiver has type `T`, add `&` or `&mut` (if `T` is `mut`), and maybe also "unsize" it.
     /// Unsizing is used to convert a `[T; N]` to `[T]`, which only makes sense when autorefing.
     Autoref {
         mutbl: hir::Mutability,
@@ -147,6 +147,9 @@ pub(crate) enum AutorefOrPtrAdjustment {
     },
     /// Receiver has type `*mut T`, convert to `*const T`
     ToConstPtr,
+
+    /// Reborrow a `Pin<&mut T>` or `Pin<&T>`.
+    ReborrowPin(hir::Mutability),
 }
 
 impl AutorefOrPtrAdjustment {
@@ -154,6 +157,7 @@ impl AutorefOrPtrAdjustment {
         match self {
             AutorefOrPtrAdjustment::Autoref { mutbl: _, unsize } => *unsize,
             AutorefOrPtrAdjustment::ToConstPtr => false,
+            AutorefOrPtrAdjustment::ReborrowPin(_) => false,
         }
     }
 }
@@ -1133,13 +1137,25 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
 
-                // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::Ref(_, _, mutbl) = *step.self_ty.value.value.kind() {
-                    pick.autoderefs += 1;
-                    pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
-                        mutbl,
-                        unsize: pick.autoref_or_ptr_adjustment.is_some_and(|a| a.get_unsize()),
-                    })
+                match *step.self_ty.value.value.kind() {
+                    // Insert a `&*` or `&mut *` if this is a reference type:
+                    ty::Ref(_, _, mutbl) => {
+                        pick.autoderefs += 1;
+                        pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
+                            mutbl,
+                            unsize: pick.autoref_or_ptr_adjustment.is_some_and(|a| a.get_unsize()),
+                        })
+                    }
+
+                    ty::Adt(def, args) if self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) => {
+                        // make sure this is a pinned reference (and not a `Pin<Box>` or something)
+                        if let ty::Ref(_, _, mutbl) = args[0].expect_ty().kind() {
+                            pick.autoref_or_ptr_adjustment =
+                                Some(AutorefOrPtrAdjustment::ReborrowPin(*mutbl));
+                        }
+                    }
+
+                    _ => (),
                 }
 
                 pick
