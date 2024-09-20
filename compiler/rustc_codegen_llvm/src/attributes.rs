@@ -403,8 +403,9 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         to_add.push(AttributeKind::Naked.create_attr(cx.llcx));
         // HACK(jubilee): "indirect branch tracking" works by attaching prologues to functions.
-        // And it is a module-level attribute, so the alternative is pulling naked functions into new LLVM modules.
-        // Otherwise LLVM's "naked" functions come with endbr prefixes per https://github.com/rust-lang/rust/issues/98768
+        // And it is a module-level attribute, so the alternative is pulling naked functions into
+        // new LLVM modules. Otherwise LLVM's "naked" functions come with endbr prefixes per
+        // https://github.com/rust-lang/rust/issues/98768
         to_add.push(AttributeKind::NoCfCheck.create_attr(cx.llcx));
         if llvm_util::get_version() < (19, 0, 0) {
             // Prior to LLVM 19, branch-target-enforcement was disabled by setting the attribute to
@@ -454,7 +455,8 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
             flags |= AllocKindFlags::Zeroed;
         }
         to_add.push(llvm::CreateAllocKindAttr(cx.llcx, flags));
-        // apply to return place instead of function (unlike all other attributes applied in this function)
+        // apply to return place instead of function (unlike all other attributes applied in this
+        // function)
         let no_alias = AttributeKind::NoAlias.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::ReturnValue, &[no_alias]);
     }

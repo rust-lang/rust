@@ -44,7 +44,8 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
         // Add the pretty printers for the standard library first.
         section_contents.extend_from_slice(b"\x01gdb_load_rust_pretty_printers.py\0");
 
-        // Next, add the pretty printers that were specified via the `#[debugger_visualizer]` attribute.
+        // Next, add the pretty printers that were specified via the `#[debugger_visualizer]`
+        // attribute.
         let visualizers = collect_debugger_visualizers_transitive(
             cx.tcx,
             DebuggerVisualizerType::GdbPrettyPrinter,

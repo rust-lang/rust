@@ -35,8 +35,8 @@ use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
 
-/// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
-/// `llvm::Context` so that several compilation units may be optimized in parallel.
+/// There is one `CodegenCx` per codegen unit. Each one has its own LLVM
+/// `llvm::Context` so that several codegen units may be processed in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
 pub(crate) struct CodegenCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
@@ -231,7 +231,8 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
-    // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
+    // Enable LTO unit splitting if specified or if CFI is enabled. (See
+    // https://reviews.llvm.org/D53891.)
     if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
         let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr();
         unsafe {

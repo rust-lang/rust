@@ -13,8 +13,7 @@ pub(crate) fn mangled_name_of_instance<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     instance: Instance<'tcx>,
 ) -> ty::SymbolName<'tcx> {
-    let tcx = cx.tcx;
-    tcx.symbol_name(instance)
+    cx.tcx.symbol_name(instance)
 }
 
 pub(crate) fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {

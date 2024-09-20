@@ -80,20 +80,12 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_undef(typ)
     }
 
-    fn const_int(&self, typ: Type<'gcc>, int: i64) -> RValue<'gcc> {
-        self.gcc_int(typ, int)
-    }
-
-    fn const_uint(&self, typ: Type<'gcc>, int: u64) -> RValue<'gcc> {
-        self.gcc_uint(typ, int)
-    }
-
-    fn const_uint_big(&self, typ: Type<'gcc>, num: u128) -> RValue<'gcc> {
-        self.gcc_uint_big(typ, num)
-    }
-
     fn const_bool(&self, val: bool) -> RValue<'gcc> {
         self.const_uint(self.type_i1(), val as u64)
+    }
+
+    fn const_i8(&self, i: i8) -> RValue<'gcc> {
+        self.const_int(self.type_i8(), i as i64)
     }
 
     fn const_i16(&self, i: i16) -> RValue<'gcc> {
@@ -104,8 +96,12 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_int(self.type_i32(), i as i64)
     }
 
-    fn const_i8(&self, i: i8) -> RValue<'gcc> {
-        self.const_int(self.type_i8(), i as i64)
+    fn const_int(&self, typ: Type<'gcc>, int: i64) -> RValue<'gcc> {
+        self.gcc_int(typ, int)
+    }
+
+    fn const_u8(&self, i: u8) -> RValue<'gcc> {
+        self.const_uint(self.type_u8(), i as u64)
     }
 
     fn const_u32(&self, i: u32) -> RValue<'gcc> {
@@ -130,8 +126,12 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.usize_type, i)
     }
 
-    fn const_u8(&self, i: u8) -> RValue<'gcc> {
-        self.const_uint(self.type_u8(), i as u64)
+    fn const_uint(&self, typ: Type<'gcc>, int: u64) -> RValue<'gcc> {
+        self.gcc_uint(typ, int)
+    }
+
+    fn const_uint_big(&self, typ: Type<'gcc>, num: u128) -> RValue<'gcc> {
+        self.gcc_uint_big(typ, num)
     }
 
     fn const_real(&self, typ: Type<'gcc>, val: f64) -> RValue<'gcc> {
