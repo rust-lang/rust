@@ -91,6 +91,14 @@ impl<'tcx> ExportedSymbol<'tcx> {
             ExportedSymbol::NoDefId(_) => panic!("Cannot find "),
         }
     }
+    pub fn def_id(&self) -> Option<DefId> {
+        match self {
+            ExportedSymbol::NonGeneric(def_id)
+            | ExportedSymbol::Generic(def_id, _)
+            | ExportedSymbol::ThreadLocalShim(def_id) => Some(*def_id),
+            _ => None,
+        }
+    }
 }
 
 pub fn metadata_symbol_name(tcx: TyCtxt<'_>) -> String {

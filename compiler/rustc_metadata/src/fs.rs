@@ -1,3 +1,5 @@
+use std::ops::Deref;
+//use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -96,23 +98,29 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
             }
         };
         if tcx.sess.opts.json_artifact_notifications {
+            let start = std::time::Instant::now();
             let hash: Fingerprint = {
                 let symbols = tcx
                     .exported_symbols(LOCAL_CRATE)
                     .iter()
                     .filter_map(|&(exported_symbol, k)| {
-                        if !matches!(exported_symbol, ExportedSymbol::NoDefId(_)) {
-                            Some((
-                                exported_symbol,
-                                k,
-                                &exported_symbol.mir_body_for_local_instance(tcx).basic_blocks,
-                            ))
-                        } else {
-                            None
+                        if matches!(exported_symbol, ExportedSymbol::NoDefId(_)) {
+                            return None;
                         }
+                        let def_id = exported_symbol.def_id();
+                        let is_cross_crate_inlineable =
+                            def_id.map_or(false, |id| tcx.cross_crate_inlinable(id));
+                        let ty = def_id.map(|id| tcx.type_of(id));
+                        let body = is_cross_crate_inlineable.then(|| {
+                            // Deref to avoid hashing cache of mir body.
+                            exported_symbol.mir_body_for_local_instance(tcx).basic_blocks.deref()
+                        });
+
+                        Some((exported_symbol, k, ty, body))
                     })
                     .collect::<Vec<_>>();
-
+                let first = start.elapsed();
+                dbg!(first);
                 tcx.with_stable_hashing_context(|mut hcx| {
                     use rustc_data_structures::stable_hasher::HashStable;
                     let mut stable_hasher = StableHasher::new();
@@ -120,6 +128,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
                     stable_hasher.finish()
                 })
             };
+            dbg!(start.elapsed());
             tcx.dcx().emit_artifact_notification(
                 out_filename.as_path(),
                 "metadata",
