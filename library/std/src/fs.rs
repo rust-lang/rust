@@ -1990,7 +1990,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// * The user lacks permissions to remove the file.
 ///
 /// This function will only ever return an error of kind `NotFound` if the given
-/// path does not exist.  Note that the inverse is not true,
+/// path does not exist. Note that the inverse is not true,
 /// ie. if a path does not exist, its removal may fail for a number of reasons,
 /// such as insufficient permissions.
 ///
@@ -2452,7 +2452,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// * The directory isn't empty.
 ///
 /// This function will only ever return an error of kind `NotFound` if the given
-/// path does not exist.  Note that the inverse is not true,
+/// path does not exist. Note that the inverse is not true,
 /// ie. if a path does not exist, its removal may fail for a number of reasons,
 /// such as insufficient permissions.
 ///
