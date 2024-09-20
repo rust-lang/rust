@@ -122,23 +122,14 @@ impl<'a, 'tcx> HirCollector<'a, 'tcx> {
         // anything else, this will combine them for us.
         let attrs = Attributes::from_ast(ast_attrs);
         if let Some(doc) = attrs.opt_doc_value() {
-            // Use the outermost invocation, so that doctest names come from where the docs were written.
-            let span = ast_attrs
-                .iter()
-                .find(|attr| attr.doc_str().is_some())
-                .map(|attr| attr.span.ctxt().outer_expn().expansion_cause().unwrap_or(attr.span))
-                .unwrap_or(DUMMY_SP);
+            let span = span_of_fragments(&attrs.doc_strings).unwrap_or(sp);
             self.collector.position = span;
             markdown::find_testable_code(
                 &doc,
                 &mut self.collector,
                 self.codes,
                 self.enable_per_target_ignores,
-                Some(&crate::html::markdown::ExtraInfo::new(
-                    self.tcx,
-                    def_id,
-                    span_of_fragments(&attrs.doc_strings).unwrap_or(sp),
-                )),
+                Some(&crate::html::markdown::ExtraInfo::new(self.tcx, def_id, span)),
             );
         }
 
