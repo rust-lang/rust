@@ -1,0 +1,38 @@
+warning: trait method `hello` from `Downstream` shadows identically named method from supertrait
+  --> $DIR/false-subtrait-after-inference.rs:19:7
+   |
+LL |     x.hello();
+   |       ^^^^^
+   |
+note: method from `Downstream` shadows a supertrait method
+  --> $DIR/false-subtrait-after-inference.rs:11:5
+   |
+LL |     fn hello(&self) {}
+   |     ^^^^^^^^^^^^^^^
+note: method from `Upstream` is shadowed by a subtrait method
+  --> $DIR/false-subtrait-after-inference.rs:6:5
+   |
+LL |     fn hello(&self) {}
+   |     ^^^^^^^^^^^^^^^
+   = note: `#[warn(supertrait_item_shadowing)]` on by default
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/false-subtrait-after-inference.rs:19:7
+   |
+LL |     x.hello();
+   |       ^^^^^ the trait `Foo` is not implemented for `i32`, which is required by `W<_>: Downstream`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/false-subtrait-after-inference.rs:15:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+note: required for `W<i32>` to implement `Downstream`
+  --> $DIR/false-subtrait-after-inference.rs:13:9
+   |
+LL | impl<T> Downstream for W<T> where T: Foo {}
+   |         ^^^^^^^^^^     ^^^^          --- unsatisfied trait bound introduced here
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.
