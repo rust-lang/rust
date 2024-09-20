@@ -998,6 +998,28 @@ fn BAR() {
     }
 
     #[test]
+    fn cfged_lint_attrs() {
+        check_diagnostics(
+            r#"
+//- /lib.rs cfg:feature=cool_feature
+#[cfg_attr(any(), allow(non_snake_case))]
+fn FOO() {}
+// ^^^ 💡 warn: Function `FOO` should have snake_case name, e.g. `foo`
+
+#[cfg_attr(non_existent, allow(non_snake_case))]
+fn BAR() {}
+// ^^^ 💡 warn: Function `BAR` should have snake_case name, e.g. `bar`
+
+#[cfg_attr(feature = "cool_feature", allow(non_snake_case))]
+fn BAZ() {}
+
+#[cfg_attr(feature = "cool_feature", cfg_attr ( all ( ) , allow ( non_snake_case ) ) ) ]
+fn QUX() {}
+        "#,
+        );
+    }
+
+    #[test]
     fn allow_with_comment() {
         check_diagnostics(
             r#"

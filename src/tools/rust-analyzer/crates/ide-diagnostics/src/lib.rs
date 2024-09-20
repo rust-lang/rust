@@ -76,8 +76,9 @@ mod handlers {
 #[cfg(test)]
 mod tests;
 
-use std::{collections::hash_map, sync::LazyLock};
+use std::{collections::hash_map, iter, sync::LazyLock};
 
+use either::Either;
 use hir::{db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, HirFileId, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
@@ -92,7 +93,7 @@ use ide_db::{
 use itertools::Itertools;
 use syntax::{
     ast::{self, AstNode, HasAttrs},
-    AstPtr, Edition, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange,
+    AstPtr, Edition, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, TextRange, T,
 };
 
 // FIXME: Make this an enum
@@ -647,6 +648,7 @@ fn find_outline_mod_lint_severity(
     let mut result = None;
     let lint_groups = lint_groups(&diag.code);
     lint_attrs(
+        sema,
         ast::AnyHasAttrs::cast(module_source_file.value).expect("SourceFile always has attrs"),
         edition,
     )
@@ -763,7 +765,7 @@ fn fill_lint_attrs(
 
             if let Some(ancestor) = ast::AnyHasAttrs::cast(ancestor) {
                 // Insert this node's attributes into any outline descendant, including this node.
-                lint_attrs(ancestor, edition).for_each(|(lint, severity)| {
+                lint_attrs(sema, ancestor, edition).for_each(|(lint, severity)| {
                     if diag_severity.is_none() && lint_groups(&diag.code).contains(&&*lint) {
                         diag_severity = Some(severity);
                     }
@@ -793,7 +795,7 @@ fn fill_lint_attrs(
             cache_stack.pop();
             return diag_severity;
         } else if let Some(ancestor) = ast::AnyHasAttrs::cast(ancestor) {
-            lint_attrs(ancestor, edition).for_each(|(lint, severity)| {
+            lint_attrs(sema, ancestor, edition).for_each(|(lint, severity)| {
                 if diag_severity.is_none() && lint_groups(&diag.code).contains(&&*lint) {
                     diag_severity = Some(severity);
                 }
@@ -809,20 +811,27 @@ fn fill_lint_attrs(
     }
 }
 
-fn lint_attrs(
+fn lint_attrs<'a>(
+    sema: &'a Semantics<'a, RootDatabase>,
     ancestor: ast::AnyHasAttrs,
     edition: Edition,
-) -> impl Iterator<Item = (SmolStr, Severity)> {
+) -> impl Iterator<Item = (SmolStr, Severity)> + 'a {
     ancestor
         .attrs_including_inner()
         .filter_map(|attr| {
             attr.as_simple_call().and_then(|(name, value)| match &*name {
-                "allow" | "expect" => Some((Severity::Allow, value)),
-                "warn" => Some((Severity::Warning, value)),
-                "forbid" | "deny" => Some((Severity::Error, value)),
+                "allow" | "expect" => Some(Either::Left(iter::once((Severity::Allow, value)))),
+                "warn" => Some(Either::Left(iter::once((Severity::Warning, value)))),
+                "forbid" | "deny" => Some(Either::Left(iter::once((Severity::Error, value)))),
+                "cfg_attr" => {
+                    let mut lint_attrs = Vec::new();
+                    cfg_attr_lint_attrs(sema, &value, &mut lint_attrs);
+                    Some(Either::Right(lint_attrs.into_iter()))
+                }
                 _ => None,
             })
         })
+        .flatten()
         .flat_map(move |(severity, lints)| {
             parse_tt_as_comma_sep_paths(lints, edition).into_iter().flat_map(move |lints| {
                 // Rejoin the idents with `::`, so we have no spaces in between.
@@ -834,6 +843,58 @@ fn lint_attrs(
                 })
             })
         })
+}
+
+fn cfg_attr_lint_attrs(
+    sema: &Semantics<'_, RootDatabase>,
+    value: &ast::TokenTree,
+    lint_attrs: &mut Vec<(Severity, ast::TokenTree)>,
+) {
+    let prev_len = lint_attrs.len();
+
+    let mut iter = value.token_trees_and_tokens().filter(|it| match it {
+        NodeOrToken::Node(_) => true,
+        NodeOrToken::Token(it) => !it.kind().is_trivia(),
+    });
+
+    // Skip the condition.
+    for value in &mut iter {
+        if value.as_token().is_some_and(|it| it.kind() == T![,]) {
+            break;
+        }
+    }
+
+    while let Some(value) = iter.next() {
+        if let Some(token) = value.as_token() {
+            if token.kind() == SyntaxKind::IDENT {
+                let severity = match token.text() {
+                    "allow" | "expect" => Some(Severity::Allow),
+                    "warn" => Some(Severity::Warning),
+                    "forbid" | "deny" => Some(Severity::Error),
+                    "cfg_attr" => {
+                        if let Some(NodeOrToken::Node(value)) = iter.next() {
+                            cfg_attr_lint_attrs(sema, &value, lint_attrs);
+                        }
+                        None
+                    }
+                    _ => None,
+                };
+                if let Some(severity) = severity {
+                    let lints = iter.next();
+                    if let Some(NodeOrToken::Node(lints)) = lints {
+                        lint_attrs.push((severity, lints));
+                    }
+                }
+            }
+        }
+    }
+
+    if prev_len != lint_attrs.len() {
+        if let Some(false) | None = sema.check_cfg_attr(value) {
+            // Discard the attributes when the condition is false.
+            lint_attrs.truncate(prev_len);
+        }
+    }
 }
 
 fn lint_groups(lint: &DiagnosticCode) -> &'static [&'static str] {

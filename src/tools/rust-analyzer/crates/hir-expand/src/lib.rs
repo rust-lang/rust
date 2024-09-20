@@ -53,6 +53,7 @@ use crate::{
 };
 
 pub use crate::{
+    cfg_process::check_cfg_attr_value,
     files::{AstId, ErasedAstId, FileRange, InFile, InMacroFile, InRealFile},
     prettify_macro_expansion_::prettify_macro_expansion,
 };
