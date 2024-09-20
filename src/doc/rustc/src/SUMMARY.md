@@ -25,6 +25,7 @@
         - [\*-apple-ios-macabi](platform-support/apple-ios-macabi.md)
         - [arm64e-apple-ios](platform-support/arm64e-apple-ios.md)
     - [\*-apple-tvos](platform-support/apple-tvos.md)
+        - [arm64e-apple-tvos](platform-support/arm64e-apple-tvos.md)
     - [\*-apple-watchos](platform-support/apple-watchos.md)
     - [\*-apple-visionos](platform-support/apple-visionos.md)
     - [aarch64-nintendo-switch-freestanding](platform-support/aarch64-nintendo-switch-freestanding.md)

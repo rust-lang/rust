@@ -1714,8 +1714,10 @@ supported_targets! {
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
     ("aarch64-apple-ios-macabi", aarch64_apple_ios_macabi),
     ("aarch64-apple-ios-sim", aarch64_apple_ios_sim),
+
     ("aarch64-apple-tvos", aarch64_apple_tvos),
     ("aarch64-apple-tvos-sim", aarch64_apple_tvos_sim),
+    ("arm64e-apple-tvos", arm64e_apple_tvos),
     ("x86_64-apple-tvos", x86_64_apple_tvos),
 
     ("armv7k-apple-watchos", armv7k_apple_watchos),

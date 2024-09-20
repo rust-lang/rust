@@ -1,6 +1,7 @@
 //! impl char {}
 
 use super::*;
+use crate::intrinsics::const_eval_select;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -1762,6 +1763,15 @@ const fn len_utf8(code: u32) -> usize {
 #[doc(hidden)]
 #[inline]
 pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
+    const fn panic_at_const(_code: u32, _len: usize, _dst_len: usize) {
+        // Note that we cannot format in constant expressions.
+        panic!("encode_utf8: buffer does not have enough bytes to encode code point");
+    }
+    fn panic_at_rt(code: u32, len: usize, dst_len: usize) {
+        panic!(
+            "encode_utf8: need {len} bytes to encode U+{code:04X} but buffer has just {dst_len}",
+        );
+    }
     let len = len_utf8(code);
     match (len, &mut *dst) {
         (1, [a, ..]) => {
@@ -1782,8 +1792,8 @@ pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
             *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
             *d = (code & 0x3F) as u8 | TAG_CONT;
         }
-        // Note that we cannot format in constant expressions.
-        _ => panic!("encode_utf8: buffer does not have enough bytes to encode code point"),
+        // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
+        _ => const_eval_select((code, len, dst.len()), panic_at_const, panic_at_rt),
     };
     // SAFETY: `<&mut [u8]>::as_mut_ptr` is guaranteed to return a valid pointer and `len` has been tested to be within bounds.
     unsafe { slice::from_raw_parts_mut(dst.as_mut_ptr(), len) }
