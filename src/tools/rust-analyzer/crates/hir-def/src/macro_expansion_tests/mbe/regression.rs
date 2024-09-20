@@ -1144,3 +1144,27 @@ mod any {
 "#]],
     );
 }
+
+#[test]
+fn regression_18148() {
+    check(
+        r#"
+macro_rules! m {
+    ( $e:expr ) => {};
+}
+
+fn foo() {
+    m!(r#const);
+}
+"#,
+        expect![[r#"
+macro_rules! m {
+    ( $e:expr ) => {};
+}
+
+fn foo() {
+    ;
+}
+"#]],
+    );
+}
