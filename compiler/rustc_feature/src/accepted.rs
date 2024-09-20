@@ -355,7 +355,7 @@ declare_features! (
     (accepted, repr_transparent, "1.28.0", Some(43036)),
     /// Allows enums like Result<T, E> to be used across FFI, if T's niche value can
     /// be used to describe E or vice-versa.
-    (accepted, result_ffi_guarantees, "1.80.0", Some(110503)),
+    (accepted, result_ffi_guarantees, "CURRENT_RUSTC_VERSION", Some(110503)),
     /// Allows return-position `impl Trait` in traits.
     (accepted, return_position_impl_trait_in_trait, "1.75.0", Some(91611)),
     /// Allows code like `let x: &'static u32 = &42` to work (RFC 1414).
