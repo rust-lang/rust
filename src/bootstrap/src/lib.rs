@@ -596,15 +596,6 @@ impl Build {
             _ => (),
         }
 
-        {
-            let builder = builder::Builder::new(self);
-            if let Some(path) = builder.paths.first() {
-                if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
-                    return;
-                }
-            }
-        }
-
         if !self.config.dry_run() {
             {
                 // We first do a dry-run. This is a sanity-check to ensure that
