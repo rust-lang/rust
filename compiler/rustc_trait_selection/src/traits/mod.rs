@@ -409,6 +409,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
     let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal());
+    if !normalize::needs_normalization(&elaborated_env, unnormalized_env.reveal()) {
+        return elaborated_env;
+    }
 
     // HACK: we are trying to normalize the param-env inside *itself*. The problem is that
     // normalization expects its param-env to be already normalized, which means we have
