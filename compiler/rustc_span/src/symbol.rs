@@ -309,6 +309,7 @@ symbols! {
         RwLockReadGuard,
         RwLockWriteGuard,
         Saturating,
+        SeekFrom,
         Send,
         SeqCst,
         Sized,
