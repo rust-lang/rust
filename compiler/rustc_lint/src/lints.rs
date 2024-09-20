@@ -3061,3 +3061,35 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
 pub(crate) struct OutOfScopeMacroCalls {
     pub path: String,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_static_mut_refs_lint)]
+pub(crate) struct RefOfMutStatic<'a> {
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<MutRefSugg>,
+    pub shared_label: &'a str,
+    #[note(lint_shared_note)]
+    pub shared_note: bool,
+    #[note(lint_mut_note)]
+    pub mut_note: bool,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum MutRefSugg {
+    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    Shared {
+        #[suggestion_part(code = "&raw const ")]
+        span: Span,
+    },
+    #[multipart_suggestion(
+        lint_suggestion_mut,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    Mut {
+        #[suggestion_part(code = "&raw mut ")]
+        span: Span,
+    },
+}

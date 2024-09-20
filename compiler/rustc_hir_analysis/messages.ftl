@@ -467,25 +467,6 @@ hir_analysis_start_not_target_feature = `#[start]` function is not allowed to ha
 hir_analysis_start_not_track_caller = `#[start]` function is not allowed to be `#[track_caller]`
     .label = `#[start]` function is not allowed to be `#[track_caller]`
 
-hir_analysis_static_mut_ref = creating a {$shared} reference to a mutable static
-    .label = {$shared} reference to mutable static
-    .note = {$shared ->
-        [shared] this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
-        *[mutable] this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
-    }
-    .suggestion = use `addr_of!` instead to create a raw pointer
-    .suggestion_mut = use `addr_of_mut!` instead to create a raw pointer
-
-hir_analysis_static_mut_refs_lint = creating a {$shared} reference to mutable static is discouraged
-    .label = {$shared} reference to mutable static
-    .suggestion = use `addr_of!` instead to create a raw pointer
-    .suggestion_mut = use `addr_of_mut!` instead to create a raw pointer
-    .note = this will be a hard error in the 2024 edition
-    .why_note = {$shared ->
-        [shared] this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
-        *[mutable] this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
-    }
-
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
 hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature

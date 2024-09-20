@@ -228,6 +228,8 @@ fn static_init() {
 }
 
 #[test]
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#[cfg_attr(not(bootstrap), allow(static_mut_refs))]
 fn atomic_access_bool() {
     static mut ATOMIC: AtomicBool = AtomicBool::new(false);
 
