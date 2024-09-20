@@ -741,10 +741,6 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
                 ([], [field]) | ([field], []) => field.ty(tcx, args),
                 ([field1], [field2]) => {
-                    if !tcx.features().result_ffi_guarantees {
-                        return None;
-                    }
-
                     let ty1 = field1.ty(tcx, args);
                     let ty2 = field2.ty(tcx, args);
 
