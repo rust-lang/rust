@@ -111,7 +111,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
                         let is_cross_crate_inlineable =
                             def_id.map_or(false, |id| tcx.cross_crate_inlinable(id));
                         let ty = def_id.map(|id| tcx.type_of(id));
-                        let _body = is_cross_crate_inlineable.then(|| {
+                        let body = is_cross_crate_inlineable.then(|| {
                             // Deref to avoid hashing cache of mir body.
                             exported_symbol
                                 .mir_body_for_local_instance(tcx)
@@ -130,9 +130,10 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
                                         .collect::<Vec<_>>();
                                     (bb.is_cleanup, kind, statements)
                                 })
+                                .collect::<Vec<_>>()
                         });
 
-                        Some((exported_symbol, k, ty)) // body))
+                        Some((exported_symbol, k, ty, body))
                     })
                     .collect::<Vec<_>>();
                 tcx.with_stable_hashing_context(|mut hcx| {
