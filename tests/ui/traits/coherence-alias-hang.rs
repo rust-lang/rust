@@ -1,4 +1,6 @@
 //@ check-pass
+//@ revisions: current next
+//[next]@ compile-flags: -Znext-solver
 
 // Regression test for nalgebra hang <https://github.com/rust-lang/rust/issues/130056>.
 

@@ -157,6 +157,13 @@ where
             },
         );
 
+        let num_non_region_vars = canonical.variables.iter().filter(|c| !c.is_region()).count();
+        if num_non_region_vars > self.cx().recursion_limit() {
+            return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
+                suggest_increasing_limit: true,
+            }));
+        }
+
         Ok(canonical)
     }
 
