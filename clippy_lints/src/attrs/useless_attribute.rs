@@ -51,6 +51,7 @@ pub(super) fn check(cx: &LateContext<'_>, item: &Item<'_>, attrs: &[Attribute]) 
                                         | "module_name_repetitions"
                                         | "single_component_path_imports"
                                         | "disallowed_types"
+                                        | "unused_trait_names"
                                 )
                             }) {
                                 return;
