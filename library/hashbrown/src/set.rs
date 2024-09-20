@@ -1127,9 +1127,9 @@ where
     ///
     /// # Safety
     ///
-    /// This operation is safe if a key does not exist in the set.
+    /// This operation is safe if a value does not exist in the set.
     ///
-    /// However, if a key exists in the set already, the behavior is unspecified:
+    /// However, if a value exists in the set already, the behavior is unspecified:
     /// this operation may panic, loop forever, or any following operation with the set
     /// may panic, loop forever or return arbitrary result.
     ///
@@ -1138,7 +1138,7 @@ where
     ///
     /// However this operation is still unsafe because the resulting `HashSet`
     /// may be passed to unsafe code which does expect the set to behave
-    /// correctly, and would could unsoundness as a result.
+    /// correctly, and would cause unsoundness as a result.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn insert_unique_unchecked(&mut self, value: T) -> &T {
         self.map.insert_unique_unchecked(value, ()).0

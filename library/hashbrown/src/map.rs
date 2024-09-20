@@ -1783,7 +1783,7 @@ where
     ///
     /// However this operation is still unsafe because the resulting `HashMap`
     /// may be passed to unsafe code which does expect the map to behave
-    /// correctly, and would could unsoundness as a result.
+    /// correctly, and would cause unsoundness as a result.
     ///
     /// # Examples
     ///
