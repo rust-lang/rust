@@ -1979,6 +1979,23 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
 
 impl<T> FusedIterator for Iter<'_, T> {}
 
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+impl<'a, T> Clone for Iter<'a, T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn clone(&self) -> Iter<'a, T> {
+        Iter {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
+    }
+}
+
 /// A mutable iterator over the entries of a `HashTable` in arbitrary order.
 /// The iterator element type is `&'a mut T`.
 ///
