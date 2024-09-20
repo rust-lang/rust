@@ -827,8 +827,9 @@ impl Rewrite for ast::Ty {
 
                 rewrite_unary_prefix(context, prefix, &*mt.ty, shape)
             }
-            ast::TyKind::Ref(ref lifetime, _pinned, ref mt) => {
-                // FIXME: format pinnedness
+            ast::TyKind::Ref(ref lifetime, ref mt)
+            | ast::TyKind::PinnedRef(ref lifetime, ref mt) => {
+                // FIXME(pin_ergonomics): correctly format pinned reference syntax
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
                 let mut result = String::with_capacity(128);
@@ -1263,9 +1264,9 @@ pub(crate) fn can_be_overflowed_type(
 ) -> bool {
     match ty.kind {
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
-        ast::TyKind::Ref(_, _, ref mutty) | ast::TyKind::Ptr(ref mutty) => {
-            can_be_overflowed_type(context, &*mutty.ty, len)
-        }
+        ast::TyKind::Ref(_, ref mutty)
+        | ast::TyKind::PinnedRef(_, ref mutty)
+        | ast::TyKind::Ptr(ref mutty) => can_be_overflowed_type(context, &*mutty.ty, len),
         _ => false,
     }
 }
