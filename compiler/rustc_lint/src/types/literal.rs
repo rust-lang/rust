@@ -202,49 +202,23 @@ fn report_bin_hex_error(
     )
 }
 
-// This function finds the next fitting type and generates a suggestion string.
-// It searches for fitting types in the following way (`X < Y`):
-//  - `iX`: if literal fits in `uX` => `uX`, else => `iY`
-//  - `-iX` => `iY`
-//  - `uX` => `uY`
+// Find the "next" fitting integer and return a suggestion string
 //
-// No suggestion for: `isize`, `usize`.
+// No suggestion is offered for `{i,u}size`. Otherwise, we try to suggest an equal-sized type.
 fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static str> {
-    use ty::IntTy::*;
-    use ty::UintTy::*;
-    macro_rules! find_fit {
-        ($ty:expr, $val:expr, $negative:expr,
-         $($type:ident => [$($utypes:expr),*] => [$($itypes:expr),*]),+) => {
-            {
-                let _neg = if negative { 1 } else { 0 };
-                match $ty {
-                    $($type => {
-                        $(if !negative && val <= uint_ty_range($utypes).1 {
-                            return Some($utypes.name_str())
-                        })*
-                        $(if val <= int_ty_range($itypes).1 as u128 + _neg {
-                            return Some($itypes.name_str())
-                        })*
-                        None
-                    },)+
-                    _ => None
-                }
-            }
-        }
-    }
     match t.kind() {
-        ty::Int(i) => find_fit!(i, val, negative,
-                      I8 => [U8] => [I16, I32, I64, I128],
-                      I16 => [U16] => [I32, I64, I128],
-                      I32 => [U32] => [I64, I128],
-                      I64 => [U64] => [I128],
-                      I128 => [U128] => []),
-        ty::Uint(u) => find_fit!(u, val, negative,
-                      U8 => [U8, U16, U32, U64, U128] => [],
-                      U16 => [U16, U32, U64, U128] => [],
-                      U32 => [U32, U64, U128] => [],
-                      U64 => [U64, U128] => [],
-                      U128 => [U128] => []),
+        ty::Uint(ty::UintTy::Usize) | ty::Int(ty::IntTy::Isize) => None,
+        ty::Uint(_) => Some(Integer::fit_unsigned(val).uint_ty_str()),
+        ty::Int(_) if negative => Some(Integer::fit_signed(-(val as i128)).int_ty_str()),
+        ty::Int(int) => {
+            let signed = Integer::fit_signed(val as i128);
+            let unsigned = Integer::fit_unsigned(val);
+            Some(if Some(unsigned.size().bits()) == int.bit_width() {
+                unsigned.uint_ty_str()
+            } else {
+                signed.int_ty_str()
+            })
+        }
         _ => None,
     }
 }
