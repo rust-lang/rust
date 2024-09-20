@@ -1453,6 +1453,7 @@ symbols! {
         pic,
         pie,
         pin,
+        pin_ergonomics,
         platform_intrinsics,
         plugin,
         plugin_registrar,
