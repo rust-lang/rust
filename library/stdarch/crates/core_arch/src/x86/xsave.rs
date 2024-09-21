@@ -187,7 +187,10 @@ mod tests {
     impl PartialEq<XsaveArea> for XsaveArea {
         fn eq(&self, other: &XsaveArea) -> bool {
             for i in 0..self.data.len() {
-                if self.data[i] != other.data[i] {
+                // Ignore XSTATE_BV (state-component bitmap) that occupies the first byte of the XSAVE Header
+                // (at offset 512 bytes from the start). The value may change, for more information see the following chapter:
+                // 13.7 OPERATION OF XSAVE - Intel® 64 and IA-32 Architectures Software Developer’s Manual.
+                if i != 512 && self.data[i] != other.data[i] {
                     return false;
                 }
             }
