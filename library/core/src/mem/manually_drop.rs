@@ -41,8 +41,9 @@ use crate::ptr;
 ///
 /// # Interaction with `Box`
 ///
-/// Currently, once the `Box<T>` inside a `ManuallyDrop<Box<T>>` is dropped,
-/// moving the `ManuallyDrop<Box<T>>` is [considered to be undefined
+/// Currently, if you have a `ManuallyDrop<T>`, where the type `T` is a `Box` or
+/// contains a `Box` inside, then dropping the `T` followed by moving the
+/// `ManuallyDrop<T>` is [considered to be undefined
 /// behavior](https://github.com/rust-lang/unsafe-code-guidelines/issues/245).
 /// That is, the following code causes undefined behavior:
 ///
