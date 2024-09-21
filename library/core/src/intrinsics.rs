@@ -2733,7 +2733,7 @@ extern "rust-intrinsic" {
 
     /// Lexicographically compare `[left, left + bytes)` and `[right, right + bytes)`
     /// as unsigned bytes, returning negative if `left` is less, zero if all the
-    /// bytes match, or positive if `right` is greater.
+    /// bytes match, or positive if `left` is greater.
     ///
     /// This underlies things like `<[u8]>::cmp`, and will usually lower to `memcmp`.
     ///
