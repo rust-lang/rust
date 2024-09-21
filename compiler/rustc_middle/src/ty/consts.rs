@@ -521,6 +521,10 @@ impl<'tcx> Const<'tcx> {
         self.try_to_valtree()?.try_to_scalar()
     }
 
+    pub fn try_to_bool(self) -> Option<bool> {
+        self.try_to_scalar()?.to_bool().ok()
+    }
+
     #[inline]
     pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
         self.try_to_valtree()?.try_to_target_usize(tcx)
