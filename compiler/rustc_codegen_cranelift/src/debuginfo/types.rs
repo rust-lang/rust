@@ -44,7 +44,7 @@ impl DebugContext {
                 type_dbg,
                 ty,
                 *elem_ty,
-                len.eval_target_usize(tcx, ty::ParamEnv::reveal_all()),
+                len.try_to_target_usize(tcx).expect("expected monomorphic const in codegen"),
             ),
             // ty::Slice(_) | ty::Str
             // ty::Dynamic

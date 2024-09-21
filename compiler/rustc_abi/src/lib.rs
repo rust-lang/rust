@@ -833,6 +833,28 @@ pub enum Integer {
 }
 
 impl Integer {
+    pub fn int_ty_str(self) -> &'static str {
+        use Integer::*;
+        match self {
+            I8 => "i8",
+            I16 => "i16",
+            I32 => "i32",
+            I64 => "i64",
+            I128 => "i128",
+        }
+    }
+
+    pub fn uint_ty_str(self) -> &'static str {
+        use Integer::*;
+        match self {
+            I8 => "u8",
+            I16 => "u16",
+            I32 => "u32",
+            I64 => "u64",
+            I128 => "u128",
+        }
+    }
+
     #[inline]
     pub fn size(self) -> Size {
         use Integer::*;

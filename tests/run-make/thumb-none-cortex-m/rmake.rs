@@ -36,10 +36,10 @@ fn main() {
 
     let path = env_var("PATH");
     let rustc = env_var("RUSTC");
-    let bootstrap_cargo = env_var("BOOTSTRAP_CARGO");
-    // FIXME: extract bootstrap cargo invocations to a proper command
+    let cargo = env_var("CARGO");
+    // FIXME: extract cargo invocations to a proper command
     // https://github.com/rust-lang/rust/issues/128734
-    let mut cmd = cmd(bootstrap_cargo);
+    let mut cmd = cmd(cargo);
     cmd.args(&[
         "build",
         "--manifest-path",

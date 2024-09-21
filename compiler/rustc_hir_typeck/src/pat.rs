@@ -11,7 +11,6 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, LangItem, Mutability, Pat, PatKind};
 use rustc_infer::infer;
-use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
@@ -2413,17 +2412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        let len = match len.eval(self.tcx, self.param_env, span) {
-            Ok((_, val)) => val
-                .try_to_scalar()
-                .and_then(|scalar| scalar.try_to_scalar_int().ok())
-                .map(|int| int.to_target_usize(self.tcx)),
-            Err(ErrorHandled::Reported(..)) => {
-                let guar = self.error_scrutinee_unfixed_length(span);
-                return (Some(Ty::new_error(self.tcx, guar)), arr_ty);
-            }
-            Err(ErrorHandled::TooGeneric(..)) => None,
-        };
+        let len = len.try_eval_target_usize(self.tcx, self.param_env);
 
         let guar = if let Some(len) = len {
             // Now we know the length...
