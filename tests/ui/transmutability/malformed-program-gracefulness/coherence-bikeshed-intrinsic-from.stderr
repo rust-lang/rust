@@ -1,11 +1,3 @@
-error: unconstrained opaque type
-  --> $DIR/coherence-bikeshed-intrinsic-from.rs:4:19
-   |
-LL | type OpaqueType = impl OpaqueTrait;
-   |                   ^^^^^^^^^^^^^^^^
-   |
-   = note: `OpaqueType` must be used in combination with a concrete type within the same module
-
 error[E0747]: type provided when a constant was expected
   --> $DIR/coherence-bikeshed-intrinsic-from.rs:7:37
    |
@@ -20,6 +12,14 @@ LL | impl<T: std::mem::TransmuteFrom<(), ()>> AnotherTrait for T {}
 LL |
 LL | impl AnotherTrait for OpaqueType {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: unconstrained opaque type
+  --> $DIR/coherence-bikeshed-intrinsic-from.rs:4:19
+   |
+LL | type OpaqueType = impl OpaqueTrait;
+   |                   ^^^^^^^^^^^^^^^^
+   |
+   = note: `OpaqueType` must be used in combination with a concrete type within the same module
 
 error: aborting due to 3 previous errors
 
