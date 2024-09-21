@@ -404,6 +404,8 @@ pub(crate) enum PathSource<'a> {
     Delegation,
     /// An arg in a `use<'a, N>` precise-capturing bound.
     PreciseCapturingArg(Namespace),
+    // Paths that end with `(..)`, for return type notation.
+    ReturnTypeNotation,
 }
 
 impl<'a> PathSource<'a> {
@@ -413,7 +415,8 @@ impl<'a> PathSource<'a> {
             PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::TupleStruct(..)
-            | PathSource::Delegation => ValueNS,
+            | PathSource::Delegation
+            | PathSource::ReturnTypeNotation => ValueNS,
             PathSource::TraitItem(ns) => ns,
             PathSource::PreciseCapturingArg(ns) => ns,
         }
@@ -425,7 +428,8 @@ impl<'a> PathSource<'a> {
             | PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::Struct
-            | PathSource::TupleStruct(..) => true,
+            | PathSource::TupleStruct(..)
+            | PathSource::ReturnTypeNotation => true,
             PathSource::Trait(_)
             | PathSource::TraitItem(..)
             | PathSource::Delegation
@@ -471,7 +475,7 @@ impl<'a> PathSource<'a> {
                 },
                 _ => "value",
             },
-            PathSource::Delegation => "function",
+            PathSource::ReturnTypeNotation | PathSource::Delegation => "function",
             PathSource::PreciseCapturingArg(..) => "type or const parameter",
         }
     }
@@ -540,6 +544,10 @@ impl<'a> PathSource<'a> {
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
                 _ => false,
             },
+            PathSource::ReturnTypeNotation => match res {
+                Res::Def(DefKind::AssocFn, _) => true,
+                _ => false,
+            },
             PathSource::Delegation => matches!(res, Res::Def(DefKind::Fn | DefKind::AssocFn, _)),
             PathSource::PreciseCapturingArg(ValueNS) => {
                 matches!(res, Res::Def(DefKind::ConstParam, _))
@@ -565,8 +573,8 @@ impl<'a> PathSource<'a> {
             (PathSource::Expr(..), false) | (PathSource::Delegation, false) => E0425,
             (PathSource::Pat | PathSource::TupleStruct(..), true) => E0532,
             (PathSource::Pat | PathSource::TupleStruct(..), false) => E0531,
-            (PathSource::TraitItem(..), true) => E0575,
-            (PathSource::TraitItem(..), false) => E0576,
+            (PathSource::TraitItem(..), true) | (PathSource::ReturnTypeNotation, true) => E0575,
+            (PathSource::TraitItem(..), false) | (PathSource::ReturnTypeNotation, false) => E0576,
             (PathSource::PreciseCapturingArg(..), true) => E0799,
             (PathSource::PreciseCapturingArg(..), false) => E0800,
         }
@@ -781,7 +789,20 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
             }
             TyKind::Path(qself, path) => {
                 self.diag_metadata.current_type_path = Some(ty);
-                self.smart_resolve_path(ty.id, qself, path, PathSource::Type);
+
+                // If we have a path that ends with `(..)`, then it must be
+                // return type notation. Resolve that path in the *value*
+                // namespace.
+                let source = if let Some(seg) = path.segments.last()
+                    && let Some(args) = &seg.args
+                    && matches!(**args, GenericArgs::ParenthesizedElided(..))
+                {
+                    PathSource::ReturnTypeNotation
+                } else {
+                    PathSource::Type
+                };
+
+                self.smart_resolve_path(ty.id, qself, path, source);
 
                 // Check whether we should interpret this as a bare trait object.
                 if qself.is_none()
@@ -1920,7 +1941,8 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PathSource::Trait(..)
                 | PathSource::TraitItem(..)
                 | PathSource::Type
-                | PathSource::PreciseCapturingArg(..) => false,
+                | PathSource::PreciseCapturingArg(..)
+                | PathSource::ReturnTypeNotation => false,
                 PathSource::Expr(..)
                 | PathSource::Pat
                 | PathSource::Struct

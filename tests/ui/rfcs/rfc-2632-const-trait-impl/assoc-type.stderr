@@ -12,17 +12,5 @@ error: using `#![feature(effects)]` without enabling next trait solver globally
    = note: the next trait solver must be enabled globally for the effects feature to work correctly
    = help: use `-Znext-solver` to enable
 
-error[E0277]: the trait bound `Add::{synthetic#0}: Compat` is not satisfied
-  --> $DIR/assoc-type.rs:41:15
-   |
-LL |     type Qux: Add;
-   |               ^^^ the trait `Compat` is not implemented for `Add::{synthetic#0}`
-   |
-help: consider further restricting the associated type
-   |
-LL | trait Baz where Add::{synthetic#0}: Compat {
-   |           ++++++++++++++++++++++++++++++++
+error: aborting due to 1 previous error; 1 warning emitted
 
-error: aborting due to 2 previous errors; 1 warning emitted
-
-For more information about this error, try `rustc --explain E0277`.

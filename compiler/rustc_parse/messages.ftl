@@ -670,7 +670,7 @@ parse_parentheses_with_struct_fields = invalid `struct` delimiters or `fn` call 
 parse_parenthesized_lifetime = parenthesized lifetime bounds are not supported
 parse_parenthesized_lifetime_suggestion = remove the parentheses
 
-parse_path_single_colon = path separator must be a double colon
+parse_path_double_colon = path separator must be a double colon
     .suggestion = use a double colon instead
 
 parse_pattern_method_param_without_body = patterns aren't allowed in methods without bodies

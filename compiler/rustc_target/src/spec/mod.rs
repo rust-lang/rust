@@ -2724,7 +2724,10 @@ impl Target {
             }
             X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
             Aapcs { .. } => "arm" == self.arch,
-            CCmseNonSecureCall => ["arm", "aarch64"].contains(&&self.arch[..]),
+            CCmseNonSecureCall | CCmseNonSecureEntry => {
+                ["thumbv8m.main-none-eabi", "thumbv8m.main-none-eabihf", "thumbv8m.base-none-eabi"]
+                    .contains(&&self.llvm_target[..])
+            }
             Win64 { .. } | SysV64 { .. } => self.arch == "x86_64",
             PtxKernel => self.arch == "nvptx64",
             Msp430Interrupt => self.arch == "msp430",

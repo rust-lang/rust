@@ -188,9 +188,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 | [sym::rustc_must_implement_one_of, ..]
                 | [sym::rustc_deny_explicit_impl, ..]
                 | [sym::const_trait, ..] => self.check_must_be_applied_to_trait(attr, span, target),
-                [sym::cmse_nonsecure_entry, ..] => {
-                    self.check_cmse_nonsecure_entry(hir_id, attr, span, target)
-                }
                 [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                 [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                 [sym::must_use, ..] => self.check_must_use(hir_id, attr, target),
@@ -553,27 +550,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "naked")
             }
-            _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                    attr_span: attr.span,
-                    defn_span: span,
-                    on_crate: hir_id == CRATE_HIR_ID,
-                });
-            }
-        }
-    }
-
-    /// Checks if `#[cmse_nonsecure_entry]` is applied to a function definition.
-    fn check_cmse_nonsecure_entry(
-        &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) {
-        match target {
-            Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {}
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
                     attr_span: attr.span,

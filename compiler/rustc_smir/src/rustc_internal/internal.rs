@@ -470,6 +470,7 @@ impl RustcInternal for Abi {
             Abi::AvrInterrupt => rustc_target::spec::abi::Abi::AvrInterrupt,
             Abi::AvrNonBlockingInterrupt => rustc_target::spec::abi::Abi::AvrNonBlockingInterrupt,
             Abi::CCmseNonSecureCall => rustc_target::spec::abi::Abi::CCmseNonSecureCall,
+            Abi::CCmseNonSecureEntry => rustc_target::spec::abi::Abi::CCmseNonSecureEntry,
             Abi::System { unwind } => rustc_target::spec::abi::Abi::System { unwind },
             Abi::RustIntrinsic => rustc_target::spec::abi::Abi::RustIntrinsic,
             Abi::RustCall => rustc_target::spec::abi::Abi::RustCall,

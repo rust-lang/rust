@@ -103,6 +103,7 @@ impl ToJson for crate::abi::call::Conv {
             Self::PreserveAll => "PreserveAll",
             Self::ArmAapcs => "ArmAapcs",
             Self::CCmseNonSecureCall => "CCmseNonSecureCall",
+            Self::CCmseNonSecureEntry => "CCmseNonSecureEntry",
             Self::Msp430Intr => "Msp430Intr",
             Self::PtxKernel => "PtxKernel",
             Self::X86Fastcall => "X86Fastcall",

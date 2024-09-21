@@ -433,6 +433,7 @@ pub enum CallConvention {
     // Target-specific calling conventions.
     ArmAapcs,
     CCmseNonSecureCall,
+    CCmseNonSecureEntry,
 
     Msp430Intr,
 
