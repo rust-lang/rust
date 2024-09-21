@@ -332,6 +332,9 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             return;
         }
 
+        // Issue #45127: don't enforce `snake_case` for binary crates as binaries are not intended
+        // to be distributed and depended on like libraries. The lint is not suppressed for cdylib
+        // or staticlib because it's not clear what the desired lint behavior for those are.
         if cx.tcx.crate_types().iter().all(|&crate_type| crate_type == CrateType::Executable) {
             return;
         }
