@@ -1,0 +1,30 @@
+warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/path-non-param-qself.rs:1:12
+   |
+LL | #![feature(return_type_notation)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0223]: ambiguous associated function
+  --> $DIR/path-non-param-qself.rs:12:5
+   |
+LL |     <()>::method(..): Send,
+   |     ^^^^^^^^^^^^^^^^
+
+error[E0223]: ambiguous associated function
+  --> $DIR/path-non-param-qself.rs:14:5
+   |
+LL |     i32::method(..): Send,
+   |     ^^^^^^^^^^^^^^^
+
+error[E0223]: ambiguous associated function
+  --> $DIR/path-non-param-qself.rs:16:5
+   |
+LL |     Adt::method(..): Send,
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0223`.

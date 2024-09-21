@@ -8,15 +8,26 @@ LL | #![feature(return_type_notation)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: return type notation used on function that is not `async` and does not return `impl Trait`
-  --> $DIR/non-rpitit.rs:8:18
+  --> $DIR/non-rpitit.rs:8:19
    |
 LL |     fn method() {}
    |     ----------- this function must be `async` or return `impl Trait`
 ...
-LL | fn test<T: Trait<method(..): Send>>() {}
-   |                  ^^^^^^^^^^^^^^^^
+LL | fn bound<T: Trait<method(..): Send>>() {}
+   |                   ^^^^^^^^^^^^^^^^
    |
    = note: function returns `()`, which is not compatible with associated type return bounds
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: return type notation used on function that is not `async` and does not return `impl Trait`
+  --> $DIR/non-rpitit.rs:11:30
+   |
+LL |     fn method() {}
+   |     ----------- this function must be `async` or return `impl Trait`
+...
+LL | fn path<T>() where T: Trait, T::method(..): Send {}
+   |                              ^^^^^^^^^^^^^
+   |
+   = note: function returns `()`, which is not compatible with associated type return bounds
+
+error: aborting due to 2 previous errors; 1 warning emitted
 
