@@ -240,7 +240,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     for predicate in hir_generics.predicates {
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
-                let ty = icx.lower_ty(bound_pred.bounded_ty);
+                let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
+
                 let bound_vars = tcx.late_bound_vars(bound_pred.hir_id);
                 // Keep the type around in a dummy predicate, in case of no bounds.
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
@@ -770,6 +771,10 @@ impl<'tcx> ItemCtxt<'tcx> {
                 continue;
             };
 
+            // Subtle: If we're collecting `SelfAndAssociatedTypeBounds`, then we
+            // want to only consider predicates with `Self: ...`, but we don't want
+            // `OnlySelfBounds(true)` since we want to collect the nested associated
+            // type bound as well.
             let (only_self_bounds, assoc_name) = match filter {
                 PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
                     (OnlySelfBounds(false), None)
@@ -780,14 +785,10 @@ impl<'tcx> ItemCtxt<'tcx> {
                 }
             };
 
-            // Subtle: If we're collecting `SelfAndAssociatedTypeBounds`, then we
-            // want to only consider predicates with `Self: ...`, but we don't want
-            // `OnlySelfBounds(true)` since we want to collect the nested associated
-            // type bound as well.
             let bound_ty = if predicate.is_param_bound(param_def_id.to_def_id()) {
                 ty
             } else if matches!(filter, PredicateFilter::All) {
-                self.lower_ty(predicate.bounded_ty)
+                self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty)
             } else {
                 continue;
             };

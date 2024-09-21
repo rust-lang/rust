@@ -37,7 +37,7 @@ hir_analysis_assoc_kind_mismatch = expected {$expected}, found {$got}
 
 hir_analysis_assoc_kind_mismatch_wrap_in_braces_sugg = consider adding braces here
 
-hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the associated type of a trait with uninferred generic parameters
+hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the associated {$what} of a trait with uninferred generic parameters
     .suggestion = use a fully qualified path with inferred lifetimes
 
 hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion = use a fully qualified path with explicit lifetimes
@@ -47,6 +47,8 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
 
 hir_analysis_bad_precise_capture = expected {$kind} parameter in `use<...>` precise captures list, found {$found}
+
+hir_analysis_bad_return_type_notation_position = return type notation not allowed in this position yet
 
 hir_analysis_cannot_capture_late_bound_const =
     cannot capture late-bound const parameter in {$what}
