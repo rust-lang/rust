@@ -8,7 +8,7 @@ fn main() {
     println!("subcrate testing");
 
     fn host_to_target_path(path: String) -> PathBuf {
-        use std::ffi::{c_char, CStr, CString};
+        use std::ffi::{CStr, CString, c_char};
 
         let path = CString::new(path).unwrap();
         let mut out = Vec::with_capacity(1024);

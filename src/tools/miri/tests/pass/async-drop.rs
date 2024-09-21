@@ -10,10 +10,10 @@
 #![allow(incomplete_features, dead_code)]
 
 // FIXME(zetanumbers): consider AsyncDestruct::async_drop cleanup tests
-use core::future::{async_drop_in_place, AsyncDrop, Future};
+use core::future::{AsyncDrop, Future, async_drop_in_place};
 use core::hint::black_box;
 use core::mem::{self, ManuallyDrop};
-use core::pin::{pin, Pin};
+use core::pin::{Pin, pin};
 use core::task::{Context, Poll, Waker};
 
 async fn test_async_drop<T>(x: T) {
@@ -125,7 +125,10 @@ struct AsyncReference<'a> {
 }
 
 impl AsyncDrop for AsyncReference<'_> {
-    type Dropper<'a> = impl Future<Output = ()> where Self: 'a;
+    type Dropper<'a>
+        = impl Future<Output = ()>
+    where
+        Self: 'a;
 
     fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
         async move {

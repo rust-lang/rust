@@ -7,8 +7,8 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::LayoutOf;
 
 use crate::*;
 

@@ -3,7 +3,7 @@
 //@ignore-target: windows # File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
 
-use std::fs::{read_link, remove_file, File};
+use std::fs::{File, read_link, remove_file};
 use std::io::{Read, Result};
 use std::path::Path;
 

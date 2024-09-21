@@ -7,8 +7,8 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::{
-    canonicalize, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename, File,
-    OpenOptions,
+    File, OpenOptions, canonicalize, create_dir, read_dir, remove_dir, remove_dir_all, remove_file,
+    rename,
 };
 use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write};
 use std::path::Path;

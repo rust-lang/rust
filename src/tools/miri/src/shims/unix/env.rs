@@ -4,8 +4,8 @@ use std::io::ErrorKind;
 use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::abi::Size;
 
 use crate::*;

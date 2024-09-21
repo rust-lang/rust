@@ -1,7 +1,7 @@
 use std::env;
 use std::iter;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 pub struct Args {
     args: iter::Peekable<env::Args>,

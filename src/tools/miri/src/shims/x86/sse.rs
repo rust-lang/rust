@@ -3,8 +3,8 @@ use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    bin_op_simd_float_all, bin_op_simd_float_first, unary_op_ps, unary_op_ss, FloatBinOp,
-    FloatUnaryOp,
+    FloatBinOp, FloatUnaryOp, bin_op_simd_float_all, bin_op_simd_float_first, unary_op_ps,
+    unary_op_ss,
 };
 use crate::*;
 

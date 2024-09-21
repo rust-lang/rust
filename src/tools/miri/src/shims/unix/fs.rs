@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::fs::{
-    read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileType, OpenOptions, ReadDir,
+    DirBuilder, File, FileType, OpenOptions, ReadDir, read_dir, remove_dir, remove_file, rename,
 };
 use std::io::{self, ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -173,7 +173,7 @@ impl FileDescription for FileHandle {
             use windows_sys::Win32::{
                 Foundation::{ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE},
                 Storage::FileSystem::{
-                    LockFileEx, UnlockFile, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY,
+                    LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
                 },
             };
             let fh = self.file.as_raw_handle() as HANDLE;

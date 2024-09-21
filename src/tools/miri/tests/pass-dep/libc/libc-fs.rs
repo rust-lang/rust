@@ -5,7 +5,7 @@
 #![feature(io_error_uncategorized)]
 
 use std::ffi::{CStr, CString, OsString};
-use std::fs::{canonicalize, remove_file, File};
+use std::fs::{File, canonicalize, remove_file};
 use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
@@ -169,7 +169,7 @@ fn test_ftruncate<T: From<i32>>(
 
 #[cfg(target_os = "linux")]
 fn test_o_tmpfile_flag() {
-    use std::fs::{create_dir, OpenOptions};
+    use std::fs::{OpenOptions, create_dir};
     use std::os::unix::fs::OpenOptionsExt;
     let dir_path = utils::prepare_dir("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();

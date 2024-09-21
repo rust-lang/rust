@@ -1,7 +1,7 @@
 //! Implement thread-local storage.
 
-use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry as BTreeEntry;
 use std::task::Poll;
 
 use rustc_middle::ty;

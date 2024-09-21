@@ -8,7 +8,7 @@
 use std::thread;
 
 use windows_sys::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
-use windows_sys::Win32::System::Threading::{WaitForSingleObject, INFINITE};
+use windows_sys::Win32::System::Threading::{INFINITE, WaitForSingleObject};
 
 // XXX HACK: This is how miri represents the handle for thread 0.
 // This value can be "legitimately" obtained by using `GetCurrentThread` with `DuplicateHandle`
