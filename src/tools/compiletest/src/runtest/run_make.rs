@@ -61,6 +61,10 @@ impl TestCx<'_> {
             .env_remove("MFLAGS")
             .env_remove("CARGO_MAKEFLAGS");
 
+        if let Some(ref cargo) = self.config.cargo_path {
+            cmd.env("CARGO", cwd.join(cargo));
+        }
+
         if let Some(ref rustdoc) = self.config.rustdoc_path {
             cmd.env("RUSTDOC", cwd.join(rustdoc));
         }
@@ -408,6 +412,10 @@ impl TestCx<'_> {
             // Provide which LLVM components are available (e.g. which LLVM components are provided
             // through a specific CI runner).
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
+
+        if let Some(ref cargo) = self.config.cargo_path {
+            cmd.env("CARGO", source_root.join(cargo));
+        }
 
         if let Some(ref rustdoc) = self.config.rustdoc_path {
             cmd.env("RUSTDOC", source_root.join(rustdoc));
