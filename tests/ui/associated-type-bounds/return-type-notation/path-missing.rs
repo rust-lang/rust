@@ -1,5 +1,4 @@
 #![feature(return_type_notation)]
-//~^ WARN the feature `return_type_notation` is incomplete
 
 trait A {
     #[allow(non_camel_case_types)]

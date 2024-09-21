@@ -1,14 +1,5 @@
-warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/display.rs:1:12
-   |
-LL | #![feature(return_type_notation)]
-   |            ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0277]: the trait bound `impl Sized { <T as Assoc>::method(..) }: Trait` is not satisfied
-  --> $DIR/display.rs:15:17
+  --> $DIR/display.rs:14:17
    |
 LL |     needs_trait(T::method());
    |     ----------- ^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized { <T as Assoc>::method(..) }`
@@ -16,13 +7,13 @@ LL |     needs_trait(T::method());
    |     required by a bound introduced by this call
    |
 note: required by a bound in `needs_trait`
-  --> $DIR/display.rs:5:24
+  --> $DIR/display.rs:4:24
    |
 LL | fn needs_trait(_: impl Trait) {}
    |                        ^^^^^ required by this bound in `needs_trait`
 
 error[E0277]: the trait bound `impl Sized { <T as Assoc>::method_with_lt(..) }: Trait` is not satisfied
-  --> $DIR/display.rs:17:17
+  --> $DIR/display.rs:16:17
    |
 LL |     needs_trait(T::method_with_lt());
    |     ----------- ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized { <T as Assoc>::method_with_lt(..) }`
@@ -30,13 +21,13 @@ LL |     needs_trait(T::method_with_lt());
    |     required by a bound introduced by this call
    |
 note: required by a bound in `needs_trait`
-  --> $DIR/display.rs:5:24
+  --> $DIR/display.rs:4:24
    |
 LL | fn needs_trait(_: impl Trait) {}
    |                        ^^^^^ required by this bound in `needs_trait`
 
 error[E0277]: the trait bound `impl Sized: Trait` is not satisfied
-  --> $DIR/display.rs:19:17
+  --> $DIR/display.rs:18:17
    |
 LL |     needs_trait(T::method_with_ty());
    |     ----------- ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized`
@@ -44,18 +35,18 @@ LL |     needs_trait(T::method_with_ty());
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/display.rs:4:1
+  --> $DIR/display.rs:3:1
    |
 LL | trait Trait {}
    | ^^^^^^^^^^^
 note: required by a bound in `needs_trait`
-  --> $DIR/display.rs:5:24
+  --> $DIR/display.rs:4:24
    |
 LL | fn needs_trait(_: impl Trait) {}
    |                        ^^^^^ required by this bound in `needs_trait`
 
 error[E0277]: the trait bound `impl Sized: Trait` is not satisfied
-  --> $DIR/display.rs:21:17
+  --> $DIR/display.rs:20:17
    |
 LL |     needs_trait(T::method_with_ct());
    |     ----------- ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized`
@@ -63,16 +54,16 @@ LL |     needs_trait(T::method_with_ct());
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/display.rs:4:1
+  --> $DIR/display.rs:3:1
    |
 LL | trait Trait {}
    | ^^^^^^^^^^^
 note: required by a bound in `needs_trait`
-  --> $DIR/display.rs:5:24
+  --> $DIR/display.rs:4:24
    |
 LL | fn needs_trait(_: impl Trait) {}
    |                        ^^^^^ required by this bound in `needs_trait`
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
