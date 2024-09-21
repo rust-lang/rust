@@ -3,9 +3,9 @@
 //@ check-pass
 
 // The new trait solver does not return region constraints if the goal
-// is still ambiguous. This causes the following test to fail with ambiguity,
-// even though `(): LeakCheckFailure<'!a, V>` would return `'!a: 'static`
-// which would have caused a leak check failure.
+// is still ambiguous. However, the `'!a = 'static` constraint from
+// `(): LeakCheckFailure<'!a, V>`  is also returned via the canonical
+// var values, causing this test to compile.
 
 trait Ambig {}
 impl Ambig for u32 {}
