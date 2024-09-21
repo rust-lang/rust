@@ -173,6 +173,12 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
     ))
 }
 
+/// Given some where clause like `for<'b, 'c> <Self as Trait<'a_identity>>::Gat<'b>: Bound<'c>`,
+/// the mapping will map `'b` back to the GAT's `'b_identity`. Then we need to compress the
+/// remaining bound var `'c` to index 0.
+///
+/// This folder gives us: `for<'c> <Self as Trait<'a_identity>>::Gat<'b_identity>: Bound<'c>`,
+/// which is sufficient for an item bound for `Gat`, since all of the GAT's args are identity.
 struct MapAndCompressBoundVars<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// How deep are we? Makes sure we don't touch the vars of nested binders.
