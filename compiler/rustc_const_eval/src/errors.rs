@@ -243,6 +243,8 @@ pub struct LongRunningWarn {
     pub span: Span,
     #[help]
     pub item_span: Span,
+    // Used for evading `-Z deduplicate-diagnostics`.
+    pub force_duplicate: usize,
 }
 
 #[derive(Subdiagnostic)]
