@@ -2087,7 +2087,31 @@ impl FromUtf8Error {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_from_utf8_lossy_owned", issue = "129436")]
     pub fn into_utf8_lossy(self) -> String {
-        String::from_utf8_lossy_owned(self.bytes)
+        const REPLACEMENT: &str = "\u{FFFD}";
+
+        let mut res = {
+            let mut v = Vec::with_capacity(self.bytes.len());
+
+            // `Utf8Error::valid_up_to` returns the maximum index of validated
+            // UTF-8 bytes. Copy the valid bytes into the output buffer.
+            v.extend_from_slice(&self.bytes[..self.error.valid_up_to()]);
+
+            // SAFETY: This is safe because the only bytes present in the buffer
+            // were validated as UTF-8 by the call to `String::from_utf8` which
+            // produced this `FromUtf8Error`.
+            unsafe { String::from_utf8_unchecked(v) }
+        };
+
+        let iter = self.bytes[self.error.valid_up_to()..].utf8_chunks();
+
+        for chunk in iter {
+            res.push_str(chunk.valid());
+            if !chunk.invalid().is_empty() {
+                res.push_str(REPLACEMENT);
+            }
+        }
+
+        res
     }
 
     /// Returns the bytes that were attempted to convert to a `String`.
