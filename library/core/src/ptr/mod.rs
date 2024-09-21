@@ -179,8 +179,10 @@
 //! can't derive a pointer with a larger provenance. Similarly, you cannot "recombine"
 //! two contiguous provenances back into one (i.e. with a `fn merge(&[T], &[T]) -> &[T]`).
 //!
-//! A reference to a place always has provenance over exactly the memory that place occupies.
-//! A reference to a slice always has provenance over exactly the range that slice describes.
+//! A reference to a place always has provenance over at least the memory that place occupies.
+//! A reference to a slice always has provenance over at least the range that slice describes.
+//! Whether and when exactly the provenance of a reference gets "shrunk" to *exactly* fit
+//! the memory it points to is not yet determined.
 //!
 //! If an allocation is deallocated, all pointers with provenance to that allocation become
 //! invalidated, and effectively lose their provenance.
