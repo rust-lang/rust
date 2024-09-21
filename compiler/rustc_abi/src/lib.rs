@@ -337,15 +337,15 @@ impl TargetDataLayout {
         Ok(dl)
     }
 
-    /// Returns **exclusive** upper bound on object size.
+    /// Returns **exclusive** upper bound on object size in bytes.
     ///
     /// The theoretical maximum object size is defined as the maximum positive `isize` value.
     /// This ensures that the `offset` semantics remain well-defined by allowing it to correctly
     /// index every address within an object along with one byte past the end, along with allowing
     /// `isize` to store the difference between any two pointers into an object.
     ///
-    /// LLVM uses a 64-bit integer to represent object size in bits, but we care only for bytes,
-    /// so we adopt such a more-constrained address space due to its technical limitations.
+    /// LLVM uses a 64-bit integer to represent object size in *bits*, but we care only for bytes,
+    /// so we adopt such a more-constrained size bound due to its technical limitations.
     #[inline]
     pub fn obj_size_bound(&self) -> u64 {
         match self.pointer_size.bits() {
