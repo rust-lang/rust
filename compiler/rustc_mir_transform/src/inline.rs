@@ -799,8 +799,7 @@ impl<'tcx> Inliner<'tcx> {
         //
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
         if callsite.fn_sig.abi() == Abi::RustCall && callee_body.spread_arg.is_none() {
-            // FIXME(edition_2024): switch back to a normal method call.
-            let mut args = <_>::into_iter(args);
+            let mut args = args.into_iter();
             let self_ = self.create_temp_if_necessary(
                 args.next().unwrap().node,
                 callsite,
@@ -834,8 +833,7 @@ impl<'tcx> Inliner<'tcx> {
 
             closure_ref_arg.chain(tuple_tmp_args).collect()
         } else {
-            // FIXME(edition_2024): switch back to a normal method call.
-            <_>::into_iter(args)
+            args.into_iter()
                 .map(|a| self.create_temp_if_necessary(a.node, callsite, caller_body, return_block))
                 .collect()
         }

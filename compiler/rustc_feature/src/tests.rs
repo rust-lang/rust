@@ -2,7 +2,7 @@ use super::UnstableFeatures;
 
 #[test]
 fn rustc_bootstrap_parsing() {
-    // FIXME(edition_2024): Audit this for safety. This is probably racey, per:
+    // FIXME(edition_2024, #130672): Audit this for safety. This is probably racey, per:
     // <https://github.com/rust-lang/rust/pull/129636#pullrequestreview-2314766092>.
     let is_bootstrap = |env, krate| {
         unsafe {

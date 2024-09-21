@@ -51,12 +51,12 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
 fn restore_library_path() {
     let key = tracked_env_var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
     if let Some(env) = tracked_env_var_os("REAL_LIBRARY_PATH") {
-        // FIXME(edition_2024): Audit this for safety.
+        // FIXME(edition_2024, #130672): Audit this for safety.
         unsafe {
             env::set_var(&key, env);
         }
     } else {
-        // FIXME(edition_2024): Audit this for safety.
+        // FIXME(edition_2024, #130672): Audit this for safety.
         unsafe {
             env::remove_var(&key);
         }
