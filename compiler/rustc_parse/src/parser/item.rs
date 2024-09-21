@@ -707,7 +707,7 @@ impl<'a> Parser<'a> {
             })
         };
 
-        let (ident, item_kind) = if self.eat(&token::PathSep) {
+        let (ident, item_kind) = if self.eat_path_sep() {
             let suffixes = if self.eat(&token::BinOp(token::Star)) {
                 None
             } else {
