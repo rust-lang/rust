@@ -638,8 +638,7 @@ impl char {
     #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
     pub const fn len_utf16(self) -> usize {
-        let ch = self as u32;
-        if (ch & 0xFFFF) == ch { 1 } else { 2 }
+        len_utf16(self as u32)
     }
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
@@ -709,8 +708,9 @@ impl char {
     /// '𝕊'.encode_utf16(&mut b);
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
+    #[rustc_const_unstable(feature = "const_char_encode_utf16", issue = "130660")]
     #[inline]
-    pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
+    pub const fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
         encode_utf16_raw(self as u32, dst)
     }
 
@@ -1745,7 +1745,12 @@ const fn len_utf8(code: u32) -> usize {
     }
 }
 
-/// Encodes a raw u32 value as UTF-8 into the provided byte buffer,
+#[inline]
+const fn len_utf16(code: u32) -> usize {
+    if (code & 0xFFFF) == code { 1 } else { 2 }
+}
+
+/// Encodes a raw `u32` value as UTF-8 into the provided byte buffer,
 /// and then returns the subslice of the buffer that contains the encoded character.
 ///
 /// Unlike `char::encode_utf8`, this method also handles codepoints in the surrogate range.
@@ -1799,7 +1804,7 @@ pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
     unsafe { slice::from_raw_parts_mut(dst.as_mut_ptr(), len) }
 }
 
-/// Encodes a raw u32 value as UTF-16 into the provided `u16` buffer,
+/// Encodes a raw `u32` value as UTF-16 into the provided `u16` buffer,
 /// and then returns the subslice of the buffer that contains the encoded character.
 ///
 /// Unlike `char::encode_utf16`, this method also handles codepoints in the surrogate range.
@@ -1810,28 +1815,33 @@ pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
 /// Panics if the buffer is not large enough.
 /// A buffer of length 2 is large enough to encode any `char`.
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+#[rustc_const_unstable(feature = "const_char_encode_utf16", issue = "130660")]
 #[doc(hidden)]
 #[inline]
-pub fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
-    // SAFETY: each arm checks whether there are enough bits to write into
-    unsafe {
-        if (code & 0xFFFF) == code && !dst.is_empty() {
-            // The BMP falls through
-            *dst.get_unchecked_mut(0) = code as u16;
-            slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
-        } else if dst.len() >= 2 {
-            // Supplementary planes break into surrogates.
-            code -= 0x1_0000;
-            *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
-            *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
-            slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
-        } else {
-            panic!(
-                "encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
-                char::from_u32_unchecked(code).len_utf16(),
-                code,
-                dst.len(),
-            )
-        }
+pub const fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
+    const fn panic_at_const(_code: u32, _len: usize, _dst_len: usize) {
+        // Note that we cannot format in constant expressions.
+        panic!("encode_utf16: buffer does not have enough bytes to encode code point");
     }
+    fn panic_at_rt(code: u32, len: usize, dst_len: usize) {
+        panic!(
+            "encode_utf16: need {len} bytes to encode U+{code:04X} but buffer has just {dst_len}",
+        );
+    }
+    let len = len_utf16(code);
+    match (len, &mut *dst) {
+        (1, [a, ..]) => {
+            *a = code as u16;
+        }
+        (2, [a, b, ..]) => {
+            code -= 0x1_0000;
+
+            *a = (code >> 10) as u16 | 0xD800;
+            *b = (code & 0x3FF) as u16 | 0xDC00;
+        }
+        // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
+        _ => const_eval_select((code, len, dst.len()), panic_at_const, panic_at_rt),
+    };
+    // SAFETY: `<&mut [u16]>::as_mut_ptr` is guaranteed to return a valid pointer and `len` has been tested to be within bounds.
+    unsafe { slice::from_raw_parts_mut(dst.as_mut_ptr(), len) }
 }
