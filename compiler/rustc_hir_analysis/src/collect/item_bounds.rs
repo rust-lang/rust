@@ -45,107 +45,15 @@ fn associated_type_bounds<'tcx>(
 
     let item_trait_ref = ty::TraitRef::identity(tcx, tcx.parent(assoc_item_def_id.to_def_id()));
     let bounds_from_parent =
-        trait_predicates.predicates.iter().copied().filter_map(|(pred, span)| {
-            let mut clause_ty = match pred.kind().skip_binder() {
-                ty::ClauseKind::Trait(tr) => tr.self_ty(),
-                ty::ClauseKind::Projection(proj) => proj.projection_term.self_ty(),
-                ty::ClauseKind::TypeOutlives(outlives) => outlives.0,
-                _ => return None,
-            };
-
-            // The code below is quite involved, so let me explain.
-            //
-            // We loop here, because we also want to collect vars for nested associated items as
-            // well. For example, given a clause like `Self::A::B`, we want to add that to the
-            // item bounds for `A`, so that we may use that bound in the case that `Self::A::B` is
-            // rigid.
-            //
-            // Secondly, regarding bound vars, when we see a where clause that mentions a GAT
-            // like `for<'a, ...> Self::Assoc<'a, ...>: Bound<'b, ...>`, we want to turn that into
-            // an item bound on the GAT, where all of the GAT args are substituted with the GAT's
-            // param regions, and then keep all of the other late-bound vars in the bound around.
-            // We need to "compress" the binder so that it doesn't mention any of those vars that
-            // were mapped to params.
-            let gat_vars = loop {
-                if let ty::Alias(ty::Projection, alias_ty) = *clause_ty.kind() {
-                    if alias_ty.trait_ref(tcx) == item_trait_ref
-                        && alias_ty.def_id == assoc_item_def_id.to_def_id()
-                    {
-                        break &alias_ty.args[item_trait_ref.args.len()..];
-                    } else {
-                        // Only collect *self* type bounds if the filter is for self.
-                        match filter {
-                            PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {
-                                return None;
-                            }
-                            PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                            }
-                        }
-
-                        clause_ty = alias_ty.self_ty();
-                        continue;
-                    }
-                }
-
-                return None;
-            };
-            // Special-case: No GAT vars, no mapping needed.
-            if gat_vars.is_empty() {
-                return Some((pred, span));
-            }
-
-            // First, check that all of the GAT args are substituted with a unique late-bound arg.
-            // If we find a duplicate, then it can't be mapped to the definition's params.
-            let mut mapping = FxIndexMap::default();
-            let generics = tcx.generics_of(assoc_item_def_id);
-            for (param, var) in std::iter::zip(&generics.own_params, gat_vars) {
-                let existing = match var.unpack() {
-                    ty::GenericArgKind::Lifetime(re) => {
-                        if let ty::RegionKind::ReBound(ty::INNERMOST, bv) = re.kind() {
-                            mapping.insert(bv.var, tcx.mk_param_from_def(param))
-                        } else {
-                            return None;
-                        }
-                    }
-                    ty::GenericArgKind::Type(ty) => {
-                        if let ty::Bound(ty::INNERMOST, bv) = *ty.kind() {
-                            mapping.insert(bv.var, tcx.mk_param_from_def(param))
-                        } else {
-                            return None;
-                        }
-                    }
-                    ty::GenericArgKind::Const(ct) => {
-                        if let ty::ConstKind::Bound(ty::INNERMOST, bv) = ct.kind() {
-                            mapping.insert(bv, tcx.mk_param_from_def(param))
-                        } else {
-                            return None;
-                        }
-                    }
-                };
-
-                if existing.is_some() {
-                    return None;
-                }
-            }
-
-            // Finally, map all of the args in the GAT to the params we expect, and compress
-            // the remaining late-bound vars so that they count up from var 0.
-            let mut folder = MapAndCompressBoundVars {
+        trait_predicates.predicates.iter().copied().filter_map(|(clause, span)| {
+            remap_gat_vars_and_recurse_into_nested_projections(
                 tcx,
-                binder: ty::INNERMOST,
-                still_bound_vars: vec![],
-                mapping,
-            };
-            let pred = pred.kind().skip_binder().fold_with(&mut folder);
-
-            Some((
-                ty::Binder::bind_with_vars(
-                    pred,
-                    tcx.mk_bound_variable_kinds(&folder.still_bound_vars),
-                )
-                .upcast(tcx),
+                filter,
+                item_trait_ref,
+                assoc_item_def_id,
                 span,
-            ))
+                clause,
+            )
         });
 
     let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses(tcx).chain(bounds_from_parent));
@@ -158,6 +66,111 @@ fn associated_type_bounds<'tcx>(
     assert_only_contains_predicates_from(filter, all_bounds, item_ty);
 
     all_bounds
+}
+
+/// The code below is quite involved, so let me explain.
+///
+/// We loop here, because we also want to collect vars for nested associated items as
+/// well. For example, given a clause like `Self::A::B`, we want to add that to the
+/// item bounds for `A`, so that we may use that bound in the case that `Self::A::B` is
+/// rigid.
+///
+/// Secondly, regarding bound vars, when we see a where clause that mentions a GAT
+/// like `for<'a, ...> Self::Assoc<'a, ...>: Bound<'b, ...>`, we want to turn that into
+/// an item bound on the GAT, where all of the GAT args are substituted with the GAT's
+/// param regions, and then keep all of the other late-bound vars in the bound around.
+/// We need to "compress" the binder so that it doesn't mention any of those vars that
+/// were mapped to params.
+fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    filter: PredicateFilter,
+    item_trait_ref: ty::TraitRef<'tcx>,
+    assoc_item_def_id: LocalDefId,
+    span: Span,
+    clause: ty::Clause<'tcx>,
+) -> Option<(ty::Clause<'tcx>, Span)> {
+    let mut clause_ty = match clause.kind().skip_binder() {
+        ty::ClauseKind::Trait(tr) => tr.self_ty(),
+        ty::ClauseKind::Projection(proj) => proj.projection_term.self_ty(),
+        ty::ClauseKind::TypeOutlives(outlives) => outlives.0,
+        _ => return None,
+    };
+
+    let gat_vars = loop {
+        if let ty::Alias(ty::Projection, alias_ty) = *clause_ty.kind() {
+            if alias_ty.trait_ref(tcx) == item_trait_ref
+                && alias_ty.def_id == assoc_item_def_id.to_def_id()
+            {
+                // We have found the GAT in question...
+                // Return the vars, since we may need to remap them.
+                break &alias_ty.args[item_trait_ref.args.len()..];
+            } else {
+                // Only collect *self* type bounds if the filter is for self.
+                match filter {
+                    PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {
+                        return None;
+                    }
+                    PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {}
+                }
+
+                clause_ty = alias_ty.self_ty();
+                continue;
+            }
+        }
+
+        return None;
+    };
+
+    // Special-case: No GAT vars, no mapping needed.
+    if gat_vars.is_empty() {
+        return Some((clause, span));
+    }
+
+    // First, check that all of the GAT args are substituted with a unique late-bound arg.
+    // If we find a duplicate, then it can't be mapped to the definition's params.
+    let mut mapping = FxIndexMap::default();
+    let generics = tcx.generics_of(assoc_item_def_id);
+    for (param, var) in std::iter::zip(&generics.own_params, gat_vars) {
+        let existing = match var.unpack() {
+            ty::GenericArgKind::Lifetime(re) => {
+                if let ty::RegionKind::ReBound(ty::INNERMOST, bv) = re.kind() {
+                    mapping.insert(bv.var, tcx.mk_param_from_def(param))
+                } else {
+                    return None;
+                }
+            }
+            ty::GenericArgKind::Type(ty) => {
+                if let ty::Bound(ty::INNERMOST, bv) = *ty.kind() {
+                    mapping.insert(bv.var, tcx.mk_param_from_def(param))
+                } else {
+                    return None;
+                }
+            }
+            ty::GenericArgKind::Const(ct) => {
+                if let ty::ConstKind::Bound(ty::INNERMOST, bv) = ct.kind() {
+                    mapping.insert(bv, tcx.mk_param_from_def(param))
+                } else {
+                    return None;
+                }
+            }
+        };
+
+        if existing.is_some() {
+            return None;
+        }
+    }
+
+    // Finally, map all of the args in the GAT to the params we expect, and compress
+    // the remaining late-bound vars so that they count up from var 0.
+    let mut folder =
+        MapAndCompressBoundVars { tcx, binder: ty::INNERMOST, still_bound_vars: vec![], mapping };
+    let pred = clause.kind().skip_binder().fold_with(&mut folder);
+
+    Some((
+        ty::Binder::bind_with_vars(pred, tcx.mk_bound_variable_kinds(&folder.still_bound_vars))
+            .upcast(tcx),
+        span,
+    ))
 }
 
 struct MapAndCompressBoundVars<'tcx> {
