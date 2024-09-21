@@ -677,7 +677,61 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
         _ => {}
     }
 
+    assert_only_contains_predicates_from(filter, implied_bounds, tcx.types.self_param);
+
     ty::EarlyBinder::bind(implied_bounds)
+}
+
+// Make sure when elaborating supertraits, probing for associated types, etc.,
+// we really truly are elaborating clauses that have `Self` as their self type.
+// This is very important since downstream code relies on this being correct.
+pub(super) fn assert_only_contains_predicates_from<'tcx>(
+    filter: PredicateFilter,
+    bounds: &'tcx [(ty::Clause<'tcx>, Span)],
+    ty: Ty<'tcx>,
+) {
+    if !cfg!(debug_assertions) {
+        return;
+    }
+
+    match filter {
+        PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {
+            for (clause, _) in bounds {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::Trait(trait_predicate) => {
+                        assert_eq!(
+                            trait_predicate.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                    ty::ClauseKind::Projection(projection_predicate) => {
+                        assert_eq!(
+                            projection_predicate.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                    ty::ClauseKind::TypeOutlives(outlives_predicate) => {
+                        assert_eq!(
+                            outlives_predicate.0, ty,
+                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+
+                    ty::ClauseKind::RegionOutlives(_)
+                    | ty::ClauseKind::ConstArgHasType(_, _)
+                    | ty::ClauseKind::WellFormed(_)
+                    | ty::ClauseKind::ConstEvaluatable(_) => {
+                        bug!(
+                            "unexpected non-`Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                }
+            }
+        }
+        PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {}
+    }
 }
 
 /// Returns the predicates defined on `item_def_id` of the form
