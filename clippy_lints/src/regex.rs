@@ -55,6 +55,44 @@ declare_clippy_lint! {
     "trivial regular expressions"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for [regex](https://crates.io/crates/regex) compilation inside a loop with a literal.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Compiling a regex is a much more expensive operation than using one, and a compiled regex can be used multiple times.
+    /// This is documented as an antipattern [on the regex documentation](https://docs.rs/regex/latest/regex/#avoid-re-compiling-regexes-especially-in-a-loop)
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let haystacks = [""];
+    /// # const MY_REGEX: &str = "a.b";
+    /// for haystack in haystacks {
+    ///     let regex = regex::Regex::new(MY_REGEX).unwrap();
+    ///     if regex.is_match(haystack) {
+    ///         // Perform operation
+    ///     }
+    /// }
+    /// ```
+    /// can be replaced with
+    /// ```no_run
+    /// # let haystacks = [""];
+    /// # const MY_REGEX: &str = "a.b";
+    /// let regex = regex::Regex::new(MY_REGEX).unwrap();
+    /// for haystack in haystacks {
+    ///     if regex.is_match(haystack) {
+    ///         // Perform operation
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.83.0"]
+    pub REGEX_CREATION_IN_LOOPS,
+    perf,
+    "regular expression compilation performed in a loop"
+}
+
 #[derive(Copy, Clone)]
 enum RegexKind {
     Unicode,
@@ -66,9 +104,10 @@ enum RegexKind {
 #[derive(Default)]
 pub struct Regex {
     definitions: DefIdMap<RegexKind>,
+    loop_stack: Vec<Span>,
 }
 
-impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
+impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX, REGEX_CREATION_IN_LOOPS]);
 
 impl<'tcx> LateLintPass<'tcx> for Regex {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
@@ -96,12 +135,33 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
             && let Some(def_id) = path_def_id(cx, fun)
             && let Some(regex_kind) = self.definitions.get(&def_id)
         {
+            if let Some(&loop_span) = self.loop_stack.last()
+                && (matches!(arg.kind, ExprKind::Lit(_)) || const_str(cx, arg).is_some())
+            {
+                span_lint_and_help(
+                    cx,
+                    REGEX_CREATION_IN_LOOPS,
+                    fun.span,
+                    "compiling a regex in a loop",
+                    Some(loop_span),
+                    "move the regex construction outside this loop",
+                );
+            }
+
             match regex_kind {
                 RegexKind::Unicode => check_regex(cx, arg, true),
                 RegexKind::UnicodeSet => check_set(cx, arg, true),
                 RegexKind::Bytes => check_regex(cx, arg, false),
                 RegexKind::BytesSet => check_set(cx, arg, false),
             }
+        } else if let ExprKind::Loop(_, _, _, span) = expr.kind {
+            self.loop_stack.push(span);
+        }
+    }
+
+    fn check_expr_post(&mut self, _: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if matches!(expr.kind, ExprKind::Loop(..)) {
+            self.loop_stack.pop();
         }
     }
 }
