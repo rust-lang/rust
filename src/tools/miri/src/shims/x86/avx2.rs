@@ -1,12 +1,12 @@
 use rustc_middle::mir;
-use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    horizontal_bin_op, int_abs, mask_load, mask_store, mpsadbw, packssdw, packsswb, packusdw,
-    packuswb, pmulhrsw, psign, shift_simd_by_scalar, shift_simd_by_simd, ShiftOp,
+    ShiftOp, horizontal_bin_op, int_abs, mask_load, mask_store, mpsadbw, packssdw, packsswb,
+    packusdw, packuswb, pmulhrsw, psign, shift_simd_by_scalar, shift_simd_by_simd,
 };
 use crate::*;
 

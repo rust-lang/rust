@@ -22,7 +22,7 @@
 // Available: https://ss265.host.cs.st-andrews.ac.uk/papers/n3132.pdf.
 
 use std::sync::atomic::Ordering::*;
-use std::sync::atomic::{fence, AtomicBool, AtomicI32};
+use std::sync::atomic::{AtomicBool, AtomicI32, fence};
 use std::thread::spawn;
 
 #[derive(Copy, Clone)]

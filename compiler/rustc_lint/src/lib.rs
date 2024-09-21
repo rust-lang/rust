@@ -81,6 +81,7 @@ mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
 mod shadowed_into_iter;
+mod static_mut_refs;
 mod tail_expr_drop_order;
 mod traits;
 mod types;
@@ -120,6 +121,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
 pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
+use static_mut_refs::*;
 use tail_expr_drop_order::TailExprDropOrder;
 use traits::*;
 use types::*;
@@ -246,6 +248,7 @@ late_lint_methods!(
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             TailExprDropOrder: TailExprDropOrder,
             IfLetRescope: IfLetRescope::default(),
+            StaticMutRefs: StaticMutRefs,
         ]
     ]
 );
@@ -582,6 +585,11 @@ fn register_builtins(store: &mut LintStore) {
     store.register_removed(
         "const_eval_mutable_ptr_in_final_value",
         "partially allowed now, otherwise turned into a hard error",
+    );
+    store.register_removed(
+        "where_clauses_object_safety",
+        "converted into hard error, see PR #125380 \
+         <https://github.com/rust-lang/rust/pull/125380> for more information",
     );
 }
 

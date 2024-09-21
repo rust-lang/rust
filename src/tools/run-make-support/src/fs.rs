@@ -1,42 +1,6 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-// FIXME(jieyouxu): modify create_symlink to panic on windows.
-
-/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
-#[cfg(target_family = "windows")]
-pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
-    if link.as_ref().exists() {
-        std::fs::remove_dir(link.as_ref()).unwrap();
-    }
-    if original.as_ref().is_file() {
-        std::os::windows::fs::symlink_file(original.as_ref(), link.as_ref()).expect(&format!(
-            "failed to create symlink {:?} for {:?}",
-            link.as_ref().display(),
-            original.as_ref().display(),
-        ));
-    } else {
-        std::os::windows::fs::symlink_dir(original.as_ref(), link.as_ref()).expect(&format!(
-            "failed to create symlink {:?} for {:?}",
-            link.as_ref().display(),
-            original.as_ref().display(),
-        ));
-    }
-}
-
-/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
-#[cfg(target_family = "unix")]
-pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
-    if link.as_ref().exists() {
-        std::fs::remove_dir(link.as_ref()).unwrap();
-    }
-    std::os::unix::fs::symlink(original.as_ref(), link.as_ref()).expect(&format!(
-        "failed to create symlink {:?} for {:?}",
-        link.as_ref().display(),
-        original.as_ref().display(),
-    ));
-}
-
 /// Copy a directory into another.
 pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     fn copy_dir_all_inner(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
@@ -50,7 +14,31 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
             if ty.is_dir() {
                 copy_dir_all_inner(entry.path(), dst.join(entry.file_name()))?;
             } else if ty.is_symlink() {
-                copy_symlink(entry.path(), dst.join(entry.file_name()))?;
+                // Traverse symlink once to find path of target entity.
+                let target_path = std::fs::read_link(entry.path())?;
+
+                let new_symlink_path = dst.join(entry.file_name());
+                #[cfg(windows)]
+                {
+                    use std::os::windows::fs::FileTypeExt;
+                    if ty.is_symlink_dir() {
+                        std::os::windows::fs::symlink_dir(&target_path, new_symlink_path)?;
+                    } else {
+                        // Target may be a file or another symlink, in any case we can use
+                        // `symlink_file` here.
+                        std::os::windows::fs::symlink_file(&target_path, new_symlink_path)?;
+                    }
+                }
+                #[cfg(unix)]
+                {
+                    std::os::unix::fs::symlink(target_path, new_symlink_path)?;
+                }
+                #[cfg(not(any(windows, unix)))]
+                {
+                    // Technically there's also wasi, but I have no clue about wasi symlink
+                    // semantics and which wasi targets / environment support symlinks.
+                    unimplemented!("unsupported target");
+                }
             } else {
                 std::fs::copy(entry.path(), dst.join(entry.file_name()))?;
             }
@@ -69,12 +57,6 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     }
 }
 
-fn copy_symlink<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
-    let target_path = std::fs::read_link(from).unwrap();
-    create_symlink(target_path, to);
-    Ok(())
-}
-
 /// Helper for reading entries in a given directory.
 pub fn read_dir_entries<P: AsRef<Path>, F: FnMut(&Path)>(dir: P, mut callback: F) {
     for entry in read_dir(dir) {
@@ -85,8 +67,17 @@ pub fn read_dir_entries<P: AsRef<Path>, F: FnMut(&Path)>(dir: P, mut callback: F
 /// A wrapper around [`std::fs::remove_file`] which includes the file path in the panic message.
 #[track_caller]
 pub fn remove_file<P: AsRef<Path>>(path: P) {
-    std::fs::remove_file(path.as_ref())
-        .expect(&format!("the file in path \"{}\" could not be removed", path.as_ref().display()));
+    if let Err(e) = std::fs::remove_file(path.as_ref()) {
+        panic!("failed to remove file at `{}`: {e}", path.as_ref().display());
+    }
+}
+
+/// A wrapper around [`std::fs::remove_dir`] which includes the directory path in the panic message.
+#[track_caller]
+pub fn remove_dir<P: AsRef<Path>>(path: P) {
+    if let Err(e) = std::fs::remove_dir(path.as_ref()) {
+        panic!("failed to remove directory at `{}`: {e}", path.as_ref().display());
+    }
 }
 
 /// A wrapper around [`std::fs::copy`] which includes the file path in the panic message.
@@ -165,13 +156,32 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) {
     ));
 }
 
-/// A wrapper around [`std::fs::metadata`] which includes the file path in the panic message.
+/// A wrapper around [`std::fs::metadata`] which includes the file path in the panic message. Note
+/// that this will traverse symlinks and will return metadata about the target file. Use
+/// [`symlink_metadata`] if you don't want to traverse symlinks.
+///
+/// See [`std::fs::metadata`] docs for more details.
 #[track_caller]
 pub fn metadata<P: AsRef<Path>>(path: P) -> std::fs::Metadata {
-    std::fs::metadata(path.as_ref()).expect(&format!(
-        "the file's metadata in path \"{}\" could not be read",
-        path.as_ref().display()
-    ))
+    match std::fs::metadata(path.as_ref()) {
+        Ok(m) => m,
+        Err(e) => panic!("failed to read file metadata at `{}`: {e}", path.as_ref().display()),
+    }
+}
+
+/// A wrapper around [`std::fs::symlink_metadata`] which includes the file path in the panic
+/// message. Note that this will not traverse symlinks and will return metadata about the filesystem
+/// entity itself. Use [`metadata`] if you want to traverse symlinks.
+///
+/// See [`std::fs::symlink_metadata`] docs for more details.
+#[track_caller]
+pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> std::fs::Metadata {
+    match std::fs::symlink_metadata(path.as_ref()) {
+        Ok(m) => m,
+        Err(e) => {
+            panic!("failed to read file metadata (shallow) at `{}`: {e}", path.as_ref().display())
+        }
+    }
 }
 
 /// A wrapper around [`std::fs::rename`] which includes the file path in the panic message.
@@ -204,4 +214,74 @@ pub fn shallow_find_dir_entries<P: AsRef<Path>>(dir: P) -> Vec<PathBuf> {
         output.push(path.unwrap().path());
     }
     output
+}
+
+/// Create a new symbolic link to a directory.
+///
+/// # Removing the symlink
+///
+/// - On Windows, a symlink-to-directory needs to be removed with a corresponding [`fs::remove_dir`]
+///   and not [`fs::remove_file`].
+/// - On Unix, remove the symlink with [`fs::remove_file`].
+///
+/// [`fs::remove_dir`]: crate::fs::remove_dir
+/// [`fs::remove_file`]: crate::fs::remove_file
+pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
+    #[cfg(unix)]
+    {
+        if let Err(e) = std::os::unix::fs::symlink(original.as_ref(), link.as_ref()) {
+            panic!(
+                "failed to create symlink: original=`{}`, link=`{}`: {e}",
+                original.as_ref().display(),
+                link.as_ref().display()
+            );
+        }
+    }
+    #[cfg(windows)]
+    {
+        if let Err(e) = std::os::windows::fs::symlink_dir(original.as_ref(), link.as_ref()) {
+            panic!(
+                "failed to create symlink-to-directory: original=`{}`, link=`{}`: {e}",
+                original.as_ref().display(),
+                link.as_ref().display()
+            );
+        }
+    }
+    #[cfg(not(any(windows, unix)))]
+    {
+        unimplemented!("target family not currently supported")
+    }
+}
+
+/// Create a new symbolic link to a file.
+///
+/// # Removing the symlink
+///
+/// On both Windows and Unix, a symlink-to-file needs to be removed with a corresponding
+/// [`fs::remove_file`](crate::fs::remove_file) and not [`fs::remove_dir`](crate::fs::remove_dir).
+pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
+    #[cfg(unix)]
+    {
+        if let Err(e) = std::os::unix::fs::symlink(original.as_ref(), link.as_ref()) {
+            panic!(
+                "failed to create symlink: original=`{}`, link=`{}`: {e}",
+                original.as_ref().display(),
+                link.as_ref().display()
+            );
+        }
+    }
+    #[cfg(windows)]
+    {
+        if let Err(e) = std::os::windows::fs::symlink_file(original.as_ref(), link.as_ref()) {
+            panic!(
+                "failed to create symlink-to-file: original=`{}`, link=`{}`: {e}",
+                original.as_ref().display(),
+                link.as_ref().display()
+            );
+        }
+    }
+    #[cfg(not(any(windows, unix)))]
+    {
+        unimplemented!("target family not currently supported")
+    }
 }

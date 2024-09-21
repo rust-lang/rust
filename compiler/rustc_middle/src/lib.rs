@@ -33,6 +33,7 @@
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
+#![feature(associated_type_defaults)]
 #![feature(box_as_ptr)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]

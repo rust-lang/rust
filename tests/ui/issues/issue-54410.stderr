@@ -6,21 +6,6 @@ LL |     pub static mut symbol: [i8];
    |
    = help: the trait `Sized` is not implemented for `[i8]`
 
-warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/issue-54410.rs:7:31
-   |
-LL |     println!("{:p}", unsafe { &symbol });
-   |                               ^^^^^^^ shared reference to mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: this will be a hard error in the 2024 edition
-   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
-   = note: `#[warn(static_mut_refs)]` on by default
-help: use `addr_of!` instead to create a raw pointer
-   |
-LL |     println!("{:p}", unsafe { addr_of!(symbol) });
-   |                               ~~~~~~~~~      +
-
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

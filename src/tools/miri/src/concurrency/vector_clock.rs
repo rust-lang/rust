@@ -1,5 +1,5 @@
 use rustc_index::Idx;
-use rustc_span::{Span, SpanData, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, SpanData};
 use smallvec::SmallVec;
 use std::{
     cmp::Ordering,

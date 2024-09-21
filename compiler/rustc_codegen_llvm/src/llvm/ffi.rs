@@ -220,17 +220,18 @@ pub enum IntPredicate {
 
 impl IntPredicate {
     pub fn from_generic(intpre: rustc_codegen_ssa::common::IntPredicate) -> Self {
+        use rustc_codegen_ssa::common::IntPredicate as Common;
         match intpre {
-            rustc_codegen_ssa::common::IntPredicate::IntEQ => IntPredicate::IntEQ,
-            rustc_codegen_ssa::common::IntPredicate::IntNE => IntPredicate::IntNE,
-            rustc_codegen_ssa::common::IntPredicate::IntUGT => IntPredicate::IntUGT,
-            rustc_codegen_ssa::common::IntPredicate::IntUGE => IntPredicate::IntUGE,
-            rustc_codegen_ssa::common::IntPredicate::IntULT => IntPredicate::IntULT,
-            rustc_codegen_ssa::common::IntPredicate::IntULE => IntPredicate::IntULE,
-            rustc_codegen_ssa::common::IntPredicate::IntSGT => IntPredicate::IntSGT,
-            rustc_codegen_ssa::common::IntPredicate::IntSGE => IntPredicate::IntSGE,
-            rustc_codegen_ssa::common::IntPredicate::IntSLT => IntPredicate::IntSLT,
-            rustc_codegen_ssa::common::IntPredicate::IntSLE => IntPredicate::IntSLE,
+            Common::IntEQ => Self::IntEQ,
+            Common::IntNE => Self::IntNE,
+            Common::IntUGT => Self::IntUGT,
+            Common::IntUGE => Self::IntUGE,
+            Common::IntULT => Self::IntULT,
+            Common::IntULE => Self::IntULE,
+            Common::IntSGT => Self::IntSGT,
+            Common::IntSGE => Self::IntSGE,
+            Common::IntSLT => Self::IntSLT,
+            Common::IntSLE => Self::IntSLE,
         }
     }
 }
@@ -259,27 +260,24 @@ pub enum RealPredicate {
 
 impl RealPredicate {
     pub fn from_generic(realp: rustc_codegen_ssa::common::RealPredicate) -> Self {
+        use rustc_codegen_ssa::common::RealPredicate as Common;
         match realp {
-            rustc_codegen_ssa::common::RealPredicate::RealPredicateFalse => {
-                RealPredicate::RealPredicateFalse
-            }
-            rustc_codegen_ssa::common::RealPredicate::RealOEQ => RealPredicate::RealOEQ,
-            rustc_codegen_ssa::common::RealPredicate::RealOGT => RealPredicate::RealOGT,
-            rustc_codegen_ssa::common::RealPredicate::RealOGE => RealPredicate::RealOGE,
-            rustc_codegen_ssa::common::RealPredicate::RealOLT => RealPredicate::RealOLT,
-            rustc_codegen_ssa::common::RealPredicate::RealOLE => RealPredicate::RealOLE,
-            rustc_codegen_ssa::common::RealPredicate::RealONE => RealPredicate::RealONE,
-            rustc_codegen_ssa::common::RealPredicate::RealORD => RealPredicate::RealORD,
-            rustc_codegen_ssa::common::RealPredicate::RealUNO => RealPredicate::RealUNO,
-            rustc_codegen_ssa::common::RealPredicate::RealUEQ => RealPredicate::RealUEQ,
-            rustc_codegen_ssa::common::RealPredicate::RealUGT => RealPredicate::RealUGT,
-            rustc_codegen_ssa::common::RealPredicate::RealUGE => RealPredicate::RealUGE,
-            rustc_codegen_ssa::common::RealPredicate::RealULT => RealPredicate::RealULT,
-            rustc_codegen_ssa::common::RealPredicate::RealULE => RealPredicate::RealULE,
-            rustc_codegen_ssa::common::RealPredicate::RealUNE => RealPredicate::RealUNE,
-            rustc_codegen_ssa::common::RealPredicate::RealPredicateTrue => {
-                RealPredicate::RealPredicateTrue
-            }
+            Common::RealPredicateFalse => Self::RealPredicateFalse,
+            Common::RealOEQ => Self::RealOEQ,
+            Common::RealOGT => Self::RealOGT,
+            Common::RealOGE => Self::RealOGE,
+            Common::RealOLT => Self::RealOLT,
+            Common::RealOLE => Self::RealOLE,
+            Common::RealONE => Self::RealONE,
+            Common::RealORD => Self::RealORD,
+            Common::RealUNO => Self::RealUNO,
+            Common::RealUEQ => Self::RealUEQ,
+            Common::RealUGT => Self::RealUGT,
+            Common::RealUGE => Self::RealUGE,
+            Common::RealULT => Self::RealULT,
+            Common::RealULE => Self::RealULE,
+            Common::RealUNE => Self::RealUNE,
+            Common::RealPredicateTrue => Self::RealPredicateTrue,
         }
     }
 }
@@ -311,26 +309,27 @@ pub enum TypeKind {
 
 impl TypeKind {
     pub fn to_generic(self) -> rustc_codegen_ssa::common::TypeKind {
+        use rustc_codegen_ssa::common::TypeKind as Common;
         match self {
-            TypeKind::Void => rustc_codegen_ssa::common::TypeKind::Void,
-            TypeKind::Half => rustc_codegen_ssa::common::TypeKind::Half,
-            TypeKind::Float => rustc_codegen_ssa::common::TypeKind::Float,
-            TypeKind::Double => rustc_codegen_ssa::common::TypeKind::Double,
-            TypeKind::X86_FP80 => rustc_codegen_ssa::common::TypeKind::X86_FP80,
-            TypeKind::FP128 => rustc_codegen_ssa::common::TypeKind::FP128,
-            TypeKind::PPC_FP128 => rustc_codegen_ssa::common::TypeKind::PPC_FP128,
-            TypeKind::Label => rustc_codegen_ssa::common::TypeKind::Label,
-            TypeKind::Integer => rustc_codegen_ssa::common::TypeKind::Integer,
-            TypeKind::Function => rustc_codegen_ssa::common::TypeKind::Function,
-            TypeKind::Struct => rustc_codegen_ssa::common::TypeKind::Struct,
-            TypeKind::Array => rustc_codegen_ssa::common::TypeKind::Array,
-            TypeKind::Pointer => rustc_codegen_ssa::common::TypeKind::Pointer,
-            TypeKind::Vector => rustc_codegen_ssa::common::TypeKind::Vector,
-            TypeKind::Metadata => rustc_codegen_ssa::common::TypeKind::Metadata,
-            TypeKind::Token => rustc_codegen_ssa::common::TypeKind::Token,
-            TypeKind::ScalableVector => rustc_codegen_ssa::common::TypeKind::ScalableVector,
-            TypeKind::BFloat => rustc_codegen_ssa::common::TypeKind::BFloat,
-            TypeKind::X86_AMX => rustc_codegen_ssa::common::TypeKind::X86_AMX,
+            Self::Void => Common::Void,
+            Self::Half => Common::Half,
+            Self::Float => Common::Float,
+            Self::Double => Common::Double,
+            Self::X86_FP80 => Common::X86_FP80,
+            Self::FP128 => Common::FP128,
+            Self::PPC_FP128 => Common::PPC_FP128,
+            Self::Label => Common::Label,
+            Self::Integer => Common::Integer,
+            Self::Function => Common::Function,
+            Self::Struct => Common::Struct,
+            Self::Array => Common::Array,
+            Self::Pointer => Common::Pointer,
+            Self::Vector => Common::Vector,
+            Self::Metadata => Common::Metadata,
+            Self::Token => Common::Token,
+            Self::ScalableVector => Common::ScalableVector,
+            Self::BFloat => Common::BFloat,
+            Self::X86_AMX => Common::X86_AMX,
         }
     }
 }
@@ -354,18 +353,19 @@ pub enum AtomicRmwBinOp {
 
 impl AtomicRmwBinOp {
     pub fn from_generic(op: rustc_codegen_ssa::common::AtomicRmwBinOp) -> Self {
+        use rustc_codegen_ssa::common::AtomicRmwBinOp as Common;
         match op {
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicXchg => AtomicRmwBinOp::AtomicXchg,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicAdd => AtomicRmwBinOp::AtomicAdd,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicSub => AtomicRmwBinOp::AtomicSub,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicAnd => AtomicRmwBinOp::AtomicAnd,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicNand => AtomicRmwBinOp::AtomicNand,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicOr => AtomicRmwBinOp::AtomicOr,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicXor => AtomicRmwBinOp::AtomicXor,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicMax => AtomicRmwBinOp::AtomicMax,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicMin => AtomicRmwBinOp::AtomicMin,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicUMax => AtomicRmwBinOp::AtomicUMax,
-            rustc_codegen_ssa::common::AtomicRmwBinOp::AtomicUMin => AtomicRmwBinOp::AtomicUMin,
+            Common::AtomicXchg => Self::AtomicXchg,
+            Common::AtomicAdd => Self::AtomicAdd,
+            Common::AtomicSub => Self::AtomicSub,
+            Common::AtomicAnd => Self::AtomicAnd,
+            Common::AtomicNand => Self::AtomicNand,
+            Common::AtomicOr => Self::AtomicOr,
+            Common::AtomicXor => Self::AtomicXor,
+            Common::AtomicMax => Self::AtomicMax,
+            Common::AtomicMin => Self::AtomicMin,
+            Common::AtomicUMax => Self::AtomicUMax,
+            Common::AtomicUMin => Self::AtomicUMin,
         }
     }
 }
@@ -387,17 +387,14 @@ pub enum AtomicOrdering {
 
 impl AtomicOrdering {
     pub fn from_generic(ao: rustc_codegen_ssa::common::AtomicOrdering) -> Self {
+        use rustc_codegen_ssa::common::AtomicOrdering as Common;
         match ao {
-            rustc_codegen_ssa::common::AtomicOrdering::Unordered => AtomicOrdering::Unordered,
-            rustc_codegen_ssa::common::AtomicOrdering::Relaxed => AtomicOrdering::Monotonic,
-            rustc_codegen_ssa::common::AtomicOrdering::Acquire => AtomicOrdering::Acquire,
-            rustc_codegen_ssa::common::AtomicOrdering::Release => AtomicOrdering::Release,
-            rustc_codegen_ssa::common::AtomicOrdering::AcquireRelease => {
-                AtomicOrdering::AcquireRelease
-            }
-            rustc_codegen_ssa::common::AtomicOrdering::SequentiallyConsistent => {
-                AtomicOrdering::SequentiallyConsistent
-            }
+            Common::Unordered => Self::Unordered,
+            Common::Relaxed => Self::Monotonic,
+            Common::Acquire => Self::Acquire,
+            Common::Release => Self::Release,
+            Common::AcquireRelease => Self::AcquireRelease,
+            Common::SequentiallyConsistent => Self::SequentiallyConsistent,
         }
     }
 }
@@ -563,13 +560,11 @@ pub enum ArchiveKind {
     K_AIXBIG,
 }
 
-// LLVMRustThinLTOData
 unsafe extern "C" {
+    // LLVMRustThinLTOData
     pub type ThinLTOData;
-}
 
-// LLVMRustThinLTOBuffer
-unsafe extern "C" {
+    // LLVMRustThinLTOBuffer
     pub type ThinLTOBuffer;
 }
 
@@ -633,26 +628,12 @@ struct InvariantOpaque<'a> {
 // Opaque pointer types
 unsafe extern "C" {
     pub type Module;
-}
-unsafe extern "C" {
     pub type Context;
-}
-unsafe extern "C" {
     pub type Type;
-}
-unsafe extern "C" {
     pub type Value;
-}
-unsafe extern "C" {
     pub type ConstantInt;
-}
-unsafe extern "C" {
     pub type Attribute;
-}
-unsafe extern "C" {
     pub type Metadata;
-}
-unsafe extern "C" {
     pub type BasicBlock;
 }
 #[repr(C)]
@@ -661,11 +642,7 @@ pub struct Builder<'a>(InvariantOpaque<'a>);
 pub struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type Pass;
-}
-unsafe extern "C" {
     pub type TargetMachine;
-}
-unsafe extern "C" {
     pub type Archive;
 }
 #[repr(C)]
@@ -674,11 +651,7 @@ pub struct ArchiveIterator<'a>(InvariantOpaque<'a>);
 pub struct ArchiveChild<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type Twine;
-}
-unsafe extern "C" {
     pub type DiagnosticInfo;
-}
-unsafe extern "C" {
     pub type SMDiagnostic;
 }
 #[repr(C)]
@@ -2177,7 +2150,8 @@ unsafe extern "C" {
 
     pub fn LLVMRustGetHostCPUName(len: *mut usize) -> *const c_char;
 
-    // This function makes copies of pointed to data, so the data's lifetime may end after this function returns
+    // This function makes copies of pointed to data, so the data's lifetime may end after this
+    // function returns.
     pub fn LLVMRustCreateTargetMachine(
         Triple: *const c_char,
         CPU: *const c_char,

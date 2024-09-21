@@ -37,6 +37,7 @@ assert-property: (
 
 // The "title" should be located at the right bottom corner of the code example.
 store-position: (".scraped-example .example-wrap", {"x": x, "y": y})
+assert-size: (".scraped-example .example-wrap", {"height": 130})
 store-size: (".scraped-example .example-wrap", {"width": width, "height": height})
 store-size: (".scraped-example .scraped-example-title", {
     "width": title_width,
@@ -45,6 +46,13 @@ store-size: (".scraped-example .scraped-example-title", {
 assert-position: (".scraped-example .scraped-example-title", {
     "x": |x| + |width| - |title_width| - 5,
     "y": |y| + |height| - |title_height| - 8,
+})
+
+store-size: (".more-scraped-examples .scraped-example .example-wrap", {"height": more_height})
+assert: |more_height| > |height|
+assert-size: (".more-scraped-examples .scraped-example .example-wrap", {
+    "height": 250,
+    "width": |width|,
 })
 
 // Check that the expand button works and also that line number aligns with code.

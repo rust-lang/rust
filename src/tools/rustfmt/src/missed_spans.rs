@@ -1,10 +1,10 @@
 use rustc_span::{BytePos, Pos, Span};
 use tracing::debug;
 
-use crate::comment::{is_last_comment_block, rewrite_comment, CodeCharKind, CommentCodeSlices};
-use crate::config::file_lines::FileLines;
+use crate::comment::{CodeCharKind, CommentCodeSlices, is_last_comment_block, rewrite_comment};
 use crate::config::FileName;
-use crate::config::Version;
+use crate::config::StyleEdition;
+use crate::config::file_lines::FileLines;
 use crate::coverage::transform_missing_snippet;
 use crate::shape::{Indent, Shape};
 use crate::source_map::LineRangeUtils;
@@ -247,7 +247,9 @@ impl<'a> FmtVisitor<'a> {
             let indent_str = self.block_indent.to_string(self.config);
             self.push_str(&indent_str);
             self.block_indent
-        } else if self.config.version() == Version::Two && !snippet.starts_with('\n') {
+        } else if self.config.style_edition() >= StyleEdition::Edition2024
+            && !snippet.starts_with('\n')
+        {
             // The comment appears on the same line as the previous formatted code.
             // Assuming that comment is logically associated with that code, we want to keep it on
             // the same level and avoid mixing it with possible other comment.
@@ -283,13 +285,13 @@ impl<'a> FmtVisitor<'a> {
                     let other_lines = &subslice[offset + 1..];
                     let comment_str =
                         rewrite_comment(other_lines, false, comment_shape, self.config)
-                            .unwrap_or_else(|| String::from(other_lines));
+                            .unwrap_or_else(|_| String::from(other_lines));
                     self.push_str(&comment_str);
                 }
             }
         } else {
             let comment_str = rewrite_comment(subslice, false, comment_shape, self.config)
-                .unwrap_or_else(|| String::from(subslice));
+                .unwrap_or_else(|_| String::from(subslice));
             self.push_str(&comment_str);
         }
 

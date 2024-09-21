@@ -1,6 +1,6 @@
 use rustc_middle::{
     mir::{Mutability, RetagKind},
-    ty::{self, layout::HasParamEnv, Ty},
+    ty::{self, Ty, layout::HasParamEnv},
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Abi, Size};

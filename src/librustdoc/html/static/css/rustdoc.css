@@ -801,6 +801,9 @@ both the code example and the line numbers, so we need to remove the radius in t
 	 * and we include additional 10px for padding. */
 	max-height: calc(1.5em * 5 + 10px);
 }
+.more-scraped-examples .scraped-example:not(.expanded) .example-wrap {
+	max-height: calc(1.5em * 10 + 10px);
+}
 
 .rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers,
 .rustdoc:not(.src) .scraped-example:not(.expanded) .src-line-numbers > pre,
@@ -828,10 +831,14 @@ both the code example and the line numbers, so we need to remove the radius in t
 	-webkit-user-select: none;
 	user-select: none;
 	padding: 14px 8px;
+	padding-right: 2px;
 	color: var(--src-line-numbers-span-color);
 }
 
-.rustdoc .scraped-example .src-line-numbers {
+.rustdoc .scraped-example .example-wrap .src-line-numbers {
+	padding: 0;
+}
+.rustdoc .src-line-numbers pre {
 	padding: 14px 0;
 }
 .src-line-numbers a, .src-line-numbers span {
@@ -890,7 +897,7 @@ both the code example and the line numbers, so we need to remove the radius in t
 }
 
 .docblock code, .docblock-short code,
-pre, .rustdoc.src .example-wrap {
+pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	background-color: var(--code-block-background-color);
 }
 

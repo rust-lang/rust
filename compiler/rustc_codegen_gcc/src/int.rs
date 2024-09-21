@@ -4,7 +4,7 @@
 
 use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, BuilderMethods, OverflowOp};
+use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::{ParamEnv, Ty};
 use rustc_target::abi::call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
 use rustc_target::abi::Endian;

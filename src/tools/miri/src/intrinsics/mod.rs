@@ -9,12 +9,12 @@ use rustc_middle::{
     mir,
     ty::{self, FloatTy},
 };
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 use rustc_target::abi::Size;
 
 use crate::*;
 use atomic::EvalContextExt as _;
-use helpers::{check_arg_count, ToHost, ToSoft};
+use helpers::{ToHost, ToSoft, check_arg_count};
 use simd::EvalContextExt as _;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}

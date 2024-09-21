@@ -1,20 +1,5 @@
-warning: creating a mutable reference to mutable static is discouraged
-  --> $DIR/issue-20801.rs:14:14
-   |
-LL |     unsafe { &mut GLOBAL_MUT_T }
-   |              ^^^^^^^^^^^^^^^^^ mutable reference to mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: this will be a hard error in the 2024 edition
-   = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
-   = note: `#[warn(static_mut_refs)]` on by default
-help: use `addr_of_mut!` instead to create a raw pointer
-   |
-LL |     unsafe { addr_of_mut!(GLOBAL_MUT_T) }
-   |              ~~~~~~~~~~~~~            +
-
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/issue-20801.rs:27:22
+  --> $DIR/issue-20801.rs:26:22
    |
 LL |     let a = unsafe { *mut_ref() };
    |                      ^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
@@ -34,7 +19,7 @@ LL +     let a = unsafe { mut_ref() };
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/issue-20801.rs:30:22
+  --> $DIR/issue-20801.rs:29:22
    |
 LL |     let b = unsafe { *imm_ref() };
    |                      ^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
@@ -54,7 +39,7 @@ LL +     let b = unsafe { imm_ref() };
    |
 
 error[E0507]: cannot move out of a raw pointer
-  --> $DIR/issue-20801.rs:33:22
+  --> $DIR/issue-20801.rs:32:22
    |
 LL |     let c = unsafe { *mut_ptr() };
    |                      ^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
@@ -69,7 +54,7 @@ LL |     let c = unsafe { *mut_ptr() };
    |                      ---------- you could clone this value
 
 error[E0507]: cannot move out of a raw pointer
-  --> $DIR/issue-20801.rs:36:22
+  --> $DIR/issue-20801.rs:35:22
    |
 LL |     let d = unsafe { *const_ptr() };
    |                      ^^^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
@@ -83,6 +68,6 @@ LL | struct T(u8);
 LL |     let d = unsafe { *const_ptr() };
    |                      ------------ you could clone this value
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0507`.

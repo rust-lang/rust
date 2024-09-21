@@ -21,9 +21,8 @@ use rustc_const_eval::util;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
     AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
@@ -224,26 +223,31 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// MIR associated with them.
 fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     // All body-owners have MIR associated with them.
-    let set: FxIndexSet<_> = tcx.hir().body_owners().collect();
+    let mut set: FxIndexSet<_> = tcx.hir().body_owners().collect();
 
-    // Additionally, tuple struct/variant constructors have MIR, but
-    // they don't have a BodyId, so we need to build them separately.
-    struct GatherCtors {
-        set: FxIndexSet<LocalDefId>,
-    }
-    impl<'tcx> Visitor<'tcx> for GatherCtors {
-        fn visit_variant_data(&mut self, v: &'tcx hir::VariantData<'tcx>) {
-            if let hir::VariantData::Tuple(_, _, def_id) = *v {
-                self.set.insert(def_id);
-            }
-            intravisit::walk_struct_def(self, v)
+    // Coroutine-closures (e.g. async closures) have an additional by-move MIR
+    // body that isn't in the HIR.
+    for body_owner in tcx.hir().body_owners() {
+        if let DefKind::Closure = tcx.def_kind(body_owner)
+            && tcx.needs_coroutine_by_move_body_def_id(body_owner.to_def_id())
+        {
+            set.insert(tcx.coroutine_by_move_body_def_id(body_owner).expect_local());
         }
     }
 
-    let mut gather_ctors = GatherCtors { set };
-    tcx.hir().visit_all_item_likes_in_crate(&mut gather_ctors);
+    // tuple struct/variant constructors have MIR, but they don't have a BodyId,
+    // so we need to build them separately.
+    for item in tcx.hir_crate_items(()).free_items() {
+        if let DefKind::Struct | DefKind::Enum = tcx.def_kind(item.owner_id) {
+            for variant in tcx.adt_def(item.owner_id).variants() {
+                if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
+                    set.insert(ctor_def_id.expect_local());
+                }
+            }
+        }
+    }
 
-    gather_ctors.set
+    set
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {

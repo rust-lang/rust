@@ -1,7 +1,10 @@
 //@ compile-flags: -O -Z merge-functions=disabled --edition=2021
 //@ only-x86_64
 // FIXME: Remove the `min-llvm-version`.
-//@ min-llvm-version: 19
+//@ revisions: NINETEEN TWENTY
+//@[NINETEEN] min-llvm-version: 19
+//@[NINETEEN] ignore-llvm-version: 20-99
+//@[TWENTY] min-llvm-version: 20
 
 #![crate_type = "lib"]
 #![feature(try_blocks)]
@@ -9,14 +12,14 @@
 use std::ops::ControlFlow::{self, Break, Continue};
 use std::ptr::NonNull;
 
-// FIXME: The `trunc` and `select` instructions can be eliminated.
 // CHECK-LABEL: @option_nop_match_32
 #[no_mangle]
 pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // CHECK-NEXT: [[TRUNC:%.*]] = trunc nuw i32 %0 to i1
-    // CHECK-NEXT: [[FIRST:%.*]] = select i1 [[TRUNC]], i32 %0
-    // CHECK-NEXT: insertvalue { i32, i32 } poison, i32 [[FIRST]]
+    // NINETEEN-NEXT: [[TRUNC:%.*]] = trunc nuw i32 %0 to i1
+    // NINETEEN-NEXT: [[FIRST:%.*]] = select i1 [[TRUNC]], i32 %0
+    // NINETEEN-NEXT: insertvalue { i32, i32 } poison, i32 [[FIRST]], 0
+    // TWENTY-NEXT: insertvalue { i32, i32 } poison, i32 %0, 0
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: ret { i32, i32 }
     match x {

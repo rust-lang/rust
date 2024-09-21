@@ -18,6 +18,9 @@
 //@ revisions: aarch64_apple_tvos_sim
 //@ [aarch64_apple_tvos_sim] compile-flags: --target aarch64-apple-tvos-sim
 //@ [aarch64_apple_tvos_sim] needs-llvm-components: aarch64
+//@ revisions: arm64e_apple_tvos
+//@ [arm64e_apple_tvos] compile-flags: --target arm64e-apple-tvos
+//@ [arm64e_apple_tvos] needs-llvm-components: aarch64
 //@ revisions: aarch64_apple_watchos
 //@ [aarch64_apple_watchos] compile-flags: --target aarch64-apple-watchos
 //@ [aarch64_apple_watchos] needs-llvm-components: aarch64
@@ -28,11 +31,9 @@
 //@ [arm64_32_apple_watchos] compile-flags: --target arm64_32-apple-watchos
 //@ [arm64_32_apple_watchos] needs-llvm-components: aarch64
 //@ revisions: aarch64_apple_visionos
-//@ [aarch64_apple_visionos] min-llvm-version: 18
 //@ [aarch64_apple_visionos] compile-flags: --target aarch64-apple-visionos
 //@ [aarch64_apple_visionos] needs-llvm-components: aarch64
 //@ revisions: aarch64_apple_visionos_sim
-//@ [aarch64_apple_visionos_sim] min-llvm-version: 18
 //@ [aarch64_apple_visionos_sim] compile-flags: --target aarch64-apple-visionos-sim
 //@ [aarch64_apple_visionos_sim] needs-llvm-components: aarch64
 //@ revisions: arm64e_apple_darwin

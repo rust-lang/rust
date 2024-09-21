@@ -5,7 +5,7 @@
 //! that separate threads have their own panicking state.
 
 use std::sync::{Arc, Condvar, Mutex};
-use std::thread::{spawn, JoinHandle};
+use std::thread::{JoinHandle, spawn};
 
 struct BlockOnDrop(Option<JoinHandle<()>>);
 

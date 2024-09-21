@@ -6,7 +6,7 @@
 
 // Test printing allocations that contain single-byte provenance.
 
-use std::alloc::{alloc, dealloc, Layout};
+use std::alloc::{Layout, alloc, dealloc};
 use std::mem::{self, MaybeUninit};
 use std::slice::from_raw_parts;
 

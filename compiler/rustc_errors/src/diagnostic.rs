@@ -19,12 +19,8 @@ use crate::snippet::Style;
 use crate::{
     CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
     MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
+    Suggestions,
 };
-
-/// Error type for `DiagInner`'s `suggestions` field, indicating that
-/// `.disable_suggestions()` was called on the `DiagInner`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub struct SuggestionsDisabled;
 
 /// Simplified version of `FluentArg` that can implement `Encodable` and `Decodable`. Collection of
 /// `DiagArg` are converted to `FluentArgs` (consuming the collection) at the start of diagnostic
@@ -296,7 +292,7 @@ pub struct DiagInner {
     pub code: Option<ErrCode>,
     pub span: MultiSpan,
     pub children: Vec<Subdiag>,
-    pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
+    pub suggestions: Suggestions,
     pub args: DiagArgMap,
 
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
@@ -325,7 +321,7 @@ impl DiagInner {
             code: None,
             span: MultiSpan::new(),
             children: vec![],
-            suggestions: Ok(vec![]),
+            suggestions: Suggestions::Enabled(vec![]),
             args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: None,
@@ -409,7 +405,7 @@ impl DiagInner {
         &Option<ErrCode>,
         &MultiSpan,
         &[Subdiag],
-        &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
+        &Suggestions,
         Vec<(&DiagArgName, &DiagArgValue)>,
         &Option<IsLint>,
     ) {
@@ -823,16 +819,32 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     }
 
-    /// Disallow attaching suggestions this diagnostic.
+    /// Disallow attaching suggestions to this diagnostic.
     /// Any suggestions attached e.g. with the `span_suggestion_*` methods
     /// (before and after the call to `disable_suggestions`) will be ignored.
     #[rustc_lint_diagnostics]
     pub fn disable_suggestions(&mut self) -> &mut Self {
-        self.suggestions = Err(SuggestionsDisabled);
+        self.suggestions = Suggestions::Disabled;
         self
     }
 
-    /// Helper for pushing to `self.suggestions`, if available (not disable).
+    /// Prevent new suggestions from being added to this diagnostic.
+    ///
+    /// Suggestions added before the call to `.seal_suggestions()` will be preserved
+    /// and new suggestions will be ignored.
+    #[rustc_lint_diagnostics]
+    pub fn seal_suggestions(&mut self) -> &mut Self {
+        if let Suggestions::Enabled(suggestions) = &mut self.suggestions {
+            let suggestions_slice = std::mem::take(suggestions).into_boxed_slice();
+            self.suggestions = Suggestions::Sealed(suggestions_slice);
+        }
+        self
+    }
+
+    /// Helper for pushing to `self.suggestions`.
+    ///
+    /// A new suggestion is added if suggestions are enabled for this diagnostic.
+    /// Otherwise, they are ignored.
     #[rustc_lint_diagnostics]
     fn push_suggestion(&mut self, suggestion: CodeSuggestion) {
         for subst in &suggestion.substitutions {
@@ -846,7 +858,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             }
         }
 
-        if let Ok(suggestions) = &mut self.suggestions {
+        if let Suggestions::Enabled(suggestions) = &mut self.suggestions {
             suggestions.push(suggestion);
         }
     }

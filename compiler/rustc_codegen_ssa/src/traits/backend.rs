@@ -8,13 +8,11 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::creader::MetadataLoaderDyn;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::config::{self, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::call::FnAbi;
 
 use super::write::WriteBackendMethods;
 use super::CodegenObject;
@@ -36,34 +34,21 @@ pub trait BackendTypes {
     type DIVariable: Copy;
 }
 
-pub trait Backend<'tcx>:
-    Sized
-    + BackendTypes
-    + HasTyCtxt<'tcx>
-    + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
-    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
-{
-}
-
-impl<'tcx, T> Backend<'tcx> for T where
-    Self: BackendTypes
-        + HasTyCtxt<'tcx>
-        + LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
-        + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
-{
-}
-
 pub trait CodegenBackend {
     /// Locale resources for diagnostic messages - a string the content of the Fluent resource.
     /// Called before `init` so that all other functions are able to emit translatable diagnostics.
     fn locale_resource(&self) -> &'static str;
 
     fn init(&self, _sess: &Session) {}
+
     fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
+
     fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {
         vec![]
     }
+
     fn print_passes(&self) {}
+
     fn print_version(&self) {}
 
     /// The metadata loader used to load rlib and dylib metadata.
@@ -75,6 +60,7 @@ pub trait CodegenBackend {
     }
 
     fn provide(&self, _providers: &mut Providers) {}
+
     fn codegen_crate<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -120,6 +106,7 @@ pub trait ExtraBackendMethods:
         kind: AllocatorKind,
         alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module;
+
     /// This generates the codegen unit and returns it along with
     /// a `u64` giving an estimate of the unit's processing cost.
     fn compile_codegen_unit(
@@ -127,6 +114,7 @@ pub trait ExtraBackendMethods:
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64);
+
     fn target_machine_factory(
         &self,
         sess: &Session,

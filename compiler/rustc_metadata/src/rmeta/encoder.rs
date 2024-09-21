@@ -1488,9 +1488,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if def_kind == DefKind::Closure
                 && tcx.type_of(def_id).skip_binder().is_coroutine_closure()
             {
+                let coroutine_for_closure = self.tcx.coroutine_for_closure(def_id);
                 self.tables
                     .coroutine_for_closure
-                    .set_some(def_id.index, self.tcx.coroutine_for_closure(def_id).into());
+                    .set_some(def_id.index, coroutine_for_closure.into());
+
+                // If this async closure has a by-move body, record it too.
+                if tcx.needs_coroutine_by_move_body_def_id(coroutine_for_closure) {
+                    self.tables.coroutine_by_move_body_def_id.set_some(
+                        coroutine_for_closure.index,
+                        self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure).into(),
+                    );
+                }
             }
             if let DefKind::Static { .. } = def_kind {
                 if !self.tcx.is_foreign_item(def_id) {

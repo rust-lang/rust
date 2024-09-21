@@ -8,9 +8,6 @@
 //! actual codegen, while the builder stores the information about the function during codegen and
 //! is used to produce the instructions of the backend IR.
 //!
-//! Finally, a third `Backend` structure has to implement methods related to how codegen information
-//! is passed to the backend, especially for asynchronous compilation.
-//!
 //! The traits contain associated types that are backend-specific, such as the backend's value or
 //! basic blocks.
 
@@ -30,71 +27,36 @@ mod write;
 
 use std::fmt;
 
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt};
-use rustc_target::spec::HasTargetSpec;
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
+use rustc_middle::ty::Ty;
+use rustc_target::abi::call::FnAbi;
 
 pub use self::abi::AbiBuilderMethods;
-pub use self::asm::{AsmBuilderMethods, AsmMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
-pub use self::backend::{Backend, BackendTypes, CodegenBackend, ExtraBackendMethods};
+pub use self::asm::{
+    AsmBuilderMethods, AsmCodegenMethods, GlobalAsmOperandRef, InlineAsmOperandRef,
+};
+pub use self::backend::{BackendTypes, CodegenBackend, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};
-pub use self::consts::ConstMethods;
+pub use self::consts::ConstCodegenMethods;
 pub use self::coverageinfo::CoverageInfoBuilderMethods;
-pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
-pub use self::declare::PreDefineMethods;
-pub use self::intrinsic::IntrinsicCallMethods;
-pub use self::misc::MiscMethods;
-pub use self::statics::{StaticBuilderMethods, StaticMethods};
+pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
+pub use self::declare::PreDefineCodegenMethods;
+pub use self::intrinsic::IntrinsicCallBuilderMethods;
+pub use self::misc::MiscCodegenMethods;
+pub use self::statics::{StaticBuilderMethods, StaticCodegenMethods};
 pub use self::type_::{
-    ArgAbiMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMembershipMethods,
-    TypeMethods,
+    ArgAbiBuilderMethods, BaseTypeCodegenMethods, DerivedTypeCodegenMethods,
+    LayoutTypeCodegenMethods, TypeCodegenMethods, TypeMembershipCodegenMethods,
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 
-pub trait CodegenObject: Copy + PartialEq + fmt::Debug {}
-impl<T: Copy + PartialEq + fmt::Debug> CodegenObject for T {}
+pub trait CodegenObject = Copy + PartialEq + fmt::Debug;
 
-pub trait CodegenMethods<'tcx>:
-    Backend<'tcx>
-    + TypeMethods<'tcx>
-    + MiscMethods<'tcx>
-    + ConstMethods<'tcx>
-    + StaticMethods
-    + DebugInfoMethods<'tcx>
-    + AsmMethods<'tcx>
-    + PreDefineMethods<'tcx>
-    + HasParamEnv<'tcx>
-    + HasTyCtxt<'tcx>
-    + HasTargetSpec
-{
-}
-
-impl<'tcx, T> CodegenMethods<'tcx> for T where
-    Self: Backend<'tcx>
-        + TypeMethods<'tcx>
-        + MiscMethods<'tcx>
-        + ConstMethods<'tcx>
-        + StaticMethods
-        + DebugInfoMethods<'tcx>
-        + AsmMethods<'tcx>
-        + PreDefineMethods<'tcx>
-        + HasParamEnv<'tcx>
-        + HasTyCtxt<'tcx>
-        + HasTargetSpec
-{
-}
-
-pub trait HasCodegen<'tcx>:
-    Backend<'tcx> + std::ops::Deref<Target = <Self as HasCodegen<'tcx>>::CodegenCx>
-{
-    type CodegenCx: CodegenMethods<'tcx>
-        + BackendTypes<
-            Value = Self::Value,
-            Function = Self::Function,
-            BasicBlock = Self::BasicBlock,
-            Type = Self::Type,
-            Funclet = Self::Funclet,
-            DIScope = Self::DIScope,
-            DILocation = Self::DILocation,
-            DIVariable = Self::DIVariable,
-        >;
-}
+pub trait CodegenMethods<'tcx> = LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
+    + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
+    + TypeCodegenMethods<'tcx>
+    + ConstCodegenMethods<'tcx>
+    + StaticCodegenMethods
+    + DebugInfoCodegenMethods<'tcx>
+    + AsmCodegenMethods<'tcx>
+    + PreDefineCodegenMethods<'tcx>;

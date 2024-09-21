@@ -35,6 +35,8 @@ macro raw_errln($tokens:tt) {
 }
 
 /// Signal handler installed for SIGSEGV
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#[allow(static_mut_refs)]
 extern "C" fn print_stack_trace(_: libc::c_int) {
     const MAX_FRAMES: usize = 256;
     // Reserve data segment so we don't have to malloc in a signal handler, which might fail

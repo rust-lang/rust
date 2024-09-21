@@ -12,7 +12,7 @@ use ui_test::custom_flags::edition::Edition;
 use ui_test::dependencies::DependencyBuilder;
 use ui_test::per_test_config::TestConfig;
 use ui_test::spanned::Spanned;
-use ui_test::{status_emitter, CommandBuilder, Config, Format, Match, OutputConflictHandling};
+use ui_test::{CommandBuilder, Config, Format, Match, OutputConflictHandling, status_emitter};
 
 #[derive(Copy, Clone, Debug)]
 enum Mode {
@@ -118,24 +118,21 @@ fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     config.comment_defaults.base().add_custom("edition", Edition("2021".into()));
 
     if with_dependencies {
-        config.comment_defaults.base().set_custom(
-            "dependencies",
-            DependencyBuilder {
-                program: CommandBuilder {
-                    // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
-                    // (It's a separate crate, so we don't get an env var from cargo.)
-                    program: miri_path()
-                        .with_file_name(format!("cargo-miri{}", env::consts::EXE_SUFFIX)),
-                    // There is no `cargo miri build` so we just use `cargo miri run`.
-                    args: ["miri", "run"].into_iter().map(Into::into).collect(),
-                    // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
-                    envs: vec![("RUSTFLAGS".into(), None)],
-                    ..CommandBuilder::cargo()
-                },
-                crate_manifest_path: Path::new("test_dependencies").join("Cargo.toml"),
-                build_std: None,
+        config.comment_defaults.base().set_custom("dependencies", DependencyBuilder {
+            program: CommandBuilder {
+                // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
+                // (It's a separate crate, so we don't get an env var from cargo.)
+                program: miri_path()
+                    .with_file_name(format!("cargo-miri{}", env::consts::EXE_SUFFIX)),
+                // There is no `cargo miri build` so we just use `cargo miri run`.
+                args: ["miri", "run"].into_iter().map(Into::into).collect(),
+                // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
+                envs: vec![("RUSTFLAGS".into(), None)],
+                ..CommandBuilder::cargo()
             },
-        );
+            crate_manifest_path: Path::new("test_dependencies").join("Cargo.toml"),
+            build_std: None,
+        });
     }
     config
 }

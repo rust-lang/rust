@@ -104,6 +104,9 @@ pub enum Adjust<'tcx> {
 
     /// Cast into a dyn* object.
     DynStar,
+
+    /// Take a pinned reference and reborrow as a `Pin<&mut T>` or `Pin<&T>`.
+    ReborrowPin(ty::Region<'tcx>, hir::Mutability),
 }
 
 /// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`

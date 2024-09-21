@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use std::borrow::Cow;
 
 use rustc_ast::token::Token;
@@ -1569,7 +1571,7 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_path_single_colon)]
+#[diag(parse_path_double_colon)]
 pub(crate) struct PathSingleColon {
     #[primary_span]
     pub span: Span,
@@ -1579,6 +1581,14 @@ pub(crate) struct PathSingleColon {
 
     #[note(parse_type_ascription_removed)]
     pub type_ascription: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_path_double_colon)]
+pub(crate) struct PathTripleColon {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "", style = "verbose")]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -2592,13 +2602,86 @@ pub(crate) struct ExpectedCommaAfterPatternField {
 #[derive(Diagnostic)]
 #[diag(parse_unexpected_expr_in_pat)]
 pub(crate) struct UnexpectedExpressionInPattern {
+    /// The unexpected expr's span.
     #[primary_span]
     #[label]
     pub span: Span,
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
-    /// Was the unexpected expression a `MethodCallExpression`?
-    pub is_method_call: bool,
+    /// The unexpected expr's precedence (used in match arm guard suggestions).
+    pub expr_precedence: i8,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnexpectedExpressionInPatternSugg {
+    #[multipart_suggestion(
+        parse_unexpected_expr_in_pat_create_guard_sugg,
+        applicability = "maybe-incorrect"
+    )]
+    CreateGuard {
+        /// Where to put the suggested identifier.
+        #[suggestion_part(code = "{ident}")]
+        ident_span: Span,
+        /// Where to put the match arm.
+        #[suggestion_part(code = " if {ident} == {expr}")]
+        pat_hi: Span,
+        /// The suggested identifier.
+        ident: String,
+        /// The unexpected expression.
+        expr: String,
+    },
+
+    #[multipart_suggestion(
+        parse_unexpected_expr_in_pat_update_guard_sugg,
+        applicability = "maybe-incorrect"
+    )]
+    UpdateGuard {
+        /// Where to put the suggested identifier.
+        #[suggestion_part(code = "{ident}")]
+        ident_span: Span,
+        /// The beginning of the match arm guard's expression (insert a `(` if `Some`).
+        #[suggestion_part(code = "(")]
+        guard_lo: Option<Span>,
+        /// The end of the match arm guard's expression.
+        #[suggestion_part(code = "{guard_hi_paren} && {ident} == {expr}")]
+        guard_hi: Span,
+        /// Either `")"` or `""`.
+        guard_hi_paren: &'static str,
+        /// The suggested identifier.
+        ident: String,
+        /// The unexpected expression.
+        expr: String,
+    },
+
+    #[multipart_suggestion(
+        parse_unexpected_expr_in_pat_const_sugg,
+        applicability = "has-placeholders"
+    )]
+    Const {
+        /// Where to put the extracted constant declaration.
+        #[suggestion_part(code = "{indentation}const {ident}: /* Type */ = {expr};\n")]
+        stmt_lo: Span,
+        /// Where to put the suggested identifier.
+        #[suggestion_part(code = "{ident}")]
+        ident_span: Span,
+        /// The suggested identifier.
+        ident: String,
+        /// The unexpected expression.
+        expr: String,
+        /// The statement's block's indentation.
+        indentation: String,
+    },
+
+    #[multipart_suggestion(
+        parse_unexpected_expr_in_pat_inline_const_sugg,
+        applicability = "maybe-incorrect"
+    )]
+    InlineConst {
+        #[suggestion_part(code = "const {{ ")]
+        start_span: Span,
+        #[suggestion_part(code = " }}")]
+        end_span: Span,
+    },
 }
 
 #[derive(Diagnostic)]

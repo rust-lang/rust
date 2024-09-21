@@ -1562,12 +1562,25 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Checks for `::` or, potentially, `:::` and then look ahead after it.
+    fn check_path_sep_and_look_ahead(&mut self, looker: impl Fn(&Token) -> bool) -> bool {
+        if self.check(&token::PathSep) {
+            if self.may_recover() && self.look_ahead(1, |t| t.kind == token::Colon) {
+                debug_assert!(!self.look_ahead(1, &looker), "Looker must not match on colon");
+                self.look_ahead(2, looker)
+            } else {
+                self.look_ahead(1, looker)
+            }
+        } else {
+            false
+        }
+    }
+
     /// `::{` or `::*`
     fn is_import_coupler(&mut self) -> bool {
-        self.check(&token::PathSep)
-            && self.look_ahead(1, |t| {
-                *t == token::OpenDelim(Delimiter::Brace) || *t == token::BinOp(token::Star)
-            })
+        self.check_path_sep_and_look_ahead(|t| {
+            matches!(t.kind, token::OpenDelim(Delimiter::Brace) | token::BinOp(token::Star))
+        })
     }
 
     // Debug view of the parser's token stream, up to `{lookahead}` tokens.

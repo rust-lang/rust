@@ -2180,6 +2180,7 @@ pub(crate) struct UnexpectedCfgName {
 pub(crate) mod unexpected_cfg_name {
     use rustc_errors::DiagSymbolList;
     use rustc_macros::Subdiagnostic;
+    use rustc_span::symbol::Ident;
     use rustc_span::{Span, Symbol};
 
     #[derive(Subdiagnostic)]
@@ -2260,7 +2261,7 @@ pub(crate) mod unexpected_cfg_name {
     #[derive(Subdiagnostic)]
     #[help_once(lint_unexpected_cfg_name_expected_names)]
     pub(crate) struct ExpectedNames {
-        pub possibilities: DiagSymbolList,
+        pub possibilities: DiagSymbolList<Ident>,
         pub and_more: usize,
     }
 
@@ -3059,4 +3060,36 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
 #[help]
 pub(crate) struct OutOfScopeMacroCalls {
     pub path: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_static_mut_refs_lint)]
+pub(crate) struct RefOfMutStatic<'a> {
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<MutRefSugg>,
+    pub shared_label: &'a str,
+    #[note(lint_shared_note)]
+    pub shared_note: bool,
+    #[note(lint_mut_note)]
+    pub mut_note: bool,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum MutRefSugg {
+    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    Shared {
+        #[suggestion_part(code = "&raw const ")]
+        span: Span,
+    },
+    #[multipart_suggestion(
+        lint_suggestion_mut,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    Mut {
+        #[suggestion_part(code = "&raw mut ")]
+        span: Span,
+    },
 }

@@ -7,12 +7,12 @@ use std::time::Duration;
 
 use rand::RngCore;
 
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::{
-    def::{DefKind, Namespace},
-    def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE},
     Safety,
+    def::{DefKind, Namespace},
+    def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE},
 };
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -21,9 +21,8 @@ use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, MaybeResult};
 use rustc_middle::ty::{
-    self,
+    self, FloatTy, IntTy, Ty, TyCtxt, UintTy,
     layout::{LayoutOf, TyAndLayout},
-    FloatTy, IntTy, Ty, TyCtxt, UintTy,
 };
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};

@@ -66,7 +66,6 @@ mod check;
 mod compare_impl_item;
 pub mod dropck;
 mod entry;
-mod errs;
 pub mod intrinsic;
 pub mod intrinsicck;
 mod region;

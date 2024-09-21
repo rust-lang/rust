@@ -63,10 +63,10 @@ impl<'tcx> MiriMachine<'tcx> {
 
         match this.tcx.sess.target.os.as_ref() {
             "linux" => {
-                Self::null_ptr_extern_statics(
-                    this,
-                    &["__cxa_thread_atexit_impl", "__clock_gettime64"],
-                )?;
+                Self::null_ptr_extern_statics(this, &[
+                    "__cxa_thread_atexit_impl",
+                    "__clock_gettime64",
+                ])?;
                 Self::weak_symbol_extern_statics(this, &["getrandom", "statx"])?;
             }
             "freebsd" => {

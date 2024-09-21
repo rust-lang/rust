@@ -171,7 +171,13 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
-    unsafe { __rust_alloc_zeroed(layout.size(), layout.align()) }
+    unsafe {
+        // Make sure we don't accidentally allow omitting the allocator shim in
+        // stable code until it is actually stabilized.
+        core::ptr::read_volatile(&__rust_no_alloc_shim_is_unstable);
+
+        __rust_alloc_zeroed(layout.size(), layout.align())
+    }
 }
 
 #[cfg(not(test))]

@@ -51,6 +51,7 @@ ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-19 \
       --enable-llvm-link-shared \
+      --set rust.randomize-layout=true \
       --set rust.thin-lto-import-instr-limit=10
 
 COPY host-x86_64/dist-x86_64-linux/shared.sh /scripts/

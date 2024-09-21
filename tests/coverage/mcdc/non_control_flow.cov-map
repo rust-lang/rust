@@ -1,5 +1,5 @@
 Function name: non_control_flow::assign_3
-Raw bytes (89): 0x[01, 01, 09, 05, 07, 0b, 11, 09, 0d, 01, 05, 01, 05, 22, 11, 01, 05, 22, 11, 01, 05, 0a, 01, 17, 01, 00, 28, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 03, 00, 0d, 00, 18, 30, 05, 22, 01, 00, 02, 00, 0d, 00, 0e, 22, 00, 12, 00, 13, 30, 1e, 11, 02, 03, 00, 00, 12, 00, 13, 1e, 00, 17, 00, 18, 30, 09, 0d, 03, 00, 00, 00, 17, 00, 18, 03, 01, 05, 01, 02]
+Raw bytes (89): 0x[01, 01, 09, 05, 07, 0b, 11, 09, 0d, 01, 05, 01, 05, 22, 11, 01, 05, 22, 11, 01, 05, 0a, 01, 16, 01, 00, 28, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 03, 00, 0d, 00, 18, 30, 05, 22, 01, 00, 02, 00, 0d, 00, 0e, 22, 00, 12, 00, 13, 30, 1e, 11, 02, 03, 00, 00, 12, 00, 13, 1e, 00, 17, 00, 18, 30, 09, 0d, 03, 00, 00, 00, 17, 00, 18, 03, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 9
@@ -13,7 +13,7 @@ Number of expressions: 9
 - expression 7 operands: lhs = Expression(8, Sub), rhs = Counter(4)
 - expression 8 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 10
-- Code(Counter(0)) at (prev + 23, 1) to (start + 0, 40)
+- Code(Counter(0)) at (prev + 22, 1) to (start + 0, 40)
 - Code(Expression(0, Add)) at (prev + 1, 9) to (start + 0, 10)
     = (c1 + ((c2 + c3) + c4))
 - Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
@@ -35,7 +35,7 @@ Number of file 0 mappings: 10
     = (c1 + ((c2 + c3) + c4))
 
 Function name: non_control_flow::assign_3_bis
-Raw bytes (85): 0x[01, 01, 07, 07, 11, 09, 0d, 01, 05, 05, 09, 16, 1a, 05, 09, 01, 05, 0a, 01, 1c, 01, 00, 2c, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 03, 00, 0d, 00, 18, 30, 05, 1a, 01, 03, 02, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 30, 09, 16, 03, 00, 02, 00, 12, 00, 13, 13, 00, 17, 00, 18, 30, 0d, 11, 02, 00, 00, 00, 17, 00, 18, 03, 01, 05, 01, 02]
+Raw bytes (85): 0x[01, 01, 07, 07, 11, 09, 0d, 01, 05, 05, 09, 16, 1a, 05, 09, 01, 05, 0a, 01, 1b, 01, 00, 2c, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 03, 00, 0d, 00, 18, 30, 05, 1a, 01, 03, 02, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 30, 09, 16, 03, 00, 02, 00, 12, 00, 13, 13, 00, 17, 00, 18, 30, 0d, 11, 02, 00, 00, 00, 17, 00, 18, 03, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 7
@@ -47,7 +47,7 @@ Number of expressions: 7
 - expression 5 operands: lhs = Counter(1), rhs = Counter(2)
 - expression 6 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 10
-- Code(Counter(0)) at (prev + 28, 1) to (start + 0, 44)
+- Code(Counter(0)) at (prev + 27, 1) to (start + 0, 44)
 - Code(Expression(0, Add)) at (prev + 1, 9) to (start + 0, 10)
     = ((c2 + c3) + c4)
 - Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
@@ -68,7 +68,7 @@ Number of file 0 mappings: 10
     = ((c2 + c3) + c4)
 
 Function name: non_control_flow::assign_and
-Raw bytes (64): 0x[01, 01, 04, 07, 0e, 09, 0d, 01, 05, 01, 05, 08, 01, 0d, 01, 00, 21, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 02, 00, 0d, 00, 13, 30, 05, 0e, 01, 02, 00, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 30, 09, 0d, 02, 00, 00, 00, 12, 00, 13, 03, 01, 05, 01, 02]
+Raw bytes (64): 0x[01, 01, 04, 07, 0e, 09, 0d, 01, 05, 01, 05, 08, 01, 0c, 01, 00, 21, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 02, 00, 0d, 00, 13, 30, 05, 0e, 01, 02, 00, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 30, 09, 0d, 02, 00, 00, 00, 12, 00, 13, 03, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 4
@@ -77,7 +77,7 @@ Number of expressions: 4
 - expression 2 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 3 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 8
-- Code(Counter(0)) at (prev + 13, 1) to (start + 0, 33)
+- Code(Counter(0)) at (prev + 12, 1) to (start + 0, 33)
 - Code(Expression(0, Add)) at (prev + 1, 9) to (start + 0, 10)
     = ((c2 + c3) + (c0 - c1))
 - Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
@@ -93,7 +93,7 @@ Number of file 0 mappings: 8
     = ((c2 + c3) + (c0 - c1))
 
 Function name: non_control_flow::assign_or
-Raw bytes (64): 0x[01, 01, 04, 07, 0d, 05, 09, 01, 05, 01, 05, 08, 01, 12, 01, 00, 20, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 02, 00, 0d, 00, 13, 30, 05, 0e, 01, 00, 02, 00, 0d, 00, 0e, 0e, 00, 12, 00, 13, 30, 09, 0d, 02, 00, 00, 00, 12, 00, 13, 03, 01, 05, 01, 02]
+Raw bytes (64): 0x[01, 01, 04, 07, 0d, 05, 09, 01, 05, 01, 05, 08, 01, 11, 01, 00, 20, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 02, 00, 0d, 00, 13, 30, 05, 0e, 01, 00, 02, 00, 0d, 00, 0e, 0e, 00, 12, 00, 13, 30, 09, 0d, 02, 00, 00, 00, 12, 00, 13, 03, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 4
@@ -102,7 +102,7 @@ Number of expressions: 4
 - expression 2 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 3 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 8
-- Code(Counter(0)) at (prev + 18, 1) to (start + 0, 32)
+- Code(Counter(0)) at (prev + 17, 1) to (start + 0, 32)
 - Code(Expression(0, Add)) at (prev + 1, 9) to (start + 0, 10)
     = ((c1 + c2) + c3)
 - Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
@@ -119,15 +119,15 @@ Number of file 0 mappings: 8
     = ((c1 + c2) + c3)
 
 Function name: non_control_flow::foo
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 26, 01, 02, 02]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 25, 01, 02, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 38, 1) to (start + 2, 2)
+- Code(Counter(0)) at (prev + 37, 1) to (start + 2, 2)
 
 Function name: non_control_flow::func_call
-Raw bytes (52): 0x[01, 01, 03, 01, 05, 0b, 02, 09, 0d, 06, 01, 2a, 01, 01, 0a, 28, 00, 02, 01, 09, 00, 0f, 30, 05, 02, 01, 02, 00, 00, 09, 00, 0a, 05, 00, 0e, 00, 0f, 30, 09, 0d, 02, 00, 00, 00, 0e, 00, 0f, 07, 01, 01, 00, 02]
+Raw bytes (52): 0x[01, 01, 03, 01, 05, 0b, 02, 09, 0d, 06, 01, 29, 01, 01, 0a, 28, 00, 02, 01, 09, 00, 0f, 30, 05, 02, 01, 02, 00, 00, 09, 00, 0a, 05, 00, 0e, 00, 0f, 30, 09, 0d, 02, 00, 00, 00, 0e, 00, 0f, 07, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 3
@@ -135,7 +135,7 @@ Number of expressions: 3
 - expression 1 operands: lhs = Expression(2, Add), rhs = Expression(0, Sub)
 - expression 2 operands: lhs = Counter(2), rhs = Counter(3)
 Number of file 0 mappings: 6
-- Code(Counter(0)) at (prev + 42, 1) to (start + 1, 10)
+- Code(Counter(0)) at (prev + 41, 1) to (start + 1, 10)
 - MCDCDecision { bitmap_idx: 0, conditions_num: 2 } at (prev + 1, 9) to (start + 0, 15)
 - MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 2, false_next_id: 0 } at (prev + 0, 9) to (start + 0, 10)
     true  = c1
@@ -148,7 +148,7 @@ Number of file 0 mappings: 6
     = ((c2 + c3) + (c0 - c1))
 
 Function name: non_control_flow::right_comb_tree
-Raw bytes (139): 0x[01, 01, 13, 07, 1a, 0b, 19, 0f, 15, 13, 11, 09, 0d, 01, 05, 01, 05, 05, 19, 05, 19, 4a, 15, 05, 19, 4a, 15, 05, 19, 46, 11, 4a, 15, 05, 19, 46, 11, 4a, 15, 05, 19, 0e, 01, 21, 01, 00, 41, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 05, 00, 0d, 00, 2a, 30, 05, 1a, 01, 02, 00, 00, 0d, 00, 0e, 05, 00, 13, 00, 14, 30, 4a, 19, 02, 03, 00, 00, 13, 00, 14, 4a, 00, 19, 00, 1a, 30, 46, 15, 03, 04, 00, 00, 19, 00, 1a, 46, 00, 1f, 00, 20, 30, 42, 11, 04, 05, 00, 00, 1f, 00, 20, 42, 00, 24, 00, 27, 30, 09, 0d, 05, 00, 00, 00, 24, 00, 27, 03, 01, 05, 01, 02]
+Raw bytes (139): 0x[01, 01, 13, 07, 1a, 0b, 19, 0f, 15, 13, 11, 09, 0d, 01, 05, 01, 05, 05, 19, 05, 19, 4a, 15, 05, 19, 4a, 15, 05, 19, 46, 11, 4a, 15, 05, 19, 46, 11, 4a, 15, 05, 19, 0e, 01, 20, 01, 00, 41, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 28, 00, 05, 00, 0d, 00, 2a, 30, 05, 1a, 01, 02, 00, 00, 0d, 00, 0e, 05, 00, 13, 00, 14, 30, 4a, 19, 02, 03, 00, 00, 13, 00, 14, 4a, 00, 19, 00, 1a, 30, 46, 15, 03, 04, 00, 00, 19, 00, 1a, 46, 00, 1f, 00, 20, 30, 42, 11, 04, 05, 00, 00, 1f, 00, 20, 42, 00, 24, 00, 27, 30, 09, 0d, 05, 00, 00, 00, 24, 00, 27, 03, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 19
@@ -172,7 +172,7 @@ Number of expressions: 19
 - expression 17 operands: lhs = Expression(18, Sub), rhs = Counter(5)
 - expression 18 operands: lhs = Counter(1), rhs = Counter(6)
 Number of file 0 mappings: 14
-- Code(Counter(0)) at (prev + 33, 1) to (start + 0, 65)
+- Code(Counter(0)) at (prev + 32, 1) to (start + 0, 65)
 - Code(Expression(0, Add)) at (prev + 1, 9) to (start + 0, 10)
     = (((((c2 + c3) + c4) + c5) + c6) + (c0 - c1))
 - Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
