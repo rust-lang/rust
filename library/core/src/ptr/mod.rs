@@ -236,6 +236,10 @@
 //!
 //! Rust provides two ways of dealing with this situation: *Strict Provenance* and *Exposed Provenance*.
 //!
+//! Note that a pointer *can* represent a `usize` (via [`without_provenance`]), so the right type to
+//! use in situations where a value is "sometimes a pointer and sometimes a bare `usize`" is a
+//! pointer type.
+//!
 //! ## Strict Provenance
 //!
 //! "Strict Provenance" refers to a set of APIs designed to make working with provenance more
