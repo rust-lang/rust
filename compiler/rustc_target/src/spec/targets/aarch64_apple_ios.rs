@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target,
         metadata: crate::spec::TargetMetadata {
-            description: Some("ARM64 iOS".into()),
+            description: Some("ARM64 Apple iOS".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(true),
