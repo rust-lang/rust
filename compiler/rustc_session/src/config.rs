@@ -842,6 +842,11 @@ pub struct NextSolverConfig {
     /// This is only `true` if `coherence` is also enabled.
     pub globally: bool,
 }
+impl Default for NextSolverConfig {
+    fn default() -> Self {
+        NextSolverConfig { coherence: true, globally: false }
+    }
+}
 
 #[derive(Clone)]
 pub enum Input {

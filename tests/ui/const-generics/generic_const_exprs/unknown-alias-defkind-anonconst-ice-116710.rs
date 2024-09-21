@@ -10,6 +10,5 @@ trait Trait {}
 impl<const N: u32> Trait for A<N> {}
 
 impl<const N: u32> Trait for A<N> {}
-//~^ ERROR conflicting implementations of trait `Trait` for type `A<_>`
 
 pub fn main() {}

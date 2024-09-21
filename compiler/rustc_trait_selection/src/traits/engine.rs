@@ -36,10 +36,8 @@ where
         if infcx.next_trait_solver() {
             Box::new(NextFulfillmentCtxt::new(infcx))
         } else {
-            let new_solver_globally =
-                infcx.tcx.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.globally);
             assert!(
-                !new_solver_globally,
+                !infcx.tcx.next_trait_solver_globally(),
                 "using old solver even though new solver is enabled globally"
             );
             Box::new(FulfillmentContext::new(infcx))
