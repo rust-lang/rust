@@ -115,9 +115,9 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let (source, target) =
         cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.param_env());
     match (source.kind(), target.kind()) {
-        (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.const_usize(len.eval_target_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
-        }
+        (&ty::Array(_, len), &ty::Slice(_)) => cx.const_usize(
+            len.try_to_target_usize(cx.tcx()).expect("expected monomorphic const in codegen"),
+        ),
         (&ty::Dynamic(data_a, _, src_dyn_kind), &ty::Dynamic(data_b, _, target_dyn_kind))
             if src_dyn_kind == target_dyn_kind =>
         {

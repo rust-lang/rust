@@ -24,10 +24,10 @@ pub(crate) fn unsized_info<'tcx>(
     let (source, target) =
         fx.tcx.struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
     match (&source.kind(), &target.kind()) {
-        (&ty::Array(_, len), &ty::Slice(_)) => fx
-            .bcx
-            .ins()
-            .iconst(fx.pointer_type, len.eval_target_usize(fx.tcx, ParamEnv::reveal_all()) as i64),
+        (&ty::Array(_, len), &ty::Slice(_)) => fx.bcx.ins().iconst(
+            fx.pointer_type,
+            len.try_to_target_usize(fx.tcx).expect("expected monomorphic const in codegen") as i64,
+        ),
         (&ty::Dynamic(data_a, _, src_dyn_kind), &ty::Dynamic(data_b, _, target_dyn_kind))
             if src_dyn_kind == target_dyn_kind =>
         {
