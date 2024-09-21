@@ -1571,7 +1571,7 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_path_single_colon)]
+#[diag(parse_path_double_colon)]
 pub(crate) struct PathSingleColon {
     #[primary_span]
     pub span: Span,
@@ -1581,6 +1581,14 @@ pub(crate) struct PathSingleColon {
 
     #[note(parse_type_ascription_removed)]
     pub type_ascription: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_path_double_colon)]
+pub(crate) struct PathTripleColon {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "", style = "verbose")]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
