@@ -131,9 +131,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let idx = generic_args[2]
                 .expect_const()
-                .eval(fx.tcx, ty::ParamEnv::reveal_all(), span)
-                .unwrap()
-                .1
+                .try_to_valtree()
+                .expect("expected monomorphic const in codegen")
                 .unwrap_branch();
 
             assert_eq!(x.layout(), y.layout());

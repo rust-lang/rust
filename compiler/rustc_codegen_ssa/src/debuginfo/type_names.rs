@@ -188,7 +188,8 @@ fn push_debuginfo_type_name<'tcx>(
                     _ => write!(
                         output,
                         ",{}>",
-                        len.eval_target_usize(tcx, ty::ParamEnv::reveal_all())
+                        len.try_to_target_usize(tcx)
+                            .expect("expected monomorphic const in codegen")
                     )
                     .unwrap(),
                 }
@@ -200,7 +201,8 @@ fn push_debuginfo_type_name<'tcx>(
                     _ => write!(
                         output,
                         "; {}]",
-                        len.eval_target_usize(tcx, ty::ParamEnv::reveal_all())
+                        len.try_to_target_usize(tcx)
+                            .expect("expected monomorphic const in codegen")
                     )
                     .unwrap(),
                 }
