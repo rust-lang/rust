@@ -1507,7 +1507,7 @@ pub(crate) struct DeprecatedAttribute {
 pub(crate) struct UselessStability {
     #[primary_span]
     #[label]
-    pub span: Span,
+    pub spans: Vec<Span>,
     #[label(passes_item)]
     pub item_sp: Span,
 }

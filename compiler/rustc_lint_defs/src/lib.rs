@@ -751,7 +751,7 @@ pub enum BuiltinLintDiag {
     UnusedMacroDefinition(Symbol),
     MacroRuleNeverUsed(usize, Symbol),
     SoftUnstableMacro {
-        feature: Symbol,
+        features: Vec<Symbol>,
         reason: Option<Symbol>,
     },
     AvoidUsingIntelSyntax,

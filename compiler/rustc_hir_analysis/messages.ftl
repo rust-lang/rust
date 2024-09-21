@@ -311,8 +311,14 @@ hir_analysis_missing_trait_item_suggestion = implement the missing item: `{$snip
 
 hir_analysis_missing_trait_item_unstable = not all trait items implemented, missing: `{$missing_item_name}`
     .note = default implementation of `{$missing_item_name}` is unstable
-    .some_note = use of unstable library feature `{$feature}`: {$reason}
-    .none_note = use of unstable library feature `{$feature}`
+    .unstable_features_note =
+        use of unstable library {$feature_count ->
+            [one] feature
+            *[other] features
+        } {$features}{STREQ($reason, "") ->
+            [true] {""}
+            *[false] : {$reason}
+        }
 
 hir_analysis_missing_type_params =
     the type {$parameterCount ->

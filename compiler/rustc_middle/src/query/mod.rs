@@ -1220,19 +1220,19 @@ rustc_queries! {
         feedable
     }
 
-    query lookup_stability(def_id: DefId) -> Option<attr::Stability> {
+    query lookup_stability(def_id: DefId) -> Option<&'tcx attr::Stability> {
         desc { |tcx| "looking up stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
-    query lookup_const_stability(def_id: DefId) -> Option<attr::ConstStability> {
+    query lookup_const_stability(def_id: DefId) -> Option<&'tcx attr::ConstStability> {
         desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
-    query lookup_default_body_stability(def_id: DefId) -> Option<attr::DefaultBodyStability> {
+    query lookup_default_body_stability(def_id: DefId) -> Option<&'tcx attr::DefaultBodyStability> {
         desc { |tcx| "looking up default body stability of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1969,7 +1969,7 @@ rustc_queries! {
         desc { |tcx| "finding names imported by glob use for `{}`", tcx.def_path_str(def_id) }
     }
 
-    query stability_index(_: ()) -> &'tcx stability::Index {
+    query stability_index(_: ()) -> &'tcx stability::Index<'tcx> {
         arena_cache
         eval_always
         desc { "calculating the stability index for the local crate" }

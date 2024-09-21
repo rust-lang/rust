@@ -1644,7 +1644,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn stability(self) -> &'tcx stability::Index {
+    pub fn stability(self) -> &'tcx stability::Index<'tcx> {
         self.stability_index(())
     }
 

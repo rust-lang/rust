@@ -79,6 +79,8 @@ pub(crate) struct MissingNote {
 pub(crate) struct MultipleStabilityLevels {
     #[primary_span]
     pub span: Span,
+
+    pub feature: Symbol,
 }
 
 #[derive(Diagnostic)]

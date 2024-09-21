@@ -176,9 +176,9 @@ pub struct UnstableLibraryFeatureError {
 }
 
 impl UnstableLibraryFeatureError {
-    pub fn new(feature: Symbol, reason: Option<Symbol>, span: Span) -> Self {
+    pub fn new(features: Vec<Symbol>, reason: Option<Symbol>, span: Span) -> Self {
         let SoftUnstableLibraryFeature { features, count, reason } =
-            SoftUnstableLibraryFeature::new(feature, reason);
+            SoftUnstableLibraryFeature::new(features, reason);
         UnstableLibraryFeatureError { span, features, count, reason }
     }
 }
@@ -193,10 +193,10 @@ pub struct SoftUnstableLibraryFeature {
 }
 
 impl SoftUnstableLibraryFeature {
-    pub fn new(feature: Symbol, reason: Option<Symbol>) -> Self {
+    pub fn new(features: Vec<Symbol>, reason: Option<Symbol>) -> Self {
         SoftUnstableLibraryFeature {
-            features: vec![feature].into(),
-            count: 1,
+            count: features.len(),
+            features: features.into(),
             reason: reason.map_or(String::new(), |r| r.to_string()),
         }
     }

@@ -2,7 +2,8 @@
 
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -974,15 +975,13 @@ pub(crate) struct MissingOneOfTraitItem {
 #[derive(Diagnostic)]
 #[diag(hir_analysis_missing_trait_item_unstable, code = E0046)]
 #[note]
+#[note(hir_analysis_unstable_features_note)]
 pub(crate) struct MissingTraitItemUnstable {
     #[primary_span]
     pub span: Span,
-    #[note(hir_analysis_some_note)]
-    pub some_note: bool,
-    #[note(hir_analysis_none_note)]
-    pub none_note: bool,
     pub missing_item_name: Symbol,
-    pub feature: Symbol,
+    pub features: DiagSymbolList,
+    pub feature_count: usize,
     pub reason: String,
 }
 

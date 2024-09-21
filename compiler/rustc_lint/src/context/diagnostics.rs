@@ -382,8 +382,8 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         BuiltinLintDiag::MacroRuleNeverUsed(n, name) => {
             lints::MacroRuleNeverUsed { n: n + 1, name }.decorate_lint(diag);
         }
-        BuiltinLintDiag::SoftUnstableMacro { feature, reason } => {
-            rustc_middle::error::SoftUnstableLibraryFeature::new(feature, reason)
+        BuiltinLintDiag::SoftUnstableMacro { features, reason } => {
+            rustc_middle::error::SoftUnstableLibraryFeature::new(features, reason)
                 .decorate_lint(diag);
         }
         BuiltinLintDiag::AvoidUsingIntelSyntax => {

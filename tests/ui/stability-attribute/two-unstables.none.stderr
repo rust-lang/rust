@@ -1,0 +1,47 @@
+error[E0658]: use of unstable library features `g` and `h`: reason
+  --> $DIR/two-unstables.rs:24:5
+   |
+LL |     two_unstables::mac!();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #7 <https://github.com/rust-lang/rust/issues/7> for more information
+   = note: see issue #8 <https://github.com/rust-lang/rust/issues/8> for more information
+   = help: add `#![feature(g, h)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library features `a` and `b`: reason
+  --> $DIR/two-unstables.rs:15:16
+   |
+LL | struct Wrapper(two_unstables::Foo);
+   |                ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = note: see issue #2 <https://github.com/rust-lang/rust/issues/2> for more information
+   = help: add `#![feature(a, b)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0046]: not all trait items implemented, missing: `method`
+  --> $DIR/two-unstables.rs:19:1
+   |
+LL | impl two_unstables::Trait for Wrapper {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: default implementation of `method` is unstable
+   = note: use of unstable library features `e` and `f`: reason
+   = note: see issue #5 <https://github.com/rust-lang/rust/issues/5> for more information
+   = note: see issue #6 <https://github.com/rust-lang/rust/issues/6> for more information
+   = help: add `#![feature(e, f)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `nothing` is not yet stable as a const fn
+  --> $DIR/two-unstables.rs:11:25
+   |
+LL | const USE_NOTHING: () = two_unstables::nothing();
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(c, d)]` to the crate attributes to enable
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0046, E0658.
+For more information about an error, try `rustc --explain E0046`.

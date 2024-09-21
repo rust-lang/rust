@@ -7,7 +7,7 @@ use std::mem;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, Inline, ItemKind, ModKind, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr::StabilityLevel;
+use rustc_attr::{StabilityLevel, Unstability};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
@@ -1002,33 +1002,41 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         node_id: NodeId,
     ) {
         let span = path.span;
-        if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { unstables, reason, is_soft } = stability.level {
-                let rustc_attr::Unstability { feature, issue, implied_by } = unstables;
-                let is_allowed =
-                    |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
-                let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
-                if !is_allowed(feature) && !allowed_by_implication {
-                    if is_soft {
-                        self.lint_buffer.buffer_lint(
-                            SOFT_UNSTABLE,
-                            node_id,
-                            span,
-                            BuiltinLintDiag::SoftUnstableMacro {
-                                feature,
-                                reason: reason.to_opt_reason(),
-                            },
-                        );
-                    } else {
-                        stability::report_unstable(
-                            self.tcx.sess,
-                            feature,
-                            reason.to_opt_reason(),
-                            issue,
-                            None,
-                            span,
-                        );
-                    }
+        if let Some(stability) = &ext.stability
+            && let StabilityLevel::Unstable { unstables, reason, is_soft } = &stability.level
+        {
+            let is_allowed =
+                |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
+            let allowed_by_implication = |unstability: &Unstability| {
+                unstability.implied_by.is_some_and(|feature| is_allowed(feature))
+            };
+
+            let (missing_features, issues): (Vec<_>, Vec<_>) = unstables
+                .iter()
+                .filter(|u| !is_allowed(u.feature) && !allowed_by_implication(u))
+                .map(|u| (u.feature, u.issue))
+                .unzip();
+
+            if !missing_features.is_empty() {
+                if *is_soft {
+                    self.lint_buffer.buffer_lint(
+                        SOFT_UNSTABLE,
+                        node_id,
+                        span,
+                        BuiltinLintDiag::SoftUnstableMacro {
+                            features: missing_features,
+                            reason: reason.to_opt_reason(),
+                        },
+                    );
+                } else {
+                    stability::report_unstable(
+                        self.tcx.sess,
+                        missing_features,
+                        reason.to_opt_reason(),
+                        issues.into_iter().flatten().collect(),
+                        vec![],
+                        span,
+                    )
                 }
             }
         }

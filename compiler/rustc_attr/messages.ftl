@@ -83,7 +83,7 @@ attr_multiple_item =
     multiple '{$item}' items
 
 attr_multiple_stability_levels =
-    multiple stability levels
+    multiple stability levels for feature `{$feature}`
 
 attr_non_ident_feature =
     'feature' is not an identifier
