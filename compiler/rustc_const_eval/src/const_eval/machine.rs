@@ -641,7 +641,14 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 // current number of evaluated terminators is a power of 2. The latter gives us a cheap
                 // way to implement exponential backoff.
                 let span = ecx.cur_span();
-                ecx.tcx.dcx().emit_warn(LongRunningWarn { span, item_span: ecx.tcx.span });
+                // We store a unique number in `force_duplicate` to evade `-Z deduplicate-diagnostics`.
+                // `new_steps` is guaranteed to be unique because `ecx.machine.num_evaluated_steps` is
+                // always increasing.
+                ecx.tcx.dcx().emit_warn(LongRunningWarn {
+                    span,
+                    item_span: ecx.tcx.span,
+                    force_duplicate: new_steps,
+                });
             }
         }
 
