@@ -958,7 +958,8 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// assert_eq!(x.unwrap(), "air"); // fails
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]
+    #[cfg_attr(not(bootstrap), inline(usually))]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "option_unwrap")]

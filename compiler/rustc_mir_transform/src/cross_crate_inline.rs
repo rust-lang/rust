@@ -46,7 +46,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // #[inline(never)] to force code generation.
     match codegen_fn_attrs.inline {
         InlineAttr::Never => return false,
-        InlineAttr::Hint | InlineAttr::Always => return true,
+        InlineAttr::Hint | InlineAttr::Always | InlineAttr::Usually => return true,
         _ => {}
     }
 

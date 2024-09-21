@@ -1091,7 +1091,8 @@ impl<T, E> Result<T, E> {
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.unwrap(); // panics with `emergency failure`
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]
+    #[cfg_attr(not(bootstrap), inline(usually))]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap(self) -> T

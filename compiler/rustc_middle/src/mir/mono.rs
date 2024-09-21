@@ -138,7 +138,7 @@ impl<'tcx> MonoItem<'tcx> {
                 // conflict with upstream crates as it could be an exported
                 // symbol.
                 match tcx.codegen_fn_attrs(instance.def_id()).inline {
-                    InlineAttr::Always => InstantiationMode::LocalCopy,
+                    InlineAttr::Always | InlineAttr::Usually => InstantiationMode::LocalCopy,
                     _ => InstantiationMode::GloballyShared { may_conflict: true },
                 }
             }

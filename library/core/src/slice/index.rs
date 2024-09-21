@@ -11,7 +11,8 @@ where
 {
     type Output = I::Output;
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]
+    #[cfg_attr(not(bootstrap), inline(usually))]
     fn index(&self, index: I) -> &I::Output {
         index.index(self)
     }
@@ -22,7 +23,8 @@ impl<T, I> ops::IndexMut<I> for [T]
 where
     I: SliceIndex<[T]>,
 {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]
+    #[cfg_attr(not(bootstrap), inline(usually))]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
         index.index_mut(self)
     }
@@ -455,7 +457,8 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         }
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]
+    #[cfg_attr(not(bootstrap), inline(usually))]
     fn index(self, slice: &[T]) -> &[T] {
         // Using checked_sub is a safe way to get `SubUnchecked` in MIR
         let Some(new_len) = usize::checked_sub(self.end, self.start) else {
@@ -507,7 +510,8 @@ unsafe impl<T> SliceIndex<[T]> for range::Range<usize> {
         unsafe { ops::Range::from(self).get_unchecked_mut(slice) }
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]
+    #[cfg_attr(not(bootstrap), inline(usually))]
     fn index(self, slice: &[T]) -> &[T] {
         ops::Range::from(self).index(slice)
     }
@@ -545,7 +549,8 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
         unsafe { (0..self.end).get_unchecked_mut(slice) }
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]
+    #[cfg_attr(not(bootstrap), inline(usually))]
     fn index(self, slice: &[T]) -> &[T] {
         (0..self.end).index(slice)
     }

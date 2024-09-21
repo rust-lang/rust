@@ -47,6 +47,9 @@ fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll 
             }
         }
         InlineAttr::None => None,
+        InlineAttr::Usually => {
+            Some(llvm::CreateAttrStringValue(cx.llcx, "function-inline-cost", "0"))
+        }
     }
 }
 
