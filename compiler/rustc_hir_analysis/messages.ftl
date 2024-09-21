@@ -478,7 +478,7 @@ hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`, bu
 
 hir_analysis_target_feature_on_main = `main` function is not allowed to have `#[target_feature]`
 
-hir_analysis_too_large_static = extern static is too large for the current architecture
+hir_analysis_too_large_static = extern static is too large for the target architecture
 
 hir_analysis_track_caller_on_main = `main` function is not allowed to be `#[track_caller]`
     .suggestion = remove this annotation

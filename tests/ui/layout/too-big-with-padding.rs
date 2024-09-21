@@ -10,7 +10,7 @@
 #[repr(C, align(2))]
 pub struct Example([u8; 0x7fffffff]);
 
-pub fn lib(_x: Example) {} //~ERROR: too big for the current architecture
+pub fn lib(_x: Example) {} //~ERROR: too big for the target architecture
 
 #[lang = "sized"]
 pub trait Sized {}
