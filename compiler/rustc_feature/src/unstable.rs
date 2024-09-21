@@ -204,7 +204,7 @@ declare_features! (
     /// Changes `impl Trait` to capture all lifetimes in scope.
     (unstable, lifetime_capture_rules_2024, "1.76.0", None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
-    (unstable, link_cfg, "1.14.0", None),
+    (internal, link_cfg, "1.14.0", None),
     /// Allows using `?Trait` trait bounds in more contexts.
     (internal, more_maybe_bounds, "1.82.0", None),
     /// Allows the `multiple_supertrait_upcastable` lint.
@@ -558,6 +558,8 @@ declare_features! (
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
     (unstable, patchable_function_entry, "1.81.0", Some(123115)),
+    /// Experimental features that make `Pin` more ergonomic.
+    (incomplete, pin_ergonomics, "CURRENT_RUSTC_VERSION", Some(130494)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
     /// Allows macro attributes on expressions, statements and non-inline modules.

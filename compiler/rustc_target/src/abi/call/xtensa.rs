@@ -68,7 +68,7 @@ where
     *arg_gprs_left -= needed_arg_gprs;
 
     if must_use_stack {
-        arg.make_indirect_byval(None);
+        arg.pass_by_stack_offset(None);
     } else if is_xtensa_aggregate(arg) {
         // Aggregates which are <= max_size will be passed in
         // registers if possible, so coerce to integers.

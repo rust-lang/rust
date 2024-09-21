@@ -1,4 +1,4 @@
-// rustfmt-version: One
+// rustfmt-style_edition: 2015
 // Tests that a function which is almost short enough, but not quite, gets
 // formatted correctly.
 

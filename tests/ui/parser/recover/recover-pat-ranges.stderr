@@ -1,0 +1,216 @@
+error: range pattern bounds cannot have parentheses
+  --> $DIR/recover-pat-ranges.rs:4:13
+   |
+LL |         0..=(1) => (),
+   |             ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         0..=(1) => (),
+LL +         0..=1 => (),
+   |
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/recover-pat-ranges.rs:6:9
+   |
+LL |         (-12)..=4 => (),
+   |         ^   ^
+   |
+help: remove these parentheses
+   |
+LL -         (-12)..=4 => (),
+LL +         -12..=4 => (),
+   |
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/recover-pat-ranges.rs:8:9
+   |
+LL |         (0)..=(-4) => (),
+   |         ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         (0)..=(-4) => (),
+LL +         0..=(-4) => (),
+   |
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/recover-pat-ranges.rs:8:15
+   |
+LL |         (0)..=(-4) => (),
+   |               ^  ^
+   |
+help: remove these parentheses
+   |
+LL -         (0)..=(-4) => (),
+LL +         (0)..=-4 => (),
+   |
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/recover-pat-ranges.rs:13:9
+   |
+LL |         (4).. => (),
+   |         ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         (4).. => (),
+LL +         4.. => (),
+   |
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/recover-pat-ranges.rs:15:9
+   |
+LL |         (-4 + 0).. => (),
+   |         ^      ^
+   |
+help: remove these parentheses
+   |
+LL -         (-4 + 0).. => (),
+LL +         -4 + 0.. => (),
+   |
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/recover-pat-ranges.rs:18:9
+   |
+LL |         (1 + 4)...1 * 2 => (),
+   |         ^     ^
+   |
+help: remove these parentheses
+   |
+LL -         (1 + 4)...1 * 2 => (),
+LL +         1 + 4...1 * 2 => (),
+   |
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-ranges.rs:11:12
+   |
+LL |         ..=1 + 2 => (),
+   |            ^^^^^ arbitrary expressions are not allowed in patterns
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = 1 + 2;
+LL ~     match -1 {
+LL |         0..=1 => (),
+...
+LL |
+LL ~         ..=VAL => (),
+   |
+help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
+   |
+LL |         ..=const { 1 + 2 } => (),
+   |            +++++++       +
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-ranges.rs:15:10
+   |
+LL |         (-4 + 0).. => (),
+   |          ^^^^^^ arbitrary expressions are not allowed in patterns
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = -4 + 0;
+LL ~     match -1 {
+LL |         0..=1 => (),
+...
+LL |
+LL ~         (VAL).. => (),
+   |
+help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
+   |
+LL |         (const { -4 + 0 }).. => (),
+   |          +++++++        +
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-ranges.rs:18:10
+   |
+LL |         (1 + 4)...1 * 2 => (),
+   |          ^^^^^ arbitrary expressions are not allowed in patterns
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = 1 + 4;
+LL ~     match -1 {
+LL |         0..=1 => (),
+...
+LL |
+LL ~         (VAL)...1 * 2 => (),
+   |
+help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
+   |
+LL |         (const { 1 + 4 })...1 * 2 => (),
+   |          +++++++       +
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-ranges.rs:18:19
+   |
+LL |         (1 + 4)...1 * 2 => (),
+   |                   ^^^^^ arbitrary expressions are not allowed in patterns
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = 1 * 2;
+LL ~     match -1 {
+LL |         0..=1 => (),
+...
+LL |
+LL ~         (1 + 4)...VAL => (),
+   |
+help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
+   |
+LL |         (1 + 4)...const { 1 * 2 } => (),
+   |                   +++++++       +
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-ranges.rs:24:9
+   |
+LL |         0.x()..="y".z() => (),
+   |         ^^^^^ arbitrary expressions are not allowed in patterns
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = 0.x();
+LL ~     match -1 {
+LL |         0..=1 => (),
+...
+LL |
+LL ~         VAL..="y".z() => (),
+   |
+help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
+   |
+LL |         const { 0.x() }..="y".z() => (),
+   |         +++++++       +
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-ranges.rs:24:17
+   |
+LL |         0.x()..="y".z() => (),
+   |                 ^^^^^^^ arbitrary expressions are not allowed in patterns
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +     const VAL: /* Type */ = "y".z();
+LL ~     match -1 {
+LL |         0..=1 => (),
+...
+LL |
+LL ~         0.x()..=VAL => (),
+   |
+help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
+   |
+LL |         0.x()..=const { "y".z() } => (),
+   |                 +++++++         +
+
+warning: `...` range patterns are deprecated
+  --> $DIR/recover-pat-ranges.rs:18:16
+   |
+LL |         (1 + 4)...1 * 2 => (),
+   |                ^^^ help: use `..=` for an inclusive range
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(ellipsis_inclusive_range_patterns)]` on by default
+
+error: aborting due to 13 previous errors; 1 warning emitted
+

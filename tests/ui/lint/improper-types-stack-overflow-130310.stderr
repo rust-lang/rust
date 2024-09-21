@@ -1,0 +1,11 @@
+warning: `extern` block uses type `*const A<()>`, which is not FFI-safe
+  --> $DIR/improper-types-stack-overflow-130310.rs:16:13
+   |
+LL |     fn f(a: *const A<()>);
+   |             ^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: type is infinitely recursive
+   = note: `#[warn(improper_ctypes)]` on by default
+
+warning: 1 warning emitted
+

@@ -3,6 +3,9 @@
 //@ no-prefer-dynamic
 //@ needs-threads
 
+// FIXME(static_mut_refs): this could use an atomic
+#![allow(static_mut_refs)]
+
 use std::thread;
 
 static mut HIT: usize = 0;

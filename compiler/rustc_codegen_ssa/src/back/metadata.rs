@@ -32,7 +32,7 @@ use rustc_target::spec::{ef_avr_arch, RelocModel, Target};
 /// <dd>The metadata can be found in the `.rustc` section of the shared library.</dd>
 /// </dl>
 #[derive(Debug)]
-pub struct DefaultMetadataLoader;
+pub(crate) struct DefaultMetadataLoader;
 
 static AIX_METADATA_SYMBOL_NAME: &'static str = "__aix_rust_metadata";
 
@@ -416,7 +416,7 @@ fn macho_is_arm64e(target: &Target) -> bool {
     target.llvm_target.starts_with("arm64e")
 }
 
-pub enum MetadataPosition {
+pub(crate) enum MetadataPosition {
     First,
     Last,
 }
@@ -452,7 +452,7 @@ pub enum MetadataPosition {
 /// * ELF - All other targets are similar to Windows in that there's a
 ///   `SHF_EXCLUDE` flag we can set on sections in an object file to get
 ///   automatically removed from the final output.
-pub fn create_wrapper_file(
+pub(crate) fn create_wrapper_file(
     sess: &Session,
     section_name: String,
     data: &[u8],

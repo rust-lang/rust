@@ -2,13 +2,14 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
-use rustc_errors::emitter::{stderr_destination, DynEmitter, Emitter, HumanEmitter, SilentEmitter};
+use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, SilentEmitter, stderr_destination};
 use rustc_errors::translation::Translate;
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
+    BytePos, Span,
     source_map::{FilePathMapping, SourceMap},
-    symbol, BytePos, Span,
+    symbol,
 };
 
 use crate::config::file_lines::LineRange;
@@ -394,7 +395,9 @@ mod tests {
         }
 
         fn get_ignore_list(config: &str) -> IgnoreList {
-            Config::from_toml(config, Path::new("")).unwrap().ignore()
+            Config::from_toml(config, Path::new("./rustfmt.toml"))
+                .unwrap()
+                .ignore()
         }
 
         #[test]

@@ -1,18 +1,15 @@
-// When a directory and a symlink simultaneously exist with the same name,
-// setting that name as the library search path should not cause rustc
-// to avoid looking in the symlink and cause an error. This test creates
-// a directory and a symlink named "other", and places the library in the symlink.
-// If it succeeds, the library was successfully found.
-// See https://github.com/rust-lang/rust/issues/12459
+// Avoid erroring on symlinks pointing to the same file that are present in the library search path.
+//
+// See <https://github.com/rust-lang/rust/issues/12459>.
 
 //@ ignore-cross-compile
 //@ needs-symlink
 
-use run_make_support::{dynamic_lib_name, rfs, rustc};
+use run_make_support::{cwd, dynamic_lib_name, path, rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").arg("-Cprefer-dynamic").run();
     rfs::create_dir_all("other");
-    rfs::create_symlink(dynamic_lib_name("foo"), "other");
-    rustc().input("bar.rs").library_search_path("other").run();
+    rfs::symlink_file(dynamic_lib_name("foo"), path("other").join(dynamic_lib_name("foo")));
+    rustc().input("bar.rs").library_search_path(cwd()).library_search_path("other").run();
 }

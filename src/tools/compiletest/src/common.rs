@@ -183,6 +183,9 @@ pub struct Config {
     /// The rustc executable.
     pub rustc_path: PathBuf,
 
+    /// The cargo executable.
+    pub cargo_path: Option<PathBuf>,
+
     /// The rustdoc executable.
     pub rustdoc_path: Option<PathBuf>,
 

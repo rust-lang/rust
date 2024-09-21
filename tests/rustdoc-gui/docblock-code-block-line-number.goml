@@ -39,7 +39,10 @@ define-function: (
             {
                 "color": |color|,
                 "margin": "0px",
-                "padding": "14px 8px",
+                "padding-top": "14px",
+                "padding-bottom": "14px",
+                "padding-left": "8px",
+                "padding-right": "2px",
                 "text-align": "right",
                 // There should not be a radius on the right of the line numbers.
                 "border-top-left-radius": "6px",
@@ -141,3 +144,61 @@ assert-css: (
     },
     ALL,
 )
+
+// Checking line numbers on scraped code examples.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+
+define-function: (
+    "check-padding",
+    [path, padding_bottom],
+    block {
+        assert-css: (|path| + " .src-line-numbers", {
+            "padding-top": "0px",
+            "padding-bottom": "0px",
+            "padding-left": "0px",
+            "padding-right": "0px",
+        })
+        assert-css: (|path| + " .src-line-numbers > pre", {
+            "padding-top": "14px",
+            "padding-bottom": |padding_bottom|,
+            "padding-left": "0px",
+            "padding-right": "0px",
+        })
+        assert-css: (|path| + " .src-line-numbers > pre > span", {
+            "padding-top": "0px",
+            "padding-bottom": "0px",
+            "padding-left": "8px",
+            "padding-right": "8px",
+        })
+    },
+)
+
+call-function: ("check-padding", {
+    "path": ".scraped-example .example-wrap",
+    "padding_bottom": "0px",
+})
+
+move-cursor-to: ".scraped-example .example-wrap .rust"
+wait-for: ".scraped-example .example-wrap .button-holder .expand"
+click: ".scraped-example .example-wrap .button-holder .expand"
+wait-for: ".scraped-example.expanded"
+
+call-function: ("check-padding", {
+    "path": ".scraped-example.expanded .example-wrap",
+    "padding_bottom": "14px",
+})
+
+// Now checking the line numbers in the source code page.
+click: ".src"
+assert-css: (".src-line-numbers", {
+    "padding-top": "20px",
+    "padding-bottom": "20px",
+    "padding-left": "4px",
+    "padding-right": "0px",
+})
+assert-css: (".src-line-numbers > a", {
+    "padding-top": "0px",
+    "padding-bottom": "0px",
+    "padding-left": "8px",
+    "padding-right": "8px",
+})

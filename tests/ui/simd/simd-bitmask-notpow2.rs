@@ -1,7 +1,6 @@
 //@run-pass
-// SEGFAULTS on LLVM 17. This should be merged into `simd-bitmask` once we require LLVM 18.
-//@ min-llvm-version: 18
 // FIXME: broken codegen on big-endian (https://github.com/rust-lang/rust/issues/127205)
+// This should be merged into `simd-bitmask` once that's fixed.
 //@ ignore-endian-big
 #![feature(repr_simd, intrinsics)]
 

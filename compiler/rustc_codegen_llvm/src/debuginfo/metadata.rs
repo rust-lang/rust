@@ -125,7 +125,9 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
 
     let (size, align) = cx.size_and_align_of(array_type);
 
-    let upper_bound = len.eval_target_usize(cx.tcx, ty::ParamEnv::reveal_all()) as c_longlong;
+    let upper_bound = len
+        .try_to_target_usize(cx.tcx)
+        .expect("expected monomorphic const in codegen") as c_longlong;
 
     let subrange =
         unsafe { Some(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)) };
@@ -216,8 +218,9 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     //        need to make sure that we don't break existing debuginfo consumers
                     //        by doing that (at least not without a warning period).
                     let layout_type = if ptr_type.is_box() {
-                        // The assertion at the start of this function ensures we have a ZST allocator.
-                        // We'll make debuginfo "skip" all ZST allocators, not just the default allocator.
+                        // The assertion at the start of this function ensures we have a ZST
+                        // allocator. We'll make debuginfo "skip" all ZST allocators, not just the
+                        // default allocator.
                         Ty::new_mut_ptr(cx.tcx, pointee_type)
                     } else {
                         ptr_type
@@ -280,8 +283,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
-    // It's possible to create a self-referential
-    // type in Rust by using 'impl trait':
+    // It's possible to create a self-referential type in Rust by using 'impl trait':
     //
     // fn foo() -> impl Copy { foo }
     //
@@ -573,14 +575,14 @@ pub(crate) fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFi
                     {
                         // If the compiler's working directory (which also is the DW_AT_comp_dir of
                         // the compilation unit) is a prefix of the path we are about to emit, then
-                        // only emit the part relative to the working directory.
-                        // Because of path remapping we sometimes see strange things here: `abs_path`
-                        // might actually look like a relative path
-                        // (e.g. `<crate-name-and-version>/src/lib.rs`), so if we emit it without
-                        // taking the working directory into account, downstream tooling will
-                        // interpret it as `<working-directory>/<crate-name-and-version>/src/lib.rs`,
-                        // which makes no sense. Usually in such cases the working directory will also
-                        // be remapped to `<crate-name-and-version>` or some other prefix of the path
+                        // only emit the part relative to the working directory. Because of path
+                        // remapping we sometimes see strange things here: `abs_path` might
+                        // actually look like a relative path (e.g.
+                        // `<crate-name-and-version>/src/lib.rs`), so if we emit it without taking
+                        // the working directory into account, downstream tooling will interpret it
+                        // as `<working-directory>/<crate-name-and-version>/src/lib.rs`, which
+                        // makes no sense. Usually in such cases the working directory will also be
+                        // remapped to `<crate-name-and-version>` or some other prefix of the path
                         // we are remapping, so we end up with
                         // `<crate-name-and-version>/<crate-name-and-version>/src/lib.rs`.
                         // By moving the working directory portion into the `directory` part of the

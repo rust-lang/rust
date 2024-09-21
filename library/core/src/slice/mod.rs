@@ -1010,6 +1010,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "slice_iter")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter::new(self)
     }

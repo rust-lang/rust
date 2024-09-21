@@ -287,7 +287,10 @@ impl DefKind {
 
     #[inline]
     pub fn is_fn_like(self) -> bool {
-        matches!(self, DefKind::Fn | DefKind::AssocFn | DefKind::Closure)
+        matches!(
+            self,
+            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::SyntheticCoroutineBody
+        )
     }
 
     /// Whether `query get_codegen_attrs` should be used with this definition.

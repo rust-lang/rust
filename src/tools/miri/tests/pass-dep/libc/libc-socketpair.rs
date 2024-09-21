@@ -1,6 +1,10 @@
 //@ignore-target: windows # No libc socketpair on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
+
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use std::thread;
 fn main() {
     test_socketpair();

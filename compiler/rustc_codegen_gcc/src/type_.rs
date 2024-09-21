@@ -5,7 +5,9 @@ use std::convert::TryInto;
 use gccjit::CType;
 use gccjit::{RValue, Struct, Type};
 use rustc_codegen_ssa::common::TypeKind;
-use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
+use rustc_codegen_ssa::traits::{
+    BaseTypeCodegenMethods, DerivedTypeCodegenMethods, TypeMembershipCodegenMethods,
+};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, ty};
 use rustc_target::abi::{AddressSpace, Align, Integer, Size};
@@ -121,7 +123,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> BaseTypeCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn type_i8(&self) -> Type<'gcc> {
         self.i8_type
     }
@@ -381,4 +383,4 @@ pub fn struct_fields<'gcc, 'tcx>(
     (result, packed)
 }
 
-impl<'gcc, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'gcc, 'tcx> {}
+impl<'gcc, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {}

@@ -36,13 +36,30 @@
         elt.querySelector(".rust").scrollTo(0, scrollOffset);
     }
 
-    function updateScrapedExample(example, isHidden) {
-        const locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
+    function createScrapeButton(parent, className, content) {
+        const button = document.createElement("button");
+        button.className = className;
+        button.innerText = content;
+        parent.insertBefore(button, parent.firstChild);
+        return button;
+    }
+
+    window.updateScrapedExample = (example, buttonHolder) => {
         let locIndex = 0;
         const highlights = Array.prototype.slice.call(example.querySelectorAll(".highlight"));
         const link = example.querySelector(".scraped-example-title a");
+        let expandButton = null;
 
+        if (!example.classList.contains("expanded")) {
+            expandButton = createScrapeButton(buttonHolder, "expand", "↕");
+        }
+        const isHidden = example.parentElement.classList.contains("more-scraped-examples");
+
+        const locs = example.locs;
         if (locs.length > 1) {
+            const next = createScrapeButton(buttonHolder, "next", "≻");
+            const prev = createScrapeButton(buttonHolder, "prev", "≺");
+
             // Toggle through list of examples in a given file
             const onChangeLoc = changeIndex => {
                 removeClass(highlights[locIndex], "focus");
@@ -57,22 +74,19 @@
                 link.innerHTML = title;
             };
 
-            example.querySelector(".prev")
-                .addEventListener("click", () => {
-                    onChangeLoc(() => {
-                        locIndex = (locIndex - 1 + locs.length) % locs.length;
-                    });
+            prev.addEventListener("click", () => {
+                onChangeLoc(() => {
+                    locIndex = (locIndex - 1 + locs.length) % locs.length;
                 });
+            });
 
-            example.querySelector(".next")
-                .addEventListener("click", () => {
-                    onChangeLoc(() => {
-                        locIndex = (locIndex + 1) % locs.length;
-                    });
+            next.addEventListener("click", () => {
+                onChangeLoc(() => {
+                    locIndex = (locIndex + 1) % locs.length;
                 });
+            });
         }
 
-        const expandButton = example.querySelector(".expand");
         if (expandButton) {
             expandButton.addEventListener("click", () => {
                 if (hasClass(example, "expanded")) {
@@ -83,13 +97,16 @@
                 }
             });
         }
+    };
 
+    function setupLoc(example, isHidden) {
+        example.locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
         // Start with the first example in view
-        scrollToLoc(example, locs[0][0], isHidden);
+        scrollToLoc(example, example.locs[0][0], isHidden);
     }
 
     const firstExamples = document.querySelectorAll(".scraped-example-list > .scraped-example");
-    onEachLazy(firstExamples, el => updateScrapedExample(el, false));
+    onEachLazy(firstExamples, el => setupLoc(el, false));
     onEachLazy(document.querySelectorAll(".more-examples-toggle"), toggle => {
         // Allow users to click the left border of the <details> section to close it,
         // since the section can be large and finding the [+] button is annoying.
@@ -102,11 +119,11 @@
         const moreExamples = toggle.querySelectorAll(".scraped-example");
         toggle.querySelector("summary").addEventListener("click", () => {
             // Wrapping in setTimeout ensures the update happens after the elements are actually
-            // visible. This is necessary since updateScrapedExample calls scrollToLoc which
+            // visible. This is necessary since setupLoc calls scrollToLoc which
             // depends on offsetHeight, a property that requires an element to be visible to
             // compute correctly.
             setTimeout(() => {
-                onEachLazy(moreExamples, el => updateScrapedExample(el, true));
+                onEachLazy(moreExamples, el => setupLoc(el, true));
             });
         }, {once: true});
     });

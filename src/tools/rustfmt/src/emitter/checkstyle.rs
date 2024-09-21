@@ -1,6 +1,6 @@
 use self::xml::XmlEscaped;
 use super::*;
-use crate::rustfmt_diff::{make_diff, DiffLine, Mismatch};
+use crate::rustfmt_diff::{DiffLine, Mismatch, make_diff};
 
 mod xml;
 

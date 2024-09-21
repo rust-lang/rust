@@ -357,16 +357,6 @@ impl<'tcx> Inliner<'tcx> {
         }
 
         if callee_def_id.is_local() {
-            // Avoid a cycle here by only using `instance_mir` only if we have
-            // a lower `DefPathHash` than the callee. This ensures that the callee will
-            // not inline us. This trick even works with incremental compilation,
-            // since `DefPathHash` is stable.
-            if self.tcx.def_path_hash(caller_def_id).local_hash()
-                < self.tcx.def_path_hash(callee_def_id).local_hash()
-            {
-                return Ok(());
-            }
-
             // If we know for sure that the function we're calling will itself try to
             // call us, then we avoid inlining that function.
             if self.tcx.mir_callgraph_reachable((callee, caller_def_id.expect_local())) {

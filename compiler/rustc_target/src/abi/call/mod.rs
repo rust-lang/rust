@@ -64,7 +64,7 @@ pub enum PassMode {
     /// (which ensures that padding is preserved and that we do not rely on LLVM's struct layout),
     /// and will use the alignment specified in `attrs.pointee_align` (if `Some`) or the type's
     /// alignment (if `None`). This means that the alignment will not always
-    /// match the Rust type's alignment; see documentation of `make_indirect_byval` for more info.
+    /// match the Rust type's alignment; see documentation of `pass_by_stack_offset` for more info.
     ///
     /// `on_stack` cannot be true for unsized arguments, i.e., when `meta_attrs` is `Some`.
     Indirect { attrs: ArgAttributes, meta_attrs: Option<ArgAttributes>, on_stack: bool },
@@ -681,7 +681,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     /// either in the caller (if the type's alignment is lower than the byval alignment)
     /// or in the callee (if the type's alignment is higher than the byval alignment),
     /// to ensure that Rust code never sees an underaligned pointer.
-    pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
+    pub fn pass_by_stack_offset(&mut self, byval_align: Option<Align>) {
         assert!(!self.layout.is_unsized(), "used byval ABI for unsized layout");
         self.make_indirect();
         match self.mode {
@@ -879,8 +879,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     {
         if abi == spec::abi::Abi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
-                // FIXME(pcwalton): This probably should use the x86 `byval` ABI...
-                arg.make_indirect_byval(None);
+                arg.pass_by_stack_offset(None);
             }
             return Ok(());
         }

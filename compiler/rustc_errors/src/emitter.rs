@@ -498,7 +498,7 @@ impl Emitter for HumanEmitter {
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
-        let mut suggestions = diag.suggestions.unwrap_or(vec![]);
+        let mut suggestions = diag.suggestions.unwrap_tag();
         self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(

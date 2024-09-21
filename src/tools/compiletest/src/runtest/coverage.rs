@@ -18,7 +18,7 @@ impl<'test> TestCx<'test> {
             .unwrap_or_else(|| self.fatal("missing --coverage-dump"))
     }
 
-    pub(crate) fn run_coverage_map_test(&self) {
+    pub(super) fn run_coverage_map_test(&self) {
         let coverage_dump_path = self.coverage_dump_path();
 
         let (proc_res, llvm_ir_path) = self.compile_test_and_save_ir();
@@ -50,7 +50,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    pub(crate) fn run_coverage_run_test(&self) {
+    pub(super) fn run_coverage_run_test(&self) {
         let should_run = self.run_if_enabled();
         let proc_res = self.compile_test(should_run, Emit::None);
 

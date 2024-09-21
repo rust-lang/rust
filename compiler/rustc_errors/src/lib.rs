@@ -126,6 +126,41 @@ impl SuggestionStyle {
     }
 }
 
+/// Represents the help messages seen on a diagnostic.
+#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+pub enum Suggestions {
+    /// Indicates that new suggestions can be added or removed from this diagnostic.
+    ///
+    /// `DiagInner`'s new_* methods initialize the `suggestions` field with
+    /// this variant. Also, this is the default variant for `Suggestions`.
+    Enabled(Vec<CodeSuggestion>),
+    /// Indicates that suggestions cannot be added or removed from this diagnostic.
+    ///
+    /// Gets toggled when `.seal_suggestions()` is called on the `DiagInner`.
+    Sealed(Box<[CodeSuggestion]>),
+    /// Indicates that no suggestion is available for this diagnostic.
+    ///
+    /// Gets toggled when `.disable_suggestions()` is called on the `DiagInner`.
+    Disabled,
+}
+
+impl Suggestions {
+    /// Returns the underlying list of suggestions.
+    pub fn unwrap_tag(self) -> Vec<CodeSuggestion> {
+        match self {
+            Suggestions::Enabled(suggestions) => suggestions,
+            Suggestions::Sealed(suggestions) => suggestions.into_vec(),
+            Suggestions::Disabled => Vec::new(),
+        }
+    }
+}
+
+impl Default for Suggestions {
+    fn default() -> Self {
+        Self::Enabled(vec![])
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct CodeSuggestion {
     /// Each substitute can have multiple variants due to multiple
@@ -536,6 +571,8 @@ pub enum StashKey {
     /// Query cycle detected, stashing in favor of a better error.
     Cycle,
     UndeterminedMacroResolution,
+    /// Used by `Parser::maybe_recover_trailing_expr`
+    ExprInPat,
 }
 
 fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {

@@ -292,7 +292,6 @@ where
 
 pub(crate) struct ScrapedInfo<'a> {
     pub(crate) offset: usize,
-    pub(crate) needs_prev_next_buttons: bool,
     pub(crate) name: &'a str,
     pub(crate) url: &'a str,
     pub(crate) title: &'a str,

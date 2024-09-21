@@ -11,6 +11,7 @@
 #![feature(negative_impls)]
 #![feature(rustdoc_internals)]
 #![feature(strict_provenance)]
+#![feature(trait_alias)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
@@ -128,7 +129,7 @@ impl CompiledModule {
     }
 }
 
-pub struct CachedModuleCodegen {
+pub(crate) struct CachedModuleCodegen {
     pub name: String,
     pub source: WorkProduct,
 }

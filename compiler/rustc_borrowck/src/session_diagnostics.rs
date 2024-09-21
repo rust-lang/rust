@@ -415,7 +415,7 @@ pub(crate) enum CaptureReasonSuggest<'tcx> {
         span: Span,
     },
     #[suggestion(
-        borrowck_suggest_create_freash_reborrow,
+        borrowck_suggest_create_fresh_reborrow,
         applicability = "maybe-incorrect",
         code = ".as_mut()",
         style = "verbose"

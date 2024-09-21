@@ -1378,7 +1378,8 @@ pub struct LetStmt<'hir> {
     pub hir_id: HirId,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
-    /// desugaring. Otherwise will be `Normal`.
+    /// desugaring, or `AssignDesugar` if it is the result of a complex
+    /// assignment desugaring. Otherwise will be `Normal`.
     pub source: LocalSource,
 }
 
@@ -1726,7 +1727,7 @@ impl Expr<'_> {
             ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
             ExprKind::Unary(..) => ExprPrecedence::Unary,
             ExprKind::Lit(_) => ExprPrecedence::Lit,
-            ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
+            ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
             ExprKind::If(..) => ExprPrecedence::If,
             ExprKind::Let(..) => ExprPrecedence::Let,
@@ -1744,11 +1745,12 @@ impl Expr<'_> {
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
             ExprKind::Become(..) => ExprPrecedence::Become,
-            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
-            ExprKind::OffsetOf(..) => ExprPrecedence::OffsetOf,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
+            ExprKind::Type(..) | ExprKind::InlineAsm(..) | ExprKind::OffsetOf(..) => {
+                ExprPrecedence::Mac
+            }
             ExprKind::Err(_) => ExprPrecedence::Err,
         }
     }

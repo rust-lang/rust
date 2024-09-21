@@ -330,8 +330,12 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Float(FloatTy::F128) => "C4f128",
             ty::Never => "z",
 
-            // Placeholders (should be demangled as `_`).
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => "p",
+            // Should only be encountered with polymorphization,
+            // or within the identity-substituted impl header of an
+            // item nested within an impl item.
+            ty::Param(_) => "p",
+
+            ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
 
             _ => "",
         };
@@ -416,12 +420,18 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
             | ty::FnDef(def_id, args)
-            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => {
                 self.print_def_path(def_id, args)?;
             }
+
+            // We may still encounter projections here due to the printing
+            // logic sometimes passing identity-substituted impl headers.
+            ty::Alias(ty::Projection, ty::AliasTy { def_id, args, .. }) => {
+                self.print_def_path(def_id, args)?;
+            }
+
             ty::Foreign(def_id) => {
                 self.print_def_path(def_id, &[])?;
             }
@@ -467,8 +477,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 r.print(self)?;
             }
 
-            ty::Alias(ty::Inherent, _) => bug!("symbol_names: unexpected inherent projection"),
-            ty::Alias(ty::Weak, _) => bug!("symbol_names: unexpected weak projection"),
+            ty::Alias(..) => bug!("symbol_names: unexpected alias"),
             ty::CoroutineWitness(..) => bug!("symbol_names: unexpected `CoroutineWitness`"),
         }
 
@@ -550,21 +559,26 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         let (ct_ty, valtree) = match ct.kind() {
             ty::ConstKind::Value(ty, val) => (ty, val),
 
-            // Placeholders (should be demangled as `_`).
-            // NOTE(eddyb) despite `Unevaluated` having a `DefId` (and therefore
-            // a path), even for it we still need to encode a placeholder, as
-            // the path could refer back to e.g. an `impl` using the constant.
-            ty::ConstKind::Unevaluated(_)
-            | ty::ConstKind::Expr(_)
-            | ty::ConstKind::Param(_)
-            | ty::ConstKind::Infer(_)
-            | ty::ConstKind::Bound(..)
-            | ty::ConstKind::Placeholder(_)
-            | ty::ConstKind::Error(_) => {
+            // Should only be encountered with polymorphization,
+            // or within the identity-substituted impl header of an
+            // item nested within an impl item.
+            ty::ConstKind::Param(_) => {
                 // Never cached (single-character).
                 self.push("p");
                 return Ok(());
             }
+
+            // We may still encounter unevaluated consts due to the printing
+            // logic sometimes passing identity-substituted impl headers.
+            ty::Unevaluated(ty::UnevaluatedConst { def, args, .. }) => {
+                return self.print_def_path(def, args);
+            }
+
+            ty::ConstKind::Expr(_)
+            | ty::ConstKind::Infer(_)
+            | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(_)
+            | ty::ConstKind::Error(_) => bug!(),
         };
 
         if let Some(&i) = self.consts.get(&ct) {

@@ -1733,6 +1733,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let is_rustdoc = suite.ends_with("rustdoc-ui") || suite.ends_with("rustdoc-js");
 
+        if mode == "run-make" {
+            let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
+            cmd.arg("--cargo-path").arg(cargo);
+        }
+
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc"
             || mode == "run-make"

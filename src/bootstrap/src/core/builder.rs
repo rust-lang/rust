@@ -945,6 +945,7 @@ impl<'a> Builder<'a> {
                 doc::Releases,
                 doc::RunMakeSupport,
                 doc::BuildHelper,
+                doc::Compiletest,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
