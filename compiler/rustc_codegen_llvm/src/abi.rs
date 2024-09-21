@@ -422,6 +422,9 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         if let Conv::RiscvInterrupt { kind } = self.conv {
             func_attrs.push(llvm::CreateAttrStringValue(cx.llcx, "interrupt", kind.as_str()));
         }
+        if let Conv::CCmseNonSecureEntry = self.conv {
+            func_attrs.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"))
+        }
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &{ func_attrs });
 
         let mut i = 0;
@@ -659,9 +662,11 @@ impl<'tcx> AbiBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 impl From<Conv> for llvm::CallConv {
     fn from(conv: Conv) -> Self {
         match conv {
-            Conv::C | Conv::Rust | Conv::CCmseNonSecureCall | Conv::RiscvInterrupt { .. } => {
-                llvm::CCallConv
-            }
+            Conv::C
+            | Conv::Rust
+            | Conv::CCmseNonSecureCall
+            | Conv::CCmseNonSecureEntry
+            | Conv::RiscvInterrupt { .. } => llvm::CCallConv,
             Conv::Cold => llvm::ColdCallConv,
             Conv::PreserveMost => llvm::PreserveMost,
             Conv::PreserveAll => llvm::PreserveAll,
