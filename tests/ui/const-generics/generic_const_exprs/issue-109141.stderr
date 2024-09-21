@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `HashesEntryLEN` in this scope
-  --> $DIR/issue-109141.rs:11:32
+  --> $DIR/issue-109141.rs:10:32
    |
 LL | struct EntriesBuffer(Box<[[u8; HashesEntryLEN]; 5]>);
    |                                ^^^^^^^^^^^^^^ not found in this scope
@@ -9,33 +9,6 @@ help: you might be missing a const parameter
 LL | struct EntriesBuffer<const HashesEntryLEN: /* Type */>(Box<[[u8; HashesEntryLEN]; 5]>);
    |                     ++++++++++++++++++++++++++++++++++
 
-error[E0596]: cannot borrow `*self.0` as mutable, as it is behind a `&` reference
-  --> $DIR/issue-109141.rs:6:9
-   |
-LL |         self.0.iter_mut()
-   |         ^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
-   |
-help: consider changing this to be a mutable reference
-   |
-LL |     fn a(&mut self) -> impl Iterator {
-   |          ~~~~~~~~~
+error: aborting due to 1 previous error
 
-error[E0700]: hidden type for `impl Iterator` captures lifetime that does not appear in bounds
-  --> $DIR/issue-109141.rs:6:9
-   |
-LL |     fn a(&self) -> impl Iterator {
-   |          -----     ------------- opaque type defined here
-   |          |
-   |          hidden type `std::slice::IterMut<'_, [u8; {const error}]>` captures the anonymous lifetime defined here
-LL |         self.0.iter_mut()
-   |         ^^^^^^^^^^^^^^^^^
-   |
-help: add a `use<...>` bound to explicitly capture `'_`
-   |
-LL |     fn a(&self) -> impl Iterator + use<'_> {
-   |                                  +++++++++
-
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0425, E0596, E0700.
-For more information about an error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0425`.
