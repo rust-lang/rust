@@ -22,7 +22,8 @@ pub unsafe fn _mm_add_ss(a: __m128, b: __m128) -> __m128 {
     simd_insert!(a, 0, _mm_cvtss_f32(a) + _mm_cvtss_f32(b))
 }
 
-/// Adds __m128 vectors.
+/// Adds packed single-precision (32-bit) floating-point elements in `a` and
+/// `b`.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_add_ps)
 #[inline]
@@ -45,7 +46,8 @@ pub unsafe fn _mm_sub_ss(a: __m128, b: __m128) -> __m128 {
     simd_insert!(a, 0, _mm_cvtss_f32(a) - _mm_cvtss_f32(b))
 }
 
-/// Subtracts __m128 vectors.
+/// Subtracts packed single-precision (32-bit) floating-point elements in `a` and
+/// `b`.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sub_ps)
 #[inline]
@@ -68,7 +70,8 @@ pub unsafe fn _mm_mul_ss(a: __m128, b: __m128) -> __m128 {
     simd_insert!(a, 0, _mm_cvtss_f32(a) * _mm_cvtss_f32(b))
 }
 
-/// Multiplies __m128 vectors.
+/// Multiplies packed single-precision (32-bit) floating-point elements in `a` and
+/// `b`.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mul_ps)
 #[inline]
@@ -91,7 +94,8 @@ pub unsafe fn _mm_div_ss(a: __m128, b: __m128) -> __m128 {
     simd_insert!(a, 0, _mm_cvtss_f32(a) / _mm_cvtss_f32(b))
 }
 
-/// Divides __m128 vectors.
+/// Divides packed single-precision (32-bit) floating-point elements in `a` and
+/// `b`.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_div_ps)
 #[inline]
