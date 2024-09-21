@@ -1,5 +1,6 @@
 C
 C-cmse-nonsecure-call
+C-cmse-nonsecure-entry
 C-unwind
 Rust
 aapcs
