@@ -19,6 +19,7 @@ use rustc_session::{RustcVersion, Session};
 use rustc_span::Span;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{Symbol, kw, sym};
+use smallvec::{SmallVec, smallvec};
 
 use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -66,7 +67,7 @@ pub enum OptimizeAttr {
 ///
 /// - `#[stable]`
 /// - `#[unstable]`
-#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
@@ -84,10 +85,14 @@ impl Stability {
     pub fn stable_since(&self) -> Option<StableSince> {
         self.level.stable_since()
     }
+
+    pub fn unstable_features(&self) -> impl Iterator<Item = Symbol> + use<'_> {
+        self.level.unstable_features()
+    }
 }
 
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
-#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct ConstStability {
     pub level: StabilityLevel,
@@ -103,47 +108,28 @@ impl ConstStability {
     pub fn is_const_stable(&self) -> bool {
         self.level.is_stable()
     }
+
+    pub fn unstable_features(&self) -> impl Iterator<Item = Symbol> + use<'_> {
+        self.level.unstable_features()
+    }
 }
 
 /// Represents the `#[rustc_default_body_unstable]` attribute.
-#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct DefaultBodyStability {
     pub level: StabilityLevel,
 }
 
 /// The available stability levels.
-#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(Encodable, Decodable, PartialEq, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub enum StabilityLevel {
     /// `#[unstable]`
     Unstable {
-        feature: Symbol,
-        /// Reason for the current stability level.
-        reason: UnstableReason,
-        /// Relevant `rust-lang/rust` issue.
-        issue: Option<NonZero<u32>>,
+        /// The information unique to each `#[unstable]` attribute
+        unstables: SmallVec<[Unstability; 1]>,
         is_soft: bool,
-        /// If part of a feature is stabilized and a new feature is added for the remaining parts,
-        /// then the `implied_by` attribute is used to indicate which now-stable feature previously
-        /// contained an item.
-        ///
-        /// ```pseudo-Rust
-        /// #[unstable(feature = "foo", issue = "...")]
-        /// fn foo() {}
-        /// #[unstable(feature = "foo", issue = "...")]
-        /// fn foobar() {}
-        /// ```
-        ///
-        /// ...becomes...
-        ///
-        /// ```pseudo-Rust
-        /// #[stable(feature = "foo", since = "1.XX.X")]
-        /// fn foo() {}
-        /// #[unstable(feature = "foobar", issue = "...", implied_by = "foo")]
-        /// fn foobar() {}
-        /// ```
-        implied_by: Option<Symbol>,
     },
     /// `#[stable]`
     Stable {
@@ -153,6 +139,37 @@ pub enum StabilityLevel {
         /// modules?
         allowed_through_unstable_modules: bool,
     },
+}
+
+/// An instance of an `#[unstable]`, `#[rustc_const_unstable]`, or similar attribute
+#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub struct Unstability {
+    pub feature: Symbol,
+    /// Reason for the current stability level.
+    pub reason: UnstableReason,
+    /// Relevant `rust-lang/rust` issue.
+    pub issue: Option<NonZero<u32>>,
+    /// If part of a feature is stabilized and a new feature is added for the remaining parts,
+    /// then the `implied_by` attribute is used to indicate which now-stable feature previously
+    /// contained an item.
+    ///
+    /// ```pseudo-Rust
+    /// #[unstable(feature = "foo", issue = "...")]
+    /// fn foo() {}
+    /// #[unstable(feature = "foo", issue = "...")]
+    /// fn foobar() {}
+    /// ```
+    ///
+    /// ...becomes...
+    ///
+    /// ```pseudo-Rust
+    /// #[stable(feature = "foo", since = "1.XX.X")]
+    /// fn foo() {}
+    /// #[unstable(feature = "foobar", issue = "...", implied_by = "foo")]
+    /// fn foobar() {}
+    /// ```
+    pub implied_by: Option<Symbol>,
 }
 
 /// Rust release in which a feature is stabilized.
@@ -170,14 +187,29 @@ impl StabilityLevel {
     pub fn is_unstable(&self) -> bool {
         matches!(self, StabilityLevel::Unstable { .. })
     }
+
     pub fn is_stable(&self) -> bool {
         matches!(self, StabilityLevel::Stable { .. })
     }
+
     pub fn stable_since(&self) -> Option<StableSince> {
         match *self {
             StabilityLevel::Stable { since, .. } => Some(since),
             StabilityLevel::Unstable { .. } => None,
         }
+    }
+
+    pub fn unstable_features(&self) -> impl Iterator<Item = Symbol> + use<'_> {
+        let features = if let StabilityLevel::Unstable { unstables, .. } = self {
+            Some(unstables.iter().map(|u| u.feature))
+        } else {
+            None
+        };
+        features.into_iter().flatten()
+    }
+
+    pub fn has_unstable_feature(&self, feature: Symbol) -> bool {
+        self.unstable_features().any(|f| f == feature)
     }
 }
 
@@ -207,26 +239,41 @@ impl UnstableReason {
     }
 }
 
+/// The spans of each individual parsed stability attribute for an item.
+/// This is reported separately from the overall stability level for more precise diagnostics.
+pub struct StabilitySpans(SmallVec<[(StabilityLevel, Span); 1]>);
+
+impl StabilitySpans {
+    pub fn spans(&self) -> Vec<Span> {
+        self.0.iter().map(|&(_, span)| span).collect()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(StabilityLevel, Span)> + use<'_> {
+        self.0.iter()
+    }
+}
+
 /// Collects stability info from `stable`/`unstable`/`rustc_allowed_through_unstable_modules`
 /// attributes in `attrs`. Returns `None` if no stability attributes are found.
 pub fn find_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
-) -> Option<(Stability, Span)> {
-    let mut level: Option<(StabilityLevel, Span)> = None;
+) -> Option<(Stability, StabilitySpans)> {
+    let mut level: Option<StabilityLevel> = None;
+    let mut stab_spans = StabilitySpans(smallvec![]);
     let mut allowed_through_unstable_modules = false;
 
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_allowed_through_unstable_modules => allowed_through_unstable_modules = true,
             sym::unstable => {
-                if try_add_unstability(sess, attr, &mut level).is_err() {
+                if try_add_unstability(sess, attr, &mut level, &mut stab_spans).is_err() {
                     break;
                 }
             }
             sym::stable => {
-                if try_add_stability(sess, attr, &mut level).is_err() {
+                if try_add_stability(sess, attr, &mut level, &mut stab_spans).is_err() {
                     break;
                 }
             }
@@ -236,8 +283,8 @@ pub fn find_stability(
 
     if allowed_through_unstable_modules {
         match &mut level {
-            Some((StabilityLevel::Stable { allowed_through_unstable_modules, .. }, _)) => {
-                *allowed_through_unstable_modules = true
+            Some(StabilityLevel::Stable { allowed_through_unstable_modules, .. }) => {
+                *allowed_through_unstable_modules = true;
             }
             _ => {
                 sess.dcx()
@@ -246,8 +293,7 @@ pub fn find_stability(
         }
     }
 
-    let (level, stab_sp) = level?;
-    Some((Stability { level }, stab_sp))
+    Some((Stability { level: level? }, stab_spans))
 }
 
 /// Collects stability info from `rustc_const_stable`/`rustc_const_unstable`/`rustc_promotable`
@@ -256,20 +302,21 @@ pub fn find_const_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
-) -> Option<(ConstStability, Span)> {
-    let mut level: Option<(StabilityLevel, Span)> = None;
+) -> Option<(ConstStability, StabilitySpans)> {
+    let mut level: Option<StabilityLevel> = None;
+    let mut stab_spans = StabilitySpans(smallvec![]);
     let mut promotable = false;
 
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_promotable => promotable = true,
             sym::rustc_const_unstable => {
-                if try_add_unstability(sess, attr, &mut level).is_err() {
+                if try_add_unstability(sess, attr, &mut level, &mut stab_spans).is_err() {
                     break;
                 }
             }
             sym::rustc_const_stable => {
-                if try_add_stability(sess, attr, &mut level).is_err() {
+                if try_add_stability(sess, attr, &mut level, &mut stab_spans).is_err() {
                     break;
                 }
             }
@@ -278,8 +325,8 @@ pub fn find_const_stability(
     }
 
     // Merge the const-unstable info into the stability info
-    if let Some((level, stab_sp)) = level {
-        Some((ConstStability { level, promotable }, stab_sp))
+    if let Some(level) = level {
+        Some((ConstStability { level, promotable }, stab_spans))
     } else {
         if promotable {
             sess.dcx().emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp });
@@ -293,19 +340,19 @@ pub fn find_const_stability(
 pub fn find_body_stability(
     sess: &Session,
     attrs: &[Attribute],
-) -> Option<(DefaultBodyStability, Span)> {
-    let mut level: Option<(StabilityLevel, Span)> = None;
+) -> Option<(DefaultBodyStability, StabilitySpans)> {
+    let mut level: Option<StabilityLevel> = None;
+    let mut stab_spans = StabilitySpans(smallvec![]);
 
     for attr in attrs {
         if attr.has_name(sym::rustc_default_body_unstable) {
-            if try_add_unstability(sess, attr, &mut level).is_err() {
+            if try_add_unstability(sess, attr, &mut level, &mut stab_spans).is_err() {
                 break;
             }
         }
     }
 
-    let (level, stab_sp) = level?;
-    Some((DefaultBodyStability { level }, stab_sp))
+    Some((DefaultBodyStability { level: level? }, stab_spans))
 }
 
 /// Collects stability info from one `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
@@ -313,15 +360,46 @@ pub fn find_body_stability(
 fn try_add_unstability(
     sess: &Session,
     attr: &Attribute,
-    level: &mut Option<(StabilityLevel, Span)>,
+    level: &mut Option<StabilityLevel>,
+    stab_spans: &mut StabilitySpans,
 ) -> Result<(), ErrorGuaranteed> {
-    if level.is_some() {
-        return Err(sess
-            .dcx()
-            .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span }));
-    }
-    if let Some(new_level) = parse_unstability(sess, attr) {
-        *level = Some((new_level, attr.span));
+    use StabilityLevel::*;
+
+    match level {
+        // adding #[unstable] to an item with #[stable] is not permitted
+        Some(Stable { .. }) => {
+            return Err(sess
+                .dcx()
+                .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span }));
+        }
+        // if other unstable attributes have been found, attempt to merge them
+        Some(Unstable { unstables, is_soft })
+            if let Some(Unstable { unstables: new_unstable, is_soft: new_soft }) =
+                parse_unstability(sess, attr) =>
+        {
+            // sanity check: is this the only unstable attr of its kind for its feature?
+            // FIXME(dianne): should this have a new error associated with it or is "multiple
+            // stability levels" clear enough, given an update to E0544.md?
+            // should MultipleStabilityLevels have more fields for diagnostics?
+            if unstables.iter().any(|u| new_unstable.iter().any(|v| u.feature == v.feature)) {
+                return Err(sess
+                    .dcx()
+                    .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span }));
+            }
+            unstables.extend(new_unstable.clone());
+            // Make the unstability soft if any unstable attributes are marked 'soft'; if an
+            // unstable item is allowed in stable rust, another attribute shouldn't break that.
+            // FIXME(dianne): should there be a check that all unstables are soft if any are?
+            *is_soft |= new_soft;
+            stab_spans.0.push((Unstable { unstables: new_unstable, is_soft: new_soft }, attr.span));
+        }
+        // if this is the first unstability of its kind on an item, collect it
+        None if let Some(new_level) = parse_unstability(sess, attr) => {
+            *level = Some(new_level.clone());
+            stab_spans.0.push((new_level, attr.span));
+        }
+        // if there was an error in `parse_unstability`, it's already been emitted; do nothing
+        _ => {}
     }
     Ok(())
 }
@@ -331,15 +409,18 @@ fn try_add_unstability(
 fn try_add_stability(
     sess: &Session,
     attr: &Attribute,
-    level: &mut Option<(StabilityLevel, Span)>,
+    level: &mut Option<StabilityLevel>,
+    stab_spans: &mut StabilitySpans,
 ) -> Result<(), ErrorGuaranteed> {
+    // at most one #[stable] attribute is permitted, and not when #[unstable] is present
     if level.is_some() {
         return Err(sess
             .dcx()
             .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span }));
     }
     if let Some(new_level) = parse_stability(sess, attr) {
-        *level = Some((new_level, attr.span));
+        *level = Some(new_level.clone());
+        stab_spans.0.push((new_level, attr.span));
     }
     Ok(())
 }
@@ -504,14 +585,13 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<StabilityLevel>
 
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
-            let level = StabilityLevel::Unstable {
+            let unstability = Unstability {
                 feature,
                 reason: UnstableReason::from_opt_reason(reason),
                 issue: issue_num,
-                is_soft,
                 implied_by,
             };
-            Some(level)
+            Some(StabilityLevel::Unstable { unstables: smallvec![unstability], is_soft })
         }
         (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
     }

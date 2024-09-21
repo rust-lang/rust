@@ -71,8 +71,6 @@ pub mod intrinsicck;
 mod region;
 pub mod wfcheck;
 
-use std::num::NonZero;
-
 pub use check::{check_abi, check_abi_fn_ptr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
@@ -89,7 +87,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -295,13 +293,12 @@ fn default_body_is_unstable(
     tcx: TyCtxt<'_>,
     impl_span: Span,
     item_did: DefId,
-    feature: Symbol,
-    reason: Option<Symbol>,
-    issue: Option<NonZero<u32>>,
+    unstability: rustc_attr::Unstability,
 ) {
+    let rustc_attr::Unstability { feature, reason, issue, .. } = unstability;
     let missing_item_name = tcx.associated_item(item_did).name;
     let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
-    match reason {
+    match reason.to_opt_reason() {
         Some(r) => {
             some_note = true;
             reason_str = r.to_string();

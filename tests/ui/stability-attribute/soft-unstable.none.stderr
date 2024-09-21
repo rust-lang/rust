@@ -1,0 +1,83 @@
+error: use of unstable library feature 'a'
+  --> $DIR/soft-unstable.rs:11:5
+   |
+LL |     soft_unstable::mac!();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = note: `#[deny(soft_unstable)]` on by default
+
+error: use of unstable library feature 'b': reason b
+  --> $DIR/soft-unstable.rs:11:5
+   |
+LL |     soft_unstable::mac!();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+error: use of unstable library feature 'c'
+  --> $DIR/soft-unstable.rs:16:5
+   |
+LL |     soft_unstable::something();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+error: use of unstable library feature 'd': reason d
+  --> $DIR/soft-unstable.rs:16:5
+   |
+LL |     soft_unstable::something();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+error: aborting due to 4 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: use of unstable library feature 'a'
+  --> $DIR/soft-unstable.rs:11:5
+   |
+LL |     soft_unstable::mac!();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = note: `#[deny(soft_unstable)]` on by default
+
+Future breakage diagnostic:
+error: use of unstable library feature 'b': reason b
+  --> $DIR/soft-unstable.rs:11:5
+   |
+LL |     soft_unstable::mac!();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = note: `#[deny(soft_unstable)]` on by default
+
+Future breakage diagnostic:
+error: use of unstable library feature 'c'
+  --> $DIR/soft-unstable.rs:16:5
+   |
+LL |     soft_unstable::something();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = note: `#[deny(soft_unstable)]` on by default
+
+Future breakage diagnostic:
+error: use of unstable library feature 'd': reason d
+  --> $DIR/soft-unstable.rs:16:5
+   |
+LL |     soft_unstable::something();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = note: `#[deny(soft_unstable)]` on by default
+

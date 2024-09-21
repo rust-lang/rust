@@ -296,13 +296,13 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 
 /// A call to an `#[unstable]` const fn or `#[rustc_const_unstable]` function.
 ///
-/// Contains the name of the feature that would allow the use of this function.
+/// Contains the names of the features that would allow the use of this function.
 #[derive(Debug)]
-pub(crate) struct FnCallUnstable(pub DefId, pub Option<Symbol>);
+pub(crate) struct FnCallUnstable(pub DefId, pub Vec<Symbol>);
 
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        let FnCallUnstable(def_id, feature) = *self;
+        let FnCallUnstable(def_id, features) = self;
 
         let mut err = ccx
             .dcx()
@@ -312,10 +312,11 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
         #[allow(rustc::untranslatable_diagnostic)]
         if ccx.is_const_stable_const_fn() {
             err.help(fluent_generated::const_eval_const_stable);
-        } else if ccx.tcx.sess.is_nightly_build() {
-            if let Some(feature) = feature {
-                err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));
-            }
+        } else if ccx.tcx.sess.is_nightly_build() && !features.is_empty() {
+            err.help(format!(
+                "add `#![feature({})]` to the crate attributes to enable",
+                features.iter().map(Symbol::as_str).intersperse(", ").collect::<String>(),
+            ));
         }
 
         err
