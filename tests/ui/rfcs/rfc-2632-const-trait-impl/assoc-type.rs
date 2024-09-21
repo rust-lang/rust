@@ -39,7 +39,6 @@ impl const Foo for NonConstAdd {
 #[const_trait]
 trait Baz {
     type Qux: Add;
-    //~^ ERROR the trait bound
 }
 
 impl const Baz for NonConstAdd {

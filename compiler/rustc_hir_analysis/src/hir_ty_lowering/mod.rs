@@ -719,6 +719,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             polarity,
             constness,
+            only_self_bounds,
         );
 
         let mut dup_constraints = FxIndexMap::default();
