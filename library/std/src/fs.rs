@@ -952,7 +952,10 @@ impl Seek for File {
 }
 
 #[stable(feature = "io_traits_arc", since = "1.73.0")]
-impl Read for Arc<File> {
+impl<T: ?Sized> Read for Arc<T>
+where
+    for<'a> &'a T: Read,
+{
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (&**self).read(buf)
     }
@@ -974,7 +977,10 @@ impl Read for Arc<File> {
     }
 }
 #[stable(feature = "io_traits_arc", since = "1.73.0")]
-impl Write for Arc<File> {
+impl<T: ?Sized> Write for Arc<T>
+where
+    for<'a> &'a T: Write,
+{
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         (&**self).write(buf)
     }
@@ -991,7 +997,10 @@ impl Write for Arc<File> {
     }
 }
 #[stable(feature = "io_traits_arc", since = "1.73.0")]
-impl Seek for Arc<File> {
+impl<T: ?Sized> Seek for Arc<T>
+where
+    for<'a> &'a T: Seek,
+{
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         (&**self).seek(pos)
     }
