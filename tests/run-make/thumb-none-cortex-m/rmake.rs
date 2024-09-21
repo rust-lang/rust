@@ -13,6 +13,7 @@
 //! - thumbv7m-none-eabi (Bare Cortex-M3)
 
 //@ only-thumb
+//@ only-nightly
 
 use std::path::PathBuf;
 
