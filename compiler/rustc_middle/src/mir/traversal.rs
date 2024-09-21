@@ -104,34 +104,44 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 /// ```
 ///
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
-pub struct Postorder<'a, 'tcx> {
+pub struct Postorder<'a, 'tcx, C> {
     basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     visited: BitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
     root_is_start_block: bool,
+    extra: C,
 }
 
-impl<'a, 'tcx> Postorder<'a, 'tcx> {
+impl<'a, 'tcx, C> Postorder<'a, 'tcx, C>
+where
+    C: Customization<'tcx>,
+{
     pub fn new(
         basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         root: BasicBlock,
-    ) -> Postorder<'a, 'tcx> {
+        extra: C,
+    ) -> Postorder<'a, 'tcx, C> {
         let mut po = Postorder {
             basic_blocks,
             visited: BitSet::new_empty(basic_blocks.len()),
             visit_stack: Vec::new(),
             root_is_start_block: root == START_BLOCK,
+            extra,
         };
 
-        let data = &po.basic_blocks[root];
-
-        if let Some(ref term) = data.terminator {
-            po.visited.insert(root);
-            po.visit_stack.push((root, term.successors()));
-            po.traverse_successor();
-        }
+        po.visit(root);
+        po.traverse_successor();
 
         po
+    }
+
+    fn visit(&mut self, bb: BasicBlock) {
+        if !self.visited.insert(bb) {
+            return;
+        }
+        let data = &self.basic_blocks[bb];
+        let successors = C::successors(data, self.extra);
+        self.visit_stack.push((bb, successors));
     }
 
     fn traverse_successor(&mut self) {
@@ -183,16 +193,15 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         // since we've already visited `E`, that child isn't added to the stack. The last
         // two iterations yield `B` and finally `A` for a final traversal of [E, D, C, B, A]
         while let Some(bb) = self.visit_stack.last_mut().and_then(|(_, iter)| iter.next_back()) {
-            if self.visited.insert(bb) {
-                if let Some(term) = &self.basic_blocks[bb].terminator {
-                    self.visit_stack.push((bb, term.successors()));
-                }
-            }
+            self.visit(bb);
         }
     }
 }
 
-impl<'tcx> Iterator for Postorder<'_, 'tcx> {
+impl<'tcx, C> Iterator for Postorder<'_, 'tcx, C>
+where
+    C: Customization<'tcx>,
+{
     type Item = BasicBlock;
 
     fn next(&mut self) -> Option<BasicBlock> {
@@ -230,6 +239,40 @@ pub fn postorder<'a, 'tcx>(
 ) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
 {
     reverse_postorder(body).rev()
+}
+
+/// Lets us plug in some additional logic and data into a Postorder traversal. Or not.
+pub trait Customization<'tcx>: Copy {
+    fn successors<'a>(_: &'a BasicBlockData<'tcx>, _: Self) -> Successors<'a>;
+}
+
+impl<'tcx> Customization<'tcx> for () {
+    fn successors<'a>(data: &'a BasicBlockData<'tcx>, _: ()) -> Successors<'a> {
+        data.terminator().successors()
+    }
+}
+
+impl<'tcx> Customization<'tcx> for (TyCtxt<'tcx>, Instance<'tcx>) {
+    fn successors<'a>(
+        data: &'a BasicBlockData<'tcx>,
+        (tcx, instance): (TyCtxt<'tcx>, Instance<'tcx>),
+    ) -> Successors<'a> {
+        data.mono_successors(tcx, instance)
+    }
+}
+
+pub fn mono_reachable_reverse_postorder<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> Vec<BasicBlock> {
+    let mut iter = Postorder::new(&body.basic_blocks, START_BLOCK, (tcx, instance));
+    let mut items = Vec::with_capacity(body.basic_blocks.len());
+    while let Some(block) = iter.next() {
+        items.push(block);
+    }
+    items.reverse();
+    items
 }
 
 /// Returns an iterator over all basic blocks reachable from the `START_BLOCK` in no particular
@@ -358,14 +401,8 @@ impl<'a, 'tcx> Iterator for MonoReachable<'a, 'tcx> {
 
             let data = &self.body[idx];
 
-            if let Some((bits, targets)) =
-                Body::try_const_mono_switchint(self.tcx, self.instance, data)
-            {
-                let target = targets.target_for_value(bits);
-                self.add_work([target]);
-            } else {
-                self.add_work(data.terminator().successors());
-            }
+            let targets = data.mono_successors(self.tcx, self.instance);
+            self.add_work(targets);
 
             return Some((idx, data));
         }
