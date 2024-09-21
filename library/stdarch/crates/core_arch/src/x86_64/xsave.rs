@@ -131,6 +131,7 @@ mod tests {
     use stdarch_test::simd_test;
 
     #[repr(align(64))]
+    #[derive(Debug)]
     struct XsaveArea {
         // max size for 256-bit registers is 800 bytes:
         // see https://software.intel.com/en-us/node/682996
@@ -144,7 +145,7 @@ mod tests {
             XsaveArea { data: [0; 2560] }
         }
         fn ptr(&mut self) -> *mut u8 {
-            &mut self.data[0] as *mut _ as *mut u8
+            self.data.as_mut_ptr()
         }
     }
 
@@ -159,19 +160,6 @@ mod tests {
                 }
             }
             true
-        }
-    }
-
-    impl fmt::Debug for XsaveArea {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "[")?;
-            for i in 0..self.data.len() {
-                write!(f, "{}", self.data[i])?;
-                if i != self.data.len() - 1 {
-                    write!(f, ", ")?;
-                }
-            }
-            write!(f, "]")
         }
     }
 
