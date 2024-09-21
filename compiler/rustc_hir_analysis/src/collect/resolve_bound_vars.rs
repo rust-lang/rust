@@ -1640,9 +1640,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             // }
             // ```
             // and a bound that looks like:
-            //    `for<'a> T::Trait<'a, x(): for<'b> Other<'b>>`
+            //    `for<'a> T::Trait<'a, x(..): for<'b> Other<'b>>`
             // this is going to expand to something like:
-            //    `for<'a> for<'r, T> <T as Trait<'a>>::x::<'r, T>::{opaque#0}: for<'b> Other<'b>`.
+            //    `for<'a> for<'r> <T as Trait<'a>>::x::<'r, T>::{opaque#0}: for<'b> Other<'b>`.
             if constraint.gen_args.parenthesized == hir::GenericArgsParentheses::ReturnTypeNotation
             {
                 let bound_vars = if let Some(type_def_id) = type_def_id
@@ -1853,13 +1853,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     // For example, given
     // ```
     // trait Foo {
-    //     async fn x<'r, T>();
+    //     async fn x<'r>();
     // }
     // ```
     // and a bound that looks like:
     //    `for<'a, 'b> <T as Trait<'a>>::x(): Other<'b>`
     // this is going to expand to something like:
-    //    `for<'a, 'b, 'r, T> <T as Trait<'a>>::x::<'r, T>::{opaque#0}: Other<'b>`.
+    //    `for<'a, 'b, 'r> <T as Trait<'a>>::x::<'r, T>::{opaque#0}: Other<'b>`.
     //
     // We handle this similarly for associated-type-bound style return-type-notation
     // in `visit_segment_args`.
@@ -2000,6 +2000,17 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // the new bound vars. We do this because we need to know how many bound vars
         // are present on the binder explicitly (i.e. not return-type-notation vars)
         // to do bound var shifting correctly in HIR lowering.
+        //
+        // For example, in `where for<'a> <T as Trait<'a>>::method(..): Other`,
+        // the `late_bound_vars` of the where clause predicate (i.e. this HIR ty's
+        // parent) will include `'a` AND all the early- and late-bound vars of the
+        // method. But when lowering the RTN type, we just want the list of vars
+        // we used to resolve the trait ref. We explicitly stored those back onto
+        // the item segment, since there's no other good place to put them.
+        //
+        // See where these vars are used in `HirTyLowerer::lower_ty_maybe_return_type_notation`.
+        // And this is exercised in:
+        // `tests/ui/associated-type-bounds/return-type-notation/higher-ranked-bound-works.rs`.
         let existing_bound_vars = self.map.late_bound_vars.get_mut(&hir_id).unwrap();
         let existing_bound_vars_saved = existing_bound_vars.clone();
         existing_bound_vars.extend(bound_vars);
