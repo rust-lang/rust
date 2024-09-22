@@ -1,6 +1,7 @@
 // This test ensures that the "pocket menus" are working as expected.
 include: "utils.goml"
-go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=test"
+wait-for: "#crate-search"
 // First we check that the help menu doesn't exist yet.
 assert-false: "#help-button .popover"
 // Then we display the help menu.
