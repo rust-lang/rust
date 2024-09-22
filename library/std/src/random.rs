@@ -3,7 +3,7 @@
 //! The [`Random`] trait allows generating a random value for a type using a
 //! given [`RandomSource`].
 
-#[unstable(feature = "random", issue = "none")]
+#[unstable(feature = "random", issue = "130703")]
 pub use core::random::*;
 
 use crate::sys::random as sys;
@@ -15,9 +15,9 @@ use crate::sys::random as sys;
 /// documentation below for the specific guarantees your target provides.
 ///
 /// The high quality of randomness provided by this source means it can be quite
-/// slow. If you need a large quantity of random numbers and security is not a
-/// concern,  consider using an alternative random number generator (potentially
-/// seeded from this one).
+/// slow on some targets. If you need a large quantity of random numbers and
+/// security is not a concern,  consider using an alternative random number
+/// generator (potentially seeded from this one).
 ///
 /// # Underlying sources
 ///
@@ -26,9 +26,9 @@ use crate::sys::random as sys;
 /// Linux                  | [`getrandom`] or [`/dev/urandom`] after polling `/dev/random`
 /// Windows                | [`ProcessPrng`](https://learn.microsoft.com/en-us/windows/win32/seccng/processprng)
 /// Apple                  | `CCRandomGenerateBytes`
-/// DragonFly              | [`arc4random_buf`](https://man.dragonflybsd.org/?command=arc4random&section=ANY)
+/// DragonFly              | [`arc4random_buf`](https://man.dragonflybsd.org/?command=arc4random)
 /// ESP-IDF                | [`esp_fill_random`](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/random.html#_CPPv415esp_fill_randomPv6size_t)
-/// FreeBSD                | [`arc4random_buf`](https://man.freebsd.org/cgi/man.cgi?query=arc4random&apropos=0&sektion=0&manpath=FreeBSD+15.0-CURRENT&arch=default&format=html)
+/// FreeBSD                | [`arc4random_buf`](https://man.freebsd.org/cgi/man.cgi?query=arc4random)
 /// Fuchsia                | [`cprng_draw`](https://fuchsia.dev/reference/syscalls/cprng_draw)
 /// Haiku                  | `arc4random_buf`
 /// Illumos                | [`arc4random_buf`](https://www.illumos.org/man/3C/arc4random)
@@ -48,15 +48,19 @@ use crate::sys::random as sys;
 /// WASI                   | [`random_get`](https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#-random_getbuf-pointeru8-buf_len-size---result-errno)
 /// ZKVM                   | `sys_rand`
 ///
-/// **Disclaimer:** The sources used might change over time.
+/// Note that the sources used might change over time.
+///
+/// Consult the documentation for the underlying operations on your supported
+/// targets to determine whether they provide any particular desired properties,
+/// such as support for reseeding on VM fork operations.
 ///
 /// [`getrandom`]: https://www.man7.org/linux/man-pages/man2/getrandom.2.html
 /// [`/dev/urandom`]: https://www.man7.org/linux/man-pages/man4/random.4.html
 #[derive(Default, Debug, Clone, Copy)]
-#[unstable(feature = "random", issue = "none")]
+#[unstable(feature = "random", issue = "130703")]
 pub struct DefaultRandomSource;
 
-#[unstable(feature = "random", issue = "none")]
+#[unstable(feature = "random", issue = "130703")]
 impl RandomSource for DefaultRandomSource {
     fn fill_bytes(&mut self, bytes: &mut [u8]) {
         sys::fill_bytes(bytes)
@@ -83,7 +87,7 @@ impl RandomSource for DefaultRandomSource {
 ///
 /// use std::random::random;
 ///
-/// let bits = random::<u128>();
+/// let bits: u128 = random();
 /// let g1 = (bits >> 96) as u32;
 /// let g2 = (bits >> 80) as u16;
 /// let g3 = (0x4000 | (bits >> 64) & 0x0fff) as u16;
@@ -94,6 +98,7 @@ impl RandomSource for DefaultRandomSource {
 /// ```
 ///
 /// [version 4/variant 1 UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)
+#[unstable(feature = "random", issue = "130703")]
 pub fn random<T: Random>() -> T {
     T::random(&mut DefaultRandomSource)
 }

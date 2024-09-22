@@ -4,7 +4,7 @@
 //! given [`RandomSource`].
 
 /// A source of randomness.
-#[unstable(feature = "random", issue = "none")]
+#[unstable(feature = "random", issue = "130703")]
 pub trait RandomSource {
     /// Fills `bytes` with random bytes.
     fn fill_bytes(&mut self, bytes: &mut [u8]);
@@ -17,7 +17,7 @@ pub trait RandomSource {
 /// distribution, so a value of 1 is just as likely as [`i32::MAX`]. By using
 /// modulo operations, some of the resulting values can become more likely than
 /// others. Use audited crates when in doubt.
-#[unstable(feature = "random", issue = "none")]
+#[unstable(feature = "random", issue = "130703")]
 pub trait Random: Sized {
     /// Generates a random value.
     fn random(source: &mut (impl RandomSource + ?Sized)) -> Self;

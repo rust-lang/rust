@@ -597,7 +597,7 @@ pub mod path;
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 pub mod pipe;
 pub mod process;
-#[unstable(feature = "random", issue = "none")]
+#[unstable(feature = "random", issue = "130703")]
 pub mod random;
 pub mod sync;
 pub mod time;
