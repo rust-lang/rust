@@ -261,8 +261,59 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// # use std::rc::Rc;
-    /// struct Foo {
-    ///     inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>>,
+    /// struct PointMatrixContainer {
+    ///     matrix: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>>,
+    /// }
+    ///
+    /// fn main() {
+    ///     let point_matrix: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![
+    ///         vec![
+    ///             Box::new((1, 2, 3, 4)),
+    ///             Box::new((5, 6, 7, 8)),
+    ///         ],
+    ///         vec![
+    ///             Box::new((9, 10, 11, 12)),
+    ///         ],
+    ///     ];
+    ///
+    ///     let shared_point_matrix: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>> = Rc::new(point_matrix);
+    ///
+    ///     let container = PointMatrixContainer {
+    ///         matrix: shared_point_matrix,
+    ///     };
+    ///
+    ///     // ...
+    /// }
+    /// ```
+    /// Use instead:
+    /// ### Example
+    /// ```no_run
+    /// # use std::rc::Rc;
+    /// type PointMatrix = Vec<Vec<Box<(u32, u32, u32, u32)>>>;
+    /// type SharedPointMatrix = Rc<PointMatrix>;
+    ///
+    /// struct PointMatrixContainer {
+    ///     matrix: SharedPointMatrix,
+    /// }
+    ///
+    /// fn main() {
+    ///     let point_matrix: PointMatrix = vec![
+    ///         vec![
+    ///             Box::new((1, 2, 3, 4)),
+    ///             Box::new((5, 6, 7, 8)),
+    ///         ],
+    ///         vec![
+    ///             Box::new((9, 10, 11, 12)),
+    ///         ],
+    ///     ];
+    ///
+    ///     let shared_point_matrix: SharedPointMatrix = Rc::new(point_matrix);
+    ///
+    ///     let container = PointMatrixContainer {
+    ///         matrix: shared_point_matrix,
+    ///     };
+    ///
+    ///     // ...
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
