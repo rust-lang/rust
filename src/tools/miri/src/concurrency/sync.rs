@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::collections::{hash_map::Entry, VecDeque};
+use std::collections::{VecDeque, hash_map::Entry};
 use std::ops::Not;
 use std::time::Duration;
 
@@ -283,12 +283,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         data: Option<Box<dyn Any>>,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
-        this.create_id(
-            lock,
-            offset,
-            |ecx| &mut ecx.machine.sync.mutexes,
-            Mutex { data, ..Default::default() },
-        )
+        this.create_id(lock, offset, |ecx| &mut ecx.machine.sync.mutexes, Mutex {
+            data,
+            ..Default::default()
+        })
     }
 
     /// Lazily create a new mutex.
@@ -355,12 +353,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         data: Option<Box<dyn Any>>,
     ) -> InterpResult<'tcx, CondvarId> {
         let this = self.eval_context_mut();
-        this.create_id(
-            condvar,
-            offset,
-            |ecx| &mut ecx.machine.sync.condvars,
-            Condvar { data, ..Default::default() },
-        )
+        this.create_id(condvar, offset, |ecx| &mut ecx.machine.sync.condvars, Condvar {
+            data,
+            ..Default::default()
+        })
     }
 
     fn condvar_get_or_create_id(

@@ -7,7 +7,7 @@
 #![allow(static_mut_refs)]
 
 use std::sync::atomic::{
-    compiler_fence, fence, AtomicBool, AtomicIsize, AtomicPtr, AtomicU64, Ordering::*,
+    AtomicBool, AtomicIsize, AtomicPtr, AtomicU64, Ordering::*, compiler_fence, fence,
 };
 
 fn main() {

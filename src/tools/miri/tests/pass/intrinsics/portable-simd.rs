@@ -11,7 +11,7 @@
 #![allow(incomplete_features, internal_features)]
 use std::intrinsics::simd as intrinsics;
 use std::ptr;
-use std::simd::{prelude::*, StdFloat};
+use std::simd::{StdFloat, prelude::*};
 
 extern "rust-intrinsic" {
     #[rustc_nounwind]

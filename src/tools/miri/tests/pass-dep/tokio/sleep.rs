@@ -1,6 +1,6 @@
 //@only-target: linux # We only support tokio on Linux
 
-use tokio::time::{sleep, Duration, Instant};
+use tokio::time::{Duration, Instant, sleep};
 
 #[tokio::main]
 async fn main() {

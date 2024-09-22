@@ -1,4 +1,4 @@
-use std::alloc::{alloc, realloc, Layout};
+use std::alloc::{Layout, alloc, realloc};
 
 fn main() {
     unsafe {

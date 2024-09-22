@@ -8,13 +8,13 @@ use std::path::PathBuf;
 use std::process;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use path_macro::path;
 use walkdir::WalkDir;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
-use crate::util::*;
 use crate::Command;
+use crate::util::*;
 
 /// Used for rustc syncs.
 const JOSH_FILTER: &str =

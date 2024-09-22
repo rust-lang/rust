@@ -23,7 +23,7 @@ fn main() {
     // (We rely on the test runner to always disable isolation when passing no arguments.)
     if std::env::args().len() <= 1 {
         fn host_to_target_path(path: String) -> PathBuf {
-            use std::ffi::{c_char, CStr, CString};
+            use std::ffi::{CStr, CString, c_char};
 
             let path = CString::new(path).unwrap();
             let mut out = Vec::with_capacity(1024);

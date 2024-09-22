@@ -8,9 +8,9 @@ use std::fmt;
 use std::path::Path;
 use std::process;
 
-use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 
 use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -20,9 +20,8 @@ use rustc_middle::{
     mir,
     query::TyCtxtAt,
     ty::{
-        self,
+        self, Instance, Ty, TyCtxt,
         layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout},
-        Instance, Ty, TyCtxt,
     },
 };
 use rustc_session::config::InliningThreshold;
@@ -1080,13 +1079,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Call the lang item.
         let panic = ecx.tcx.lang_items().get(reason.lang_item()).unwrap();
         let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
-        ecx.call_function(
-            panic,
-            Abi::Rust,
-            &[],
-            None,
-            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
-        )?;
+        ecx.call_function(panic, Abi::Rust, &[], None, StackPopCleanup::Goto {
+            ret: None,
+            unwind: mir::UnwindAction::Unreachable,
+        })?;
         Ok(())
     }
 
