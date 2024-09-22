@@ -52,7 +52,7 @@ use rustc_target::spec::abi;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
-use crate::{ImplTraitPosition, ResolverAstLoweringExt};
+use crate::{AllowReturnTypeNotation, ImplTraitPosition, ResolverAstLoweringExt};
 
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
@@ -340,6 +340,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &delegation.qself,
                 &delegation.path,
                 ParamMode::Optional,
+                AllowReturnTypeNotation::No,
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );

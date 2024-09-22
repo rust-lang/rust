@@ -2269,12 +2269,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     rustc_transmute::Reason::SrcSizeOverflow => {
                         format!(
-                            "values of the type `{src}` are too big for the current architecture"
+                            "values of the type `{src}` are too big for the target architecture"
                         )
                     }
                     rustc_transmute::Reason::DstSizeOverflow => {
                         format!(
-                            "values of the type `{dst}` are too big for the current architecture"
+                            "values of the type `{dst}` are too big for the target architecture"
                         )
                     }
                     rustc_transmute::Reason::DstHasStricterAlignment {

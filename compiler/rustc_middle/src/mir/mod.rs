@@ -1424,6 +1424,19 @@ impl<'tcx> BasicBlockData<'tcx> {
     pub fn is_empty_unreachable(&self) -> bool {
         self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
     }
+
+    /// Like [`Terminator::successors`] but tries to use information available from the [`Instance`]
+    /// to skip successors like the `false` side of an `if const {`.
+    ///
+    /// This is used to implement [`traversal::mono_reachable`] and
+    /// [`traversal::mono_reachable_reverse_postorder`].
+    pub fn mono_successors(&self, tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Successors<'_> {
+        if let Some((bits, targets)) = Body::try_const_mono_switchint(tcx, instance, self) {
+            targets.successors_for_value(bits)
+        } else {
+            self.terminator().successors()
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
