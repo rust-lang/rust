@@ -349,7 +349,7 @@ where
                 ControlFlow::Continue(())
             } else {
                 let generic_params = db.generic_params(item.into());
-                if generic_params.len_type_or_consts() > 0 {
+                if !generic_params.is_empty() {
                     cb(ObjectSafetyViolation::GAT(it))
                 } else {
                     ControlFlow::Continue(())
