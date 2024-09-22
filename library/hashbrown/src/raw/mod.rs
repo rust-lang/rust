@@ -163,6 +163,7 @@ fn h2(hash: u64) -> u8 {
 ///
 /// Proof that the probe will visit every group in the table:
 /// <https://fgiesen.wordpress.com/2015/02/22/triangular-numbers-mod-2n/>
+#[derive(Clone)]
 struct ProbeSeq {
     pos: usize,
     stride: usize,
@@ -4070,6 +4071,7 @@ pub struct RawIterHash<T> {
     _marker: PhantomData<T>,
 }
 
+#[derive(Clone)]
 struct RawIterHashInner {
     // See `RawTableInner`'s corresponding fields for details.
     // We can't store a `*const RawTableInner` as it would get
@@ -4094,6 +4096,27 @@ impl<T> RawIterHash<T> {
     unsafe fn new<A: Allocator>(table: &RawTable<T, A>, hash: u64) -> Self {
         RawIterHash {
             inner: RawIterHashInner::new(&table.table, hash),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Clone for RawIterHash<T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Default for RawIterHash<T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self {
+            // SAFETY: Because the table is static, it always outlives the iter.
+            inner: unsafe { RawIterHashInner::new(&RawTableInner::NEW, 0) },
             _marker: PhantomData,
         }
     }
