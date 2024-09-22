@@ -23,6 +23,10 @@ impl<I> Enumerate<I> {
     pub(in crate::iter) fn new(iter: I) -> Enumerate<I> {
         Enumerate { iter, count: 0 }
     }
+
+    pub fn peek_index(&self) -> usize {
+        self.count
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
