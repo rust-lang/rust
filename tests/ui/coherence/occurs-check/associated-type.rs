@@ -1,7 +1,7 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
 
-// A regression test for #105787
+// A (partial) regression test for #105787
 
 // Using the higher ranked projection hack to prevent us from replacing the projection
 // with an inference variable.
