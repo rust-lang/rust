@@ -204,6 +204,86 @@ fn file_test_io_seek_and_write() {
 }
 
 #[test]
+fn file_lock_multiple_shared() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_multiple_shared_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // Check that we can acquire concurrent shared locks
+    check!(f1.lock_shared());
+    check!(f2.lock_shared());
+    check!(f1.unlock());
+    check!(f2.unlock());
+    assert!(check!(f1.try_lock_shared()));
+    assert!(check!(f2.try_lock_shared()));
+}
+
+#[test]
+fn file_lock_blocking() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_blocking_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // Check that shared locks block exclusive locks
+    check!(f1.lock_shared());
+    assert!(!check!(f2.try_lock()));
+    check!(f1.unlock());
+
+    // Check that exclusive locks block shared locks
+    check!(f1.lock());
+    assert!(!check!(f2.try_lock_shared()));
+}
+
+#[test]
+fn file_lock_drop() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_dup_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // Check that locks are released when the File is dropped
+    check!(f1.lock_shared());
+    assert!(!check!(f2.try_lock()));
+    drop(f1);
+    assert!(check!(f2.try_lock()));
+}
+
+#[test]
+fn file_lock_dup() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_dup_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // Check that locks are not dropped if the File has been cloned
+    check!(f1.lock_shared());
+    assert!(!check!(f2.try_lock()));
+    let cloned = check!(f1.try_clone());
+    drop(f1);
+    assert!(!check!(f2.try_lock()));
+    drop(cloned)
+}
+
+#[test]
+#[cfg(windows)]
+fn file_lock_double_unlock() {
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_lock_double_unlock_test.txt");
+    let f1 = check!(File::create(filename));
+    let f2 = check!(OpenOptions::new().write(true).open(filename));
+
+    // On Windows a file handle may acquire both a shared and exclusive lock.
+    // Check that both are released by unlock()
+    check!(f1.lock());
+    check!(f1.lock_shared());
+    assert!(!check!(f2.try_lock()));
+    check!(f1.unlock());
+    assert!(check!(f2.try_lock()));
+}
+
+#[test]
 fn file_test_io_seek_shakedown() {
     //                   01234567890123
     let initial_msg = "qwer-asdf-zxcv";

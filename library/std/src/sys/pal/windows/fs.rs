@@ -346,6 +346,94 @@ impl File {
         self.fsync()
     }
 
+    pub fn lock(&self) -> io::Result<()> {
+        cvt(unsafe {
+            let mut overlapped = mem::zeroed();
+            c::LockFileEx(
+                self.handle.as_raw_handle(),
+                c::LOCKFILE_EXCLUSIVE_LOCK,
+                0,
+                u32::MAX,
+                u32::MAX,
+                &mut overlapped,
+            )
+        })?;
+        Ok(())
+    }
+
+    pub fn lock_shared(&self) -> io::Result<()> {
+        cvt(unsafe {
+            let mut overlapped = mem::zeroed();
+            c::LockFileEx(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX, &mut overlapped)
+        })?;
+        Ok(())
+    }
+
+    pub fn try_lock(&self) -> io::Result<bool> {
+        let result = cvt(unsafe {
+            let mut overlapped = mem::zeroed();
+            c::LockFileEx(
+                self.handle.as_raw_handle(),
+                c::LOCKFILE_EXCLUSIVE_LOCK | c::LOCKFILE_FAIL_IMMEDIATELY,
+                0,
+                u32::MAX,
+                u32::MAX,
+                &mut overlapped,
+            )
+        });
+
+        if let Err(ref err) = result {
+            if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
+                || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32)
+            {
+                return Ok(false);
+            }
+        }
+        result?;
+        Ok(true)
+    }
+
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        let result = cvt(unsafe {
+            let mut overlapped = mem::zeroed();
+            c::LockFileEx(
+                self.handle.as_raw_handle(),
+                c::LOCKFILE_FAIL_IMMEDIATELY,
+                0,
+                u32::MAX,
+                u32::MAX,
+                &mut overlapped,
+            )
+        });
+
+        if let Err(ref err) = result {
+            if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
+                || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32)
+            {
+                return Ok(false);
+            }
+        }
+        result?;
+        Ok(true)
+    }
+
+    pub fn unlock(&self) -> io::Result<()> {
+        // Unlock the handle twice because LockFileEx() allows a file handle to acquire
+        // both an exclusive and shared lock, in which case the documentation states that:
+        // "...two unlock operations are necessary to unlock the region; the first unlock operation
+        // unlocks the exclusive lock, the second unlock operation unlocks the shared lock"
+        cvt(unsafe { c::UnlockFile(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX) })?;
+        let result =
+            cvt(unsafe { c::UnlockFile(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX) });
+        if let Err(ref err) = result {
+            if err.raw_os_error() == Some(c::ERROR_NOT_LOCKED as i32) {
+                return Ok(());
+            }
+        }
+        result?;
+        Ok(())
+    }
+
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         let info = c::FILE_END_OF_FILE_INFO { EndOfFile: size as i64 };
         api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
