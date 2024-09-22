@@ -863,8 +863,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes,
-        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
-        niche optimizations in libcore and libstd and will never be stable",
+        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document \
+        guaranteed niche optimizations in libcore and libstd and will never be stable\n\
+        (note that the compiler does not even check whether the type indeed is being non-null-optimized; \
+        it is your responsibility to ensure that the attribute is only used on types that are optimized)",
     ),
 
     // ==========================================================================
