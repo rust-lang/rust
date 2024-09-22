@@ -25,10 +25,9 @@ pub(crate) enum FlockOp {
 pub trait FileDescription: std::fmt::Debug + Any {
     fn name(&self) -> &'static str;
 
-    /// Reads as much as possible into the given buffer, and returns the number of bytes read.
-    /// `ptr` is the pointer to the user supplied read buffer.
-    /// `len` indicates how many bytes the user requested.
-    /// `dest` is where the return value should be stored.
+    /// Reads as much as possible into the given buffer `ptr`.
+    /// `len` indicates how many bytes we should try to read.
+    /// `dest` is where the return value should be stored: number of bytes read, or `-1` in case of error.
     fn read<'tcx>(
         &self,
         _self_ref: &FileDescriptionRef,
@@ -41,10 +40,9 @@ pub trait FileDescription: std::fmt::Debug + Any {
         throw_unsup_format!("cannot read from {}", self.name());
     }
 
-    /// Writes as much as possible from the given buffer, and returns the number of bytes written.
-    /// `ptr` is the pointer to the user supplied read buffer.
-    /// `len` indicates how many bytes the user requested.
-    /// `dest` is where the return value should be stored.
+    /// Writes as much as possible from the given buffer `ptr`.
+    /// `len` indicates how many bytes we should try to write.
+    /// `dest` is where the return value should be stored: number of bytes written, or `-1` in case of error.
     fn write<'tcx>(
         &self,
         _self_ref: &FileDescriptionRef,
@@ -57,11 +55,9 @@ pub trait FileDescription: std::fmt::Debug + Any {
         throw_unsup_format!("cannot write to {}", self.name());
     }
 
-    /// Reads as much as possible into the given buffer from a given offset,
-    /// and returns the number of bytes read.
-    /// `ptr` is the pointer to the user supplied read buffer.
-    /// `len` indicates how many bytes the user requested.
-    /// `dest` is where the return value should be stored.
+    /// Reads as much as possible into the given buffer `ptr` from a given offset.
+    /// `len` indicates how many bytes we should try to read.
+    /// `dest` is where the return value should be stored: number of bytes read, or `-1` in case of error.
     fn pread<'tcx>(
         &self,
         _communicate_allowed: bool,
@@ -74,11 +70,10 @@ pub trait FileDescription: std::fmt::Debug + Any {
         throw_unsup_format!("cannot pread from {}", self.name());
     }
 
-    /// Writes as much as possible from the given buffer starting at a given offset,
-    /// and returns the number of bytes written.
+    /// Writes as much as possible from the given buffer `ptr` starting at a given offset.
     /// `ptr` is the pointer to the user supplied read buffer.
-    /// `len` indicates how many bytes the user requested.
-    /// `dest` is where the return value should be stored.
+    /// `len` indicates how many bytes we should try to write.
+    /// `dest` is where the return value should be stored: number of bytes written, or `-1` in case of error.
     fn pwrite<'tcx>(
         &self,
         _communicate_allowed: bool,
