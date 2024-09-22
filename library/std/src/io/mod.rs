@@ -398,8 +398,7 @@ where
 // - avoid passing large buffers to readers that always initialize the free capacity if they perform short reads (#23815, #23820)
 // - pass large buffers to readers that do not initialize the spare capacity. this can amortize per-call overheads
 // - and finally pass not-too-small and not-too-large buffers to Windows read APIs because they manage to suffer from both problems
-//   at the same time, i.e. small reads suffer from syscall overhead, all reads incur initialization cost
-//   proportional to buffer size (#110650)
+//   at the same time, i.e. small reads suffer from syscall overhead, all reads incur costs proportional to buffer size (#110650)
 //
 pub(crate) fn default_read_to_end<R: Read + ?Sized>(
     r: &mut R,
@@ -443,6 +442,8 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             return Ok(0);
         }
     }
+
+    let mut consecutive_short_reads = 0;
 
     loop {
         if buf.len() == buf.capacity() && buf.capacity() == start_cap {
@@ -489,6 +490,12 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             return Ok(buf.len() - start_len);
         }
 
+        if bytes_read < buf_len {
+            consecutive_short_reads += 1;
+        } else {
+            consecutive_short_reads = 0;
+        }
+
         // store how much was initialized but not filled
         initialized = unfilled_but_initialized;
 
@@ -503,7 +510,10 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             // The reader is returning short reads but it doesn't call ensure_init().
             // In that case we no longer need to restrict read sizes to avoid
             // initialization costs.
-            if !was_fully_initialized {
+            // When reading from disk we usually don't get any short reads except at EOF.
+            // So we wait for at least 2 short reads before uncapping the read buffer;
+            // this helps with the Windows issue.
+            if !was_fully_initialized && consecutive_short_reads > 1 {
                 max_read_size = usize::MAX;
             }
 

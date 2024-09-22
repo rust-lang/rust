@@ -1676,8 +1676,13 @@ impl<T, E> Result<Result<T, E>, E> {
     /// ```
     #[inline]
     #[unstable(feature = "result_flattening", issue = "70142")]
-    pub fn flatten(self) -> Result<T, E> {
-        self.and_then(convert::identity)
+    #[rustc_const_unstable(feature = "result_flattening", issue = "70142")]
+    pub const fn flatten(self) -> Result<T, E> {
+        // FIXME(const-hack): could be written with `and_then`
+        match self {
+            Ok(inner) => inner,
+            Err(e) => Err(e),
+        }
     }
 }
 
