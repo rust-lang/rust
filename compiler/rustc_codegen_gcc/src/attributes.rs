@@ -31,6 +31,7 @@ fn inline_attr<'gcc, 'tcx>(
             }
         }
         InlineAttr::None => None,
+        InlineAttr::Usually => None,
     }
 }
 
