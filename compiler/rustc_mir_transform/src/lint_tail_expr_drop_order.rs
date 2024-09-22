@@ -77,10 +77,12 @@ fn is_descendent_of_hir_id(
 }
 
 pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<'tcx>) {
-    let hir_node = tcx.hir_node_by_def_id(def_id);
-    let Some(body_id) = hir_node.body_id() else { return };
+    if matches!(tcx.def_kind(def_id), rustc_hir::def::DefKind::SyntheticCoroutineBody) {
+        // Synthetic coroutine has no HIR body and it is enough to just analyse the original body
+        return;
+    }
     let (tail_expr_hir_id, tail_expr_span) = {
-        let expr = tcx.hir().body(body_id).value;
+        let expr = tcx.hir().body_owned_by(def_id).value;
         match expr.kind {
             ExprKind::Block(block, _) => {
                 if let Some(expr) = block.expr {
