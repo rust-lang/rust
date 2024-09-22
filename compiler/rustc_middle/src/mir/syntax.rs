@@ -708,6 +708,8 @@ pub enum TerminatorKind<'tcx> {
         place: Place<'tcx>,
         target: BasicBlock,
         unwind: UnwindAction,
+        /// The HIR region scope that this drop is issued for when the evaluation exits the said scope.
+        /// It is provided at best effort and may come from foreign sources due to inlining.
         scope: Option<(DefId, ItemLocalId)>,
         replace: bool,
     },
