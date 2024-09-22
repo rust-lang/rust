@@ -82,6 +82,7 @@ declare_lint_pass! {
         PRIVATE_INTERFACES,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PTR_CAST_ADD_AUTO_TO_OBJECT,
+        PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
         REDUNDANT_LIFETIMES,
@@ -5094,4 +5095,38 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #124535 <https://github.com/rust-lang/rust/issues/124535>",
     };
+}
+
+declare_lint! {
+    /// The `ptr_to_integer_transmute_in_consts` lint detects pointer to integer
+    /// transmute in const functions and associated constants.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// const fn foo(ptr: *const u8) -> usize {
+    ///    unsafe {
+    ///        std::mem::transmute::<*const u8, usize>(ptr)
+    ///    }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Transmuting pointers to integers in a `const` context is undefined behavior.
+    /// Any attempt to use the resulting integer will abort const-evaluation.
+    ///
+    /// But sometimes the compiler might not emit an error for pointer to integer transmutes
+    /// inside const functions and associated consts because they are evaluated only when referenced.
+    /// Therefore, this lint serves as an extra layer of defense to prevent any undefined behavior
+    /// from compiling without any warnings or errors.
+    ///
+    /// See [std::mem::transmute] in the reference for more details.
+    ///
+    /// [std::mem::transmute]: https://doc.rust-lang.org/std/mem/fn.transmute.html
+    pub PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
+    Warn,
+    "detects pointer to integer transmutes in const functions and associated constants",
 }

@@ -1,21 +1,21 @@
 const fn foo(ptr: *const u8) -> usize {
     unsafe {
         std::mem::transmute(ptr)
-        //~^ ERROR pointers cannot be transmuted to integers
+        //~^ WARN pointers cannot be transmuted to integers
     }
 }
 
 trait Human {
-    const ID: u64 = {
+    const ID: usize = {
         let value = 10;
-        let ptr: *const i32 = &value;
+        let ptr: *const usize = &value;
         unsafe {
             std::mem::transmute(ptr)
-            //~^ ERROR pointers cannot be transmuted to integers
+            //~^ WARN pointers cannot be transmuted to integers
         }
     };
 
-    fn id_plus_one() -> u64 {
+    fn id_plus_one() -> usize {
         Self::ID + 1
     }
 }
@@ -23,16 +23,16 @@ trait Human {
 struct Type<T>(T);
 
 impl<T> Type<T> {
-    const ID: u64 = {
+    const ID: usize = {
         let value = 10;
-        let ptr: *const i32 = &value;
+        let ptr: *const usize = &value;
         unsafe {
             std::mem::transmute(ptr)
-            //~^ ERROR pointers cannot be transmuted to integers
+            //~^ WARN pointers cannot be transmuted to integers
         }
     };
 
-    fn id_plus_one() -> u64 {
+    fn id_plus_one() -> usize {
         Self::ID + 1
     }
 }
@@ -59,10 +59,10 @@ impl ControlStruct {
 const fn zoom(ptr: *const u8) -> usize {
     unsafe {
         std::mem::transmute(ptr)
-        //~^ ERROR pointers cannot be transmuted to integers
+        //~^ WARN pointers cannot be transmuted to integers
     }
 }
-        
+
 fn main() {
     const a: u8 = 10;
     const value: usize = zoom(&a);
