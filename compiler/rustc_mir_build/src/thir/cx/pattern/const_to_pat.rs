@@ -14,13 +14,13 @@ use rustc_trait_selection::traits::ObligationCause;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument, trace};
 
-use super::PatCtxt;
+use super::PatCx;
 use crate::errors::{
     ConstPatternDependsOnGenericParameter, CouldNotEvalConstPattern, InvalidPattern, NaNPattern,
     PointerPattern, TypeNotPartialEq, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
-impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
+impl<'a, 'tcx> PatCx<'a, 'tcx> {
     /// Converts a constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
@@ -36,7 +36,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> Box<Pat<'tcx>> {
-        let infcx = self.tcx.infer_ctxt().build();
+        let infcx = self.cx.tcx.infer_ctxt().build();
         let mut convert = ConstToPat::new(self, id, span, infcx);
         convert.to_pat(c, ty)
     }
@@ -53,18 +53,14 @@ struct ConstToPat<'tcx> {
 }
 
 impl<'tcx> ConstToPat<'tcx> {
-    fn new(
-        pat_ctxt: &PatCtxt<'_, 'tcx>,
-        id: hir::HirId,
-        span: Span,
-        infcx: InferCtxt<'tcx>,
-    ) -> Self {
-        trace!(?pat_ctxt.typeck_results.hir_owner);
+    fn new(pat_ctxt: &PatCx<'_, 'tcx>, id: hir::HirId, span: Span, infcx: InferCtxt<'tcx>) -> Self {
+        trace!(?pat_ctxt.cx.typeck_results.hir_owner);
         ConstToPat {
             span,
             infcx,
-            param_env: pat_ctxt.param_env,
+            param_env: pat_ctxt.cx.param_env,
             treat_byte_string_as_slice: pat_ctxt
+                .cx
                 .typeck_results
                 .treat_byte_string_as_slice
                 .contains(&id.local_id),
