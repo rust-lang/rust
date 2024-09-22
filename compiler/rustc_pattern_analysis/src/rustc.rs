@@ -352,7 +352,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             ty::Array(sub_ty, len) => {
                 // We treat arrays of a constant but unknown length like slices.
                 ConstructorSet::Slice {
-                    array_len: len.try_eval_target_usize(cx.tcx, cx.param_env).map(|l| l as usize),
+                    array_len: len.try_to_target_usize(cx.tcx).map(|l| l as usize),
                     subtype_is_empty: cx.is_uninhabited(*sub_ty),
                 }
             }
@@ -685,9 +685,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             }
             PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
                 let array_len = match ty.kind() {
-                    ty::Array(_, length) => {
-                        Some(length.eval_target_usize(cx.tcx, cx.param_env) as usize)
-                    }
+                    ty::Array(_, length) => Some(
+                        length
+                            .try_to_target_usize(cx.tcx)
+                            .expect("expected len of array pat to be definite")
+                            as usize,
+                    ),
                     ty::Slice(_) => None,
                     _ => span_bug!(pat.span, "bad ty {} for slice pattern", ty.inner()),
                 };

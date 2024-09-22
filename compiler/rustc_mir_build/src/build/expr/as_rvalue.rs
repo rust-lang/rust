@@ -57,7 +57,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.in_scope(region_scope, lint_level, |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
-                if Some(0) == count.try_eval_target_usize(this.tcx, this.param_env) {
+                if Some(0) == count.try_to_target_usize(this.tcx) {
                     this.build_zero_repeat(block, value, scope, source_info)
                 } else {
                     let value_operand = unpack!(
