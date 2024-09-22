@@ -6,8 +6,8 @@ LL |     x + 100.0
    |
    = help: the trait `Add<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Add<Rhs>`:
-             `&'a u8` implements `Add<u8>`
-             `&u8` implements `Add<&u8>`
+             `&u8` implements `Add<u8>`
+             `&u8` implements `Add`
              `u8` implements `Add<&u8>`
              `u8` implements `Add`
 
@@ -19,8 +19,8 @@ LL |     x + "foo"
    |
    = help: the trait `Add<&str>` is not implemented for `f64`
    = help: the following other types implement trait `Add<Rhs>`:
-             `&'a f64` implements `Add<f64>`
-             `&f64` implements `Add<&f64>`
+             `&f64` implements `Add<f64>`
+             `&f64` implements `Add`
              `f64` implements `Add<&f64>`
              `f64` implements `Add`
 
@@ -32,8 +32,8 @@ LL |     x + y
    |
    = help: the trait `Add<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Add<Rhs>`:
-             `&'a f64` implements `Add<f64>`
-             `&f64` implements `Add<&f64>`
+             `&f64` implements `Add<f64>`
+             `&f64` implements `Add`
              `f64` implements `Add<&f64>`
              `f64` implements `Add`
 
@@ -45,8 +45,8 @@ LL |     x - 100.0
    |
    = help: the trait `Sub<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Sub<Rhs>`:
-             `&'a u8` implements `Sub<u8>`
-             `&u8` implements `Sub<&u8>`
+             `&u8` implements `Sub<u8>`
+             `&u8` implements `Sub`
              `u8` implements `Sub<&u8>`
              `u8` implements `Sub`
 
@@ -58,8 +58,8 @@ LL |     x - "foo"
    |
    = help: the trait `Sub<&str>` is not implemented for `f64`
    = help: the following other types implement trait `Sub<Rhs>`:
-             `&'a f64` implements `Sub<f64>`
-             `&f64` implements `Sub<&f64>`
+             `&f64` implements `Sub<f64>`
+             `&f64` implements `Sub`
              `f64` implements `Sub<&f64>`
              `f64` implements `Sub`
 
@@ -71,8 +71,8 @@ LL |     x - y
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Sub<Rhs>`:
-             `&'a f64` implements `Sub<f64>`
-             `&f64` implements `Sub<&f64>`
+             `&f64` implements `Sub<f64>`
+             `&f64` implements `Sub`
              `f64` implements `Sub<&f64>`
              `f64` implements `Sub`
 
@@ -84,8 +84,8 @@ LL |     x * 100.0
    |
    = help: the trait `Mul<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Mul<Rhs>`:
-             `&'a u8` implements `Mul<u8>`
-             `&u8` implements `Mul<&u8>`
+             `&u8` implements `Mul<u8>`
+             `&u8` implements `Mul`
              `u8` implements `Mul<&u8>`
              `u8` implements `Mul`
 
@@ -97,8 +97,8 @@ LL |     x * "foo"
    |
    = help: the trait `Mul<&str>` is not implemented for `f64`
    = help: the following other types implement trait `Mul<Rhs>`:
-             `&'a f64` implements `Mul<f64>`
-             `&f64` implements `Mul<&f64>`
+             `&f64` implements `Mul<f64>`
+             `&f64` implements `Mul`
              `f64` implements `Mul<&f64>`
              `f64` implements `Mul`
 
@@ -110,8 +110,8 @@ LL |     x * y
    |
    = help: the trait `Mul<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Mul<Rhs>`:
-             `&'a f64` implements `Mul<f64>`
-             `&f64` implements `Mul<&f64>`
+             `&f64` implements `Mul<f64>`
+             `&f64` implements `Mul`
              `f64` implements `Mul<&f64>`
              `f64` implements `Mul`
 
@@ -123,8 +123,8 @@ LL |     x / 100.0
    |
    = help: the trait `Div<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Div<Rhs>`:
-             `&'a u8` implements `Div<u8>`
-             `&u8` implements `Div<&u8>`
+             `&u8` implements `Div<u8>`
+             `&u8` implements `Div`
              `u8` implements `Div<&u8>`
              `u8` implements `Div<NonZero<u8>>`
              `u8` implements `Div`
@@ -137,8 +137,8 @@ LL |     x / "foo"
    |
    = help: the trait `Div<&str>` is not implemented for `f64`
    = help: the following other types implement trait `Div<Rhs>`:
-             `&'a f64` implements `Div<f64>`
-             `&f64` implements `Div<&f64>`
+             `&f64` implements `Div<f64>`
+             `&f64` implements `Div`
              `f64` implements `Div<&f64>`
              `f64` implements `Div`
 
@@ -150,8 +150,8 @@ LL |     x / y
    |
    = help: the trait `Div<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Div<Rhs>`:
-             `&'a f64` implements `Div<f64>`
-             `&f64` implements `Div<&f64>`
+             `&f64` implements `Div<f64>`
+             `&f64` implements `Div`
              `f64` implements `Div<&f64>`
              `f64` implements `Div`
 

@@ -21,8 +21,8 @@ LL |     a = c + b * 5;
    |
    = help: the trait `Add<u16>` is not implemented for `usize`
    = help: the following other types implement trait `Add<Rhs>`:
-             `&'a usize` implements `Add<usize>`
-             `&usize` implements `Add<&usize>`
+             `&usize` implements `Add<usize>`
+             `&usize` implements `Add`
              `usize` implements `Add<&usize>`
              `usize` implements `Add`
 

@@ -4621,7 +4621,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     format!("&{}{ty}", mutability.prefix_str())
                 }
             }
-            ty::Array(ty, len) if let Some(len) = len.try_eval_target_usize(tcx, param_env) => {
+            ty::Array(ty, len) if let Some(len) = len.try_to_target_usize(tcx) => {
                 if len == 0 {
                     "[]".to_string()
                 } else if self.type_is_copy_modulo_regions(param_env, ty) || len == 1 {
