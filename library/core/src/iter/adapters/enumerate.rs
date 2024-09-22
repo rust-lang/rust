@@ -24,6 +24,9 @@ impl<I> Enumerate<I> {
         Enumerate { iter, count: 0 }
     }
 
+    /// Retrieve the current position of the iterator.
+    ///
+    /// If the iterator has not advanced, the position returned will be 0.
     #[inline]
     #[unstable(feature = "peek_index", issue = "130711")]
     pub fn peek_index(&self) -> usize {
