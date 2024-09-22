@@ -149,43 +149,33 @@
 //! * The **provenance** it has, defining the memory it has permission to access. Provenance can be
 //!   absent, in which case the pointer does not have permission to access any memory.
 //!
+//! The exact structure of provenance is not yet specified, but the permission defined by a
+//! pointer's provenance have both a *spatial* and *temporal* component:
+//!
+//! * Spatial: The set of memory addresses that the pointer is allowed to access.
+//! * Temporal: The timespan during which the pointer is allowed to access those memory addresses.
+//!
 //! When an [allocated object] is created, it has a unique Original Pointer. For alloc
 //! APIs this is literally the pointer the call returns, and for local variables and statics,
 //! this is the name of the variable/static. (This is mildly overloading the term "pointer"
 //! for the sake of brevity/exposition.)
 //!
-//! The Original Pointer for an allocated object is guaranteed to have unique access to the entire
-//! allocation and *only* that allocation. In this sense, an allocation can be thought of as a
-//! "sandbox" that the pointer must not leave (at penalty of undefined behavior). *Provenance* is
-//! about tracking each pointer's lineage back to the Original Pointer that it got derived from.
-//! This controls which permission the pointer has to access (part of) an allocation's sandbox. This
-//! permission has both a *spatial* and *temporal* component:
-//!
-//! * Spatial: A range of bytes that the pointer is allowed to access.
-//! * Temporal: The timespan during which the pointer is allowed to access these bytes.
-//!
-//! Spatial provenance requires that you don't go beyond your sandbox, while temporal provenance
-//! requires that you can't "get lucky" after your permission to access some memory
-//! has been revoked (either through deallocations or borrows expiring).
-//!
-//! Provenance is implicitly shared with all pointers transitively derived from
-//! the Original Pointer through operations like [`offset`], borrowing, and pointer casts.
-//! Some operations may *shrink* the derived provenance, limiting how much memory it can
-//! access or how long it's valid for (i.e. borrowing a subfield and subslicing can shrink the
-//! spatial component of provenance, and all borrowing can shrink the temporal component of
-//! provenance).
-//!
-//! Shrinking provenance cannot be undone: even if you "know" there is a larger allocation, you
-//! can't derive a pointer with a larger provenance. Similarly, you cannot "recombine"
-//! two contiguous provenances back into one (i.e. with a `fn merge(&[T], &[T]) -> &[T]`).
+//! The Original Pointer for an allocated object has provenance that constraints the *spatial*
+//! permissions of this pointer to the memory range of the allocation, and the *temporal*
+//! permissions to the lifetime of the allocation. Provenance is implicitly inherited by all
+//! pointers transitively derived from the Original Pointer through operations like [`offset`],
+//! borrowing, and pointer casts. Some operations may *shrink* the permissions of the derived
+//! provenance, limiting how much memory it can access or how long it's valid for (i.e. borrowing a
+//! subfield and subslicing can shrink the spatial component of provenance, and all borrowing can
+//! shrink the temporal component of provenance). However, no operation can ever *grow* the
+//! permissions of the derived provenance: even if you "know" there is a larger allocation, you
+//! can't derive a pointer with a larger provenance. Similarly, you cannot "recombine" two
+//! contiguous provenances back into one (i.e. with a `fn merge(&[T], &[T]) -> &[T]`).
 //!
 //! A reference to a place always has provenance over at least the memory that place occupies.
 //! A reference to a slice always has provenance over at least the range that slice describes.
 //! Whether and when exactly the provenance of a reference gets "shrunk" to *exactly* fit
 //! the memory it points to is not yet determined.
-//!
-//! If an allocation is deallocated, all pointers with provenance to that allocation become
-//! invalidated, and effectively lose their provenance.
 //!
 //! Provenance can affect whether a program has undefined behavior:
 //!
