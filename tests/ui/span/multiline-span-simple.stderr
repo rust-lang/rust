@@ -6,8 +6,8 @@ LL |     foo(1 as u32 +
    |
    = help: the trait `Add<()>` is not implemented for `u32`
    = help: the following other types implement trait `Add<Rhs>`:
-             `&'a u32` implements `Add<u32>`
-             `&u32` implements `Add<&u32>`
+             `&u32` implements `Add<u32>`
+             `&u32` implements `Add`
              `u32` implements `Add<&u32>`
              `u32` implements `Add`
 

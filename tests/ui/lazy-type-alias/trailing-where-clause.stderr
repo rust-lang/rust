@@ -9,7 +9,7 @@ LL |     let _: Alias<()>;
              `String` implements `From<&mut str>`
              `String` implements `From<&str>`
              `String` implements `From<Box<str>>`
-             `String` implements `From<Cow<'a, str>>`
+             `String` implements `From<Cow<'_, str>>`
              `String` implements `From<char>`
 note: required by a bound in `Alias`
   --> $DIR/trailing-where-clause.rs:8:13
