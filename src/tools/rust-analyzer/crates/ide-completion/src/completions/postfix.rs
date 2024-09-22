@@ -302,9 +302,10 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
         while let Some(parent_ref_element) =
             resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
         {
+            let exclusive = parent_ref_element.mut_token().is_some();
             resulting_element = ast::Expr::from(parent_ref_element);
 
-            new_element_opt = make::expr_ref(new_element_opt, false);
+            new_element_opt = make::expr_ref(new_element_opt, exclusive);
         }
     } else {
         // If we do not find any ref expressions, restore
@@ -853,6 +854,25 @@ fn test() {
 }
 "#,
             expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn mut_ref_consuming() {
+        check_edit(
+            "call",
+            r#"
+fn main() {
+    let mut x = &mut 2;
+    &mut x.$0;
+}
+"#,
+            r#"
+fn main() {
+    let mut x = &mut 2;
+    ${1}(&mut x);
+}
+"#,
         );
     }
 }
