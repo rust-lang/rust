@@ -986,7 +986,13 @@ function preLoadCss(cssUrl) {
     }());
 
     window.rustdoc_add_line_numbers_to_examples = () => {
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
+        if (document.querySelector(".rustdoc.src")) {
+            // We are in the source code page, nothing to be done here!
+            return;
+        }
+        onEachLazy(document.querySelectorAll(
+            ":not(.scraped-example) > .example-wrap > pre:not(.example-line-numbers)",
+        ), x => {
             const parent = x.parentNode;
             const line_numbers = parent.querySelectorAll(".example-line-numbers");
             if (line_numbers.length > 0) {
@@ -1005,12 +1011,8 @@ function preLoadCss(cssUrl) {
     };
 
     window.rustdoc_remove_line_numbers_from_examples = () => {
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
-            const parent = x.parentNode;
-            const line_numbers = parent.querySelectorAll(".example-line-numbers");
-            for (const node of line_numbers) {
-                parent.removeChild(node);
-            }
+        onEachLazy(document.querySelectorAll(".example-wrap > .example-line-numbers"), x => {
+            x.parentNode.removeChild(x);
         });
     };
 
