@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target,
         metadata: crate::spec::TargetMetadata {
-            description: Some("64-bit x86 iOS".into()),
+            description: Some("x86_64 Apple iOS Simulator".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(true),

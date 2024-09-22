@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target,
         metadata: crate::spec::TargetMetadata {
-            description: Some("x86 64-bit Apple WatchOS simulator".into()),
+            description: Some("x86_64 Apple watchOS Simulator".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
