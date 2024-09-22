@@ -563,6 +563,7 @@ define_Conf! {
         uninlined_format_args,
         unnecessary_lazy_evaluations,
         unnested_or_patterns,
+        unused_trait_names,
         use_self,
     )]
     msrv: Msrv = Msrv::empty(),

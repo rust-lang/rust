@@ -748,6 +748,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::unused_result_ok::UNUSED_RESULT_OK_INFO,
     crate::unused_rounding::UNUSED_ROUNDING_INFO,
     crate::unused_self::UNUSED_SELF_INFO,
+    crate::unused_trait_names::UNUSED_TRAIT_NAMES_INFO,
     crate::unused_unit::UNUSED_UNIT_INFO,
     crate::unwrap::PANICKING_UNWRAP_INFO,
     crate::unwrap::UNNECESSARY_UNWRAP_INFO,
