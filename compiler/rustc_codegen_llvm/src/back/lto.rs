@@ -844,7 +844,7 @@ impl ThinLTOKeysMap {
                     llvm::LLVMRustComputeLTOCacheKey(rust_str, module.identifier, data.0);
                 })
                 .expect("Invalid ThinLTO module key");
-                (name.clone().into_string().unwrap(), key)
+                (module_name_to_str(name).to_string(), key)
             })
             .collect();
         Self { keys }
