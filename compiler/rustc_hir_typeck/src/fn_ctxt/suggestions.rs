@@ -1502,7 +1502,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Create an dummy type `&[_]` so that both &[] and `&Vec<T>` can coerce to it.
         let dummy_ty = if let ty::Array(elem_ty, size) = peeled.kind()
             && let ty::Infer(_) = elem_ty.kind()
-            && size.try_eval_target_usize(self.tcx, self.param_env) == Some(0)
+            && self
+                .try_structurally_resolve_const(provided_expr.span, *size)
+                .try_to_target_usize(self.tcx)
+                == Some(0)
         {
             let slice = Ty::new_slice(self.tcx, *elem_ty);
             Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, slice)

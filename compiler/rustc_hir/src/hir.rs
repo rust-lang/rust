@@ -1668,10 +1668,17 @@ pub enum ArrayLen<'hir> {
 }
 
 impl ArrayLen<'_> {
-    pub fn hir_id(&self) -> HirId {
+    pub fn span(self) -> Span {
         match self {
-            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(ConstArg { hir_id, .. }) => {
-                *hir_id
+            ArrayLen::Infer(arg) => arg.span,
+            ArrayLen::Body(body) => body.span(),
+        }
+    }
+
+    pub fn hir_id(self) -> HirId {
+        match self {
+            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(&ConstArg { hir_id, .. }) => {
+                hir_id
             }
         }
     }
