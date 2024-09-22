@@ -11,8 +11,8 @@ define-function: (
         call-function: ("switch-theme", {"theme": |theme|})
         assert-css: ("#settings-menu > a::before", {
             "filter": |filter|,
-            "width": "22px",
-            "height": "22px",
+            "width": "18px",
+            "height": "18px",
         })
     }
 )
@@ -23,9 +23,9 @@ call-function: ("check-image", {
 })
 call-function: ("check-image", {
     "theme": "dark",
-    "filter": "none",
+    "filter": "invert(0.65)",
 })
 call-function: ("check-image", {
     "theme": "light",
-    "filter": "none",
+    "filter": "invert(0.35)",
 })

@@ -89,9 +89,9 @@ assert-css: (".src-line-numbers", {"text-align": "right"})
 // do anything (and certainly not add a `#NaN` to the URL!).
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // We use this assert-position to know where we will click.
-assert-position: ("//*[@id='1']", {"x": 88, "y": 86})
+assert-position: ("//*[@id='1']", {"x": 88, "y": 163})
 // We click on the left of the "1" anchor but still in the "src-line-number" `<pre>`.
-click: (87, 77)
+click: (163, 77)
 assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
 
 // Checking the source code sidebar.
@@ -159,19 +159,21 @@ call-function: ("check-sidebar-dir-entry", {
 // Check the search form
 assert-css: ("nav.sub", {"flex-direction": "row"})
 // The goal of this test is to ensure the search input is perfectly centered
-// between the top of the page and the top of the gray code block.
+// between the top of the page and the header.
 // To check this, we maintain the invariant:
 //
 // offsetTop[nav.sub form] = offsetTop[#main-content] - offsetHeight[nav.sub form] - offsetTop[nav.sub form]
-assert-property: ("nav.sub form", {"offsetTop": 15, "offsetHeight": 34})
-assert-property: ("#main-content", {"offsetTop": 64})
+assert-position: ("nav.sub form", {"y": 15})
+assert-property: ("nav.sub form", {"offsetHeight": 34})
+assert-position: ("h1", {"y": 64})
 // 15 = 64 - 34 - 15
 
 // Now do the same check on moderately-sized, tablet mobile.
 set-window-size: (700, 700)
 assert-css: ("nav.sub", {"flex-direction": "row"})
-assert-property: ("nav.sub form", {"offsetTop": 8, "offsetHeight": 34})
-assert-property: ("#main-content", {"offsetTop": 50})
+assert-position: ("nav.sub form", {"y": 8})
+assert-property: ("nav.sub form", {"offsetHeight": 34})
+assert-position: ("h1", {"y": 50})
 // 8 = 50 - 34 - 8
 
 // Check the sidebar directory entries have a marker and spacing (tablet).
