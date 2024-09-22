@@ -149,14 +149,14 @@ fn expand_macro_recur(
         expanded.text_range().len(),
         &expansion_span_map,
     );
-    Some(expand(sema, expanded, result_span_map, offset_in_original_node))
+    Some(expand(sema, expanded, result_span_map, u32::from(offset_in_original_node) as i32))
 }
 
 fn expand(
     sema: &Semantics<'_, RootDatabase>,
     expanded: SyntaxNode,
     result_span_map: &mut SpanMap<SyntaxContextId>,
-    offset_in_original_node: TextSize,
+    mut offset_in_original_node: i32,
 ) -> SyntaxNode {
     let children = expanded.descendants().filter_map(ast::Item::cast);
     let mut replacements = Vec::new();
@@ -166,8 +166,14 @@ fn expand(
             sema,
             &child,
             result_span_map,
-            offset_in_original_node + child.syntax().text_range().start(),
+            TextSize::new(
+                (offset_in_original_node + (u32::from(child.syntax().text_range().start()) as i32))
+                    as u32,
+            ),
         ) {
+            offset_in_original_node = offset_in_original_node
+                + (u32::from(new_node.text_range().len()) as i32)
+                - (u32::from(child.syntax().text_range().len()) as i32);
             // check if the whole original syntax is replaced
             if expanded == *child.syntax() {
                 return new_node;
