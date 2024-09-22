@@ -1,7 +1,7 @@
 //! Return value handling
 
 use rustc_target::abi::call::{ArgAbi, PassMode};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::prelude::*;
 

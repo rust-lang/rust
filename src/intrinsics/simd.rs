@@ -574,12 +574,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     (sym::simd_round, types::F64) => "round",
                     _ => unreachable!("{:?}", intrinsic),
                 };
-                fx.lib_call(
-                    name,
-                    vec![AbiParam::new(lane_ty)],
-                    vec![AbiParam::new(lane_ty)],
-                    &[lane],
-                )[0]
+                fx.lib_call(name, vec![AbiParam::new(lane_ty)], vec![AbiParam::new(lane_ty)], &[
+                    lane,
+                ])[0]
             });
         }
 
