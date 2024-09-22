@@ -1,5 +1,9 @@
 # `branch-protection`
 
+The tracking issue for this feature is: [#113369](https://github.com/rust-lang/rust/issues/113369).
+
+------------------------
+
 This option lets you enable branch authentication instructions on AArch64.
 This option is only accepted when targeting AArch64 architectures.
 It takes some combination of the following values, separated by a `,`.
