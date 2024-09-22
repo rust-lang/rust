@@ -29,7 +29,7 @@ impl<I> Enumerate<I> {
     /// If the iterator has not advanced, the position returned will be 0.
     ///
     /// The position may also exceed the bounds of the iterator to allow for calculating
-    /// the displacment of the iterator from following calls to [`Iterator::next`].
+    /// the displacement of the iterator from following calls to [`Iterator::next`].
     #[inline]
     #[unstable(feature = "peek_index", issue = "130711")]
     pub fn peek_index(&self) -> usize {
