@@ -245,7 +245,7 @@ impl FileDescription for AnonSocket {
         }
         // Do full write / partial write based on the space available.
         let actual_write_size = len.min(available_space);
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?.to_owned();
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         writebuf.buf.extend(&bytes[..actual_write_size]);
 
         // Need to stop accessing peer_fd so that it can be notified.

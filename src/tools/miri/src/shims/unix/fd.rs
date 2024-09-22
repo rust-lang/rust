@@ -173,9 +173,9 @@ impl FileDescription for io::Stdout {
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?.to_owned();
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         // We allow writing to stderr even with isolation enabled.
-        let result = Write::write(&mut { self }, &bytes);
+        let result = Write::write(&mut { self }, bytes);
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
@@ -204,10 +204,10 @@ impl FileDescription for io::Stderr {
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?.to_owned();
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
-        let result = Write::write(&mut { self }, &bytes);
+        let result = Write::write(&mut { self }, bytes);
         ecx.return_written_byte_count_or_error(result, dest)
     }
 

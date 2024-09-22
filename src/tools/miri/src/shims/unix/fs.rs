@@ -55,8 +55,8 @@ impl FileDescription for FileHandle {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?.to_owned();
-        let result = (&mut &self.file).write(&bytes);
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+        let result = (&mut &self.file).write(bytes);
         ecx.return_written_byte_count_or_error(result, dest)
     }
 
@@ -102,11 +102,11 @@ impl FileDescription for FileHandle {
         // Correctness of this emulation relies on sequential nature of Miri execution.
         // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
         let file = &mut &self.file;
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?.to_owned();
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         let mut f = || {
             let cursor_pos = file.stream_position()?;
             file.seek(SeekFrom::Start(offset))?;
-            let res = file.write(&bytes);
+            let res = file.write(bytes);
             // Attempt to restore cursor position even if the write has failed
             file.seek(SeekFrom::Start(cursor_pos))
                 .expect("failed to restore file position, this shouldn't be possible");
