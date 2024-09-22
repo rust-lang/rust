@@ -221,7 +221,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
 
         // Fall back to exact equality.
-        // FIXME: We are missing the rules for "repr(C) wrapping compatible types".
         Ok(caller == callee)
     }
 
