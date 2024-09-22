@@ -13,9 +13,9 @@ use rustc_span::{Symbol, sym};
 use rustc_target::abi::Size;
 
 use crate::*;
-use atomic::EvalContextExt as _;
-use helpers::{ToHost, ToSoft, check_arg_count};
-use simd::EvalContextExt as _;
+use self::atomic::EvalContextExt as _;
+use self::helpers::{ToHost, ToSoft, check_arg_count};
+use self::simd::EvalContextExt as _;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {

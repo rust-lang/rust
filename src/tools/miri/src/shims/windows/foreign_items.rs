@@ -11,7 +11,7 @@ use rustc_target::spec::abi::Abi;
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::windows::*;
 use crate::*;
-use shims::windows::handle::{Handle, PseudoHandle};
+use self::shims::windows::handle::{Handle, PseudoHandle};
 
 pub fn is_dyn_sym(name: &str) -> bool {
     // std does dynamic detection for these symbols

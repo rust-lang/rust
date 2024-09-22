@@ -15,7 +15,7 @@ use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::unix::fd::FileDescriptionRef;
 use crate::shims::unix::*;
 use crate::*;
-use shims::time::system_time_to_duration;
+use self::shims::time::system_time_to_duration;
 
 use self::fd::FlockOp;
 

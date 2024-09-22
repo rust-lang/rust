@@ -17,7 +17,7 @@ use rustc_target::spec::PanicStrategy;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use helpers::check_arg_count;
+use self::helpers::check_arg_count;
 
 /// Holds all of the relevant data for when unwinding hits a `try` frame.
 #[derive(Debug)]
