@@ -20,7 +20,39 @@ pub fn check(librustdoc_path: &Path, bad: &mut bool) {
 
             while let Some((pos, line)) = lines.next() {
                 let line = line.trim();
-                if TAGS.iter().any(|(_, tag)| line.ends_with(tag)) {
+                if let Some(need_next_line_check) = TAGS.iter().find_map(|(tag, end_tag)| {
+                    // We first check if the line ends with a jinja tag.
+                    if !line.ends_with(end_tag) {
+                        return None;
+                    // Then we check if this a comment tag.
+                    } else if *tag != "{#" {
+                        return Some(false);
+                    // And finally we check if the comment is empty (ie, only there to strip
+                    // extra whitespace characters).
+                    } else if let Some(start_pos) = line.rfind(tag) {
+                        Some(line[start_pos + 2..].trim() == "#}")
+                    } else {
+                        Some(false)
+                    }
+                }) {
+                    // All good, the line is ending is a jinja tag. But maybe this tag is useless
+                    // if the next line starts with a jinja tag as well!
+                    //
+                    // However, only (empty) comment jinja tags are concerned about it.
+                    if need_next_line_check
+                        && lines.peek().is_some_and(|(_, next_line)| {
+                            let next_line = next_line.trim_start();
+                            TAGS.iter().any(|(tag, _)| next_line.starts_with(tag))
+                        })
+                    {
+                        // It seems like ending this line with a jinja tag is not needed after all.
+                        tidy_error!(
+                            bad,
+                            "`{}` at line {}: unneeded `{{# #}}` tag at the end of the line",
+                            path.path().display(),
+                            pos + 1,
+                        );
+                    }
                     continue;
                 }
                 let Some(next_line) = lines.peek().map(|(_, next_line)| next_line.trim()) else {
