@@ -218,6 +218,9 @@ pub struct TestProps {
     pub filecheck_flags: Vec<String>,
     /// Don't automatically insert any `--check-cfg` args
     pub no_auto_check_cfg: bool,
+    /// Build and use `minicore` as `core` stub for `no_core` tests in cross-compilation scenarios
+    /// that don't otherwise want/need `-Z build-std`.
+    pub use_minicore: bool,
 }
 
 mod directives {
@@ -263,6 +266,7 @@ mod directives {
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
+    pub const USE_MINICORE: &'static str = "use-minicore";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -322,6 +326,7 @@ impl TestProps {
             llvm_cov_flags: vec![],
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
+            use_minicore: false,
         }
     }
 
@@ -597,6 +602,8 @@ impl TestProps {
                     }
 
                     config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
+
+                    self.update_use_minicore(ln, config);
                 },
             );
 
@@ -709,6 +716,17 @@ impl TestProps {
     // does not consider CLI override for pass mode
     pub fn local_pass_mode(&self) -> Option<PassMode> {
         self.pass_mode
+    }
+
+    pub fn update_use_minicore(&mut self, ln: &str, config: &Config) {
+        let use_minicore = config.parse_name_directive(ln, directives::USE_MINICORE);
+        if use_minicore {
+            if !matches!(config.mode, Mode::Ui | Mode::Codegen | Mode::Assembly) {
+                panic!("`use-minicore` is only supported for ui, codegen and assembly test modes");
+            }
+
+            self.use_minicore = use_minicore;
+        }
     }
 }
 
