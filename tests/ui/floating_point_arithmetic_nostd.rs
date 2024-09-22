@@ -4,7 +4,7 @@
 #![no_std]
 
 // The following should not lint, as the suggested methods `{f16,f32,f64,f128}.mul_add()`
-// and ``{f16,f32,f64,f128}::abs()` are not available in no_std
+// and `{f16,f32,f64,f128}::abs()` are not available in no_std
 
 pub fn mul_add() {
     let a: f64 = 1234.567;

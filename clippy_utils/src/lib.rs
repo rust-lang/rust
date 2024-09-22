@@ -121,7 +121,7 @@ use rustc_middle::ty::{
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{sym, Span};
+use rustc_span::{sym, InnerSpan, Span};
 use rustc_target::abi::Integer;
 use visitors::Visitable;
 
@@ -2944,13 +2944,14 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprU
 }
 
 /// Tokenizes the input while keeping the text associated with each token.
-pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str)> {
+pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str, InnerSpan)> {
     let mut pos = 0;
     tokenize(s).map(move |t| {
         let end = pos + t.len;
         let range = pos as usize..end as usize;
+        let inner = InnerSpan::new(range.start, range.end);
         pos = end;
-        (t.kind, s.get(range).unwrap_or_default())
+        (t.kind, s.get(range).unwrap_or_default(), inner)
     })
 }
 
@@ -2974,8 +2975,8 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
 pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
     let snippet = sm.span_to_snippet(span).unwrap_or_default();
     let res = tokenize_with_text(&snippet)
-        .filter(|(t, _)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
-        .map(|(_, s)| s)
+        .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
+        .map(|(_, s, _)| s)
         .join("\n");
     res
 }
@@ -2995,7 +2996,7 @@ pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
 /// pat: Some(a)
 /// else_body: return None
 /// ```
-
+///
 /// And for this example:
 /// ```ignore
 /// let Some(FooBar { a, b }) = ex else { return None };
@@ -3005,7 +3006,7 @@ pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
 /// pat: Some(FooBar { a, b })
 /// else_body: return None
 /// ```
-
+///
 /// We output `Some(a)` in the first instance, and `Some(FooBar { a, b })` in the second, because
 /// the question mark operator is applicable here. Callers have to check whether we are in a
 /// constant or not.

@@ -717,7 +717,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
 // check that:
 // 1. This is a method with only one argument that doesn't come from a trait.
 // 2. That it has `Borrow` in its generic predicates.
-// 3. `Self` is a std "map type" (ie `HashSet`, `HashMap`, BTreeSet`, `BTreeMap`).
+// 3. `Self` is a std "map type" (ie `HashSet`, `HashMap`, `BTreeSet`, `BTreeMap`).
 fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let ExprKind::MethodCall(_, caller, &[arg], _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)

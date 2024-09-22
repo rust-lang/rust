@@ -221,5 +221,17 @@ error: using a reference to `Cow` is not recommended
 LL |     fn cow_bad_ret_ty_2<'a, 'b>(input: &'a Cow<'a, str>) -> &'b str {
    |                                        ^^^^^^^^^^^^^^^^ help: change this to: `&str`
 
-error: aborting due to 25 previous errors
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:327:17
+   |
+LL |     fn good(v1: &String, v2: &String) {
+   |                 ^^^^^^^ help: change this to: `&str`
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:327:30
+   |
+LL |     fn good(v1: &String, v2: &String) {
+   |                              ^^^^^^^ help: change this to: `&str`
+
+error: aborting due to 27 previous errors
 

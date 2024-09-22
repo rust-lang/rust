@@ -150,18 +150,20 @@ pub(super) fn check(
                     },
                 );
             },
-            ast::LitKind::Int(Pu128(0), _) => check_fold_with_op(
-                cx,
-                expr,
-                acc,
-                fold_span,
-                hir::BinOpKind::Add,
-                Replacement {
-                    has_args: false,
-                    has_generic_return: needs_turbofish(cx, expr),
-                    method_name: "sum",
-                },
-            ),
+            ast::LitKind::Int(Pu128(0), _) => {
+                check_fold_with_op(
+                    cx,
+                    expr,
+                    acc,
+                    fold_span,
+                    hir::BinOpKind::Add,
+                    Replacement {
+                        has_args: false,
+                        has_generic_return: needs_turbofish(cx, expr),
+                        method_name: "sum",
+                    },
+                );
+            },
             ast::LitKind::Int(Pu128(1), _) => {
                 check_fold_with_op(
                     cx,

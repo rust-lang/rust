@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// "Hello World!".trim_end_matches(['.', ',', '!', '?']);
     /// ```
-    #[clippy::version = "1.80.0"]
+    #[clippy::version = "1.81.0"]
     pub MANUAL_PATTERN_CHAR_COMPARISON,
     style,
     "manual char comparison in string patterns"

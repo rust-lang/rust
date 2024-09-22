@@ -42,7 +42,7 @@ declare_clippy_lint! {
     ///     println!("inserted {value:?}");
     /// }
     /// ```
-    #[clippy::version = "1.80.0"]
+    #[clippy::version = "1.81.0"]
     pub SET_CONTAINS_OR_INSERT,
     nursery,
     "call to `<set>::contains` followed by `<set>::insert`"

@@ -1194,8 +1194,8 @@ fn eq_span_tokens(
             && let Some(rsrc) = right.get_source_range(cx)
             && let Some(rsrc) = rsrc.as_str()
         {
-            let pred = |t: &(_, _)| pred(t.0);
-            let map = |(_, x)| x;
+            let pred = |&(token, ..): &(TokenKind, _, _)| pred(token);
+            let map = |(_, source, _)| source;
 
             let ltok = tokenize_with_text(lsrc).filter(pred).map(map);
             let rtok = tokenize_with_text(rsrc).filter(pred).map(map);

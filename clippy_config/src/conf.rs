@@ -563,6 +563,7 @@ define_Conf! {
         uninlined_format_args,
         unnecessary_lazy_evaluations,
         unnested_or_patterns,
+        unused_trait_names,
         use_self,
     )]
     msrv: Msrv = Msrv::empty(),
@@ -864,7 +865,7 @@ fn calculate_dimensions(fields: &[&str]) -> (usize, Vec<usize>) {
             cmp::max(1, terminal_width / (SEPARATOR_WIDTH + max_field_width))
         });
 
-    let rows = (fields.len() + (columns - 1)) / columns;
+    let rows = fields.len().div_ceil(columns);
 
     let column_widths = (0..columns)
         .map(|column| {

@@ -1,5 +1,5 @@
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:37:26
+  --> tests/ui/expect_fun_call.rs:35:26
    |
 LL |     with_none_and_format.expect(&format!("Error {}: fake error", error_code));
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
@@ -8,85 +8,85 @@ LL |     with_none_and_format.expect(&format!("Error {}: fake error", error_code
    = help: to override `-D warnings` add `#[allow(clippy::expect_fun_call)]`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:40:26
+  --> tests/ui/expect_fun_call.rs:38:26
    |
 LL |     with_none_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:43:37
+  --> tests/ui/expect_fun_call.rs:41:37
    |
 LL |     with_none_and_format_with_macro.expect(format!("Error {}: fake error", one!()).as_str());
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("Error {}: fake error", one!()))`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:53:25
+  --> tests/ui/expect_fun_call.rs:51:25
    |
 LL |     with_err_and_format.expect(&format!("Error {}: fake error", error_code));
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:56:25
+  --> tests/ui/expect_fun_call.rs:54:25
    |
 LL |     with_err_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:68:17
+  --> tests/ui/expect_fun_call.rs:66:17
    |
 LL |     Some("foo").expect(format!("{} {}", 1, 2).as_ref());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{} {}", 1, 2))`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:89:21
+  --> tests/ui/expect_fun_call.rs:87:21
    |
 LL |         Some("foo").expect(&get_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_string()) })`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:90:21
+  --> tests/ui/expect_fun_call.rs:88:21
    |
 LL |         Some("foo").expect(get_string().as_ref());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_string()) })`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:91:21
+  --> tests/ui/expect_fun_call.rs:89:21
    |
 LL |         Some("foo").expect(get_string().as_str());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_string()) })`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:93:21
+  --> tests/ui/expect_fun_call.rs:91:21
    |
 LL |         Some("foo").expect(get_static_str());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_static_str()) })`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:94:21
+  --> tests/ui/expect_fun_call.rs:92:21
    |
 LL |         Some("foo").expect(get_non_static_str(&0));
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_non_static_str(&0).to_string()) })`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:98:16
+  --> tests/ui/expect_fun_call.rs:96:16
    |
 LL |     Some(true).expect(&format!("key {}, {}", 1, 2));
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("key {}, {}", 1, 2))`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:104:17
+  --> tests/ui/expect_fun_call.rs:102:17
    |
 LL |         opt_ref.expect(&format!("{:?}", opt_ref));
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{:?}", opt_ref))`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:108:20
+  --> tests/ui/expect_fun_call.rs:106:20
    |
 LL |     format_capture.expect(&format!("{error_code}"));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{error_code}"))`
 
 error: use of `expect` followed by a function call
-  --> tests/ui/expect_fun_call.rs:111:30
+  --> tests/ui/expect_fun_call.rs:109:30
    |
 LL |     format_capture_and_value.expect(&format!("{error_code}, {}", 1));
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{error_code}, {}", 1))`

@@ -606,10 +606,13 @@ fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
         ty::Tuple(types) => types.iter().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
         // Unions are always fine right now.
         // This includes MaybeUninit, the main way people use uninitialized memory.
-        // For ADTs, we could look at all fields just like for tuples, but that's potentially
-        // exponential, so let's avoid doing that for now. Code doing that is sketchy enough to
-        // just use an `#[allow()]`.
-        ty::Adt(adt, _) => adt.is_union(),
+        ty::Adt(adt, _) if adt.is_union() => true,
+        // Types (e.g. `UnsafeCell<MaybeUninit<T>>`) that recursively contain only types that can be uninit
+        // can themselves be uninit too.
+        // This purposefully ignores enums as they may have a discriminant that can't be uninit.
+        ty::Adt(adt, args) if adt.is_struct() => adt
+            .all_fields()
+            .all(|field| is_uninit_value_valid_for_ty(cx, field.ty(cx.tcx, args))),
         // For the rest, conservatively assume that they cannot be uninit.
         _ => false,
     }
