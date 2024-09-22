@@ -107,10 +107,10 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
-use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;
-use rustc_span::fatal_error::FatalError;
+use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_span::Symbol;
+use rustc_span::fatal_error::FatalError;
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
