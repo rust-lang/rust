@@ -43,19 +43,19 @@ mod for_windows {
     use std::ffi::c_void;
     use std::{env, io, mem};
 
-    use windows::core::PCWSTR;
-    use windows::Win32::Foundation::{CloseHandle, DuplicateHandle, DUPLICATE_SAME_ACCESS, HANDLE};
+    use windows::Win32::Foundation::{CloseHandle, DUPLICATE_SAME_ACCESS, DuplicateHandle, HANDLE};
     use windows::Win32::System::Diagnostics::Debug::{
-        SetErrorMode, SEM_NOGPFAULTERRORBOX, THREAD_ERROR_MODE,
+        SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
     };
     use windows::Win32::System::JobObjects::{
-        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
-        SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_PRIORITY_CLASS,
+        AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+        JOB_OBJECT_LIMIT_PRIORITY_CLASS, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+        JobObjectExtendedLimitInformation, SetInformationJobObject,
     };
     use windows::Win32::System::Threading::{
-        GetCurrentProcess, OpenProcess, BELOW_NORMAL_PRIORITY_CLASS, PROCESS_DUP_HANDLE,
+        BELOW_NORMAL_PRIORITY_CLASS, GetCurrentProcess, OpenProcess, PROCESS_DUP_HANDLE,
     };
+    use windows::core::PCWSTR;
 
     use crate::Build;
 

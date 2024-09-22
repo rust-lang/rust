@@ -2,11 +2,11 @@
 
 use std::sync::LazyLock;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::{sym, Symbol};
 use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_span::symbol::{Symbol, sym};
 
 use crate::{Features, Stability};
 

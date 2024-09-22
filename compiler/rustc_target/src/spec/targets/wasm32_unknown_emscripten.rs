@@ -1,5 +1,5 @@
 use crate::spec::{
-    base, cvs, LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions,
+    LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions, base, cvs,
 };
 
 pub(crate) fn target() -> Target {

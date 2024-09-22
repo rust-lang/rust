@@ -16,20 +16,20 @@ use std::path::{Path, PathBuf};
 use std::sync::LazyLock as Lazy;
 use std::{fmt, fs, io};
 
-pub use fluent_bundle::types::FluentType;
 use fluent_bundle::FluentResource;
+pub use fluent_bundle::types::FluentType;
 pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
 use fluent_syntax::parser::ParserError;
 use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
-#[cfg(parallel_compiler)]
-use intl_memoizer::concurrent::IntlLangMemoizer;
 #[cfg(not(parallel_compiler))]
 use intl_memoizer::IntlLangMemoizer;
+#[cfg(parallel_compiler)]
+use intl_memoizer::concurrent::IntlLangMemoizer;
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
 use tracing::{instrument, trace};
-pub use unic_langid::{langid, LanguageIdentifier};
+pub use unic_langid::{LanguageIdentifier, langid};
 
 pub type FluentBundle =
     IntoDynSyncSend<fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>>;

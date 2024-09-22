@@ -2,25 +2,25 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
-use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
-    lint_level, reveal_actual_level, LevelAndSource, LintExpectation, LintLevelSource,
-    ShallowLintLevelMap,
+    LevelAndSource, LintExpectation, LintLevelSource, ShallowLintLevelMap, lint_level,
+    reveal_actual_level,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
+use rustc_session::Session;
 use rustc_session::lint::builtin::{
     self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
     UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
 use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
-use rustc_session::Session;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 

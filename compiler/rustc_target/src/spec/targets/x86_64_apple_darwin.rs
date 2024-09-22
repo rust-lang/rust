@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{base, Arch, TargetAbi};
+use crate::spec::base::apple::{Arch, TargetAbi, base};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub(crate) fn target() -> Target {

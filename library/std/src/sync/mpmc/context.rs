@@ -4,8 +4,8 @@ use super::select::Selected;
 use super::waker::current_thread_id;
 use crate::cell::Cell;
 use crate::ptr;
-use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use crate::sync::Arc;
+use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use crate::thread::{self, Thread};
 use crate::time::Instant;
 

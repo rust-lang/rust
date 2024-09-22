@@ -16,10 +16,9 @@ pub(crate) fn target() -> Target {
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         // Enable the Cortex-A53 errata 843419 mitigation by default
-        pre_link_args: TargetOptions::link_args(
-            LinkerFlavor::Gnu(Cc::No, Lld::No),
-            &["--fix-cortex-a53-843419"],
-        ),
+        pre_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
+            "--fix-cortex-a53-843419",
+        ]),
         features: "+v8a,+strict-align,+neon,+fp-armv8".into(),
         supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         relocation_model: RelocModel::Static,

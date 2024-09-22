@@ -1,7 +1,7 @@
 use core::ops::ControlFlow;
 
 use hir::def::CtorKind;
-use hir::intravisit::{walk_expr, walk_stmt, Visitor};
+use hir::intravisit::{Visitor, walk_expr, walk_stmt};
 use hir::{LetStmt, QPath};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
@@ -14,11 +14,11 @@ use rustc_middle::traits::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use tracing::debug;
 
-use crate::error_reporting::infer::hir::Path;
 use crate::error_reporting::TypeErrCtxt;
+use crate::error_reporting::infer::hir::Path;
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,

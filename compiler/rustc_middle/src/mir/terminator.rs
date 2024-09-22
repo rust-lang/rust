@@ -5,7 +5,7 @@ use std::slice;
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::LangItem;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use super::{TerminatorKind, *};
 

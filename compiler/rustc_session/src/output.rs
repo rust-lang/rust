@@ -7,12 +7,12 @@ use rustc_errors::FatalError;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
+use crate::Session;
 use crate::config::{self, CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use crate::errors::{
     self, CrateNameDoesNotMatch, CrateNameEmpty, CrateNameInvalid, FileIsNotWriteable,
     InvalidCharacterInCrateName, InvalidCrateNameHelp,
 };
-use crate::Session;
 
 pub fn out_filename(
     sess: &Session,

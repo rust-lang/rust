@@ -2,7 +2,7 @@ pub(crate) mod cache;
 pub(crate) mod item_type;
 pub(crate) mod renderer;
 
-pub(crate) use renderer::{run_format, FormatRenderer};
+pub(crate) use renderer::{FormatRenderer, run_format};
 use rustc_hir::def_id::DefId;
 
 use crate::clean::{self, ItemId};

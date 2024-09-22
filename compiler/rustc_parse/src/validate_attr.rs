@@ -7,12 +7,12 @@ use rustc_ast::{
     NestedMetaItem, Safety,
 };
 use rustc_errors::{Applicability, FatalError, PResult};
-use rustc_feature::{AttributeSafety, AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_session::errors::report_lit_error;
-use rustc_session::lint::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNSAFE_ATTR_OUTSIDE_UNSAFE};
 use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNSAFE_ATTR_OUTSIDE_UNSAFE};
 use rustc_session::parse::ParseSess;
-use rustc_span::{sym, BytePos, Span, Symbol};
+use rustc_span::{BytePos, Span, Symbol, sym};
 
 use crate::{errors, parse_in};
 

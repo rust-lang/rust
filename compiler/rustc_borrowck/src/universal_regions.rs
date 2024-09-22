@@ -20,9 +20,9 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
+use rustc_hir::BodyOwnerKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::BodyOwnerKind;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_macros::extension;
@@ -37,8 +37,8 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::{ErrorGuaranteed, Symbol};
 use tracing::{debug, instrument};
 
-use crate::renumber::RegionCtxt;
 use crate::BorrowckInferCtxt;
+use crate::renumber::RegionCtxt;
 
 #[derive(Debug)]
 pub(crate) struct UniversalRegions<'tcx> {
@@ -629,10 +629,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     let ty = tcx
                         .typeck(self.mir_def)
                         .node_type(tcx.local_def_id_to_hir_id(self.mir_def));
-                    let args = InlineConstArgs::new(
-                        tcx,
-                        InlineConstArgsParts { parent_args: identity_args, ty },
-                    )
+                    let args = InlineConstArgs::new(tcx, InlineConstArgsParts {
+                        parent_args: identity_args,
+                        ty,
+                    })
                     .args;
                     let args = self.infcx.replace_free_regions_with_nll_infer_vars(FR, args);
                     DefiningTy::InlineConst(self.mir_def.to_def_id(), args)

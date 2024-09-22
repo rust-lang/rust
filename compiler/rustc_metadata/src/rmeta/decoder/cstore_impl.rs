@@ -18,14 +18,14 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
-use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use rustc_span::hygiene::ExpnId;
+use rustc_span::symbol::{Symbol, kw};
 
 use super::{Decodable, DecodeContext, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
-use crate::rmeta::table::IsDefault;
 use crate::rmeta::AttrFlags;
+use crate::rmeta::table::IsDefault;
 use crate::{foreign_modules, native_libs};
 
 trait ProcessQueryValue<'tcx, T> {

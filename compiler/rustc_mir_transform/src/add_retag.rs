@@ -111,13 +111,10 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
             .collect::<Vec<_>>();
         // Now we go over the returns we collected to retag the return values.
         for (source_info, dest_place, dest_block) in returns {
-            basic_blocks[dest_block].statements.insert(
-                0,
-                Statement {
-                    source_info,
-                    kind: StatementKind::Retag(RetagKind::Default, Box::new(dest_place)),
-                },
-            );
+            basic_blocks[dest_block].statements.insert(0, Statement {
+                source_info,
+                kind: StatementKind::Retag(RetagKind::Default, Box::new(dest_place)),
+            });
         }
 
         // PART 3
@@ -172,13 +169,10 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
                 };
                 // Insert a retag after the statement.
                 let source_info = block_data.statements[i].source_info;
-                block_data.statements.insert(
-                    i + 1,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::Retag(retag_kind, Box::new(place)),
-                    },
-                );
+                block_data.statements.insert(i + 1, Statement {
+                    source_info,
+                    kind: StatementKind::Retag(retag_kind, Box::new(place)),
+                });
             }
         }
     }

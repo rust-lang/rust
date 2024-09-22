@@ -8,7 +8,7 @@
 //! The output types are defined in `rustc_session::config::ErrorOutputType`.
 
 use std::borrow::Cow;
-use std::cmp::{max, min, Reverse};
+use std::cmp::{Reverse, max, min};
 use std::error::Report;
 use std::io::prelude::*;
 use std::io::{self, IsTerminal};
@@ -22,7 +22,7 @@ use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{char_width, FileLines, FileName, SourceFile, Span};
+use rustc_span::{FileLines, FileName, SourceFile, Span, char_width};
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing::{debug, instrument, trace, warn};
 
@@ -31,7 +31,7 @@ use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
 };
 use crate::styled_buffer::StyledBuffer;
-use crate::translation::{to_fluent_args, Translate};
+use crate::translation::{Translate, to_fluent_args};
 use crate::{
     CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle,
     Level, MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,

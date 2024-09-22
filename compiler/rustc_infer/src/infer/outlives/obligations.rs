@@ -68,7 +68,7 @@ use rustc_middle::ty::{
     TypeFoldable as _, TypeVisitableExt,
 };
 use rustc_span::DUMMY_SP;
-use rustc_type_ir::outlives::{push_outlives_components, Component};
+use rustc_type_ir::outlives::{Component, push_outlives_components};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -101,19 +101,15 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
-            infer::RelateParamBound(
-                cause.span,
-                sup_type,
-                match cause.code().peel_derives() {
-                    ObligationCauseCode::WhereClause(_, span)
-                    | ObligationCauseCode::WhereClauseInExpr(_, span, ..)
-                        if !span.is_dummy() =>
-                    {
-                        Some(*span)
-                    }
-                    _ => None,
-                },
-            )
+            infer::RelateParamBound(cause.span, sup_type, match cause.code().peel_derives() {
+                ObligationCauseCode::WhereClause(_, span)
+                | ObligationCauseCode::WhereClauseInExpr(_, span, ..)
+                    if !span.is_dummy() =>
+                {
+                    Some(*span)
+                }
+                _ => None,
+            })
         });
 
         self.register_region_obligation(RegionObligation { sup_type, sub_region, origin });

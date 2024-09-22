@@ -1,4 +1,4 @@
-use crate::spec::{cvs, Cc, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {

@@ -15,9 +15,9 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
 use tracing::instrument;
 
+use super::Certainty;
 use super::delegate::SolverDelegate;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use super::Certainty;
 use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
 
 /// A trait engine using the new trait solver.
@@ -347,10 +347,10 @@ fn find_best_leaf_obligation<'tcx>(
 ) -> PredicateObligation<'tcx> {
     let obligation = infcx.resolve_vars_if_possible(obligation.clone());
     infcx
-        .visit_proof_tree(
-            obligation.clone().into(),
-            &mut BestObligation { obligation: obligation.clone(), consider_ambiguities },
-        )
+        .visit_proof_tree(obligation.clone().into(), &mut BestObligation {
+            obligation: obligation.clone(),
+            consider_ambiguities,
+        })
         .break_value()
         .unwrap_or(obligation)
 }

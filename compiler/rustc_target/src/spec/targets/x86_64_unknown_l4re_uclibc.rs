@@ -1,4 +1,4 @@
-use crate::spec::{base, PanicStrategy, Target};
+use crate::spec::{PanicStrategy, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::l4re::opts();

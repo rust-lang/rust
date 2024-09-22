@@ -7,20 +7,20 @@ use std::collections::BTreeMap;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::ItemKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, suggest_constraining_type_params};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::misc::{
-    type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
     ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
+    type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
 };
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
 use tracing::debug;
@@ -309,11 +309,10 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         tcx,
                         cause.clone(),
                         param_env,
-                        ty::TraitRef::new(
-                            tcx,
-                            dispatch_from_dyn_trait,
-                            [field.ty(tcx, args_a), field.ty(tcx, args_b)],
-                        ),
+                        ty::TraitRef::new(tcx, dispatch_from_dyn_trait, [
+                            field.ty(tcx, args_a),
+                            field.ty(tcx, args_b),
+                        ]),
                     ));
                 }
                 let errors = ocx.select_all_or_error();

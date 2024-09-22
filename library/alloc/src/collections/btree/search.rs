@@ -6,7 +6,7 @@ use SearchBound::*;
 use SearchResult::*;
 
 use super::node::ForceResult::*;
-use super::node::{marker, Handle, NodeRef};
+use super::node::{Handle, NodeRef, marker};
 
 pub enum SearchBound<T> {
     /// An inclusive bound to look for, just like `Bound::Included(T)`.

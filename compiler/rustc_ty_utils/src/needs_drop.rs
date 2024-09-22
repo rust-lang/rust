@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
+use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::sym;

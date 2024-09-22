@@ -2,10 +2,10 @@ use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::codes::*;
 use rustc_errors::MultiSpan;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_errors::codes::*;
 use rustc_hir::Node;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
@@ -22,8 +22,8 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_target::abi::FieldIdx;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_type_ir::fold::TypeFoldable;

@@ -14,25 +14,25 @@ use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::{
-    has_primitive_or_keyword_docs, prepare_to_doc_link_resolution, source_span_for_markdown_range,
-    strip_generics_from_path, MalformedGenerics,
+    MalformedGenerics, has_primitive_or_keyword_docs, prepare_to_doc_link_resolution,
+    source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_session::lint::Lint;
-use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::BytePos;
-use smallvec::{smallvec, SmallVec};
+use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::{Ident, Symbol, sym};
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
 
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
-use crate::html::markdown::{markdown_links, MarkdownLink, MarkdownLinkRange};
+use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
 use crate::visit::DocVisitor;

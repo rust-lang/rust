@@ -5,15 +5,15 @@ use pulldown_cmark::{
 };
 use rustc_ast::NodeId;
 use rustc_errors::SuggestionStyle;
-use rustc_hir::def::{DefKind, DocLinkResMap, Namespace, Res};
 use rustc_hir::HirId;
+use rustc_hir::def::{DefKind, DocLinkResMap, Namespace, Res};
 use rustc_lint_defs::Applicability;
 use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, source_span_for_markdown_range};
-use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
+use rustc_span::def_id::DefId;
 
-use crate::clean::utils::{find_nearest_parent_module, inherits_doc_hidden};
 use crate::clean::Item;
+use crate::clean::utils::{find_nearest_parent_module, inherits_doc_hidden};
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 

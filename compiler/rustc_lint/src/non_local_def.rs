@@ -10,14 +10,14 @@ use rustc_middle::ty::{
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::kw;
-use rustc_span::{sym, ExpnKind, MacroKind, Span, Symbol};
+use rustc_span::{ExpnKind, MacroKind, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::traits::ambiguity::{
-    compute_applicable_impls_for_diagnostics, CandidateSource,
+    CandidateSource, compute_applicable_impls_for_diagnostics,
 };
 use rustc_trait_selection::infer::TyCtxtInferExt;
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
-use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
+use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
 
 declare_lint! {
     /// The `non_local_definitions` lint checks for `impl` blocks and `#[macro_export]`
@@ -277,26 +277,22 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                         None
                     };
 
-                cx.emit_span_lint(
-                    NON_LOCAL_DEFINITIONS,
-                    ms,
-                    NonLocalDefinitionsDiag::Impl {
-                        depth: self.body_depth,
-                        body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
-                        body_name: parent_opt_item_name
-                            .map(|s| s.to_ident_string())
-                            .unwrap_or_else(|| "<unnameable>".to_string()),
-                        cargo_update: cargo_update(),
-                        const_anon,
-                        self_ty_str,
-                        of_trait_str,
-                        move_to,
-                        doctest,
-                        may_remove,
-                        has_trait: impl_.of_trait.is_some(),
-                        macro_to_change,
-                    },
-                )
+                cx.emit_span_lint(NON_LOCAL_DEFINITIONS, ms, NonLocalDefinitionsDiag::Impl {
+                    depth: self.body_depth,
+                    body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
+                    body_name: parent_opt_item_name
+                        .map(|s| s.to_ident_string())
+                        .unwrap_or_else(|| "<unnameable>".to_string()),
+                    cargo_update: cargo_update(),
+                    const_anon,
+                    self_ty_str,
+                    of_trait_str,
+                    move_to,
+                    doctest,
+                    may_remove,
+                    has_trait: impl_.of_trait.is_some(),
+                    macro_to_change,
+                })
             }
             ItemKind::Macro(_macro, MacroKind::Bang)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>

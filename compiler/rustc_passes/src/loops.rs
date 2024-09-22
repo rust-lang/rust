@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use Context::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
@@ -11,7 +12,6 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{BytePos, Span};
-use Context::*;
 
 use crate::errors::{
     BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ContinueLabeledBlock, OutsideLoop,

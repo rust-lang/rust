@@ -1,7 +1,7 @@
 // Targets the Cortex-M33 processor (Armv8-M Mainline architecture profile),
 // without the Floating Point extension.
 
-use crate::spec::{base, cvs, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {

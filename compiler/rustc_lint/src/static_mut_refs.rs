@@ -3,8 +3,8 @@ use rustc_hir::{Expr, Stmt};
 use rustc_middle::ty::{Mutability, TyKind};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::edition::Edition;
 use rustc_span::Span;
+use rustc_span::edition::Edition;
 
 use crate::lints::{MutRefSugg, RefOfMutStatic};
 use crate::{LateContext, LateLintPass, LintContext};
@@ -146,9 +146,11 @@ fn emit_static_mut_refs(
         }
     };
 
-    cx.emit_span_lint(
-        STATIC_MUT_REFS,
+    cx.emit_span_lint(STATIC_MUT_REFS, span, RefOfMutStatic {
         span,
-        RefOfMutStatic { span, sugg, shared_label, shared_note, mut_note },
-    );
+        sugg,
+        shared_label,
+        shared_note,
+        mut_note,
+    });
 }

@@ -1,8 +1,8 @@
 //! `solid_fs.h`
 
 pub use libc::{
-    ino_t, off_t, stat, time_t, O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY,
-    SEEK_CUR, SEEK_END, SEEK_SET, S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFMT, S_IFREG, S_IWRITE,
+    O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY, S_IFBLK, S_IFCHR, S_IFDIR,
+    S_IFIFO, S_IFMT, S_IFREG, S_IWRITE, SEEK_CUR, SEEK_END, SEEK_SET, ino_t, off_t, stat, time_t,
 };
 
 use crate::os::raw::{c_char, c_int, c_uchar};

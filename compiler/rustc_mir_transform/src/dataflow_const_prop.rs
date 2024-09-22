@@ -2,7 +2,7 @@
 //!
 //! Currently, this pass only propagates scalar values.
 
-use rustc_const_eval::const_eval::{throw_machine_stop_str, DummyMachine};
+use rustc_const_eval::const_eval::{DummyMachine, throw_machine_stop_str};
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, PlaceTy, Projectable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
@@ -18,7 +18,7 @@ use rustc_mir_dataflow::value_analysis::{
 };
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{Abi, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use tracing::{debug, debug_span, instrument};
 
 // These constants are somewhat random guesses and have not been optimized.

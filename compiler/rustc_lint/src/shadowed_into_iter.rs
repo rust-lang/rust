@@ -146,10 +146,11 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
             None
         };
 
-        cx.emit_span_lint(
-            lint,
-            call.ident.span,
-            ShadowedIntoIterDiag { target, edition, suggestion: call.ident.span, sub },
-        );
+        cx.emit_span_lint(lint, call.ident.span, ShadowedIntoIterDiag {
+            target,
+            edition,
+            suggestion: call.ident.span,
+            sub,
+        });
     }
 }

@@ -7,8 +7,8 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -30,13 +30,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ok = self.try_overloaded_deref(expr.span, oprnd_ty)?;
         let method = self.register_infer_ok_obligations(ok);
         if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
-            self.apply_adjustments(
-                oprnd_expr,
-                vec![Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
-                    target: method.sig.inputs()[0],
-                }],
-            );
+            self.apply_adjustments(oprnd_expr, vec![Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
+                target: method.sig.inputs()[0],
+            }]);
         } else {
             span_bug!(expr.span, "input to deref is not a ref?");
         }

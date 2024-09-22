@@ -467,7 +467,7 @@ pub use crate::intrinsics::write_bytes;
 
 mod metadata;
 #[unstable(feature = "ptr_metadata", issue = "81513")]
-pub use metadata::{from_raw_parts, from_raw_parts_mut, metadata, DynMetadata, Pointee, Thin};
+pub use metadata::{DynMetadata, Pointee, Thin, from_raw_parts, from_raw_parts_mut, metadata};
 
 mod non_null;
 #[stable(feature = "nonnull", since = "1.25.0")]

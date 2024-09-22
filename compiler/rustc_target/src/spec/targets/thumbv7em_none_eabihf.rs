@@ -8,7 +8,7 @@
 //
 // To opt into double precision hardware support, use the `-C target-feature=+fp64` flag.
 
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {

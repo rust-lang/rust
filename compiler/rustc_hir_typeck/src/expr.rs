@@ -7,7 +7,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, StashKey, Subdiagnostic,
+    Applicability, Diag, ErrorGuaranteed, StashKey, Subdiagnostic, pluralize, struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -17,26 +17,28 @@ use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
+use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
+use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
+use crate::TupleArgumentsFlag::DontTupleArguments;
 use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::errors::{
     AddressOfTemporaryTaken, FieldMultiplySpecifiedInInitializer,
@@ -44,11 +46,9 @@ use crate::errors::{
     ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
     YieldExprOutsideOfCoroutine,
 };
-use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::TupleArgumentsFlag::DontTupleArguments;
 use crate::{
-    cast, fatally_break_rust, report_unexpected_variant_res, type_error_struct, BreakableCtxt,
-    CoroutineTypes, Diverges, FnCtxt, Needs,
+    BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, Needs, cast, fatally_break_rust,
+    report_unexpected_variant_res, type_error_struct,
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -72,10 +72,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             let adj_ty = self.next_ty_var(expr.span);
-            self.apply_adjustments(
-                expr,
-                vec![Adjustment { kind: Adjust::NeverToAny, target: adj_ty }],
-            );
+            self.apply_adjustments(expr, vec![Adjustment {
+                kind: Adjust::NeverToAny,
+                target: adj_ty,
+            }]);
             ty = adj_ty;
         }
 

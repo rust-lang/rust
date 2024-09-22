@@ -1,7 +1,7 @@
-use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 use r_efi::efi::Status;
+use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
-use super::{helpers, unsupported, RawOsError};
+use super::{RawOsError, helpers, unsupported};
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;

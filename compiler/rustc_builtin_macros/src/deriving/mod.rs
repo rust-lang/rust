@@ -4,9 +4,9 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::{GenericArg, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{Symbol, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 macro path_local($x:ident) {
     generic::ty::Path::new_local(sym::$x)

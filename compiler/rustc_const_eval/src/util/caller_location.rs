@@ -6,7 +6,7 @@ use rustc_middle::{bug, mir};
 use rustc_span::symbol::Symbol;
 use tracing::trace;
 
-use crate::const_eval::{mk_eval_cx_to_read_const_val, CanAccessMutGlobal, CompileTimeInterpCx};
+use crate::const_eval::{CanAccessMutGlobal, CompileTimeInterpCx, mk_eval_cx_to_read_const_val};
 use crate::interpret::*;
 
 /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.

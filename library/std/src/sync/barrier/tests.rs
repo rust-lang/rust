@@ -1,4 +1,4 @@
-use crate::sync::mpsc::{channel, TryRecvError};
+use crate::sync::mpsc::{TryRecvError, channel};
 use crate::sync::{Arc, Barrier};
 use crate::thread;
 

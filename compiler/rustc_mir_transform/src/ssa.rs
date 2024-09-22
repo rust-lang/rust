@@ -159,11 +159,10 @@ impl SsaLocals {
     ) {
         for &local in &self.assignment_order {
             match self.assignments[local] {
-                Set1::One(DefLocation::Argument) => f(
-                    local,
-                    AssignedValue::Arg,
-                    Location { block: START_BLOCK, statement_index: 0 },
-                ),
+                Set1::One(DefLocation::Argument) => f(local, AssignedValue::Arg, Location {
+                    block: START_BLOCK,
+                    statement_index: 0,
+                }),
                 Set1::One(DefLocation::Assignment(loc)) => {
                     let bb = &mut basic_blocks[loc.block];
                     // `loc` must point to a direct assignment to `local`.

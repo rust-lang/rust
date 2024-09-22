@@ -7,11 +7,11 @@ use std::io::{self, BufReader};
 use std::path::Path;
 use std::{env, error, fmt};
 
-use parm::{expand, Param, Variables};
+use parm::{Param, Variables, expand};
 use parser::compiled::{msys_terminfo, parse};
 use searcher::get_dbpath_for_term;
 
-use super::{color, Terminal};
+use super::{Terminal, color};
 
 /// A parsed terminfo database entry.
 #[allow(unused)]

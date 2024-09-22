@@ -29,7 +29,7 @@ use rustc_data_structures::graph::{DirectedGraph, Successors};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::{bug, ty};
-use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{BytePos, DUMMY_SP, Pos, Span};
 
 use super::graph::{self, BasicCoverageBlock};
 
@@ -129,18 +129,15 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 
     fn call(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
-        self.add_block_from(
-            some_from_block,
-            TerminatorKind::Call {
-                func: Operand::Copy(self.dummy_place.clone()),
-                args: [].into(),
-                destination: self.dummy_place.clone(),
-                target: Some(TEMP_BLOCK),
-                unwind: UnwindAction::Continue,
-                call_source: CallSource::Misc,
-                fn_span: DUMMY_SP,
-            },
-        )
+        self.add_block_from(some_from_block, TerminatorKind::Call {
+            func: Operand::Copy(self.dummy_place.clone()),
+            args: [].into(),
+            destination: self.dummy_place.clone(),
+            target: Some(TEMP_BLOCK),
+            unwind: UnwindAction::Continue,
+            call_source: CallSource::Misc,
+            fn_span: DUMMY_SP,
+        })
     }
 
     fn goto(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {

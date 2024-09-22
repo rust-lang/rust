@@ -42,7 +42,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDe
 use rustc_session::lint;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
@@ -284,14 +284,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mut err =
                     make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx);
                 if self.cast_ty.is_integral() {
-                    err.help(format!(
-                        "cast through {} first",
-                        match e {
-                            CastError::NeedViaPtr => "a raw pointer",
-                            CastError::NeedViaThinPtr => "a thin pointer",
-                            e => unreachable!("control flow means we should never encounter a {e:?}"),
-                        }
-                    ));
+                    err.help(format!("cast through {} first", match e {
+                        CastError::NeedViaPtr => "a raw pointer",
+                        CastError::NeedViaThinPtr => "a thin pointer",
+                        e => unreachable!("control flow means we should never encounter a {e:?}"),
+                    }));
                 }
 
                 self.try_suggest_collection_to_bool(fcx, &mut err);
@@ -620,12 +617,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         };
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-        fcx.tcx.emit_node_span_lint(
-            lint,
-            self.expr.hir_id,
-            self.span,
-            errors::TrivialCast { numeric, expr_ty, cast_ty },
-        );
+        fcx.tcx.emit_node_span_lint(lint, self.expr.hir_id, self.span, errors::TrivialCast {
+            numeric,
+            expr_ty,
+            cast_ty,
+        });
     }
 
     #[instrument(skip(fcx), level = "debug")]

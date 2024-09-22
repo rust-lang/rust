@@ -580,10 +580,8 @@
 pub use core::fmt::Alignment;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::Error;
-#[unstable(feature = "debug_closure_helpers", issue = "117729")]
-pub use core::fmt::{from_fn, FromFn};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{write, Arguments};
+pub use core::fmt::{Arguments, write};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Binary, Octal};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -592,6 +590,8 @@ pub use core::fmt::{Debug, Display};
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Formatter, Result, Write};
+#[unstable(feature = "debug_closure_helpers", issue = "117729")]
+pub use core::fmt::{FromFn, from_fn};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerExp, UpperExp};
 #[stable(feature = "rust1", since = "1.0.0")]

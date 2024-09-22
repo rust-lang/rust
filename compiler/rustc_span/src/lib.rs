@@ -39,7 +39,7 @@
 extern crate self as rustc_span;
 
 use derive_where::derive_where;
-use rustc_data_structures::{outline, AtomicRef};
+use rustc_data_structures::{AtomicRef, outline};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -60,13 +60,13 @@ pub use hygiene::{
 };
 use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
-use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LocalDefId, StableCrateId, LOCAL_CRATE};
+use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LOCAL_CRATE, LocalDefId, StableCrateId};
 pub mod edit_distance;
 mod span_encoding;
-pub use span_encoding::{Span, DUMMY_SP};
+pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
-pub use symbol::{sym, Symbol};
+pub use symbol::{Symbol, sym};
 
 mod analyze_source_file;
 pub mod fatal_error;
@@ -83,7 +83,7 @@ use std::{fmt, iter};
 
 use md5::{Digest, Md5};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, Hash128, HashStable, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 use sha1::Sha1;
 use sha2::Sha256;

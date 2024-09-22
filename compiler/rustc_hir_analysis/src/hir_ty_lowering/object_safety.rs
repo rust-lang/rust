@@ -13,7 +13,7 @@ use rustc_middle::ty::{
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_object_safety_error;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_object_safety_violations};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::HirTyLowerer;

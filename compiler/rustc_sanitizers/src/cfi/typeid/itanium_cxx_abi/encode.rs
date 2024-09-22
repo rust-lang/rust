@@ -7,7 +7,7 @@
 
 use std::fmt::Write as _;
 
-use rustc_data_structures::base_n::{ToBaseN, ALPHANUMERIC_ONLY, CASE_INSENSITIVE};
+use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::bug;
@@ -22,8 +22,8 @@ use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 use tracing::instrument;
 
-use crate::cfi::typeid::itanium_cxx_abi::transform::{TransformTy, TransformTyOptions};
 use crate::cfi::typeid::TypeIdOptions;
+use crate::cfi::typeid::itanium_cxx_abi::transform::{TransformTy, TransformTyOptions};
 
 /// Options for encode_ty.
 pub(crate) type EncodeTyOptions = TypeIdOptions;

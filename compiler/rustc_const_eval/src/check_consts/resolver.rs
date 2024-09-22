@@ -13,7 +13,7 @@ use rustc_middle::mir::{
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, JoinSemiLattice};
 
-use super::{qualifs, ConstCx, Qualif};
+use super::{ConstCx, Qualif, qualifs};
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.

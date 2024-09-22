@@ -1,5 +1,5 @@
-use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::SourceScope;
+use rustc_middle::mir::coverage::CoverageKind;
 
 use super::FunctionCx;
 use crate::traits::*;

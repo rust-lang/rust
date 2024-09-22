@@ -12,7 +12,7 @@ use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces}
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, Forward, GenKill, Results, ResultsVisitable};
 use tracing::debug;
 
-use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
+use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
 
 /// The results of the dataflow analyses used by the borrow checker.
 pub(crate) struct BorrowckResults<'a, 'tcx> {

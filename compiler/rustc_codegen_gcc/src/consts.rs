@@ -7,7 +7,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_hir::def::DefKind;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    self, read_target_uint, ConstAllocation, ErrorHandled, Scalar as InterpScalar,
+    self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint,
 };
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance};

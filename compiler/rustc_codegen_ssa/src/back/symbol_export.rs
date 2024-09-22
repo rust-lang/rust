@@ -3,11 +3,11 @@ use std::collections::hash_map::Entry::*;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
-    metadata_symbol_name, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
+    ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel, metadata_symbol_name,
 };
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, TyCtxt};
@@ -140,14 +140,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
         .into();
 
     if let Some(id) = tcx.proc_macro_decls_static(()) {
-        reachable_non_generics.insert(
-            id.to_def_id(),
-            SymbolExportInfo {
-                level: SymbolExportLevel::C,
-                kind: SymbolExportKind::Data,
-                used: false,
-            },
-        );
+        reachable_non_generics.insert(id.to_def_id(), SymbolExportInfo {
+            level: SymbolExportLevel::C,
+            kind: SymbolExportKind::Data,
+            used: false,
+        });
     }
 
     reachable_non_generics
@@ -188,14 +185,11 @@ fn exported_symbols_provider_local(
     if !tcx.sess.target.dll_tls_export {
         symbols.extend(sorted.iter().filter_map(|(&def_id, &info)| {
             tcx.needs_thread_local_shim(def_id).then(|| {
-                (
-                    ExportedSymbol::ThreadLocalShim(def_id),
-                    SymbolExportInfo {
-                        level: info.level,
-                        kind: SymbolExportKind::Text,
-                        used: info.used,
-                    },
-                )
+                (ExportedSymbol::ThreadLocalShim(def_id), SymbolExportInfo {
+                    level: info.level,
+                    kind: SymbolExportKind::Text,
+                    used: info.used,
+                })
             })
         }))
     }
@@ -204,14 +198,11 @@ fn exported_symbols_provider_local(
         let exported_symbol =
             ExportedSymbol::NoDefId(SymbolName::new(tcx, tcx.sess.target.entry_name.as_ref()));
 
-        symbols.push((
-            exported_symbol,
-            SymbolExportInfo {
-                level: SymbolExportLevel::C,
-                kind: SymbolExportKind::Text,
-                used: false,
-            },
-        ));
+        symbols.push((exported_symbol, SymbolExportInfo {
+            level: SymbolExportLevel::C,
+            kind: SymbolExportKind::Text,
+            used: false,
+        }));
     }
 
     // Mark allocator shim symbols as exported only if they were generated.
@@ -223,26 +214,20 @@ fn exported_symbols_provider_local(
         {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
-            symbols.push((
-                exported_symbol,
-                SymbolExportInfo {
-                    level: SymbolExportLevel::Rust,
-                    kind: SymbolExportKind::Text,
-                    used: false,
-                },
-            ));
+            symbols.push((exported_symbol, SymbolExportInfo {
+                level: SymbolExportLevel::Rust,
+                kind: SymbolExportKind::Text,
+                used: false,
+            }));
         }
 
         let exported_symbol =
             ExportedSymbol::NoDefId(SymbolName::new(tcx, NO_ALLOC_SHIM_IS_UNSTABLE));
-        symbols.push((
-            exported_symbol,
-            SymbolExportInfo {
-                level: SymbolExportLevel::Rust,
-                kind: SymbolExportKind::Data,
-                used: false,
-            },
-        ))
+        symbols.push((exported_symbol, SymbolExportInfo {
+            level: SymbolExportLevel::Rust,
+            kind: SymbolExportKind::Data,
+            used: false,
+        }))
     }
 
     if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {
@@ -254,14 +239,11 @@ fn exported_symbols_provider_local(
 
         symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (
-                exported_symbol,
-                SymbolExportInfo {
-                    level: SymbolExportLevel::C,
-                    kind: SymbolExportKind::Data,
-                    used: false,
-                },
-            )
+            (exported_symbol, SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Data,
+                used: false,
+            })
         }));
     }
 
@@ -279,14 +261,11 @@ fn exported_symbols_provider_local(
 
         symbols.extend(msan_weak_symbols.into_iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (
-                exported_symbol,
-                SymbolExportInfo {
-                    level: SymbolExportLevel::C,
-                    kind: SymbolExportKind::Data,
-                    used: false,
-                },
-            )
+            (exported_symbol, SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Data,
+                used: false,
+            })
         }));
     }
 
@@ -296,14 +275,11 @@ fn exported_symbols_provider_local(
         let symbol_name = metadata_symbol_name(tcx);
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
-        symbols.push((
-            exported_symbol,
-            SymbolExportInfo {
-                level: SymbolExportLevel::C,
-                kind: SymbolExportKind::Data,
-                used: true,
-            },
-        ));
+        symbols.push((exported_symbol, SymbolExportInfo {
+            level: SymbolExportLevel::C,
+            kind: SymbolExportKind::Data,
+            used: true,
+        }));
     }
 
     if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
@@ -338,14 +314,11 @@ fn exported_symbols_provider_local(
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
                     if args.non_erasable_generics(tcx, def).next().is_some() {
                         let symbol = ExportedSymbol::Generic(def, args);
-                        symbols.push((
-                            symbol,
-                            SymbolExportInfo {
-                                level: SymbolExportLevel::Rust,
-                                kind: SymbolExportKind::Text,
-                                used: false,
-                            },
-                        ));
+                        symbols.push((symbol, SymbolExportInfo {
+                            level: SymbolExportLevel::Rust,
+                            kind: SymbolExportKind::Text,
+                            used: false,
+                        }));
                     }
                 }
                 MonoItem::Fn(Instance { def: InstanceKind::DropGlue(def_id, Some(ty)), args }) => {
@@ -354,14 +327,11 @@ fn exported_symbols_provider_local(
                         args.non_erasable_generics(tcx, def_id).next(),
                         Some(GenericArgKind::Type(ty))
                     );
-                    symbols.push((
-                        ExportedSymbol::DropGlue(ty),
-                        SymbolExportInfo {
-                            level: SymbolExportLevel::Rust,
-                            kind: SymbolExportKind::Text,
-                            used: false,
-                        },
-                    ));
+                    symbols.push((ExportedSymbol::DropGlue(ty), SymbolExportInfo {
+                        level: SymbolExportLevel::Rust,
+                        kind: SymbolExportKind::Text,
+                        used: false,
+                    }));
                 }
                 MonoItem::Fn(Instance {
                     def: InstanceKind::AsyncDropGlueCtorShim(def_id, Some(ty)),
@@ -372,14 +342,11 @@ fn exported_symbols_provider_local(
                         args.non_erasable_generics(tcx, def_id).next(),
                         Some(GenericArgKind::Type(ty))
                     );
-                    symbols.push((
-                        ExportedSymbol::AsyncDropGlueCtorShim(ty),
-                        SymbolExportInfo {
-                            level: SymbolExportLevel::Rust,
-                            kind: SymbolExportKind::Text,
-                            used: false,
-                        },
-                    ));
+                    symbols.push((ExportedSymbol::AsyncDropGlueCtorShim(ty), SymbolExportInfo {
+                        level: SymbolExportLevel::Rust,
+                        kind: SymbolExportKind::Text,
+                        used: false,
+                    }));
                 }
                 _ => {
                     // Any other symbols don't qualify for sharing

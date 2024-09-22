@@ -1857,8 +1857,8 @@ fn sort_unstable() {
 fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
 
-    use rand::seq::SliceRandom;
     use rand::Rng;
+    use rand::seq::SliceRandom;
 
     let mut rng = crate::test_rng();
 

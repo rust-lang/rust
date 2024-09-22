@@ -1,12 +1,12 @@
 // These functions are used by macro expansion for bug! and span_bug!
 
 use std::fmt;
-use std::panic::{panic_any, Location};
+use std::panic::{Location, panic_any};
 
 use rustc_errors::MultiSpan;
 use rustc_span::Span;
 
-use crate::ty::{tls, TyCtxt};
+use crate::ty::{TyCtxt, tls};
 
 #[cold]
 #[inline(never)]

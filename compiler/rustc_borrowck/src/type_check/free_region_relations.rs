@@ -6,10 +6,10 @@ use rustc_hir::def::DefKind;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::GenericKind;
-use rustc_infer::infer::{outlives, InferCtxt};
+use rustc_infer::infer::{InferCtxt, outlives};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -18,7 +18,7 @@ use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use tracing::{debug, instrument};
 use type_op::TypeOpOutput;
 
-use crate::type_check::{constraint_conversion, Locations, MirTypeckRegionConstraints};
+use crate::type_check::{Locations, MirTypeckRegionConstraints, constraint_conversion};
 use crate::universal_regions::UniversalRegions;
 
 #[derive(Debug)]

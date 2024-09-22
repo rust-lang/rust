@@ -8,7 +8,7 @@ use crate::compiler_interface::with;
 use crate::mir::FieldIdx;
 use crate::target::{MachineInfo, MachineSize as Size};
 use crate::ty::{Align, IndexedVal, Ty, VariantIdx};
-use crate::{error, Error, Opaque};
+use crate::{Error, Opaque, error};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]

@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::path::{Dirs, RelPath};
 use crate::prepare::GitRepo;
 use crate::rustc_info::get_file_name;
-use crate::utils::{hyperfine_command, spawn_and_wait, Compiler};
+use crate::utils::{Compiler, hyperfine_command, spawn_and_wait};
 
 static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::{iter, ptr};
 
 use libc::{c_char, c_longlong, c_uint};
-use rustc_codegen_ssa::debuginfo::type_names::{cpp_like_debuginfo, VTableNameKind};
+use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
 use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -18,7 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
-use rustc_span::{hygiene, FileName, FileNameDisplayPreference, SourceFile, DUMMY_SP};
+use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, hygiene};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::DebuginfoKind;
@@ -26,15 +26,15 @@ use smallvec::smallvec;
 use tracing::{debug, instrument};
 
 use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
+use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
 use super::utils::{
-    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
+    DIB, create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit,
 };
-use super::CodegenUnitDebugContext;
 use crate::common::CodegenCx;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
-use crate::debuginfo::utils::{fat_pointer_kind, FatPtrKind};
+use crate::debuginfo::utils::{FatPtrKind, fat_pointer_kind};
 use crate::llvm::debuginfo::{
     DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
     DebugNameTableKind,
@@ -875,8 +875,8 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
 ) -> &'ll DIDescriptor {
-    use rustc_session::config::RemapPathScopeComponents;
     use rustc_session::RemapFileNameExt;
+    use rustc_session::config::RemapPathScopeComponents;
     let mut name_in_debuginfo = tcx
         .sess
         .local_crate_source_file()

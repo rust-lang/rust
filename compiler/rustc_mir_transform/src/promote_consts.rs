@@ -15,7 +15,7 @@ use std::cell::Cell;
 use std::{cmp, iter, mem};
 
 use either::{Left, Right};
-use rustc_const_eval::check_consts::{qualifs, ConstCx};
+use rustc_const_eval::check_consts::{ConstCx, qualifs};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_index::{Idx, IndexSlice, IndexVec};
@@ -23,8 +23,8 @@ use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Vis
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_span::source_map::Spanned;
 use rustc_span::Span;
+use rustc_span::source_map::Spanned;
 use tracing::{debug, instrument};
 
 /// A `MirPass` for promotion.
@@ -912,23 +912,19 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.extra_statements.push((loc, promoted_ref_statement));
 
             (
-                Rvalue::Ref(
-                    tcx.lifetimes.re_erased,
-                    *borrow_kind,
-                    Place {
-                        local: mem::replace(&mut place.local, promoted_ref),
-                        projection: List::empty(),
-                    },
-                ),
+                Rvalue::Ref(tcx.lifetimes.re_erased, *borrow_kind, Place {
+                    local: mem::replace(&mut place.local, promoted_ref),
+                    projection: List::empty(),
+                }),
                 promoted_operand,
             )
         };
 
         assert_eq!(self.new_block(), START_BLOCK);
-        self.visit_rvalue(
-            &mut rvalue,
-            Location { block: START_BLOCK, statement_index: usize::MAX },
-        );
+        self.visit_rvalue(&mut rvalue, Location {
+            block: START_BLOCK,
+            statement_index: usize::MAX,
+        });
 
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);

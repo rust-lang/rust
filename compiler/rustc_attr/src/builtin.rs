@@ -4,21 +4,21 @@ use std::num::NonZero;
 
 use rustc_abi::Align;
 use rustc_ast::{
-    self as ast, attr, Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem,
-    NodeId,
+    self as ast, Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId,
+    attr,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorGuaranteed;
-use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
+use rustc_feature::{Features, GatedCfg, find_gated_cfg, is_builtin_attr_name};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_session::config::ExpectedValues;
-use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
-use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_span::hygiene::Transparency;
+use rustc_span::symbol::{Symbol, sym};
 
 use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};

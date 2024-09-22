@@ -13,10 +13,10 @@ use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, Lrc, OnceLock,
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::{StableCrateId, StableCrateIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
-use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
+use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
@@ -32,8 +32,8 @@ use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_name};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
+use rustc_span::symbol::{Symbol, sym};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 use tracing::{info, instrument};
@@ -980,19 +980,15 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 std::ops::ControlFlow::Continue::<std::convert::Infallible>(())
             });
 
-            sess.code_stats.record_vtable_size(
-                tr,
-                &name,
-                VTableSizeInfo {
-                    trait_name: name.clone(),
-                    entries: entries_ignoring_upcasting + entries_for_upcasting,
-                    entries_ignoring_upcasting,
-                    entries_for_upcasting,
-                    upcasting_cost_percent: entries_for_upcasting as f64
-                        / entries_ignoring_upcasting as f64
-                        * 100.,
-                },
-            )
+            sess.code_stats.record_vtable_size(tr, &name, VTableSizeInfo {
+                trait_name: name.clone(),
+                entries: entries_ignoring_upcasting + entries_for_upcasting,
+                entries_ignoring_upcasting,
+                entries_for_upcasting,
+                upcasting_cost_percent: entries_for_upcasting as f64
+                    / entries_ignoring_upcasting as f64
+                    * 100.,
+            })
         }
     }
 

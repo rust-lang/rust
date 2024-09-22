@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::search_paths::{PathKind, SearchPath};
 
@@ -121,11 +121,11 @@ fn current_dll_path() -> Result<PathBuf, String> {
     use std::io;
     use std::os::windows::prelude::*;
 
-    use windows::core::PCWSTR;
     use windows::Win32::Foundation::HMODULE;
     use windows::Win32::System::LibraryLoader::{
-        GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, GetModuleFileNameW, GetModuleHandleExW,
     };
+    use windows::core::PCWSTR;
 
     let mut module = HMODULE::default();
     unsafe {

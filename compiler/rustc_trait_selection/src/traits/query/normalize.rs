@@ -13,8 +13,8 @@ use rustc_span::DUMMY_SP;
 use tracing::{debug, info, instrument};
 
 use super::NoSolution;
-use crate::error_reporting::traits::OverflowCause;
 use crate::error_reporting::InferCtxtErrorExt;
+use crate::error_reporting::traits::OverflowCause;
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};

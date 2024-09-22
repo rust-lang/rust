@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 use tracing::debug;
@@ -11,7 +11,7 @@ use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::{Item, ItemIdSet};
 use crate::core::DocContext;
-use crate::fold::{strip_item, DocFolder};
+use crate::fold::{DocFolder, strip_item};
 use crate::passes::{ImplStripper, Pass};
 
 pub(crate) const STRIP_HIDDEN: Pass = Pass {

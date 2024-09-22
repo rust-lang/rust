@@ -10,13 +10,13 @@ use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, Into
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
-use rustc_span::{Span, Symbol, DUMMY_SP};
-use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
+use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_target::abi::{Align, Size, VariantIdx, WrappingRange, call};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
 use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
-use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};
+use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum ErrorHandled {

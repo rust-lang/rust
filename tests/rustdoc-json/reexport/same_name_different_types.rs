@@ -17,6 +17,6 @@ pub mod nested {
 //@ ismany "$.index[*].inner[?(@.use.name == 'Bar')].use.id" $foo_fn $foo_struct
 
 //@ count "$.index[*].inner[?(@.use.name == 'Foo')]" 2
-pub use nested::Foo;
 //@ count "$.index[*].inner[?(@.use.name == 'Bar')]" 2
 pub use Foo as Bar;
+pub use nested::Foo;

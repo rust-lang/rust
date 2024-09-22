@@ -42,6 +42,7 @@ use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::{fmt, panic};
 
+use Level::*;
 pub use codes::*;
 pub use diagnostic::{
     BugAbort, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner, DiagStyledString,
@@ -53,29 +54,28 @@ pub use diagnostic_impls::{
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
-use emitter::{is_case_difference, is_different, DynEmitter, Emitter};
+use emitter::{DynEmitter, Emitter, is_case_difference, is_different};
 use registry::Registry;
+use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
-use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, DiagMessage, FluentBundle, LanguageIdentifier,
-    LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
+    DiagMessage, FluentBundle, LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel,
+    SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
 };
 use rustc_lint_defs::LintExpectationId;
-pub use rustc_lint_defs::{pluralize, Applicability};
+pub use rustc_lint_defs::{Applicability, pluralize};
 use rustc_macros::{Decodable, Encodable};
+pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
-pub use rustc_span::ErrorGuaranteed;
-use rustc_span::{Loc, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Loc, Span};
 pub use snippet::Style;
 // Used by external projects such as `rust-gpu`.
 // See https://github.com/rust-lang/rust/pull/115393.
 pub use termcolor::{Color, ColorSpec, WriteColor};
 use tracing::debug;
-use Level::*;
 
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;

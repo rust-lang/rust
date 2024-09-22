@@ -25,14 +25,14 @@ use std::iter;
 
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
+use rustc_span::symbol::{Symbol, sym};
 use rustc_target::abi::Align;
-use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target, TargetTriple, TARGETS};
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, TARGETS, Target, TargetTriple};
 
-use crate::config::{CrateType, FmtDebug};
 use crate::Session;
+use crate::config::{CrateType, FmtDebug};
 
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.

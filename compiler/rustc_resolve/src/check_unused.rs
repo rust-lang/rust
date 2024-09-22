@@ -29,15 +29,15 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir::def::{DefKind, Res};
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
 };
-use rustc_session::lint::BuiltinLintDiag;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, kw};
+use rustc_span::{DUMMY_SP, Span};
 
 use crate::imports::{Import, ImportKind};
-use crate::{module_to_string, LexicalScopeBinding, NameBindingKind, Resolver};
+use crate::{LexicalScopeBinding, NameBindingKind, Resolver, module_to_string};
 
 struct UnusedImport {
     use_tree: ast::UseTree,

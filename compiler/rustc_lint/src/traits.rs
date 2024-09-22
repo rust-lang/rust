@@ -101,11 +101,11 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                     continue;
                 }
                 let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else { return };
-                cx.emit_span_lint(
-                    DROP_BOUNDS,
-                    span,
-                    DropTraitConstraintsDiag { predicate, tcx: cx.tcx, def_id },
-                );
+                cx.emit_span_lint(DROP_BOUNDS, span, DropTraitConstraintsDiag {
+                    predicate,
+                    tcx: cx.tcx,
+                    def_id,
+                });
             }
         }
     }

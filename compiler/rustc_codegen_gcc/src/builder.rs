@@ -7,7 +7,8 @@ use gccjit::{
     BinaryOp, Block, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue, Type,
     UnaryOp,
 };
-use rustc_apfloat::{ieee, Float, Round, Status};
+use rustc_apfloat::{Float, Round, Status, ieee};
+use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
@@ -17,7 +18,6 @@ use rustc_codegen_ssa::traits::{
     BackendTypes, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
     LayoutTypeCodegenMethods, OverflowOp, StaticBuilderMethods,
 };
-use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -25,13 +25,13 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers,
 };
 use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
-use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use rustc_span::def_id::DefId;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
 
-use crate::common::{type_is_pointer, SignType, TypeReflection};
+use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
 use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
@@ -152,11 +152,14 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // NOTE: not sure why, but we have the wrong type here.
         let int_type = compare_exchange.get_param(2).to_rvalue().get_type();
         let src = self.context.new_bitcast(self.location, src, int_type);
-        self.context.new_call(
-            self.location,
-            compare_exchange,
-            &[dst, expected, src, weak, order, failure_order],
-        )
+        self.context.new_call(self.location, compare_exchange, &[
+            dst,
+            expected,
+            src,
+            weak,
+            order,
+            failure_order,
+        ])
     }
 
     pub fn assign(&self, lvalue: LValue<'gcc>, value: RValue<'gcc>) {
@@ -1079,11 +1082,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let align = dest.val.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
-        let next = self.inbounds_gep(
-            self.backend_type(cg_elem.layout),
-            current.to_rvalue(),
-            &[self.const_usize(1)],
-        );
+        let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[
+            self.const_usize(1),
+        ]);
         self.llbb().add_assignment(self.location, current, next);
         self.br(header_bb);
 

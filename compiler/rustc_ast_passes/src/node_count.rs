@@ -2,8 +2,8 @@
 
 use rustc_ast::visit::*;
 use rustc_ast::*;
-use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use rustc_span::symbol::Ident;
 
 pub struct NodeCounter {
     pub count: usize,

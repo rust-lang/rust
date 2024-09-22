@@ -129,10 +129,10 @@ pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZero<u
 
 pub use accepted::ACCEPTED_FEATURES;
 pub use builtin_attrs::{
-    deprecated_attributes, encode_cross_crate, find_gated_cfg, is_builtin_attr_name,
-    is_stable_diagnostic_attribute, is_valid_for_get_attr, AttributeDuplicates, AttributeGate,
-    AttributeSafety, AttributeTemplate, AttributeType, BuiltinAttribute, GatedCfg,
-    BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
+    AttributeDuplicates, AttributeGate, AttributeSafety, AttributeTemplate, AttributeType,
+    BUILTIN_ATTRIBUTE_MAP, BUILTIN_ATTRIBUTES, BuiltinAttribute, GatedCfg, deprecated_attributes,
+    encode_cross_crate, find_gated_cfg, is_builtin_attr_name, is_stable_diagnostic_attribute,
+    is_valid_for_get_attr,
 };
 pub use removed::REMOVED_FEATURES;
 pub use unstable::{Features, INCOMPATIBLE_FEATURES, UNSTABLE_FEATURES};

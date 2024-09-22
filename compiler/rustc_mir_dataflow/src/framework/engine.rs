@@ -7,17 +7,17 @@ use rustc_data_structures::work_queue::WorkQueue;
 use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, create_dump_file, dump_enabled, traversal, BasicBlock};
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::mir::{self, BasicBlock, create_dump_file, dump_enabled, traversal};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_span::symbol::{Symbol, sym};
 use tracing::{debug, error};
 use {rustc_ast as ast, rustc_graphviz as dot};
 
 use super::fmt::DebugWithContext;
 use super::{
-    graphviz, visit_results, Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis,
-    GenKillSet, JoinSemiLattice, ResultsCursor, ResultsVisitor,
+    Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis, GenKillSet, JoinSemiLattice,
+    ResultsCursor, ResultsVisitor, graphviz, visit_results,
 };
 use crate::errors::{
     DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,

@@ -2,7 +2,7 @@ use expect_test::expect_file;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::create_default_session_globals_then;
 
-use super::{write_code, DecorationInfo};
+use super::{DecorationInfo, write_code};
 use crate::html::format::Buffer;
 
 const STYLE: &str = r#"

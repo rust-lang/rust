@@ -2,8 +2,8 @@
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_infer::traits::Reveal;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
@@ -14,7 +14,7 @@ use rustc_middle::ty::{
     Variance,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_target::abi::{Size, FIRST_VARIANT};
+use rustc_target::abi::{FIRST_VARIANT, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::util::{is_within_packed, relate_types};

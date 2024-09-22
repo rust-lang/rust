@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::InferOk;
+use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
 use rustc_middle::span_bug;

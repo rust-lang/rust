@@ -140,10 +140,10 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
             // If the parent capture is by-ref, then we need to apply an additional
             // deref before applying any further projections to this place.
             if parent_capture.is_by_ref() {
-                child_precise_captures.insert(
-                    0,
-                    Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref },
-                );
+                child_precise_captures.insert(0, Projection {
+                    ty: parent_capture.place.ty(),
+                    kind: ProjectionKind::Deref,
+                });
             }
             // If the child capture is by-ref, then we need to apply a "ref"
             // projection (i.e. `&`) at the end. But wait! We don't have that

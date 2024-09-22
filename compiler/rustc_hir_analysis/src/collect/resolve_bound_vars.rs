@@ -21,9 +21,9 @@ use rustc_middle::middle::resolve_bound_vars::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::symbol::{Ident, sym};
 use tracing::{debug, debug_span, instrument};
 
 use crate::errors;
@@ -1730,7 +1730,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             )
         };
 
-        use smallvec::{smallvec, SmallVec};
+        use smallvec::{SmallVec, smallvec};
         let mut stack: SmallVec<[(DefId, SmallVec<[ty::BoundVariableKind; 8]>); 8]> =
             smallvec![(def_id, smallvec![])];
         let mut visited: FxHashSet<DefId> = FxHashSet::default();

@@ -1,7 +1,7 @@
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
-use rustc_span::symbol::kw;
 use rustc_span::Span;
+use rustc_span::symbol::kw;
 
 use crate::errors;
 

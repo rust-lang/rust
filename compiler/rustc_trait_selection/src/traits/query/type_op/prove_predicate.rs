@@ -1,8 +1,8 @@
 use rustc_hir::LangItem;
 use rustc_infer::traits::Obligation;
-pub use rustc_middle::traits::query::type_op::ProvePredicate;
-use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::query::NoSolution;
+pub use rustc_middle::traits::query::type_op::ProvePredicate;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 
 use crate::infer::canonical::{Canonical, CanonicalQueryResponse};

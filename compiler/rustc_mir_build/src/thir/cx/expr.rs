@@ -17,13 +17,13 @@ use rustc_middle::ty::{
     UserType,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{sym, Span};
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_span::{Span, sym};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use tracing::{debug, info, instrument, trace};
 
 use crate::errors;
-use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
+use crate::thir::cx::region::Scope;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 impl<'tcx> Cx<'tcx> {

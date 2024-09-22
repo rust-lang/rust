@@ -1,13 +1,13 @@
 use ast::StaticItem;
 use itertools::{Itertools, Position};
 use rustc_ast as ast;
-use rustc_ast::ptr::P;
 use rustc_ast::ModKind;
+use rustc_ast::ptr::P;
 use rustc_span::symbol::Ident;
 
 use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::fixup::FixupContext;
-use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
+use crate::pprust::state::{AnnNode, INDENT_UNIT, PrintState, State};
 
 enum DelegationKind<'a> {
     Single,

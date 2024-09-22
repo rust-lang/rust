@@ -1,5 +1,5 @@
-use ast::ptr::P;
 use ast::HasAttrs;
+use ast::ptr::P;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{
@@ -9,9 +9,9 @@ use rustc_ast::{
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{Ident, sym};
 use rustc_span::{Span, Symbol};
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 
 macro_rules! path {
     ($span:expr, $($part:ident)::*) => { vec![$(Ident::new(sym::$part, $span),)*] }

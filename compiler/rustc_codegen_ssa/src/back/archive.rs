@@ -6,9 +6,9 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use ar_archive_writer::{
-    write_archive_to_stream, ArchiveKind, COFFShortExport, MachineTypes, NewArchiveMember,
+    ArchiveKind, COFFShortExport, MachineTypes, NewArchiveMember, write_archive_to_stream,
 };
-pub use ar_archive_writer::{ObjectReader, DEFAULT_OBJECT_READER};
+pub use ar_archive_writer::{DEFAULT_OBJECT_READER, ObjectReader};
 use object::read::archive::ArchiveFile;
 use object::read::macho::FatArch;
 use rustc_data_structures::fx::FxIndexSet;
@@ -395,10 +395,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
                     let member_path = archive_path.parent().unwrap().join(Path::new(&file_name));
                     self.entries.push((file_name.into_bytes(), ArchiveEntry::File(member_path)));
                 } else {
-                    self.entries.push((
-                        file_name.into_bytes(),
-                        ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
-                    ));
+                    self.entries.push((file_name.into_bytes(), ArchiveEntry::FromArchive {
+                        archive_index,
+                        file_range: entry.file_range(),
+                    }));
                 }
             }
         }

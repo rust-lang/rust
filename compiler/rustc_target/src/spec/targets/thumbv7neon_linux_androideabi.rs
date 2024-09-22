@@ -1,4 +1,4 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions, base};
 
 // This target if is for the Android v7a ABI in thumb mode with
 // NEON unconditionally enabled and, therefore, with 32 FPU registers

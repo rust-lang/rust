@@ -1,14 +1,14 @@
 use std::fmt;
 
-use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_middle::query::Providers;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{Clause, FnSig, ParamEnvAnd, PolyFnSig, Ty, TyCtxt, TypeFoldable};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::query::type_op::ascribe_user_type::{
-    type_op_ascribe_user_type_with_span, AscribeUserType,
+    AscribeUserType, type_op_ascribe_user_type_with_span,
 };
 use rustc_trait_selection::traits::query::type_op::normalize::Normalize;
 use rustc_trait_selection::traits::query::type_op::prove_predicate::ProvePredicate;

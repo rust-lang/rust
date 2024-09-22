@@ -14,9 +14,9 @@ use rustc_target::abi::{self, Abi, HasDataLayout, Size};
 use tracing::trace;
 
 use super::{
-    alloc_range, err_ub, from_known_layout, mir_assign_valid_types, throw_ub, CtfeProvenance,
-    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode, PlaceTy,
-    Pointer, Projectable, Provenance, Scalar,
+    CtfeProvenance, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode,
+    PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub, from_known_layout,
+    mir_assign_valid_types, throw_ub,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.

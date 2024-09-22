@@ -21,10 +21,10 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 use tracing::{debug, instrument, trace};
 
 use super::{
-    alloc_range, err_ub, err_ub_custom, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
     AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg, CheckInAllocMsg,
     CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
-    PointerArithmetic, Provenance, Scalar,
+    PointerArithmetic, Provenance, Scalar, alloc_range, err_ub, err_ub_custom, throw_ub,
+    throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 

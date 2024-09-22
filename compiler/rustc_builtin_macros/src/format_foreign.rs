@@ -183,14 +183,10 @@ pub(crate) mod printf {
             s.push('{');
 
             if let Some(arg) = self.parameter {
-                match write!(
-                    s,
-                    "{}",
-                    match arg.checked_sub(1) {
-                        Some(a) => a,
-                        None => return Err(None),
-                    }
-                ) {
+                match write!(s, "{}", match arg.checked_sub(1) {
+                    Some(a) => a,
+                    None => return Err(None),
+                }) {
                     Err(_) => return Err(None),
                     _ => {}
                 }

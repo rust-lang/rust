@@ -8,7 +8,7 @@ use rustc_hir::def::{CtorOf, DefKind};
 use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 
-use crate::ty::print::{with_forced_trimmed_paths, FmtPrinter, PrettyPrinter};
+use crate::ty::print::{FmtPrinter, PrettyPrinter, with_forced_trimmed_paths};
 use crate::ty::{self, Ty, TyCtxt};
 
 pub type TypeError<'tcx> = rustc_type_ir::error::TypeError<TyCtxt<'tcx>>;

@@ -7,13 +7,13 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::{
-    AttrStyle, AttrVec, Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, LocalKind, MacCall,
-    MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind, DUMMY_NODE_ID,
+    AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
+    LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
 };
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, ErrorGuaranteed, Span};
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 
 use super::attr::InnerAttrForbiddenReason;
 use super::diagnostics::AttemptLocalParseRecovery;
@@ -417,20 +417,14 @@ impl<'a> Parser<'a> {
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
             let (span, sugg) = match trailing {
-                TrailingBrace::MacCall(mac) => (
-                    mac.span(),
-                    errors::WrapInParentheses::MacroArgs {
-                        left: mac.args.dspan.open,
-                        right: mac.args.dspan.close,
-                    },
-                ),
-                TrailingBrace::Expr(expr) => (
-                    expr.span,
-                    errors::WrapInParentheses::Expression {
-                        left: expr.span.shrink_to_lo(),
-                        right: expr.span.shrink_to_hi(),
-                    },
-                ),
+                TrailingBrace::MacCall(mac) => (mac.span(), errors::WrapInParentheses::MacroArgs {
+                    left: mac.args.dspan.open,
+                    right: mac.args.dspan.close,
+                }),
+                TrailingBrace::Expr(expr) => (expr.span, errors::WrapInParentheses::Expression {
+                    left: expr.span.shrink_to_lo(),
+                    right: expr.span.shrink_to_hi(),
+                }),
             };
             self.dcx().emit_err(errors::InvalidCurlyInLetElse {
                 span: span.with_lo(span.hi() - BytePos(1)),

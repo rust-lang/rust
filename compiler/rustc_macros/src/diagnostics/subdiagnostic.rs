@@ -8,13 +8,13 @@ use synstructure::{BindingInfo, Structure, VariantInfo};
 
 use super::utils::SubdiagnosticVariant;
 use crate::diagnostics::error::{
-    invalid_attr, span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
+    DiagnosticDeriveError, invalid_attr, span_err, throw_invalid_attr, throw_span_err,
 };
 use crate::diagnostics::utils::{
-    build_field_mapping, build_suggestion_code, is_doc_comment, new_code_ident,
-    report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span,
-    should_generate_arg, AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap,
-    SetOnce, SpannedOption, SubdiagnosticKind,
+    AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap, SetOnce,
+    SpannedOption, SubdiagnosticKind, build_field_mapping, build_suggestion_code, is_doc_comment,
+    new_code_ident, report_error_if_not_applied_to_applicability,
+    report_error_if_not_applied_to_span, should_generate_arg,
 };
 
 /// The central struct for constructing the `add_to_diag` method from an annotated struct.

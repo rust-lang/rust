@@ -11,8 +11,8 @@ use rustc_macros::LintDiagnostic;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{FutureIncompatibilityReason, Level};
 use rustc_session::{declare_lint, impl_lint_pass};
-use rustc_span::edition::Edition;
 use rustc_span::Span;
+use rustc_span::edition::Edition;
 
 use crate::{LateContext, LateLintPass};
 
@@ -210,25 +210,20 @@ impl IfLetRescope {
             }
         }
         if let Some((span, hir_id)) = first_if_to_lint {
-            tcx.emit_node_span_lint(
-                IF_LET_RESCOPE,
-                hir_id,
-                span,
-                IfLetRescopeLint {
-                    significant_droppers,
-                    lifetime_ends,
-                    rewrite: first_if_to_rewrite.then_some(IfLetRescopeRewrite {
-                        match_heads,
-                        consequent_heads,
-                        closing_brackets: ClosingBrackets {
-                            span: expr_end,
-                            count: closing_brackets,
-                            empty_alt,
-                        },
-                        alt_heads,
-                    }),
-                },
-            );
+            tcx.emit_node_span_lint(IF_LET_RESCOPE, hir_id, span, IfLetRescopeLint {
+                significant_droppers,
+                lifetime_ends,
+                rewrite: first_if_to_rewrite.then_some(IfLetRescopeRewrite {
+                    match_heads,
+                    consequent_heads,
+                    closing_brackets: ClosingBrackets {
+                        span: expr_end,
+                        count: closing_brackets,
+                        empty_alt,
+                    },
+                    alt_heads,
+                }),
+            });
         }
     }
 }

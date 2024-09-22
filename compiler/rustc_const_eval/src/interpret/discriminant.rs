@@ -7,7 +7,7 @@ use rustc_target::abi::{self, TagEncoding, VariantIdx, Variants};
 use tracing::{instrument, trace};
 
 use super::{
-    err_ub, throw_ub, ImmTy, InterpCx, InterpResult, Machine, Projectable, Scalar, Writeable,
+    ImmTy, InterpCx, InterpResult, Machine, Projectable, Scalar, Writeable, err_ub, throw_ub,
 };
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {

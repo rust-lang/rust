@@ -1,4 +1,4 @@
-use crate::spec::{base, SanitizerSet, Target, TargetOptions};
+use crate::spec::{SanitizerSet, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {

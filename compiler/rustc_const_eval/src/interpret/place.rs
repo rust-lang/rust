@@ -6,16 +6,16 @@ use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
 use rustc_ast::Mutability;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
 use tracing::{instrument, trace};
 
 use super::{
-    alloc_range, mir_assign_valid_types, AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance,
-    ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
-    Operand, Pointer, Projectable, Provenance, Scalar,
+    AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance, ImmTy, Immediate, InterpCx, InterpResult,
+    Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer, Projectable, Provenance,
+    Scalar, alloc_range, mir_assign_valid_types,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]

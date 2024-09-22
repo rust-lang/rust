@@ -1138,13 +1138,10 @@ impl Scalar {
     #[inline]
     pub fn is_bool(&self) -> bool {
         use Integer::*;
-        matches!(
-            self,
-            Scalar::Initialized {
-                value: Primitive::Int(I8, false),
-                valid_range: WrappingRange { start: 0, end: 1 }
-            }
-        )
+        matches!(self, Scalar::Initialized {
+            value: Primitive::Int(I8, false),
+            valid_range: WrappingRange { start: 0, end: 1 }
+        })
     }
 
     /// Get the primitive representation of this type, ignoring the valid range and whether the

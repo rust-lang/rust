@@ -1,9 +1,9 @@
 use rustc_ast::InlineAsmOptions;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, layout, TyCtxt};
-use rustc_target::spec::abi::Abi;
+use rustc_middle::ty::{self, TyCtxt, layout};
 use rustc_target::spec::PanicStrategy;
+use rustc_target::spec::abi::Abi;
 
 /// A pass that runs which is targeted at ensuring that codegen guarantees about
 /// unwinding are upheld for compilations of panic=abort programs.

@@ -1,12 +1,12 @@
 ///! Definition of `InferCtxtLike` from the librarified type layer.
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::traits::solve::{Goal, NoSolution, SolverMode};
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::solve::{Goal, NoSolution, SolverMode};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
-use rustc_type_ir::relate::Relate;
 use rustc_type_ir::InferCtxtLike;
+use rustc_type_ir::relate::Relate;
 
 use super::{BoundRegionConversionTime, InferCtxt, SubregionOrigin};
 

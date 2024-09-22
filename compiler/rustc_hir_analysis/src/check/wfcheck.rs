@@ -4,11 +4,11 @@ use std::ops::{ControlFlow, Deref};
 use hir::intravisit::{self, Visitor};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
+use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
+use rustc_hir::ItemKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_macros::LintDiagnostic;
@@ -21,27 +21,27 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, sym};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::misc::{
-    type_allowed_to_implement_const_param_ty, ConstParamTyImplementationError,
+    ConstParamTyImplementationError, type_allowed_to_implement_const_param_ty,
 };
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
 };
-use rustc_type_ir::solve::NoSolution;
 use rustc_type_ir::TypeFlags;
+use rustc_type_ir::solve::NoSolution;
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::autoderef::Autoderef;
 use crate::collect::CollectItemTypesVisitor;
-use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
+use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
 use crate::{errors, fluent_generated as fluent};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
@@ -664,10 +664,10 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 // Same for the region. In our example, 'a corresponds
                 // to the 'me parameter.
                 let region_param = gat_generics.param_at(*region_a_idx, tcx);
-                let region_param = ty::Region::new_early_param(
-                    tcx,
-                    ty::EarlyParamRegion { index: region_param.index, name: region_param.name },
-                );
+                let region_param = ty::Region::new_early_param(tcx, ty::EarlyParamRegion {
+                    index: region_param.index,
+                    name: region_param.name,
+                });
                 // The predicate we expect to see. (In our example,
                 // `Self: 'me`.)
                 bounds.insert(
@@ -693,16 +693,16 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 debug!("required clause: {region_a} must outlive {region_b}");
                 // Translate into the generic parameters of the GAT.
                 let region_a_param = gat_generics.param_at(*region_a_idx, tcx);
-                let region_a_param = ty::Region::new_early_param(
-                    tcx,
-                    ty::EarlyParamRegion { index: region_a_param.index, name: region_a_param.name },
-                );
+                let region_a_param = ty::Region::new_early_param(tcx, ty::EarlyParamRegion {
+                    index: region_a_param.index,
+                    name: region_a_param.name,
+                });
                 // Same for the region.
                 let region_b_param = gat_generics.param_at(*region_b_idx, tcx);
-                let region_b_param = ty::Region::new_early_param(
-                    tcx,
-                    ty::EarlyParamRegion { index: region_b_param.index, name: region_b_param.name },
-                );
+                let region_b_param = ty::Region::new_early_param(tcx, ty::EarlyParamRegion {
+                    index: region_b_param.index,
+                    name: region_b_param.name,
+                });
                 // The predicate we expect to see.
                 bounds.insert(
                     ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(

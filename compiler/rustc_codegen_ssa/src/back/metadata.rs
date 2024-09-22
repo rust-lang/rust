@@ -7,19 +7,20 @@ use std::path::Path;
 
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
-    elf, pe, xcoff, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
-    ObjectSymbol, SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope,
+    Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, ObjectSymbol,
+    SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope, elf, pe,
+    xcoff,
 };
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
+use rustc_data_structures::owned_slice::{OwnedSlice, try_slice_owned};
+use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::fs::METADATA_FILENAME;
-use rustc_metadata::EncodedMetadata;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_span::sym;
 use rustc_target::abi::Endian;
-use rustc_target::spec::{ef_avr_arch, RelocModel, Target};
+use rustc_target::spec::{RelocModel, Target, ef_avr_arch};
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -668,17 +669,13 @@ pub fn create_metadata_file_for_wasm(sess: &Session, data: &[u8], section_name: 
     let mut imports = wasm_encoder::ImportSection::new();
 
     if sess.target.pointer_width == 64 {
-        imports.import(
-            "env",
-            "__linear_memory",
-            wasm_encoder::MemoryType {
-                minimum: 0,
-                maximum: None,
-                memory64: true,
-                shared: false,
-                page_size_log2: None,
-            },
-        );
+        imports.import("env", "__linear_memory", wasm_encoder::MemoryType {
+            minimum: 0,
+            maximum: None,
+            memory64: true,
+            shared: false,
+            page_size_log2: None,
+        });
     }
 
     if imports.len() > 0 {

@@ -6,7 +6,7 @@ use crate::intrinsics::discriminant_value;
 use crate::marker::{DiscriminantKind, PhantomPinned};
 use crate::mem::MaybeUninit;
 use crate::pin::Pin;
-use crate::task::{ready, Context, Poll};
+use crate::task::{Context, Poll, ready};
 
 /// Asynchronously drops a value by running `AsyncDrop::async_drop`
 /// on a value and its fields recursively.

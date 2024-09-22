@@ -95,13 +95,10 @@ fn add_move_for_packed_drop<'tcx>(
 
     patch.add_statement(loc, StatementKind::StorageLive(temp));
     patch.add_assign(loc, Place::from(temp), Rvalue::Use(Operand::Move(*place)));
-    patch.patch_terminator(
-        loc.block,
-        TerminatorKind::Drop {
-            place: Place::from(temp),
-            target: storage_dead_block,
-            unwind,
-            replace,
-        },
-    );
+    patch.patch_terminator(loc.block, TerminatorKind::Drop {
+        place: Place::from(temp),
+        target: storage_dead_block,
+        unwind,
+        replace,
+    });
 }

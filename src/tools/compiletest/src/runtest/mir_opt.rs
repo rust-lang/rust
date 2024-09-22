@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use glob::glob;
-use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
+use miropt_test_tools::{MiroptTest, MiroptTestFile, files_for_miropt_test};
 use tracing::debug;
 
 use super::{Emit, TestCx, WillExecute};

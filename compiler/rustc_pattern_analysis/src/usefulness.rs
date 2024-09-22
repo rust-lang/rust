@@ -713,7 +713,7 @@ use std::fmt;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use self::PlaceValidity::*;

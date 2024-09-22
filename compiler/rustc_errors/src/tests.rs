@@ -1,11 +1,11 @@
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_error_messages::fluent_bundle::resolver::errors::{ReferenceKind, ResolverError};
-use rustc_error_messages::{langid, DiagMessage};
+use rustc_error_messages::{DiagMessage, langid};
 
+use crate::FluentBundle;
 use crate::error::{TranslateError, TranslateErrorKind};
 use crate::fluent_bundle::*;
 use crate::translation::Translate;
-use crate::FluentBundle;
 
 struct Dummy {
     bundle: FluentBundle,

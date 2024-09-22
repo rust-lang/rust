@@ -8,8 +8,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Upcast, VtblEntry,
 };
-use rustc_span::{sym, Span, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
+use rustc_span::{DUMMY_SP, Span, sym};
+use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 use crate::errors::DumpVTableEntries;

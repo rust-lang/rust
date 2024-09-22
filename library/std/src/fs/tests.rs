@@ -11,10 +11,10 @@ use crate::os::unix::fs::symlink as symlink_file;
 #[cfg(unix)]
 use crate::os::unix::fs::symlink as junction_point;
 #[cfg(windows)]
-use crate::os::windows::fs::{junction_point, symlink_dir, symlink_file, OpenOptionsExt};
+use crate::os::windows::fs::{OpenOptionsExt, junction_point, symlink_dir, symlink_file};
 use crate::path::Path;
 use crate::sync::Arc;
-use crate::sys_common::io::test::{tmpdir, TempDir};
+use crate::sys_common::io::test::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
 use crate::{env, str, thread};
 

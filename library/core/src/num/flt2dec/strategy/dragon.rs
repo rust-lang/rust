@@ -8,7 +8,7 @@ use crate::cmp::Ordering;
 use crate::mem::MaybeUninit;
 use crate::num::bignum::{Big32x40 as Big, Digit32 as Digit};
 use crate::num::flt2dec::estimator::estimate_scaling_factor;
-use crate::num::flt2dec::{round_up, Decoded, MAX_SIG_DIGITS};
+use crate::num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
 
 static POW10: [Digit; 10] =
     [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000];

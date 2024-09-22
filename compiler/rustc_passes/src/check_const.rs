@@ -14,7 +14,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 use {rustc_attr as attr, rustc_hir as hir};
 
 use crate::errors::SkippingConstChecks;

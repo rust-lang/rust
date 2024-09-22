@@ -1,5 +1,5 @@
-use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::lint::LintPass;
+use rustc_session::lint::builtin::HardwiredLints;
 
 use crate::context::{EarlyContext, LateContext};
 

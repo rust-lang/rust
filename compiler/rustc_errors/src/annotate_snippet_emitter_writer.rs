@@ -8,12 +8,12 @@
 use annotate_snippets::{Renderer, Snippet};
 use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
-use rustc_span::source_map::SourceMap;
 use rustc_span::SourceFile;
+use rustc_span::source_map::SourceMap;
 
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
-use crate::translation::{to_fluent_args, Translate};
+use crate::translation::{Translate, to_fluent_args};
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, FluentBundle, LazyFallbackBundle,
     Level, MultiSpan, Style, Subdiag,

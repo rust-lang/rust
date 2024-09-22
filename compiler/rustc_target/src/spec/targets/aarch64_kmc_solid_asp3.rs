@@ -1,4 +1,4 @@
-use crate::spec::{base, RelocModel, StackProbeType, Target, TargetOptions};
+use crate::spec::{RelocModel, StackProbeType, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let base = base::solid::opts("asp3");

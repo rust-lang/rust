@@ -14,8 +14,8 @@ use rustc_middle::mir::{
     PlaceRef, ProjectionElem,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
-use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{sym, BytePos, DesugaringKind, Span};
+use rustc_span::symbol::{Symbol, kw};
+use rustc_span::{BytePos, DesugaringKind, Span, sym};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -24,7 +24,7 @@ use tracing::debug;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::util::FindAssignments;
-use crate::{session_diagnostics, MirBorrowckCtxt};
+use crate::{MirBorrowckCtxt, session_diagnostics};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum AccessKind {

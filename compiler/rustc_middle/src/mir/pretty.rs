@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir::interpret::{
-    alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer,
-    Provenance,
+    AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer, Provenance, alloc_range,
+    read_target_uint,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
