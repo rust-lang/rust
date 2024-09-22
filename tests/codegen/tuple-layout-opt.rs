@@ -19,28 +19,28 @@ pub fn test_ScalarZstFirst(_: ScalarZstFirst) -> ScalarZstFirst {
 }
 
 type ScalarPairZstLast = (u8, u128, ());
-// CHECK: define {{(dso_local )?}}{ i128, i8 } @test_ScalarPairZstLast(i128 %_1.0, i8 %_1.1)
+// CHECK: define {{(dso_local )?}}void @test_ScalarPairZstLast(ptr sret([32 x i8]) align 16 %_0, i128 %_1.0, i8 %_1.1)
 #[no_mangle]
 pub fn test_ScalarPairZstLast(_: ScalarPairZstLast) -> ScalarPairZstLast {
     loop {}
 }
 
 type ScalarPairZstFirst = ((), u8, u128);
-// CHECK: define {{(dso_local )?}}{ i8, i128 } @test_ScalarPairZstFirst(i8 %_1.0, i128 %_1.1)
+// CHECK: define {{(dso_local )?}}void @test_ScalarPairZstFirst(ptr sret([32 x i8]) align 16 %_0, i8 %_1.0, i128 %_1.1)
 #[no_mangle]
 pub fn test_ScalarPairZstFirst(_: ScalarPairZstFirst) -> ScalarPairZstFirst {
     loop {}
 }
 
 type ScalarPairLotsOfZsts = ((), u8, (), u128, ());
-// CHECK: define {{(dso_local )?}}{ i128, i8 } @test_ScalarPairLotsOfZsts(i128 %_1.0, i8 %_1.1)
+// CHECK: define {{(dso_local )?}}void @test_ScalarPairLotsOfZsts(ptr sret([32 x i8]) align 16 %_0, i128 %_1.0, i8 %_1.1)
 #[no_mangle]
 pub fn test_ScalarPairLotsOfZsts(_: ScalarPairLotsOfZsts) -> ScalarPairLotsOfZsts {
     loop {}
 }
 
 type ScalarPairLottaNesting = (((), ((), u8, (), u128, ())), ());
-// CHECK: define {{(dso_local )?}}{ i128, i8 } @test_ScalarPairLottaNesting(i128 %_1.0, i8 %_1.1)
+// CHECK: define {{(dso_local )?}}void @test_ScalarPairLottaNesting(ptr sret([32 x i8]) align 16 %_0, i128 %_1.0, i8 %_1.1)
 #[no_mangle]
 pub fn test_ScalarPairLottaNesting(_: ScalarPairLottaNesting) -> ScalarPairLottaNesting {
     loop {}
