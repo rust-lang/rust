@@ -61,6 +61,8 @@ nav.sub {
 	--copy-path-img-hover-filter: invert(35%);
 	--code-example-button-color: #7f7f7f;
 	--code-example-button-hover-color: #595959;
+	--settings-menu-filter: invert(50%);
+	--settings-menu-hover-filter: invert(35%);
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
@@ -87,7 +89,6 @@ nav.sub {
 	--search-tab-button-not-selected-background: #e6e6e6;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #fff;
-	--settings-menu-filter: none;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
@@ -192,6 +193,8 @@ nav.sub {
 		--search-tab-button-not-selected-background: #252525;
 		--search-tab-button-selected-border-top-color: #0089ff;
 		--search-tab-button-selected-background: #353535;
+		--settings-menu-filter: invert(50%);
+		--settings-menu-hover-filter: invert(65%);
 		--stab-background-color: #314559;
 		--stab-code-color: #e6e1cf;
 		--code-highlight-kw-color: #ab8ac1;

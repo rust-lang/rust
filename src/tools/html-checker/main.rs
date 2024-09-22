@@ -31,7 +31,7 @@ fn check_html_file(file: &Path) -> usize {
         .arg("--mute-id") // this option is useful in case we want to mute more warnings
         .arg("yes")
         .arg("--new-blocklevel-tags")
-        .arg("rustdoc-search") // custom elements
+        .arg("rustdoc-search,rustdoc-toolbar") // custom elements
         .arg("--mute")
         .arg(&to_mute_s)
         .arg(file);
