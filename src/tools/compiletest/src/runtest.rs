@@ -827,7 +827,7 @@ impl<'test> TestCx<'test> {
             _ => AllowUnused::No,
         };
 
-        let rustc = self.make_compile_args(
+        let mut rustc = self.make_compile_args(
             &self.testpaths.file,
             output_file,
             emit,
@@ -835,6 +835,12 @@ impl<'test> TestCx<'test> {
             LinkToAux::Yes,
             passes,
         );
+
+        if self.props.use_minicore {
+            let minicore_path = self.build_minicore();
+            rustc.arg("--extern");
+            rustc.arg(&format!("minicore={}", minicore_path.to_str().unwrap()));
+        }
 
         self.compose_and_run_compiler(rustc, None, self.testpaths)
     }
@@ -1108,8 +1114,8 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// `root_testpaths` refers to the path of the original test.
-    /// the auxiliary and the test with an aux-build have the same `root_testpaths`.
+    /// `root_testpaths` refers to the path of the original test. the auxiliary and the test with an
+    /// aux-build have the same `root_testpaths`.
     fn compose_and_run_compiler(
         &self,
         mut rustc: Command,
@@ -1127,6 +1133,37 @@ impl<'test> TestCx<'test> {
             Some(aux_dir.to_str().unwrap()),
             input,
         )
+    }
+
+    /// Builds `minicore`. Returns the path to the minicore rlib within the base test output
+    /// directory.
+    fn build_minicore(&self) -> PathBuf {
+        let output_file_path = self.output_base_dir().join("libminicore.rlib");
+        let mut rustc = self.make_compile_args(
+            &self.config.minicore_path,
+            TargetLocation::ThisFile(output_file_path.clone()),
+            Emit::None,
+            AllowUnused::Yes,
+            LinkToAux::No,
+            vec![],
+        );
+
+        rustc.args(&["--crate-type", "rlib"]);
+        rustc.arg("-Cpanic=abort");
+
+        let res =
+            self.compose_and_run(rustc, self.config.compile_lib_path.to_str().unwrap(), None, None);
+        if !res.status.success() {
+            self.fatal_proc_rec(
+                &format!(
+                    "auxiliary build of {:?} failed to compile: ",
+                    self.config.minicore_path.display()
+                ),
+                &res,
+            );
+        }
+
+        output_file_path
     }
 
     /// Builds an aux dependency.
@@ -1419,6 +1456,11 @@ impl<'test> TestCx<'test> {
             debug!("dir_opt: {:?}", dir_opt);
             rustc.arg(dir_opt);
         };
+
+        // `use-minicore` requires `#![no_std]` and `#![no_core]`, which means no unwinding panics.
+        if self.props.use_minicore {
+            rustc.arg("-Cpanic=abort");
+        }
 
         match self.config.mode {
             Incremental => {
