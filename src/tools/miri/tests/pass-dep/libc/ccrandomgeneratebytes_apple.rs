@@ -1,4 +1,4 @@
-//@only-target-apple: this directly tests apple-only functions
+//@only-target: apple # This directly tests apple-only functions
 
 fn main() {
     let mut bytes = [0u8; 24];
