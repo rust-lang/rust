@@ -579,6 +579,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let count = count
             .min(u64::try_from(this.target_isize_max()).unwrap())
             .min(u64::try_from(isize::MAX).unwrap());
+        let count = usize::try_from(count).unwrap(); // now it fits in a `usize`
         let communicate = this.machine.communicate();
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
@@ -595,7 +596,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // `usize::MAX` because it is bounded by the host's `isize`.
 
         match offset {
-            None => fd.read(&fd, communicate, buf, usize::try_from(count).unwrap(), dest, this)?,
+            None => fd.read(&fd, communicate, buf, count, dest, this)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     let einval = this.eval_libc("EINVAL");
@@ -603,7 +604,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_int(-1, dest)?;
                     return Ok(());
                 };
-                fd.pread(communicate, offset, buf, usize::try_from(count).unwrap(), dest, this)?
+                fd.pread(communicate, offset, buf, count, dest, this)?
             }
         };
         Ok(())
@@ -629,6 +630,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let count = count
             .min(u64::try_from(this.target_isize_max()).unwrap())
             .min(u64::try_from(isize::MAX).unwrap());
+        let count = usize::try_from(count).unwrap(); // now it fits in a `usize`
         let communicate = this.machine.communicate();
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
@@ -639,7 +641,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         match offset {
-            None => fd.write(&fd, communicate, buf, usize::try_from(count).unwrap(), dest, this)?,
+            None => fd.write(&fd, communicate, buf, count, dest, this)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     let einval = this.eval_libc("EINVAL");
@@ -647,7 +649,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_int(-1, dest)?;
                     return Ok(());
                 };
-                fd.pwrite(communicate, buf, usize::try_from(count).unwrap(), offset, dest, this)?
+                fd.pwrite(communicate, buf, count, offset, dest, this)?
             }
         };
         Ok(())
