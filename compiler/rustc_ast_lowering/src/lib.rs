@@ -2466,7 +2466,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_const_arg`].
     fn lower_anon_const_to_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
-        if c.value.is_potential_trivial_const_arg() {
+        if c.value.is_potential_trivial_const_arg(true) {
             // HACK(min_generic_const_args): see DefCollector::visit_anon_const
             // Over there, we guess if this is a bare param and only create a def if
             // we think it's not. However we may can guess wrong (see there for example)
