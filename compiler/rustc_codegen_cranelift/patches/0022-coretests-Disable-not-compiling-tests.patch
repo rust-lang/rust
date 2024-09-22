@@ -38,7 +38,7 @@ index 42a26ae..5ac1042 100644
 @@ -1,3 +1,4 @@
 +#![cfg(test)]
  // tidy-alphabetical-start
- #![cfg_attr(bootstrap, feature(offset_of_nested))]
+ #![cfg_attr(bootstrap, feature(const_mut_refs))]
  #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
 --
 2.21.0 (Apple Git-122)

@@ -59,6 +59,7 @@ rm -r tests/run-make/mismatching-target-triples # same
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
+rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -75,6 +76,8 @@ rm -r tests/ui/instrument-coverage/
 
 # missing f16/f128 support
 rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
+rm tests/ui/asm/aarch64/type-f16.rs
+rm tests/ui/float/conv-bits-runtime-const.rs
 
 # optimization tests
 # ==================
@@ -137,14 +140,19 @@ rm tests/ui/deprecation/deprecated_inline_threshold.rs # missing deprecation war
 # ======================
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 rm tests/ui/backtrace/synchronized-panic-handler.rs # missing needs-unwind annotation
+rm tests/ui/lint/non-snake-case/lint-non-snake-case-crate.rs # same
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
+rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
+rm tests/ui/process/process-panic-after-fork.rs # same
 
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
 
 # prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
 # rustdoc-clif
+# FIXME remove the bootstrap changes once it is no longer necessary to revert rust-lang/rust#130642
+# to avoid building rustc when testing stage0 run-make.
 cat <<EOF | git apply -
 diff --git a/tests/run-make/tools.mk b/tests/run-make/tools.mk
 index ea06b620c4c..b969d0009c6 100644
@@ -172,6 +180,90 @@ index 9607ff02f96..b7d97caf9a2 100644
          Self { cmd }
      }
 
+diff --git a/src/bootstrap/src/core/build_steps/test.rs b/src/bootstrap/src/core/build_steps/test.rs
+index 2047345d78a..a7e9352bb1c 100644
+--- a/src/bootstrap/src/core/build_steps/test.rs
++++ b/src/bootstrap/src/core/build_steps/test.rs
+@@ -1733,11 +1733,6 @@ fn run(self, builder: &Builder<'_>) {
+
+         let is_rustdoc = suite.ends_with("rustdoc-ui") || suite.ends_with("rustdoc-js");
+
+-        if mode == "run-make" {
+-            let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
+-            cmd.arg("--cargo-path").arg(cargo);
+-        }
+-
+         // Avoid depending on rustdoc when we don't need it.
+         if mode == "rustdoc"
+             || mode == "run-make"
+diff --git a/src/tools/compiletest/src/common.rs b/src/tools/compiletest/src/common.rs
+index 414f9f3a7f1..5c18179b6fe 100644
+--- a/src/tools/compiletest/src/common.rs
++++ b/src/tools/compiletest/src/common.rs
+@@ -183,9 +183,6 @@ pub struct Config {
+     /// The rustc executable.
+     pub rustc_path: PathBuf,
+
+-    /// The cargo executable.
+-    pub cargo_path: Option<PathBuf>,
+-
+     /// The rustdoc executable.
+     pub rustdoc_path: Option<PathBuf>,
+
+diff --git a/src/tools/compiletest/src/lib.rs b/src/tools/compiletest/src/lib.rs
+index 3339116d542..250b5084d13 100644
+--- a/src/tools/compiletest/src/lib.rs
++++ b/src/tools/compiletest/src/lib.rs
+@@ -47,7 +47,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
+     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
+         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
+         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
+-        .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
+         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
+         .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
+         .reqopt("", "python", "path to python to use for doc tests", "PATH")
+@@ -261,7 +260,6 @@ fn make_absolute(path: PathBuf) -> PathBuf {
+         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
+         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
+         rustc_path: opt_path(matches, "rustc-path"),
+-        cargo_path: matches.opt_str("cargo-path").map(PathBuf::from),
+         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
+         coverage_dump_path: matches.opt_str("coverage-dump-path").map(PathBuf::from),
+         python: matches.opt_str("python").unwrap(),
+@@ -366,7 +364,6 @@ pub fn log_config(config: &Config) {
+     logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
+     logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
+     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
+-    logv(c, format!("cargo_path: {:?}", config.cargo_path));
+     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
+     logv(c, format!("src_base: {:?}", config.src_base.display()));
+     logv(c, format!("build_base: {:?}", config.build_base.display()));
+diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
+index 75fe6a6baaf..852568ae925 100644
+--- a/src/tools/compiletest/src/runtest/run_make.rs
++++ b/src/tools/compiletest/src/runtest/run_make.rs
+@@ -61,10 +61,6 @@ fn run_rmake_legacy_test(&self) {
+             .env_remove("MFLAGS")
+             .env_remove("CARGO_MAKEFLAGS");
+
+-        if let Some(ref cargo) = self.config.cargo_path {
+-            cmd.env("CARGO", cwd.join(cargo));
+-        }
+-
+         if let Some(ref rustdoc) = self.config.rustdoc_path {
+             cmd.env("RUSTDOC", cwd.join(rustdoc));
+         }
+@@ -413,10 +409,6 @@ fn run_rmake_v2_test(&self) {
+             // through a specific CI runner).
+             .env("LLVM_COMPONENTS", &self.config.llvm_components);
+
+-        if let Some(ref cargo) = self.config.cargo_path {
+-            cmd.env("CARGO", source_root.join(cargo));
+-        }
+-
+         if let Some(ref rustdoc) = self.config.rustdoc_path {
+             cmd.env("RUSTDOC", source_root.join(rustdoc));
+         }
 EOF
 
 echo "[TEST] rustc test suite"
