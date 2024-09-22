@@ -21,11 +21,11 @@ pub unsafe fn _mm_cvti64_sh(a: __m128h, b: i64) -> __m128h {
 ///
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`]: round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`]: round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`]: round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`]: truncate and suppress exceptions
-/// * [`_MM_FROUND_CUR_DIRECTION`]: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
+/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
+/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
+/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
+/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
+/// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_roundi64_sh)
 #[inline]
@@ -57,11 +57,11 @@ pub unsafe fn _mm_cvtu64_sh(a: __m128h, b: u64) -> __m128h {
 ///
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`]: round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`]: round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`]: round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`]: truncate and suppress exceptions
-/// * [`_MM_FROUND_CUR_DIRECTION`]: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
+/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
+/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
+/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
+/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
+/// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_roundu64_sh)
 #[inline]
@@ -91,11 +91,11 @@ pub unsafe fn _mm_cvtsh_i64(a: __m128h) -> i64 {
 ///
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`]: round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`]: round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`]: round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`]: truncate and suppress exceptions
-/// * [`_MM_FROUND_CUR_DIRECTION`]: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
+/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
+/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
+/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
+/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
+/// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_roundsh_i64)
 #[inline]
@@ -125,11 +125,11 @@ pub unsafe fn _mm_cvtsh_u64(a: __m128h) -> u64 {
 ///
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`]: round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`]: round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`]: round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`]: truncate and suppress exceptions
-/// * [`_MM_FROUND_CUR_DIRECTION`]: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
+/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
+/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
+/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
+/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
+/// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_roundsh_u64)
 #[inline]
