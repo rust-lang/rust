@@ -105,6 +105,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::Conv {
             Conv::PreserveAll => CallConvention::PreserveAll,
             Conv::ArmAapcs => CallConvention::ArmAapcs,
             Conv::CCmseNonSecureCall => CallConvention::CCmseNonSecureCall,
+            Conv::CCmseNonSecureEntry => CallConvention::CCmseNonSecureEntry,
             Conv::Msp430Intr => CallConvention::Msp430Intr,
             Conv::PtxKernel => CallConvention::PtxKernel,
             Conv::X86Fastcall => CallConvention::X86Fastcall,

@@ -103,5 +103,5 @@ middle_unknown_layout =
     the type `{$ty}` has an unknown layout
 
 middle_values_too_big =
-    values of the type `{$ty}` are too big for the current architecture
+    values of the type `{$ty}` are too big for the target architecture
 middle_written_to_path = the full type name has been written to '{$path}'

@@ -171,7 +171,7 @@ fn mod_file_path<'a>(
 
 /// Derive a submodule path from the first found `#[path = "path_string"]`.
 /// The provided `dir_path` is joined with the `path_string`.
-fn mod_file_path_from_attr(
+pub(crate) fn mod_file_path_from_attr(
     sess: &Session,
     attrs: &[Attribute],
     dir_path: &Path,

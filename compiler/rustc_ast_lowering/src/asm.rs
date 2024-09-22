@@ -20,8 +20,8 @@ use super::errors::{
 };
 use super::LoweringContext;
 use crate::{
-    fluent_generated as fluent, ImplTraitContext, ImplTraitPosition, ParamMode,
-    ResolverAstLoweringExt,
+    fluent_generated as fluent, AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition,
+    ParamMode, ResolverAstLoweringExt,
 };
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -201,6 +201,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 &sym.qself,
                                 &sym.path,
                                 ParamMode::Optional,
+                                AllowReturnTypeNotation::No,
                                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                                 None,
                             );
@@ -220,7 +221,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             let parent_def_id = self.current_def_id_parent;
                             let node_id = self.next_node_id();
                             // HACK(min_generic_const_args): see lower_anon_const
-                            if !expr.is_potential_trivial_const_arg() {
+                            if !expr.is_potential_trivial_const_arg(true) {
                                 self.create_def(
                                     parent_def_id,
                                     node_id,

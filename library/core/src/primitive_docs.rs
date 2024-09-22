@@ -1761,6 +1761,8 @@ mod prim_ref {}
 /// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
 ///   optimization](option/index.html#representation), then `T` and `Option<T>` are ABI-compatible.
+///   Furthermore, if `U` satisfies the requirements [outlined here](result/index.html#representation),
+///   then `T` and `Result<T, U>` and `Result<U, T>` are all ABI-compatible.
 ///
 /// Furthermore, ABI compatibility satisfies the following general properties:
 ///

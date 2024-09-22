@@ -551,10 +551,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, experimental!(register_tool),
     ),
 
-    gated!(
-        cmse_nonsecure_entry, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, experimental!(cmse_nonsecure_entry)
-    ),
     // RFC 2632
     gated!(
         const_trait, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No, const_trait_impl,
