@@ -19,7 +19,7 @@ use parser::SyntaxKind;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::EditionedFileId;
 use syntax::{
-    ast::{self, HasName},
+    ast::{self, HasName, Rename},
     match_ast, AstNode, AstToken, SmolStr, SyntaxElement, SyntaxNode, TextRange, TextSize,
     ToSmolStr,
 };
@@ -405,6 +405,7 @@ impl Definition {
     pub fn usages<'a>(self, sema: &'a Semantics<'_, RootDatabase>) -> FindUsages<'a> {
         FindUsages {
             def: self,
+            rename: None,
             assoc_item_container: self.as_assoc_item(sema.db).map(|a| a.container(sema.db)),
             sema,
             scope: None,
@@ -417,6 +418,7 @@ impl Definition {
 #[derive(Clone)]
 pub struct FindUsages<'a> {
     def: Definition,
+    rename: Option<&'a Rename>,
     sema: &'a Semantics<'a, RootDatabase>,
     scope: Option<&'a SearchScope>,
     /// The container of our definition should it be an assoc item
@@ -444,6 +446,14 @@ impl<'a> FindUsages<'a> {
     pub fn set_scope(mut self, scope: Option<&'a SearchScope>) -> Self {
         assert!(self.scope.is_none());
         self.scope = scope;
+        self
+    }
+
+    // FIXME: This is just a temporary fix for not handling import aliases like
+    // `use Foo as Bar`. We need to support them in a proper way.
+    // See issue #14079
+    pub fn with_rename(mut self, rename: Option<&'a Rename>) -> Self {
+        self.rename = rename;
         self
     }
 
@@ -884,9 +894,16 @@ impl<'a> FindUsages<'a> {
             }
         };
 
-        let name = match self.def {
+        let name = match (self.rename, self.def) {
+            (Some(rename), _) => {
+                if rename.underscore_token().is_some() {
+                    None
+                } else {
+                    rename.name().map(|n| n.to_smolstr())
+                }
+            }
             // special case crate modules as these do not have a proper name
-            Definition::Module(module) if module.is_crate_root() => {
+            (_, Definition::Module(module)) if module.is_crate_root() => {
                 // FIXME: This assumes the crate name is always equal to its display name when it
                 // really isn't
                 // we should instead look at the dependency edge name and recursively search our way
