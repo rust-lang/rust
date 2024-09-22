@@ -9,10 +9,10 @@ use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
 use rustc_lint::{EarlyContext, LateContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::source_map::{original_sp, SourceMap};
+use rustc_span::source_map::{SourceMap, original_sp};
 use rustc_span::{
-    hygiene, BytePos, FileNameDisplayPreference, Pos, SourceFile, SourceFileAndLine, Span, SpanData, SyntaxContext,
-    DUMMY_SP,
+    BytePos, DUMMY_SP, FileNameDisplayPreference, Pos, SourceFile, SourceFileAndLine, Span, SpanData, SyntaxContext,
+    hygiene,
 };
 use std::borrow::Cow;
 use std::fmt;
@@ -725,15 +725,12 @@ pub fn str_literal_to_char_literal(
             &snip[1..(snip.len() - 1)]
         };
 
-        let hint = format!(
-            "'{}'",
-            match ch {
-                "'" => "\\'",
-                r"\" => "\\\\",
-                "\\\"" => "\"", // no need to escape `"` in `'"'`
-                _ => ch,
-            }
-        );
+        let hint = format!("'{}'", match ch {
+            "'" => "\\'",
+            r"\" => "\\\\",
+            "\\\"" => "\"", // no need to escape `"` in `'"'`
+            _ => ch,
+        });
 
         Some(hint)
     } else {

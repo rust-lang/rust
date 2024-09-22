@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet_with_context, SpanRangeExt};
-use clippy_utils::sugg::{has_enclosing_paren, Sugg};
+use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;

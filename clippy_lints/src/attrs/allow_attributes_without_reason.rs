@@ -1,4 +1,4 @@
-use super::{Attribute, ALLOW_ATTRIBUTES_WITHOUT_REASON};
+use super::{ALLOW_ATTRIBUTES_WITHOUT_REASON, Attribute};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use rustc_ast::{MetaItemKind, NestedMetaItem};

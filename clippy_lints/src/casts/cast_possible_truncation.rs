@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_span::Span;
 use rustc_target::abi::IntegerType;
 
-use super::{utils, CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION};
+use super::{CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION, utils};
 
 fn constant_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
     if let Some(Constant::Int(c)) = ConstEvalCtxt::new(cx).eval(expr) {

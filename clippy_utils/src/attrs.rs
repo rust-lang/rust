@@ -4,7 +4,7 @@ use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{AdtDef, TyCtxt};
 use rustc_session::Session;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::str::FromStr;
 
 use crate::source::SpanRangeExt;

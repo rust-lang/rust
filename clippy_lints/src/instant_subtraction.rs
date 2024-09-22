@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
@@ -112,7 +112,7 @@ impl LateLintPass<'_> for InstantSubtraction {
 fn is_instant_now_call(cx: &LateContext<'_>, expr_block: &'_ Expr<'_>) -> bool {
     if let ExprKind::Call(fn_expr, []) = expr_block.kind
         && let Some(fn_id) = clippy_utils::path_def_id(cx, fn_expr)
-        && clippy_utils::match_def_path(cx, fn_id, &clippy_utils::paths::INSTANT_NOW)
+        && cx.tcx.is_diagnostic_item(sym::instant_now, fn_id)
     {
         true
     } else {

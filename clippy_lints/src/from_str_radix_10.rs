@@ -3,7 +3,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::{is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;
-use rustc_hir::{def, Expr, ExprKind, LangItem, PrimTy, QPath, TyKind};
+use rustc_hir::{Expr, ExprKind, LangItem, PrimTy, QPath, TyKind, def};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;

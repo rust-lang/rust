@@ -1,7 +1,7 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::mir::{enclosing_mir, PossibleBorrowerMap};
+use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_diag_trait_item, is_in_test, last_path_segment, local_is_initialized, path_to_local};
 use rustc_errors::Applicability;

@@ -6,7 +6,7 @@ use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, QPath, TyKind};
 use rustc_lint::LateContext;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 use super::MANUAL_C_STR_LITERALS;
 

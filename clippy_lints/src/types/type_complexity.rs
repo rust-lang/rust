@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_inf, walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_inf, walk_ty};
 use rustc_hir::{GenericParamKind, TyKind};
 use rustc_lint::LateContext;
 use rustc_target::spec::abi::Abi;

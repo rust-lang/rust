@@ -14,8 +14,8 @@ use rustc_hir::intravisit;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::{DefIdSet, LocalDefId};
 use rustc_span::Span;
+use rustc_span::def_id::{DefIdSet, LocalDefId};
 
 declare_clippy_lint! {
     /// ### What it does

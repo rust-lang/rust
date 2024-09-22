@@ -1,4 +1,4 @@
-use clippy_utils::consts::{mir_to_const, Constant};
+use clippy_utils::consts::{Constant, mir_to_const};
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};

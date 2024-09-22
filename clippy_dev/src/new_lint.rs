@@ -441,7 +441,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
 
 #[allow(clippy::too_many_lines)]
 fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> {
-    use super::update_lints::{match_tokens, LintDeclSearchResult};
+    use super::update_lints::{LintDeclSearchResult, match_tokens};
     use rustc_lexer::TokenKind;
 
     let lint_name_upper = lint.name.to_uppercase();

@@ -12,8 +12,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, Safety, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
-use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::ConstValue;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
@@ -22,7 +22,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
@@ -707,8 +707,8 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
 
 /// If the type is function like, get the signature for it.
 pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
-    if ty.is_box() {
-        return ty_sig(cx, ty.boxed_ty());
+    if let Some(boxed_ty) = ty.boxed_ty() {
+        return ty_sig(cx, boxed_ty);
     }
     match *ty.kind() {
         ty::Closure(id, subs) => {

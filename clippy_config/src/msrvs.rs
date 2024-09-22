@@ -1,7 +1,7 @@
 use rustc_ast::Attribute;
 use rustc_attr::parse_version;
 use rustc_session::{RustcVersion, Session};
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 use serde::Deserialize;
 use std::fmt;
 
@@ -17,7 +17,9 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
-    1,81,0  { LINT_REASONS_STABILIZATION }
+    1,83,0 { CONST_EXTERN_FN }
+    1,83,0 { CONST_FLOAT_BITS_CONV }
+    1,81,0 { LINT_REASONS_STABILIZATION }
     1,80,0 { BOX_INTO_ITER}
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF, OPTION_RESULT_INSPECT }
@@ -27,7 +29,7 @@ msrv_aliases! {
     1,68,0 { PATH_MAIN_SEPARATOR_STR }
     1,65,0 { LET_ELSE, POINTER_CAST_CONSTNESS }
     1,63,0 { CLONE_INTO }
-    1,62,0 { BOOL_THEN_SOME, DEFAULT_ENUM_ATTRIBUTE, CONST_EXTERN_FN }
+    1,62,0 { BOOL_THEN_SOME, DEFAULT_ENUM_ATTRIBUTE, CONST_EXTERN_C_FN }
     1,59,0 { THREAD_LOCAL_CONST_INIT }
     1,58,0 { FORMAT_ARGS_CAPTURE, PATTERN_TRAIT_CHAR_ARRAY, CONST_RAW_PTR_DEREF }
     1,56,0 { CONST_FN_UNION }

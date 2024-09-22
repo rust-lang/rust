@@ -1,8 +1,8 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::SpanlessEq;
 use rustc_ast::{BinOpKind, LitKind};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;

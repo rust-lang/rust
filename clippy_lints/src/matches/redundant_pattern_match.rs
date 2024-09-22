@@ -1,18 +1,18 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, walk_span_to_context};
-use clippy_utils::sugg::{make_unop, Sugg};
+use clippy_utils::sugg::{Sugg, make_unop};
 use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_without_closures};
 use clippy_utils::{higher, is_expn_of, is_trait_method};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 use std::fmt::Write;
 use std::ops::ControlFlow;
 

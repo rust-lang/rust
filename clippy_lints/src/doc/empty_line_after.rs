@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{snippet_indent, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, snippet_indent};
 use clippy_utils::tokenize_with_text;
 use itertools::Itertools;
 use rustc_ast::token::CommentKind;
@@ -219,13 +219,10 @@ fn check_gaps(cx: &LateContext<'_>, gaps: &[Gap<'_>]) -> bool {
             if let Some(owner) = cx.last_node_with_lint_attrs.as_owner() {
                 let def_id = owner.to_def_id();
                 let def_descr = cx.tcx.def_descr(def_id);
-                diag.span_label(
-                    cx.tcx.def_span(def_id),
-                    match kind {
-                        StopKind::Attr => format!("the attribute applies to this {def_descr}"),
-                        StopKind::Doc(_) => format!("the comment documents this {def_descr}"),
-                    },
-                );
+                diag.span_label(cx.tcx.def_span(def_id), match kind {
+                    StopKind::Attr => format!("the attribute applies to this {def_descr}"),
+                    StopKind::Doc(_) => format!("the comment documents this {def_descr}"),
+                });
             }
 
             diag.multipart_suggestion_with_style(

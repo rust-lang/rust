@@ -1,6 +1,6 @@
 #![warn(clippy::non_zero_suggestions)]
 //@no-rustfix
-use std::num::{NonZeroI16, NonZeroI8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
+use std::num::{NonZeroI8, NonZeroI16, NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
 
 fn main() {
     let x: u64 = u64::from(NonZeroU32::new(5).unwrap().get());

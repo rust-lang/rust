@@ -1,10 +1,10 @@
-use super::utils::is_word;
 use super::INLINE_ALWAYS;
+use super::utils::is_word;
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::Attribute;
 use rustc_lint::LateContext;
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 pub(super) fn check(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribute]) {
     if span.from_expansion() {

@@ -132,8 +132,8 @@ mod waker_clone_wake;
 mod wrong_self_convention;
 mod zst_offset;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
@@ -147,7 +147,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -5174,12 +5174,9 @@ impl ShouldImplTraitCase {
     fn lifetime_param_cond(&self, impl_item: &hir::ImplItem<'_>) -> bool {
         self.lint_explicit_lifetime
             || !impl_item.generics.params.iter().any(|p| {
-                matches!(
-                    p.kind,
-                    hir::GenericParamKind::Lifetime {
-                        kind: hir::LifetimeParamKind::Explicit
-                    }
-                )
+                matches!(p.kind, hir::GenericParamKind::Lifetime {
+                    kind: hir::LifetimeParamKind::Explicit
+                })
             })
     }
 }
@@ -5231,8 +5228,8 @@ impl SelfKind {
         fn matches_value<'a>(cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
             if ty == parent_ty {
                 true
-            } else if ty.is_box() {
-                ty.boxed_ty() == parent_ty
+            } else if let Some(boxed_ty) = ty.boxed_ty() {
+                boxed_ty == parent_ty
             } else if is_type_diagnostic_item(cx, ty, sym::Rc) || is_type_diagnostic_item(cx, ty, sym::Arc) {
                 if let ty::Adt(_, args) = ty.kind() {
                     args.types().next().map_or(false, |t| t == parent_ty)

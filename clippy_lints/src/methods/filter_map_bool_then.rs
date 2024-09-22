@@ -1,16 +1,15 @@
 use super::FILTER_MAP_BOOL_THEN;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::paths::BOOL_THEN;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
-use clippy_utils::{is_from_proc_macro, is_trait_method, match_def_path, peel_blocks};
+use clippy_utils::{is_from_proc_macro, is_trait_method, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::Binder;
-use rustc_span::{sym, Span};
+use rustc_middle::ty::adjustment::Adjust;
+use rustc_span::{Span, sym};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &Expr<'_>, call_span: Span) {
     if !in_external_macro(cx.sess(), expr.span)
@@ -35,7 +34,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
         && let ExprKind::Closure(then_closure) = then_arg.kind
         && let then_body = peel_blocks(cx.tcx.hir().body(then_closure.body).value)
         && let Some(def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id)
-        && match_def_path(cx, def_id, &BOOL_THEN)
+        && cx.tcx.is_diagnostic_item(sym::bool_then, def_id)
         && !is_from_proc_macro(cx, expr)
         // Count the number of derefs needed to get to the bool because we need those in the suggestion
         && let needed_derefs = cx.typeck_results().expr_adjustments(recv)

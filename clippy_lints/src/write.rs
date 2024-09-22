@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::is_in_test;
-use clippy_utils::macros::{format_arg_removal_span, root_macro_call_first_node, FormatArgsStorage, MacroCall};
-use clippy_utils::source::{expand_past_previous_comma, SpanRangeExt};
+use clippy_utils::macros::{FormatArgsStorage, MacroCall, format_arg_removal_span, root_macro_call_first_node};
+use clippy_utils::source::{SpanRangeExt, expand_past_previous_comma};
 use rustc_ast::token::LitKind;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgs, FormatArgsPiece, FormatOptions, FormatPlaceholder,
@@ -12,7 +12,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{BytePos, Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does

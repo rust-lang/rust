@@ -8,7 +8,7 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 use rustc_span::source_map::Spanned;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::{NONSENSICAL_OPEN_OPTIONS, SUSPICIOUS_OPEN_OPTIONS};
 
@@ -126,17 +126,14 @@ fn get_open_options(
         && let ExprKind::Path(path) = callee.kind
         && let Some(did) = cx.qpath_res(&path, callee.hir_id).opt_def_id()
     {
-        match_any_def_paths(
-            cx,
-            did,
-            &[
-                &paths::TOKIO_IO_OPEN_OPTIONS_NEW,
-                &paths::OPEN_OPTIONS_NEW,
-                &paths::FILE_OPTIONS,
-                &paths::TOKIO_FILE_OPTIONS,
-            ],
-        )
-        .is_some()
+        let std_file_options = [sym::file_options, sym::open_options_new];
+
+        let tokio_file_options: &[&[&str]] = &[&paths::TOKIO_IO_OPEN_OPTIONS_NEW, &paths::TOKIO_FILE_OPTIONS];
+
+        let is_std_options = std_file_options
+            .into_iter()
+            .any(|sym| cx.tcx.is_diagnostic_item(sym, did));
+        is_std_options || match_any_def_paths(cx, did, tokio_file_options).is_some()
     } else {
         false
     }

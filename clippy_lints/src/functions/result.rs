@@ -3,11 +3,11 @@ use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::trait_ref_of_method;
-use clippy_utils::ty::{approx_ty_size, is_type_diagnostic_item, AdtVariantInfo};
+use clippy_utils::ty::{AdtVariantInfo, approx_ty_size, is_type_diagnostic_item};
 
 use super::{RESULT_LARGE_ERR, RESULT_UNIT_ERR};
 

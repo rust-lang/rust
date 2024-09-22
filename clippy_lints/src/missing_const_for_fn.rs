@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, is_from_proc_macro, trait_ref_of_method};
@@ -11,8 +11,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
 use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
@@ -119,9 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                     .iter()
                     .any(|param| matches!(param.kind, GenericParamKind::Const { .. }));
 
-                if already_const(header)
-                    || has_const_generic_params
-                    || !could_be_const_with_abi(cx, &self.msrv, header.abi)
+                if already_const(header) || has_const_generic_params || !could_be_const_with_abi(&self.msrv, header.abi)
                 {
                     return;
                 }
@@ -183,13 +181,13 @@ fn already_const(header: hir::FnHeader) -> bool {
     header.constness == Constness::Const
 }
 
-fn could_be_const_with_abi(cx: &LateContext<'_>, msrv: &Msrv, abi: Abi) -> bool {
+fn could_be_const_with_abi(msrv: &Msrv, abi: Abi) -> bool {
     match abi {
         Abi::Rust => true,
         // `const extern "C"` was stabilized after 1.62.0
-        Abi::C { unwind: false } => msrv.meets(msrvs::CONST_EXTERN_FN),
+        Abi::C { unwind: false } => msrv.meets(msrvs::CONST_EXTERN_C_FN),
         // Rest ABIs are still unstable and need the `const_extern_fn` feature enabled.
-        _ => cx.tcx.features().const_extern_fn,
+        _ => msrv.meets(msrvs::CONST_EXTERN_FN),
     }
 }
 

@@ -3,12 +3,12 @@ use std::ops::ControlFlow;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{higher, peel_hir_expr_while, SpanlessEq};
+use clippy_utils::{SpanlessEq, higher, peel_hir_expr_while};
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
