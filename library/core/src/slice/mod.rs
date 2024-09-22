@@ -736,7 +736,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_as_ptr", since = "1.32.0")]
     #[rustc_never_returns_null_ptr]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[must_use]
     pub const fn as_ptr(&self) -> *const T {
         self as *const [T] as *const T
@@ -767,7 +767,7 @@ impl<T> [T] {
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[rustc_allow_const_fn_unstable(const_mut_refs)]
     #[rustc_never_returns_null_ptr]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[must_use]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut [T] as *mut T

@@ -16,7 +16,7 @@ pub(crate) mod quicksort;
 ///
 /// Upholds all safety properties outlined here:
 /// <https://github.com/Voultapher/sort-research-rs/blob/main/writeup/sort_safety/text.md>
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less: &mut F) {
     // Arrays of zero-sized types are always all-equal, and thus sorted.
     if T::IS_ZST {

@@ -1,13 +1,13 @@
 use core::arch::asm;
 
 // Do not remove inline: will result in relocation failure
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 pub(crate) unsafe fn rel_ptr<T>(offset: u64) -> *const T {
     (image_base() + offset) as *const T
 }
 
 // Do not remove inline: will result in relocation failure
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 pub(crate) unsafe fn rel_ptr_mut<T>(offset: u64) -> *mut T {
     (image_base() + offset) as *mut T
 }
@@ -32,7 +32,7 @@ pub(crate) fn heap_size() -> usize {
 // For the same reason we use inline ASM here instead of an extern static to
 // locate the base
 /// Returns address at which current enclave is loaded.
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn image_base() -> u64 {
     let base: u64;

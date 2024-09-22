@@ -813,12 +813,12 @@ fn panic_already_mutably_borrowed(err: BorrowError) -> ! {
 type BorrowFlag = isize;
 const UNUSED: BorrowFlag = 0;
 
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 fn is_writing(x: BorrowFlag) -> bool {
     x < UNUSED
 }
 
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 fn is_reading(x: BorrowFlag) -> bool {
     x > UNUSED
 }
@@ -2079,7 +2079,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_unsafe_cell_new", since = "1.32.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub const fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value }
     }
@@ -2095,7 +2095,7 @@ impl<T> UnsafeCell<T> {
     ///
     /// let five = uc.into_inner();
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "rust1", since = "1.0.0")]
     // When this is const stabilized, please remove `primitive_into_inner` below.
     #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
@@ -2119,7 +2119,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// *uc.get_mut() -= 1;
     /// assert_eq!(*uc.get_mut(), 41);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[unstable(feature = "unsafe_cell_from_mut", issue = "111645")]
     pub const fn from_mut(value: &mut T) -> &mut UnsafeCell<T> {
         // SAFETY: `UnsafeCell<T>` has the same memory layout as `T` due to #[repr(transparent)].
@@ -2142,7 +2142,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// let five = uc.get();
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_unsafecell_get", since = "1.32.0")]
     #[rustc_never_returns_null_ptr]
@@ -2168,7 +2168,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// assert_eq!(*c.get_mut(), 6);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "unsafe_cell_get_mut", since = "1.50.0")]
     #[rustc_const_unstable(feature = "const_unsafecell_get_mut", issue = "88836")]
     pub const fn get_mut(&mut self) -> &mut T {
@@ -2203,7 +2203,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// assert_eq!(uc.into_inner(), 5);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     #[rustc_const_stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     #[rustc_diagnostic_item = "unsafe_cell_raw_get"]

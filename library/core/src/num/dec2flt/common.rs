@@ -18,14 +18,14 @@ pub(crate) trait ByteSlice {
 }
 
 impl ByteSlice for [u8] {
-    #[inline(always)] // inlining this is crucial to remove bound checks
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))] // inlining this is crucial to remove bound checks
     fn read_u64(&self) -> u64 {
         let mut tmp = [0; 8];
         tmp.copy_from_slice(&self[..8]);
         u64::from_le_bytes(tmp)
     }
 
-    #[inline(always)] // inlining this is crucial to remove bound checks
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))] // inlining this is crucial to remove bound checks
     fn write_u64(&mut self, value: u64) {
         self[..8].copy_from_slice(&value.to_le_bytes())
     }

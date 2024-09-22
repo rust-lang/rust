@@ -40,7 +40,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
     #[rustc_diagnostic_item = "ptr_cast"]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub const fn cast<U>(self) -> *mut U {
         self as _
     }
@@ -97,7 +97,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_const_cast", since = "1.65.0")]
     #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
     #[rustc_diagnostic_item = "ptr_cast_const"]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub const fn cast_const(self) -> *const T {
         self as _
     }
@@ -127,7 +127,7 @@ impl<T: ?Sized> *mut T {
     /// might change in the future (including possibly weakening this so it becomes wholly
     /// equivalent to `self as usize`). See the [module documentation][crate::ptr] for details.
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn addr(self) -> usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
@@ -161,7 +161,7 @@ impl<T: ?Sized> *mut T {
     /// API and its claimed semantics are part of [Exposed Provenance][super#exposed-provenance].
     ///
     /// [`with_exposed_provenance_mut`]: with_exposed_provenance_mut
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[unstable(feature = "exposed_provenance", issue = "95228")]
     pub fn expose_provenance(self) -> usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
@@ -386,7 +386,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset(self, count: isize) -> *mut T
     where
@@ -409,7 +409,7 @@ impl<T: ?Sized> *mut T {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[rustc_allow_const_fn_unstable(set_ptr_value)]
@@ -469,7 +469,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub const fn wrapping_offset(self, count: isize) -> *mut T
     where
         T: Sized,
@@ -489,7 +489,7 @@ impl<T: ?Sized> *mut T {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[rustc_allow_const_fn_unstable(set_ptr_value)]
@@ -533,7 +533,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[unstable(feature = "ptr_mask", issue = "98290")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn mask(self, mask: usize) -> *mut T {
         intrinsics::ptr_mask(self.cast::<()>(), mask).cast_mut().with_metadata_of(self)
     }
@@ -786,7 +786,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
     #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
     where
@@ -805,7 +805,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[rustc_allow_const_fn_unstable(set_ptr_value)]
@@ -930,7 +930,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn add(self, count: usize) -> Self
     where
@@ -951,7 +951,7 @@ impl<T: ?Sized> *mut T {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[rustc_allow_const_fn_unstable(set_ptr_value)]
@@ -1005,7 +1005,7 @@ impl<T: ?Sized> *mut T {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[rustc_allow_const_fn_unstable(unchecked_neg)]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub(self, count: usize) -> Self
     where
@@ -1034,7 +1034,7 @@ impl<T: ?Sized> *mut T {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[rustc_allow_const_fn_unstable(set_ptr_value)]
@@ -1096,7 +1096,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub const fn wrapping_add(self, count: usize) -> Self
     where
         T: Sized,
@@ -1115,7 +1115,7 @@ impl<T: ?Sized> *mut T {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[rustc_allow_const_fn_unstable(set_ptr_value)]
@@ -1175,7 +1175,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub const fn wrapping_sub(self, count: usize) -> Self
     where
         T: Sized,
@@ -1194,7 +1194,7 @@ impl<T: ?Sized> *mut T {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
     #[rustc_allow_const_fn_unstable(set_ptr_value)]
@@ -1210,7 +1210,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn read(self) -> T
     where
@@ -1231,7 +1231,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn read_volatile(self) -> T
     where
@@ -1251,7 +1251,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn read_unaligned(self) -> T
     where
@@ -1271,7 +1271,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy`]: crate::ptr::copy()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn copy_to(self, dest: *mut T, count: usize)
     where
@@ -1291,7 +1291,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
     where
@@ -1311,7 +1311,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy`]: crate::ptr::copy()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn copy_from(self, src: *const T, count: usize)
     where
@@ -1331,7 +1331,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
     where
@@ -1347,7 +1347,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub unsafe fn drop_in_place(self) {
         // SAFETY: the caller must uphold the safety contract for `drop_in_place`.
         unsafe { drop_in_place(self) }
@@ -1361,7 +1361,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::write`]: crate::ptr::write()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write(self, val: T)
     where
@@ -1380,7 +1380,7 @@ impl<T: ?Sized> *mut T {
     #[doc(alias = "memset")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write_bytes(self, val: u8, count: usize)
     where
@@ -1401,7 +1401,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write_volatile`]: crate::ptr::write_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn write_volatile(self, val: T)
     where
@@ -1421,7 +1421,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::write_unaligned`]: crate::ptr::write_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write_unaligned(self, val: T)
     where
@@ -1438,7 +1438,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::replace`]: crate::ptr::replace()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub unsafe fn replace(self, src: T) -> T
     where
         T: Sized,
@@ -1456,7 +1456,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::swap`]: crate::ptr::swap()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub const unsafe fn swap(self, with: *mut T)
     where
         T: Sized,
@@ -1801,7 +1801,7 @@ impl<T> *mut [T] {
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "slice_ptr_len", since = "1.79.0")]
     #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     #[rustc_allow_const_fn_unstable(ptr_metadata)]
@@ -1819,7 +1819,7 @@ impl<T> *mut [T] {
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert!(!slice.is_empty());
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "slice_ptr_len", since = "1.79.0")]
     #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     pub const fn is_empty(self) -> bool {
@@ -1866,7 +1866,7 @@ impl<T> *mut [T] {
     ///     assert_eq!(&*right, [3, 0, 5, 6]);
     /// }
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[track_caller]
     #[unstable(feature = "raw_slice_split", issue = "95595")]
     pub unsafe fn split_at_mut(self, mid: usize) -> (*mut [T], *mut [T]) {
@@ -1910,7 +1910,7 @@ impl<T> *mut [T] {
     /// }
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[unstable(feature = "raw_slice_split", issue = "95595")]
     pub unsafe fn split_at_mut_unchecked(self, mid: usize) -> (*mut [T], *mut [T]) {
         let len = self.len();
@@ -1937,7 +1937,7 @@ impl<T> *mut [T] {
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert_eq!(slice.as_mut_ptr(), ptr::null_mut());
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
     #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_mut_ptr(self) -> *mut T {
@@ -1965,7 +1965,7 @@ impl<T> *mut [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
     where
         I: SliceIndex<[T]>,
@@ -2125,7 +2125,7 @@ impl<T, const N: usize> *mut [T; N] {
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *mut T {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &*mut T) -> bool {
         *self == *other
@@ -2152,31 +2152,31 @@ impl<T: ?Sized> Ord for *mut T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialOrd for *mut T {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &*mut T) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn lt(&self, other: &*mut T) -> bool {
         *self < *other
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn le(&self, other: &*mut T) -> bool {
         *self <= *other
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn gt(&self, other: &*mut T) -> bool {
         *self > *other
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn ge(&self, other: &*mut T) -> bool {
         *self >= *other

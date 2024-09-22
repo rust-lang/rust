@@ -1185,7 +1185,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// // pinning guarantees are actually upheld.
     /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn new(pointer: Ptr) -> Pin<Ptr> {
@@ -1213,7 +1213,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// let r = Pin::into_inner(pinned);
     /// assert_eq!(*r, 5);
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const fn into_inner(pin: Pin<Ptr>) -> Ptr {
@@ -1350,7 +1350,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// [`mem::swap`]: crate::mem::swap
     /// [`pin` module docs]: self
     #[lang = "new_unchecked"]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const unsafe fn new_unchecked(pointer: Ptr) -> Pin<Ptr> {
@@ -1365,7 +1365,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// "Malicious" implementations of `Pointer::Deref` are likewise
     /// ruled out by the contract of `Pin::new_unchecked`.
     #[stable(feature = "pin", since = "1.33.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn as_ref(&self) -> Pin<&Ptr::Target> {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&*self.__pointer) }
@@ -1409,7 +1409,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     /// }
     /// ```
     #[stable(feature = "pin", since = "1.33.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn as_mut(&mut self) -> Pin<&mut Ptr::Target> {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&mut *self.__pointer) }
@@ -1424,7 +1424,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     /// `Pin::new_unchecked`.
     #[unstable(feature = "pin_deref_mut", issue = "86918")]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn as_deref_mut(self: Pin<&mut Pin<Ptr>>) -> Pin<&mut Ptr::Target> {
         // SAFETY: What we're asserting here is that going from
         //
@@ -1474,7 +1474,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     ///
     /// [subtle-details]: self#subtle-details-and-the-drop-guarantee
     #[stable(feature = "pin", since = "1.33.0")]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn set(&mut self, value: Ptr::Target)
     where
         Ptr::Target: Sized,
@@ -1502,7 +1502,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     ///
     /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
     /// instead.
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
@@ -1557,7 +1557,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// with the same lifetime as the reference it wraps.
     ///
     /// ["pinning projections"]: self#projections-and-structural-pinning
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[must_use]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
@@ -1568,7 +1568,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
 
 impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
@@ -1585,7 +1585,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// that lives for as long as the borrow of the `Pin`, not the lifetime of
     /// the `Pin` itself. This method allows turning the `Pin` into a reference
     /// with the same lifetime as the original `Pin`.
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
@@ -1606,7 +1606,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     ///
     /// If the underlying data is `Unpin`, `Pin::get_mut` should be used
     /// instead.
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]

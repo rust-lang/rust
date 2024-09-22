@@ -299,7 +299,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 /// [`Option<&T>`]: crate::option::Option
 ///
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
@@ -459,7 +459,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// assert_eq!(4, mem::align_of::<i32>());
 /// ```
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
@@ -644,7 +644,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 /// let _x: &i32 = unsafe { mem::zeroed() }; // Undefined behavior!
 /// let _y: fn() = unsafe { mem::zeroed() }; // And again!
 /// ```
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
@@ -683,7 +683,7 @@ pub const unsafe fn zeroed<T>() -> T {
 /// [uninit]: MaybeUninit::uninit
 /// [assume_init]: MaybeUninit::assume_init
 /// [inv]: MaybeUninit#initialization-invariant
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 #[must_use]
 #[deprecated(since = "1.39.0", note = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1194,7 +1194,7 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// assert_eq!(mem::variant_count::<Option<!>>(), 2);
 /// assert_eq!(mem::variant_count::<Result<!, !>>(), 2);
 /// ```
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 #[must_use]
 #[unstable(feature = "variant_count", issue = "73662")]
 #[rustc_const_unstable(feature = "variant_count", issue = "73662")]

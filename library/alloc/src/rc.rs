@@ -354,7 +354,7 @@ impl<T: ?Sized> Rc<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Rc<T, A> {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn inner(&self) -> &RcBox<T> {
         // This unsafety is ok because while this Rc is alive we're guaranteed
         // that the inner pointer is valid.
@@ -2207,7 +2207,7 @@ impl<T: Copy> RcFromSlice<T> for Rc<[T]> {
 impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
     type Target = T;
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn deref(&self) -> &T {
         &self.inner().value
     }
@@ -2453,7 +2453,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Rc<T, A> {
     ///
     /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&Rc::new(6)));
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn partial_cmp(&self, other: &Rc<T, A>) -> Option<Ordering> {
         (**self).partial_cmp(&**other)
     }
@@ -2471,7 +2471,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Rc<T, A> {
     ///
     /// assert!(five < Rc::new(6));
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn lt(&self, other: &Rc<T, A>) -> bool {
         **self < **other
     }
@@ -2489,7 +2489,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Rc<T, A> {
     ///
     /// assert!(five <= Rc::new(5));
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn le(&self, other: &Rc<T, A>) -> bool {
         **self <= **other
     }
@@ -2507,7 +2507,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Rc<T, A> {
     ///
     /// assert!(five > Rc::new(4));
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn gt(&self, other: &Rc<T, A>) -> bool {
         **self > **other
     }
@@ -2525,7 +2525,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Rc<T, A> {
     ///
     /// assert!(five >= Rc::new(5));
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn ge(&self, other: &Rc<T, A>) -> bool {
         **self >= **other
     }
@@ -3527,24 +3527,24 @@ trait RcInnerPtr {
 }
 
 impl<T: ?Sized> RcInnerPtr for RcBox<T> {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn weak_ref(&self) -> &Cell<usize> {
         &self.weak
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn strong_ref(&self) -> &Cell<usize> {
         &self.strong
     }
 }
 
 impl<'a> RcInnerPtr for WeakInner<'a> {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn weak_ref(&self) -> &Cell<usize> {
         self.weak
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn strong_ref(&self) -> &Cell<usize> {
         self.strong
     }

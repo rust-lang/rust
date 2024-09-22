@@ -1497,7 +1497,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
 
     /// Provides a reference to the cursor's parent list.
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn as_list(&self) -> &'a LinkedList<T, A> {
         self.list
@@ -1619,7 +1619,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
     /// `CursorMut` is frozen for the lifetime of the reference.
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn as_list(&self) -> &LinkedList<T, A> {
         self.list

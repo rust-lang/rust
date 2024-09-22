@@ -1520,13 +1520,13 @@ mod impls {
                         (true, true) => Some(Equal),
                     }
                 }
-                #[inline(always)]
+                #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
-                #[inline(always)]
+                #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
                 fn le(&self, other: &$t) -> bool { (*self) <= (*other) }
-                #[inline(always)]
+                #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
                 fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
-                #[inline(always)]
+                #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
                 fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
             }
         )*)
@@ -1558,13 +1558,13 @@ mod impls {
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
                     Some(crate::intrinsics::three_way_compare(*self, *other))
                 }
-                #[inline(always)]
+                #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
-                #[inline(always)]
+                #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
                 fn le(&self, other: &$t) -> bool { (*self) <= (*other) }
-                #[inline(always)]
+                #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
                 fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
-                #[inline(always)]
+                #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
                 fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
             }
 

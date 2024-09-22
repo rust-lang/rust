@@ -147,7 +147,7 @@ macro_rules! from_str_float_impl {
             /// by `src` (following the same rules for rounding as for the
             /// results of primitive operations).
             // We add the `#[inline(never)]` attribute, since its content will
-            // be filled with that of `dec2flt`, which has #[inline(always)].
+            // be filled with that of `dec2flt`, which has #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))].
             // Since `dec2flt` is generic, a normal inline attribute on this function
             // with `dec2flt` having no attributes results in heavily repeated
             // generation of `dec2flt`, despite the fact only a maximum of 2
@@ -227,7 +227,7 @@ fn biased_fp_to_float<T: RawFloat>(x: BiasedFp) -> T {
 }
 
 /// Converts a decimal string into a floating point number.
-#[inline(always)] // Will be inlined into a function with `#[inline(never)]`, see above
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))] // Will be inlined into a function with `#[inline(never)]`, see above
 pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
     let mut s = s.as_bytes();
     let c = if let Some(&c) = s.first() {

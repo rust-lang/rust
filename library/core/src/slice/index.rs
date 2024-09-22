@@ -112,21 +112,21 @@ const fn slice_end_index_overflow_fail() -> ! {
 // Both the safe and unsafe public methods share these helpers,
 // which use intrinsics directly to get *no* extra checks.
 
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 const unsafe fn get_noubcheck<T>(ptr: *const [T], index: usize) -> *const T {
     let ptr = ptr as *const T;
     // SAFETY: The caller already checked these preconditions
     unsafe { crate::intrinsics::offset(ptr, index) }
 }
 
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 const unsafe fn get_mut_noubcheck<T>(ptr: *mut [T], index: usize) -> *mut T {
     let ptr = ptr as *mut T;
     // SAFETY: The caller already checked these preconditions
     unsafe { crate::intrinsics::offset(ptr, index) }
 }
 
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 const unsafe fn get_offset_len_noubcheck<T>(
     ptr: *const [T],
     offset: usize,
@@ -137,7 +137,7 @@ const unsafe fn get_offset_len_noubcheck<T>(
     crate::intrinsics::aggregate_raw_ptr(ptr, len)
 }
 
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 const unsafe fn get_offset_len_mut_noubcheck<T>(
     ptr: *mut [T],
     offset: usize,

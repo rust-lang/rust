@@ -19,7 +19,7 @@ pub struct Placeholder {
 }
 
 impl Placeholder {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub const fn new(
         position: usize,
         fill: char,
@@ -95,7 +95,7 @@ pub struct Argument<'a> {
 
 #[rustc_diagnostic_item = "ArgumentMethods"]
 impl<'a> Argument<'a> {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
         Argument {
             // INVARIANT: this creates an `ArgumentType<'b>` from a `&'b T` and
@@ -109,47 +109,47 @@ impl<'a> Argument<'a> {
         }
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_display<'b, T: Display>(x: &'b T) -> Argument<'b> {
         Self::new(x, Display::fmt)
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_debug<'b, T: Debug>(x: &'b T) -> Argument<'b> {
         Self::new(x, Debug::fmt)
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_debug_noop<'b, T: Debug>(x: &'b T) -> Argument<'b> {
         Self::new(x, |_, _| Ok(()))
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_octal<'b, T: Octal>(x: &'b T) -> Argument<'b> {
         Self::new(x, Octal::fmt)
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_lower_hex<'b, T: LowerHex>(x: &'b T) -> Argument<'b> {
         Self::new(x, LowerHex::fmt)
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_upper_hex<'b, T: UpperHex>(x: &'b T) -> Argument<'b> {
         Self::new(x, UpperHex::fmt)
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_pointer<'b, T: Pointer>(x: &'b T) -> Argument<'b> {
         Self::new(x, Pointer::fmt)
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_binary<'b, T: Binary>(x: &'b T) -> Argument<'b> {
         Self::new(x, Binary::fmt)
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_lower_exp<'b, T: LowerExp>(x: &'b T) -> Argument<'b> {
         Self::new(x, LowerExp::fmt)
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn new_upper_exp<'b, T: UpperExp>(x: &'b T) -> Argument<'b> {
         Self::new(x, UpperExp::fmt)
     }
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn from_usize(x: &usize) -> Argument<'_> {
         Argument { ty: ArgumentType::Count(*x) }
     }
@@ -164,7 +164,7 @@ impl<'a> Argument<'a> {
     // it here is an explicit CFI violation.
     #[allow(inline_no_sanitize)]
     #[no_sanitize(cfi, kcfi)]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub(super) unsafe fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self.ty {
             // SAFETY:
@@ -180,7 +180,7 @@ impl<'a> Argument<'a> {
         }
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub(super) fn as_usize(&self) -> Option<usize> {
         match self.ty {
             ArgumentType::Count(count) => Some(count),
@@ -198,7 +198,7 @@ impl<'a> Argument<'a> {
     /// let f = format_args!("{}", "a");
     /// println!("{f}");
     /// ```
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn none() -> [Self; 0] {
         []
     }
@@ -215,7 +215,7 @@ pub struct UnsafeArg {
 impl UnsafeArg {
     /// See documentation where `UnsafeArg` is required to know when it is safe to
     /// create and use `UnsafeArg`.
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub unsafe fn new() -> Self {
         Self { _private: () }
     }

@@ -133,18 +133,18 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
 // trait dispatch - instead both impls call this function directly and
 // explicitly.
 #[cfg(target_has_atomic = "ptr")]
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     // Increment the reference count of the arc to clone it.
     //
-    // The #[inline(always)] is to ensure that raw_waker and clone_waker are
+    // The #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))] is to ensure that raw_waker and clone_waker are
     // always generated in the same code generation unit as one another, and
     // therefore that the structurally identical const-promoted RawWakerVTable
     // within both functions is deduplicated at LLVM IR code generation time.
     // This allows optimizing Waker::will_wake to a single pointer comparison of
     // the vtable pointers, rather than comparing all four function pointers
     // within the vtables.
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     unsafe fn clone_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) -> RawWaker {
         unsafe { Arc::increment_strong_count(waker as *const W) };
         RawWaker::new(
@@ -310,13 +310,13 @@ impl<W: LocalWake + 'static> From<Rc<W>> for RawWaker {
 // the safety of `From<Rc<W>> for Waker` does not depend on the correct
 // trait dispatch - instead both impls call this function directly and
 // explicitly.
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 fn local_raw_waker<W: LocalWake + 'static>(waker: Rc<W>) -> RawWaker {
     // Increment the reference count of the Rc to clone it.
     //
     // Refer to the comment on raw_waker's clone_waker regarding why this is
     // always inline.
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     unsafe fn clone_waker<W: LocalWake + 'static>(waker: *const ()) -> RawWaker {
         unsafe { Rc::increment_strong_count(waker as *const W) };
         RawWaker::new(

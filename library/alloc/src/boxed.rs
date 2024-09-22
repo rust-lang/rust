@@ -246,7 +246,7 @@ impl<T> Box<T> {
     /// let five = Box::new(5);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[rustc_diagnostic_item = "box_new"]
@@ -316,7 +316,7 @@ impl<T> Box<T> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn pin(x: T) -> Pin<Box<T>> {
         Box::new(x).into()
     }
@@ -609,7 +609,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn pin_in(x: T, alloc: A) -> Pin<Self>
     where
         A: 'static + Allocator,

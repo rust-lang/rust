@@ -30,7 +30,7 @@ impl<T> SpinMutex<T> {
         SpinMutex { value: UnsafeCell::new(value), lock: AtomicBool::new(false) }
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn lock(&self) -> SpinMutexGuard<'_, T> {
         loop {
             match self.try_lock() {
@@ -44,7 +44,7 @@ impl<T> SpinMutex<T> {
         }
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub fn try_lock(&self) -> Option<SpinMutexGuard<'_, T>> {
         if self.lock.compare_exchange(false, true, Ordering::Acquire, Ordering::Acquire).is_ok() {
             Some(SpinMutexGuard { mutex: self })

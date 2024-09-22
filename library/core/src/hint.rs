@@ -193,7 +193,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// pointer already has the builtin assumption that it is nonnull. However, it illustrates the
 /// kind of changes the optimizer can make even when the behavior is less obviously related.
 #[track_caller]
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 #[doc(alias = "assume")]
 #[stable(feature = "hint_assert_unchecked", since = "1.81.0")]
 #[rustc_const_stable(feature = "hint_assert_unchecked", since = "1.81.0")]
@@ -263,7 +263,7 @@ pub const unsafe fn assert_unchecked(cond: bool) {
 /// ```
 ///
 /// [`thread::yield_now`]: ../../std/thread/fn.yield_now.html
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
     #[cfg(target_arch = "x86")]
@@ -508,7 +508,7 @@ pub const fn black_box<T>(dummy: T) -> T {
 #[unstable(feature = "hint_must_use", issue = "94745")]
 #[rustc_const_unstable(feature = "hint_must_use", issue = "94745")]
 #[must_use] // <-- :)
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 pub const fn must_use<T>(value: T) -> T {
     value
 }

@@ -1393,7 +1393,7 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 /// Note that if the radix is known to the compiler, it is just the check of digits.len that
 /// is done at runtime.
 #[doc(hidden)]
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 #[unstable(issue = "none", feature = "std_internals")]
 #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {

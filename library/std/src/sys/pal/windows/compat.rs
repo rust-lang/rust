@@ -182,7 +182,7 @@ macro_rules! compat_fn_with_fallback {
                 $fallback_body
             }
 
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
                 unsafe {
                     let func: F = mem::transmute(PTR.load(Ordering::Relaxed));
@@ -219,7 +219,7 @@ macro_rules! compat_fn_optional {
 
                 type F = unsafe extern "system" fn($($argtype),*) $(-> $rettype)?;
 
-                #[inline(always)]
+                #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
                 pub fn option() -> Option<F> {
                     // Miri does not understand the way we do preloading
                     // therefore load the function here instead.

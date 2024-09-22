@@ -192,7 +192,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
-        #[inline(always)]
+        #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3, $n4: $t4) -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
@@ -208,7 +208,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
-        #[inline(always)]
+        #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3) -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
@@ -224,7 +224,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
-        #[inline(always)]
+        #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
         pub unsafe fn $f($n1: $t1, $n2: $t2) -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
@@ -239,7 +239,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
-        #[inline(always)]
+        #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
         pub unsafe fn $f($n1: $t1) -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
@@ -253,7 +253,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
-        #[inline(always)]
+        #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
         pub unsafe fn $f() -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),

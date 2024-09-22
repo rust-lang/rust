@@ -107,7 +107,7 @@ impl<T: ?Sized> fmt::Debug for AsyncDropInPlace<T> {
 impl<T: ?Sized> Future for AsyncDropInPlace<T> {
     type Output = ();
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // SAFETY: This code simply forwards poll call to the inner future
         unsafe { Pin::new_unchecked(&mut self.get_unchecked_mut().0) }.poll(cx)

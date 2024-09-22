@@ -84,7 +84,7 @@ impl Layout {
         true
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     const fn max_size_for_align(align: Alignment) -> usize {
         // (power-of-two implies align != 0.)
 

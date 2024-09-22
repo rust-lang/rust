@@ -69,7 +69,7 @@ unsafe fn median3_rec<T, F: FnMut(&T, &T) -> bool>(
 /// Calculates the median of 3 elements.
 ///
 /// SAFETY: a, b, c must be valid initialized elements.
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 fn median3<T, F: FnMut(&T, &T) -> bool>(a: &T, b: &T, c: &T, is_less: &mut F) -> *const T {
     // Compiler tends to make this branchless when sensible, and avoids the
     // third comparison when not.

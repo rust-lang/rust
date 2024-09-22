@@ -597,7 +597,7 @@ macro_rules! nonzero_integer {
             #[doc(alias = "popcnt")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub const fn count_ones(self) -> NonZero<u32> {
                 // SAFETY:
                 // `self` is non-zero, which means it has at least one bit set, which means
@@ -630,7 +630,7 @@ macro_rules! nonzero_integer {
             #[unstable(feature = "nonzero_bitwise", issue = "128281")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub const fn rotate_left(self, n: u32) -> Self {
                 let result = self.get().rotate_left(n);
                 // SAFETY: Rotating bits preserves the property int > 0.
@@ -663,7 +663,7 @@ macro_rules! nonzero_integer {
             #[unstable(feature = "nonzero_bitwise", issue = "128281")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub const fn rotate_right(self, n: u32) -> Self {
                 let result = self.get().rotate_right(n);
                 // SAFETY: Rotating bits preserves the property int > 0.
@@ -692,7 +692,7 @@ macro_rules! nonzero_integer {
             #[unstable(feature = "nonzero_bitwise", issue = "128281")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub const fn swap_bytes(self) -> Self {
                 let result = self.get().swap_bytes();
                 // SAFETY: Shuffling bytes preserves the property int > 0.
@@ -722,7 +722,7 @@ macro_rules! nonzero_integer {
             #[unstable(feature = "nonzero_bitwise", issue = "128281")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub const fn reverse_bits(self) -> Self {
                 let result = self.get().reverse_bits();
                 // SAFETY: Reversing bits preserves the property int > 0.
@@ -757,7 +757,7 @@ macro_rules! nonzero_integer {
             /// ```
             #[unstable(feature = "nonzero_bitwise", issue = "128281")]
             #[must_use]
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub const fn from_be(x: Self) -> Self {
                 let result = $Int::from_be(x.get());
                 // SAFETY: Shuffling bytes preserves the property int > 0.
@@ -792,7 +792,7 @@ macro_rules! nonzero_integer {
             /// ```
             #[unstable(feature = "nonzero_bitwise", issue = "128281")]
             #[must_use]
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub const fn from_le(x: Self) -> Self {
                 let result = $Int::from_le(x.get());
                 // SAFETY: Shuffling bytes preserves the property int > 0.
@@ -827,7 +827,7 @@ macro_rules! nonzero_integer {
             #[unstable(feature = "nonzero_bitwise", issue = "128281")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub const fn to_be(self) -> Self {
                 let result = self.get().to_be();
                 // SAFETY: Shuffling bytes preserves the property int > 0.
@@ -862,7 +862,7 @@ macro_rules! nonzero_integer {
             #[unstable(feature = "nonzero_bitwise", issue = "128281")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             pub const fn to_le(self) -> Self {
                 let result = self.get().to_le();
                 // SAFETY: Shuffling bytes preserves the property int > 0.

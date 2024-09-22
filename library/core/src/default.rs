@@ -151,7 +151,7 @@ macro_rules! default_impl {
     ($t:ty, $v:expr, $doc:tt) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Default for $t {
-            #[inline(always)]
+            #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
             #[doc = $doc]
             fn default() -> $t {
                 $v

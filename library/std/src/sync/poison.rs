@@ -64,7 +64,7 @@ impl Flag {
         self.failed.load(Ordering::Relaxed)
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     #[cfg(not(panic = "unwind"))]
     pub fn get(&self) -> bool {
         false

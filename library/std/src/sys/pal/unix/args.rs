@@ -135,7 +135,7 @@ mod imp {
         ARGV.store(argv as *mut _, Ordering::Relaxed);
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
         // on GNU/Linux if we are main then we will init argv and argc twice, it "duplicates work"
         // BUT edge-cases are real: only using .init_array can break most emulators, dlopen, etc.
@@ -232,7 +232,7 @@ mod imp {
     use crate::ffi::c_char;
     use crate::ptr;
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
     pub fn argc_argv() -> (isize, *const *const c_char) {

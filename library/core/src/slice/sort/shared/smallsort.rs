@@ -28,13 +28,13 @@ pub(crate) trait StableSmallSortTypeImpl: Sized {
 }
 
 impl<T> StableSmallSortTypeImpl for T {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     default fn small_sort_threshold() -> usize {
         // Optimal number of comparisons, and good perf.
         SMALL_SORT_FALLBACK_THRESHOLD
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     default fn small_sort<F: FnMut(&T, &T) -> bool>(
         v: &mut [T],
         _scratch: &mut [MaybeUninit<T>],
@@ -47,12 +47,12 @@ impl<T> StableSmallSortTypeImpl for T {
 }
 
 impl<T: FreezeMarker> StableSmallSortTypeImpl for T {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn small_sort_threshold() -> usize {
         SMALL_SORT_GENERAL_THRESHOLD
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn small_sort<F: FnMut(&T, &T) -> bool>(
         v: &mut [T],
         scratch: &mut [MaybeUninit<T>],
@@ -73,12 +73,12 @@ pub(crate) trait UnstableSmallSortTypeImpl: Sized {
 }
 
 impl<T> UnstableSmallSortTypeImpl for T {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     default fn small_sort_threshold() -> usize {
         SMALL_SORT_FALLBACK_THRESHOLD
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     default fn small_sort<F>(v: &mut [T], is_less: &mut F)
     where
         F: FnMut(&T, &T) -> bool,
@@ -88,12 +88,12 @@ impl<T> UnstableSmallSortTypeImpl for T {
 }
 
 impl<T: FreezeMarker> UnstableSmallSortTypeImpl for T {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn small_sort_threshold() -> usize {
         <T as UnstableSmallSortFreezeTypeImpl>::small_sort_threshold()
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn small_sort<F>(v: &mut [T], is_less: &mut F)
     where
         F: FnMut(&T, &T) -> bool,
@@ -111,7 +111,7 @@ pub(crate) trait UnstableSmallSortFreezeTypeImpl: Sized + FreezeMarker {
 }
 
 impl<T: FreezeMarker> UnstableSmallSortFreezeTypeImpl for T {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     default fn small_sort_threshold() -> usize {
         if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
             SMALL_SORT_GENERAL_THRESHOLD
@@ -120,7 +120,7 @@ impl<T: FreezeMarker> UnstableSmallSortFreezeTypeImpl for T {
         }
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     default fn small_sort<F>(v: &mut [T], is_less: &mut F)
     where
         F: FnMut(&T, &T) -> bool,
@@ -140,7 +140,7 @@ trait CopyMarker {}
 impl<T: Copy> CopyMarker for T {}
 
 impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn small_sort_threshold() -> usize {
         if has_efficient_in_place_swap::<T>()
             && (mem::size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
@@ -153,7 +153,7 @@ impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
         }
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn small_sort<F>(v: &mut [T], is_less: &mut F)
     where
         F: FnMut(&T, &T) -> bool,
@@ -651,7 +651,7 @@ pub unsafe fn sort4_stable<T, F: FnMut(&T, &T) -> bool>(
         ptr::copy_nonoverlapping(max, dst.add(3), 1);
     }
 
-    #[inline(always)]
+    #[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
     fn select<T>(cond: bool, if_true: *const T, if_false: *const T) -> *const T {
         if cond { if_true } else { if_false }
     }
@@ -679,7 +679,7 @@ unsafe fn sort8_stable<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
     }
 }
 
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 unsafe fn merge_up<T, F: FnMut(&T, &T) -> bool>(
     mut left_src: *const T,
     mut right_src: *const T,
@@ -712,7 +712,7 @@ unsafe fn merge_up<T, F: FnMut(&T, &T) -> bool>(
     (left_src, right_src, dst)
 }
 
-#[inline(always)]
+#[cfg_attr(bootstrap, inline(always))]#[cfg_attr(not(bootstrap), inline(usually))]
 unsafe fn merge_down<T, F: FnMut(&T, &T) -> bool>(
     mut left_src: *const T,
     mut right_src: *const T,
