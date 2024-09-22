@@ -1057,6 +1057,10 @@ pub fn rustc_cargo(
     // killed, rather than having an error bubble up and cause a panic.
     cargo.rustflag("-Zon-broken-pipe=kill");
 
+    if builder.config.llvm_enzyme {
+        cargo.rustflag("-l").rustflag("Enzyme-19");
+    }
+
     // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
     // and may just be a time sink.
     if compiler.stage != 0 {
