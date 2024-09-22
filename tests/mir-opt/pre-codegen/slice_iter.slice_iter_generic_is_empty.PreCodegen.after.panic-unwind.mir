@@ -23,11 +23,11 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
                     }
                 }
             }
-            scope 5 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
-                scope 6 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
-                }
+            scope 5 (inlined std::ptr::const_ptr::<impl *const *const T>::cast::<NonNull<T>>) {
             }
-            scope 7 (inlined std::ptr::const_ptr::<impl *const *const T>::cast::<NonNull<T>>) {
+            scope 6 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
+                scope 7 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
+                }
             }
         }
     }

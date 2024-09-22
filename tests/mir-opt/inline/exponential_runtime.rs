@@ -87,11 +87,12 @@ fn main() {
     // CHECK-LABEL: fn main(
     // CHECK-NOT: inlined
     // CHECK: (inlined <() as G>::call)
+    // CHECK-NOT: inlined
     // CHECK: (inlined <() as F>::call)
-    // CHECK: (inlined <() as E>::call)
-    // CHECK: (inlined <() as D>::call)
-    // CHECK: (inlined <() as C>::call)
-    // CHECK: (inlined <() as B>::call)
+    // CHECK-NOT: inlined
+    // CHECK: (inlined <() as F>::call)
+    // CHECK-NOT: inlined
+    // CHECK: (inlined <() as F>::call)
     // CHECK-NOT: inlined
     <() as G>::call();
 }

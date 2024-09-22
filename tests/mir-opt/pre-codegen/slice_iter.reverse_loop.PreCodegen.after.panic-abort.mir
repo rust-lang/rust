@@ -18,45 +18,45 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         scope 2 {
             debug x => _17;
         }
-        scope 17 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) {
+        scope 7 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) {
             let mut _14: &mut std::slice::Iter<'_, T>;
         }
     }
     scope 3 (inlined core::slice::<impl [T]>::iter) {
-        scope 4 (inlined std::slice::Iter::<'_, T>::new) {
+        scope 8 (inlined std::slice::Iter::<'_, T>::new) {
             let _3: usize;
             let mut _7: *mut T;
             let mut _8: *mut T;
             let mut _10: *const T;
-            scope 5 {
+            scope 9 {
                 let _6: std::ptr::NonNull<T>;
-                scope 6 {
+                scope 10 {
                     let _9: *const T;
-                    scope 7 {
+                    scope 11 {
                     }
-                    scope 11 (inlined without_provenance::<T>) {
-                    }
-                    scope 12 (inlined NonNull::<T>::as_ptr) {
+                    scope 12 (inlined without_provenance::<T>) {
                     }
                     scope 13 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
+                    scope 15 (inlined NonNull::<T>::as_ptr) {
+                    }
                 }
-                scope 8 (inlined <NonNull<[T]> as From<&[T]>>::from) {
+                scope 14 (inlined <NonNull<[T]> as From<&[T]>>::from) {
                     let mut _4: *const [T];
                 }
-                scope 9 (inlined NonNull::<[T]>::cast::<T>) {
+                scope 16 (inlined NonNull::<[T]>::cast::<T>) {
                     let mut _5: *const T;
-                    scope 10 (inlined NonNull::<[T]>::as_ptr) {
+                    scope 17 (inlined NonNull::<[T]>::as_ptr) {
                     }
                 }
             }
         }
     }
-    scope 14 (inlined <std::slice::Iter<'_, T> as Iterator>::rev) {
-        scope 15 (inlined Rev::<std::slice::Iter<'_, T>>::new) {
+    scope 4 (inlined <std::slice::Iter<'_, T> as Iterator>::rev) {
+        scope 5 (inlined Rev::<std::slice::Iter<'_, T>>::new) {
         }
     }
-    scope 16 (inlined <Rev<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
+    scope 6 (inlined <Rev<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
     }
 
     bb0: {

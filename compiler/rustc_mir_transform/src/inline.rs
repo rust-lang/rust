@@ -1,11 +1,12 @@
 //! Inlining pass for MIR functions.
 
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::Idx;
 use rustc_middle::bug;
@@ -30,7 +31,7 @@ use crate::validate::validate_types;
 
 pub(crate) mod cycle;
 
-const TOP_DOWN_DEPTH_LIMIT: usize = 5;
+const MAX_INLINED_CALLEES_PER_BODY: usize = 9;
 
 // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
 // by custom rustc drivers, running all the steps by themselves. See #114628.
@@ -102,16 +103,38 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         tcx,
         param_env,
         codegen_fn_attrs,
-        history: Vec::new(),
-        changed: false,
+        queue: BinaryHeap::new(),
         caller_is_inline_forwarder: matches!(
             codegen_fn_attrs.inline,
             InlineAttr::Hint | InlineAttr::Always
         ) && body_is_forwarder(body),
     };
-    let blocks = START_BLOCK..body.basic_blocks.next_index();
-    this.process_blocks(body, blocks);
-    this.changed
+    let initial_blocks = START_BLOCK..body.basic_blocks.next_index();
+    this.enqueue_new_candidates(body, initial_blocks);
+
+    let mut changed = false;
+    let mut remaining_cost = tcx.sess.opts.unstable_opts.inline_mir_total_threshold.unwrap_or(300);
+    let mut remaining_count = MAX_INLINED_CALLEES_PER_BODY;
+    while remaining_count > 0
+        && let Some(candidate) = this.queue.pop()
+    {
+        let Some(c) = remaining_cost.checked_sub(candidate.cost) else {
+            debug!(
+                "next-cheapest candidate has cost {}, but only {} left",
+                candidate.cost, remaining_cost,
+            );
+            break;
+        };
+        remaining_cost = c;
+        remaining_count -= 1;
+
+        if let Ok(new_blocks) = this.try_inline_candidate(body, candidate) {
+            changed = true;
+            this.enqueue_new_candidates(body, new_blocks);
+        }
+    }
+
+    changed
 }
 
 struct Inliner<'tcx> {
@@ -119,29 +142,41 @@ struct Inliner<'tcx> {
     param_env: ParamEnv<'tcx>,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
-    /// Stack of inlined instances.
-    /// We only check the `DefId` and not the args because we want to
-    /// avoid inlining cases of polymorphic recursion.
-    /// The number of `DefId`s is finite, so checking history is enough
-    /// to ensure that we do not loop endlessly while inlining.
-    history: Vec<DefId>,
-    /// Indicates that the caller body has been modified.
-    changed: bool,
+    /// The currently-known inlining candidates.
+    queue: BinaryHeap<InlineCandidate<'tcx>>,
     /// Indicates that the caller is #[inline] and just calls another function,
     /// and thus we can inline less into it as it'll be inlined itself.
     caller_is_inline_forwarder: bool,
 }
 
+struct InlineCandidate<'tcx> {
+    cost: usize,
+    callsite: CallSite<'tcx>,
+    callee_body: &'tcx Body<'tcx>,
+    destination_ty: Ty<'tcx>,
+}
+
+/// Smallest-cost is "max" for use in `BinaryHeap`, with ties broken
+/// by preferring the one in the smaller-numbered `BasicBlock`.
+impl Ord for InlineCandidate<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (other.cost, other.callsite.block).cmp(&(self.cost, self.callsite.block))
+    }
+}
+impl PartialOrd for InlineCandidate<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Eq for InlineCandidate<'_> {}
+impl PartialEq for InlineCandidate<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
 impl<'tcx> Inliner<'tcx> {
-    fn process_blocks(&mut self, caller_body: &mut Body<'tcx>, blocks: Range<BasicBlock>) {
-        // How many callsites in this body are we allowed to inline? We need to limit this in order
-        // to prevent super-linear growth in MIR size
-        let inline_limit = match self.history.len() {
-            0 => usize::MAX,
-            1..=TOP_DOWN_DEPTH_LIMIT => 1,
-            _ => return,
-        };
-        let mut inlined_count = 0;
+    fn enqueue_new_candidates(&mut self, caller_body: &Body<'tcx>, blocks: Range<BasicBlock>) {
         for bb in blocks {
             let bb_data = &caller_body[bb];
             if bb_data.is_cleanup {
@@ -152,44 +187,23 @@ impl<'tcx> Inliner<'tcx> {
                 continue;
             };
 
-            let span = trace_span!("process_blocks", %callsite.callee, ?bb);
-            let _guard = span.enter();
-
-            match self.try_inlining(caller_body, &callsite) {
-                Err(reason) => {
-                    debug!("not-inlined {} [{}]", callsite.callee, reason);
-                }
-                Ok(new_blocks) => {
-                    debug!("inlined {}", callsite.callee);
-                    self.changed = true;
-
-                    self.history.push(callsite.callee.def_id());
-                    self.process_blocks(caller_body, new_blocks);
-                    self.history.pop();
-
-                    inlined_count += 1;
-                    if inlined_count == inline_limit {
-                        debug!("inline count reached");
-                        return;
-                    }
-                }
-            }
+            let Ok(candidate) = self.validate_inlining_candidate(caller_body, callsite) else {
+                continue;
+            };
+            self.queue.push(candidate);
         }
     }
 
-    /// Attempts to inline a callsite into the caller body. When successful returns basic blocks
-    /// containing the inlined body. Otherwise returns an error describing why inlining didn't take
-    /// place.
-    fn try_inlining(
+    fn validate_inlining_candidate(
         &self,
-        caller_body: &mut Body<'tcx>,
-        callsite: &CallSite<'tcx>,
-    ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
+        caller_body: &Body<'tcx>,
+        callsite: CallSite<'tcx>,
+    ) -> Result<InlineCandidate<'tcx>, &'static str> {
         self.check_mir_is_available(caller_body, callsite.callee)?;
 
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
         let cross_crate_inlinable = self.tcx.cross_crate_inlinable(callsite.callee.def_id());
-        self.check_codegen_attributes(callsite, callee_attrs, cross_crate_inlinable)?;
+        self.check_codegen_attributes(&callsite, callee_attrs, cross_crate_inlinable)?;
 
         // Intrinsic fallback bodies are automatically made cross-crate inlineable,
         // but at this stage we don't know whether codegen knows the intrinsic,
@@ -210,7 +224,20 @@ impl<'tcx> Inliner<'tcx> {
         }
 
         let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
-        self.check_mir_body(callsite, callee_body, callee_attrs, cross_crate_inlinable)?;
+        let cost =
+            self.check_mir_body(&callsite, callee_body, callee_attrs, cross_crate_inlinable)?;
+        Ok(InlineCandidate { cost, callsite, callee_body, destination_ty })
+    }
+
+    /// Attempts to inline a callsite into the caller body. When successful returns basic blocks
+    /// containing the inlined body. Otherwise returns an error describing why inlining didn't take
+    /// place.
+    fn try_inline_candidate(
+        &self,
+        caller_body: &mut Body<'tcx>,
+        candidate: InlineCandidate<'tcx>,
+    ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
+        let InlineCandidate { callsite, callee_body, destination_ty, .. } = candidate;
 
         if !self.tcx.consider_optimizing(|| {
             format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
@@ -249,6 +276,10 @@ impl<'tcx> Inliner<'tcx> {
             trace!(?output_type, ?destination_ty);
             return Err("failed to normalize return type");
         }
+
+        let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
+        let TerminatorKind::Call { args, .. } = &terminator.kind else { bug!() };
+
         if callsite.fn_sig.abi() == Abi::RustCall {
             // FIXME: Don't inline user-written `extern "rust-call"` functions,
             // since this is generally perf-negative on rustc, and we hope that
@@ -294,7 +325,7 @@ impl<'tcx> Inliner<'tcx> {
         }
 
         let old_blocks = caller_body.basic_blocks.next_index();
-        self.inline_call(caller_body, callsite, callee_body);
+        self.inline_call(caller_body, &callsite, callee_body);
         let new_blocks = old_blocks..caller_body.basic_blocks.next_index();
 
         Ok(new_blocks)
@@ -396,10 +427,6 @@ impl<'tcx> Inliner<'tcx> {
                     return None;
                 }
 
-                if self.history.contains(&callee.def_id()) {
-                    return None;
-                }
-
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
 
                 // Additionally, check that the body that we're inlining actually agrees
@@ -493,7 +520,7 @@ impl<'tcx> Inliner<'tcx> {
         callee_body: &Body<'tcx>,
         callee_attrs: &CodegenFnAttrs,
         cross_crate_inlinable: bool,
-    ) -> Result<(), &'static str> {
+    ) -> Result<usize, &'static str> {
         let tcx = self.tcx;
 
         if let Some(_) = callee_body.tainted_by_errors {
@@ -573,7 +600,7 @@ impl<'tcx> Inliner<'tcx> {
         let cost = checker.cost();
         if cost <= threshold {
             debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
-            Ok(())
+            Ok(cost)
         } else {
             debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
             Err("cost above threshold")

@@ -30,32 +30,32 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         scope 2 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
             debug self => _8;
             debug other => _10;
-            scope 3 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+            scope 6 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
                 debug self => _4;
                 debug other => _6;
                 let mut _11: usize;
                 let mut _12: usize;
             }
         }
-        scope 4 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+        scope 3 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
             debug self => _14;
             debug other => _16;
-            scope 5 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+            scope 7 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
                 debug self => _7;
                 debug other => _5;
                 let mut _17: usize;
                 let mut _18: usize;
             }
         }
-        scope 6 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+        scope 4 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
             debug self => _20;
             debug other => _22;
-            scope 7 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
+            scope 8 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {
                 debug self => _6;
                 debug other => _4;
             }
         }
-        scope 8 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
+        scope 5 (inlined std::cmp::impls::<impl PartialOrd for &usize>::le) {
             debug self => _24;
             debug other => _26;
             scope 9 (inlined std::cmp::impls::<impl PartialOrd for usize>::le) {

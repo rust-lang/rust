@@ -2,7 +2,7 @@
 // skip-filecheck
 //@ test-mir-pass: Inline
 //@ edition: 2021
-//@ compile-flags: -Zinline-mir-hint-threshold=10000 -Zinline-mir-threshold=10000 --crate-type=lib
+//@ compile-flags: -Zinline-mir-hint-threshold=10000 -Zinline-mir-threshold=10000 -Zinline_mir_total_threshold=10000 --crate-type=lib
 
 pub async fn run(permit: ActionPermit<'_, ()>, ctx: &mut core::task::Context<'_>) {
     run2(permit, ctx);

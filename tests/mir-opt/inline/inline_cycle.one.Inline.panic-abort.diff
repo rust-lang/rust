@@ -7,13 +7,34 @@
 +     scope 1 (inlined <C as Call>::call) {
 +         scope 2 (inlined <A<C> as Call>::call) {
 +             scope 3 (inlined <B<C> as Call>::call) {
++                 scope 4 (inlined <C as Call>::call) {
++                     scope 5 (inlined <A<C> as Call>::call) {
++                         scope 6 (inlined <B<C> as Call>::call) {
++                             scope 7 (inlined <C as Call>::call) {
++                                 scope 8 (inlined <A<C> as Call>::call) {
++                                     scope 9 (inlined <B<C> as Call>::call) {
++                                         scope 10 (inlined <C as Call>::call) {
++                                             scope 11 (inlined <A<C> as Call>::call) {
++                                                 scope 12 (inlined <B<C> as Call>::call) {
++                                                     scope 13 (inlined <C as Call>::call) {
++                                                     }
++                                                 }
++                                             }
++                                         }
++                                     }
++                                 }
++                             }
++                         }
++                     }
++                 }
 +             }
 +         }
 +     }
   
       bb0: {
           StorageLive(_1);
-          _1 = <C as Call>::call() -> [return: bb1, unwind unreachable];
+-         _1 = <C as Call>::call() -> [return: bb1, unwind unreachable];
++         _1 = <A<C> as Call>::call() -> [return: bb1, unwind unreachable];
       }
   
       bb1: {

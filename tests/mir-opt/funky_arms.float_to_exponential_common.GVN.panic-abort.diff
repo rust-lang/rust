@@ -28,12 +28,12 @@
               scope 3 {
                   debug precision => _8;
                   let _8: usize;
-                  scope 5 (inlined Formatter::<'_>::precision) {
+                  scope 4 (inlined Formatter::<'_>::precision) {
                   }
               }
           }
       }
-      scope 4 (inlined Formatter::<'_>::sign_plus) {
+      scope 5 (inlined Formatter::<'_>::sign_plus) {
           let mut _20: u32;
           let mut _21: u32;
       }

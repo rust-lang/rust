@@ -1807,6 +1807,9 @@ options! {
         (default: preserve for debuginfo != None, otherwise remove)"),
     inline_mir_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "a default MIR inlining threshold (default: 50)"),
+    inline_mir_total_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "maximum total cost of functions inlined into one caller (default: 300), \
+        to limit eventual MIR size in functions which make many calls"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input (default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],

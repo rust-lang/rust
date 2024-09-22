@@ -8,24 +8,24 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
         let mut _8: u16;
         scope 2 {
         }
-        scope 3 (inlined <u16 as Step>::forward_checked) {
-            scope 4 {
-                scope 6 (inlined core::num::<impl u16>::checked_add) {
+        scope 3 (inlined core::num::<impl u16>::wrapping_add) {
+        }
+        scope 4 (inlined Option::<u16>::is_none) {
+            scope 5 (inlined Option::<u16>::is_some) {
+            }
+        }
+        scope 6 (inlined <u16 as Step>::forward_checked) {
+            scope 7 {
+                scope 8 (inlined core::num::<impl u16>::checked_add) {
                     let mut _5: (u16, bool);
                     let mut _6: bool;
                     let mut _7: bool;
                 }
             }
-            scope 5 (inlined convert::num::ptr_try_from_impls::<impl TryFrom<usize> for u16>::try_from) {
+            scope 9 (inlined convert::num::ptr_try_from_impls::<impl TryFrom<usize> for u16>::try_from) {
                 let mut _3: bool;
                 let mut _4: u16;
             }
-        }
-        scope 7 (inlined Option::<u16>::is_none) {
-            scope 8 (inlined Option::<u16>::is_some) {
-            }
-        }
-        scope 9 (inlined core::num::<impl u16>::wrapping_add) {
         }
     }
 
