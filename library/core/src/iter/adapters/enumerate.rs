@@ -24,6 +24,8 @@ impl<I> Enumerate<I> {
         Enumerate { iter, count: 0 }
     }
 
+    #[inline]
+    #[unstable(feature = "peek_index", issue = "130711")]
     pub fn peek_index(&self) -> usize {
         self.count
     }
