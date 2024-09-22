@@ -1,33 +1,24 @@
 error[E0576]: cannot find method or associated constant `method` in trait `A`
-  --> $DIR/path-missing.rs:11:15
+  --> $DIR/path-missing.rs:10:15
    |
 LL |     <T as A>::method(..): Send,
    |               ^^^^^^ not found in `A`
 
 error[E0575]: expected method or associated constant, found associated type `A::bad`
-  --> $DIR/path-missing.rs:13:5
+  --> $DIR/path-missing.rs:12:5
    |
 LL |     <T as A>::bad(..): Send,
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: can't use a type alias as a constructor
 
-warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/path-missing.rs:1:12
-   |
-LL | #![feature(return_type_notation)]
-   |            ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0220]: associated function `method` not found for `T`
-  --> $DIR/path-missing.rs:20:8
+  --> $DIR/path-missing.rs:19:8
    |
 LL |     T::method(..): Send,
    |        ^^^^^^ associated function `method` not found
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0220, E0575, E0576.
 For more information about an error, try `rustc --explain E0220`.

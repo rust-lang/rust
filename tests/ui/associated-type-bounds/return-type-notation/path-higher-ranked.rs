@@ -1,5 +1,4 @@
 #![feature(return_type_notation)]
-//~^ WARN the feature `return_type_notation` is incomplete
 
 trait A<'a> {
     fn method() -> impl Sized;
