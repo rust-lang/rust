@@ -1,7 +1,7 @@
 use rustc_ast::Attribute;
 use rustc_attr::parse_version;
 use rustc_session::{RustcVersion, Session};
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 use serde::Deserialize;
 use std::fmt;
 

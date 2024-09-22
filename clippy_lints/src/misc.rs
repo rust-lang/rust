@@ -2,8 +2,8 @@ use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir, span_lint_hir
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    fulfill_or_allowed, get_parent_expr, in_automatically_derived, is_lint_allowed, iter_input_pats, last_path_segment,
-    SpanlessEq,
+    SpanlessEq, fulfill_or_allowed, get_parent_expr, in_automatically_derived, is_lint_allowed, iter_input_pats,
+    last_path_segment,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -15,8 +15,8 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
 
 use crate::ref_patterns::REF_PATTERNS;
 

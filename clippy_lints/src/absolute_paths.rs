@@ -3,12 +3,12 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc_hir::{HirId, ItemKind, Node, Path};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::kw;
 use rustc_span::Symbol;
+use rustc_span::symbol::kw;
 
 declare_clippy_lint! {
     /// ### What it does

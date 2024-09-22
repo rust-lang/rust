@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_self;
 use clippy_utils::ptr::get_spans;
-use clippy_utils::source::{snippet, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
@@ -182,14 +182,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 && !is_copy(cx, ty)
                 && ty.is_sized(cx.tcx, cx.param_env)
                 && !allowed_traits.iter().any(|&t| {
-                    implements_trait_with_env_from_iter(
-                        cx.tcx,
-                        cx.param_env,
-                        ty,
-                        t,
-                        None,
-                        [Option::<ty::GenericArg<'tcx>>::None],
-                    )
+                    implements_trait_with_env_from_iter(cx.tcx, cx.param_env, ty, t, None, [Option::<
+                        ty::GenericArg<'tcx>,
+                    >::None])
                 })
                 && !implements_borrow_trait
                 && !all_borrowable_trait

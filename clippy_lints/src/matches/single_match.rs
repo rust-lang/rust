@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{expr_block, snippet, snippet_block_with_context, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, expr_block, snippet, snippet_block_with_context};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{
     is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_middle_ty_refs, peel_n_hir_expr_refs,
@@ -8,11 +8,11 @@ use core::ops::ControlFlow;
 use rustc_arena::DroplessArena;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_pat, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_pat};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, ParamEnv, TyCtxt, TypeckResults, VariantDef};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 

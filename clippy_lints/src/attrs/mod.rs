@@ -12,8 +12,8 @@ mod unnecessary_clippy_cfg;
 mod useless_attribute;
 mod utils;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use rustc_ast::{Attribute, MetaItemKind, NestedMetaItem};
 use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};

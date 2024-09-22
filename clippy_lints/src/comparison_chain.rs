@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{if_sequence, is_else_clause, is_in_const_context, SpanlessEq};
+use clippy_utils::{SpanlessEq, if_sequence, is_else_clause, is_in_const_context};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;

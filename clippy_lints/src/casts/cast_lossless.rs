@@ -10,7 +10,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_span::hygiene;
 
-use super::{utils, CAST_LOSSLESS};
+use super::{CAST_LOSSLESS, utils};
 
 pub(super) fn check(
     cx: &LateContext<'_>,

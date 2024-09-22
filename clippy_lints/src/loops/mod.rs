@@ -22,15 +22,15 @@ mod while_immutable_condition;
 mod while_let_loop;
 mod while_let_on_iterator;
 
-use clippy_config::msrvs::Msrv;
 use clippy_config::Conf;
+use clippy_config::msrvs::Msrv;
 use clippy_utils::higher;
 use rustc_ast::Label;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
-use utils::{make_iterator_snippet, IncrementVisitor, InitializeVisitor};
+use utils::{IncrementVisitor, InitializeVisitor, make_iterator_snippet};
 
 declare_clippy_lint! {
     /// ### What it does

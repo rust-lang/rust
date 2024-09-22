@@ -39,8 +39,8 @@ enum Foo {
     Bar,
     Baz(u8),
 }
-use std::borrow::Cow;
 use Foo::*;
+use std::borrow::Cow;
 
 fn single_match_know_enum() {
     let x = Some(1u8);

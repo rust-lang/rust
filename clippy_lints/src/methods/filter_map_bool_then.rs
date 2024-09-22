@@ -7,9 +7,9 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::Binder;
-use rustc_span::{sym, Span};
+use rustc_middle::ty::adjustment::Adjust;
+use rustc_span::{Span, sym};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &Expr<'_>, call_span: Span) {
     if !in_external_macro(cx.sess(), expr.span)

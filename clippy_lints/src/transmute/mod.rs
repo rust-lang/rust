@@ -19,8 +19,8 @@ mod useless_transmute;
 mod utils;
 mod wrong_transmute;
 
-use clippy_config::msrvs::Msrv;
 use clippy_config::Conf;
+use clippy_config::msrvs::Msrv;
 use clippy_utils::is_in_const_context;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};

@@ -1,9 +1,9 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{
-    higher, is_in_const_context, is_integer_literal, path_to_local, peel_blocks, peel_blocks_with_stmt, SpanlessEq,
+    SpanlessEq, higher, is_in_const_context, is_integer_literal, path_to_local, peel_blocks, peel_blocks_with_stmt,
 };
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;

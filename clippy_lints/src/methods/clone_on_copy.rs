@@ -7,7 +7,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 
 use super::CLONE_ON_COPY;
 

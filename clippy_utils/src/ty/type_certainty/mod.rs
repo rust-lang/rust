@@ -14,14 +14,14 @@
 use crate::def_path_res;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_qpath, walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_qpath, walk_ty};
 use rustc_hir::{self as hir, Expr, ExprKind, GenericArgs, HirId, Node, PathSegment, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, GenericArgKind, Ty};
 use rustc_span::{Span, Symbol};
 
 mod certainty;
-use certainty::{join, meet, Certainty, Meet};
+use certainty::{Certainty, Meet, join, meet};
 
 pub fn expr_type_is_certain(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     expr_type_certainty(cx, expr).is_certain()

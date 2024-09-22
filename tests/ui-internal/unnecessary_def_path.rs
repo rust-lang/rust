@@ -22,8 +22,8 @@ use rustc_hir::LangItem;
 #[allow(unused)]
 use rustc_span::sym;
 
-use rustc_hir::def_id::DefId;
 use rustc_hir::Expr;
+use rustc_hir::def_id::DefId;
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 

@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::{Attribute, MetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::LateContext;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::collections::hash_map::Entry;
 
 fn emit_if_duplicated(

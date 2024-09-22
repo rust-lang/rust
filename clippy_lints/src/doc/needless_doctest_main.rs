@@ -13,7 +13,7 @@ use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{sym, FileName, Pos};
+use rustc_span::{FileName, Pos, sym};
 
 use super::Fragments;
 

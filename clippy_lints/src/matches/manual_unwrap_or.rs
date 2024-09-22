@@ -1,12 +1,12 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{indent_of, reindent_multiline, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::contains_return_break_continue_macro;
 use clippy_utils::{is_res_lang_ctor, path_to_local_id, peel_blocks, sugg};
 use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
 use rustc_hir::LangItem::{OptionNone, ResultErr};
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, Expr, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;

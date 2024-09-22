@@ -3,7 +3,7 @@
 #![warn(clippy::implicit_clone)]
 #![allow(clippy::redundant_clone)]
 use std::borrow::Cow;
-use std::ffi::{c_char, CStr};
+use std::ffi::{CStr, c_char};
 
 fn main() {
     let moo = "Moooo";

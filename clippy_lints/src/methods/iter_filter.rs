@@ -10,8 +10,8 @@ use clippy_utils::{get_parent_expr, is_trait_method, peel_blocks, span_contains_
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::QPath;
-use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, Symbol, sym};
 use std::borrow::Cow;
 
 ///
