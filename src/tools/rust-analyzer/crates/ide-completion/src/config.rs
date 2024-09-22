@@ -7,7 +7,7 @@
 use hir::ImportPathConfig;
 use ide_db::{imports::insert_use::InsertUseConfig, SnippetCap};
 
-use crate::snippet::Snippet;
+use crate::{snippet::Snippet, CompletionFieldsToResolve};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {
@@ -27,6 +27,7 @@ pub struct CompletionConfig {
     pub prefer_absolute: bool,
     pub snippets: Vec<Snippet>,
     pub limit: Option<usize>,
+    pub fields_to_resolve: CompletionFieldsToResolve,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
