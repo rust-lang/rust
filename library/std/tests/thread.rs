@@ -37,3 +37,21 @@ fn thread_local_containing_const_statements() {
     assert_eq!(CELL.get(), 1);
     assert_eq!(REFCELL.take(), 1);
 }
+
+#[test]
+// Include an ignore list on purpose, so that new platforms don't miss it
+#[cfg_attr(
+    any(
+        target_os = "redox",
+        target_os = "l4re",
+        target_env = "sgx",
+        target_os = "solid_asp3",
+        target_os = "teeos",
+        target_os = "wasi"
+    ),
+    should_panic
+)]
+fn available_parallelism() {
+    // check that std::thread::available_parallelism() returns a valid value
+    assert!(thread::available_parallelism().is_ok());
+}
