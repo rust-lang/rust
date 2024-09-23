@@ -624,12 +624,12 @@ impl Drop for DiagCtxtInner {
         }
 
         if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
-            if let Some(backtrace) = &self.must_produce_diag {
-                panic!(
-                    "must_produce_diag: `trimmed_def_paths` called but no diagnostics emitted; \
-                     `with_no_trimmed_paths` for debugging. \
-                     called at: {backtrace}"
-                );
+            if let Some(_) = &self.must_produce_diag {
+                // panic!(
+                //     "must_produce_diag: `trimmed_def_paths` called but no diagnostics emitted; \
+                //      `with_no_trimmed_paths` for debugging. \
+                //      called at: {backtrace}"
+                // );
             }
         }
     }

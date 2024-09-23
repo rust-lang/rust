@@ -1,13 +1,10 @@
-use std::ops::Deref;
-//use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::middle::exported_symbols::ExportedSymbol;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutFileName, OutputType};
 use rustc_session::output::filename_for_metadata;
@@ -100,46 +97,59 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
         if tcx.sess.opts.json_artifact_notifications {
             dbg!("Calculating hash");
             let hash: Fingerprint = {
-                let symbols = tcx
-                    .exported_symbols(LOCAL_CRATE)
-                    .iter()
-                    .filter_map(|&(exported_symbol, k)| {
-                        if matches!(exported_symbol, ExportedSymbol::NoDefId(_)) {
-                            return None;
-                        }
-                        let def_id = exported_symbol.def_id();
-                        let is_cross_crate_inlineable =
-                            def_id.map_or(false, |id| tcx.cross_crate_inlinable(id));
-                        let ty = def_id.map(|id| tcx.type_of(id));
-                        let body = is_cross_crate_inlineable.then(|| {
-                            // Deref to avoid hashing cache of mir body.
-                            exported_symbol
-                                .mir_body_for_local_instance(tcx)
-                                .basic_blocks
-                                .deref()
-                                .iter()
-                                .map(|bb| {
-                                    let kind = bb
-                                        .terminator
-                                        .as_ref()
-                                        .map(|terminator| terminator.kind.clone());
-                                    let statements = bb
-                                        .statements
-                                        .iter()
-                                        .map(|statement| statement.kind.clone())
-                                        .collect::<Vec<_>>();
-                                    (bb.is_cleanup, kind, statements)
-                                })
-                                .collect::<Vec<_>>()
-                        });
-
-                        Some((exported_symbol, k, ty, body))
-                    })
-                    .collect::<Vec<_>>();
                 tcx.with_stable_hashing_context(|mut hcx| {
-                    use rustc_data_structures::stable_hasher::HashStable;
+                    let symbols = tcx
+                        .reachable_set(())
+                        .to_sorted(&hcx, true)
+                        .into_iter()
+                        .filter_map(|local_def_id: &LocalDefId| {
+                            dbg!(&local_def_id);
+                            let def_id = local_def_id.to_def_id();
+                            let is_cross_crate_inlineable = tcx.is_mir_available(def_id);
+                            let path = tcx.def_path(def_id).to_string_no_crate_verbose();
+                            dbg!(&path);
+                            //let ty = tcx.type_of(def_id);
+                            let _body = is_cross_crate_inlineable.then(|| {
+                                // fn mir_body_for_local_instance(
+                                //     tcx: &TyCtx<'_>,
+                                //     id: LocalDefId,
+                                // ) -> &'_ Body<'_> {
+                                //     tcx.instance_mir(ty::Instance::mono())
+                                // }
+                                // let blocks = exported_symbol
+                                //     .mir_body_for_local_instance(tcx)
+                                //     .basic_blocks
+                                //     .deref();
+                                // dbg!(&blocks);
+                                // // Deref to avoid hashing cache of mir body.
+                                // let symbols = blocks
+                                //     .iter()
+                                //     .map(|bb| {
+                                //         let kind = bb
+                                //             .terminator
+                                //             .as_ref()
+                                //             .map(|terminator| terminator.kind.clone());
+                                //         let statements = bb
+                                //             .statements
+                                //             .iter()
+                                //             .map(|statement| statement.kind.clone())
+                                //             .collect::<Vec<_>>();
+                                //         (bb.is_cleanup, kind, statements)
+                                //     })
+                                //     .collect::<Vec<_>>();
+                                // dbg!(symbols.len());
+                                // symbols
+                                Vec::<()>::new()
+                            });
+
+                            Some(path)
+                        })
+                        .collect::<Vec<_>>();
                     let mut stable_hasher = StableHasher::new();
-                    symbols.hash_stable(&mut hcx, &mut stable_hasher);
+                    hcx.while_hashing_spans(false, |mut hcx| {
+                        use rustc_data_structures::stable_hasher::HashStable;
+                        symbols.hash_stable(&mut hcx, &mut stable_hasher);
+                    });
                     stable_hasher.finish()
                 })
             };
