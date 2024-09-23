@@ -1,6 +1,6 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::{io as std_io, mem};
+use crate::io as std_io;
 
 #[inline]
 pub fn is_interrupted(errno: i32) -> bool {
@@ -106,16 +106,6 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
 
 pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
-}
-
-pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut ret = (0u64, 0u64);
-    unsafe {
-        let base = &mut ret as *mut (u64, u64) as *mut u8;
-        let len = mem::size_of_val(&ret);
-        wasi::random_get(base, len).expect("random_get failure");
-    }
-    ret
 }
 
 #[inline]
