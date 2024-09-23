@@ -161,13 +161,13 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                         fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                     }
-                    GlobalAlloc::VTable(ty, trait_ref) => {
+                    GlobalAlloc::VTable(ty, dyn_ty) => {
                         let data_id = data_id_for_vtable(
                             fx.tcx,
                             &mut fx.constants_cx,
                             fx.module,
                             ty,
-                            trait_ref,
+                            dyn_ty.principal(),
                         );
                         let local_data_id =
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
@@ -456,8 +456,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 GlobalAlloc::Memory(target_alloc) => {
                     data_id_for_alloc_id(cx, module, alloc_id, target_alloc.inner().mutability)
                 }
-                GlobalAlloc::VTable(ty, trait_ref) => {
-                    data_id_for_vtable(tcx, cx, module, ty, trait_ref)
+                GlobalAlloc::VTable(ty, dyn_ty) => {
+                    data_id_for_vtable(tcx, cx, module, ty, dyn_ty.principal())
                 }
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
