@@ -377,7 +377,7 @@ quota](https://github.com/rust-lang/simpleinfra/blob/8a59e4faeb75a09b072671c74a7
 for each user, but this also applies to local development as well. Occassionally, you may need to:
 
 - Remove `build/` directory.
-- Remove `build-rust-analyzer/` directory (if you have a separate rust-analyzer build directory)
+- Remove `build-rust-analyzer/` directory (if you have a separate rust-analyzer build directory).
 - Uninstall unnecessary toolchains if you use `cargo-bisect-rustc`. You can check which toolchains
   are installed with `rustup toolchain list`.
 
