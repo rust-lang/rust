@@ -4,7 +4,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
-use rustc_infer::traits::Reveal;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{Obligation, ObligationCause, Reveal};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -16,6 +17,8 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{FIRST_VARIANT, Size};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_type_ir::Upcast;
 
 use crate::util::{is_within_packed, relate_types};
 
@@ -585,6 +588,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         };
 
         crate::util::relate_types(self.tcx, self.param_env, variance, src, dest)
+    }
+
+    /// Check that the given predicate definitely holds in the param-env of this MIR body.
+    fn predicate_must_hold_modulo_regions(
+        &self,
+        pred: impl Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
+    ) -> bool {
+        let infcx = self.tcx.infer_ctxt().build();
+        let ocx = ObligationCtxt::new(&infcx);
+        ocx.register_obligation(Obligation::new(
+            self.tcx,
+            ObligationCause::dummy(),
+            self.param_env,
+            pred,
+        ));
+        ocx.select_all_or_error().is_empty()
     }
 }
 
@@ -1202,8 +1221,33 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::PointerCoercion(PointerCoercion::Unsize, _) => {
-                        // This is used for all `CoerceUnsized` types,
-                        // not just pointers/references, so is hard to check.
+                        // Pointers being unsize coerced should at least implement
+                        // `CoerceUnsized`.
+                        if !self.predicate_must_hold_modulo_regions(ty::TraitRef::new(
+                            self.tcx,
+                            self.tcx.require_lang_item(
+                                LangItem::CoerceUnsized,
+                                Some(self.body.source_info(location).span),
+                            ),
+                            [op_ty, *target_type],
+                        )) {
+                            self.fail(location, format!("Unsize coercion, but `{op_ty}` isn't coercible to `{target_type}`"));
+                        }
+
+                        // FIXME: Codegen has an additional assumption, where if the
+                        // principal trait def id of what's being casted doesn't change,
+                        // then we don't need to adjust the vtable at all. This
+                        // corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
+                        // requires that `A = B`; we don't allow *upcasting* objects
+                        // between the same trait with different args. Nothing actually
+                        // validates this, though. While it's true right now, if we for
+                        // some reason were to relax the `Unsize` trait, it could become
+                        // unsound. We should eventually validate that, but it would
+                        // require peeling `&Box<Struct<.., dyn Tr<A>, ..>>` down to
+                        // the trait object that's being unsized, and that's rather
+                        // annoying, and also it would need to be opportunistic since
+                        // this MIR is not yet fully monomorphized, so we may bottom
+                        // out in an alias or a projection or something.
                     }
                     CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
                         // FIXME(dyn-star): make sure nothing needs to be done here.
