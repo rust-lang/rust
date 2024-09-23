@@ -829,7 +829,6 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::Ref(ref lifetime, ref mt)
             | ast::TyKind::PinnedRef(ref lifetime, ref mt) => {
-                // FIXME(pin_ergonomics): correctly format pinned reference syntax
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
                 let mut result = String::with_capacity(128);
@@ -861,6 +860,13 @@ impl Rewrite for ast::Ty {
                     }
                     result.push(' ');
                     cmnt_lo = lifetime.ident.span.hi();
+                }
+
+                if let ast::TyKind::PinnedRef(..) = self.kind {
+                    result.push_str("pin ");
+                    if ast::Mutability::Not == mt.mutbl {
+                        result.push_str("const ");
+                    }
                 }
 
                 if ast::Mutability::Mut == mt.mutbl {
