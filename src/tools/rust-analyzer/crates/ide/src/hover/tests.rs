@@ -6336,7 +6336,19 @@ fn hover_lint() {
 
                 arithmetic operation overflows
             "#]],
-    )
+    );
+    check(
+        r#"#![expect(arithmetic_overflow$0)]"#,
+        expect![[r#"
+                *arithmetic_overflow*
+                ```
+                arithmetic_overflow
+                ```
+                ___
+
+                arithmetic operation overflows
+            "#]],
+    );
 }
 
 #[test]
@@ -6352,7 +6364,19 @@ fn hover_clippy_lint() {
 
                 Checks for `foo = bar; bar = foo` sequences.
             "#]],
-    )
+    );
+    check(
+        r#"#![expect(clippy::almost_swapped$0)]"#,
+        expect![[r#"
+                *almost_swapped*
+                ```
+                clippy::almost_swapped
+                ```
+                ___
+
+                Checks for `foo = bar; bar = foo` sequences.
+            "#]],
+    );
 }
 
 #[test]
