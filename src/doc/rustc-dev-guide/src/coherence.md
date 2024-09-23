@@ -28,7 +28,7 @@ Overlap checking for inherent impl blocks is done through `fn check_item` in coh
 where you can very clearly see that (at least for small `n`), the check really performs `n^2`
 comparisons between impls. 
 
-In the case of traits, this check is currently done as part of building the [specialization graph](./specialization.md),
+In the case of traits, this check is currently done as part of building the [specialization graph](traits/specialization.md),
 to handle specializing impls overlapping with their parent, but this may change in the future.
 
 In both cases, all pairs of impls are checked for overlap.
@@ -36,7 +36,7 @@ In both cases, all pairs of impls are checked for overlap.
 Overlapping is sometimes partially allowed:
 
 1. for marker traits
-2. under [specialization](./specialization.md)
+2. under [specialization](traits/specialization.md)
 
 but normally isn't. 
 
