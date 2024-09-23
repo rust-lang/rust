@@ -4,8 +4,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_span::edition::Edition;
 
 use crate::doctest::{
-    run_test, DocTestBuilder, GlobalTestOptions, IndividualTestOptions, RunnableDocTest,
-    RustdocOptions, ScrapedDocTest, TestFailure, UnusedExterns,
+    DocTestBuilder, GlobalTestOptions, IndividualTestOptions, RunnableDocTest, RustdocOptions,
+    ScrapedDocTest, TestFailure, UnusedExterns, run_test,
 };
 use crate::html::markdown::{Ignore, LangString};
 

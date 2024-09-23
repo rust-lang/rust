@@ -23,6 +23,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
+use crate::BorrowckInferCtxt;
 use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
@@ -33,10 +34,9 @@ use crate::region_infer::reverse_sccs::ReverseSccGraph;
 use crate::region_infer::values::{
     LivenessValues, PlaceholderIndices, RegionElement, RegionValues, ToElementIndex,
 };
-use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::Locations;
+use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
-use crate::BorrowckInferCtxt;
 
 mod dump_mir;
 mod graphviz;

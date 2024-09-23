@@ -1,4 +1,4 @@
-use crate::spec::{base, TargetOptions, TlsModel};
+use crate::spec::{TargetOptions, TlsModel, base};
 
 pub(crate) fn opts() -> TargetOptions {
     let mut base = base::linux::opts();

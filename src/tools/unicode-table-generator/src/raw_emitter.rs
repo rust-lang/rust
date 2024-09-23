@@ -360,15 +360,12 @@ impl Canonicalized {
         let unique_mapping = unique_mapping
             .into_iter()
             .map(|(key, value)| {
-                (
-                    key,
-                    match value {
-                        UniqueMapping::Canonicalized(idx) => {
-                            u8::try_from(canonical_words.len() + idx).unwrap()
-                        }
-                        UniqueMapping::Canonical(idx) => u8::try_from(idx).unwrap(),
-                    },
-                )
+                (key, match value {
+                    UniqueMapping::Canonicalized(idx) => {
+                        u8::try_from(canonical_words.len() + idx).unwrap()
+                    }
+                    UniqueMapping::Canonical(idx) => u8::try_from(idx).unwrap(),
+                })
             })
             .collect::<HashMap<_, _>>();
 
@@ -383,24 +380,21 @@ impl Canonicalized {
         let canonicalized_words = canonicalized_words
             .into_iter()
             .map(|v| {
-                (
-                    u8::try_from(v.0).unwrap(),
-                    match v.1 {
-                        Mapping::RotateAndInvert(amount) => {
-                            assert_eq!(amount, amount & LOWER_6);
-                            1 << 6 | (amount as u8)
-                        }
-                        Mapping::Rotate(amount) => {
-                            assert_eq!(amount, amount & LOWER_6);
-                            amount as u8
-                        }
-                        Mapping::Invert => 1 << 6,
-                        Mapping::ShiftRight(shift_by) => {
-                            assert_eq!(shift_by, shift_by & LOWER_6);
-                            1 << 7 | (shift_by as u8)
-                        }
-                    },
-                )
+                (u8::try_from(v.0).unwrap(), match v.1 {
+                    Mapping::RotateAndInvert(amount) => {
+                        assert_eq!(amount, amount & LOWER_6);
+                        1 << 6 | (amount as u8)
+                    }
+                    Mapping::Rotate(amount) => {
+                        assert_eq!(amount, amount & LOWER_6);
+                        amount as u8
+                    }
+                    Mapping::Invert => 1 << 6,
+                    Mapping::ShiftRight(shift_by) => {
+                        assert_eq!(shift_by, shift_by & LOWER_6);
+                        1 << 7 | (shift_by as u8)
+                    }
+                })
             })
             .collect::<Vec<(u8, u8)>>();
         Canonicalized { unique_mapping, canonical_words, canonicalized_words }

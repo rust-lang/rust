@@ -191,21 +191,18 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, Some(span));
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
-    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
-        tcx,
-        &[ty::GenericArg::from(ty::Region::new_bound(
-            tcx,
-            ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon },
-        ))],
-    );
+    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(tcx, &[ty::GenericArg::from(
+        ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
+            var: ty::BoundVar::from_u32(1),
+            kind: ty::BrAnon,
+        }),
+    )]);
     let panic_info_ref_ty = Ty::new_imm_ref(
         tcx,
-        ty::Region::new_bound(
-            tcx,
-            ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon },
-        ),
+        ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
+            var: ty::BoundVar::ZERO,
+            kind: ty::BrAnon,
+        }),
         panic_info_ty,
     );
 

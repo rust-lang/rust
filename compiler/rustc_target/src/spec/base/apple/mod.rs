@@ -3,8 +3,8 @@ use std::env;
 use std::num::ParseIntError;
 
 use crate::spec::{
-    add_link_args, add_link_args_iter, cvs, Cc, DebuginfoKind, FramePointer, LinkArgs,
-    LinkerFlavor, Lld, SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions,
+    Cc, DebuginfoKind, FramePointer, LinkArgs, LinkerFlavor, Lld, SplitDebuginfo, StackProbeType,
+    StaticCow, Target, TargetOptions, add_link_args, add_link_args_iter, cvs,
 };
 
 #[cfg(test)]
@@ -190,11 +190,10 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
         //
         // CC forwards the `-arch` to the linker, so we use the same value
         // here intentionally.
-        add_link_args(
-            &mut args,
-            LinkerFlavor::Darwin(Cc::Yes, Lld::No),
-            &["-arch", arch.ld_arch()],
-        );
+        add_link_args(&mut args, LinkerFlavor::Darwin(Cc::Yes, Lld::No), &[
+            "-arch",
+            arch.ld_arch(),
+        ]);
         // The presence of `-mmacosx-version-min` makes CC default to macOS,
         // and it sets the deployment target.
         let (major, minor, patch) = deployment_target(os, arch, abi);

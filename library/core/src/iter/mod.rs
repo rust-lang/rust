@@ -380,11 +380,6 @@ macro_rules! impl_fold_via_try_fold {
     };
 }
 
-#[unstable(feature = "iter_chain", reason = "recently added", issue = "125964")]
-pub use self::adapters::chain;
-pub(crate) use self::adapters::try_process;
-#[stable(feature = "iter_zip", since = "1.59.0")]
-pub use self::adapters::zip;
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 pub use self::adapters::ArrayChunks;
 #[unstable(feature = "std_internals", issue = "none")]
@@ -407,6 +402,11 @@ pub use self::adapters::StepBy;
 pub use self::adapters::TrustedRandomAccess;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::adapters::TrustedRandomAccessNoCoerce;
+#[unstable(feature = "iter_chain", reason = "recently added", issue = "125964")]
+pub use self::adapters::chain;
+pub(crate) use self::adapters::try_process;
+#[stable(feature = "iter_zip", since = "1.59.0")]
+pub use self::adapters::zip;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{
     Chain, Cycle, Enumerate, Filter, FilterMap, FlatMap, Fuse, Inspect, Map, Peekable, Rev, Scan,
@@ -427,21 +427,21 @@ pub use self::range::Step;
 )]
 pub use self::sources::from_coroutine;
 #[stable(feature = "iter_empty", since = "1.2.0")]
-pub use self::sources::{empty, Empty};
+pub use self::sources::{Empty, empty};
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
-pub use self::sources::{from_fn, FromFn};
+pub use self::sources::{FromFn, from_fn};
 #[stable(feature = "iter_once", since = "1.2.0")]
-pub use self::sources::{once, Once};
+pub use self::sources::{Once, once};
 #[stable(feature = "iter_once_with", since = "1.43.0")]
-pub use self::sources::{once_with, OnceWith};
+pub use self::sources::{OnceWith, once_with};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::sources::{repeat, Repeat};
+pub use self::sources::{Repeat, repeat};
 #[stable(feature = "iter_repeat_n", since = "1.82.0")]
-pub use self::sources::{repeat_n, RepeatN};
+pub use self::sources::{RepeatN, repeat_n};
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
-pub use self::sources::{repeat_with, RepeatWith};
+pub use self::sources::{RepeatWith, repeat_with};
 #[stable(feature = "iter_successors", since = "1.34.0")]
-pub use self::sources::{successors, Successors};
+pub use self::sources::{Successors, successors};
 #[stable(feature = "fused", since = "1.26.0")]
 pub use self::traits::FusedIterator;
 #[unstable(issue = "none", feature = "inplace_iteration")]

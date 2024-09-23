@@ -6,15 +6,15 @@ use std::ops::Deref;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
+use rustc_hir::def::DefKind;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
+use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::{
     self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
     ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, Upcast,
@@ -25,22 +25,22 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
     edit_distance_with_substrings, find_best_match_for_name_with_substrings,
 };
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{Ident, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::CanonicalTyGoal;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
 };
-use rustc_trait_selection::traits::query::CanonicalTyGoal;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use self::CandidateKind::*;
 pub(crate) use self::PickKind::*;
-use super::{suggest, CandidateSource, MethodError, NoMatchData};
+use super::{CandidateSource, MethodError, NoMatchData, suggest};
 use crate::FnCtxt;
 
 /// Boolean flag used to indicate if this search is for a suggestion

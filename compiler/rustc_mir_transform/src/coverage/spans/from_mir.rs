@@ -5,12 +5,12 @@ use rustc_middle::mir::{
 };
 use rustc_span::{ExpnKind, Span};
 
+use crate::coverage::ExtractedHirInfo;
 use crate::coverage::graph::{
     BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
 };
 use crate::coverage::spans::Covspan;
 use crate::coverage::unexpand::unexpand_into_body_span_with_expn_kind;
-use crate::coverage::ExtractedHirInfo;
 
 pub(crate) struct ExtractedCovspans {
     pub(crate) covspans: Vec<SpanFromMir>,

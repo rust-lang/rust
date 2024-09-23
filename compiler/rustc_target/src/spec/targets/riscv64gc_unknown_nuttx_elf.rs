@@ -1,6 +1,6 @@
 use crate::spec::{
-    cvs, Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, Target,
-    TargetOptions,
+    Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, Target,
+    TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {

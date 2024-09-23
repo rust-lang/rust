@@ -9,7 +9,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
 use crate::bounds::Bounds;
@@ -379,10 +379,10 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
     for param in opaque_own_params {
         let orig_lifetime = tcx.map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local());
         if let ty::ReEarlyParam(..) = *orig_lifetime {
-            let dup_lifetime = ty::Region::new_early_param(
-                tcx,
-                ty::EarlyParamRegion { index: param.index, name: param.name },
-            );
+            let dup_lifetime = ty::Region::new_early_param(tcx, ty::EarlyParamRegion {
+                index: param.index,
+                name: param.name,
+            });
             let span = tcx.def_span(param.def_id);
             predicates.push((
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_lifetime, dup_lifetime))

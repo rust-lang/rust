@@ -14,7 +14,7 @@ use std::fmt::Debug;
 use std::iter::InPlaceIterable;
 use std::mem::{size_of, swap};
 use std::ops::Bound::*;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::vec::{Drain, IntoIter};

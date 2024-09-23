@@ -45,7 +45,7 @@ use std::{fmt, io};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{Symbol, kw, sym};
 use serde_json::Value;
 use tracing::debug;
 
@@ -3389,10 +3389,10 @@ impl Target {
 
         // Each field should have been read using `Json::remove` so any keys remaining are unused.
         let remaining_keys = obj.keys();
-        Ok((
-            base,
-            TargetWarnings { unused_fields: remaining_keys.cloned().collect(), incorrect_type },
-        ))
+        Ok((base, TargetWarnings {
+            unused_fields: remaining_keys.cloned().collect(),
+            incorrect_type,
+        }))
     }
 
     /// Load a built-in target

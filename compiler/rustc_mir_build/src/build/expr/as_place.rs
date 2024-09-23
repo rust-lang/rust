@@ -12,11 +12,11 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use tracing::{debug, instrument, trace};
 
-use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
+use crate::build::expr::category::Category;
 use crate::build::{BlockAnd, BlockAndExtension, Builder, Capture, CaptureMap};
 
 /// The "outermost" place that holds this value.
@@ -483,19 +483,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         });
 
                     let place = place_builder.to_place(this);
-                    this.cfg.push(
-                        block,
-                        Statement {
-                            source_info,
-                            kind: StatementKind::AscribeUserType(
-                                Box::new((
-                                    place,
-                                    UserTypeProjection { base: annotation_index, projs: vec![] },
-                                )),
-                                Variance::Invariant,
-                            ),
-                        },
-                    );
+                    this.cfg.push(block, Statement {
+                        source_info,
+                        kind: StatementKind::AscribeUserType(
+                            Box::new((place, UserTypeProjection {
+                                base: annotation_index,
+                                projs: vec![],
+                            })),
+                            Variance::Invariant,
+                        ),
+                    });
                 }
                 block.and(place_builder)
             }
@@ -511,19 +508,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             user_ty: user_ty.clone(),
                             inferred_ty: expr.ty,
                         });
-                    this.cfg.push(
-                        block,
-                        Statement {
-                            source_info,
-                            kind: StatementKind::AscribeUserType(
-                                Box::new((
-                                    Place::from(temp),
-                                    UserTypeProjection { base: annotation_index, projs: vec![] },
-                                )),
-                                Variance::Invariant,
-                            ),
-                        },
-                    );
+                    this.cfg.push(block, Statement {
+                        source_info,
+                        kind: StatementKind::AscribeUserType(
+                            Box::new((Place::from(temp), UserTypeProjection {
+                                base: annotation_index,
+                                projs: vec![],
+                            })),
+                            Variance::Invariant,
+                        ),
+                    });
                 }
                 block.and(PlaceBuilder::from(temp))
             }

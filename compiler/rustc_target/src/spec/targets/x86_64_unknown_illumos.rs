@@ -1,4 +1,4 @@
-use crate::spec::{base, Cc, LinkerFlavor, SanitizerSet, Target};
+use crate::spec::{Cc, LinkerFlavor, SanitizerSet, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::illumos::opts();

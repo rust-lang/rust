@@ -5,7 +5,7 @@ use crate::ffi::{c_int, c_void};
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::sys::common::small_c_string::run_with_cstr;
-use crate::sys::net::{cvt, cvt_gai, cvt_r, init, netc as c, wrlen_t, Socket};
+use crate::sys::net::{Socket, cvt, cvt_gai, cvt_r, init, netc as c, wrlen_t};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 use crate::{cmp, fmt, mem, ptr};

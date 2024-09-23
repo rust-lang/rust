@@ -2,8 +2,8 @@ use std::cmp;
 use std::marker::PhantomData;
 
 use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
-use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use rustc_span::def_id::DefId;
 
 use crate::ty::{self, Ty, TyCtxt};
 

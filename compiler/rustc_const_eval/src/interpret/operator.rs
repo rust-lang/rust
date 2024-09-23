@@ -1,7 +1,7 @@
 use either::Either;
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::NullOp;
+use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
 use rustc_middle::{bug, mir, span_bug};
@@ -9,7 +9,7 @@ use rustc_span::symbol::sym;
 use rustc_target::abi::Size;
 use tracing::trace;
 
-use super::{throw_ub, ImmTy, InterpCx, Machine, MemPlaceMeta};
+use super::{ImmTy, InterpCx, Machine, MemPlaceMeta, throw_ub};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn three_way_compare<T: Ord>(&self, lhs: T, rhs: T) -> ImmTy<'tcx, M::Provenance> {

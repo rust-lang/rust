@@ -5,11 +5,11 @@ use std::env;
 use std::fs::{self, write};
 use std::path::Path;
 
-use tidy::features::{collect_lang_features, collect_lib_features, Features};
+use tidy::features::{Features, collect_lang_features, collect_lib_features};
 use tidy::t;
 use tidy::unstable_book::{
-    collect_unstable_book_section_file_names, collect_unstable_feature_names, LANG_FEATURES_DIR,
-    LIB_FEATURES_DIR, PATH_STR,
+    LANG_FEATURES_DIR, LIB_FEATURES_DIR, PATH_STR, collect_unstable_book_section_file_names,
+    collect_unstable_feature_names,
 };
 
 fn generate_stub_issue(path: &Path, name: &str, issue: u32) {

@@ -13,15 +13,15 @@ use rustc_hir::{self as hir, MissingLifetimeKind};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
-use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_session::Session;
+use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
-use crate::{fluent_generated as fluent, LateContext};
+use crate::{LateContext, fluent_generated as fluent};
 
 // array_into_iter.rs
 #[derive(LintDiagnostic)]

@@ -2,8 +2,8 @@ use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, SubdiagMessageOp, Subdi
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::symbol::kw;
 use rustc_span::Span;
+use rustc_span::symbol::kw;
 
 use crate::error_reporting::infer::nice_region_error::find_anon_type;
 use crate::fluent_generated as fluent;

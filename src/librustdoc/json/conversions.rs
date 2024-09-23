@@ -19,8 +19,8 @@ use rustc_target::spec::abi::Abi as RustcAbi;
 use rustdoc_json_types::*;
 
 use crate::clean::{self, ItemId};
-use crate::formats::item_type::ItemType;
 use crate::formats::FormatRenderer;
+use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 

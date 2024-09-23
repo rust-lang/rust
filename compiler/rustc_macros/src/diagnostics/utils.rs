@@ -5,16 +5,16 @@ use std::str::FromStr;
 
 use proc_macro::Span;
 use proc_macro2::{Ident, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::meta::ParseNestedMeta;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{parenthesized, Attribute, Field, LitStr, Meta, Path, Token, Type, TypeTuple};
+use syn::{Attribute, Field, LitStr, Meta, Path, Token, Type, TypeTuple, parenthesized};
 use synstructure::{BindingInfo, VariantInfo};
 
 use super::error::invalid_attr;
 use crate::diagnostics::error::{
-    span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
+    DiagnosticDeriveError, span_err, throw_invalid_attr, throw_span_err,
 };
 
 thread_local! {

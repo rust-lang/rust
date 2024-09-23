@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
-use std::fs::{self, create_dir_all, File};
+use std::fs::{self, File, create_dir_all};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -18,18 +18,18 @@ use regex::{Captures, Regex};
 use tracing::*;
 
 use crate::common::{
-    expected_output_path, incremental_dir, output_base_dir, output_base_name,
-    output_testname_unique, Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap,
-    CoverageRun, Crashes, DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode,
-    Pretty, RunMake, RunPassValgrind, Rustdoc, RustdocJson, TestPaths, Ui, UI_EXTENSIONS, UI_FIXED,
-    UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG,
+    Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
+    DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode, Pretty, RunMake,
+    RunPassValgrind, Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR,
+    UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path,
+    incremental_dir, output_base_dir, output_base_name, output_testname_unique,
 };
 use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
-use crate::read2::{read2_abbreviated, Truncated};
-use crate::util::{add_dylib_path, logv, static_regex, PathBufExt};
-use crate::{json, ColorConfig};
+use crate::read2::{Truncated, read2_abbreviated};
+use crate::util::{PathBufExt, add_dylib_path, logv, static_regex};
+use crate::{ColorConfig, json};
 
 mod debugger;
 
@@ -62,7 +62,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use std::sync::Mutex;
 
     use windows::Win32::System::Diagnostics::Debug::{
-        SetErrorMode, SEM_NOGPFAULTERRORBOX, THREAD_ERROR_MODE,
+        SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
     };
 
     static LOCK: Mutex<()> = Mutex::new(());

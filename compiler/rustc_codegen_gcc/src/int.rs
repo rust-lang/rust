@@ -6,8 +6,8 @@ use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, T
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::{ParamEnv, Ty};
-use rustc_target::abi::call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
 use rustc_target::abi::Endian;
+use rustc_target::abi::call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
 use rustc_target::spec;
 
 use crate::builder::{Builder, ToGccComp};
@@ -395,11 +395,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
 
-        let return_type = self.context.new_struct_type(
-            self.location,
-            "result_overflow",
-            &[result_field, overflow_field],
-        );
+        let return_type = self
+            .context
+            .new_struct_type(self.location, "result_overflow", &[result_field, overflow_field]);
         let result = if indirect {
             let return_value =
                 self.current_func().new_local(self.location, return_type.as_type(), "return_value");
@@ -416,11 +414,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             );
             self.llbb().add_eval(
                 self.location,
-                self.context.new_call(
-                    self.location,
-                    func,
-                    &[return_value.get_address(self.location), lhs, rhs],
-                ),
+                self.context.new_call(self.location, func, &[
+                    return_value.get_address(self.location),
+                    lhs,
+                    rhs,
+                ]),
             );
             return_value.to_rvalue()
         } else {

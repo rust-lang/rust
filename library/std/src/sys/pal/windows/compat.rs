@@ -19,7 +19,7 @@
 //! function is called. In the worst case, multiple threads may all end up
 //! importing the same function unnecessarily.
 
-use crate::ffi::{c_void, CStr};
+use crate::ffi::{CStr, c_void};
 use crate::ptr::NonNull;
 use crate::sys::c;
 

@@ -45,15 +45,12 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
         cause: ObligationCause<'tcx>,
     ) {
         let trait_ref = ty::TraitRef::new(infcx.tcx, def_id, [ty]);
-        self.register_predicate_obligation(
-            infcx,
-            Obligation {
-                cause,
-                recursion_depth: 0,
-                param_env,
-                predicate: trait_ref.upcast(infcx.tcx),
-            },
-        );
+        self.register_predicate_obligation(infcx, Obligation {
+            cause,
+            recursion_depth: 0,
+            param_env,
+            predicate: trait_ref.upcast(infcx.tcx),
+        });
     }
 
     fn register_predicate_obligation(

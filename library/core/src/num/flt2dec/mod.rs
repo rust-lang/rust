@@ -122,7 +122,7 @@ functions.
     issue = "none"
 )]
 
-pub use self::decoder::{decode, DecodableFloat, Decoded, FullDecoded};
+pub use self::decoder::{DecodableFloat, Decoded, FullDecoded, decode};
 use super::fmt::{Formatted, Part};
 use crate::mem::MaybeUninit;
 

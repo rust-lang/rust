@@ -6,7 +6,7 @@ use rustc_expand::base::{
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{Ident, sym};
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::cfg_eval::cfg_eval;

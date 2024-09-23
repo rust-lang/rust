@@ -252,13 +252,10 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                         for ident in &idents_to_add {
                             connected_region_ids.insert(*ident, id_to_set);
                         }
-                        connected_regions.insert(
-                            id_to_set,
-                            ConnectedRegion {
-                                idents: idents_to_add,
-                                impl_blocks: std::iter::once(i).collect(),
-                            },
-                        );
+                        connected_regions.insert(id_to_set, ConnectedRegion {
+                            idents: idents_to_add,
+                            impl_blocks: std::iter::once(i).collect(),
+                        });
                     }
                     // Take the only id inside the list
                     &[id_to_set] => {

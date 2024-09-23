@@ -12,7 +12,7 @@ use crate::errors::{
     BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
     FailedCreateTempdir, FailedWriteError,
 };
-use crate::{encode_metadata, EncodedMetadata};
+use crate::{EncodedMetadata, encode_metadata};
 
 // FIXME(eddyb) maybe include the crate name in this?
 pub const METADATA_FILENAME: &str = "lib.rmeta";

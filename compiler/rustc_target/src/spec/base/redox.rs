@@ -1,4 +1,4 @@
-use crate::spec::{cvs, Cc, LinkerFlavor, Lld, RelroLevel, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, RelroLevel, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {

@@ -4,7 +4,7 @@
 // https://github.com/rust-lang/rust/pull/30365#issuecomment-165763679
 
 use std::env;
-use std::process::{exit, Command};
+use std::process::{Command, exit};
 
 fn main() {
     if env::args().len() > 1 {

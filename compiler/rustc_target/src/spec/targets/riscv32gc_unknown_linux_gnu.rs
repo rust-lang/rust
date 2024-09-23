@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::spec::{base, CodeModel, SplitDebuginfo, Target, TargetOptions};
+use crate::spec::{CodeModel, SplitDebuginfo, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {

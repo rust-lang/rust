@@ -2,7 +2,7 @@
 
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::slice::sort::shared::smallsort::{
-    insertion_sort_shift_left, StableSmallSortTypeImpl, SMALL_SORT_GENERAL_SCRATCH_LEN,
+    SMALL_SORT_GENERAL_SCRATCH_LEN, StableSmallSortTypeImpl, insertion_sort_shift_left,
 };
 use crate::{cmp, intrinsics};
 

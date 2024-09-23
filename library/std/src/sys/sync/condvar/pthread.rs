@@ -2,7 +2,7 @@ use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::AtomicPtr;
 use crate::sync::atomic::Ordering::Relaxed;
-use crate::sys::sync::{mutex, Mutex};
+use crate::sys::sync::{Mutex, mutex};
 #[cfg(not(target_os = "nto"))]
 use crate::sys::time::TIMESPEC_MAX;
 #[cfg(target_os = "nto")]

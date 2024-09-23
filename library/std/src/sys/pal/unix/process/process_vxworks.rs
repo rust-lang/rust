@@ -1,5 +1,5 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
-use libc::{self, c_char, c_int, RTP_ID};
+use libc::{self, RTP_ID, c_char, c_int};
 
 use crate::io::{self, ErrorKind};
 use crate::num::NonZero;

@@ -4,17 +4,17 @@ use std::fmt;
 use arrayvec::ArrayVec;
 use either::Either;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{alloc_range, Pointer, Scalar};
+use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_target::abi::{self, Abi, Align, Size};
 use tracing::debug;
 
 use super::place::{PlaceRef, PlaceValue};
 use super::{FunctionCx, LocalRef};
 use crate::traits::*;
-use crate::{size_of_val, MemFlags};
+use crate::{MemFlags, size_of_val};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a

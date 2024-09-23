@@ -1,10 +1,10 @@
 //! List of the unstable feature gates.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 
-use super::{to_nonzero, Feature};
+use super::{Feature, to_nonzero};
 
 pub struct UnstableFeature {
     pub feature: Feature,

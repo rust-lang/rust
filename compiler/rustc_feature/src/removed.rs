@@ -2,7 +2,7 @@
 
 use rustc_span::symbol::sym;
 
-use super::{to_nonzero, Feature};
+use super::{Feature, to_nonzero};
 
 pub struct RemovedFeature {
     pub feature: Feature,

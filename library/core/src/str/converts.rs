@@ -1,7 +1,7 @@
 //! Ways to create a `str` from bytes slice.
 
-use super::validations::run_utf8_validation;
 use super::Utf8Error;
+use super::validations::run_utf8_validation;
 use crate::{mem, ptr};
 
 /// Converts a slice of bytes to a string slice.

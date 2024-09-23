@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 use anyhow::{anyhow, ensure};
 use regex::Regex;
 
-use crate::parser::{unescape_llvm_string_contents, Parser};
+use crate::parser::{Parser, unescape_llvm_string_contents};
 
 /// Scans through the contents of an LLVM IR assembly file to find `__llvm_prf_names`
 /// entries, decodes them, and creates a table that maps name hash values to

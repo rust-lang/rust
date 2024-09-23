@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{base, SanitizerSet, StackProbeType, Target};
+use crate::spec::{SanitizerSet, StackProbeType, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();

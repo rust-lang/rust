@@ -22,7 +22,7 @@ static WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
 
 // https://github.com/rust-lang/rust/issues/102012#issuecomment-1915282956
 mod nop_waker {
-    use core::future::{ready, Future};
+    use core::future::{Future, ready};
     use core::pin::Pin;
     use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 

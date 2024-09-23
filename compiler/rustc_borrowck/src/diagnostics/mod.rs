@@ -15,22 +15,22 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::util::{call_kind, CallDesugaringKind};
+use rustc_middle::util::{CallDesugaringKind, call_kind};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    type_known_to_meet_bound_modulo_regions, FulfillmentErrorCode,
+    FulfillmentErrorCode, type_known_to_meet_bound_modulo_regions,
 };
 use tracing::debug;
 
-use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
+use super::borrow_set::BorrowData;
 use crate::fluent_generated as fluent;
 use crate::session_diagnostics::{
     CaptureArgLabel, CaptureReasonLabel, CaptureReasonNote, CaptureReasonSuggest, CaptureVarCause,
@@ -177,10 +177,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// End-user visible description of `place` if one can be found.
     /// If the place is a temporary for instance, `None` will be returned.
     pub(super) fn describe_place(&self, place_ref: PlaceRef<'tcx>) -> Option<String> {
-        self.describe_place_with_options(
-            place_ref,
-            DescribePlaceOpt { including_downcast: false, including_tuple_field: true },
-        )
+        self.describe_place_with_options(place_ref, DescribePlaceOpt {
+            including_downcast: false,
+            including_tuple_field: true,
+        })
     }
 
     /// End-user visible description of `place` if one can be found. If the place is a temporary

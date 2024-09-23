@@ -5,7 +5,7 @@ use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::{self, layout, GenericArgsRef, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, layout};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;

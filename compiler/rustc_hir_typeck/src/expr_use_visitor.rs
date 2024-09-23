@@ -6,9 +6,9 @@ use std::cell::{Ref, RefCell};
 use std::ops::Deref;
 use std::slice::from_ref;
 
+use hir::Expr;
 use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
-use hir::Expr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
@@ -20,11 +20,11 @@ use rustc_middle::hir::place::ProjectionKind;
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
-    self, adjustment, AdtKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _,
+    self, AdtKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, trace};
 use ty::BorrowKind::ImmBorrow;
@@ -151,7 +151,8 @@ pub trait TypeInformationCtxt<'tcx> {
 }
 
 impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
-    type TypeckResults<'a> = Ref<'a, ty::TypeckResults<'tcx>>
+    type TypeckResults<'a>
+        = Ref<'a, ty::TypeckResults<'tcx>>
     where
         Self: 'a;
 
@@ -195,7 +196,8 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
 }
 
 impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
-    type TypeckResults<'a> = &'tcx ty::TypeckResults<'tcx>
+    type TypeckResults<'a>
+        = &'tcx ty::TypeckResults<'tcx>
     where
         Self: 'a;
 

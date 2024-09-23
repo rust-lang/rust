@@ -15,8 +15,8 @@ use std::sync::OnceLock;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::exec::command;
-use crate::utils::helpers::{self, t, HashStamp};
-use crate::{generate_smart_stamp_hash, Kind};
+use crate::utils::helpers::{self, HashStamp, t};
+use crate::{Kind, generate_smart_stamp_hash};
 
 pub struct Meta {
     stamp: HashStamp,

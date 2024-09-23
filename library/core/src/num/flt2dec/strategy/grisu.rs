@@ -7,7 +7,7 @@
 
 use crate::mem::MaybeUninit;
 use crate::num::diy_float::Fp;
-use crate::num::flt2dec::{round_up, Decoded, MAX_SIG_DIGITS};
+use crate::num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
 
 // see the comments in `format_shortest_opt` for the rationale.
 #[doc(hidden)]

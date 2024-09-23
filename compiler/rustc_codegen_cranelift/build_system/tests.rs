@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use crate::path::{Dirs, RelPath};
-use crate::prepare::{apply_patches, GitRepo};
+use crate::prepare::{GitRepo, apply_patches};
 use crate::rustc_info::get_default_sysroot;
 use crate::shared_utils::rustflags_from_env;
-use crate::utils::{spawn_and_wait, CargoProject, Compiler, LogGroup};
-use crate::{build_sysroot, config, CodegenBackend, SysrootKind};
+use crate::utils::{CargoProject, Compiler, LogGroup, spawn_and_wait};
+use crate::{CodegenBackend, SysrootKind, build_sysroot, config};
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
 

@@ -12,7 +12,7 @@ use rustc_middle::ty::{
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
-use rustc_span::{source_map, Span, Symbol};
+use rustc_span::{Span, Symbol, source_map};
 use rustc_target::abi::{Abi, TagEncoding, Variants, WrappingRange};
 use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
@@ -24,7 +24,7 @@ use crate::lints::{
     AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
     InvalidNanComparisonsSuggestion, UnusedComparisons, VariantSizeDifferencesDiag,
 };
-use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
+use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
 
 mod literal;
 
@@ -434,16 +434,13 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
         }
 
         fn rev_binop(binop: hir::BinOp) -> hir::BinOp {
-            source_map::respan(
-                binop.span,
-                match binop.node {
-                    hir::BinOpKind::Lt => hir::BinOpKind::Gt,
-                    hir::BinOpKind::Le => hir::BinOpKind::Ge,
-                    hir::BinOpKind::Gt => hir::BinOpKind::Lt,
-                    hir::BinOpKind::Ge => hir::BinOpKind::Le,
-                    _ => return binop,
-                },
-            )
+            source_map::respan(binop.span, match binop.node {
+                hir::BinOpKind::Lt => hir::BinOpKind::Gt,
+                hir::BinOpKind::Le => hir::BinOpKind::Ge,
+                hir::BinOpKind::Gt => hir::BinOpKind::Lt,
+                hir::BinOpKind::Ge => hir::BinOpKind::Le,
+                _ => return binop,
+            })
         }
 
         fn check_limits(
@@ -1193,11 +1190,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else {
             None
         };
-        self.cx.emit_span_lint(
-            lint,
-            sp,
-            ImproperCTypes { ty, desc, label: sp, help, note, span_note },
-        );
+        self.cx.emit_span_lint(lint, sp, ImproperCTypes {
+            ty,
+            desc,
+            label: sp,
+            help,
+            note,
+            span_note,
+        });
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
@@ -1666,11 +1666,11 @@ impl InvalidAtomicOrdering {
     }
 
     fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let Some((method, args)) = Self::inherent_atomic_method_call(
-            cx,
-            expr,
-            &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak],
-        ) else {
+        let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[
+            sym::fetch_update,
+            sym::compare_exchange,
+            sym::compare_exchange_weak,
+        ]) else {
             return;
         };
 

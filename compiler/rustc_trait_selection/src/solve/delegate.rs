@@ -11,7 +11,7 @@ use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_type_ir::solve::{Certainty, NoSolution, SolverMode};
 use tracing::trace;
 
@@ -182,10 +182,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     }
 
     fn inject_new_hidden_type_unchecked(&self, key: ty::OpaqueTypeKey<'tcx>, hidden_ty: Ty<'tcx>) {
-        self.0.inject_new_hidden_type_unchecked(
-            key,
-            ty::OpaqueHiddenType { ty: hidden_ty, span: DUMMY_SP },
-        )
+        self.0.inject_new_hidden_type_unchecked(key, ty::OpaqueHiddenType {
+            ty: hidden_ty,
+            span: DUMMY_SP,
+        })
     }
 
     fn reset_opaque_types(&self) {

@@ -12,7 +12,7 @@ use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableS
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
@@ -22,12 +22,12 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
-    add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments, DocFragment,
+    DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
 };
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{FileName, Loc, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, FileName, Loc};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use thin_vec::ThinVec;
@@ -1064,10 +1064,14 @@ impl AttributesExt for [ast::Attribute] {
 }
 
 impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a
-        where Self: 'a;
-    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a
-        where Self: 'a;
+    type AttributeIterator<'a>
+        = impl Iterator<Item = ast::NestedMetaItem> + 'a
+    where
+        Self: 'a;
+    type Attributes<'a>
+        = impl Iterator<Item = &'a ast::Attribute> + 'a
+    where
+        Self: 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
         AttributesExt::iter(self)
@@ -1809,8 +1813,8 @@ impl PrimitiveType {
     }
 
     pub(crate) fn simplified_types() -> &'static SimplifiedTypes {
-        use ty::{FloatTy, IntTy, UintTy};
         use PrimitiveType::*;
+        use ty::{FloatTy, IntTy, UintTy};
         static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();
 
         let single = |x| iter::once(x).collect();

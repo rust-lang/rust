@@ -5,7 +5,7 @@ use std::cell::Cell;
 use std::mem;
 
 use rustc_ast::expand::StrippedCfgItem;
-use rustc_ast::{self as ast, attr, Crate, Inline, ItemKind, ModKind, NodeId};
+use rustc_ast::{self as ast, Crate, Inline, ItemKind, ModKind, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
@@ -23,24 +23,24 @@ use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, SOFT_UNSTABLE,
-    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_MACROS, UNUSED_MACRO_RULES,
+    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span};
 
+use crate::Namespace::*;
 use crate::errors::{
     self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
     MacroExpectedFound, RemoveSurroundingDerive,
 };
 use crate::imports::Import;
-use crate::Namespace::*;
 use crate::{
     BindingKey, BuiltinMacroState, DeriveData, Determinacy, Finalize, InvocationParent, MacroData,
     ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
@@ -914,15 +914,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 None,
                             )
                         };
-                    self.report_error(
-                        span,
-                        ResolutionError::FailedToResolve {
-                            segment: path.last().map(|segment| segment.ident.name),
-                            label,
-                            suggestion,
-                            module,
-                        },
-                    );
+                    self.report_error(span, ResolutionError::FailedToResolve {
+                        segment: path.last().map(|segment| segment.ident.name),
+                        label,
+                        suggestion,
+                        module,
+                    });
                 }
                 PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
             }

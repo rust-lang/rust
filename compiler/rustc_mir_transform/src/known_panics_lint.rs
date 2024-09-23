@@ -6,13 +6,13 @@ use std::fmt::Debug;
 
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
-    format_interp_error, ImmTy, InterpCx, InterpResult, Projectable, Scalar,
+    ImmTy, InterpCx, InterpResult, Projectable, Scalar, format_interp_error,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
-use rustc_index::bit_set::BitSet;
+use rustc_hir::def::DefKind;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -296,12 +296,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let source_info = self.body.source_info(location);
         if let Some(lint_root) = self.lint_root(*source_info) {
             let span = source_info.span;
-            self.tcx.emit_node_span_lint(
-                lint_kind.lint(),
-                lint_root,
+            self.tcx.emit_node_span_lint(lint_kind.lint(), lint_root, span, AssertLint {
                 span,
-                AssertLint { span, assert_kind, lint_kind },
-            );
+                assert_kind,
+                lint_kind,
+            });
         }
     }
 

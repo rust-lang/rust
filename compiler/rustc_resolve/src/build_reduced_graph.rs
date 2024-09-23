@@ -17,24 +17,25 @@ use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::ty::Feed;
 use rustc_middle::{bug, ty};
-use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use tracing::debug;
 
+use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
 use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
-use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::{
-    errors, BindingKey, Determinacy, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
+    BindingKey, Determinacy, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
     ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
     ResolutionError, Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError,
+    errors,
 };
 
 type Res = def::Res<NodeId>;
@@ -565,13 +566,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                             Some(rename) => source.ident.span.to(rename.span),
                             None => source.ident.span,
                         };
-                        self.r.report_error(
-                            span,
-                            ResolutionError::SelfImportsOnlyAllowedWithin {
-                                root: parent.is_none(),
-                                span_with_rename,
-                            },
-                        );
+                        self.r.report_error(span, ResolutionError::SelfImportsOnlyAllowedWithin {
+                            root: parent.is_none(),
+                            span_with_rename,
+                        });
 
                         // Error recovery: replace `use foo::self;` with `use foo;`
                         if let Some(parent) = module_path.pop() {

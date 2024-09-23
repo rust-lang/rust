@@ -1,6 +1,6 @@
 // Targets the Cortex-M23 processor (Baseline ARMv8-M)
 
-use crate::spec::{base, cvs, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {

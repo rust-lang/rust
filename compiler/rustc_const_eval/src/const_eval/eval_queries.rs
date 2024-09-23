@@ -11,18 +11,18 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{self, Abi};
 use tracing::{debug, instrument, trace};
 
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
 use crate::const_eval::CheckAlignment;
 use crate::interpret::{
-    create_static_alloc, eval_nullary_intrinsic, intern_const_alloc_recursive, throw_exhaust,
     CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpError,
-    InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup, create_static_alloc,
+    eval_nullary_intrinsic, intern_const_alloc_recursive, throw_exhaust,
 };
-use crate::{errors, CTRL_C_RECEIVED};
+use crate::{CTRL_C_RECEIVED, errors};
 
 // Returns a pointer to where the result lives
 #[instrument(level = "trace", skip(ecx, body))]

@@ -199,7 +199,7 @@ use core::ops::{
     DerefPure, DispatchFromDyn, Receiver,
 };
 use core::pin::{Pin, PinCoerceUnsized};
-use core::ptr::{self, addr_of_mut, NonNull, Unique};
+use core::ptr::{self, NonNull, Unique, addr_of_mut};
 use core::task::{Context, Poll};
 use core::{borrow, fmt, slice};
 
@@ -2480,7 +2480,10 @@ impl<Args: Tuple, F: AsyncFnOnce<Args> + ?Sized, A: Allocator> AsyncFnOnce<Args>
 
 #[unstable(feature = "async_fn_traits", issue = "none")]
 impl<Args: Tuple, F: AsyncFnMut<Args> + ?Sized, A: Allocator> AsyncFnMut<Args> for Box<F, A> {
-    type CallRefFuture<'a> = F::CallRefFuture<'a> where Self: 'a;
+    type CallRefFuture<'a>
+        = F::CallRefFuture<'a>
+    where
+        Self: 'a;
 
     extern "rust-call" fn async_call_mut(&mut self, args: Args) -> Self::CallRefFuture<'_> {
         F::async_call_mut(self, args)

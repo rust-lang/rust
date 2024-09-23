@@ -307,9 +307,9 @@ pub(crate) use error::const_io_error;
 pub use self::buffered::WriterPanicked;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use self::error::RawOsError;
-pub(crate) use self::stdio::attempt_print_to_stderr;
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
+pub(crate) use self::stdio::attempt_print_to_stderr;
 #[unstable(feature = "print_internals", issue = "none")]
 #[doc(hidden)]
 pub use self::stdio::{_eprint, _print};
@@ -322,8 +322,8 @@ pub use self::{
     copy::copy,
     cursor::Cursor,
     error::{Error, ErrorKind, Result},
-    stdio::{stderr, stdin, stdout, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock},
-    util::{empty, repeat, sink, Empty, Repeat, Sink},
+    stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
+    util::{Empty, Repeat, Sink, empty, repeat, sink},
 };
 use crate::mem::take;
 use crate::ops::{Deref, DerefMut};

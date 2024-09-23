@@ -1,27 +1,27 @@
+use Determinacy::*;
+use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_middle::{bug, ty};
-use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, Span};
+use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Span, sym};
 use tracing::{debug, instrument};
-use Determinacy::*;
-use Namespace::*;
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::imports::Import;
 use crate::late::{ConstantHasGenerics, NoConstantGenericsReason, PathSource, Rib, RibKind};
-use crate::macros::{sub_namespace_match, MacroRulesScope};
+use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
-    errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, Determinacy, Finalize,
+    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, Determinacy, Finalize,
     ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot, NameBinding,
     NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope,
-    ScopeSet, Segment, ToNameBinding, Used, Weak,
+    ScopeSet, Segment, ToNameBinding, Used, Weak, errors,
 };
 
 type Visibility = ty::Visibility<LocalDefId>;
@@ -1218,25 +1218,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                             }
                                             Some(_) => None,
                                         };
-                                        (
-                                            rib_ident.span,
-                                            AttemptToUseNonConstantValueInConstant {
-                                                ident: original_rib_ident_def,
-                                                suggestion: "const",
-                                                current: "let",
-                                                type_span,
-                                            },
-                                        )
+                                        (rib_ident.span, AttemptToUseNonConstantValueInConstant {
+                                            ident: original_rib_ident_def,
+                                            suggestion: "const",
+                                            current: "let",
+                                            type_span,
+                                        })
                                     }
-                                    Some((ident, kind)) => (
-                                        span,
-                                        AttemptToUseNonConstantValueInConstant {
+                                    Some((ident, kind)) => {
+                                        (span, AttemptToUseNonConstantValueInConstant {
                                             ident,
                                             suggestion: "let",
                                             current: kind.as_str(),
                                             type_span: None,
-                                        },
-                                    ),
+                                        })
+                                    }
                                 };
                                 self.report_error(span, resolution_error);
                             }
@@ -1244,13 +1240,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
-                                self.report_error(
-                                    span,
-                                    ParamInTyOfConstParam {
-                                        name: rib_ident.name,
-                                        param_kind: None,
-                                    },
-                                );
+                                self.report_error(span, ParamInTyOfConstParam {
+                                    name: rib_ident.name,
+                                    param_kind: None,
+                                });
                             }
                             return Res::Err;
                         }
@@ -1331,13 +1324,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
-                                self.report_error(
-                                    span,
-                                    ResolutionError::ParamInTyOfConstParam {
-                                        name: rib_ident.name,
-                                        param_kind: Some(errors::ParamKindInTyOfConstParam::Type),
-                                    },
-                                );
+                                self.report_error(span, ResolutionError::ParamInTyOfConstParam {
+                                    name: rib_ident.name,
+                                    param_kind: Some(errors::ParamKindInTyOfConstParam::Type),
+                                });
                             }
                             return Res::Err;
                         }
@@ -1400,13 +1390,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
-                                self.report_error(
-                                    span,
-                                    ResolutionError::ParamInTyOfConstParam {
-                                        name: rib_ident.name,
-                                        param_kind: Some(errors::ParamKindInTyOfConstParam::Const),
-                                    },
-                                );
+                                self.report_error(span, ResolutionError::ParamInTyOfConstParam {
+                                    name: rib_ident.name,
+                                    param_kind: Some(errors::ParamKindInTyOfConstParam::Const),
+                                });
                             }
                             return Res::Err;
                         }

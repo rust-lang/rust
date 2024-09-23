@@ -11,7 +11,7 @@ const EXPECTED = [
             { 'path': 'std::vec::IntoIter', 'name': 'into_iter' },
             { 'path': 'std::vec::ExtractIf', 'name': 'into_iter' },
             { 'path': 'std::vec::Splice', 'name': 'into_iter' },
-            { 'path': 'std::collections::VecDeque', 'name': 'into_iter' },
+            { 'path': 'std::collections::vec_deque::VecDeque', 'name': 'into_iter' },
         ],
     },
     {
@@ -25,10 +25,10 @@ const EXPECTED = [
             { 'path': 'std::vec::IntoIter', 'name': 'into_iter' },
             { 'path': 'std::vec::ExtractIf', 'name': 'into_iter' },
             { 'path': 'std::vec::Splice', 'name': 'into_iter' },
-            { 'path': 'std::collections::VecDeque', 'name': 'iter' },
-            { 'path': 'std::collections::VecDeque', 'name': 'iter_mut' },
-            { 'path': 'std::collections::VecDeque', 'name': 'from_iter' },
-            { 'path': 'std::collections::VecDeque', 'name': 'into_iter' },
+            { 'path': 'std::collections::vec_deque::VecDeque', 'name': 'iter' },
+            { 'path': 'std::collections::vec_deque::VecDeque', 'name': 'iter_mut' },
+            { 'path': 'std::collections::vec_deque::VecDeque', 'name': 'from_iter' },
+            { 'path': 'std::collections::vec_deque::VecDeque', 'name': 'into_iter' },
         ],
     },
     {

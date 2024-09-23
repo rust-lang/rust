@@ -5,13 +5,13 @@ use rustc_middle::ty::{
     self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_type_ir::Upcast;
 use tracing::{debug, instrument};
 
-use super::predicates_of::assert_only_contains_predicates_from;
 use super::ItemCtxt;
+use super::predicates_of::assert_only_contains_predicates_from;
 use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
 
 /// For associated types we include both bounds written on the type

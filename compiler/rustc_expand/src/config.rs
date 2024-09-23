@@ -9,14 +9,14 @@ use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
-    AttributeSafety, Features, ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES,
+    ACCEPTED_FEATURES, AttributeSafety, Features, REMOVED_FEATURES, UNSTABLE_FEATURES,
 };
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
-use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_session::parse::feature_err;
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::instrument;
 

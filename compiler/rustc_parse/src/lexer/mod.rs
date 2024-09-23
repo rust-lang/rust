@@ -8,10 +8,10 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, Cursor, DocStyle, LiteralKind, RawStrError};
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
@@ -866,7 +866,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 }
 
 pub fn nfc_normalize(string: &str) -> Symbol {
-    use unicode_normalization::{is_nfc_quick, IsNormalized, UnicodeNormalization};
+    use unicode_normalization::{IsNormalized, UnicodeNormalization, is_nfc_quick};
     match is_nfc_quick(string.chars()) {
         IsNormalized::Yes => Symbol::intern(string),
         _ => {

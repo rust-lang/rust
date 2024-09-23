@@ -516,7 +516,7 @@ mod cgroups {
 
     use crate::borrow::Cow;
     use crate::ffi::OsString;
-    use crate::fs::{exists, File};
+    use crate::fs::{File, exists};
     use crate::io::{BufRead, BufReader, Read};
     use crate::os::unix::ffi::OsStringExt;
     use crate::path::{Path, PathBuf};

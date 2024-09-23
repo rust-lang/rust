@@ -11,10 +11,10 @@ use hir::{ClosureKind, Path};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_block, walk_expr, Map, Visitor};
+use rustc_hir::intravisit::{Map, Visitor, walk_block, walk_expr};
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, LangItem, PatField};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -27,17 +27,17 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, suggest_constraining_type_params, PredicateKind, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitor, Upcast,
+    self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
+    suggest_constraining_type_params,
 };
 use rustc_middle::util::CallKind;
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, Span, Symbol};
-use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::{debug, instrument};
@@ -46,9 +46,9 @@ use super::explain_borrow::{BorrowExplanation, LaterUseKind};
 use super::{DescribePlaceOpt, RegionName, RegionNameSource, UseSpans};
 use crate::borrow_set::{BorrowData, TwoPhaseActivation};
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
-use crate::diagnostics::{find_all_local_uses, CapturedMessageOpt, Instance};
+use crate::diagnostics::{CapturedMessageOpt, Instance, find_all_local_uses};
 use crate::prefixes::IsPrefixOf;
-use crate::{borrowck_errors, InitializationRequiringAction, MirBorrowckCtxt, WriteKind};
+use crate::{InitializationRequiringAction, MirBorrowckCtxt, WriteKind, borrowck_errors};
 
 #[derive(Debug)]
 struct MoveSite {
@@ -145,10 +145,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 span,
                 desired_action.as_noun(),
                 partially_str,
-                self.describe_place_with_options(
-                    moved_place,
-                    DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
-                ),
+                self.describe_place_with_options(moved_place, DescribePlaceOpt {
+                    including_downcast: true,
+                    including_tuple_field: true,
+                }),
             );
 
             let reinit_spans = maybe_reinitialized_locations
@@ -266,10 +266,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
             }
 
-            let opt_name = self.describe_place_with_options(
-                place.as_ref(),
-                DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
-            );
+            let opt_name = self.describe_place_with_options(place.as_ref(), DescribePlaceOpt {
+                including_downcast: true,
+                including_tuple_field: true,
+            });
             let note_msg = match opt_name {
                 Some(name) => format!("`{name}`"),
                 None => "value".to_owned(),
@@ -689,17 +689,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         let spans: Vec<_> = spans_set.into_iter().collect();
 
-        let (name, desc) = match self.describe_place_with_options(
-            moved_place,
-            DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
-        ) {
+        let (name, desc) = match self.describe_place_with_options(moved_place, DescribePlaceOpt {
+            including_downcast: true,
+            including_tuple_field: true,
+        }) {
             Some(name) => (format!("`{name}`"), format!("`{name}` ")),
             None => ("the variable".to_string(), String::new()),
         };
-        let path = match self.describe_place_with_options(
-            used_place,
-            DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
-        ) {
+        let path = match self.describe_place_with_options(used_place, DescribePlaceOpt {
+            including_downcast: true,
+            including_tuple_field: true,
+        }) {
             Some(name) => format!("`{name}`"),
             None => "value".to_string(),
         };

@@ -35,8 +35,8 @@ use std::str::{self, CharIndices};
 use std::sync::OnceLock;
 
 use pulldown_cmark::{
-    html, BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter,
-    Options, Parser, Tag, TagEnd,
+    BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter, Options,
+    Parser, Tag, TagEnd, html,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagMessage};

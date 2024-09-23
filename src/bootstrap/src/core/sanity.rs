@@ -15,6 +15,7 @@ use std::{env, fs};
 
 use build_helper::git::warn_old_master_branch;
 
+use crate::Build;
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::builder::Builder;
 use crate::builder::Kind;
@@ -22,7 +23,6 @@ use crate::builder::Kind;
 use crate::core::build_steps::tool;
 use crate::core::config::Target;
 use crate::utils::exec::command;
-use crate::Build;
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,

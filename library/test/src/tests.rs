@@ -3,11 +3,11 @@ use crate::{
     console::OutputLocation,
     formatters::PrettyFormatter,
     test::{
-        parse_opts,
         MetricMap,
         // FIXME (introduced by #65251)
         // ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
         // TestType, TrFailedMsg, TrIgnored, TrOk,
+        parse_opts,
     },
     time::{TestTimeOptions, TimeThreshold},
 };

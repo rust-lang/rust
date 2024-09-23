@@ -5,30 +5,30 @@ use std::iter;
 use std::ops::Deref;
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{walk_ty, FnCtxt, FnKind, LifetimeCtxt, Visitor};
+use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt, Visitor, walk_ty};
 use rustc_ast::{
-    self as ast, AssocItemKind, Expr, ExprKind, GenericParam, GenericParamKind, Item, ItemKind,
-    MethodCall, NodeId, Path, Ty, TyKind, DUMMY_NODE_ID,
+    self as ast, AssocItemKind, DUMMY_NODE_ID, Expr, ExprKind, GenericParam, GenericParamKind,
+    Item, ItemKind, MethodCall, NodeId, Path, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
-    SuggestionStyle,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, SuggestionStyle, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_middle::ty;
-use rustc_session::{lint, Session};
+use rustc_session::{Session, lint};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -40,8 +40,8 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    errors, path_names_to_string, Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource,
-    Segment,
+    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Segment, errors,
+    path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -1017,15 +1017,12 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
         err.code(E0424);
-        err.span_label(
-            span,
-            match source {
-                PathSource::Pat => {
-                    "`self` value is a keyword and may not be bound to variables or shadowed"
-                }
-                _ => "`self` value is a keyword only available in methods with a `self` parameter",
-            },
-        );
+        err.span_label(span, match source {
+            PathSource::Pat => {
+                "`self` value is a keyword and may not be bound to variables or shadowed"
+            }
+            _ => "`self` value is a keyword only available in methods with a `self` parameter",
+        });
         let is_assoc_fn = self.self_type_is_available();
         let self_from_macro = "a `self` parameter, but a macro invocation can only \
                                access identifiers it receives from parameters";
@@ -2309,18 +2306,15 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     if module_def_id == def_id {
                         let path =
                             Path { span: name_binding.span, segments: path_segments, tokens: None };
-                        result = Some((
-                            module,
-                            ImportSuggestion {
-                                did: Some(def_id),
-                                descr: "module",
-                                path,
-                                accessible: true,
-                                doc_visible,
-                                note: None,
-                                via_import: false,
-                            },
-                        ));
+                        result = Some((module, ImportSuggestion {
+                            did: Some(def_id),
+                            descr: "module",
+                            path,
+                            accessible: true,
+                            doc_visible,
+                            note: None,
+                            via_import: false,
+                        }));
                     } else {
                         // add the module to the lookup
                         if seen_modules.insert(module_def_id) {

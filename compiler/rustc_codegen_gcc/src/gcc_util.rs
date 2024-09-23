@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
     PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature,

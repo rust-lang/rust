@@ -1,5 +1,5 @@
 # Run rustfmt with this config (it should be picked up automatically).
-version = "Two"
+style_edition = "2024"
 use_small_heuristics = "Max"
 merge_derives = false
 group_imports = "StdExternalCrate"

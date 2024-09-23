@@ -4,7 +4,7 @@ use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Instance};
 
-use super::utils::{debug_context, DIB};
+use super::utils::{DIB, debug_context};
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;

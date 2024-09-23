@@ -1,5 +1,5 @@
-use rustc_ast::util::{classify, parser};
 use rustc_ast::Expr;
+use rustc_ast::util::{classify, parser};
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct FixupContext {

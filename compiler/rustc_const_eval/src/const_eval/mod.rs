@@ -7,7 +7,7 @@ use rustc_middle::{bug, mir};
 use rustc_target::abi::VariantIdx;
 use tracing::instrument;
 
-use crate::interpret::{format_interp_error, InterpCx};
+use crate::interpret::{InterpCx, format_interp_error};
 
 mod dummy_machine;
 mod error;

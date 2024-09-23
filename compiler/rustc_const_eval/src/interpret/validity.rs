@@ -17,12 +17,12 @@ use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::ValidationErrorKind::{self, *};
 use rustc_middle::mir::interpret::{
-    alloc_range, ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
-    UnsupportedOpInfo, ValidationErrorInfo,
+    ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
+    UnsupportedOpInfo, ValidationErrorInfo, alloc_range,
 };
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 use rustc_target::abi::{
     Abi, FieldIdx, FieldsShape, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
@@ -30,9 +30,9 @@ use tracing::trace;
 
 use super::machine::AllocMap;
 use super::{
-    err_ub, format_interp_error, throw_ub, AllocId, AllocKind, CheckInAllocMsg, GlobalAlloc, ImmTy,
-    Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, PlaceTy, Pointer,
-    Projectable, Scalar, ValueVisitor,
+    AllocId, AllocKind, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult,
+    MPlaceTy, Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
+    format_interp_error, throw_ub,
 };
 
 // for the validation errors
@@ -803,10 +803,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 if start == 1 && end == max_value {
                     // Only null is the niche. So make sure the ptr is NOT null.
                     if self.ecx.scalar_may_be_null(scalar)? {
-                        throw_validation_failure!(
-                            self.path,
-                            NullablePtrOutOfRange { range: valid_range, max_value }
-                        )
+                        throw_validation_failure!(self.path, NullablePtrOutOfRange {
+                            range: valid_range,
+                            max_value
+                        })
                     } else {
                         return Ok(());
                     }
@@ -816,10 +816,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 } else {
                     // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
-                    throw_validation_failure!(
-                        self.path,
-                        PtrOutOfRange { range: valid_range, max_value }
-                    )
+                    throw_validation_failure!(self.path, PtrOutOfRange {
+                        range: valid_range,
+                        max_value
+                    })
                 }
             }
         };
@@ -827,10 +827,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         if valid_range.contains(bits) {
             Ok(())
         } else {
-            throw_validation_failure!(
-                self.path,
-                OutOfRange { value: format!("{bits}"), range: valid_range, max_value }
-            )
+            throw_validation_failure!(self.path, OutOfRange {
+                value: format!("{bits}"),
+                range: valid_range,
+                max_value
+            })
         }
     }
 

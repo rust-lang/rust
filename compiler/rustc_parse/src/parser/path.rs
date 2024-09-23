@@ -9,7 +9,7 @@ use rustc_ast::{
     Path, PathSegment, QSelf,
 };
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
@@ -107,10 +107,11 @@ impl<'a> Parser<'a> {
             self.parse_path_segments(&mut path.segments, style, None)?;
         }
 
-        Ok((
-            qself,
-            Path { segments: path.segments, span: lo.to(self.prev_token.span), tokens: None },
-        ))
+        Ok((qself, Path {
+            segments: path.segments,
+            span: lo.to(self.prev_token.span),
+            tokens: None,
+        }))
     }
 
     /// Recover from an invalid single colon, when the user likely meant a qualified path.
@@ -487,16 +488,13 @@ impl<'a> Parser<'a> {
 
         error.span_suggestion_verbose(
             prev_token_before_parsing.span,
-            format!(
-                "consider removing the `::` here to {}",
-                match style {
-                    PathStyle::Expr => "call the expression",
-                    PathStyle::Pat => "turn this into a tuple struct pattern",
-                    _ => {
-                        return;
-                    }
+            format!("consider removing the `::` here to {}", match style {
+                PathStyle::Expr => "call the expression",
+                PathStyle::Pat => "turn this into a tuple struct pattern",
+                _ => {
+                    return;
                 }
-            ),
+            }),
             "",
             Applicability::MaybeIncorrect,
         );

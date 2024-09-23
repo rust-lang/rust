@@ -15,15 +15,15 @@
 //! for all lint attributes.
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self as ast_visit, walk_list, Visitor};
+use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_feature::Features;
 use rustc_middle::ty::RegisteredTools;
-use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
-use rustc_span::symbol::Ident;
+use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_span::Span;
+use rustc_span::symbol::Ident;
 use tracing::debug;
 
 use crate::context::{EarlyContext, LintStore};

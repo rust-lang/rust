@@ -4,8 +4,8 @@ use super::ty::{
     Allocation, Binder, ConstDef, ExistentialPredicate, FnSig, GenericArgKind, GenericArgs,
     MirConst, Promoted, Region, RigidTy, TermKind, Ty, UnevaluatedConst,
 };
-use crate::ty::TyConst;
 use crate::Opaque;
+use crate::ty::TyConst;
 
 pub trait Visitor: Sized {
     type Break;

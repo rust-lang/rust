@@ -87,23 +87,23 @@ use std::borrow::Cow;
 use either::Either;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
-    intern_const_alloc_for_constprop, ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy,
-    Projectable, Scalar,
+    ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
+    intern_const_alloc_for_constprop,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
-use rustc_index::{newtype_index, IndexVec};
+use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{self, Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
+use rustc_span::def_id::DefId;
+use rustc_target::abi::{self, Abi, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
@@ -1333,8 +1333,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         to: Ty<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
-        use rustc_middle::ty::adjustment::PointerCoercion::*;
         use CastKind::*;
+        use rustc_middle::ty::adjustment::PointerCoercion::*;
 
         let mut from = operand.ty(self.local_decls, self.tcx);
         let mut value = self.simplify_operand(operand, location)?;

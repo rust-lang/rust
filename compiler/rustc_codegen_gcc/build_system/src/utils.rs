@@ -1,7 +1,7 @@
 use std::collections::HashMap;
+use std::ffi::OsStr;
 #[cfg(unix)]
 use std::ffi::c_int;
-use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs;
 #[cfg(unix)]

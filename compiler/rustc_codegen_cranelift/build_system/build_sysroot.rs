@@ -5,9 +5,9 @@ use std::{env, fs};
 use crate::path::{Dirs, RelPath};
 use crate::rustc_info::get_file_name;
 use crate::utils::{
-    remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler, LogGroup,
+    CargoProject, Compiler, LogGroup, remove_dir_if_exists, spawn_and_wait, try_hard_link,
 };
-use crate::{config, CodegenBackend, SysrootKind};
+use crate::{CodegenBackend, SysrootKind, config};
 
 static DIST_DIR: RelPath = RelPath::DIST;
 static BIN_DIR: RelPath = RelPath::DIST.join("bin");

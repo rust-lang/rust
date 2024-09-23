@@ -3,7 +3,7 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -12,16 +12,16 @@ use rustc_middle::bug;
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
 use rustc_middle::ty::{
-    self, suggest_constraining_type_param, AdtDef, Binder, GenericParamDefKind, TraitRef, Ty,
-    TyCtxt, TypeVisitableExt,
+    self, AdtDef, Binder, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeVisitableExt,
+    suggest_constraining_type_param,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
 use rustc_trait_selection::error_reporting::traits::report_object_safety_error;
 use rustc_trait_selection::traits::{
-    object_safety_violations_for_assoc_item, FulfillmentError, TraitAliasExpansionInfo,
+    FulfillmentError, TraitAliasExpansionInfo, object_safety_violations_for_assoc_item,
 };
 
 use crate::errors::{
@@ -834,17 +834,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .into_iter()
             .map(|(trait_, mut assocs)| {
                 assocs.sort();
-                format!(
-                    "{} in `{trait_}`",
-                    match &assocs[..] {
-                        [] => String::new(),
-                        [only] => format!("`{only}`"),
-                        [assocs @ .., last] => format!(
-                            "{} and `{last}`",
-                            assocs.iter().map(|a| format!("`{a}`")).collect::<Vec<_>>().join(", ")
-                        ),
-                    }
-                )
+                format!("{} in `{trait_}`", match &assocs[..] {
+                    [] => String::new(),
+                    [only] => format!("`{only}`"),
+                    [assocs @ .., last] => format!(
+                        "{} and `{last}`",
+                        assocs.iter().map(|a| format!("`{a}`")).collect::<Vec<_>>().join(", ")
+                    ),
+                })
             })
             .collect::<Vec<String>>();
         names.sort();

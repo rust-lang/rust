@@ -79,7 +79,10 @@ mod impls {
     where
         F: AsyncFn<A>,
     {
-        type CallRefFuture<'a> = F::CallRefFuture<'a> where Self: 'a;
+        type CallRefFuture<'a>
+            = F::CallRefFuture<'a>
+        where
+            Self: 'a;
 
         extern "rust-call" fn async_call_mut(&mut self, args: A) -> Self::CallRefFuture<'_> {
             F::async_call(*self, args)
@@ -104,7 +107,10 @@ mod impls {
     where
         F: AsyncFnMut<A>,
     {
-        type CallRefFuture<'a> = F::CallRefFuture<'a> where Self: 'a;
+        type CallRefFuture<'a>
+            = F::CallRefFuture<'a>
+        where
+            Self: 'a;
 
         extern "rust-call" fn async_call_mut(&mut self, args: A) -> Self::CallRefFuture<'_> {
             F::async_call_mut(*self, args)

@@ -1,6 +1,6 @@
 //! Validity checking for weak lang items
 
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 
 use crate::LangItem;
 

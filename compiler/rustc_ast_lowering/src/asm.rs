@@ -8,9 +8,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::kw;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use rustc_target::asm;
 
+use super::LoweringContext;
 use super::errors::{
     AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
     InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
@@ -18,10 +19,9 @@ use super::errors::{
     InvalidAsmTemplateModifierRegClassSub, InvalidAsmTemplateModifierSym, InvalidRegister,
     InvalidRegisterClass, RegisterClassOnlyClobber, RegisterConflict,
 };
-use super::LoweringContext;
 use crate::{
-    fluent_generated as fluent, AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition,
-    ParamMode, ResolverAstLoweringExt,
+    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode,
+    ResolverAstLoweringExt, fluent_generated as fluent,
 };
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {

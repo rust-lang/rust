@@ -42,15 +42,11 @@ pub enum ToolState {
 
 impl fmt::Display for ToolState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                ToolState::TestFail => "test-fail",
-                ToolState::TestPass => "test-pass",
-                ToolState::BuildFail => "build-fail",
-            }
-        )
+        write!(f, "{}", match self {
+            ToolState::TestFail => "test-fail",
+            ToolState::TestPass => "test-pass",
+            ToolState::BuildFail => "build-fail",
+        })
     }
 }
 

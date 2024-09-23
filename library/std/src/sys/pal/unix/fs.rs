@@ -31,10 +31,6 @@ use libc::fstatat64;
     all(target_os = "linux", target_env = "musl"),
 ))]
 use libc::readdir as readdir64;
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::readdir64;
-#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
-use libc::readdir64_r;
 #[cfg(not(any(
     target_os = "android",
     target_os = "linux",
@@ -50,6 +46,10 @@ use libc::readdir64_r;
     target_os = "hurd",
 )))]
 use libc::readdir_r as readdir64_r;
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
+use libc::readdir64;
+#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
+use libc::readdir64_r;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
@@ -1866,7 +1866,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let max_len = u64::MAX;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
-    use super::kernel_copy::{copy_regular_files, CopyResult};
+    use super::kernel_copy::{CopyResult, copy_regular_files};
 
     match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
         CopyResult::Ended(bytes) => Ok(bytes),
@@ -2008,7 +2008,7 @@ mod remove_dir_impl {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{fdopendir, openat64 as openat, unlinkat};
 
-    use super::{lstat, Dir, DirEntry, InnerReadDir, ReadDir};
+    use super::{Dir, DirEntry, InnerReadDir, ReadDir, lstat};
     use crate::ffi::CStr;
     use crate::io;
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};

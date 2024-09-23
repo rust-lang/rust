@@ -1,4 +1,4 @@
-use super::{realloc_fallback, MIN_ALIGN};
+use super::{MIN_ALIGN, realloc_fallback};
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ffi::c_void;
 use crate::mem::MaybeUninit;

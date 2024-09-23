@@ -179,7 +179,7 @@ pub(crate) mod rustc {
     };
 
     use super::Tree;
-    use crate::layout::rustc::{layout_of, Def, Ref};
+    use crate::layout::rustc::{Def, Ref, layout_of};
 
     #[derive(Debug, Copy, Clone)]
     pub(crate) enum Err {

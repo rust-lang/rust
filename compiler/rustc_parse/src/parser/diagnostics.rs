@@ -15,15 +15,15 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PErr, PResult,
-    Subdiagnostic, Suggestions,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PErr, PResult, Subdiagnostic,
+    Suggestions, pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, AllKeywords, Ident};
-use rustc_span::{BytePos, Span, SpanSnippetError, Symbol, DUMMY_SP};
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{AllKeywords, Ident, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, SpanSnippetError, Symbol};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
 
 use super::pat::Expected;
@@ -721,15 +721,12 @@ impl<'a> Parser<'a> {
             let span = self.token.span.with_lo(pos).with_hi(pos);
             err.span_suggestion_verbose(
                 span,
-                format!(
-                    "add a space before {} to write a regular comment",
-                    match (kind, style) {
-                        (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
-                        (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
-                        (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
-                        (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
-                    },
-                ),
+                format!("add a space before {} to write a regular comment", match (kind, style) {
+                    (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
+                    (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
+                    (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
+                    (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
+                },),
                 " ".to_string(),
                 Applicability::MachineApplicable,
             );
@@ -1936,14 +1933,13 @@ impl<'a> Parser<'a> {
             (token::Eof, None) => (self.prev_token.span, self.token.span),
             _ => (self.prev_token.span.shrink_to_hi(), self.token.span),
         };
-        let msg = format!(
-            "expected `{}`, found {}",
-            token_str,
-            match (&self.token.kind, self.subparser_name) {
-                (token::Eof, Some(origin)) => format!("end of {origin}"),
-                _ => this_token_str,
-            },
-        );
+        let msg = format!("expected `{}`, found {}", token_str, match (
+            &self.token.kind,
+            self.subparser_name
+        ) {
+            (token::Eof, Some(origin)) => format!("end of {origin}"),
+            _ => this_token_str,
+        },);
         let mut err = self.dcx().struct_span_err(sp, msg);
         let label_exp = format!("expected `{token_str}`");
         let sm = self.psess.source_map();
@@ -2864,27 +2860,25 @@ impl<'a> Parser<'a> {
                             PatKind::Ident(BindingMode::NONE, ident, None) => {
                                 match &first_pat.kind {
                                     PatKind::Ident(_, old_ident, _) => {
-                                        let path = PatKind::Path(
-                                            None,
-                                            Path {
-                                                span: new_span,
-                                                segments: thin_vec![
-                                                    PathSegment::from_ident(*old_ident),
-                                                    PathSegment::from_ident(*ident),
-                                                ],
-                                                tokens: None,
-                                            },
-                                        );
+                                        let path = PatKind::Path(None, Path {
+                                            span: new_span,
+                                            segments: thin_vec![
+                                                PathSegment::from_ident(*old_ident),
+                                                PathSegment::from_ident(*ident),
+                                            ],
+                                            tokens: None,
+                                        });
                                         first_pat = self.mk_pat(new_span, path);
                                         show_sugg = true;
                                     }
                                     PatKind::Path(old_qself, old_path) => {
                                         let mut segments = old_path.segments.clone();
                                         segments.push(PathSegment::from_ident(*ident));
-                                        let path = PatKind::Path(
-                                            old_qself.clone(),
-                                            Path { span: new_span, segments, tokens: None },
-                                        );
+                                        let path = PatKind::Path(old_qself.clone(), Path {
+                                            span: new_span,
+                                            segments,
+                                            tokens: None,
+                                        });
                                         first_pat = self.mk_pat(new_span, path);
                                         show_sugg = true;
                                     }

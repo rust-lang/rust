@@ -4,8 +4,8 @@ use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Float, Integer};
 
-use super::misc::MiscCodegenMethods;
 use super::BackendTypes;
+use super::misc::MiscCodegenMethods;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 

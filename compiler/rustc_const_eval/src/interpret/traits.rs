@@ -5,7 +5,7 @@ use rustc_target::abi::{Align, Size};
 use tracing::trace;
 
 use super::util::ensure_monomorphic_enough;
-use super::{throw_ub, InterpCx, MPlaceTy, Machine, MemPlaceMeta, OffsetMode, Projectable};
+use super::{InterpCx, MPlaceTy, Machine, MemPlaceMeta, OffsetMode, Projectable, throw_ub};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for

@@ -5,13 +5,13 @@ use std::marker::PhantomData;
 
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
 
+use super::RustString;
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
     DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
     DebugEmissionKind, DebugNameTableKind,
 };
-use super::RustString;
 
 pub type Bool = c_uint;
 

@@ -1,7 +1,7 @@
 use rustc_data_structures::sync::Lock;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{intravisit, HirId, ItemLocalId};
+use rustc_hir::{HirId, ItemLocalId, intravisit};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;

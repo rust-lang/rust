@@ -35,8 +35,8 @@ use utils::helpers::hex_encode;
 
 use crate::core::builder;
 use crate::core::builder::{Builder, Kind};
-use crate::core::config::{flags, DryRun, LldMode, LlvmLibunwind, Target, TargetSelection};
-use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
+use crate::core::config::{DryRun, LldMode, LlvmLibunwind, Target, TargetSelection, flags};
+use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
 use crate::utils::helpers::{
     self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
 };
@@ -45,11 +45,11 @@ mod core;
 mod utils;
 
 pub use core::builder::PathSet;
-pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::Config;
+pub use core::config::flags::{Flags, Subcommand};
 
 pub use utils::change_tracker::{
-    find_recent_config_change_ids, human_readable_changes, CONFIG_CHANGE_HISTORY,
+    CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
 
 const LLVM_TOOLS: &[&str] = &[

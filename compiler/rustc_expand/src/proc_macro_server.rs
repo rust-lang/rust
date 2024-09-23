@@ -2,7 +2,7 @@ use std::ops::{Bound, Range};
 
 use ast::token::IdentIsRaw;
 use pm::bridge::{
-    server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
+    DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree, server,
 };
 use pm::{Delimiter, Level};
 use rustc_ast as ast;
@@ -18,9 +18,9 @@ use rustc_parse::parser::Parser;
 use rustc_parse::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
-use rustc_span::symbol::{self, sym, Symbol};
+use rustc_span::symbol::{self, Symbol, sym};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
 

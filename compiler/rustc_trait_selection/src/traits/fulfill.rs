@@ -18,8 +18,8 @@ use tracing::{debug, debug_span, instrument};
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::{
-    const_evaluatable, wf, EvaluationResult, FulfillmentError, FulfillmentErrorCode,
-    PredicateObligation, ScrubbedTraitError, Unimplemented,
+    EvaluationResult, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
+    ScrubbedTraitError, Unimplemented, const_evaluatable, wf,
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};

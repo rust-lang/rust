@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -16,10 +16,9 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cpu: "v9".into(),
             endian: Endian::Big,
-            late_link_args: TargetOptions::link_args(
-                LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-                &["-mcpu=v9", "-m32"],
-            ),
+            late_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
+                "-mcpu=v9", "-m32",
+            ]),
             max_atomic_width: Some(32),
             ..base::linux_gnu::opts()
         },

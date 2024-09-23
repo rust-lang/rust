@@ -5,29 +5,29 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey,
-    StringPart, Suggestions,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, StringPart, Suggestions, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node};
 use rustc_infer::infer::{InferOk, TypeTrace};
-use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::SignatureMismatchData;
+use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{
-    with_forced_trimmed_paths, FmtPrinter, Print, PrintTraitPredicateExt as _,
-    PrintTraitRefExt as _,
+    FmtPrinter, Print, PrintTraitPredicateExt as _, PrintTraitRefExt as _,
+    with_forced_trimmed_paths,
 };
 use rustc_middle::ty::{
     self, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
 use tracing::{debug, instrument};
 
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
@@ -35,18 +35,18 @@ use super::suggestions::get_explanation_based_on_obligation;
 use super::{
     ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate, UnsatisfiedConst,
 };
+use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
 use crate::error_reporting::traits::report_object_safety_error;
-use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
 };
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
-    elaborate, MismatchedProjectionTypes, NormalizeExt, Obligation, ObligationCause,
-    ObligationCauseCode, ObligationCtxt, Overflow, PredicateObligation, SelectionError,
-    SignatureMismatch, TraitNotObjectSafe,
+    MismatchedProjectionTypes, NormalizeExt, Obligation, ObligationCause, ObligationCauseCode,
+    ObligationCtxt, Overflow, PredicateObligation, SelectionError, SignatureMismatch,
+    TraitNotObjectSafe, elaborate,
 };
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
@@ -1688,16 +1688,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             for (sp, label) in spans.into_iter() {
                 span.push_span_label(sp, label);
             }
-            err.highlighted_span_help(
-                span,
-                vec![
-                    StringPart::normal("there are ".to_string()),
-                    StringPart::highlighted("multiple different versions".to_string()),
-                    StringPart::normal(" of crate `".to_string()),
-                    StringPart::highlighted(format!("{name}")),
-                    StringPart::normal("` in the dependency graph".to_string()),
-                ],
-            );
+            err.highlighted_span_help(span, vec![
+                StringPart::normal("there are ".to_string()),
+                StringPart::highlighted("multiple different versions".to_string()),
+                StringPart::normal(" of crate `".to_string()),
+                StringPart::highlighted(format!("{name}")),
+                StringPart::normal("` in the dependency graph".to_string()),
+            ]);
             let candidates = if impl_candidates.is_empty() {
                 alternative_candidates(trait_def_id)
             } else {
@@ -1724,17 +1721,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
                 span.push_span_label(sp_candidate, "this type implements the required trait");
                 span.push_span_label(sp_found, "this type doesn't implement the required trait");
-                err.highlighted_span_note(
-                    span,
-                    vec![
-                        StringPart::normal(
-                            "two types coming from two different versions of the same crate are \
+                err.highlighted_span_note(span, vec![
+                    StringPart::normal(
+                        "two types coming from two different versions of the same crate are \
                              different types "
-                                .to_string(),
-                        ),
-                        StringPart::highlighted("even if they look the same".to_string()),
-                    ],
-                );
+                            .to_string(),
+                    ),
+                    StringPart::highlighted("even if they look the same".to_string()),
+                ]);
             }
             err.help("you can use `cargo tree` to explore your dependency tree");
             return true;
@@ -2742,10 +2736,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .inputs
                     .iter()
                     .map(|arg| match arg.kind {
-                        hir::TyKind::Tup(tys) => ArgKind::Tuple(
-                            Some(arg.span),
-                            vec![("_".to_owned(), "_".to_owned()); tys.len()],
-                        ),
+                        hir::TyKind::Tup(tys) => {
+                            ArgKind::Tuple(Some(arg.span), vec![
+                                ("_".to_owned(), "_".to_owned());
+                                tys.len()
+                            ])
+                        }
                         _ => ArgKind::empty(),
                     })
                     .collect::<Vec<ArgKind>>(),

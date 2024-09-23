@@ -1,8 +1,8 @@
-use super::{current, park, Builder, JoinInner, Result, Thread};
+use super::{Builder, JoinInner, Result, Thread, current, park};
 use crate::marker::PhantomData;
-use crate::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
-use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use crate::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use crate::sync::Arc;
+use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use crate::{fmt, io};
 
 /// A scope to spawn scoped threads in.

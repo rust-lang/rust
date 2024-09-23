@@ -16,7 +16,7 @@ use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
 use crate::mir::interpret;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
-use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
+use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 

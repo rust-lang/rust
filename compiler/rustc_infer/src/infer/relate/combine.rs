@@ -30,7 +30,7 @@ use super::glb::Glb;
 use super::lub::Lub;
 use super::type_relating::TypeRelating;
 use super::{RelateResult, StructurallyRelateAliases};
-use crate::infer::{relate, DefineOpaqueTypes, InferCtxt, TypeTrace};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace, relate};
 use crate::traits::{Obligation, PredicateObligation};
 
 #[derive(Clone)]

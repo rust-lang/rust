@@ -17,12 +17,12 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
-use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{sym, DesugaringKind, Span};
+use rustc_span::symbol::{Symbol, kw};
+use rustc_span::{DesugaringKind, Span, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use tracing::{debug, instrument};
 
-use super::{find_use, RegionName, UseSpans};
+use super::{RegionName, UseSpans, find_use};
 use crate::borrow_set::BorrowData;
 use crate::nll::ConstraintDescription;
 use crate::region_infer::{BlameConstraint, Cause, ExtraConstraintInfo};

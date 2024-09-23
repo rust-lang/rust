@@ -10,10 +10,10 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::source_map::{Spanned, respan};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, ErrorGuaranteed, Span};
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 
 use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, UsePreAttrPos};
 use crate::errors::{
@@ -27,7 +27,7 @@ use crate::errors::{
     UnexpectedLifetimeInPattern, UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
     UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
 };
-use crate::parser::expr::{could_be_unclosed_char_literal, DestructuredFloat};
+use crate::parser::expr::{DestructuredFloat, could_be_unclosed_char_literal};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 #[derive(PartialEq, Copy, Clone)]

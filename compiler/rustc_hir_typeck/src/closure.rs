@@ -14,14 +14,14 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
 use tracing::{debug, instrument, trace};
 
-use super::{check_fn, CoroutineTypes, Expectation, FnCtxt};
+use super::{CoroutineTypes, Expectation, FnCtxt, check_fn};
 
 /// What signature do we *expect* the closure to have from context?
 #[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
@@ -103,15 +103,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None => self.next_ty_var(expr_span),
                 };
 
-                let closure_args = ty::ClosureArgs::new(
-                    tcx,
-                    ty::ClosureArgsParts {
-                        parent_args,
-                        closure_kind_ty,
-                        closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(tcx, sig),
-                        tupled_upvars_ty,
-                    },
-                );
+                let closure_args = ty::ClosureArgs::new(tcx, ty::ClosureArgsParts {
+                    parent_args,
+                    closure_kind_ty,
+                    closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(tcx, sig),
+                    tupled_upvars_ty,
+                });
 
                 (Ty::new_closure(tcx, expr_def_id.to_def_id(), closure_args.args), None)
             }
@@ -180,18 +177,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => tcx.types.unit,
                 };
 
-                let coroutine_args = ty::CoroutineArgs::new(
-                    tcx,
-                    ty::CoroutineArgsParts {
-                        parent_args,
-                        kind_ty,
-                        resume_ty,
-                        yield_ty,
-                        return_ty: liberated_sig.output(),
-                        witness: interior,
-                        tupled_upvars_ty,
-                    },
-                );
+                let coroutine_args = ty::CoroutineArgs::new(tcx, ty::CoroutineArgsParts {
+                    parent_args,
+                    kind_ty,
+                    resume_ty,
+                    yield_ty,
+                    return_ty: liberated_sig.output(),
+                    witness: interior,
+                    tupled_upvars_ty,
+                });
 
                 (
                     Ty::new_coroutine(tcx, expr_def_id.to_def_id(), coroutine_args.args),
@@ -222,9 +216,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 let coroutine_captures_by_ref_ty = self.next_ty_var(expr_span);
-                let closure_args = ty::CoroutineClosureArgs::new(
-                    tcx,
-                    ty::CoroutineClosureArgsParts {
+                let closure_args =
+                    ty::CoroutineClosureArgs::new(tcx, ty::CoroutineClosureArgsParts {
                         parent_args,
                         closure_kind_ty,
                         signature_parts_ty: Ty::new_fn_ptr(
@@ -245,8 +238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         tupled_upvars_ty,
                         coroutine_captures_by_ref_ty,
                         coroutine_witness_ty: interior,
-                    },
-                );
+                    });
 
                 let coroutine_kind_ty = match expected_kind {
                     Some(kind) => Ty::from_coroutine_closure_kind(tcx, kind),

@@ -1,4 +1,4 @@
-use crate::spec::{cvs, FramePointer, RelroLevel, TargetOptions, TlsModel};
+use crate::spec::{FramePointer, RelroLevel, TargetOptions, TlsModel, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {

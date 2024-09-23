@@ -10,8 +10,8 @@ use rustc_middle::mir::{self, Body, SourceScope};
 use rustc_middle::ty::{Instance, PolyExistentialTraitRef, Ty};
 use rustc_session::config::DebugInfo;
 use rustc_span::{BytePos, Pos, SourceFile, SourceFileAndLine, Span, Symbol};
-use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::Size;
+use rustc_target::abi::call::FnAbi;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;

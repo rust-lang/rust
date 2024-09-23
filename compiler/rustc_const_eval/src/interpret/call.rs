@@ -14,9 +14,9 @@ use rustc_target::spec::abi::Abi;
 use tracing::{info, instrument, trace};
 
 use super::{
-    throw_ub, throw_ub_custom, throw_unsup_format, CtfeProvenance, FnVal, ImmTy, InterpCx,
-    InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable, Provenance, ReturnAction, Scalar,
-    StackPopCleanup, StackPopInfo,
+    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
+    Projectable, Provenance, ReturnAction, Scalar, StackPopCleanup, StackPopInfo, throw_ub,
+    throw_ub_custom, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -364,13 +364,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 "caller ABI: {:#?}, args: {:#?}",
                 caller_fn_abi,
                 args.iter()
-                    .map(|arg| (
-                        arg.layout().ty,
-                        match arg {
-                            FnArg::Copy(op) => format!("copy({op:?})"),
-                            FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
-                        }
-                    ))
+                    .map(|arg| (arg.layout().ty, match arg {
+                        FnArg::Copy(op) => format!("copy({op:?})"),
+                        FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
+                    }))
                     .collect::<Vec<_>>()
             );
             trace!(
@@ -853,13 +850,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         );
 
         // Check `unwinding`.
-        assert_eq!(
-            unwinding,
-            match self.frame().loc {
-                Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
-                Right(_) => true,
-            }
-        );
+        assert_eq!(unwinding, match self.frame().loc {
+            Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
+            Right(_) => true,
+        });
         if unwinding && self.frame_idx() == 0 {
             throw_ub_custom!(fluent::const_eval_unwind_past_top);
         }

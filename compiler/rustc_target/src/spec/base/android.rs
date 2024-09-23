@@ -1,4 +1,4 @@
-use crate::spec::{base, SanitizerSet, TargetOptions, TlsModel};
+use crate::spec::{SanitizerSet, TargetOptions, TlsModel, base};
 
 pub(crate) fn opts() -> TargetOptions {
     let mut base = base::linux::opts();

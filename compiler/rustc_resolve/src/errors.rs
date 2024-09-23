@@ -1,11 +1,11 @@
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, Symbol};
 
-use crate::late::PatternSource;
 use crate::Res;
+use crate::late::PatternSource;
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
