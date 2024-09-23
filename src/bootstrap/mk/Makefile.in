@@ -95,7 +95,7 @@ install:
 tidy:
 	$(Q)$(BOOTSTRAP) test --stage 2 src/tools/tidy $(BOOTSTRAP_ARGS)
 prepare:
-	$(Q)$(BOOTSTRAP) build --stage 2 nonexistent/path/to/trigger/cargo/metadata
+	$(Q)$(BOOTSTRAP) build --stage 2 --dry-run
 
 ## MSVC native builders
 

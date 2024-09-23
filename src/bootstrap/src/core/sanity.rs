@@ -294,19 +294,19 @@ than building it.
         }
     }
 
-    for host in &build.hosts {
-        if !build.config.dry_run() {
+    if !build.config.dry_run() {
+        for host in &build.hosts {
             cmd_finder.must_have(build.cxx(*host).unwrap());
-        }
 
-        if build.config.llvm_enabled(*host) {
-            // Externally configured LLVM requires FileCheck to exist
-            let filecheck = build.llvm_filecheck(build.build);
-            if !filecheck.starts_with(&build.out)
-                && !filecheck.exists()
-                && build.config.codegen_tests
-            {
-                panic!("FileCheck executable {filecheck:?} does not exist");
+            if build.config.llvm_enabled(*host) {
+                // Externally configured LLVM requires FileCheck to exist
+                let filecheck = build.llvm_filecheck(build.build);
+                if !filecheck.starts_with(&build.out)
+                    && !filecheck.exists()
+                    && build.config.codegen_tests
+                {
+                    panic!("FileCheck executable {filecheck:?} does not exist");
+                }
             }
         }
     }
@@ -355,7 +355,8 @@ than building it.
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
-            let out = command("cmake").arg("--help").run_capture_stdout(build).stdout();
+            let out =
+                command("cmake").arg("--help").run_always().run_capture_stdout(build).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "
