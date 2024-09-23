@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 //@ edition: 2021
 
 // Demonstrates the diagnostics produced when using the syntax `#[coverage]`,

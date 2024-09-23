@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 //@ edition: 2021
 
 // If a closure body consists entirely of a single bang-macro invocation, the

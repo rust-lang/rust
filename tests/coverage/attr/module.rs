@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 //@ edition: 2021
 
 // Checks that `#[coverage(..)]` can be applied to modules, and is inherited

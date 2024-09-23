@@ -448,9 +448,6 @@ declare_features! (
     (unstable, coroutine_clone, "1.65.0", Some(95360)),
     /// Allows defining coroutines.
     (unstable, coroutines, "1.21.0", Some(43122)),
-    /// Allows function attribute `#[coverage(on/off)]`, to control coverage
-    /// instrumentation of that function.
-    (unstable, coverage_attribute, "1.74.0", Some(84605)),
     /// Allows non-builtin attributes in inner attribute position.
     (unstable, custom_inner_attributes, "1.30.0", Some(54726)),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.

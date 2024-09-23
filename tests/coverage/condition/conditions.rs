@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 //@ edition: 2021
 //@ compile-flags: -Zcoverage-options=condition
 //@ llvm-cov-flags: --show-branches=count

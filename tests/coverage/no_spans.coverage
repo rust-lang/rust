@@ -1,4 +1,3 @@
-   LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
    LL|       |
    LL|       |// If the span extractor can't find any relevant spans for a function, the

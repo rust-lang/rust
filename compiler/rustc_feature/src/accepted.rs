@@ -157,6 +157,9 @@ declare_features! (
     (accepted, const_refs_to_static, "1.83.0", Some(119618)),
     /// Allows implementing `Copy` for closures where possible (RFC 2132).
     (accepted, copy_closures, "1.26.0", Some(44490)),
+    /// Allows function attribute `#[coverage(on/off)]`, to control coverage
+    /// instrumentation of that function.
+    (accepted, coverage_attribute, "CURRENT_RUSTC_VERSION", Some(84605)),
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477)),
     /// Allows users to provide classes for fenced code block using `class:classname`.
