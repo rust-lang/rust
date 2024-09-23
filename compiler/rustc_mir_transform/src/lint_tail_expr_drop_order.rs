@@ -1,10 +1,10 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{ExprKind, HirId, HirIdSet, OwnerId};
-use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::IndexVec;
+use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_lint::{self as lint, Level};
 use rustc_macros::LintDiagnostic;
-use rustc_middle::mir::{dump_mir, BasicBlock, Body, Local, Location, TerminatorKind};
+use rustc_middle::mir::{BasicBlock, Body, Local, Location, TerminatorKind, dump_mir};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;

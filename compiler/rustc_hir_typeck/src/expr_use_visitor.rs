@@ -151,7 +151,8 @@ pub trait TypeInformationCtxt<'tcx> {
 }
 
 impl<'tcx> TypeInformationCtxt<'tcx> for (TyCtxt<'tcx>, LocalDefId) {
-    type TypeckResults<'a> = &'tcx ty::TypeckResults<'tcx>
+    type TypeckResults<'a>
+        = &'tcx ty::TypeckResults<'tcx>
     where
         Self: 'a;
 
