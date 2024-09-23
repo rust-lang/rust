@@ -1,7 +1,6 @@
 //@ edition: 2021
 
 #![feature(return_type_notation)]
-//~^ WARN the feature `return_type_notation` is incomplete
 
 trait Trait {
     async fn method() {}
