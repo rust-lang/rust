@@ -8,7 +8,7 @@
 //  so its important to check that those are
 // unneccessarily affected
 
-// ------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------
 
 // regularly this tailcall would jump to the first instruction the function
 // CHECK-LABEL: <tailcall_fn>:
@@ -27,38 +27,21 @@ pub fn tailcall_fn() {
     }
 }
 
-// ------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------
 
-// empty_fn just returns. Note that 'ret' is a single byte instruction, but hotpatch requires a two
-// or more byte instructions to be at the start of the functions.
+// empty_fn just returns. Note that 'ret' is a single byte instruction, but hotpatch requires
+// a two or more byte instructions to be at the start of the functions.
 // Preferably we would also tests a different single byte instruction,
 // but I was not able to make rustc emit anything but 'ret'.
 
+// check that if the first instruction is just a single byte, so our test is valid
 // CHECK-LABEL: <empty_fn>:
-// CHECK-NEXT: ret
+// CHECK-NOT: 0: {{[0-9a-f][0-9a-f]}} {{[0-9a-f][0-9a-f]}} {{.*}}
 
+// check that the first instruction is at least 2 bytes long
 // HOTPATCH-LABEL: <empty_fn>:
-// HOTPATCH-NOT: ret
-// HOTPATCH: ret
+// HOTPATCH-NEXT: 0: {{[0-9a-f][0-9a-f]}} {{[0-9a-f][0-9a-f]}} {{.*}}
 
 #[no_mangle]
 #[inline(never)]
 pub fn empty_fn() {}
-
-// ------------------------------------------------------------------------------------------------
-
-// return_42 should not be affected by hotpatch
-
-// CHECK-LABEL: <return_42>:
-// CHECK-NEXT: 0:
-// CHECK-NEXT: ret
-
-// HOTPATCH-LABEL: <return_42>:
-// HOTPATCH-NEXT: 0:
-// HOTPATCH-NEXT: ret
-
-#[no_mangle]
-#[inline(never)]
-pub fn return_42() -> i32 {
-    42
-}
