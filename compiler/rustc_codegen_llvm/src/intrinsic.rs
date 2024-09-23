@@ -20,7 +20,7 @@ use tracing::debug;
 use crate::abi::{Abi, FnAbi, FnAbiLlvmExt, LlvmType, PassMode};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::llvm;
+use crate::llvm::{self, Metadata};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
@@ -613,9 +613,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
     }
 
-    fn type_test(&mut self, pointer: Self::Value, typeid: Self::Value) -> Self::Value {
+    fn type_test(&mut self, pointer: Self::Value, typeid: Self::Metadata) -> Self::Value {
         // Test the called operand using llvm.type.test intrinsic. The LowerTypeTests link-time
         // optimization pass replaces calls to this intrinsic with code to test type membership.
+        let typeid = unsafe { llvm::LLVMMetadataAsValue(&self.llcx, typeid) };
         self.call_intrinsic("llvm.type.test", &[pointer, typeid])
     }
 
@@ -623,8 +624,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         llvtable: &'ll Value,
         vtable_byte_offset: u64,
-        typeid: &'ll Value,
+        typeid: &'ll Metadata,
     ) -> Self::Value {
+        let typeid = unsafe { llvm::LLVMMetadataAsValue(&self.llcx, typeid) };
         let vtable_byte_offset = self.const_i32(vtable_byte_offset as i32);
         let type_checked_load =
             self.call_intrinsic("llvm.type.checked.load", &[llvtable, vtable_byte_offset, typeid]);

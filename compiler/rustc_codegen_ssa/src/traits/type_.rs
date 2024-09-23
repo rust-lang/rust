@@ -152,7 +152,7 @@ pub trait LayoutTypeCodegenMethods<'tcx>: BackendTypes {
 pub trait TypeMembershipCodegenMethods<'tcx>: BackendTypes {
     fn add_type_metadata(&self, _function: Self::Function, _typeid: String) {}
     fn set_type_metadata(&self, _function: Self::Function, _typeid: String) {}
-    fn typeid_metadata(&self, _typeid: String) -> Option<Self::Value> {
+    fn typeid_metadata(&self, _typeid: String) -> Option<Self::Metadata> {
         None
     }
     fn add_kcfi_type_metadata(&self, _function: Self::Function, _typeid: u32) {}

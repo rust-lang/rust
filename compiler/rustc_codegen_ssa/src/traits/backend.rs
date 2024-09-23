@@ -21,6 +21,7 @@ use crate::{CodegenResults, ModuleCodegen};
 
 pub trait BackendTypes {
     type Value: CodegenObject;
+    type Metadata: CodegenObject;
     type Function: CodegenObject;
 
     type BasicBlock: Copy;
