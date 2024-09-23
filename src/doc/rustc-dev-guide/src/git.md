@@ -597,6 +597,19 @@ $ git submodule foreach git reset --hard
 
 and then try `git submodule update` again.
 
+## Ignoring commits during `git blame`
+
+Some commits contain large reformatting changes that don't otherwise change functionality. They can
+be instructed to be ignored by `git blame` through
+[`.git-blame-ignore-revs`](https://github.com/rust-lang/rust/blob/master/.git-blame-ignore-revs):
+
+1. Configure `git blame` to use `.git-blame-ignore-revs` as the list of commits to ignore: `git
+   config blame.ignorerevsfile .git-blame-ignore-revs`
+2. Add suitable commits that you wish to be ignored by `git blame`.
+
+Please include a comment for the commit that you add to `.git-blame-ignore-revs` so people can
+easily figure out *why* a commit is ignored.
+
 [Git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 [`rust-lang/llvm-project`]: https://github.com/rust-lang/llvm-project
 [llvm-update]: https://github.com/rust-lang/rust/pull/99464/files
