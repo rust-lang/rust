@@ -289,6 +289,15 @@ pub mod assert_matches {
     pub use crate::macros::{assert_matches, debug_assert_matches};
 }
 
+#[cfg(not(bootstrap))]
+#[unstable(feature = "autodiff", issue = "12345")]
+mod autodiff {
+    pub use crate::macros::builtin::autodiff;
+}
+#[cfg(not(bootstrap))]
+#[unstable(feature = "autodiff", issue = "12345")]
+pub use autodiff::autodiff;
+
 #[unstable(feature = "cfg_match", issue = "115585")]
 pub use crate::macros::cfg_match;
 

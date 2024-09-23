@@ -1,6 +1,15 @@
 builtin_macros_alloc_error_must_be_fn = alloc_error_handler must be a function
 builtin_macros_alloc_must_statics = allocators must be statics
 
+builtin_macros_autodiff_missing_config = autodiff requires at least a name and mode
+builtin_macros_autodiff_unknown_activity = did not recognize Activity: `{$act}`
+builtin_macros_autodiff = autodiff must be applied to function
+builtin_macros_autodiff_not_build = this rustc version does not support autodiff
+builtin_macros_autodiff_mode_activity = {$act} can not be used in {$mode} Mode
+builtin_macros_autodiff_number_activities = expected {$expected} activities, but found {$found}
+builtin_macros_autodiff_mode = unknown Mode: `{$mode}`. Use `Forward` or `Reverse`
+builtin_macros_autodiff_ty_activity = {$act} can not be used for this type
+
 builtin_macros_asm_clobber_abi = clobber_abi
 builtin_macros_asm_clobber_no_reg = asm with `clobber_abi` must specify explicit registers for outputs
 builtin_macros_asm_clobber_outputs = generic outputs
