@@ -1233,21 +1233,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         )) {
                             self.fail(location, format!("Unsize coercion, but `{op_ty}` isn't coercible to `{target_type}`"));
                         }
-
-                        // FIXME: Codegen has an additional assumption, where if the
-                        // principal trait def id of what's being casted doesn't change,
-                        // then we don't need to adjust the vtable at all. This
-                        // corresponds to the fact that `dyn Tr<A>: Unsize<dyn Tr<B>>`
-                        // requires that `A = B`; we don't allow *upcasting* objects
-                        // between the same trait with different args. Nothing actually
-                        // validates this, though. While it's true right now, if we for
-                        // some reason were to relax the `Unsize` trait, it could become
-                        // unsound. We should eventually validate that, but it would
-                        // require peeling `&Box<Struct<.., dyn Tr<A>, ..>>` down to
-                        // the trait object that's being unsized, and that's rather
-                        // annoying, and also it would need to be opportunistic since
-                        // this MIR is not yet fully monomorphized, so we may bottom
-                        // out in an alias or a projection or something.
                     }
                     CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
                         // FIXME(dyn-star): make sure nothing needs to be done here.
