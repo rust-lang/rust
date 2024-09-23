@@ -1,9 +1,9 @@
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_hir::LangItem;
 use rustc_middle::ty::{AssocKind, GenericArg};
-use rustc_session::config::{sigpipe, EntryFnType};
-use rustc_span::symbol::Ident;
+use rustc_session::config::{EntryFnType, sigpipe};
 use rustc_span::DUMMY_SP;
+use rustc_span::symbol::Ident;
 
 use crate::prelude::*;
 
@@ -16,13 +16,10 @@ pub(crate) fn maybe_create_entry_wrapper(
     is_primary_cgu: bool,
 ) {
     let (main_def_id, (is_main_fn, sigpipe)) = match tcx.entry_fn(()) {
-        Some((def_id, entry_ty)) => (
-            def_id,
-            match entry_ty {
-                EntryFnType::Main { sigpipe } => (true, sigpipe),
-                EntryFnType::Start => (false, sigpipe::DEFAULT),
-            },
-        ),
+        Some((def_id, entry_ty)) => (def_id, match entry_ty {
+            EntryFnType::Main { sigpipe } => (true, sigpipe),
+            EntryFnType::Start => (false, sigpipe::DEFAULT),
+        }),
         None => return,
     };
 

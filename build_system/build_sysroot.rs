@@ -6,9 +6,9 @@ use crate::path::{Dirs, RelPath};
 use crate::prepare::apply_patches;
 use crate::rustc_info::{get_default_sysroot, get_file_name};
 use crate::utils::{
-    ensure_empty_dir, spawn_and_wait, try_hard_link, CargoProject, Compiler, LogGroup,
+    CargoProject, Compiler, LogGroup, ensure_empty_dir, spawn_and_wait, try_hard_link,
 };
-use crate::{config, CodegenBackend, SysrootKind};
+use crate::{CodegenBackend, SysrootKind, config};
 
 pub(crate) fn build_sysroot(
     dirs: &Dirs,

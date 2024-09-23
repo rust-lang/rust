@@ -12,24 +12,24 @@ use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
 use rustc_codegen_ssa::{
-    errors as ssa_errors, CodegenResults, CompiledModule, CrateInfo, ModuleKind,
+    CodegenResults, CompiledModule, CrateInfo, ModuleKind, errors as ssa_errors,
 };
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{par_map, IntoDynSyncSend};
-use rustc_metadata::fs::copy_to_stdout;
+use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_metadata::EncodedMetadata;
+use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
-use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType};
 use rustc_session::Session;
+use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType};
 
+use crate::BackendConfig;
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
 use crate::global_asm::GlobalAsmConfig;
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
-use crate::BackendConfig;
 
 struct ModuleCodegenResult {
     module_regular: CompiledModule,

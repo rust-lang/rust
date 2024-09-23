@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use cranelift_module::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::interpret::{read_target_uint, AllocId, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{AllocId, GlobalAlloc, Scalar, read_target_uint};
 use rustc_middle::ty::{Binder, ExistentialTraitRef, ScalarInt};
 
 use crate::prelude::*;
