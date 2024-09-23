@@ -1,6 +1,5 @@
 #![allow(missing_docs, nonstandard_style)]
 
-pub use self::rand::hashmap_random_keys;
 use crate::io::ErrorKind;
 
 #[cfg(not(target_os = "espidf"))]
@@ -26,7 +25,6 @@ pub use self::l4re::net;
 pub mod os;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
