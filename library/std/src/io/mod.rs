@@ -978,6 +978,8 @@ pub trait Read {
     /// with uninitialized buffers. The new data will be appended to any existing contents of `buf`.
     ///
     /// The default implementation delegates to `read`.
+    ///
+    /// This method makes it possible to return both data and an error but it is advised against.
     #[unstable(feature = "read_buf", issue = "78485")]
     fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> Result<()> {
         default_read_buf(|b| self.read(b), buf)
