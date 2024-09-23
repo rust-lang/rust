@@ -21,7 +21,8 @@
     abi_avr_interrupt,
     abi_x86_interrupt,
     abi_riscv_interrupt,
-    abi_c_cmse_nonsecure_call
+    abi_c_cmse_nonsecure_call,
+    cmse_nonsecure_entry
 )]
 #[lang = "sized"]
 trait Sized {}
@@ -191,8 +192,18 @@ extern "stdcall" {}
 //[riscv64]~^^^^^^^^^ WARN use of calling convention not supported
 //[riscv64]~^^^^^^^^^^ WARN this was previously accepted
 
-fn cmse_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
+fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
     //~^ WARN unsupported_fn_ptr_calling_conventions
     //~^^ WARN this was previously accepted
     f()
 }
+
+extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
+//~^ ERROR is not a supported ABI
+fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
+    //~^ WARN unsupported_fn_ptr_calling_conventions
+    //~^^ WARN this was previously accepted
+    f()
+}
+extern "C-cmse-nonsecure-entry" {}
+//~^ ERROR is not a supported ABI
