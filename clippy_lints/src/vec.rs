@@ -17,7 +17,6 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
 use rustc_span::{DesugaringKind, Span, sym};
 
-#[expect(clippy::module_name_repetitions)]
 pub struct UselessVec {
     too_large_for_stack: u64,
     msrv: Msrv,
