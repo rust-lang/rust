@@ -779,9 +779,9 @@ impl<'a> Parser<'a> {
             self.parse_pat_ident(BindingMode(ByRef::Yes(mutbl), Mutability::Not), syntax_loc)?
         } else if self.eat_keyword(exp!(Box)) {
             self.parse_pat_box()?
-        } else if self.eat_keyword(exp!(Const)) {
+        } else if self.check_keyword(exp!(Const)) {
             // Parse `const { pat }`
-            let const_expr = self.parse_const_block(lo.to(self.prev_token.span), true)?;
+            let const_expr = self.parse_const_block(lo.to(self.token.span), true)?;
 
             if let Some(re) = self.parse_range_end() {
                 self.parse_pat_range_begin_with(const_expr, re)?
@@ -1268,9 +1268,7 @@ impl<'a> Parser<'a> {
             .then_some(self.prev_token.span);
 
         let bound = if self.check_inline_const(0) {
-            let _eaten = self.eat_keyword(exp!(Const));
-            debug_assert!(_eaten);
-            self.parse_const_block(self.prev_token.span, true)
+            self.parse_const_block(self.token.span, true)
         } else if self.check_path() {
             let lo = self.token.span;
             let (qself, path) = if self.eat_lt() {

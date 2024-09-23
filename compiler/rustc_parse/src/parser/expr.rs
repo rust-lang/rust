@@ -1495,8 +1495,8 @@ impl<'a> Parser<'a> {
                         err
                     },
                 )
-            } else if this.eat_keyword(exp!(Const)) {
-                this.parse_const_block(lo.to(this.prev_token.span), false)
+            } else if this.check_keyword(exp!(Const)) {
+                this.parse_const_block(lo.to(this.token.span), false)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
             } else if this.is_try_block() {
