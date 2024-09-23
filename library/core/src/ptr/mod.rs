@@ -160,7 +160,7 @@
 //! this is the name of the variable/static. (This is mildly overloading the term "pointer"
 //! for the sake of brevity/exposition.)
 //!
-//! The Original Pointer for an allocated object has provenance that constraints the *spatial*
+//! The Original Pointer for an allocated object has provenance that constrains the *spatial*
 //! permissions of this pointer to the memory range of the allocation, and the *temporal*
 //! permissions to the lifetime of the allocation. Provenance is implicitly inherited by all
 //! pointers transitively derived from the Original Pointer through operations like [`offset`],
@@ -186,7 +186,7 @@
 //!
 //! * It is undefined behavior to [`offset`] a pointer across a memory range that is not contained
 //!   in the allocated object it is derived from, or to [`offset_from`] two pointers not derived
-//!   from the same allocated object. Provenance is used to say what excatly "derived from" even
+//!   from the same allocated object. Provenance is used to say what exactly "derived from" even
 //!   means: the lineage of a pointer is traced back to the Original Pointer it descends from, and
 //!   that identifies the relevant allocated object. In particular, it's always UB to offset a
 //!   pointer derived from something that is now deallocated, except if the offset is 0.
@@ -209,7 +209,7 @@
 //! * Compare arbitrary pointers by address. Pointer comparison ignores provenance and addresses
 //!   *are* just integers, so there is always a coherent answer, even if the pointers are dangling
 //!   or from different provenances. Note that if you get "lucky" and notice that a pointer at the
-//!   end of one allocated object is the "same" address as the start of another allocatted object,
+//!   end of one allocated object is the "same" address as the start of another allocated object,
 //!   anything you do with that fact is *probably* going to be gibberish. The scope of that
 //!   gibberish is kept under control by the fact that the two pointers *still* aren't allowed to
 //!   access the other's allocation (bytes), because they still have different provenance.
