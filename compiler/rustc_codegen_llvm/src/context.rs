@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
-use std::ffi::{c_uint, CStr};
+use std::ffi::{CStr, c_uint};
 use std::str;
 
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
