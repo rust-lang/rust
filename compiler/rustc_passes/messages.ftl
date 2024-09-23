@@ -656,6 +656,14 @@ passes_rustc_allow_const_fn_unstable =
 passes_rustc_dirty_clean =
     attribute requires -Z query-dep-graph to be enabled
 
+passes_rustc_force_inline =
+    attribute should be applied to a function
+    .label = not a function definition
+
+passes_rustc_force_inline_coro =
+    attribute cannot be applied to a `async`, `gen` or `async gen` function
+    .label = `async`, `gen` or `async gen` function
+
 passes_rustc_layout_scalar_valid_range_arg =
     expected exactly one integer literal argument
 

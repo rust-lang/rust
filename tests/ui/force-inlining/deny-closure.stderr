@@ -1,0 +1,28 @@
+error: `callee` could not be inlined into `caller::{closure#0}` but is required to be inlined
+  --> $DIR/deny-closure.rs:20:9
+   |
+LL |         callee();
+   |         ^^^^^^^^ ...`callee` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+
+error: `callee_justified` could not be inlined into `caller::{closure#0}` but is required to be inlined
+  --> $DIR/deny-closure.rs:23:9
+   |
+LL |         callee_justified();
+   |         ^^^^^^^^^^^^^^^^^^ ...`callee_justified` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+   = note: `callee_justified` is required to be inlined to: the test requires it
+
+note: the above error was encountered while instantiating `fn caller::{closure#0}`
+  --> $DIR/deny-closure.rs:19:5
+   |
+LL | /     (|| {
+LL | |         callee();
+...  |
+LL | |     })();
+   | |________^
+
+error: aborting due to 2 previous errors
+

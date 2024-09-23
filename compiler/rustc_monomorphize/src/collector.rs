@@ -207,6 +207,7 @@
 
 use std::path::PathBuf;
 
+use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{LRef, MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -956,6 +957,14 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
 
     if tcx.is_foreign_item(def_id) {
         // Foreign items are always linked against, there's no way of instantiating them.
+        return false;
+    }
+
+    if tcx.def_kind(def_id).has_codegen_attrs()
+        && matches!(tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
+    {
+        // `#[rustc_force_inline]` items should never be codegened. This should be caught by
+        // the MIR validator.
         return false;
     }
 
