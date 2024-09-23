@@ -60,11 +60,3 @@ pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
 pub fn abort_internal() -> ! {
     core::intrinsics::abort();
 }
-
-pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut buf = [0u32; 4];
-    unsafe {
-        abi::sys_rand(buf.as_mut_ptr(), 4);
-    };
-    ((buf[0] as u64) << 32 + buf[1] as u64, (buf[2] as u64) << 32 + buf[3] as u64)
-}

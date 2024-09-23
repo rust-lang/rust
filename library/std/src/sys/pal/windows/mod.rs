@@ -1,7 +1,6 @@
 #![allow(missing_docs, nonstandard_style)]
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-pub use self::rand::hashmap_random_keys;
 use crate::ffi::{OsStr, OsString};
 use crate::io::ErrorKind;
 use crate::mem::MaybeUninit;
@@ -27,7 +26,6 @@ pub mod net;
 pub mod os;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod stdio;
 pub mod thread;
 pub mod time;
