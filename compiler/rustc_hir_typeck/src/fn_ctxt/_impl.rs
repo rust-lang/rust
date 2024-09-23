@@ -1470,6 +1470,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, sp), ret)]
+    pub fn try_structurally_resolve_const(&self, sp: Span, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        // FIXME(min_const_generic_exprs): We could process obligations here if `ct` is a var.
+
+        if self.next_trait_solver()
+            && let ty::ConstKind::Unevaluated(..) = ct.kind()
+        {
+            // We need to use a separate variable here as otherwise the temporary for
+            // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
+            // in a reentrant borrow, causing an ICE.
+            let result = self
+                .at(&self.misc(sp), self.param_env)
+                .structurally_normalize_const(ct, &mut **self.fulfillment_cx.borrow_mut());
+            match result {
+                Ok(normalized_ct) => normalized_ct,
+                Err(errors) => {
+                    let guar = self.err_ctxt().report_fulfillment_errors(errors);
+                    return ty::Const::new_error(self.tcx, guar);
+                }
+            }
+        } else if self.tcx.features().generic_const_exprs {
+            ct.normalize(self.tcx, self.param_env)
+        } else {
+            ct
+        }
+    }
+
     /// Resolves `ty` by a single level if `ty` is a type variable.
     ///
     /// When the new solver is enabled, this will also attempt to normalize
