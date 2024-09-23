@@ -1,4 +1,4 @@
-error[E0277]: `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
+error[E0277]: `Receiver<()>` cannot be shared between threads safely
   --> $DIR/closure-move-sync.rs:6:27
    |
 LL |       let t = thread::spawn(|| {
@@ -8,10 +8,10 @@ LL |       let t = thread::spawn(|| {
 LL | |         recv.recv().unwrap();
 LL | |
 LL | |     });
-   | |_____^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
+   | |_____^ `Receiver<()>` cannot be shared between threads safely
    |
-   = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<()>`, which is required by `{closure@$DIR/closure-move-sync.rs:6:27: 6:29}: Send`
-   = note: required for `&std::sync::mpsc::Receiver<()>` to implement `Send`
+   = help: the trait `Sync` is not implemented for `Receiver<()>`, which is required by `{closure@$DIR/closure-move-sync.rs:6:27: 6:29}: Send`
+   = note: required for `&Receiver<()>` to implement `Send`
 note: required because it's used within this closure
   --> $DIR/closure-move-sync.rs:6:27
    |
