@@ -2126,7 +2126,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .inherent_impls(def_id)
                 .into_iter()
-                .flatten()
                 .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
                 // Only assoc fn with no receivers.
                 .filter(|item| {
