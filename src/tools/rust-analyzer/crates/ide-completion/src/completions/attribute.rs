@@ -56,7 +56,7 @@ pub(crate) fn complete_known_attribute_input(
             &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
             FEATURES,
         ),
-        "allow" | "warn" | "deny" | "forbid" => {
+        "allow" | "expect" | "deny" | "forbid" | "warn" => {
             let existing_lints = parse_tt_as_comma_sep_paths(tt, ctx.edition)?;
 
             let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
@@ -222,7 +222,7 @@ macro_rules! attrs {
     [@ {} {$($tt:tt)*}] => { &[$($tt)*] as _ };
     // starting matcher
     [$($tt:tt),*] => {
-        attrs!(@ { $($tt)* } { "allow", "cfg", "cfg_attr", "deny", "forbid", "warn" })
+        attrs!(@ { $($tt)* } { "allow", "cfg", "cfg_attr", "deny", "expect", "forbid", "warn" })
     };
 }
 
@@ -303,6 +303,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
     attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
     attr(r#"doc(hidden)"#, Some("dochidden"), Some(r#"doc(hidden)"#)),
+    attr("expect(…)", Some("expect"), Some("expect(${0:lint})")),
     attr(
         r#"export_name = "…""#,
         Some("export_name"),

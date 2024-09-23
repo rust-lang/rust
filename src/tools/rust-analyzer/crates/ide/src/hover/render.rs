@@ -329,7 +329,7 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
     }
     let (is_clippy, lints) = match &*path {
         "feature" => (false, FEATURES),
-        "allow" | "deny" | "forbid" | "warn" => {
+        "allow" | "deny" | "expect" | "forbid" | "warn" => {
             let is_clippy = algo::non_trivia_sibling(token.clone().into(), Direction::Prev)
                 .filter(|t| t.kind() == T![:])
                 .and_then(|t| algo::non_trivia_sibling(t, Direction::Prev))
