@@ -448,7 +448,7 @@ impl ClientCapabilities {
             .unwrap_or_default()
     }
 
-    pub fn inlay_hint_resolve_support_properties(&self) -> FxHashSet<String> {
+    pub fn inlay_hint_resolve_support_properties(&self) -> FxHashSet<&str> {
         self.0
             .text_document
             .as_ref()
@@ -457,11 +457,11 @@ impl ClientCapabilities {
             .map(|inlay_resolve| inlay_resolve.properties.iter())
             .into_iter()
             .flatten()
-            .cloned()
+            .map(|s| s.as_str())
             .collect()
     }
 
-    pub fn completion_resolve_support_properties(&self) -> FxHashSet<String> {
+    pub fn completion_resolve_support_properties(&self) -> FxHashSet<&str> {
         self.0
             .text_document
             .as_ref()
@@ -471,7 +471,7 @@ impl ClientCapabilities {
             .map(|resolve_support| resolve_support.properties.iter())
             .into_iter()
             .flatten()
-            .cloned()
+            .map(|s| s.as_str())
             .collect()
     }
 
