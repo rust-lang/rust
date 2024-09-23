@@ -13,7 +13,8 @@ on:
     - cron: '44 4 * * *' # At 4:44 UTC every day.
 
 permissions:
-  contents: write
+  contents: read
+  pull-requests: write
 
 defaults:
   run:
