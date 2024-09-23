@@ -28,12 +28,11 @@ fn should_lint() -> i32 {
     //~| WARN: this changes meaning in Rust 2024
 }
 
-fn should_lint_closure() -> impl FnOnce() -> i32 {
+fn should_not_lint_closure() -> impl FnOnce() -> i32 {
     let x = LoudDropper;
     move || {
+        // Should not lint
         x.get() + LoudDropper.get()
-        //~^ ERROR: this value of type `LoudDropper` has significant drop implementation that will have a different drop order from that of Edition 2021
-        //~| WARN: this changes meaning in Rust 2024
     }
 }
 
