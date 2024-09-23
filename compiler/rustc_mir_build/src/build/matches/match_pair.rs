@@ -42,7 +42,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
             match place_resolved.ty(&self.local_decls, tcx).ty.kind() {
-                ty::Array(_, length) => (length.eval_target_usize(tcx, self.param_env), true),
+                ty::Array(_, length) => (
+                    length
+                        .try_to_target_usize(tcx)
+                        .expect("expected len of array pat to be definite"),
+                    true,
+                ),
                 _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
             }
         } else {
