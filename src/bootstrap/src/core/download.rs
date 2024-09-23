@@ -826,6 +826,65 @@ download-rustc = false
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
     }
+
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn maybe_download_ci_gcc(&self) {}
+
+    #[cfg(not(feature = "bootstrap-self-test"))]
+    pub(crate) fn maybe_download_ci_gcc(&self) {
+        use crate::core::build_steps::gcc::detect_gcc_sha;
+
+        if !self.gcc_from_ci {
+            return;
+        }
+
+        let gcc_root = self.ci_gcc_root();
+        let gcc_stamp = gcc_root.join(".gcc-stamp");
+        let gcc_sha = detect_gcc_sha(self, self.rust_info.is_managed_git_subrepository());
+        let key = gcc_sha.to_string();
+        if program_out_of_date(&gcc_stamp, &key) && !self.dry_run() {
+            self.download_ci_gcc(&gcc_sha);
+
+            if self.should_fix_bins_and_dylibs() {
+                for entry in t!(fs::read_dir(gcc_root.join("bin"))) {
+                    self.fix_bin_or_dylib(&t!(entry).path());
+                }
+            }
+
+            t!(fs::write(gcc_stamp, key));
+        }
+    }
+
+    #[cfg(not(feature = "bootstrap-self-test"))]
+    fn download_ci_gcc(&self, gcc_sha: &str) {
+        let cache_prefix = format!("gcc-{gcc_sha}");
+        let cache_dst =
+            self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
+
+        let rustc_cache = cache_dst.join(cache_prefix);
+        if !rustc_cache.exists() {
+            t!(fs::create_dir_all(&rustc_cache));
+        }
+        let base = &self.stage0_metadata.config.artifacts_server;
+        let version = self.artifact_version_part(gcc_sha);
+        let filename = format!("rust-dev-{}-{}.tar.xz", version, self.build.triple);
+        let tarball = rustc_cache.join(&filename);
+        if !tarball.exists() {
+            let help_on_error = "ERROR: failed to download GCC from ci
+
+    HELP: There could be two reasons behind this:
+        1) The host triple is not supported for `download-ci-gcc`.
+        2) Old builds get deleted after a certain time.
+    HELP: In either case, disable `download-ci-gcc` in your config.toml:
+
+    [gcc]
+    download-ci-gcc = false
+    ";
+            self.download_file(&format!("{base}/{gcc_sha}/{filename}"), &tarball, help_on_error);
+        }
+        let gcc_root = self.ci_gcc_root();
+        self.unpack(&tarball, &gcc_root, "rust-dev");
+    }
 }
 
 fn path_is_dylib(path: &Path) -> bool {

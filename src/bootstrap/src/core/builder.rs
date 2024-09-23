@@ -1258,6 +1258,11 @@ impl<'a> Builder<'a> {
             let ci_llvm_lib = self.out.join(compiler.host).join("ci-llvm").join("lib");
             dylib_dirs.push(ci_llvm_lib);
         }
+        // Ensure that the downloaded GCC libraries can be found.
+        if self.config.gcc_from_ci {
+            let ci_gcc_lib = self.out.join(compiler.host).join("ci-gcc").join("lib");
+            dylib_dirs.push(ci_gcc_lib);
+        }
 
         dylib_dirs
     }

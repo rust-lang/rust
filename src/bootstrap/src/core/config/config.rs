@@ -19,7 +19,7 @@ use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
-use crate::core::build_steps::llvm;
+use crate::core::build_steps::{gcc, llvm};
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::utils::cache::{INTERNER, Interned};
@@ -255,6 +255,8 @@ pub struct Config {
     pub llvm_cxxflags: Option<String>,
     pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
+
+    pub gcc_from_ci: bool,
 
     // rust codegen options
     pub rust_optimize: RustOptimize,
@@ -616,6 +618,7 @@ pub(crate) struct TomlConfig {
     build: Option<Build>,
     install: Option<Install>,
     llvm: Option<Llvm>,
+    gcc: Option<Gcc>,
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
     dist: Option<Dist>,
@@ -650,7 +653,7 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig { build, install, llvm, rust, dist, target, profile: _, change_id }: Self,
+        TomlConfig { build, install, llvm, rust, dist, target, profile: _, change_id, gcc }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -666,6 +669,7 @@ impl Merge for TomlConfig {
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
         do_merge(&mut self.llvm, llvm, replace);
+        do_merge(&mut self.gcc, gcc, replace);
         do_merge(&mut self.rust, rust, replace);
         do_merge(&mut self.dist, dist, replace);
 
@@ -935,6 +939,13 @@ define_config! {
         compression_profile: Option<String> = "compression-profile",
         include_mingw_linker: Option<bool> = "include-mingw-linker",
         vendor: Option<bool> = "vendor",
+    }
+}
+
+define_config! {
+    /// TOML representation of how the GCC backend is configured.
+    struct Gcc {
+        download_ci_gcc: Option<StringOrBool> = "download-ci-gcc",
     }
 }
 
@@ -1816,6 +1827,17 @@ impl Config {
             ci_channel.clone_into(&mut config.channel);
         }
 
+        if let Some(gcc) = toml.gcc {
+            let Gcc { download_ci_gcc } = gcc;
+            config.gcc_from_ci = config.parse_download_ci_gcc(download_ci_gcc, false);
+        } else {
+            config.gcc_from_ci = config.parse_download_ci_gcc(None, false);
+        }
+
+        if config.gcc_enabled(config.build) {
+            config.maybe_download_ci_gcc();
+        }
+
         if let Some(llvm) = toml.llvm {
             let Llvm {
                 optimize: optimize_toml,
@@ -2312,6 +2334,12 @@ impl Config {
         self.out.join(self.build).join("ci-llvm")
     }
 
+    /// The absolute path to the downloaded GCC artifacts.
+    pub(crate) fn ci_gcc_root(&self) -> PathBuf {
+        assert!(self.gcc_from_ci);
+        self.out.join(self.build).join("ci-gcc")
+    }
+
     /// Directory where the extracted `rustc-dev` component is stored.
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
@@ -2474,6 +2502,10 @@ impl Config {
 
     pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
         self.codegen_backends(target).contains(&"llvm".to_owned())
+    }
+
+    pub fn gcc_enabled(&self, target: TargetSelection) -> bool {
+        self.codegen_backends(target).contains(&"gcc".to_owned())
     }
 
     pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {
@@ -2773,6 +2805,48 @@ impl Config {
             StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
             StringOrBool::String(other) => {
                 panic!("unrecognized option for download-ci-llvm: {:?}", other)
+            }
+        }
+    }
+
+    fn parse_download_ci_gcc(&self, download_ci_gcc: Option<StringOrBool>, asserts: bool) -> bool {
+        let download_ci_gcc = download_ci_gcc.unwrap_or(StringOrBool::Bool(true));
+
+        let if_unchanged = || {
+            if self.rust_info.is_from_tarball() {
+                // Git is needed for running "if-unchanged" logic.
+                println!(
+                    "WARNING: 'if-unchanged' has no effect on tarball sources; ignoring `download-ci-gcc`."
+                );
+                return false;
+            }
+
+            // Fetching the GCC submodule is unnecessary for self-tests.
+            #[cfg(not(feature = "bootstrap-self-test"))]
+            self.update_submodule("src/gcc");
+
+            // Check for untracked changes in `src/gcc`.
+            let has_changes =
+                self.last_modified_commit(&["src/gcc"], "download-ci-gcc", true).is_none();
+
+            // Return false if there are untracked changes, otherwise check if CI GCC is available.
+            if has_changes { false } else { gcc::is_ci_gcc_available(self, asserts) }
+        };
+
+        match download_ci_gcc {
+            StringOrBool::Bool(b) => {
+                if !b && self.download_rustc_commit.is_some() {
+                    panic!(
+                        "`gcc.download-ci-gcc` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
+                    );
+                }
+
+                // If download-ci-gcc=true we also want to check that CI gcc is available
+                b && gcc::is_ci_gcc_available(self, asserts)
+            }
+            StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
+            StringOrBool::String(other) => {
+                panic!("unrecognized option for download-ci-gcc: {:?}", other)
             }
         }
     }
