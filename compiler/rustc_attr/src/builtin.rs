@@ -47,6 +47,27 @@ pub enum InlineAttr {
     Hint,
     Always,
     Never,
+    /// `#[inline(must)]` always attempts to inline in the MIR inliner, regardless of optimisation
+    /// level, and emits a warn-by-default lint if this is not possible.
+    Must {
+        attr_span: Span,
+        reason: Option<Symbol>,
+    },
+    /// `#[inline(required)]` always attempts to inline in the MIR inliner, regardless of
+    /// optimisation level, and emits a error-by-default lint if this is not possible.
+    Required {
+        attr_span: Span,
+        reason: Option<Symbol>,
+    },
+}
+
+impl InlineAttr {
+    pub fn always(&self) -> bool {
+        match self {
+            InlineAttr::Always | InlineAttr::Must { .. } | InlineAttr::Required { .. } => true,
+            InlineAttr::None | InlineAttr::Hint | InlineAttr::Never => false,
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic)]

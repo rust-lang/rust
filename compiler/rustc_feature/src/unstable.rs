@@ -221,6 +221,8 @@ declare_features! (
     (internal, prelude_import, "1.2.0", None),
     /// Used to identify crates that contain the profiler runtime.
     (internal, profiler_runtime, "1.18.0", None),
+    /// Allows using `#[inline(required)]`/`#[inline(must)]`
+    (internal, required_inlining, "CURRENT_RUSTC_VERSION", None),
     /// Allows using `rustc_*` attributes (RFC 572).
     (internal, rustc_attrs, "1.0.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.

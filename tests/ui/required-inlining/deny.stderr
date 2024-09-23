@@ -1,0 +1,72 @@
+error: `callee` could not be inlined into `caller` but is required to be inlined
+  --> $DIR/deny.rs:20:5
+   |
+LL | #[inline(required)]
+   | ------------------- inlining due to this annotation
+LL | pub fn callee() {
+   | --------------- `callee` defined here
+...
+LL | pub fn caller() {
+   | --------------- within `caller`...
+LL |     callee();
+   |     ^^^^^^^^ ...`callee` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+   = note: `#[deny(required_inline)]` on by default
+
+error: `callee_justified` could not be inlined into `caller` but is required to be inlined
+  --> $DIR/deny.rs:23:5
+   |
+LL | #[inline(required("maintain security properties"))]
+   | --------------------------------------------------- inlining due to this annotation
+LL | pub fn callee_justified() {
+   | ------------------------- `callee_justified` defined here
+...
+LL | pub fn caller() {
+   | --------------- within `caller`...
+...
+LL |     callee_justified();
+   |     ^^^^^^^^^^^^^^^^^^ ...`callee_justified` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+   = note: `callee_justified` is required to be inlined to: maintain security properties
+
+warning: `callee` could not be inlined into `caller_overridden` but is required to be inlined
+  --> $DIR/deny.rs:29:5
+   |
+LL | #[inline(required)]
+   | ------------------- inlining due to this annotation
+LL | pub fn callee() {
+   | --------------- `callee` defined here
+...
+LL | pub fn caller_overridden() {
+   | -------------------------- within `caller_overridden`...
+LL |     callee();
+   |     ^^^^^^^^ ...`callee` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+note: the lint level is defined here
+  --> $DIR/deny.rs:27:8
+   |
+LL | #[warn(required_inline)]
+   |        ^^^^^^^^^^^^^^^
+
+warning: `callee_justified` could not be inlined into `caller_overridden` but is required to be inlined
+  --> $DIR/deny.rs:32:5
+   |
+LL | #[inline(required("maintain security properties"))]
+   | --------------------------------------------------- inlining due to this annotation
+LL | pub fn callee_justified() {
+   | ------------------------- `callee_justified` defined here
+...
+LL | pub fn caller_overridden() {
+   | -------------------------- within `caller_overridden`...
+...
+LL |     callee_justified();
+   |     ^^^^^^^^^^^^^^^^^^ ...`callee_justified` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+   = note: `callee_justified` is required to be inlined to: maintain security properties
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+

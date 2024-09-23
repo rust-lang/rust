@@ -67,6 +67,7 @@ declare_lint_pass! {
         MISSING_ABI,
         MISSING_FRAGMENT_SPECIFIER,
         MISSING_UNSAFE_ON_EXTERN,
+        MUST_INLINE,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
@@ -88,6 +89,7 @@ declare_lint_pass! {
         REFINING_IMPL_TRAIT_REACHABLE,
         RENAMED_AND_REMOVED_LINTS,
         REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+        REQUIRED_INLINE,
         RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
@@ -5081,4 +5083,40 @@ declare_lint! {
         reference: "issue #123735 <https://github.com/rust-lang/rust/issues/123735>",
     };
     crate_level_only
+}
+
+declare_lint! {
+    /// The `must_inline` lint is emitted when a function annotated with
+    /// `#[inline(must)]` was not able to be inlined.
+    ///
+    /// ### Explanation
+    ///
+    /// Functions can be marked as `#[inline(must)]` in the standard
+    /// library if they must be inlined in order to guarantee performance
+    /// characteristics or some other similar guarantee.
+    ///
+    /// In some circumstances, these functions cannot be inlined and a
+    /// reason will be provided, this can either be rectified or the
+    /// lint can be silenced if the risk is acceptable.
+    pub MUST_INLINE,
+    Warn,
+    "`#[inline(must)]`-annotated function could not be inlined"
+}
+
+declare_lint! {
+    /// The `required_inline` lint is emitted when a function annotated with
+    /// `#[inline(required)]` was not able to be inlined.
+    ///
+    /// ### Explanation
+    ///
+    /// Functions can be marked as `#[inline(required)]` in the standard
+    /// library if they are required to be inlined in order to uphold
+    /// security properties or some other similar guarantee.
+    ///
+    /// In some circumstances, these functions cannot be inlined and a
+    /// reason will be provided, this can either be rectified or the
+    /// lint can be silenced if the risk is acceptable.
+    pub REQUIRED_INLINE,
+    Deny,
+    "`#[inline(required)]`-annotated function could not be inlined"
 }

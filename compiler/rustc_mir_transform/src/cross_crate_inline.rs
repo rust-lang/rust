@@ -8,8 +8,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{InliningThreshold, OptLevel};
 use rustc_span::sym;
 
-use crate::{inline, pass_manager as pm};
-
 pub(super) fn provide(providers: &mut Providers) {
     providers.cross_crate_inlinable = cross_crate_inlinable;
 }
@@ -46,7 +44,10 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // #[inline(never)] to force code generation.
     match codegen_fn_attrs.inline {
         InlineAttr::Never => return false,
-        InlineAttr::Hint | InlineAttr::Always => return true,
+        InlineAttr::Hint
+        | InlineAttr::Always
+        | InlineAttr::Required { .. }
+        | InlineAttr::Must { .. } => return true,
         _ => {}
     }
 
@@ -59,7 +60,8 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // Don't do any inference if codegen optimizations are disabled and also MIR inlining is not
     // enabled. This ensures that we do inference even if someone only passes -Zinline-mir,
     // which is less confusing than having to also enable -Copt-level=1.
-    if matches!(tcx.sess.opts.optimize, OptLevel::No) && !pm::should_run_pass(tcx, &inline::Inline)
+    if matches!(tcx.sess.opts.optimize, OptLevel::No)
+        && !crate::inline::should_run_pass_for_item(tcx, def_id.to_def_id())
     {
         return false;
     }

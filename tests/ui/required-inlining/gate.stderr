@@ -1,0 +1,35 @@
+error[E0535]: invalid argument
+  --> $DIR/gate.rs:6:10
+   |
+LL | #[inline(required)]
+   |          ^^^^^^^^
+   |
+   = help: valid inline arguments are `always` and `never`
+
+error[E0535]: invalid argument
+  --> $DIR/gate.rs:13:10
+   |
+LL | #[inline(required("justification"))]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: valid inline arguments are `always` and `never`
+
+error[E0535]: invalid argument
+  --> $DIR/gate.rs:20:10
+   |
+LL | #[inline(must)]
+   |          ^^^^
+   |
+   = help: valid inline arguments are `always` and `never`
+
+error[E0535]: invalid argument
+  --> $DIR/gate.rs:27:10
+   |
+LL | #[inline(must("justification"))]
+   |          ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: valid inline arguments are `always` and `never`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0535`.

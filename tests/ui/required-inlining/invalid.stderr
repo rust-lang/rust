@@ -1,0 +1,75 @@
+error[E0535]: invalid argument
+  --> $DIR/invalid.rs:8:1
+   |
+LL | #[inline(required = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected one string argument to `#[inline(required)]`
+
+error[E0535]: invalid argument
+  --> $DIR/invalid.rs:14:1
+   |
+LL | #[inline(required(bar, baz))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected one string argument to `#[inline(required)]`
+
+error[E0535]: invalid argument
+  --> $DIR/invalid.rs:20:1
+   |
+LL | #[inline(required(2))]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected one string argument to `#[inline(required)]`
+
+error[E0535]: invalid argument
+  --> $DIR/invalid.rs:26:1
+   |
+LL | #[inline(required = 2)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected one string argument to `#[inline(required)]`
+
+error[E0535]: invalid argument
+  --> $DIR/invalid.rs:32:1
+   |
+LL | #[inline(must = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected one string argument to `#[inline(must)]`
+
+error[E0535]: invalid argument
+  --> $DIR/invalid.rs:38:1
+   |
+LL | #[inline(must(bar, baz))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected one string argument to `#[inline(must)]`
+
+error[E0535]: invalid argument
+  --> $DIR/invalid.rs:44:1
+   |
+LL | #[inline(must(2))]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected one string argument to `#[inline(must)]`
+
+error[E0535]: invalid argument
+  --> $DIR/invalid.rs:50:1
+   |
+LL | #[inline(must = 2)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected one string argument to `#[inline(must)]`
+
+error[E0535]: invalid argument
+  --> $DIR/invalid.rs:56:10
+   |
+LL | #[inline(banana)]
+   |          ^^^^^^
+   |
+   = help: valid inline arguments are `required`, `must`, `always` and `never`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0535`.

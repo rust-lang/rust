@@ -4,8 +4,8 @@ use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
-use rustc_span::Span;
 use rustc_span::def_id::DefId;
+use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
 
@@ -136,3 +136,29 @@ pub(crate) struct MustNotSuspendReason {
 #[note(mir_transform_note2)]
 #[help]
 pub(crate) struct UndefinedTransmute;
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_required_inline)]
+#[note]
+pub(crate) struct RequiredInline {
+    pub requires_or_must: &'static str,
+    #[label(mir_transform_caller)]
+    pub caller_span: Span,
+    #[label(mir_transform_callee)]
+    pub callee_span: Span,
+    #[label(mir_transform_attr)]
+    pub attr_span: Span,
+    #[label(mir_transform_call)]
+    pub call_span: Span,
+    pub callee: String,
+    pub caller: String,
+    pub reason: &'static str,
+    #[subdiagnostic]
+    pub justification: Option<RequiredInlineJustification>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(mir_transform_required_inline_justification)]
+pub(crate) struct RequiredInlineJustification {
+    pub sym: Symbol,
+}

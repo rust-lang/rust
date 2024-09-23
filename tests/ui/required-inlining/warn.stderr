@@ -1,0 +1,72 @@
+warning: `callee` could not be inlined into `caller` but must be inlined
+  --> $DIR/warn.rs:20:5
+   |
+LL | #[inline(must)]
+   | --------------- inlining due to this annotation
+LL | pub fn callee() {
+   | --------------- `callee` defined here
+...
+LL | pub fn caller() {
+   | --------------- within `caller`...
+LL |     callee();
+   |     ^^^^^^^^ ...`callee` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+   = note: `#[warn(must_inline)]` on by default
+
+warning: `callee_justified` could not be inlined into `caller` but must be inlined
+  --> $DIR/warn.rs:23:5
+   |
+LL | #[inline(must("maintain performance characteristics"))]
+   | ------------------------------------------------------- inlining due to this annotation
+LL | pub fn callee_justified() {
+   | ------------------------- `callee_justified` defined here
+...
+LL | pub fn caller() {
+   | --------------- within `caller`...
+...
+LL |     callee_justified();
+   |     ^^^^^^^^^^^^^^^^^^ ...`callee_justified` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+   = note: `callee_justified` must be inlined to: maintain performance characteristics
+
+error: `callee` could not be inlined into `caller_overridden` but must be inlined
+  --> $DIR/warn.rs:29:5
+   |
+LL | #[inline(must)]
+   | --------------- inlining due to this annotation
+LL | pub fn callee() {
+   | --------------- `callee` defined here
+...
+LL | pub fn caller_overridden() {
+   | -------------------------- within `caller_overridden`...
+LL |     callee();
+   |     ^^^^^^^^ ...`callee` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+note: the lint level is defined here
+  --> $DIR/warn.rs:27:8
+   |
+LL | #[deny(must_inline)]
+   |        ^^^^^^^^^^^
+
+error: `callee_justified` could not be inlined into `caller_overridden` but must be inlined
+  --> $DIR/warn.rs:32:5
+   |
+LL | #[inline(must("maintain performance characteristics"))]
+   | ------------------------------------------------------- inlining due to this annotation
+LL | pub fn callee_justified() {
+   | ------------------------- `callee_justified` defined here
+...
+LL | pub fn caller_overridden() {
+   | -------------------------- within `caller_overridden`...
+...
+LL |     callee_justified();
+   |     ^^^^^^^^^^^^^^^^^^ ...`callee_justified` called here
+   |
+   = note: could not be inlined due to: #[rustc_no_mir_inline]
+   = note: `callee_justified` must be inlined to: maintain performance characteristics
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+

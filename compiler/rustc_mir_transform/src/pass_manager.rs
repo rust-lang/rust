@@ -169,7 +169,7 @@ pub(super) fn run_passes<'tcx>(
     run_passes_inner(tcx, body, passes, phase_change, true);
 }
 
-pub(super) fn should_run_pass<'tcx, P>(tcx: TyCtxt<'tcx>, pass: &P) -> bool
+pub(super) fn pass_is_overridden<'tcx, P>(tcx: TyCtxt<'tcx>, pass: &P) -> bool
 where
     P: MirPass<'tcx> + ?Sized,
 {
@@ -185,7 +185,14 @@ where
             );
             *polarity
         });
-    overridden.unwrap_or_else(|| pass.is_enabled(tcx.sess))
+    overridden.unwrap_or(false)
+}
+
+pub(super) fn should_run_pass<'tcx, P>(tcx: TyCtxt<'tcx>, pass: &P) -> bool
+where
+    P: MirPass<'tcx> + ?Sized,
+{
+    pass_is_overridden(tcx, pass) || pass.is_enabled(tcx.sess)
 }
 
 fn run_passes_inner<'tcx>(

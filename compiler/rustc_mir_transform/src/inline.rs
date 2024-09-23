@@ -5,7 +5,7 @@ use std::ops::{Range, RangeFrom};
 
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::Idx;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
@@ -16,6 +16,7 @@ use rustc_middle::ty::{
     self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
 };
 use rustc_session::config::{DebugInfo, OptLevel};
+use rustc_session::lint::builtin::{MUST_INLINE, REQUIRED_INLINE};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 use rustc_target::abi::FieldIdx;
@@ -24,6 +25,7 @@ use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::CostChecker;
 use crate::deref_separator::deref_finder;
+use crate::errors::RequiredInlineJustification;
 use crate::simplify::simplify_cfg;
 use crate::util;
 use crate::validate::validate_types;
@@ -45,26 +47,8 @@ struct CallSite<'tcx> {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
-        // MIR correctly when Modified Condition/Decision Coverage is enabled.
-        if sess.instrument_coverage_mcdc() {
-            return false;
-        }
-
-        if let Some(enabled) = sess.opts.unstable_opts.inline_mir {
-            return enabled;
-        }
-
-        match sess.mir_opt_level() {
-            0 | 1 => false,
-            2 => {
-                (sess.opts.optimize == OptLevel::Default
-                    || sess.opts.optimize == OptLevel::Aggressive)
-                    && sess.opts.incremental == None
-            }
-            _ => true,
-        }
+    fn is_enabled(&self, _: &rustc_session::Session) -> bool {
+        true
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -76,6 +60,30 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
             deref_finder(tcx, body);
         }
     }
+}
+
+/// Is this pass enabled for a given item? Can't just rely on `MirPass::is_enabled` as a body having
+/// `#[inline(required)]` should be inlined even if every other item isn't.
+pub fn should_run_pass_for_item<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> bool {
+    if crate::pass_manager::pass_is_overridden(tcx, &Inline) {
+        return true;
+    }
+
+    if let Some(enabled) = tcx.sess.opts.unstable_opts.inline_mir {
+        return enabled;
+    }
+
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(did);
+    matches!(codegen_fn_attrs.inline, InlineAttr::Required { .. } | InlineAttr::Must { .. })
+        || match tcx.sess.mir_opt_level() {
+            0 | 1 => false,
+            2 => {
+                (tcx.sess.opts.optimize == OptLevel::Default
+                    || tcx.sess.opts.optimize == OptLevel::Aggressive)
+                    && tcx.sess.opts.incremental == None
+            }
+            _ => true,
+        }
 }
 
 fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
@@ -101,12 +109,16 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let mut this = Inliner {
         tcx,
         param_env,
+        def_id,
         codegen_fn_attrs,
         history: Vec::new(),
         changed: false,
         caller_is_inline_forwarder: matches!(
             codegen_fn_attrs.inline,
-            InlineAttr::Hint | InlineAttr::Always
+            InlineAttr::Hint
+                | InlineAttr::Always
+                | InlineAttr::Required { .. }
+                | InlineAttr::Must { .. }
         ) && body_is_forwarder(body),
     };
     let blocks = START_BLOCK..body.basic_blocks.next_index();
@@ -117,6 +129,8 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 struct Inliner<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
+    /// `DefId` of caller.
+    def_id: LocalDefId,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
     /// Stack of inlined instances.
@@ -155,9 +169,20 @@ impl<'tcx> Inliner<'tcx> {
             let span = trace_span!("process_blocks", %callsite.callee, ?bb);
             let _guard = span.enter();
 
+            if !should_run_pass_for_item(self.tcx, callsite.callee.def_id()) {
+                debug!("not enabled");
+                continue;
+            }
+
             match self.try_inlining(caller_body, &callsite) {
                 Err(reason) => {
                     debug!("not-inlined {} [{}]", callsite.callee, reason);
+                    if matches!(
+                        self.tcx.codegen_fn_attrs(callsite.callee.def_id()).inline,
+                        InlineAttr::Required { .. } | InlineAttr::Must { .. }
+                    ) {
+                        self.report_required_error(&callsite, reason);
+                    }
                 }
                 Ok(new_blocks) => {
                     debug!("inlined {}", callsite.callee);
@@ -437,6 +462,12 @@ impl<'tcx> Inliner<'tcx> {
             return Err("never inline hint");
         }
 
+        // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
+        // MIR correctly when Modified Condition/Decision Coverage is enabled.
+        if self.tcx.sess.instrument_coverage_mcdc() {
+            return Err("incompatible with MC/DC coverage");
+        }
+
         // Reachability pass defines which functions are eligible for inlining. Generally inlining
         // other functions is incorrect because they could reference symbols that aren't exported.
         let is_generic = callsite
@@ -498,6 +529,13 @@ impl<'tcx> Inliner<'tcx> {
 
         if let Some(_) = callee_body.tainted_by_errors {
             return Err("Body is tainted");
+        }
+
+        // Callees which require inlining must be inlined to maintain security properties or
+        // for performance reasons, so skip any heuristics.
+        if matches!(callee_attrs.inline, InlineAttr::Required { .. } | InlineAttr::Must { .. }) {
+            debug!("INLINING {:?} [required]", callsite);
+            return Ok(());
         }
 
         let mut threshold = if self.caller_is_inline_forwarder {
@@ -892,6 +930,34 @@ impl<'tcx> Inliner<'tcx> {
         }
 
         local
+    }
+
+    fn report_required_error(&self, callsite: &CallSite<'tcx>, reason: &'static str) {
+        let (deny, attr_span, justification) =
+            match self.tcx.codegen_fn_attrs(callsite.callee.def_id()).inline {
+                InlineAttr::Required { attr_span, reason } => (true, attr_span, reason),
+                InlineAttr::Must { attr_span, reason } => (false, attr_span, reason),
+                _ => bug!("called on item without required inlining"),
+            };
+
+        let hir_id = self.tcx.local_def_id_to_hir_id(self.def_id);
+        let call_span = callsite.source_info.span;
+        self.tcx.emit_node_span_lint(
+            if deny { REQUIRED_INLINE } else { MUST_INLINE },
+            hir_id,
+            call_span,
+            crate::errors::RequiredInline {
+                requires_or_must: if deny { "is required to be" } else { "must be" },
+                call_span,
+                attr_span,
+                caller_span: self.tcx.def_span(self.def_id),
+                caller: self.tcx.def_path_str(self.def_id),
+                callee_span: self.tcx.def_span(callsite.callee.def_id()),
+                callee: self.tcx.def_path_str(callsite.callee.def_id()),
+                reason,
+                justification: justification.map(|sym| RequiredInlineJustification { sym }),
+            },
+        );
     }
 }
 

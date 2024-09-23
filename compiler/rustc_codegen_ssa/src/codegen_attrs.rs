@@ -1,4 +1,4 @@
-use rustc_ast::{MetaItemInner, MetaItemKind, ast, attr};
+use rustc_ast::{MetaItem, MetaItemInner, MetaItemKind, ast, attr};
 use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr, list_contains_name};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
@@ -17,7 +17,7 @@ use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::{SanitizerSet, abi};
 
 use crate::errors::{self, MissingFeatures, TargetFeatureDisableOrEnable};
@@ -525,10 +525,36 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument")
                         .emit();
                     InlineAttr::None
+                } else if list_contains_name(items, sym::must) && tcx.features().required_inlining {
+                    parse_inline_must_required(
+                        tcx,
+                        items,
+                        attr.span,
+                        sym::must,
+                        |attr_span, reason| InlineAttr::Must { attr_span, reason },
+                    )
+                } else if list_contains_name(items, sym::required)
+                    && tcx.features().required_inlining
+                {
+                    parse_inline_must_required(
+                        tcx,
+                        items,
+                        attr.span,
+                        sym::required,
+                        |attr_span, reason| InlineAttr::Required { attr_span, reason },
+                    )
                 } else if list_contains_name(items, sym::always) {
                     InlineAttr::Always
                 } else if list_contains_name(items, sym::never) {
                     InlineAttr::Never
+                } else if tcx.features().required_inlining {
+                    struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
+                        .with_help(
+                            "valid inline arguments are `required`, `must`, `always` and `never`",
+                        )
+                        .emit();
+
+                    InlineAttr::None
                 } else {
                     struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
                         .with_help("valid inline arguments are `always` and `never`")
@@ -586,7 +612,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
     if tcx.features().target_feature_11
         && tcx.is_closure_like(did.to_def_id())
-        && codegen_fn_attrs.inline != InlineAttr::Always
+        && !codegen_fn_attrs.inline.always()
     {
         let owner_id = tcx.parent(did.to_def_id());
         if tcx.def_kind(owner_id).has_codegen_attrs() {
@@ -600,8 +626,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
-    if !codegen_fn_attrs.target_features.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always
-    {
+    if !codegen_fn_attrs.target_features.is_empty() && codegen_fn_attrs.inline.always() {
         if let Some(span) = inline_span {
             tcx.dcx().span_err(
                 span,
@@ -611,7 +636,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    if !codegen_fn_attrs.no_sanitize.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
+    if !codegen_fn_attrs.no_sanitize.is_empty() && codegen_fn_attrs.inline.always() {
         if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
             let hir_id = tcx.local_def_id_to_hir_id(did);
             tcx.node_span_lint(
@@ -704,6 +729,37 @@ pub fn check_tied_features(
         }
     }
     None
+}
+
+fn parse_inline_must_required<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    items: &[MetaItemInner],
+    attr_span: Span,
+    expected_symbol: Symbol,
+    create: impl Fn(Span, Option<Symbol>) -> InlineAttr,
+) -> InlineAttr {
+    match items.iter().find(|i| i.has_name(expected_symbol)).expect("called on items w/out sym") {
+        MetaItemInner::MetaItem(mi @ MetaItem { kind: MetaItemKind::Word, .. }) => {
+            debug_assert!(mi.has_name(expected_symbol));
+            create(attr_span, None)
+        }
+        nested => {
+            if let Some((found_symbol, reason)) = nested.singleton_lit_list()
+                && reason.kind.is_str()
+            {
+                debug_assert_eq!(found_symbol, expected_symbol);
+                create(attr_span, reason.kind.str())
+            } else {
+                struct_span_code_err!(tcx.dcx(), attr_span, E0535, "invalid argument")
+                    .with_help(format!(
+                        "expected one string argument to `#[inline({})]`",
+                        expected_symbol.as_str()
+                    ))
+                    .emit();
+                create(attr_span, None)
+            }
+        }
+    }
 }
 
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller

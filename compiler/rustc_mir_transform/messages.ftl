@@ -25,6 +25,17 @@ mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspen
     .help = consider using a block (`{"{ ... }"}`) to shrink the value's scope, ending before the suspend point
 mir_transform_operation_will_panic = this operation will panic at runtime
 
+mir_transform_required_inline =
+    `{$callee}` could not be inlined into `{$caller}` but {$requires_or_must} inlined
+    .call = ...`{$callee}` called here
+    .attr = inlining due to this annotation
+    .caller = within `{$caller}`...
+    .callee = `{$callee}` defined here
+    .note = could not be inlined due to: {$reason}
+
+mir_transform_required_inline_justification =
+    `{$callee}` {$requires_or_must} inlined to: {$sym}
+
 mir_transform_unaligned_packed_ref = reference to packed field is unaligned
     .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
     .note_ub = creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
