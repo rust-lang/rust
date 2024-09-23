@@ -1721,20 +1721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        if item_name.name == sym::as_str && rcvr_ty.peel_refs().is_str() {
-            let msg = "remove this method call";
-            let mut fallback_span = true;
-            if let SelfSource::MethodCall(expr) = source {
-                let call_expr = self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id));
-                if let Some(span) = call_expr.span.trim_start(expr.span) {
-                    err.span_suggestion(span, msg, "", Applicability::MachineApplicable);
-                    fallback_span = false;
-                }
-            }
-            if fallback_span {
-                err.span_label(span, msg);
-            }
-        } else if let Some(similar_candidate) = similar_candidate {
+        if let Some(similar_candidate) = similar_candidate {
             // Don't emit a suggestion if we found an actual method
             // that had unsatisfied trait bounds
             if unsatisfied_predicates.is_empty()
