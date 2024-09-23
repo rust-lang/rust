@@ -45,8 +45,14 @@ struct NotInfo {
 
 pub(crate) struct MatchArm {
     pub(crate) source_info: SourceInfo,
-    pub(crate) pre_binding_block: Option<BasicBlock>,
+    pub(crate) sub_branches: Vec<MatchArmSubBranch>,
     pub(crate) arm_block: BasicBlock,
+}
+
+#[derive(Debug)]
+pub(crate) struct MatchArmSubBranch {
+    pub(crate) source_info: SourceInfo,
+    pub(crate) start_block: Option<BasicBlock>,
 }
 
 #[derive(Default)]
@@ -181,26 +187,34 @@ impl CoverageInfoBuilder {
             return;
         }
 
-        // FIXME(#124118) The current implementation of branch coverage for
-        // match arms can't handle or-patterns.
-        if arms.iter().any(|arm| arm.pre_binding_block.is_none()) {
+        let Some(branch_info) = self.branch_info.as_mut() else {
             return;
-        }
+        };
 
         let branch_arms = arms
             .iter()
-            .map(|&MatchArm { source_info, pre_binding_block, arm_block }| {
-                let pre_guard_marker =
-                    self.markers.inject_block_marker(cfg, source_info, pre_binding_block.unwrap());
+            .flat_map(|MatchArm { source_info, sub_branches, arm_block }| {
                 let arm_taken_marker =
-                    self.markers.inject_block_marker(cfg, source_info, arm_block);
-                BranchArm { span: source_info.span, pre_guard_marker, arm_taken_marker }
+                    self.markers.inject_block_marker(cfg, *source_info, *arm_block);
+                let branch_arms = sub_branches
+                    .iter()
+                    .filter_map(|sub_branch| {
+                        let Some(block) = sub_branch.start_block else { return None };
+                        let marker =
+                            self.markers.inject_block_marker(cfg, sub_branch.source_info, block);
+                        Some(BranchArm {
+                            span: sub_branch.source_info.span,
+                            pre_guard_marker: marker,
+                            arm_taken_marker,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                branch_arms
             })
             .collect::<Vec<_>>();
 
-        if let Some(branch_info) = self.branch_info.as_mut() {
-            branch_info.branch_arm_lists.push(branch_arms);
-        }
+        branch_info.branch_arm_lists.push(branch_arms);
     }
 
     pub(crate) fn into_done(self) -> Box<CoverageInfoHi> {

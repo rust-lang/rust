@@ -5,6 +5,13 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
+use crate::build::expr::as_place::PlaceBuilder;
+use crate::build::scope::DropKind;
+use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
+use crate::build::{
+    coverageinfo, BlockAnd, BlockAndExtension, Builder, GuardFrame, GuardFrameLocal, LocalsForNode,
+};
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef};
@@ -18,12 +25,6 @@ use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
 
-use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::scope::DropKind;
-use crate::build::{
-    BlockAnd, BlockAndExtension, Builder, GuardFrame, GuardFrameLocal, LocalsForNode, coverageinfo,
-};
 
 // helper functions, broken out by category:
 mod match_pair;
@@ -453,8 +454,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         opt_scrutinee_place,
                     );
 
-                    // FIXME: Propagate this info down to codegen
-                    let pre_binding_block = branch.sub_branches[0].otherwise_block;
+                    let sub_branches: Vec<_> = branch
+                        .sub_branches
+                        .iter()
+                        .map(|b| coverageinfo::MatchArmSubBranch {
+                            source_info: this.source_info(b.span),
+                            start_block: b.start_block,
+                        })
+                        .collect();
 
                     let arm_block = this.bind_pattern(
                         outer_source_info,
@@ -468,7 +475,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if let Some(coverage_match_arms) = coverage_match_arms.as_mut() {
                         coverage_match_arms.push(coverageinfo::MatchArm {
                             source_info: this.source_info(arm.pattern.span),
-                            pre_binding_block: Some(pre_binding_block),
+                            sub_branches,
                             arm_block,
                         })
                     }
@@ -1391,6 +1398,8 @@ pub(crate) struct ArmHasGuard(pub(crate) bool);
 #[derive(Debug)]
 struct MatchTreeSubBranch<'tcx> {
     span: Span,
+    /// The first block in this sub branch.
+    start_block: Option<BasicBlock>,
     /// The block that is branched to if the corresponding subpattern matches.
     success_block: BasicBlock,
     /// The block to branch to if this arm had a guard and the guard fails.
@@ -1441,6 +1450,7 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
         debug_assert!(candidate.match_pairs.is_empty());
         MatchTreeSubBranch {
             span: candidate.extra_data.span,
+            start_block: candidate.false_edge_start_block,
             success_block: candidate.pre_binding_block.unwrap(),
             otherwise_block: candidate.otherwise_block.unwrap(),
             bindings: parent_data
@@ -1860,7 +1870,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         });
         for candidate in candidates_to_expand.iter_mut() {
             if !candidate.subcandidates.is_empty() {
-                self.merge_trivial_subcandidates(candidate);
+                // FIXME: Support merging trival candidates in branch coverage instrumentation
+                if self.coverage_info.is_none() {
+                    self.merge_trivial_subcandidates(candidate);
+                }
                 self.remove_never_subcandidates(candidate);
             }
         }
