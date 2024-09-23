@@ -661,8 +661,8 @@ pub const fn dangling_mut<T>() -> *mut T {
 /// of *some* pointer that was previously exposed by passing it to
 /// [`expose_provenance`][pointer::expose_provenance], or a `ptr as usize` cast. In addition, memory
 /// which is outside the control of the Rust abstract machine (MMIO registers, for example) is
-/// always considered to be exposed, so long as this memory is disjoint from memory that will be
-/// used by the abstract machine such as the stack, heap, and statics.
+/// always considered to be accessible with an exposed provenance, so long as this memory is disjoint
+/// from memory that will be used by the abstract machine such as the stack, heap, and statics.
 ///
 /// The exact provenance that gets picked is not specified. The compiler will do its best to pick
 /// the "right" provenance for you (whatever that may be), but currently we cannot provide any
@@ -701,8 +701,8 @@ pub fn with_exposed_provenance<T>(addr: usize) -> *const T {
 /// of *some* pointer that was previously exposed by passing it to
 /// [`expose_provenance`][pointer::expose_provenance], or a `ptr as usize` cast. In addition, memory
 /// which is outside the control of the Rust abstract machine (MMIO registers, for example) is
-/// always considered to be exposed, so long as this memory is disjoint from memory that will be
-/// used by the abstract machine such as the stack, heap, and statics.
+/// always considered to be accessible with an exposed provenance, so long as this memory is disjoint
+/// from memory that will be used by the abstract machine such as the stack, heap, and statics.
 ///
 /// The exact provenance that gets picked is not specified. The compiler will do its best to pick
 /// the "right" provenance for you (whatever that may be), but currently we cannot provide any
