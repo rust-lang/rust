@@ -113,8 +113,42 @@ where contributors push changes to their personal fork and create pull requests 
 bring those changes into the source repository. We have more info about how to use git
 when contributing to Rust under [the git section](./git.md).
 
+> **Advice for potentially large, complex, cross-cutting and/or very domain-specific changes**
+>
+> The compiler reviewers on rotation usually each have areas of the compiler that they know well,
+> but also have areas that they are not very familiar with. If your PR contains changes that are
+> large, complex, cross-cutting and/or highly domain-specific, it becomes very difficult to find a
+> suitable reviewer who is comfortable in reviewing all of the changes in such a PR. This is also
+> true if the changes are not only compiler-specific but also contains changes which fall under the
+> purview of reviewers from other teams, like the standard library team. [There's a bot][triagebot]
+> which notifies the relevant teams and pings people who have setup specific alerts based on the
+> files modified.
+>
+> Before making such changes, you are strongly encouraged to **discuss your proposed changes with
+> the compiler team beforehand** (and with other teams that the changes would require approval
+> from), and work with the compiler team to see if we can help you **break down a large potentially
+> unreviewable PR into a series of smaller more individually reviewable PRs**.
+>
+> You can communicate with the compiler team by creating a [#t-compiler thread on zulip][t-compiler]
+> to discuss your proposed changes.
+>
+> Communicating with the compiler team beforehand helps in several ways:
+>
+> 1. It increases the likelihood of your PRs being reviewed in a timely manner.
+>     - We can help you identify suitable reviewers *before* you open actual PRs, or help find
+>       advisors and liaisons to help you navigate the change procedures, or help with running
+>       try-jobs, perf runs and crater runs as suitable.
+> 2. It helps the compiler team track your changes.
+> 3. The compiler team can perform vibe checks on your changes early and often, to see if the
+>    direction of the changes align with what the compiler team prefers to see.
+> 4. Helps to avoid situations where you may have invested significant time and effort into large
+>   changes that the compiler team might not be willing to accept, or finding out very late that the
+>   changes are in a direction that the compiler team disagrees with.
+
 [about-pull-requests]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests
 [development-models]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/getting-started/about-collaborative-development-models#fork-and-pull-model
+[t-compiler]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
+[triagebot]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
 
 ### r?
 
