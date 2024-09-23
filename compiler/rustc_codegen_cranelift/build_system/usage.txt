@@ -2,16 +2,12 @@ The build system of cg_clif.
 
 USAGE:
     ./y.sh prepare [--out-dir DIR] [--download-dir DIR]
-    ./y.sh build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
-    ./y.sh test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen] [--skip-test TESTNAME]
-    ./y.sh abi-cafe [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
-    ./y.sh bench [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh build [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh test [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen] [--skip-test TESTNAME]
+    ./y.sh abi-cafe [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh bench [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
 
 OPTIONS:
-    --debug
-            Build cg_clif and the standard library in debug mode rather than release mode.
-            Warning: An unoptimized cg_clif is very slow.
-
     --sysroot none|clif|llvm
             Which sysroot libraries to use:
             `none` will not include any standard library in the sysroot.
@@ -43,7 +39,5 @@ REQUIREMENTS:
     * Rustup: By default rustup is used to install the right nightly version. If you don't want to
       use rustup, you can manually install the nightly version indicated by rust-toolchain.toml and
       point the CARGO, RUSTC and RUSTDOC env vars to the right executables.
-    * Git: Git is used for applying patches and on Windows for downloading test repos.
-    * Curl and tar (non-Windows only): Used by `./y.sh prepare` to download a single commit for
-      repos. Git will be used to clone the whole repo when using Windows.
+    * Git: Git is used for downloading test repos and applying patches.
     * [Hyperfine](https://github.com/sharkdp/hyperfine/): Used for benchmarking with `./y.sh bench`.
