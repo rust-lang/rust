@@ -67,8 +67,8 @@ Also, using `x` rather than `x.py` is recommended as:
 
 (You can find the platform related scripts around the `x.py`, like `x.ps1`)
 
-Notice that this is not absolute, for instance, using Nushell in VSCode on Win10,
-typing `x` or `./x` still open the `x.py` in editor rather invoke the program :)
+Notice that this is not absolute. For instance, using Nushell in VSCode on Win10,
+typing `x` or `./x` still opens `x.py` in an editor rather than invoking the program. :)
 
 In the rest of this guide, we use `x` rather than `x.py` directly. The following
 command:
