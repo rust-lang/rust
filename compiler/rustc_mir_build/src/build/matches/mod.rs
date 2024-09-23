@@ -25,7 +25,6 @@ use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
 
-
 // helper functions, broken out by category:
 mod match_pair;
 mod simplify;
