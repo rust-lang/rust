@@ -35,7 +35,7 @@ LL |         .map_err(|_| ())?;
              `String` implements `From<&mut str>`
              `String` implements `From<&str>`
              `String` implements `From<Box<str>>`
-             `String` implements `From<Cow<'a, str>>`
+             `String` implements `From<Cow<'_, str>>`
              `String` implements `From<char>`
    = note: required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
 

@@ -23,7 +23,7 @@ LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter()) {
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`, which is required by `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>: IntoIterator`
-   = help: the trait `Iterator` is implemented for `std::slice::Iter<'a, T>`
+   = help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `Iterator`
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
 
@@ -52,7 +52,7 @@ LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone(
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`, which is required by `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>: IntoIterator`
-   = help: the trait `Iterator` is implemented for `std::slice::Iter<'a, T>`
+   = help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `Iterator`
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
 

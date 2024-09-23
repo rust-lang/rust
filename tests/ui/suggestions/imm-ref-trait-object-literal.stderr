@@ -6,7 +6,7 @@ LL |   foo(&s);
    |   |
    |   required by a bound introduced by this call
    |
-   = help: the trait `Trait` is implemented for `&'a mut S`
+   = help: the trait `Trait` is implemented for `&mut S`
 note: required by a bound in `foo`
   --> $DIR/imm-ref-trait-object-literal.rs:7:11
    |

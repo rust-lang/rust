@@ -4,7 +4,7 @@ error[E0277]: the trait bound `A<_>: Bar<_>` is not satisfied
 LL |     let _ = A;
    |             ^ the trait `Bar<_>` is not implemented for `A<_>`
    |
-   = help: the trait `Bar<_>` is implemented for `A<7>`
+   = help: the trait `Bar<_>` is implemented for `A<{ 6 + 1 }>`
 note: required by a bound in `A`
   --> $DIR/unused-substs-1.rs:9:11
    |
