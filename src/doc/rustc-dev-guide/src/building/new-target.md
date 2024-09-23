@@ -142,7 +142,7 @@ to fail. To work around the warnings, you may want to disable `deny-warnings`
 in the config, or modify the dependency to remove the warnings.
 
 ```toml
-# /config.toml
+# config.toml
 [rust]
 deny-warnings = false
 ```
