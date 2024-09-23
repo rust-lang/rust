@@ -1,10 +1,14 @@
-use rustc_hir::{Block, Expr, ExprKind, HirId, LangItem};
+use rustc_ast::visit::{visit_opt, walk_list};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{declare_lint, impl_lint_pass};
+use rustc_span::Span;
 use rustc_span::symbol::sym;
 
-use crate::lints::InstantlyDangling;
-use crate::{LateContext, LateLintPass, LintContext};
+use crate::lints::DanglingPointersFromTemporaries;
+use crate::{LateContext, LateLintPass};
 
 declare_lint! {
     /// The `dangling_pointers_from_temporaries` lint detects getting a pointer to data
@@ -38,58 +42,6 @@ declare_lint! {
     "detects getting a pointer from a temporary"
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum LifetimeExtension {
-    /// Lifetime extension has not kicked in yet, but it will soon.
-    /// Example: walking LHS of a function/method call.
-    EnableLater { after_exit: HirId, until_exit: HirId },
-    /// Lifetime extension is currently active.
-    /// Example: walking a function/method call's arguments.
-    Enable { until_exit: HirId },
-    /// Temporary disable lifetime extension.
-    /// Example: statements of a block that is a function/method call's argument.
-    Disable { until_exit: HirId },
-}
-
-#[derive(Clone, Default)]
-pub(crate) struct DanglingPointers {
-    /// Trying to deal with argument lifetime extension.
-    ///
-    /// This produces a dangling pointer:
-    /// ```ignore (example)
-    /// let ptr = CString::new("hello").unwrap().as_ptr();
-    /// foo(ptr)
-    /// ```
-    ///
-    /// But this does not:
-    /// ```ignore (example)
-    /// foo(CString::new("hello").unwrap().as_ptr())
-    /// ```
-    ///
-    /// But this does:
-    /// ```ignore (example)
-    /// foo({ let ptr = CString::new("hello").unwrap().as_ptr(); ptr })
-    /// ```
-    ///
-    /// We have to deal with this situation somehow.
-    ///
-    /// If we were a visitor, we could just keep track of
-    /// when we enter and exit places where lifetime extension kicks in
-    /// during visiting/walking and update a boolean flag accordingly.
-    ///
-    /// But we are not a visitor. We are a LateLintPass.
-    /// We are not the one who does the visiting & walking
-    /// and can maintain this state directly in the call stack.
-    /// But we do get called on every expression there is,
-    /// both when entering it and exiting from it
-    /// during our depth-first walk of the tree.
-    /// So let's try to maintain this context stack explicitly
-    /// instead of as a part of the call stack.
-    nested_calls: Vec<LifetimeExtension>,
-}
-
-impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
-
 /// FIXME: false negatives (i.e. the lint is not emitted when it should be)
 /// 1. Method calls that are not checked for:
 ///    - [`temporary_unsafe_cell.get()`][`core::cell::UnsafeCell::get()`]
@@ -101,39 +53,77 @@ impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
 ///    - `&raw [mut] temporary`
 ///    - `&temporary as *(const|mut) _`
 ///    - `ptr::from_ref(&temporary)` and friends
+#[derive(Clone, Copy, Default)]
+pub(crate) struct DanglingPointers;
+
+impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
+
+// This skips over const blocks, but they cannot use or return a dangling pointer anyways.
 impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some(LifetimeExtension::Enable { .. }) = self.nested_calls.last() {
-            match expr.kind {
-                ExprKind::Block(Block { stmts: [.., last_stmt], .. }, _) => self
-                    .nested_calls
-                    .push(LifetimeExtension::Disable { until_exit: last_stmt.hir_id }),
-                _ => return,
-            }
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        _: FnKind<'tcx>,
+        _: &'tcx FnDecl<'tcx>,
+        body: &'tcx Body<'tcx>,
+        _: Span,
+        _: LocalDefId,
+    ) {
+        DanglingPointerSearcher { cx, suppress: false }.visit_body(body)
+    }
+}
+
+/// This produces a dangling pointer:
+/// ```ignore (example)
+/// let ptr = CString::new("hello").unwrap().as_ptr();
+/// foo(ptr)
+/// ```
+///
+/// But this does not:
+/// ```ignore (example)
+/// foo(CString::new("hello").unwrap().as_ptr())
+/// ```
+///
+/// But this does:
+/// ```ignore (example)
+/// foo({ let ptr = CString::new("hello").unwrap().as_ptr(); ptr })
+/// ```
+///
+/// So we have to keep track of when we are inside of a function/method call argument.
+struct DanglingPointerSearcher<'lcx, 'tcx> {
+    cx: &'lcx LateContext<'tcx>,
+    /// Keeps track of whether we are inside of function/method call arguments,
+    /// where this lint should not be emitted.
+    ///
+    /// See [the main doc][`Self`] for examples.
+    suppress: bool,
+}
+
+impl Visitor<'_> for DanglingPointerSearcher<'_, '_> {
+    fn visit_expr(&mut self, expr: &Expr<'_>) -> Self::Result {
+        if !self.suppress {
+            lint_expr(self.cx, expr)
         }
-
-        lint_expr(cx, expr);
-
-        if let ExprKind::Call(lhs, _args) | ExprKind::MethodCall(_, lhs, _args, _) = expr.kind {
-            self.nested_calls.push(LifetimeExtension::EnableLater {
-                after_exit: lhs.hir_id,
-                until_exit: expr.hir_id,
-            })
+        match expr.kind {
+            ExprKind::Call(lhs, args) | ExprKind::MethodCall(_, lhs, args, _) => {
+                self.visit_expr(lhs);
+                self.with_suppress(true, |this| walk_list!(this, visit_expr, args))
+            }
+            ExprKind::Block(&Block { stmts, expr, .. }, _) => {
+                self.with_suppress(false, |this| walk_list!(this, visit_stmt, stmts));
+                visit_opt!(self, visit_expr, expr)
+            }
+            _ => walk_expr(self, expr),
         }
     }
+}
 
-    fn check_expr_post(&mut self, _: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        while let Some(_) = self.nested_calls.pop_if(|pos| match pos {
-            LifetimeExtension::Enable { until_exit }
-            | LifetimeExtension::Disable { until_exit } => expr.hir_id == *until_exit,
-
-            &mut LifetimeExtension::EnableLater { after_exit, until_exit } => {
-                if expr.hir_id == after_exit {
-                    *pos = LifetimeExtension::Enable { until_exit };
-                };
-                false
-            }
-        }) {}
+impl DanglingPointerSearcher<'_, '_> {
+    fn with_suppress<R>(&mut self, suppress: bool, callback: impl FnOnce(&mut Self) -> R) -> R {
+        let old = core::mem::replace(&mut self.suppress, suppress);
+        let result = callback(self);
+        self.suppress = old;
+        result
     }
 }
 
@@ -144,10 +134,12 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let ty = cx.typeck_results().expr_ty(receiver)
         && is_interesting(cx.tcx, ty)
     {
-        cx.emit_span_lint(
+        // FIXME: use `emit_node_lint` when `#[primary_span]` is added.
+        cx.tcx.emit_node_span_lint(
             DANGLING_POINTERS_FROM_TEMPORARIES,
+            expr.hir_id,
             method.ident.span,
-            InstantlyDangling {
+            DanglingPointersFromTemporaries {
                 callee: method.ident.name,
                 ty,
                 ptr_span: method.ident.span,

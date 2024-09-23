@@ -233,7 +233,7 @@ late_lint_methods!(
             UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
             ShadowedIntoIter: ShadowedIntoIter,
             DropTraitConstraints: DropTraitConstraints,
-            DanglingPointers: DanglingPointers::default(),
+            DanglingPointers: DanglingPointers,
             NonPanicFmt: NonPanicFmt,
             NoopMethodCall: NoopMethodCall,
             EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,

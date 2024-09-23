@@ -1142,8 +1142,8 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 #[diag(lint_instantly_dangling)]
 #[note]
 #[help]
-// FIXME: use #[primary_span]
-pub(crate) struct InstantlyDangling<'tcx> {
+// FIXME: put #[primary_span] on `ptr_span` once it does not cause conflicts
+pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
     pub callee: Symbol,
     pub ty: Ty<'tcx>,
     #[label(lint_label_ptr)]
