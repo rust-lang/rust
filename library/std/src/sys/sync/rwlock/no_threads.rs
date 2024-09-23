@@ -62,4 +62,9 @@ impl RwLock {
     pub unsafe fn write_unlock(&self) {
         assert_eq!(self.mode.replace(0), -1);
     }
+
+    #[inline]
+    pub unsafe fn downgrade(&self) {
+        assert_eq!(self.mode.replace(1), -1);
+    }
 }
