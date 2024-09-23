@@ -2,7 +2,6 @@
 
 #![allow(non_camel_case_types)]
 #![feature(return_type_notation)]
-//~^ WARN the feature `return_type_notation` is incomplete
 
 trait Foo {
     type test;

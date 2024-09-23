@@ -17,7 +17,7 @@ use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{
     FmtPrinter, Print, PrintTraitPredicateExt as _, PrintTraitRefExt as _,
     with_forced_trimmed_paths,
@@ -1788,22 +1788,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         return false;
                     }
 
-                    let cand = self.resolve_vars_if_possible(impl_trait_ref).fold_with(
-                        &mut BottomUpFolder {
-                            tcx: self.tcx,
-                            ty_op: |ty| ty,
-                            lt_op: |lt| lt,
-                            ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
-                        },
-                    );
-                    if cand.references_error() {
+                    let impl_trait_ref = self.resolve_vars_if_possible(impl_trait_ref);
+                    if impl_trait_ref.references_error() {
                         return false;
                     }
                     err.highlighted_help(vec![
-                        StringPart::normal(format!("the trait `{}` ", cand.print_trait_sugared())),
+                        StringPart::normal(format!(
+                            "the trait `{}` ",
+                            impl_trait_ref.print_trait_sugared()
+                        )),
                         StringPart::highlighted("is"),
                         StringPart::normal(" implemented for `"),
-                        StringPart::highlighted(cand.self_ty().to_string()),
+                        StringPart::highlighted(impl_trait_ref.self_ty().to_string()),
                         StringPart::normal("`"),
                     ]);
 
@@ -1915,15 +1911,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut impl_candidates: Vec<_> = impl_candidates
             .iter()
             .cloned()
+            .filter(|cand| !cand.trait_ref.references_error())
             .map(|mut cand| {
-                // Fold the consts so that they shows up as, e.g., `10`
-                // instead of `core::::array::{impl#30}::{constant#0}`.
-                cand.trait_ref = cand.trait_ref.fold_with(&mut BottomUpFolder {
-                    tcx: self.tcx,
-                    ty_op: |ty| ty,
-                    lt_op: |lt| lt,
-                    ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
-                });
+                // Normalize the trait ref in its *own* param-env so
+                // that consts are folded and any trivial projections
+                // are normalized.
+                cand.trait_ref = self
+                    .tcx
+                    .try_normalize_erasing_regions(
+                        self.tcx.param_env(cand.impl_def_id),
+                        cand.trait_ref,
+                    )
+                    .unwrap_or(cand.trait_ref);
                 cand
             })
             .collect();

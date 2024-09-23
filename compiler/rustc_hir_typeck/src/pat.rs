@@ -2412,7 +2412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        let len = len.try_eval_target_usize(self.tcx, self.param_env);
+        let len = self.try_structurally_resolve_const(span, len).try_to_target_usize(self.tcx);
 
         let guar = if let Some(len) = len {
             // Now we know the length...

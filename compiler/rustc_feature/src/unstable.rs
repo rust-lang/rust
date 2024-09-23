@@ -578,7 +578,7 @@ declare_features! (
     /// be used to describe E or vise-versa.
     (unstable, result_ffi_guarantees, "1.80.0", Some(110503)),
     /// Allows bounding the return type of AFIT/RPITIT.
-    (incomplete, return_type_notation, "1.70.0", Some(109417)),
+    (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
