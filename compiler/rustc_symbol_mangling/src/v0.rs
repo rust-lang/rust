@@ -607,45 +607,40 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 let _ = write!(self.out, "{bits:x}_");
             }
 
+            // Handle `str` as partial support for unsized constants
+            ty::Str => {
+                let tcx = self.tcx();
+                // HACK(jaic1): hide the `str` type behind a reference
+                // for the following transformation from valtree to raw bytes
+                let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, ct_ty);
+                let slice = valtree.try_to_raw_bytes(tcx, ref_ty).unwrap_or_else(|| {
+                    bug!("expected to get raw bytes from valtree {:?} for type {:}", valtree, ct_ty)
+                });
+                let s = std::str::from_utf8(slice).expect("non utf8 str from MIR interpreter");
+
+                // "e" for str as a basic type
+                self.push("e");
+
+                // FIXME(eddyb) use a specialized hex-encoding loop.
+                for byte in s.bytes() {
+                    let _ = write!(self.out, "{byte:02x}");
+                }
+
+                self.push("_");
+            }
+
             // FIXME(valtrees): Remove the special case for `str`
             // here and fully support unsized constants.
-            ty::Ref(_, inner_ty, mutbl) => {
+            ty::Ref(_, _, mutbl) => {
                 self.push(match mutbl {
                     hir::Mutability::Not => "R",
                     hir::Mutability::Mut => "Q",
                 });
 
-                match inner_ty.kind() {
-                    ty::Str if mutbl.is_not() => {
-                        let slice =
-                            valtree.try_to_raw_bytes(self.tcx(), ct_ty).unwrap_or_else(|| {
-                                bug!(
-                                    "expected to get raw bytes from valtree {:?} for type {:}",
-                                    valtree,
-                                    ct_ty
-                                )
-                            });
-                        let s =
-                            std::str::from_utf8(slice).expect("non utf8 str from MIR interpreter");
-
-                        self.push("e");
-
-                        // FIXME(eddyb) use a specialized hex-encoding loop.
-                        for byte in s.bytes() {
-                            let _ = write!(self.out, "{byte:02x}");
-                        }
-
-                        self.push("_");
-                    }
-                    _ => {
-                        let pointee_ty = ct_ty
-                            .builtin_deref(true)
-                            .expect("tried to dereference on non-ptr type");
-                        let dereferenced_const =
-                            ty::Const::new_value(self.tcx, valtree, pointee_ty);
-                        dereferenced_const.print(self)?;
-                    }
-                }
+                let pointee_ty =
+                    ct_ty.builtin_deref(true).expect("tried to dereference on non-ptr type");
+                let dereferenced_const = ty::Const::new_value(self.tcx, valtree, pointee_ty);
+                dereferenced_const.print(self)?;
             }
 
             ty::Array(..) | ty::Tuple(..) | ty::Adt(..) | ty::Slice(_) => {
