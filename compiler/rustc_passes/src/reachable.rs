@@ -318,10 +318,10 @@ impl<'tcx> ReachableContext<'tcx> {
                     ));
                     self.visit(instance.args);
                 }
-                GlobalAlloc::VTable(ty, trait_ref) => {
+                GlobalAlloc::VTable(ty, dyn_ty) => {
                     self.visit(ty);
                     // Manually visit to actually see the trait's `DefId`. Type visitors won't see it
-                    if let Some(trait_ref) = trait_ref {
+                    if let Some(trait_ref) = dyn_ty.principal() {
                         let ExistentialTraitRef { def_id, args } = trait_ref.skip_binder();
                         self.visit_def_id(def_id, "", &"");
                         self.visit(args);

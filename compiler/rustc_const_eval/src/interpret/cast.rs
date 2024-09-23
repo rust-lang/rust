@@ -128,7 +128,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             CastKind::DynStar => {
                 if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
                     // Initial cast from sized to dyn trait
-                    let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
+                    let vtable = self.get_vtable_ptr(src.layout.ty, data)?;
                     let vtable = Scalar::from_maybe_pointer(vtable, self);
                     let data = self.read_immediate(src)?.to_scalar();
                     let _assert_pointer_like = data.to_pointer(self)?;
@@ -446,12 +446,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
 
                 // Get the destination trait vtable and return that.
-                let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
+                let new_vptr = self.get_vtable_ptr(ty, data_b)?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
             (_, &ty::Dynamic(data, _, ty::Dyn)) => {
                 // Initial cast from sized to dyn trait
-                let vtable = self.get_vtable_ptr(src_pointee_ty, data.principal())?;
+                let vtable = self.get_vtable_ptr(src_pointee_ty, data)?;
                 let ptr = self.read_pointer(src)?;
                 let val = Immediate::new_dyn_trait(ptr, vtable, &*self.tcx);
                 self.write_immediate(val, dest)

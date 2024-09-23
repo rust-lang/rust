@@ -232,9 +232,8 @@ impl<'s> AllocDecodingSession<'s> {
             }
             AllocDiscriminant::VTable => {
                 trace!("creating vtable alloc ID");
-                let ty = <Ty<'_> as Decodable<D>>::decode(decoder);
-                let poly_trait_ref =
-                    <Option<ty::PolyExistentialTraitRef<'_>> as Decodable<D>>::decode(decoder);
+                let ty = Decodable::decode(decoder);
+                let poly_trait_ref = Decodable::decode(decoder);
                 trace!("decoded vtable alloc instance: {ty:?}, {poly_trait_ref:?}");
                 decoder.interner().reserve_and_set_vtable_alloc(ty, poly_trait_ref, CTFE_ALLOC_SALT)
             }
@@ -259,7 +258,10 @@ pub enum GlobalAlloc<'tcx> {
     /// The alloc ID is used as a function pointer.
     Function { instance: Instance<'tcx> },
     /// This alloc ID points to a symbolic (not-reified) vtable.
-    VTable(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
+    /// We remember the full dyn type, not just the principal trait, so that
+    /// const-eval and Miri can detect UB due to invalid transmutes of
+    /// `dyn Trait` types.
+    VTable(Ty<'tcx>, &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>),
     /// The alloc ID points to a "lazy" static variable that did not get computed (yet).
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
@@ -293,7 +295,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
     #[inline]
     pub fn unwrap_vtable(&self) -> (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
         match *self {
-            GlobalAlloc::VTable(ty, poly_trait_ref) => (ty, poly_trait_ref),
+            GlobalAlloc::VTable(ty, dyn_ty) => (ty, dyn_ty.principal()),
             _ => bug!("expected vtable, got {:?}", self),
         }
     }
@@ -398,10 +400,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn reserve_and_set_vtable_alloc(
         self,
         ty: Ty<'tcx>,
-        poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        dyn_ty: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         salt: usize,
     ) -> AllocId {
-        self.reserve_and_set_dedup(GlobalAlloc::VTable(ty, poly_trait_ref), salt)
+        self.reserve_and_set_dedup(GlobalAlloc::VTable(ty, dyn_ty), salt)
     }
 
     /// Interns the `Allocation` and return a new `AllocId`, even if there's already an identical

@@ -63,6 +63,6 @@ fn main() {
         let baz: &dyn Baz = &1;
         let baz_fake: *const dyn Bar = std::mem::transmute(baz);
         let _err = baz_fake as *const dyn Foo;
-        //~^ERROR: using vtable for trait `Baz` but trait `Bar` was expected
+        //~^ERROR: using vtable for `Baz` but `Bar` was expected
     }
 }
