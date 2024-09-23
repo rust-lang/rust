@@ -7,18 +7,20 @@
 //@[x64] only-x86_64
 // Reason: hotpatch is only implemented for X86
 
-use run_make_support::{llvm, rfs, rustc};
+use run_make_support::{llvm, rustc};
 
 fn main() {
+    let disassemble_symbols_arg = "--disassemble-symbols=tailcall_fn,empty_fn";
     {
         rustc().input("lib.rs").crate_name("regular").crate_type("lib").opt_level("3").run();
 
         let regular_dump = llvm::llvm_objdump()
-            .arg("--disassemble-symbols=tailcall_fn,empty_fn,return_42")
+            .arg(disassemble_symbols_arg)
             .input("libregular.rlib")
-            .run();
+            .run()
+            .stdout_utf8();
 
-        llvm::llvm_filecheck().patterns("lib.rs").stdin_buf(regular_dump.stdout_utf8()).run();
+        llvm::llvm_filecheck().patterns("lib.rs").stdin_buf(regular_dump).run();
     }
 
     {
@@ -31,14 +33,15 @@ fn main() {
             .run();
 
         let hotpatch_dump = llvm::llvm_objdump()
-            .arg("--disassemble-symbols=tailcall_fn,empty_fn,return_42")
+            .arg(disassemble_symbols_arg)
             .input("libhotpatch.rlib")
-            .run();
+            .run()
+            .stdout_utf8();
 
         llvm::llvm_filecheck()
             .patterns("lib.rs")
             .check_prefix("HOTPATCH")
-            .stdin_buf(hotpatch_dump.stdout_utf8())
+            .stdin_buf(hotpatch_dump)
             .run();
     }
 }
