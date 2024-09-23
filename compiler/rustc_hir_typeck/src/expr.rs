@@ -1491,8 +1491,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count = self.lower_array_length(count);
-        if let Some(count) = count.try_eval_target_usize(tcx, self.param_env) {
+        let count_span = count.span();
+        let count = self.try_structurally_resolve_const(count_span, self.lower_array_length(count));
+
+        if let Some(count) = count.try_to_target_usize(tcx) {
             self.suggest_array_len(expr, count);
         }
 
@@ -1520,19 +1522,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
-        self.check_repeat_element_needs_copy_bound(element, count, element_ty);
+        // If the length is 0, we don't create any elements, so we don't copy any.
+        // If the length is 1, we don't copy that one element, we move it. Only check
+        // for `Copy` if the length is larger, or unevaluated.
+        // FIXME(min_const_generic_exprs): We could perhaps defer this check so that
+        // we don't require `<?0t as Tr>::CONST` doesn't unnecessarily require `Copy`.
+        if count.try_to_target_usize(tcx).is_none_or(|x| x > 1) {
+            self.enforce_repeat_element_needs_copy_bound(element, element_ty);
+        }
 
         let ty = Ty::new_array_with_const_len(tcx, t, count);
-
         self.register_wf_obligation(ty.into(), expr.span, ObligationCauseCode::WellFormed(None));
-
         ty
     }
 
-    fn check_repeat_element_needs_copy_bound(
+    /// Requires that `element_ty` is `Copy` (unless it's a const expression itself).
+    fn enforce_repeat_element_needs_copy_bound(
         &self,
         element: &hir::Expr<'_>,
-        count: ty::Const<'tcx>,
         element_ty: Ty<'tcx>,
     ) {
         let tcx = self.tcx;
@@ -1565,27 +1572,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => traits::IsConstable::No,
         };
 
-        // If the length is 0, we don't create any elements, so we don't copy any. If the length is 1, we
-        // don't copy that one element, we move it. Only check for Copy if the length is larger.
-        if count.try_eval_target_usize(tcx, self.param_env).is_none_or(|len| len > 1) {
-            let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
-            let code = traits::ObligationCauseCode::RepeatElementCopy {
-                is_constable,
-                elt_type: element_ty,
-                elt_span: element.span,
-                elt_stmt_span: self
-                    .tcx
-                    .hir()
-                    .parent_iter(element.hir_id)
-                    .find_map(|(_, node)| match node {
-                        hir::Node::Item(it) => Some(it.span),
-                        hir::Node::Stmt(stmt) => Some(stmt.span),
-                        _ => None,
-                    })
-                    .expect("array repeat expressions must be inside an item or statement"),
-            };
-            self.require_type_meets(element_ty, element.span, code, lang_item);
-        }
+        let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
+        let code = traits::ObligationCauseCode::RepeatElementCopy {
+            is_constable,
+            elt_type: element_ty,
+            elt_span: element.span,
+            elt_stmt_span: self
+                .tcx
+                .hir()
+                .parent_iter(element.hir_id)
+                .find_map(|(_, node)| match node {
+                    hir::Node::Item(it) => Some(it.span),
+                    hir::Node::Stmt(stmt) => Some(stmt.span),
+                    _ => None,
+                })
+                .expect("array repeat expressions must be inside an item or statement"),
+        };
+        self.require_type_meets(element_ty, element.span, code, lang_item);
     }
 
     fn check_expr_tuple(
@@ -2800,9 +2803,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
     ) {
         err.span_label(field.span, "unknown field");
-        if let (Some(len), Ok(user_index)) =
-            (len.try_eval_target_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
-        {
+        if let (Some(len), Ok(user_index)) = (
+            self.try_structurally_resolve_const(base.span, len).try_to_target_usize(self.tcx),
+            field.as_str().parse::<u64>(),
+        ) {
             let help = "instead of using tuple indexing, use array indexing";
             let applicability = if len < user_index {
                 Applicability::MachineApplicable
