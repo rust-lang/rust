@@ -63,7 +63,7 @@ macro_rules! book {
                     src: builder.src.join($path),
                     parent: Some(self),
                     languages: $lang.into(),
-                    rustdoc: None,
+                    rustdoc_compiler: None,
                 })
             }
         }
@@ -113,7 +113,7 @@ impl Step for UnstableBook {
             src: builder.md_doc_out(self.target).join("unstable-book"),
             parent: Some(self),
             languages: vec![],
-            rustdoc: None,
+            rustdoc_compiler: None,
         })
     }
 }
@@ -125,7 +125,7 @@ struct RustbookSrc<P: Step> {
     src: PathBuf,
     parent: Option<P>,
     languages: Vec<&'static str>,
-    rustdoc: Option<PathBuf>,
+    rustdoc_compiler: Option<Compiler>,
 }
 
 impl<P: Step> Step for RustbookSrc<P> {
@@ -157,7 +157,9 @@ impl<P: Step> Step for RustbookSrc<P> {
             let _ = fs::remove_dir_all(&out);
 
             let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-            if let Some(mut rustdoc) = self.rustdoc {
+
+            if let Some(compiler) = self.rustdoc_compiler {
+                let mut rustdoc = builder.rustdoc(compiler);
                 rustdoc.pop();
                 let old_path = env::var_os("PATH").unwrap_or_default();
                 let new_path =
@@ -165,6 +167,7 @@ impl<P: Step> Step for RustbookSrc<P> {
                         .expect("could not add rustdoc to PATH");
 
                 rustbook_cmd.env("PATH", new_path);
+                builder.add_rustc_lib_path(compiler, &mut rustbook_cmd);
             }
 
             rustbook_cmd.arg("build").arg(&src).arg("-d").arg(&out).run(builder);
@@ -240,7 +243,7 @@ impl Step for TheBook {
             src: absolute_path.clone(),
             parent: Some(self),
             languages: vec![],
-            rustdoc: None,
+            rustdoc_compiler: None,
         });
 
         // building older edition redirects
@@ -253,7 +256,7 @@ impl Step for TheBook {
                 // treat the other editions as not having a parent.
                 parent: Option::<Self>::None,
                 languages: vec![],
-                rustdoc: None,
+                rustdoc_compiler: None,
             });
         }
 
@@ -1236,7 +1239,7 @@ impl Step for RustcBook {
             src: out_base,
             parent: Some(self),
             languages: vec![],
-            rustdoc: None,
+            rustdoc_compiler: None,
         });
     }
 }
@@ -1270,16 +1273,15 @@ impl Step for Reference {
         // This is needed for generating links to the standard library using
         // the mdbook-spec plugin.
         builder.ensure(compile::Std::new(self.compiler, builder.config.build));
-        let rustdoc = builder.rustdoc(self.compiler);
 
         // Run rustbook/mdbook to generate the HTML pages.
         builder.ensure(RustbookSrc {
             target: self.target,
             name: "reference".to_owned(),
             src: builder.src.join("src/doc/reference"),
+            rustdoc_compiler: Some(self.compiler),
             parent: Some(self),
             languages: vec![],
-            rustdoc: Some(rustdoc),
         });
     }
 }
