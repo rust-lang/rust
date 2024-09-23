@@ -43,11 +43,8 @@ pub struct CompletionFieldsToResolve {
     pub resolve_tags: bool,
     pub resolve_detail: bool,
     pub resolve_documentation: bool,
-    pub resolve_sort_text: bool,
     pub resolve_filter_text: bool,
     pub resolve_text_edit: bool,
-    // FIXME: those are always resolved
-    // pub resolve_additional_text_edits: bool,
     pub resolve_command: bool,
 }
 
@@ -58,7 +55,6 @@ impl CompletionFieldsToResolve {
             resolve_tags: false,
             resolve_detail: false,
             resolve_documentation: false,
-            resolve_sort_text: false,
             resolve_filter_text: false,
             resolve_text_edit: false,
             resolve_command: false,
