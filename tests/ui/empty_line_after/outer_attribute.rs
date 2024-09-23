@@ -60,6 +60,13 @@ mod foo {}
 
 fn comment_before_empty_line() {}
 
+//~v empty_line_after_outer_attr
+#[allow(unused)]
+
+// This comment is isolated
+
+pub fn isolated_comment() {}
+
 #[doc = "
 Returns the escaped value of the textual representation of
 

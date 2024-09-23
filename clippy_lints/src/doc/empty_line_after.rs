@@ -8,7 +8,7 @@ use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_hir::{ItemKind, Node};
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
-use rustc_span::{ExpnKind, InnerSpan, Span, SpanData};
+use rustc_span::{BytePos, ExpnKind, InnerSpan, Span, SpanData};
 
 use super::{EMPTY_LINE_AFTER_DOC_COMMENTS, EMPTY_LINE_AFTER_OUTER_ATTR};
 
@@ -144,6 +144,19 @@ impl<'a> Gap<'a> {
             prev_chunk,
         })
     }
+
+    fn contiguous_empty_lines(&self) -> impl Iterator<Item = Span> + '_ {
+        self.empty_lines
+            // The `+ BytePos(1)` means "next line", because each empty line span is "N:1-N:1".
+            .chunk_by(|a, b| a.hi() + BytePos(1) == b.lo())
+            .map(|chunk| {
+                let first = chunk.first().expect("at least one empty line");
+                let last = chunk.last().expect("at least one empty line");
+                // The BytePos subtraction here is safe, as before an empty line, there must be at least one
+                // attribute/comment. The span needs to start at the end of the previous line.
+                first.with_lo(first.lo() - BytePos(1)).with_hi(last.hi())
+            })
+    }
 }
 
 /// If the node the attributes/docs apply to is the first in the module/crate suggest converting
@@ -192,6 +205,7 @@ fn check_gaps(cx: &LateContext<'_>, gaps: &[Gap<'_>]) -> bool {
         return false;
     };
     let empty_lines = || gaps.iter().flat_map(|gap| gap.empty_lines.iter().copied());
+    let contiguous_empty_lines = || gaps.iter().flat_map(Gap::contiguous_empty_lines);
     let mut has_comment = false;
     let mut has_attr = false;
     for gap in gaps {
@@ -227,7 +241,9 @@ fn check_gaps(cx: &LateContext<'_>, gaps: &[Gap<'_>]) -> bool {
 
             diag.multipart_suggestion_with_style(
                 format!("if the empty {lines} {are} unintentional remove {them}"),
-                empty_lines().map(|empty_line| (empty_line, String::new())).collect(),
+                contiguous_empty_lines()
+                    .map(|empty_lines| (empty_lines, String::new()))
+                    .collect(),
                 Applicability::MaybeIncorrect,
                 SuggestionStyle::HideCodeAlways,
             );
