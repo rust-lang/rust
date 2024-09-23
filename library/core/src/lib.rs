@@ -119,6 +119,7 @@
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
 #![feature(const_cell_into_inner)]
+#![feature(const_char_encode_utf16)]
 #![feature(const_char_encode_utf8)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
