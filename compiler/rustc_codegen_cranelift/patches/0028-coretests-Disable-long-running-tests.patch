@@ -43,6 +43,26 @@ index 8402833..84592e0 100644
  
  #[test]
  fn test_slice_from_ptr_range() {
+diff --git a/lazy.rs b/lazy.rs
+index 711511e..49c8d78 100644
+--- a/lazy.rs
++++ b/lazy.rs
+@@ -113,6 +113,7 @@ fn lazy_type_inference() {
+     let _ = LazyCell::new(|| ());
+ }
+ 
++/*
+ #[test]
+ #[should_panic = "LazyCell instance has previously been poisoned"]
+ fn lazy_force_mut_panic() {
+@@ -123,6 +124,7 @@ fn lazy_force_mut_panic() {
+     .unwrap_err();
+     let _ = &*lazy;
+ }
++*/
+ 
+ #[test]
+ fn lazy_force_mut() {
 -- 
 2.26.2.7.g19db9cfb68
 

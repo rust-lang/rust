@@ -508,7 +508,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(
                     nop_inst,
-                    format!("virtual call; self arg pass mode: {:?}", fn_abi.args[0]),
+                    with_no_trimmed_paths!(format!(
+                        "virtual call; self arg pass mode: {:?}",
+                        fn_abi.args[0]
+                    )),
                 );
             }
 
