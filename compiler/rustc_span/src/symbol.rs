@@ -2058,6 +2058,7 @@ symbols! {
         unmarked_api,
         unnamed_fields,
         unpin,
+        unqualified_local_imports,
         unreachable,
         unreachable_2015,
         unreachable_2015_macro,

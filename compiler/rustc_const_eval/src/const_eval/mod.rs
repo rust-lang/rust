@@ -16,12 +16,12 @@ mod fn_queries;
 mod machine;
 mod valtrees;
 
-pub use dummy_machine::*;
-pub use error::*;
-pub use eval_queries::*;
-pub use fn_queries::*;
-pub use machine::*;
-pub(crate) use valtrees::{eval_to_valtree, valtree_to_const_value};
+pub use self::dummy_machine::*;
+pub use self::error::*;
+pub use self::eval_queries::*;
+pub use self::fn_queries::*;
+pub use self::machine::*;
+pub(crate) use self::valtrees::{eval_to_valtree, valtree_to_const_value};
 
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
 const VALTREE_MAX_NODES: usize = 100000;
