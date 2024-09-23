@@ -2871,7 +2871,9 @@ pub type AttrVec = ThinVec<Attribute>;
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Attribute {
     pub kind: AttrKind,
-    pub id: AttrId,
+    pub attr_id: AttrId,
+    /// useful if you want to name resolve the contents of an attribute
+    pub node_id: NodeId,
     /// Denotes if the attribute decorates the following construct (outer)
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
@@ -3526,7 +3528,7 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(AssocItem, 88);
     static_assert_size!(AssocItemKind, 16);
-    static_assert_size!(Attribute, 32);
+    static_assert_size!(Attribute, 40);
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);

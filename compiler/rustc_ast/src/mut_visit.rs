@@ -631,7 +631,7 @@ fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut P<Local>) {
 }
 
 fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
-    let Attribute { kind, id: _, style: _, span } = attr;
+    let Attribute { kind, attr_id: _, node_id, style: _, span } = attr;
     match kind {
         AttrKind::Normal(normal) => {
             let NormalAttr {
@@ -642,8 +642,11 @@ fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
             visit_attr_args(vis, args);
             visit_lazy_tts(vis, tokens);
             visit_lazy_tts(vis, attr_tokens);
+            vis.visit_id(node_id);
         }
-        AttrKind::DocComment(_kind, _sym) => {}
+        AttrKind::DocComment(_kind, _sym) => {
+            vis.visit_id(node_id);
+        }
     }
     vis.visit_span(span);
 }

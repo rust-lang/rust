@@ -1242,8 +1242,8 @@ impl PartialEq for Attributes {
             && self
                 .other_attrs
                 .iter()
-                .map(|attr| attr.id)
-                .eq(rhs.other_attrs.iter().map(|attr| attr.id))
+                .map(|attr| attr.attr_id)
+                .eq(rhs.other_attrs.iter().map(|attr| attr.attr_id))
     }
 }
 

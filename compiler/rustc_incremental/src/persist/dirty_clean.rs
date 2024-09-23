@@ -375,7 +375,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             let Some(assertion) = self.assertion_maybe(item_id, attr) else {
                 continue;
             };
-            self.checked_attrs.insert(attr.id);
+            self.checked_attrs.insert(attr.attr_id);
             for label in assertion.clean.items().into_sorted_stable_ord() {
                 let dep_node = DepNode::from_label_string(self.tcx, label, def_path_hash).unwrap();
                 self.assert_clean(item_span, dep_node);
@@ -444,9 +444,9 @@ impl<'tcx> FindAllAttrs<'tcx> {
 
     fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<ast::AttrId>) {
         for attr in &self.found_attrs {
-            if !checked_attrs.contains(&attr.id) {
+            if !checked_attrs.contains(&attr.attr_id) {
                 self.tcx.dcx().emit_err(errors::UncheckedClean { span: attr.span });
-                checked_attrs.insert(attr.id);
+                checked_attrs.insert(attr.attr_id);
             }
         }
     }

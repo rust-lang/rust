@@ -466,7 +466,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
-        self.record("Attribute", Id::Attr(attr.id), attr);
+        self.record("Attribute", Id::Attr(attr.attr_id), attr);
     }
 
     fn visit_inline_asm(&mut self, asm: &'v hir::InlineAsm<'v>, id: HirId) {

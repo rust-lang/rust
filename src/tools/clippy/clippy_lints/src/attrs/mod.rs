@@ -531,7 +531,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident() {
-                if is_lint_level(ident.name, attr.id) {
+                if is_lint_level(ident.name, attr.attr_id) {
                     blanket_clippy_restriction_lints::check(cx, ident.name, items);
                 }
                 if matches!(ident.name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {

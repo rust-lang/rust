@@ -730,7 +730,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sym::track_caller,
                     span,
                 )))),
-                id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
+                attr_id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
+                node_id: DUMMY_NODE_ID,
                 style: AttrStyle::Outer,
                 span: unstable_span,
             }]);

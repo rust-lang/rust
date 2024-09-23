@@ -270,7 +270,7 @@ impl<'a> Parser<'a> {
         // wrapping layer.
         let mut seen_indices = FxHashSet::default();
         for (i, attr) in ret.attrs().iter().enumerate() {
-            let is_unseen = self.capture_state.seen_attrs.insert(attr.id);
+            let is_unseen = self.capture_state.seen_attrs.insert(attr.attr_id);
             if !is_unseen {
                 seen_indices.insert(i);
             }
@@ -360,7 +360,7 @@ impl<'a> Parser<'a> {
         for attr in ret_attrs.iter() {
             if attr.style == ast::AttrStyle::Inner {
                 if let Some(inner_attr_parser_range) =
-                    self.capture_state.inner_attr_parser_ranges.remove(&attr.id)
+                    self.capture_state.inner_attr_parser_ranges.remove(&attr.attr_id)
                 {
                     inner_attr_parser_replacements.push((inner_attr_parser_range, None));
                 } else {

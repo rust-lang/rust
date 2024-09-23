@@ -333,7 +333,7 @@ impl<'a> Parser<'a> {
                 if let Capturing::Yes = self.capture_state.capturing {
                     let end_pos = self.num_bump_calls;
                     let parser_range = ParserRange(start_pos..end_pos);
-                    self.capture_state.inner_attr_parser_ranges.insert(attr.id, parser_range);
+                    self.capture_state.inner_attr_parser_ranges.insert(attr.attr_id, parser_range);
                 }
                 attrs.push(attr);
             } else {

@@ -222,7 +222,7 @@ impl Level {
 
     /// Converts an `Attribute` to a level.
     pub fn from_attr(attr: &Attribute) -> Option<Self> {
-        Self::from_symbol(attr.name_or_empty(), Some(attr.id))
+        Self::from_symbol(attr.name_or_empty(), Some(attr.attr_id))
     }
 
     /// Converts a `Symbol` to a level.
