@@ -26,7 +26,7 @@ use crate::{
     CompletionConfig,
 };
 
-const COMPLETION_MARKER: &str = "intellijRulezz";
+const COMPLETION_MARKER: &str = "raCompletionMarker";
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum PatternRefutability {
