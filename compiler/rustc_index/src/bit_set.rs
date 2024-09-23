@@ -460,6 +460,10 @@ impl<T: Idx> ChunkedBitSet<T> {
         self.chunks.iter().map(|chunk| chunk.count()).sum()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.chunks.iter().all(|chunk| matches!(chunk, Chunk::Zeros(..) | Chunk::Ones(0)))
+    }
+
     /// Returns `true` if `self` contains `elem`.
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
@@ -672,8 +676,60 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
         unimplemented!("implement if/when necessary");
     }
 
-    fn intersect(&mut self, _other: &ChunkedBitSet<T>) -> bool {
-        unimplemented!("implement if/when necessary");
+    fn intersect(&mut self, other: &ChunkedBitSet<T>) -> bool {
+        assert_eq!(self.domain_size, other.domain_size);
+        debug_assert_eq!(self.chunks.len(), other.chunks.len());
+
+        let mut changed = false;
+        for (mut self_chunk, other_chunk) in self.chunks.iter_mut().zip(other.chunks.iter()) {
+            match (&mut self_chunk, &other_chunk) {
+                (Zeros(..), _) | (_, Ones(..)) => {}
+                (
+                    Ones(self_chunk_domain_size),
+                    Zeros(other_chunk_domain_size) | Mixed(other_chunk_domain_size, ..),
+                )
+                | (Mixed(self_chunk_domain_size, ..), Zeros(other_chunk_domain_size)) => {
+                    debug_assert_eq!(self_chunk_domain_size, other_chunk_domain_size);
+                    changed = true;
+                    *self_chunk = other_chunk.clone();
+                }
+                (
+                    Mixed(
+                        self_chunk_domain_size,
+                        ref mut self_chunk_count,
+                        ref mut self_chunk_words,
+                    ),
+                    Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
+                ) => {
+                    // See [`<Self as BitRelations<ChunkedBitSet<T>>>::union`] for the explanation
+                    let op = |a, b| a & b;
+                    let num_words = num_words(*self_chunk_domain_size as usize);
+                    if bitwise_changes(
+                        &self_chunk_words[0..num_words],
+                        &other_chunk_words[0..num_words],
+                        op,
+                    ) {
+                        let self_chunk_words = Rc::make_mut(self_chunk_words);
+                        let has_changed = bitwise(
+                            &mut self_chunk_words[0..num_words],
+                            &other_chunk_words[0..num_words],
+                            op,
+                        );
+                        debug_assert!(has_changed);
+                        *self_chunk_count = self_chunk_words[0..num_words]
+                            .iter()
+                            .map(|w| w.count_ones() as ChunkSize)
+                            .sum();
+                        if *self_chunk_count == 0 {
+                            *self_chunk = Zeros(*self_chunk_domain_size);
+                        }
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        changed
     }
 }
 

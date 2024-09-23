@@ -1,20 +1,15 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{ExprKind, HirId, HirIdSet, OwnerId};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::IndexVec;
 use rustc_lint::{self as lint, Level};
 use rustc_macros::LintDiagnostic;
-use rustc_middle::mir::visit::{
-    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
-};
-use rustc_middle::mir::{
-    dump_mir, BasicBlock, Body, CallReturnPlaces, HasLocalDecls, Local, Location, Place,
-    ProjectionElem, Statement, Terminator, TerminatorEdges, TerminatorKind,
-};
+use rustc_middle::mir::{dump_mir, BasicBlock, Body, Local, Location, TerminatorKind};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis};
+use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
+use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::{Analysis, MaybeReachable};
 use rustc_span::Span;
-use rustc_type_ir::data_structures::IndexMap;
 use tracing::debug;
 
 fn blocks_reachable_from_tail_expr_rev(body: &Body<'_>, blocks: &mut BitSet<BasicBlock>) {
@@ -78,7 +73,7 @@ fn is_descendent_of_hir_id(
 
 pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<'tcx>) {
     if matches!(tcx.def_kind(def_id), rustc_hir::def::DefKind::SyntheticCoroutineBody) {
-        // Synthetic coroutine has no HIR body and it is enough to just analyse the original body
+        // A synthetic coroutine has no HIR body and it is enough to just analyse the original body
         return;
     }
     let (tail_expr_hir_id, tail_expr_span) = {
@@ -127,35 +122,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     let mut tail_expr_descendants: HirIdSet = [tail_expr_hir_id].into_iter().collect();
 
     let param_env = tcx.param_env(def_id);
-    let mut droppy_locals = IndexMap::default();
-    let (nr_upvars, nr_locals, mut droppy_local_mask) = if tcx.is_closure_like(def_id.to_def_id()) {
-        let captures = tcx.closure_captures(def_id);
-        let nr_upvars = captures.len();
-        let nr_body_locals = body.local_decls.len();
-        let mut mask = BitSet::new_empty(nr_body_locals + nr_upvars);
-        for (idx, &capture) in captures.iter().enumerate() {
-            let ty = capture.place.ty();
-            if ty.has_significant_drop(tcx, param_env) {
-                let upvar = Local::from_usize(nr_body_locals + idx);
-                mask.insert(upvar);
-                droppy_locals.insert(upvar, (capture.var_ident.span, ty));
-            }
-        }
-        (nr_upvars, nr_upvars + nr_body_locals, mask)
-    } else {
-        let nr_locals = body.local_decls.len();
-        (0, nr_locals, BitSet::new_empty(nr_locals))
-    };
-    for (local, decl) in body.local_decls().iter_enumerated() {
-        if local == Local::ZERO {
-            // return place is ignored
-            continue;
-        }
-        if decl.ty.has_significant_drop(tcx, param_env) {
-            droppy_local_mask.insert(local);
-            droppy_locals.insert(local, (decl.source_info.span, decl.ty));
-        }
-    }
+    let is_closure_like = tcx.is_closure_like(def_id.to_def_id());
 
     let nr_blocks = body.basic_blocks.len();
     let mut tail_expr_blocks = BitSet::new_empty(nr_blocks);
@@ -218,58 +185,87 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     }
     debug!(?tail_expr_exit_boundary_blocks);
 
-    let mut maybe_live = LiveLocals { nr_upvars, nr_body_locals: body.local_decls.len() }
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
-        .into_results_cursor(body);
-    let mut observables = BitSet::new_empty(nr_locals);
+    let move_data = MoveData::gather_moves(body, tcx, param_env, |_| true);
+    let mut droppy_paths = ChunkedBitSet::new_empty(move_data.move_paths.len());
+    let mut droppy_paths_not_in_tail = droppy_paths.clone();
+    for (idx, path) in move_data.move_paths.iter_enumerated() {
+        if path.place.ty(&body.local_decls, tcx).ty.has_significant_drop(tcx, param_env) {
+            droppy_paths.insert(idx);
+            if !tail_expr_span.contains(body.local_decls[path.place.local].source_info.span) {
+                droppy_paths_not_in_tail.insert(idx);
+            }
+        }
+    }
+    let maybe_init = MaybeInitializedPlaces::new(tcx, body, &move_data);
+    let mut maybe_init =
+        maybe_init.into_engine(tcx, body).iterate_to_fixpoint().into_results_cursor(body);
+    let mut observables = ChunkedBitSet::new_empty(move_data.move_paths.len());
     for block in tail_expr_exit_boundary_blocks.iter() {
         debug!(?observables);
         if boundary_lies_on_statement.contains(block) {
             let target = Location { block, statement_index: tail_expr_stmts[block] };
             debug!(?target, "in block");
-            maybe_live.seek_after_primary_effect(target);
+            maybe_init.seek_after_primary_effect(target);
         } else {
-            maybe_live.seek_to_block_start(block);
+            maybe_init.seek_to_block_start(block);
         }
-        let mut mask = droppy_local_mask.clone();
-        let alive = maybe_live.get();
-        debug!(?block, ?alive);
-        mask.intersect(alive);
-        observables.union(&mask);
+        if let MaybeReachable::Reachable(alive) = maybe_init.get() {
+            debug!(?block, ?alive);
+            let mut mask = droppy_paths.clone();
+            mask.intersect(alive);
+            observables.union(&mask);
+        }
     }
-    if observables.is_empty() {
-        debug!("no observable, bail");
-        return;
-    }
-    debug!(?observables, ?droppy_locals);
+    debug!(?observables);
     // A linted local has a span contained in the tail expression span
-    let Some((linted_local, (linted_local_span, linted_local_ty))) = observables
+    let Some(linted_move_path) = observables
         .iter()
-        .filter_map(|local| droppy_locals.get(&local).map(|&info| (local, info)))
-        .filter(|(_, (span, _))| tail_expr_span.contains(*span))
+        .map(|path| &move_data.move_paths[path])
+        .filter(|move_path| {
+            if move_path.place.local == Local::ZERO {
+                return false;
+            }
+            if is_closure_like && matches!(move_path.place.local, ty::CAPTURE_STRUCT_LOCAL) {
+                return false;
+            }
+            tail_expr_span.contains(body.local_decls[move_path.place.local].source_info.span)
+        })
         .nth(0)
     else {
         debug!("nothing to lint");
         return;
     };
-    debug!(?linted_local);
+    debug!(?linted_move_path);
     let body_observables: Vec<_> = observables
         .iter()
-        .filter(|&local| local != linted_local)
-        .filter_map(|local| droppy_locals.get(&local))
-        .map(|&(span, _)| span)
+        .filter_map(|idx| {
+            // We want to lint on place/local in body, not another tail expression temporary.
+            // Also, closures always drops their upvars last, so we don't have to lint about them.
+            let base_local = move_data.base_local(idx);
+            if base_local == linted_move_path.place.local || base_local == Local::ZERO {
+                debug!(?base_local, "skip");
+                return None;
+            }
+            if is_closure_like && matches!(base_local, ty::CAPTURE_STRUCT_LOCAL) {
+                debug!(?base_local, "skip in closure");
+                return None;
+            }
+            droppy_paths_not_in_tail
+                .contains(idx)
+                .then_some(body.local_decls[base_local].source_info.span)
+        })
         .collect();
     if body_observables.is_empty() {
         debug!("nothing observable from body");
         return;
     }
-    debug!(?linted_local, ?body_observables);
-    let decorator = TailExprDropOrderLint { spans: body_observables, ty: linted_local_ty };
+    debug!(?body_observables);
+    let linted_local_decl = &body.local_decls[linted_move_path.place.local];
+    let decorator = TailExprDropOrderLint { spans: body_observables, ty: linted_local_decl.ty };
     tcx.emit_node_span_lint(
         lint::builtin::TAIL_EXPR_DROP_ORDER,
         tail_expr_hir_id,
-        linted_local_span,
+        linted_local_decl.source_info.span,
         decorator,
     );
 }
@@ -280,124 +276,4 @@ struct TailExprDropOrderLint<'a> {
     #[label]
     pub spans: Vec<Span>,
     pub ty: Ty<'a>,
-}
-
-struct LiveLocals {
-    nr_upvars: usize,
-    nr_body_locals: usize,
-}
-
-impl<'tcx> AnalysisDomain<'tcx> for LiveLocals {
-    type Domain = BitSet<Local>;
-    const NAME: &'static str = "liveness-by-use";
-
-    fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
-        debug_assert_eq!(self.nr_body_locals, body.local_decls.len());
-        BitSet::new_empty(self.nr_body_locals + self.nr_upvars)
-    }
-
-    fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
-        for arg in body.args_iter() {
-            state.insert(arg);
-        }
-        debug_assert_eq!(self.nr_body_locals, body.local_decls.len());
-        for upvar in 0..self.nr_upvars {
-            state.insert(Local::from_usize(self.nr_body_locals + upvar));
-        }
-    }
-}
-
-impl<'tcx> GenKillAnalysis<'tcx> for LiveLocals {
-    type Idx = Local;
-
-    fn domain_size(&self, body: &Body<'tcx>) -> usize {
-        body.local_decls.len()
-    }
-
-    fn statement_effect(
-        &mut self,
-        transfer: &mut impl GenKill<Self::Idx>,
-        statement: &Statement<'tcx>,
-        location: Location,
-    ) {
-        TransferFunction {
-            nr_upvars: self.nr_upvars,
-            nr_body_locals: self.nr_body_locals,
-            transfer,
-        }
-        .visit_statement(statement, location);
-    }
-
-    fn terminator_effect<'mir>(
-        &mut self,
-        transfer: &mut Self::Domain,
-        terminator: &'mir Terminator<'tcx>,
-        location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        TransferFunction {
-            nr_upvars: self.nr_upvars,
-            nr_body_locals: self.nr_body_locals,
-            transfer,
-        }
-        .visit_terminator(terminator, location);
-        terminator.edges()
-    }
-
-    fn call_return_effect(
-        &mut self,
-        trans: &mut Self::Domain,
-        _block: BasicBlock,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
-        return_places.for_each(|place| {
-            if let Some(local) = place.as_local() {
-                trans.gen_(local);
-            }
-        })
-    }
-}
-
-struct TransferFunction<'a, T> {
-    nr_upvars: usize,
-    nr_body_locals: usize,
-    transfer: &'a mut T,
-}
-
-impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
-where
-    T: GenKill<Local>,
-{
-    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-        let local = if let Some(local) = place.as_local() {
-            local
-        } else if let Place { local: ty::CAPTURE_STRUCT_LOCAL, projection } = *place
-            && let [ProjectionElem::Field(idx, _)] = **projection
-            && idx.as_usize() < self.nr_upvars
-        {
-            Local::from_usize(self.nr_body_locals + idx.as_usize())
-        } else {
-            return;
-        };
-
-        match context {
-            PlaceContext::NonUse(NonUseContext::StorageDead)
-            | PlaceContext::MutatingUse(MutatingUseContext::Drop | MutatingUseContext::Deinit)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
-                self.transfer.kill(local);
-                if matches!(local, ty::CAPTURE_STRUCT_LOCAL) && self.nr_upvars > 0 {
-                    for upvar in 0..self.nr_upvars {
-                        self.transfer.kill(Local::from_usize(self.nr_body_locals + upvar));
-                    }
-                }
-            }
-            PlaceContext::MutatingUse(
-                MutatingUseContext::Store
-                | MutatingUseContext::AsmOutput
-                | MutatingUseContext::Call,
-            ) => {
-                self.transfer.gen_(local);
-            }
-            _ => {}
-        }
-    }
 }
