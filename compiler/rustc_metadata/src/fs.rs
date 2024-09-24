@@ -5,6 +5,7 @@ use std::{fs, io};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{InstanceKind, TyCtxt};
 use rustc_session::config::{OutFileName, OutputType};
@@ -108,42 +109,67 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
                                 let def_id = local_def_id.to_def_id();
 
                                 let item = tcx.hir_node_by_def_id(*local_def_id);
-                                if item.body_id().is_none() {
+                                let has_hir_body = item.body_id().is_some();
+                                let ident = item.ident();
+                                let def_kind = tcx.def_kind(def_id);
+                                let has_mir = match def_kind {
+                                    DefKind::Ctor(_, _)
+                                    | DefKind::AnonConst
+                                    | DefKind::InlineConst
+                                    | DefKind::AssocConst
+                                    | DefKind::Const
+                                    | DefKind::SyntheticCoroutineBody => has_hir_body,
+                                    DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
+                                        if def_kind == DefKind::Closure && tcx.is_coroutine(def_id)
+                                        {
+                                            has_hir_body
+                                        } else {
+                                            let generics = tcx.generics_of(def_id);
+                                            has_hir_body
+                                                && (tcx.sess.opts.unstable_opts.always_encode_mir
+                                                    || (tcx
+                                                        .sess
+                                                        .opts
+                                                        .output_types
+                                                        .should_codegen()
+                                                        && (generics
+                                                            .requires_monomorphization(tcx)
+                                                            || tcx.cross_crate_inlinable(def_id))))
+                                        }
+                                    }
+                                    _ => false,
+                                };
+                                ident.hash_stable(hcx, &mut stable_hasher);
+                                if !has_mir {
                                     item.hash_stable(hcx, &mut stable_hasher);
                                     return Some(());
                                 }
 
-                                let generics = tcx.generics_of(def_id);
-                                let is_cross_crate_inlineable = generics
-                                    .requires_monomorphization(tcx)
-                                    || tcx.cross_crate_inlinable(def_id);
                                 let ty = tcx.type_of(def_id);
-                                is_cross_crate_inlineable.then(|| {
-                                    let body = tcx.instance_mir(InstanceKind::Item(def_id));
-                                    let blocks = body.basic_blocks.deref();
 
-                                    // Deref to avoid hashing cache of mir body.
-                                    let symbols = blocks
-                                        .iter()
-                                        .map(|bb| {
-                                            let kind = bb
-                                                .terminator
-                                                .as_ref()
-                                                .map(|terminator| terminator.kind.clone());
-                                            let statements = bb
-                                                .statements
-                                                .iter()
-                                                .map(|statement| statement.kind.clone())
-                                                .collect::<Vec<_>>();
+                                let body = tcx.instance_mir(InstanceKind::Item(def_id));
+                                let blocks = body.basic_blocks.deref();
 
-                                            (bb.is_cleanup, kind, statements)
-                                                .hash_stable(&mut hcx, &mut stable_hasher);
-                                            ()
-                                        })
-                                        .collect::<Vec<_>>();
+                                // Deref to avoid hashing cache of mir body.
+                                let _ = blocks
+                                    .iter()
+                                    .map(|bb| {
+                                        let kind = bb
+                                            .terminator
+                                            .as_ref()
+                                            .map(|terminator| terminator.kind.clone());
+                                        let statements = bb
+                                            .statements
+                                            .iter()
+                                            .map(|statement| statement.kind.clone())
+                                            .collect::<Vec<_>>();
 
-                                    symbols
-                                });
+                                        (bb.is_cleanup, kind, statements)
+                                            .hash_stable(&mut hcx, &mut stable_hasher);
+                                        ()
+                                    })
+                                    .collect::<Vec<_>>();
+
                                 ty.skip_binder().kind().hash_stable(&mut hcx, &mut stable_hasher);
 
                                 Some(())
