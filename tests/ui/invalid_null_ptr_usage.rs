@@ -25,11 +25,6 @@ fn main() {
 
         let _a: A = std::ptr::replace(std::ptr::null_mut(), A);
 
-        let _slice: *const [usize] = std::ptr::slice_from_raw_parts(std::ptr::null(), 0);
-        let _slice: *const [usize] = std::ptr::slice_from_raw_parts(std::ptr::null_mut(), 0);
-
-        let _slice: *const [usize] = std::ptr::slice_from_raw_parts_mut(std::ptr::null_mut(), 0);
-
         std::ptr::swap::<A>(std::ptr::null_mut(), &mut A);
         std::ptr::swap::<A>(&mut A, std::ptr::null_mut());
 
