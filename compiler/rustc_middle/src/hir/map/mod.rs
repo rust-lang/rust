@@ -598,7 +598,10 @@ impl<'hir> Map<'hir> {
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent_item(self, hir_id: HirId) -> OwnerId {
-        if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
+        if hir_id.local_id != ItemLocalId::ZERO {
+            // If this is a child of a HIR owner, return the owner.
+            hir_id.owner
+        } else if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
             def_id
         } else {
             CRATE_OWNER_ID
