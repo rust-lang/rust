@@ -1057,9 +1057,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Defaultness::Default(sp) => {
                 (hir::Defaultness::Default { has_value }, Some(self.lower_span(sp)))
             }
-            Defaultness::Final(sp) => {
-                (hir::Defaultness::Final, Some(sp))
-            }
+            Defaultness::Final(sp) => (hir::Defaultness::Final, Some(sp)),
         }
     }
 

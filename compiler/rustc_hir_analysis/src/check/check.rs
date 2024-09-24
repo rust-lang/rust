@@ -881,10 +881,32 @@ pub(super) fn check_specialization_validity<'tcx>(
     if let Err(parent_impl) = result {
         // FIXME(effects) the associated type from effects could be specialized
         if !tcx.is_impl_trait_in_trait(impl_item) && !tcx.is_effects_desugared_assoc_ty(impl_item) {
-            report_forbidden_specialization(tcx, impl_item, parent_impl);
+            let span = tcx.def_span(impl_item);
+            let ident = tcx.item_name(impl_item);
+
+            let err = match tcx.span_of_impl(parent_impl) {
+                Ok(sp) => errors::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
+                Err(cname) => errors::ImplNotMarkedDefault::Err { span, ident, cname },
+            };
+
+            tcx.dcx().emit_err(err);
         } else {
             tcx.dcx().delayed_bug(format!("parent item: {parent_impl:?} not marked as default"));
         }
+    }
+}
+
+fn check_overriding_final_trait_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_item: ty::AssocItem,
+    impl_item: ty::AssocItem,
+) {
+    if trait_item.defaultness(tcx).is_final() {
+        tcx.dcx().emit_err(errors::OverridingFinalTraitFunction {
+            impl_span: tcx.def_span(impl_item.def_id),
+            trait_span: tcx.def_span(trait_item.def_id),
+            name: tcx.item_name(impl_item.def_id),
+        });
     }
 }
 
@@ -954,6 +976,11 @@ fn check_impl_items_against_trait<'tcx>(
             impl_id.to_def_id(),
             impl_item,
         );
+
+        // FIXME(final_associated_functions): This *could* be integrated into
+        // the specialization check, but that might overly complicate it, and
+        // make it difficult to remove if we were to tear out specialization.
+        check_overriding_final_trait_item(tcx, ty_trait_item, ty_impl_item);
     }
 
     if let Ok(ancestors) = trait_def.ancestors(tcx, impl_id.to_def_id()) {

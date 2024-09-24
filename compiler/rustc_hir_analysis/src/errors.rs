@@ -917,6 +917,16 @@ pub(crate) enum ImplNotMarkedDefault {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_overriding_final_trait_function)]
+pub(crate) struct OverridingFinalTraitFunction {
+    #[primary_span]
+    pub impl_span: Span,
+    #[note]
+    pub trait_span: Span,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_missing_trait_item, code = E0046)]
 pub(crate) struct MissingTraitItem {
     #[primary_span]
