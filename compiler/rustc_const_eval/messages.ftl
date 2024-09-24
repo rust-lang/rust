@@ -198,7 +198,7 @@ const_eval_invalid_vtable_pointer =
     using {$pointer} as vtable pointer but it does not point to a vtable
 
 const_eval_invalid_vtable_trait =
-    using vtable for trait `{$vtable_trait}` but trait `{$expected_trait}` was expected
+    using vtable for `{$vtable_dyn_type}` but `{$expected_dyn_type}` was expected
 
 const_eval_lazy_lock =
     consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
@@ -459,7 +459,7 @@ const_eval_validation_invalid_fn_ptr = {$front_matter}: encountered {$value}, bu
 const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
-const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$ref_trait}`, but encountered `{$vtable_trait}`
+const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$expected_dyn_type}`, but encountered `{$vtable_dyn_type}`
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_null_box = {$front_matter}: encountered a null box

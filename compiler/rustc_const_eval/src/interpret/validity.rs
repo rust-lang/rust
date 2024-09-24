@@ -452,8 +452,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     self.path,
                     Ub(DanglingIntPointer{ .. } | InvalidVTablePointer(..)) =>
                         InvalidVTablePtr { value: format!("{vtable}") },
-                    Ub(InvalidVTableTrait { expected_trait, vtable_trait }) => {
-                        InvalidMetaWrongTrait { expected_trait, vtable_trait: *vtable_trait }
+                    Ub(InvalidVTableTrait { vtable_dyn_type, expected_dyn_type }) => {
+                        InvalidMetaWrongTrait { vtable_dyn_type, expected_dyn_type }
                     },
                 );
             }
@@ -1281,8 +1281,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     self.path,
                     // It's not great to catch errors here, since we can't give a very good path,
                     // but it's better than ICEing.
-                    Ub(InvalidVTableTrait { expected_trait, vtable_trait }) => {
-                        InvalidMetaWrongTrait { expected_trait, vtable_trait: *vtable_trait }
+                    Ub(InvalidVTableTrait { vtable_dyn_type, expected_dyn_type }) => {
+                        InvalidMetaWrongTrait { vtable_dyn_type, expected_dyn_type: *expected_dyn_type }
                     },
                 );
             }

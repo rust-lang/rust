@@ -1,6 +1,3 @@
-#![feature(const_intrinsic_copy)]
-
-
 const MISALIGNED_LOAD: () = unsafe {
     let mem = [0u32; 8];
     let ptr = mem.as_ptr().byte_add(1);

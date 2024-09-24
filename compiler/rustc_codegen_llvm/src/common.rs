@@ -290,10 +290,10 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         self.get_fn_addr(instance.polymorphize(self.tcx)),
                         self.data_layout().instruction_address_space,
                     ),
-                    GlobalAlloc::VTable(ty, trait_ref) => {
+                    GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
-                            .global_alloc(self.tcx.vtable_allocation((ty, trait_ref)))
+                            .global_alloc(self.tcx.vtable_allocation((ty, dyn_ty.principal())))
                             .unwrap_memory();
                         let init = const_alloc_to_llvm(self, alloc, /*static*/ false);
                         let value = self.static_addr_of(init, alloc.inner().align, None);

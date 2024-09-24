@@ -6,7 +6,6 @@
 //@ has foo/index.html '//a[@href="keyword.match.html"]' 'match'
 //@ has foo/index.html '//div[@class="sidebar-elems"]//li/a' 'Keywords'
 //@ has foo/index.html '//div[@class="sidebar-elems"]//li/a/@href' '#keywords'
-//@ has foo/keyword.match.html '//a[@class="keyword"]' 'match'
 //@ has foo/keyword.match.html '//h1' 'Keyword match'
 //@ has foo/keyword.match.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'this is a test!'
 //@ has foo/index.html '//a/@href' '../foo/index.html'

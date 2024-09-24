@@ -592,8 +592,6 @@ struct CTypesVisitorState<'tcx> {
     /// The original type being checked, before we recursed
     /// to any other types it contains.
     base_ty: Ty<'tcx>,
-    /// Number of times we recursed while checking the type
-    recursion_depth: usize,
 }
 
 enum FfiResult<'tcx> {
@@ -899,22 +897,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.
+        // FIXME: A recursion limit is necessary as well, for irregular
+        // recursive types.
         if !acc.cache.insert(ty) {
             return FfiSafe;
         }
-
-        // Additional recursion check for more complex types like
-        // `struct A<T> { v: *const A<A<T>>, ... }` for which the
-        // cache check above won't be enough (fixes #130310)
-        if !tcx.recursion_limit().value_within_limit(acc.recursion_depth) {
-            return FfiUnsafe {
-                ty: acc.base_ty,
-                reason: fluent::lint_improper_ctypes_recursion_limit_reached,
-                help: None,
-            };
-        }
-
-        acc.recursion_depth += 1;
 
         match *ty.kind() {
             ty::Adt(def, args) => {
@@ -1261,8 +1248,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return;
         }
 
-        let mut acc =
-            CTypesVisitorState { cache: FxHashSet::default(), base_ty: ty, recursion_depth: 0 };
+        let mut acc = CTypesVisitorState { cache: FxHashSet::default(), base_ty: ty };
         match self.check_type_for_ffi(&mut acc, ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {

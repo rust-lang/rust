@@ -8,7 +8,6 @@
 //@ has - '//div[@class="sidebar-elems"]//li/a' 'Primitive Types'
 //@ has - '//div[@class="sidebar-elems"]//li/a/@href' '#primitives'
 //@ has foo/primitive.reference.html
-//@ has - '//a[@class="primitive"]' 'reference'
 //@ has - '//h1' 'Primitive Type reference'
 //@ has - '//section[@id="main-content"]//div[@class="docblock"]//p' 'this is a test!'
 
