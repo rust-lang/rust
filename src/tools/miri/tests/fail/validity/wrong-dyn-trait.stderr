@@ -1,8 +1,8 @@
-error: Undefined Behavior: constructing invalid value: wrong trait in wide pointer vtable: expected `std::fmt::Debug`, but encountered `<trivial>`
+error: Undefined Behavior: constructing invalid value: wrong trait in wide pointer vtable: expected `std::fmt::Debug`, but encountered `std::marker::Send`
   --> tests/fail/validity/wrong-dyn-trait.rs:LL:CC
    |
 LL |     let _y: *const dyn fmt::Debug = unsafe { mem::transmute(x) };
-   |                                              ^^^^^^^^^^^^^^^^^ constructing invalid value: wrong trait in wide pointer vtable: expected `std::fmt::Debug`, but encountered `<trivial>`
+   |                                              ^^^^^^^^^^^^^^^^^ constructing invalid value: wrong trait in wide pointer vtable: expected `std::fmt::Debug`, but encountered `std::marker::Send`
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -365,8 +365,10 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidVTablePointer(Pointer<AllocId>),
     /// Using a vtable for the wrong trait.
     InvalidVTableTrait {
-        expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-        vtable_trait: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        /// The vtable that was actually referenced by the wide pointer metadata.
+        vtable_dyn_type: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        /// The vtable that was expected at the point in MIR that it was accessed.
+        expected_dyn_type: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     },
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
@@ -479,8 +481,10 @@ pub enum ValidationErrorKind<'tcx> {
         value: String,
     },
     InvalidMetaWrongTrait {
-        expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-        vtable_trait: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        /// The vtable that was actually referenced by the wide pointer metadata.
+        vtable_dyn_type: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        /// The vtable that was expected at the point in MIR that it was accessed.
+        expected_dyn_type: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     },
     InvalidMetaSliceTooLarge {
         ptr_kind: PointerKind,
