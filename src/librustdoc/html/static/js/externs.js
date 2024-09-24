@@ -9,12 +9,12 @@ function initSearch(searchIndex){}
 /**
  * @typedef {{
  *     name: string,
- *     id: integer|null,
+ *     id: number|null,
  *     fullPath: Array<string>,
  *     pathWithoutLast: Array<string>,
  *     pathLast: string,
  *     generics: Array<QueryElement>,
- *     bindings: Map<integer, Array<QueryElement>>,
+ *     bindings: Map<number, Array<QueryElement>>,
  * }}
  */
 let QueryElement;
