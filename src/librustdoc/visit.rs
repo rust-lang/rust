@@ -29,7 +29,7 @@ pub(crate) trait DocVisitor: Sized {
             | StaticItem(_)
             | ConstantItem(..)
             | TraitAliasItem(_)
-            | TyMethodItem(_)
+            | TyMethodItem(..)
             | MethodItem(_, _)
             | StructFieldItem(_)
             | ForeignFunctionItem(..)

@@ -62,7 +62,7 @@ use tracing::{debug, info};
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
-use crate::clean::{self, ItemId, RenderedLink};
+use crate::clean::{self, Defaultness, ItemId, RenderedLink};
 use crate::error::Error;
 use crate::formats::Impl;
 use crate::formats::cache::Cache;
@@ -70,8 +70,8 @@ use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
     Buffer, Ending, HrefError, PrintWithSpace, display_fn, href, join_with_double_colon,
-    print_abi_with_space, print_constness_with_space, print_default_space, print_generic_bounds,
-    print_where_clause, visibility_print_with_space,
+    print_abi_with_space, print_constness_with_space, print_generic_bounds, print_where_clause,
+    visibility_print_with_space,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -912,7 +912,11 @@ fn assoc_method(
     let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
     let name = meth.name.as_ref().unwrap();
     let vis = visibility_print_with_space(meth, cx).to_string();
-    let defaultness = print_default_space(meth.is_default());
+    let defaultness = match meth.defaultness().expect("Expected assoc method to have defaultness") {
+        Defaultness::Implicit => "",
+        Defaultness::Final => "final ",
+        Defaultness::Default => "default ",
+    };
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
@@ -1075,7 +1079,7 @@ fn render_assoc_item(
 ) {
     match &item.kind {
         clean::StrippedItem(..) => {}
-        clean::TyMethodItem(m) => {
+        clean::TyMethodItem(m, _) => {
             assoc_method(w, item, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::MethodItem(m, _) => {
@@ -1384,7 +1388,7 @@ fn render_deref_methods(
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
     let self_type_opt = match item.kind {
         clean::MethodItem(ref method, _) => method.decl.receiver_type(),
-        clean::TyMethodItem(ref method) => method.decl.receiver_type(),
+        clean::TyMethodItem(ref method, _) => method.decl.receiver_type(),
         _ => None,
     };
 
@@ -1661,7 +1665,7 @@ fn render_impl(
             write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>");
         }
         match &item.kind {
-            clean::MethodItem(..) | clean::TyMethodItem(_) => {
+            clean::MethodItem(..) | clean::TyMethodItem(..) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{item_type}.{name}"));
@@ -1810,7 +1814,7 @@ fn render_impl(
     if !impl_.is_negative_trait_impl() {
         for trait_item in &impl_.items {
             match trait_item.kind {
-                clean::MethodItem(..) | clean::TyMethodItem(_) => methods.push(trait_item),
+                clean::MethodItem(..) | clean::TyMethodItem(..) => methods.push(trait_item),
                 clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => {
                     assoc_types.push(trait_item)
                 }

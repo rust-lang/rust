@@ -327,7 +327,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         TraitItem(t) => ItemEnum::Trait((*t).into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
         MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), tcx)),
-        TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), tcx)),
+        TyMethodItem(m, _) => ItemEnum::Function(from_function(m, false, header.unwrap(), tcx)),
         ImplItem(i) => ItemEnum::Impl((*i).into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignStaticItem(s, _) => ItemEnum::Static(s.into_tcx(tcx)),

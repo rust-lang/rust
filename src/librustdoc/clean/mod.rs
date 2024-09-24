@@ -1227,11 +1227,17 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Body(body));
-                MethodItem(m, None)
+                MethodItem(m, match trait_item.defaultness {
+                    hir::Defaultness::Default { .. } => Defaultness::Implicit,
+                    hir::Defaultness::Final => Defaultness::Final,
+                })
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
                 let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Names(names));
-                TyMethodItem(m)
+                TyMethodItem(m, match trait_item.defaultness {
+                    hir::Defaultness::Default { .. } => Defaultness::Implicit,
+                    hir::Defaultness::Final => Defaultness::Final,
+                })
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
@@ -1272,8 +1278,10 @@ pub(crate) fn clean_impl_item<'tcx>(
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
                 let m = clean_function(cx, sig, impl_.generics, FunctionArgs::Body(body));
-                let defaultness = cx.tcx.defaultness(impl_.owner_id);
-                MethodItem(m, Some(defaultness))
+                MethodItem(m, match impl_.defaultness {
+                    hir::Defaultness::Default { .. } => Defaultness::Default,
+                    hir::Defaultness::Final => Defaultness::Implicit,
+                })
             }
             hir::ImplItemKind::Type(hir_ty) => {
                 let type_ = clean_ty(hir_ty, cx);
@@ -1352,18 +1360,22 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 }
             }
 
+            let defaultness = assoc_item.defaultness(tcx);
             let provided = match assoc_item.container {
                 ty::ImplContainer => true,
-                ty::TraitContainer => assoc_item.defaultness(tcx).has_value(),
+                ty::TraitContainer => defaultness.has_value(),
             };
+            let rendered_defaultness = match (assoc_item.container, defaultness) {
+                (ty::TraitContainer, hir::Defaultness::Default { .. }) => Defaultness::Implicit,
+                (ty::TraitContainer, hir::Defaultness::Final) => Defaultness::Final,
+                (ty::ImplContainer, hir::Defaultness::Final) => Defaultness::Implicit,
+                (ty::ImplContainer, hir::Defaultness::Default { .. }) => Defaultness::Default,
+            };
+
             if provided {
-                let defaultness = match assoc_item.container {
-                    ty::ImplContainer => Some(assoc_item.defaultness(tcx)),
-                    ty::TraitContainer => None,
-                };
-                MethodItem(item, defaultness)
+                MethodItem(item, rendered_defaultness)
             } else {
-                TyMethodItem(item)
+                TyMethodItem(item, rendered_defaultness)
             }
         }
         ty::AssocKind::Type => {

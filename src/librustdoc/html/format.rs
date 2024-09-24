@@ -1782,10 +1782,6 @@ pub(crate) fn print_abi_with_space(abi: Abi) -> impl Display {
     })
 }
 
-pub(crate) fn print_default_space<'a>(v: bool) -> &'a str {
-    if v { "default " } else { "" }
-}
-
 impl clean::GenericArg {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
