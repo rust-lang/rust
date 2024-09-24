@@ -153,7 +153,7 @@ pub enum StabilityLevel {
 }
 
 /// Rust release in which a feature is stabilized.
-#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, PartialOrd, Ord, Hash)]
 #[derive(HashStable_Generic)]
 pub enum StableSince {
     Version(RustcVersion),
