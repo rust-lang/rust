@@ -249,28 +249,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
-            "minnumf32" | "maxnumf32" | "copysignf32" => {
+            "copysignf32" => {
                 let [a, b] = check_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f32()?;
                 let b = this.read_scalar(b)?.to_f32()?;
-                let res = match intrinsic_name {
-                    "minnumf32" => this.adjust_nan(a.min(b), &[a, b]),
-                    "maxnumf32" => this.adjust_nan(a.max(b), &[a, b]),
-                    "copysignf32" => a.copy_sign(b), // bitwise, no NaN adjustments
-                    _ => bug!(),
-                };
+                let res = a.copy_sign(b); // bitwise, no NaN adjustments
                 this.write_scalar(Scalar::from_f32(res), dest)?;
             }
-            "minnumf64" | "maxnumf64" | "copysignf64" => {
+            "copysignf64" => {
                 let [a, b] = check_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f64()?;
                 let b = this.read_scalar(b)?.to_f64()?;
-                let res = match intrinsic_name {
-                    "minnumf64" => this.adjust_nan(a.min(b), &[a, b]),
-                    "maxnumf64" => this.adjust_nan(a.max(b), &[a, b]),
-                    "copysignf64" => a.copy_sign(b), // bitwise, no NaN adjustments
-                    _ => bug!(),
-                };
+                let res = a.copy_sign(b); // bitwise, no NaN adjustments
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 

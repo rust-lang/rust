@@ -438,6 +438,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
+            sym::minnumf16 | sym::maxnumf16 => {
+                let is_max = intrinsic_name == sym::maxnumf16;
+                self.float_min_max_intrinsic::<rustc_apfloat::ieee::Half>(is_max, args, dest)?;
+            }
+            sym::minnumf32 | sym::maxnumf32 => {
+                let is_max = intrinsic_name == sym::maxnumf32;
+                self.float_min_max_intrinsic::<rustc_apfloat::ieee::Single>(is_max, args, dest)?;
+            }
+            sym::minnumf64 | sym::maxnumf64 => {
+                let is_max = intrinsic_name == sym::maxnumf64;
+                self.float_min_max_intrinsic::<rustc_apfloat::ieee::Double>(is_max, args, dest)?;
+            }
+            sym::minnumf128 | sym::maxnumf128 => {
+                let is_max = intrinsic_name == sym::maxnumf128;
+                self.float_min_max_intrinsic::<rustc_apfloat::ieee::Quad>(is_max, args, dest)?;
+            }
+
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
         }
@@ -697,4 +714,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let rhs_bytes = get_bytes(self, rhs)?;
         interp_ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
+
+    fn float_min_max_intrinsic<F>(
+        &mut self,
+        is_max: bool,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let res = if is_max { a.max(b) } else { a.min(b) };
+        self.write_scalar(adjust_nan(self, res, &[a, b]), dest)?;
+        interp_ok(())
+    }
+}
+
+// Performs appropriate non-deterministic adjustments of NaN results.
+fn adjust_nan<'tcx, M, F1, F2>(this: &InterpCx<'tcx, M>, f: F2, inputs: &[F1]) -> F2
+where
+    M: Machine<'tcx>,
+    F1: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F2>,
+    F2: rustc_apfloat::Float,
+{
+    if f.is_nan() { M::generate_nan(this, inputs) } else { f }
 }

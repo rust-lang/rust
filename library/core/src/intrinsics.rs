@@ -1820,104 +1820,6 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn fabsf128(x: f128) -> f128;
 
-    /// Returns the minimum of two `f16` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::min`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn minnumf16(x: f16, y: f16) -> f16;
-    /// Returns the minimum of two `f32` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::min`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn minnumf32(x: f32, y: f32) -> f32;
-    /// Returns the minimum of two `f64` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::min`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn minnumf64(x: f64, y: f64) -> f64;
-    /// Returns the minimum of two `f128` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::min`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn minnumf128(x: f128, y: f128) -> f128;
-
-    /// Returns the maximum of two `f16` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::max`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn maxnumf16(x: f16, y: f16) -> f16;
-    /// Returns the maximum of two `f32` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::max`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn maxnumf32(x: f32, y: f32) -> f32;
-    /// Returns the maximum of two `f64` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::max`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn maxnumf64(x: f64, y: f64) -> f64;
-    /// Returns the maximum of two `f128` values.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::max`]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn maxnumf128(x: f128, y: f128) -> f128;
-
     /// Copies the sign from `y` to `x` for `f16` values.
     ///
     /// The stabilized version of this intrinsic is
@@ -3495,6 +3397,146 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
         );
         write_bytes(dst, val, count)
     }
+}
+
+/// Returns the minimum of two `f16` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::min`]
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn minnumf16(_x: f16, _y: f16) -> f16 {
+    unimplemented!();
+}
+
+/// Returns the minimum of two `f32` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::min`]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn minnumf32(_x: f32, _y: f32) -> f32 {
+    unimplemented!();
+}
+
+/// Returns the minimum of two `f64` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::min`]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn minnumf64(_x: f64, _y: f64) -> f64 {
+    unimplemented!();
+}
+
+/// Returns the minimum of two `f128` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::min`]
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn minnumf128(_x: f128, _y: f128) -> f128 {
+    unimplemented!();
+}
+
+/// Returns the maximum of two `f16` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::max`]
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn maxnumf16(_x: f16, _y: f16) -> f16 {
+    unimplemented!();
+}
+
+/// Returns the maximum of two `f32` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::max`]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn maxnumf32(_x: f32, _y: f32) -> f32 {
+    unimplemented!();
+}
+
+/// Returns the maximum of two `f64` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::max`]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn maxnumf64(_x: f64, _y: f64) -> f64 {
+    unimplemented!();
+}
+
+/// Returns the maximum of two `f128` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::max`]
+#[rustc_nounwind]
+// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn maxnumf128(_x: f128, _y: f128) -> f128 {
+    unimplemented!();
 }
 
 /// Inform Miri that a given pointer definitely has a certain alignment.
