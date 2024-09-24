@@ -2,26 +2,25 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
-use cargo_metadata::diagnostic::{Applicability, Diagnostic};
 use cargo_metadata::Message;
+use cargo_metadata::diagnostic::{Applicability, Diagnostic};
 use clippy_config::ClippyConfiguration;
+use clippy_lints::LintInfo;
 use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
-use clippy_lints::LintInfo;
 use serde::{Deserialize, Serialize};
 use test_utils::IS_RUSTC_TEST_SUITE;
-use ui_test::custom_flags::rustfix::RustfixMode;
 use ui_test::custom_flags::Flag;
+use ui_test::custom_flags::rustfix::RustfixMode;
 use ui_test::spanned::Spanned;
-use ui_test::test_result::TestRun;
-use ui_test::{status_emitter, Args, CommandBuilder, Config, Match, OutputConflictHandling};
+use ui_test::{Args, CommandBuilder, Config, Match, OutputConflictHandling, status_emitter};
 
 use std::collections::{BTreeMap, HashMap};
 use std::env::{self, set_var, var_os};
 use std::ffi::{OsStr, OsString};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{Sender, channel};
 use std::{fs, iter, thread};
 
 // Test dependencies may need an `extern crate` here to ensure that they show up
@@ -469,15 +468,14 @@ fn applicability_ord(applicability: &Applicability) -> u8 {
 impl Flag for DiagnosticCollector {
     fn post_test_action(
         &self,
-        _config: &ui_test::per_test_config::TestConfig<'_>,
-        _cmd: &mut std::process::Command,
+        _config: &ui_test::per_test_config::TestConfig,
         output: &std::process::Output,
-        _build_manager: &ui_test::build_manager::BuildManager<'_>,
-    ) -> Result<Vec<TestRun>, ui_test::Errored> {
+        _build_manager: &ui_test::build_manager::BuildManager,
+    ) -> Result<(), ui_test::Errored> {
         if !output.stderr.is_empty() {
             self.sender.send(output.stderr.clone()).unwrap();
         }
-        Ok(Vec::new())
+        Ok(())
     }
 
     fn clone_inner(&self) -> Box<dyn Flag> {

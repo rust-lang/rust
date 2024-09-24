@@ -71,6 +71,15 @@ fn function_result_with_custom_todo() -> Result<bool, String> // should not emit
     Ok(true)
 }
 
+fn issue_13381<const N: usize>() -> Result<(), String> {
+    const {
+        if N == 0 {
+            panic!();
+        }
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), String> {
     todo!("finish main method");
     Ok(())

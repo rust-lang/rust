@@ -1,5 +1,5 @@
 use crate::source::snippet;
-use crate::visitors::{for_each_expr_without_closures, Descend};
+use crate::visitors::{Descend, for_each_expr_without_closures};
 use crate::{path_to_local_id, strip_pat_refs};
 use core::ops::ControlFlow;
 use rustc_hir::{Body, BodyId, ExprKind, HirId, PatKind};

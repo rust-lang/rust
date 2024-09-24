@@ -1,6 +1,6 @@
 #![allow(clippy::legacy_numeric_constants, unused_imports)]
 
-use std::{i128, i32, u128, u32};
+use std::{i32, i128, u32, u128};
 
 fn main() {
     let _ = 1u32.checked_add(1).unwrap_or(u32::max_value());

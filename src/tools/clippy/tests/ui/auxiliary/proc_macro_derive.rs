@@ -5,7 +5,7 @@
 
 extern crate proc_macro;
 
-use proc_macro::{quote, Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
+use proc_macro::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree, quote};
 
 #[proc_macro_derive(DeriveSomething)]
 pub fn derive(_: TokenStream) -> TokenStream {

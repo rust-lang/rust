@@ -19,8 +19,8 @@ mod useless_transmute;
 mod utils;
 mod wrong_transmute;
 
-use clippy_config::msrvs::Msrv;
 use clippy_config::Conf;
+use clippy_config::msrvs::Msrv;
 use clippy_utils::is_in_const_context;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
@@ -527,24 +527,44 @@ declare_clippy_lint! {
     /// Checks if transmute calls have all generics specified.
     ///
     /// ### Why is this bad?
-    /// If not set, some unexpected output type could be retrieved instead of the expected one,
-    /// potentially leading to invalid code.
+    /// If not, one or more unexpected types could be used during `transmute()`, potentially leading
+    /// to Undefined Behavior or other problems.
     ///
-    /// This is particularly dangerous in case a seemingly innocent/unrelated change can cause type
-    /// inference to start inferring a different type. E.g. the transmute is the tail expression of
-    /// an `if` branch, and a different branches type changes, causing the transmute to silently
-    /// have a different type, instead of a proper error.
+    /// This is particularly dangerous in case a seemingly innocent/unrelated change causes type
+    /// inference to result in a different type. For example, if `transmute()` is the tail
+    /// expression of an `if`-branch, and the `else`-branch type changes, the compiler may silently
+    /// infer a different type to be returned by `transmute()`. That is because the compiler is
+    /// free to change the inference of a type as long as that inference is technically correct,
+    /// regardless of the programmer's unknown expectation.
+    ///
+    /// Both type-parameters, the input- and the output-type, to any `transmute()` should
+    /// be given explicitly: Setting the input-type explicitly avoids confusion about what the
+    /// argument's type actually is. Setting the output-type explicitly avoids type-inference
+    /// to infer a technically correct yet unexpected type.
     ///
     /// ### Example
     /// ```no_run
     /// # unsafe {
+    /// // Avoid "naked" calls to `transmute()`!
     /// let x: i32 = std::mem::transmute([1u16, 2u16]);
+    ///
+    /// // `first_answers` is intended to transmute a slice of bool to a slice of u8.
+    /// // But the programmer forgot to index the first element of the outer slice,
+    /// // so we are actually transmuting from "pointers to slices" instead of
+    /// // transmuting from "a slice of bool", causing a nonsensical result.
+    /// let the_answers: &[&[bool]] = &[&[true, false, true]];
+    /// let first_answers: &[u8] = std::mem::transmute(the_answers);
     /// # }
     /// ```
     /// Use instead:
     /// ```no_run
     /// # unsafe {
     /// let x = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
+    ///
+    /// // The explicit type parameters on `transmute()` makes the intention clear,
+    /// // and cause a type-error if the actual types don't match our expectation.
+    /// let the_answers: &[&[bool]] = &[&[true, false, true]];
+    /// let first_answers: &[u8] = std::mem::transmute::<&[bool], &[u8]>(the_answers[0]);
     /// # }
     /// ```
     #[clippy::version = "1.79.0"]

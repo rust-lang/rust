@@ -4,8 +4,8 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ImplItemRef, ItemKind, Node, TraitRef};
 use rustc_lint::LateContext;
-use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, Symbol, kw};
 
 use super::RENAMED_FUNCTION_PARAMS;
 

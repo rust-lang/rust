@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet_with_context, SpanRangeExt};
-use clippy_utils::sugg::{has_enclosing_paren, Sugg};
-use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
+use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::sugg::{Sugg, has_enclosing_paren};
+use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, is_trait_method, peel_ref_operators};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -182,6 +182,19 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
                 "using `is_empty` is clearer and more explicit",
                 format!("{lit_str}.is_empty()"),
                 applicability,
+            );
+        }
+
+        if let ExprKind::MethodCall(method, lhs_expr, [rhs_expr], _) = expr.kind
+            && is_trait_method(cx, expr, sym::PartialEq)
+            && !expr.span.from_expansion()
+        {
+            check_empty_expr(
+                cx,
+                expr.span,
+                lhs_expr,
+                peel_ref_operators(cx, rhs_expr),
+                (method.ident.name == sym::ne).then_some("!").unwrap_or_default(),
             );
         }
 

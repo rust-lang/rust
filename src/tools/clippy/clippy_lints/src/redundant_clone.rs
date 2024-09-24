@@ -1,17 +1,17 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
-use clippy_utils::mir::{visit_local_usage, LocalUsage, PossibleBorrowerMap};
+use clippy_utils::fn_has_unsatisfiable_preds;
+use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, is_type_lang_item, walk_ptrs_ty_depth};
-use clippy_utils::fn_has_unsatisfiable_preds;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{def_id, Body, FnDecl, LangItem};
+use rustc_hir::{Body, FnDecl, LangItem, def_id};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{BytePos, Span, sym};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {
@@ -349,14 +349,10 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
             local_use_locs: _,
             local_consume_or_mutate_locs: clone_consume_or_mutate_locs,
         },
-    )) = visit_local_usage(
-        &[cloned, clone],
-        mir,
-        mir::Location {
-            block: bb,
-            statement_index: mir.basic_blocks[bb].statements.len(),
-        },
-    )
+    )) = visit_local_usage(&[cloned, clone], mir, mir::Location {
+        block: bb,
+        statement_index: mir.basic_blocks[bb].statements.len(),
+    })
     .map(|mut vec| (vec.remove(0), vec.remove(0)))
     {
         CloneUsage {

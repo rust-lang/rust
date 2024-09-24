@@ -4,7 +4,7 @@ error: this argument is passed by value, but not consumed in the function body
 LL | fn test(x: Foo<'_>) {}
    |            ^^^^^^^ help: consider taking a reference instead: `&Foo<'_>`
    |
-help: consider marking this type as `Copy`
+help: or consider marking this type as `Copy`
   --> tests/ui/crashes/needless_pass_by_value-w-late-bound.rs:5:1
    |
 LL | struct Foo<'a>(&'a [(); 100]);

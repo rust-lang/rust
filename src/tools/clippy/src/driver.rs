@@ -15,9 +15,9 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_interface::interface;
+use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::parse::ParseSess;
-use rustc_session::EarlyDiagCtxt;
 use rustc_span::symbol::Symbol;
 
 use std::env;
@@ -268,8 +268,6 @@ pub fn main() {
                 },
                 _ => Some(s.to_string()),
             })
-            // FIXME: remove this line in 1.79 to only keep `--cfg clippy`.
-            .chain(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()])
             .chain(vec!["--cfg".into(), "clippy".into()])
             .collect::<Vec<String>>();
 

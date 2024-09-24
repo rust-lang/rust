@@ -1,5 +1,5 @@
 error: `darth` already exists, having another argument having almost the same name makes code comprehension and documentation more difficult
-  --> tests/ui/duplicate_underscore_argument.rs:4:23
+  --> tests/ui/duplicate_underscore_argument.rs:3:23
    |
 LL | fn join_the_dark_side(darth: i32, _darth: i32) {}
    |                       ^^^^^
