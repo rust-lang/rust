@@ -254,6 +254,17 @@ test based on the debugger currently being used:
   NOTE: The "Rust" version of LLDB doesn't exist anymore, so this will always be ignored.
   This should probably be removed.
 
+> **Note on running lldb debuginfo tests locally**
+>
+> If you want to run lldb debuginfo tests locally, then currently on Windows it is required that:
+> 
+> - You have **exactly** Python 3.10 installed -- not a newer version, not an older version,
+>   precisely 3.10.
+> - You have the `python310.dll` available in your `PATH` env var. This is not provided by the
+>   standard Python installer you obtain from `python.org`; you need to add this to `PATH` manually.
+> 
+> Otherwise the lldb debuginfo tests can produce crashes in mysterious ways.
+
 [`tests/debuginfo`]: https://github.com/rust-lang/rust/tree/master/tests/debuginfo
 
 
