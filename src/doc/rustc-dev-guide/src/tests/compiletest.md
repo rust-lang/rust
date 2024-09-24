@@ -521,6 +521,43 @@ only running the main `coverage` suite.
 [`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/master/src/tools/coverage-dump
 [`tests/coverage-run-rustdoc`]: https://github.com/rust-lang/rust/tree/master/tests/coverage-run-rustdoc
 
+### Crashes tests
+
+[`tests/crashes`] serve as a collection of tests that are expected to cause the compiler to ICE, panic
+or crash in some other way, so that accidental fixes are tracked. This was formally done at
+<https://github.com/rust-lang/glacier> but doing it inside the rust-lang/rust testsuite is more
+convenient.
+
+It is imperative that a test in the suite causes rustc to ICE, panic or crash crash in some other
+way. A test will "pass" if rustc exits with an exit status other than 1 or 0.
+
+If you want to see verbose stdout/stderr, you need to set `COMPILETEST_VERBOSE_CRASHES=1`, e.g.
+
+```bash
+$ COMPILETEST_VERBOSE_CRASHES=1 ./x test tests/crashes/999999.rs --stage 1
+```
+
+When adding crashes from <https://github.com/rust-lang/rust/issues>, the issue number should be
+noted in the file name (`12345.rs` should suffice) and also inside the file include a `//@ known-bug
+#4321` directive.
+
+If you happen to fix one of the crashes, please move it to a fitting subdirectory in `tests/ui` and
+give it a meaningful name. Please add a doc comment at the top of the file explaining why this test
+exists, even better if you can briefly explain how the example causes rustc to crash previously and
+what was done to prevent rustc to ICE/panic/crash.
+
+Adding
+
+```text
+Fixes #NNNNN
+Fixes #MMMMM
+```
+
+to the description of your pull request will ensure the corresponding tickets be closed
+automatically upon merge. The ticket ids can be found in the file name or the `//@ known-bug`
+directive inside the test file.
+
+[`tests/crashes`]: https://github.com/rust-lang/rust/tree/master/tests/crashes
 
 ## Building auxiliary crates
 
