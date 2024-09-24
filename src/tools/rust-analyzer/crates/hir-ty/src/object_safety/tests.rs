@@ -378,3 +378,16 @@ pub trait Error: core::fmt::Debug + core::fmt::Display {
         [("Error", vec![])],
     );
 }
+
+#[test]
+fn lifetime_gat_is_object_unsafe() {
+    check_object_safety(
+        r#"
+//- minicore: dispatch_from_dyn
+trait Foo {
+    type Bar<'a>;
+}
+"#,
+        [("Foo", vec![ObjectSafetyViolationKind::GAT])],
+    );
+}
