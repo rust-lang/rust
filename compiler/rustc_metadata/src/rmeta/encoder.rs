@@ -1540,7 +1540,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
 
-        for (def_id, impls) in &tcx.crate_inherent_impls(()).unwrap().inherent_impls {
+        for (def_id, impls) in &tcx.crate_inherent_impls(()).0.inherent_impls {
             record_defaulted_array!(self.tables.inherent_impls[def_id.to_def_id()] <- impls.iter().map(|def_id| {
                 assert!(def_id.is_local());
                 def_id.index
@@ -2089,7 +2089,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let all_impls: Vec<_> = tcx
             .crate_inherent_impls(())
-            .unwrap()
+            .0
             .incoherent_impls
             .iter()
             .map(|(&simp, impls)| IncoherentImpls {

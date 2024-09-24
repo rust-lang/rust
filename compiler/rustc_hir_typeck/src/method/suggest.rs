@@ -680,7 +680,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx
                             .inherent_impls(adt_def.did())
                             .into_iter()
-                            .flatten()
                             .any(|def_id| self.associated_value(*def_id, item_name).is_some())
                     } else {
                         false
@@ -1438,7 +1437,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .tcx
                         .inherent_impls(adt.did())
                         .into_iter()
-                        .flatten()
                         .copied()
                         .filter(|def_id| {
                             if let Some(assoc) = self.associated_value(*def_id, item_name) {
@@ -1900,7 +1898,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_args: Option<Vec<Ty<'tcx>>>,
     ) -> Option<Symbol> {
         if let ty::Adt(adt, adt_args) = rcvr_ty.kind() {
-            for inherent_impl_did in self.tcx.inherent_impls(adt.did()).into_iter().flatten() {
+            for inherent_impl_did in self.tcx.inherent_impls(adt.did()).into_iter() {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
                 {
@@ -2114,9 +2112,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty::Adt(adt_def, _) = rcvr_ty.kind() else {
             return;
         };
-        // FIXME(oli-obk): try out bubbling this error up one level and cancelling the other error in that case.
-        let Ok(impls) = self.tcx.inherent_impls(adt_def.did()) else { return };
-        let mut items = impls
+        let mut items = self
+            .tcx
+            .inherent_impls(adt_def.did())
             .iter()
             .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
             // Only assoc fn with no receivers and only if
@@ -2495,7 +2493,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .and_then(|simp| {
                     tcx.incoherent_impls(simp)
                         .into_iter()
-                        .flatten()
                         .find_map(|&id| self.associated_value(id, item_name))
                 })
                 .is_some()

@@ -1863,7 +1863,7 @@ impl PrimitiveType {
             .get(self)
             .into_iter()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
             .copied()
     }
 
@@ -1871,7 +1871,7 @@ impl PrimitiveType {
         Self::simplified_types()
             .values()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
             .copied()
     }
 

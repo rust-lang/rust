@@ -728,13 +728,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::InstantiateWithInfer) else {
             bug!("unexpected incoherent type: {:?}", self_ty)
         };
-        for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter().flatten() {
+        for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter() {
             self.assemble_inherent_impl_probe(impl_def_id);
         }
     }
 
     fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: DefId) {
-        let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id).into_iter().flatten();
+        let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id).into_iter();
         for &impl_def_id in impl_def_ids {
             self.assemble_inherent_impl_probe(impl_def_id);
         }

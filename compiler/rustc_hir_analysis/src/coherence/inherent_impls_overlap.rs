@@ -177,8 +177,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             return Ok(());
         }
 
-        let impls = self.tcx.inherent_impls(id.owner_id)?;
-
+        let impls = self.tcx.inherent_impls(id.owner_id);
         let overlap_mode = OverlapMode::get(self.tcx, id.owner_id.to_def_id());
 
         let impls_items = impls

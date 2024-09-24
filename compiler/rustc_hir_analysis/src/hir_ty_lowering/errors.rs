@@ -1028,7 +1028,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ..
             }) = node
             && let Some(ty_def_id) = qself_ty.ty_def_id()
-            && let Ok([inherent_impl]) = tcx.inherent_impls(ty_def_id)
+            && let [inherent_impl] = tcx.inherent_impls(ty_def_id)
             && let name = format!("{ident2}_{ident3}")
             && let Some(ty::AssocItem { kind: ty::AssocKind::Fn, .. }) = tcx
                 .associated_items(inherent_impl)
