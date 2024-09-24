@@ -1,11 +1,12 @@
+use std::ops::Deref as _;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{InstanceKind, TyCtxt};
 use rustc_session::config::{OutFileName, OutputType};
 use rustc_session::output::filename_for_metadata;
 use rustc_session::{MetadataKind, Session};
@@ -95,60 +96,59 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
             }
         };
         if tcx.sess.opts.json_artifact_notifications {
-            dbg!("Calculating hash");
             let hash: Fingerprint = {
+                let mut stable_hasher = StableHasher::new();
                 tcx.with_stable_hashing_context(|mut hcx| {
-                    let symbols = tcx
-                        .reachable_set(())
-                        .to_sorted(&hcx, true)
-                        .into_iter()
-                        .filter_map(|local_def_id: &LocalDefId| {
-                            dbg!(&local_def_id);
-                            let def_id = local_def_id.to_def_id();
-                            let is_cross_crate_inlineable = tcx.is_mir_available(def_id);
-                            let path = tcx.def_path(def_id).to_string_no_crate_verbose();
-                            dbg!(&path);
-                            //let ty = tcx.type_of(def_id);
-                            let _body = is_cross_crate_inlineable.then(|| {
-                                // fn mir_body_for_local_instance(
-                                //     tcx: &TyCtx<'_>,
-                                //     id: LocalDefId,
-                                // ) -> &'_ Body<'_> {
-                                //     tcx.instance_mir(ty::Instance::mono())
-                                // }
-                                // let blocks = exported_symbol
-                                //     .mir_body_for_local_instance(tcx)
-                                //     .basic_blocks
-                                //     .deref();
-                                // dbg!(&blocks);
-                                // // Deref to avoid hashing cache of mir body.
-                                // let symbols = blocks
-                                //     .iter()
-                                //     .map(|bb| {
-                                //         let kind = bb
-                                //             .terminator
-                                //             .as_ref()
-                                //             .map(|terminator| terminator.kind.clone());
-                                //         let statements = bb
-                                //             .statements
-                                //             .iter()
-                                //             .map(|statement| statement.kind.clone())
-                                //             .collect::<Vec<_>>();
-                                //         (bb.is_cleanup, kind, statements)
-                                //     })
-                                //     .collect::<Vec<_>>();
-                                // dbg!(symbols.len());
-                                // symbols
-                                Vec::<()>::new()
-                            });
-
-                            Some(path)
-                        })
-                        .collect::<Vec<_>>();
-                    let mut stable_hasher = StableHasher::new();
                     hcx.while_hashing_spans(false, |mut hcx| {
-                        use rustc_data_structures::stable_hasher::HashStable;
-                        symbols.hash_stable(&mut hcx, &mut stable_hasher);
+                        let _ = tcx
+                            .reachable_set(())
+                            .to_sorted(hcx, true)
+                            .into_iter()
+                            .filter_map(|local_def_id: &LocalDefId| {
+                                let def_id = local_def_id.to_def_id();
+
+                                let item = tcx.hir_node_by_def_id(*local_def_id);
+                                if item.body_id().is_none() {
+                                    item.hash_stable(hcx, &mut stable_hasher);
+                                    return Some(());
+                                }
+
+                                let generics = tcx.generics_of(def_id);
+                                let is_cross_crate_inlineable = generics
+                                    .requires_monomorphization(tcx)
+                                    || tcx.cross_crate_inlinable(def_id);
+                                let ty = tcx.type_of(def_id);
+                                is_cross_crate_inlineable.then(|| {
+                                    let body = tcx.instance_mir(InstanceKind::Item(def_id));
+                                    let blocks = body.basic_blocks.deref();
+
+                                    // Deref to avoid hashing cache of mir body.
+                                    let symbols = blocks
+                                        .iter()
+                                        .map(|bb| {
+                                            let kind = bb
+                                                .terminator
+                                                .as_ref()
+                                                .map(|terminator| terminator.kind.clone());
+                                            let statements = bb
+                                                .statements
+                                                .iter()
+                                                .map(|statement| statement.kind.clone())
+                                                .collect::<Vec<_>>();
+
+                                            (bb.is_cleanup, kind, statements)
+                                                .hash_stable(&mut hcx, &mut stable_hasher);
+                                            ()
+                                        })
+                                        .collect::<Vec<_>>();
+
+                                    symbols
+                                });
+                                ty.skip_binder().kind().hash_stable(&mut hcx, &mut stable_hasher);
+
+                                Some(())
+                            })
+                            .collect::<Vec<_>>();
                     });
                     stable_hasher.finish()
                 })
