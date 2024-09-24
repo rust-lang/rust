@@ -8,6 +8,7 @@
 #![feature(decl_macro)]
 #![feature(error_iter)]
 #![feature(extract_if)]
+#![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(iter_from_coroutine)]
 #![feature(let_chains)]

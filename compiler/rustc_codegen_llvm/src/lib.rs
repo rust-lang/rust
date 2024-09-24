@@ -11,6 +11,7 @@
 #![feature(assert_matches)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
+#![feature(file_buffered)]
 #![feature(hash_raw_entry)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]

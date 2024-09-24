@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![feature(decl_macro)]
+#![feature(file_buffered)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
