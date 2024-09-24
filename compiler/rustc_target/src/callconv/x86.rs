@@ -14,6 +14,7 @@ pub(crate) enum Flavor {
 pub(crate) struct X86Options {
     pub flavor: Flavor,
     pub regparm: Option<u32>,
+    pub reg_struct_return: bool,
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, opts: X86Options)
@@ -31,7 +32,7 @@ where
             // https://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
             let t = cx.target_spec();
-            if t.abi_return_struct_as_int {
+            if t.abi_return_struct_as_int || opts.reg_struct_return {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
                 if !t.is_like_msvc && fn_abi.ret.layout.is_single_fp_element(cx) {

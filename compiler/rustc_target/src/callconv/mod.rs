@@ -661,7 +661,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     }
                     _ => (x86::Flavor::General, None),
                 };
-                x86::compute_abi_info(cx, self, x86::X86Options { flavor, regparm });
+                let reg_struct_return = cx.x86_abi_opt().reg_struct_return;
+                let opts = x86::X86Options { flavor, regparm, reg_struct_return };
+                x86::compute_abi_info(cx, self, opts);
             }
             "x86_64" => match abi {
                 spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),

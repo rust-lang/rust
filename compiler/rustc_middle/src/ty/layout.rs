@@ -552,7 +552,10 @@ impl<'tcx> HasWasmCAbiOpt for TyCtxt<'tcx> {
 
 impl<'tcx> HasX86AbiOpt for TyCtxt<'tcx> {
     fn x86_abi_opt(&self) -> X86Abi {
-        X86Abi { regparm: self.sess.opts.unstable_opts.regparm }
+        X86Abi {
+            regparm: self.sess.opts.unstable_opts.regparm,
+            reg_struct_return: self.sess.opts.unstable_opts.reg_struct_return,
+        }
     }
 }
 
