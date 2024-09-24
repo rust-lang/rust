@@ -730,6 +730,14 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
             match arg.layout.abi {
                 Abi::Aggregate { .. } => {}
+                Abi::ScalarPair(..) => {
+                    // FIXME: It is strange that small struct optimizations are enabled
+                    // for 3-fields and more, but disabled for 2-fields (represented by ScalarPair)
+                    // Here 2-fields optimizations are enabled only for return value
+                    if !tcx.sess.opts.unstable_opts.reg_struct_return || arg_idx.is_some() {
+                        return;
+                    }
+                }
 
                 // This is a fun case! The gist of what this is doing is
                 // that we want callers and callees to always agree on the
@@ -761,12 +769,22 @@ fn fn_abi_adjust_for_abi<'tcx>(
             }
             // Compute `Aggregate` ABI.
 
-            let is_indirect_not_on_stack =
-                matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
-            assert!(is_indirect_not_on_stack, "{:?}", arg);
+            let is_indirect_not_on_stack = !matches!(arg.layout.abi, Abi::Aggregate { .. })
+                || matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
+            assert!(is_indirect_not_on_stack, "is_indirect_not_on_stack: {:?}", arg);
 
             let size = arg.layout.size;
-            if !arg.layout.is_unsized() && size <= Pointer(AddressSpace::DATA).size(cx) {
+            let ptr_size = Pointer(AddressSpace::DATA).size(cx);
+
+            // In x86 we may return 2x pointer sized struct as i64
+            let reg_struct_return_case = tcx.sess.target.arch == "x86"
+                && arg_idx.is_none()
+                && tcx.sess.opts.unstable_opts.reg_struct_return
+                && abi != SpecAbi::RustIntrinsic;
+
+            if !arg.layout.is_unsized()
+                && (size <= ptr_size || (reg_struct_return_case && (size <= 2 * ptr_size)))
+            {
                 // We want to pass small aggregates as immediates, but using
                 // an LLVM aggregate type for this leads to bad optimizations,
                 // so we pick an appropriately sized integer type instead.
