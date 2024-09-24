@@ -7,6 +7,7 @@
 //! better performance than one would get using heapsort as fallback.
 
 use crate::mem::{self, SizedTypeProperties};
+#[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
 use crate::slice::sort::unstable::quicksort::partition;
@@ -40,7 +41,13 @@ where
         let min_idx = min_index(v, &mut is_less).unwrap();
         v.swap(min_idx, index);
     } else {
-        partition_at_index_loop(v, index, None, &mut is_less);
+        cfg_if! {
+            if #[cfg(feature = "optimize_for_size")] {
+                median_of_medians(v, &mut is_less, index);
+            } else {
+                partition_at_index_loop(v, index, None, &mut is_less);
+            }
+        }
     }
 
     let (left, right) = v.split_at_mut(index);
@@ -53,6 +60,7 @@ where
 // most once, it doesn't make sense to use something more sophisticated than insertion-sort.
 const INSERTION_SORT_THRESHOLD: usize = 16;
 
+#[cfg(not(feature = "optimize_for_size"))]
 fn partition_at_index_loop<'a, T, F>(
     mut v: &'a mut [T],
     mut index: usize,
@@ -169,6 +177,7 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
             if v.len() >= 2 {
                 insertion_sort_shift_left(v, 1, is_less);
             }
+
             return;
         }
 
