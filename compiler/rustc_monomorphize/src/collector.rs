@@ -1175,8 +1175,8 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
                 output.push(create_fn_mono_item(tcx, instance, DUMMY_SP));
             }
         }
-        GlobalAlloc::VTable(ty, trait_ref) => {
-            let alloc_id = tcx.vtable_allocation((ty, trait_ref));
+        GlobalAlloc::VTable(ty, dyn_ty) => {
+            let alloc_id = tcx.vtable_allocation((ty, dyn_ty.principal()));
             collect_alloc(tcx, alloc_id, output)
         }
     }

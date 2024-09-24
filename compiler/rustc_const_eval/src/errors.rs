@@ -522,12 +522,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             UnterminatedCString(ptr) | InvalidFunctionPointer(ptr) | InvalidVTablePointer(ptr) => {
                 diag.arg("pointer", ptr);
             }
-            InvalidVTableTrait { expected_trait, vtable_trait } => {
-                diag.arg("expected_trait", expected_trait.to_string());
-                diag.arg(
-                    "vtable_trait",
-                    vtable_trait.map(|t| t.to_string()).unwrap_or_else(|| format!("<trivial>")),
-                );
+            InvalidVTableTrait { expected_dyn_type, vtable_dyn_type } => {
+                diag.arg("expected_dyn_type", expected_dyn_type.to_string());
+                diag.arg("vtable_dyn_type", vtable_dyn_type.to_string());
             }
             PointerUseAfterFree(alloc_id, msg) => {
                 diag.arg("alloc_id", alloc_id)
@@ -777,12 +774,9 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             DanglingPtrNoProvenance { pointer, .. } => {
                 err.arg("pointer", pointer);
             }
-            InvalidMetaWrongTrait { expected_trait: ref_trait, vtable_trait } => {
-                err.arg("ref_trait", ref_trait.to_string());
-                err.arg(
-                    "vtable_trait",
-                    vtable_trait.map(|t| t.to_string()).unwrap_or_else(|| format!("<trivial>")),
-                );
+            InvalidMetaWrongTrait { vtable_dyn_type, expected_dyn_type } => {
+                err.arg("vtable_dyn_type", vtable_dyn_type.to_string());
+                err.arg("expected_dyn_type", expected_dyn_type.to_string());
             }
             NullPtr { .. }
             | ConstRefToMutable

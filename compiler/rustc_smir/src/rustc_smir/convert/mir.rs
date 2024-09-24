@@ -712,8 +712,9 @@ impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
             mir::interpret::GlobalAlloc::Function { instance, .. } => {
                 GlobalAlloc::Function(instance.stable(tables))
             }
-            mir::interpret::GlobalAlloc::VTable(ty, trait_ref) => {
-                GlobalAlloc::VTable(ty.stable(tables), trait_ref.stable(tables))
+            mir::interpret::GlobalAlloc::VTable(ty, dyn_ty) => {
+                // FIXME: Should we record the whole vtable?
+                GlobalAlloc::VTable(ty.stable(tables), dyn_ty.principal().stable(tables))
             }
             mir::interpret::GlobalAlloc::Static(def) => {
                 GlobalAlloc::Static(tables.static_def(*def))
