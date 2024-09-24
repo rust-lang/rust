@@ -179,15 +179,17 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
             let eq_targets = SwitchTargets::new(eq_new_targets, parent_targets.otherwise());
 
             // Create `bbEq` in example above
-            let mut eq_switch = BasicBlockData::new(Some(Terminator {
-                source_info: bbs[parent].terminator().source_info,
-                kind: TerminatorKind::SwitchInt {
-                    // switch on the first discriminant, so we can mark the second one as dead
-                    discr: parent_op,
-                    targets: eq_targets,
-                },
-            }));
-            eq_switch.is_cleanup = bbs[parent].is_cleanup;
+            let eq_switch = BasicBlockData::new(
+                Some(Terminator {
+                    source_info: bbs[parent].terminator().source_info,
+                    kind: TerminatorKind::SwitchInt {
+                        // switch on the first discriminant, so we can mark the second one as dead
+                        discr: parent_op,
+                        targets: eq_targets,
+                    },
+                }),
+                bbs[parent].is_cleanup,
+            );
 
             let eq_bb = patch.new_block(eq_switch);
 
