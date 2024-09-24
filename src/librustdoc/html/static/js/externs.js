@@ -92,6 +92,9 @@ let Results;
  *     parent: (Object|undefined),
  *     path: string,
  *     ty: number,
+ *     type: FunctionSearchType?,
+ *     displayType: Promise<Array<Array<string>>>|null,
+ *     displayTypeMappedNames: Promise<Array<[string, Array<string>]>>|null,
  * }}
  */
 let ResultObject;
