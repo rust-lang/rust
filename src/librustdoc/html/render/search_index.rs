@@ -646,9 +646,25 @@ pub(crate) fn build_index<'tcx>(
                 full_paths.push((*index, path));
             }
 
+            let param_names: Vec<(usize, String)> = {
+                let mut prev = Vec::new();
+                let mut result = Vec::new();
+                for (index, item) in self.items.iter().enumerate() {
+                    if let Some(ty) = &item.search_type
+                        && let my =
+                            ty.param_names.iter().map(|sym| sym.as_str()).collect::<Vec<_>>()
+                        && my != prev
+                    {
+                        result.push((index, my.join(",")));
+                        prev = my;
+                    }
+                }
+                result
+            };
+
             let has_aliases = !self.aliases.is_empty();
             let mut crate_data =
-                serializer.serialize_struct("CrateData", if has_aliases { 9 } else { 8 })?;
+                serializer.serialize_struct("CrateData", if has_aliases { 13 } else { 12 })?;
             crate_data.serialize_field("t", &types)?;
             crate_data.serialize_field("n", &names)?;
             crate_data.serialize_field("q", &full_paths)?;
@@ -660,6 +676,7 @@ pub(crate) fn build_index<'tcx>(
             crate_data.serialize_field("b", &self.associated_item_disambiguators)?;
             crate_data.serialize_field("c", &bitmap_to_string(&deprecated))?;
             crate_data.serialize_field("e", &bitmap_to_string(&self.empty_desc))?;
+            crate_data.serialize_field("P", &param_names)?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
             }
@@ -758,7 +775,7 @@ pub(crate) fn get_function_type_for_search<'tcx>(
             None
         }
     });
-    let (mut inputs, mut output, where_clause) = match item.kind {
+    let (mut inputs, mut output, param_names, where_clause) = match item.kind {
         clean::ForeignFunctionItem(ref f, _)
         | clean::FunctionItem(ref f)
         | clean::MethodItem(ref f, _)
@@ -771,7 +788,7 @@ pub(crate) fn get_function_type_for_search<'tcx>(
     inputs.retain(|a| a.id.is_some() || a.generics.is_some());
     output.retain(|a| a.id.is_some() || a.generics.is_some());
 
-    Some(IndexItemFunctionType { inputs, output, where_clause })
+    Some(IndexItemFunctionType { inputs, output, where_clause, param_names })
 }
 
 fn get_index_type(
@@ -1285,7 +1302,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_or_trait_generics: Option<&(clean::Type, clean::Generics)>,
     cache: &Cache,
-) -> (Vec<RenderType>, Vec<RenderType>, Vec<Vec<RenderType>>) {
+) -> (Vec<RenderType>, Vec<RenderType>, Vec<Symbol>, Vec<Vec<RenderType>>) {
     let decl = &func.decl;
 
     let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
@@ -1331,7 +1348,21 @@ fn get_fn_inputs_and_outputs<'tcx>(
     let mut ret_types = Vec::new();
     simplify_fn_type(self_, generics, &decl.output, tcx, 0, &mut ret_types, &mut rgen, true, cache);
 
-    let mut simplified_params = rgen.into_values().collect::<Vec<_>>();
-    simplified_params.sort_by_key(|(idx, _)| -idx);
-    (arg_types, ret_types, simplified_params.into_iter().map(|(_idx, traits)| traits).collect())
+    let mut simplified_params = rgen.into_iter().collect::<Vec<_>>();
+    simplified_params.sort_by_key(|(_, (idx, _))| -idx);
+    (
+        arg_types,
+        ret_types,
+        simplified_params
+            .iter()
+            .map(|(name, (_idx, _traits))| match name {
+                SimplifiedParam::Symbol(name) => *name,
+                SimplifiedParam::Anonymous(_) => kw::Empty,
+                SimplifiedParam::AssociatedType(def_id, name) => {
+                    Symbol::intern(&format!("{}::{}", tcx.item_name(*def_id), name))
+                }
+            })
+            .collect(),
+        simplified_params.into_iter().map(|(_name, (_idx, traits))| traits).collect(),
+    )
 }
