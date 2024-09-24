@@ -19,4 +19,17 @@ macro_rules! expand_it {
 fn main() {
     expand_it!(1 + (25) + 1);
     expand_it!(("hello".len()) ("world".len()));
+    f();
+}
+
+// The key thing here is to produce a single `None`-delimited `Group`, even
+// though there is multiple levels of macros.
+macro_rules! m5 { ($e:expr) => { print_bang_consume!($e) }; }
+macro_rules! m4 { ($e:expr) => { m5!($e); } }
+macro_rules! m3 { ($e:expr) => { m4!($e); } }
+macro_rules! m2 { ($e:expr) => { m3!($e); } }
+macro_rules! m1 { ($e:expr) => { m2!($e); } }
+
+fn f() {
+    m1!(123);
 }

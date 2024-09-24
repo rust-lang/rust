@@ -115,7 +115,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
         while let Some(tree) = iter.next() {
             let (Token { kind, span }, joint) = match tree.clone() {
-                tokenstream::TokenTree::Delimited(span, _, delim, stream) => {
+                tokenstream::TokenTree::Delimited(span, _, mut delim, mut stream) => {
                     // We used to have an alternative behaviour for crates that
                     // needed it: a hack used to pass AST fragments to
                     // attribute and derive macros as a single nonterminal
@@ -131,6 +131,24 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                             rustc.psess(),
                         );
                     }
+
+                    // In `mk_delimited` we avoid nesting invisible delimited
+                    // of the same `MetaVarKind`. Here we do the same but
+                    // ignore the `MetaVarKind` because it is discarded when we
+                    // convert it to a `Group`.
+                    while let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim {
+                        if stream.len() == 1
+                            && let tree = stream.iter().next().unwrap()
+                            && let tokenstream::TokenTree::Delimited(_, _, delim2, stream2) = tree
+                            && let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim2
+                        {
+                            delim = *delim2;
+                            stream = stream2.clone();
+                        } else {
+                            break;
+                        }
+                    }
+
                     trees.push(TokenTree::Group(Group {
                         delimiter: pm::Delimiter::from_internal(delim),
                         stream: Some(stream),
