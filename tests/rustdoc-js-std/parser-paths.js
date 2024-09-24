@@ -2,7 +2,7 @@ const PARSED = [
     {
         query: 'A::B',
         elems: [{
-            name: "a::b",
+            name: "A::B",
             fullPath: ["a", "b"],
             pathWithoutLast: ["a"],
             pathLast: "b",
@@ -10,9 +10,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "A::B",
+        userQuery: "A::B",
         returned: [],
-        userQuery: "a::b",
         error: null,
     },
     {
@@ -26,9 +25,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: 'a:: a',
-        returned: [],
         userQuery: 'a:: a',
+        returned: [],
         error: null,
     },
     {
@@ -42,9 +40,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: 'a ::a',
-        returned: [],
         userQuery: 'a ::a',
+        returned: [],
         error: null,
     },
     {
@@ -58,16 +55,15 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: 'a  ::  a',
-        returned: [],
         userQuery: 'a  ::  a',
+        returned: [],
         error: null,
     },
     {
         query: 'A::B,C',
         elems: [
             {
-                name: "a::b",
+                name: "A::B",
                 fullPath: ["a", "b"],
                 pathWithoutLast: ["a"],
                 pathLast: "b",
@@ -75,7 +71,7 @@ const PARSED = [
                 typeFilter: -1,
             },
             {
-                name: "c",
+                name: "C",
                 fullPath: ["c"],
                 pathWithoutLast: [],
                 pathLast: "c",
@@ -84,16 +80,15 @@ const PARSED = [
             },
         ],
         foundElems: 2,
-        original: 'A::B,C',
+        userQuery: 'A::B,C',
         returned: [],
-        userQuery: 'a::b,c',
         error: null,
     },
     {
         query: 'A::B<f>,C',
         elems: [
             {
-                name: "a::b",
+                name: "A::B",
                 fullPath: ["a", "b"],
                 pathWithoutLast: ["a"],
                 pathLast: "b",
@@ -109,7 +104,7 @@ const PARSED = [
                 typeFilter: -1,
             },
             {
-                name: "c",
+                name: "C",
                 fullPath: ["c"],
                 pathWithoutLast: [],
                 pathLast: "c",
@@ -118,9 +113,8 @@ const PARSED = [
             },
         ],
         foundElems: 2,
-        original: 'A::B<f>,C',
+        userQuery: 'A::B<f>,C',
         returned: [],
-        userQuery: 'a::b<f>,c',
         error: null,
     },
     {
@@ -134,9 +128,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "mod::a",
-        returned: [],
         userQuery: "mod::a",
+        returned: [],
         error: null,
     },
 ];

@@ -276,7 +276,7 @@ function getFilteredNextElem(query, parserState, elems, isInGenerics) {
         // The type filter doesn't count as an element since it's a modifier.
         const typeFilterElem = elems.pop();
         checkExtraTypeFilterCharacters(start, parserState);
-        parserState.typeFilter = typeFilterElem.name;
+        parserState.typeFilter = typeFilterElem.normalizedPathLast;
         parserState.pos += 1;
         parserState.totalElems -= 1;
         query.literalSearch = false;
@@ -686,7 +686,7 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
     } else if (quadcolon !== null) {
         throw ["Unexpected ", quadcolon[0]];
     }
-    const pathSegments = path.split(/(?:::\s*)|(?:\s+(?:::\s*)?)/);
+    const pathSegments = path.split(/(?:::\s*)|(?:\s+(?:::\s*)?)/).map(x => x.toLowerCase());
     // In case we only have something like `<p>`, there is no name.
     if (pathSegments.length === 0
         || (pathSegments.length === 1 && pathSegments[0] === "")) {
@@ -726,7 +726,10 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
                 if (gen.name !== null) {
                     gen.bindingName.generics.unshift(gen);
                 }
-                bindings.set(gen.bindingName.name, gen.bindingName.generics);
+                bindings.set(
+                    gen.bindingName.name.toLowerCase().replace(/_/g, ""),
+                    gen.bindingName.generics,
+                );
                 return false;
             }
             return true;
@@ -1786,8 +1789,7 @@ class DocSearch {
          */
         function newParsedQuery(userQuery) {
             return {
-                original: userQuery,
-                userQuery: userQuery.toLowerCase(),
+                userQuery,
                 elems: [],
                 returned: [],
                 // Total number of "top" elements (does not include generics).
@@ -1909,7 +1911,7 @@ class DocSearch {
             genericsElems: 0,
             typeFilter: null,
             isInBinding: null,
-            userQuery: userQuery.toLowerCase(),
+            userQuery,
         };
         let query = newParsedQuery(userQuery);
 
@@ -2097,7 +2099,7 @@ class DocSearch {
          */
         const sortResults = async(results, isType, preferredCrate) => {
             const userQuery = parsedQuery.userQuery;
-            const casedUserQuery = parsedQuery.original;
+            const normalizedUserQuery = parsedQuery.userQuery.toLowerCase();
             const result_list = [];
             for (const result of results.values()) {
                 result.item = this.searchIndex[result.id];
@@ -2109,15 +2111,15 @@ class DocSearch {
                 let a, b;
 
                 // sort by exact case-sensitive match
-                a = (aaa.item.name !== casedUserQuery);
-                b = (bbb.item.name !== casedUserQuery);
+                a = (aaa.item.name !== userQuery);
+                b = (bbb.item.name !== userQuery);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // sort by exact match with regard to the last word (mismatch goes later)
-                a = (aaa.word !== userQuery);
-                b = (bbb.word !== userQuery);
+                a = (aaa.word !== normalizedUserQuery);
+                b = (bbb.word !== normalizedUserQuery);
                 if (a !== b) {
                     return a - b;
                 }
@@ -3163,21 +3165,25 @@ class DocSearch {
                 if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1
                     && elem.generics.length === 0 && elem.bindings.size === 0)
                     || elem.typeFilter === TY_GENERIC) {
-                    if (genericSymbols.has(elem.name)) {
-                        elem.id = genericSymbols.get(elem.name);
+                    if (genericSymbols.has(elem.normalizedPathLast)) {
+                        elem.id = genericSymbols.get(elem.normalizedPathLast);
                     } else {
                         elem.id = -(genericSymbols.size + 1);
-                        genericSymbols.set(elem.name, elem.id);
+                        genericSymbols.set(elem.normalizedPathLast, elem.id);
                     }
-                    if (elem.typeFilter === -1 && elem.name.length >= 3) {
+                    if (elem.typeFilter === -1 && elem.normalizedPathLast.length >= 3) {
                         // Silly heuristic to catch if the user probably meant
                         // to not write a generic parameter. We don't use it,
                         // just bring it up.
-                        const maxPartDistance = Math.floor(elem.name.length / 3);
+                        const maxPartDistance = Math.floor(elem.normalizedPathLast.length / 3);
                         let matchDist = maxPartDistance + 1;
                         let matchName = "";
                         for (const name of this.typeNameIdMap.keys()) {
-                            const dist = editDistance(name, elem.name, maxPartDistance);
+                            const dist = editDistance(
+                                name,
+                                elem.normalizedPathLast,
+                                maxPartDistance,
+                            );
                             if (dist <= matchDist && dist <= maxPartDistance) {
                                 if (dist === matchDist && matchName > name) {
                                     continue;
@@ -3289,7 +3295,7 @@ class DocSearch {
             sorted_returned,
             sorted_others,
             parsedQuery);
-        await handleAliases(ret, parsedQuery.original.replace(/"/g, ""),
+        await handleAliases(ret, parsedQuery.userQuery.replace(/"/g, ""),
             filterCrates, currentCrate);
         await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
             const descs = await Promise.all(list.map(result => {
@@ -3709,11 +3715,11 @@ async function search(forced) {
     }
 
     // Update document title to maintain a meaningful browser history
-    searchState.title = "\"" + query.original + "\" Search - Rust";
+    searchState.title = "\"" + query.userQuery + "\" Search - Rust";
 
     // Because searching is incremental by character, only the most
     // recent search query is added to the browser history.
-    updateSearchHistory(buildUrl(query.original, filterCrates));
+    updateSearchHistory(buildUrl(query.userQuery, filterCrates));
 
     await showResults(
         await docSearch.execQuery(query, filterCrates, window.currentCrate),

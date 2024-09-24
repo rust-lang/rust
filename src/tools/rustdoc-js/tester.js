@@ -84,7 +84,6 @@ function checkNeededFields(fullPath, expected, error_text, queryName, position) 
     if (fullPath.length === 0) {
         fieldsToCheck = [
             "foundElems",
-            "original",
             "returned",
             "userQuery",
             "error",
