@@ -3,7 +3,7 @@
 #![feature(staged_api)]
 
 //@ has foo/trait.Bar.html
-//@ has - '//div[@class="main-heading"]/*[@class="out-of-band"]' '1.0.0 · source · '
+//@ has - '//div[@class="main-heading"]/*[@class="sub-heading"]' '1.0.0 · source'
 #[stable(feature = "bar", since = "1.0")]
 pub trait Bar {
     //@ has - '//*[@id="tymethod.foo"]/*[@class="rightside"]' '3.0.0 · source'
@@ -14,7 +14,7 @@ pub trait Bar {
 //@ has - '//div[@id="implementors-list"]//*[@class="rightside"]' '4.0.0 · source'
 
 //@ has foo/struct.Foo.html
-//@ has - '//div[@class="main-heading"]/*[@class="out-of-band"]' '1.0.0 · source · '
+//@ has - '//div[@class="main-heading"]/*[@class="sub-heading"]' '1.0.0 · source'
 #[stable(feature = "baz", since = "1.0")]
 pub struct Foo;
 
