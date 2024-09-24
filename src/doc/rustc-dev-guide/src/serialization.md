@@ -1,9 +1,9 @@
 # Serialization in Rustc
 
-Rust's compiler has to [serialize] and deserialize various data during
-compilation. Specifically:
+rustc has to [serialize] and deserialize various data during compilation.
+Specifically:
 
-- Certain crate metadata, consisting mainly of query outputs, are serialized
+- "Crate metadata", consisting mainly of query outputs, are serialized
   from a binary format into `rlib` and `rmeta` files that are output when
   compiling a library crate. These `rlib` and `rmeta` files are then
   deserialized by the crates which depend on that library.
@@ -36,8 +36,8 @@ types, floating point types, `bool`, `char`, `str`, etc.
 
 For types that are constructed from those types, `Encodable` and `Decodable`
 are usually implemented by [derives]. These generate implementations that
-forward deserialization to the `field`s of the `struct` or `enum`. For a
-`struct` those `impl`s look something like this:
+forward deserialization to the fields of the struct or enum. For a
+struct those impls look something like this:
 
 ```rust,ignore
 #![feature(rustc_private)]
@@ -73,14 +73,13 @@ impl<D: Decoder> Decodable<D> for MyStruct {
 
 ## Encoding and Decoding arena allocated types
 
-Rust's compiler has a lot of [arena allocated types]. Deserializing these types
-isn't possible without access to the `arena` that they need to be allocated on.
-The [`TyDecoder`] and [`TyEncoder`] `trait`s are supertraits of [`Decoder`] and
-[`Encoder`] that allow access to a [`TyCtxt`].
+rustc has a lot of [arena allocated types].
+Deserializing these types isn't possible without access to the arena that they need to be allocated on.
+The [`TyDecoder`] and [`TyEncoder`] traits are supertraits of [`Decoder`] and [`Encoder`] that allow access to a [`TyCtxt`].
 
-Types which contain `arena` allocated types can then bound the type parameter
-of their [`Encodable`] and [`Decodable`] implementations with these `trait`s. For
-example
+Types which contain `arena` allocated types can then bound the type parameter of their
+[`Encodable`] and [`Decodable`] implementations with these traits.
+For example
 
 ```rust,ignore
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for MyStruct<'tcx> {
@@ -149,7 +148,7 @@ and `Encodable`.
 `Ty` can be deeply recursive, if each `Ty` was encoded naively then crate
 metadata would be very large. To handle this, each `TyEncoder` has a cache of
 locations in its output where it has serialized types. If a type being encoded
-is in cache, then instead of serializing the type as usual, the byte offset
+is in the cache, then instead of serializing the type as usual, the byte offset
 within the file being written is encoded instead. A similar scheme is used for
 `ty::Predicate`.
 
