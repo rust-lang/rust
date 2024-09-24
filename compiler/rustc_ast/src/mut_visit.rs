@@ -832,7 +832,8 @@ fn visit_nonterminal<T: MutVisitor>(vis: &mut T, nt: &mut token::Nonterminal) {
 fn visit_defaultness<T: MutVisitor>(vis: &mut T, defaultness: &mut Defaultness) {
     match defaultness {
         Defaultness::Default(span) => vis.visit_span(span),
-        Defaultness::Final => {}
+        Defaultness::Final(span) => vis.visit_span(span),
+        Defaultness::Implicit => {}
     }
 }
 

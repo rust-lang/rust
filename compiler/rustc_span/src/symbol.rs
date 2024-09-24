@@ -897,6 +897,7 @@ symbols! {
         field_init_shorthand,
         file,
         file_options,
+        final_associated_functions,
         float,
         float_to_int_unchecked,
         floorf128,

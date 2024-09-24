@@ -260,7 +260,7 @@ pub(crate) fn expand_test_or_bench(
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(
             ast::ConstItem {
-                defaultness: ast::Defaultness::Final,
+                defaultness: ast::Defaultness::Implicit,
                 generics: ast::Generics::default(),
                 ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
                 // test::TestDescAndFn {

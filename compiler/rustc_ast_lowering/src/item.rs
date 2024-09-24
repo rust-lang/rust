@@ -386,7 +386,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // `defaultness.has_value()` is never called for an `impl`, always `true` in order
                 // to not cause an assertion failure inside the `lower_defaultness` function.
                 let has_val = true;
-                let (defaultness, defaultness_span) = self.lower_defaultness(*defaultness, has_val);
+                let (defaultness, defaultness_span) =
+                    self.lower_defaultness(*defaultness, has_val, || hir::Defaultness::Final);
                 let polarity = match polarity {
                     ImplPolarity::Positive => ImplPolarity::Positive,
                     ImplPolarity::Negative(s) => ImplPolarity::Negative(self.lower_span(*s)),
@@ -785,7 +786,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.lower_attrs(hir_id, &i.attrs);
         let trait_item_def_id = hir_id.expect_owner();
 
-        let (generics, kind, has_default) = match &i.kind {
+        let (generics, kind, has_value) = match &i.kind {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => {
                 let (generics, kind) = self.lower_generics(
                     generics,
@@ -874,13 +875,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
+        let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value, || {
+            hir::Defaultness::Default { has_value }
+        });
+
         let item = hir::TraitItem {
             owner_id: trait_item_def_id,
             ident: self.lower_ident(i.ident),
             generics,
             kind,
             span: self.lower_span(i.span),
-            defaultness: hir::Defaultness::Default { has_value: has_default },
+            defaultness,
         };
         self.arena.alloc(item)
     }
@@ -920,7 +925,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> &'hir hir::ImplItem<'hir> {
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
-        let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
+        let (defaultness, _) =
+            self.lower_defaultness(i.kind.defaultness(), has_value, || hir::Defaultness::Final);
         let hir_id = self.lower_node_id(i.id);
         self.lower_attrs(hir_id, &i.attrs);
 
@@ -1044,14 +1050,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &self,
         d: Defaultness,
         has_value: bool,
+        implicit: impl FnOnce() -> hir::Defaultness,
     ) -> (hir::Defaultness, Option<Span>) {
         match d {
+            Defaultness::Implicit => (implicit(), None),
             Defaultness::Default(sp) => {
                 (hir::Defaultness::Default { has_value }, Some(self.lower_span(sp)))
             }
-            Defaultness::Final => {
+            Defaultness::Final(sp) => {
                 assert!(has_value);
-                (hir::Defaultness::Final, None)
+                (hir::Defaultness::Final, Some(sp))
             }
         }
     }

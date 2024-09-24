@@ -144,7 +144,7 @@ pub(crate) fn expand_deriving_smart_ptr(
             ast::ItemKind::Impl(Box::new(ast::Impl {
                 safety: ast::Safety::Default,
                 polarity: ast::ImplPolarity::Positive,
-                defaultness: ast::Defaultness::Final,
+                defaultness: ast::Defaultness::Implicit,
                 constness: ast::Const::No,
                 generics,
                 of_trait: Some(trait_ref),

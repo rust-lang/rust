@@ -2940,6 +2940,17 @@ pub(crate) struct InappropriateDefault {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_inappropriate_final)]
+#[note]
+pub(crate) struct InappropriateFinal {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub article: &'static str,
+    pub descr: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_recover_import_as_use)]
 pub(crate) struct RecoverImportAsUse {
     #[primary_span]

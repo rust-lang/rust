@@ -341,7 +341,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let decl = ecx.fn_decl(ThinVec::new(), ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default(), span: sp };
-    let defaultness = ast::Defaultness::Final;
+    let defaultness = ast::Defaultness::Implicit;
     let main = ast::ItemKind::Fn(Box::new(ast::Fn {
         defaultness,
         sig,

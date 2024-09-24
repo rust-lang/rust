@@ -46,7 +46,7 @@ impl<'a> State<'a> {
                     ty,
                     expr.as_deref(),
                     vis,
-                    ast::Defaultness::Final,
+                    ast::Defaultness::Implicit,
                 )
             }
             ast::ForeignItemKind::TyAlias(box ast::TyAlias {
@@ -181,7 +181,7 @@ impl<'a> State<'a> {
                     ty,
                     body.as_deref(),
                     &item.vis,
-                    ast::Defaultness::Final,
+                    ast::Defaultness::Implicit,
                 );
             }
             ast::ItemKind::Const(box ast::ConstItem { defaultness, generics, ty, expr }) => {

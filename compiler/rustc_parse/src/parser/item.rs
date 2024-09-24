@@ -168,14 +168,24 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Error in-case `default` was parsed in an in-appropriate context.
+    /// Error in-case `default`/`final` was parsed in an in-appropriate context.
     fn error_on_unconsumed_default(&self, def: Defaultness, kind: &ItemKind) {
-        if let Defaultness::Default(span) = def {
-            self.dcx().emit_err(errors::InappropriateDefault {
-                span,
-                article: kind.article(),
-                descr: kind.descr(),
-            });
+        match def {
+            Defaultness::Default(span) => {
+                self.dcx().emit_err(errors::InappropriateDefault {
+                    span,
+                    article: kind.article(),
+                    descr: kind.descr(),
+                });
+            }
+            Defaultness::Final(span) => {
+                self.dcx().emit_err(errors::InappropriateFinal {
+                    span,
+                    article: kind.article(),
+                    descr: kind.descr(),
+                });
+            }
+            Defaultness::Implicit => {}
         }
     }
 
@@ -190,8 +200,8 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         case: Case,
     ) -> PResult<'a, Option<ItemInfo>> {
-        let check_pub = def == &Defaultness::Final;
-        let mut def_ = || mem::replace(def, Defaultness::Final);
+        let check_pub = def == &Defaultness::Implicit;
+        let mut def_ = || mem::replace(def, Defaultness::Implicit);
 
         let info = if self.eat_keyword_case(kw::Use, case) {
             self.parse_use_item()?
@@ -869,8 +879,11 @@ impl<'a> Parser<'a> {
         {
             self.bump(); // `default`
             Defaultness::Default(self.prev_token.uninterpolated_span())
+        } else if self.eat_keyword(kw::Final) {
+            self.psess.gated_spans.gate(sym::final_associated_functions, self.prev_token.span);
+            Defaultness::Final(self.prev_token.uninterpolated_span())
         } else {
-            Defaultness::Final
+            Defaultness::Implicit
         }
     }
 
@@ -967,7 +980,7 @@ impl<'a> Parser<'a> {
                         ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
                             self.dcx().emit_err(errors::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Box::new(ConstItem {
-                                defaultness: Defaultness::Final,
+                                defaultness: Defaultness::Implicit,
                                 generics: Generics::default(),
                                 ty,
                                 expr,
