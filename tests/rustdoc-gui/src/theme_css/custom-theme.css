@@ -52,6 +52,8 @@
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #fff;
 	--settings-menu-filter: none;
+	--settings-menu-hover-filter: invert(35%);
+	--settings-menu-disabled-filter: invert(14%) sepia(11%) saturate(14%) hue-rotate(337deg);
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
