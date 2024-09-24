@@ -138,15 +138,16 @@ After this, run `cargo update -p libc` to update the lockfiles.
 Beware that if you patch to a local `path` dependency, this will enable
 warnings for that dependency. Some dependencies are not warning-free, and due
 to the `deny-warnings` setting in `config.toml`, the build may suddenly start
-to fail. To work around the warnings, you may want to disable `deny-warnings`
-in the config, or modify the dependency to remove the warnings.
+to fail.
+To work around warnings, you may want to:
+- Modify the dependency to remove the warnings
+- Or for local development purposes, suppress the warnings by setting deny-warnings = false in config.toml.
 
 ```toml
 # config.toml
 [rust]
 deny-warnings = false
 ```
-
 
 [`libc`]: https://crates.io/crates/libc
 [`cc`]: https://crates.io/crates/cc
