@@ -13,6 +13,7 @@ use crate::{
 /// Maps absolute text ranges for the corresponding file to the relevant span data.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SpanMap<S> {
+    /// The offset stored here is the *end* of the node.
     spans: Vec<(TextSize, SpanData<S>)>,
     /// Index of the matched macro arm on successful expansion for declarative macros.
     // FIXME: Does it make sense to have this here?
@@ -109,11 +110,32 @@ where
     ///
     /// The length of the replacement node needs to be `other_size`.
     pub fn merge(&mut self, other_range: TextRange, other_size: TextSize, other: &SpanMap<S>) {
+        // I find the following diagram helpful to illustrate the bounds and why we use `<` or `<=`:
+        // --------------------------------------------------------------------
+        //   1   3   5   6   7   10    11          <-- offsets we store
+        // 0-1 1-3 3-5 5-6 6-7 7-10 10-11          <-- ranges these offsets refer to
+        //       3   ..      7                     <-- other_range
+        //         3-5 5-6 6-7                     <-- ranges we replace (len = 7-3 = 4)
+        //         ^^^^^^^^^^^ ^^^^^^^^^^
+        //           remove       shift
+        //   2   3   5   9                         <-- offsets we insert
+        // 0-2 2-3 3-5 5-9                         <-- ranges we insert (other_size = 9-0 = 9)
+        // ------------------------------------
+        //   1   3
+        // 0-1 1-3                                 <-- these remain intact
+        //           5   6   8   12
+        //         3-5 5-6 6-8 8-12                <-- we shift these by other_range.start() and insert them
+        //                             15    16
+        //                          12-15 15-16    <-- we shift these by other_size-other_range.len() = 9-4 = 5
+        // ------------------------------------
+        //   1   3   5   6   8   12    15    16    <-- final offsets we store
+        // 0-1 1-3 3-5 5-6 6-8 8-12 12-15 15-16    <-- final ranges
+
         self.spans.retain_mut(|(offset, _)| {
-            if other_range.contains(*offset) {
+            if other_range.start() < *offset && *offset <= other_range.end() {
                 false
             } else {
-                if *offset >= other_range.end() {
+                if *offset > other_range.end() {
                     *offset += other_size;
                     *offset -= other_range.len();
                 }
