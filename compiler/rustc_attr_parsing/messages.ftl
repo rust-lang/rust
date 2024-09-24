@@ -107,9 +107,6 @@ attr_parsing_unknown_meta_item =
 attr_parsing_unknown_version_literal =
     unknown version literal format, assuming it refers to a future version
 
-attr_parsing_unstable_cfg_target_compact =
-    compact `cfg(target(..))` is experimental and subject to change
-
 attr_parsing_unsupported_literal_cfg_boolean =
     literal in `cfg` predicate value must be a boolean
 attr_parsing_unsupported_literal_cfg_string =

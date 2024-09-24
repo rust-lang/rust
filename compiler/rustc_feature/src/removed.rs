@@ -52,6 +52,9 @@ declare_features! (
     (removed, box_syntax, "1.70.0", Some(49733), Some("replaced with `#[rustc_box]`")),
     /// Allows capturing disjoint fields in a closure/coroutine (RFC 2229).
     (removed, capture_disjoint_fields, "1.49.0", Some(53488), Some("stabilized in Rust 2021")),
+    /// Allows `cfg(target(abi = "..."))`.
+    (removed, cfg_target_compact, "CURRENT_RUSTC_VERSION", Some(96901),
+     Some("removed due to lack of usefulness and users")),
     /// Allows comparing raw pointers during const eval.
     (removed, const_compare_raw_pointers, "1.46.0", Some(53020),
      Some("cannot be allowed in const eval in any meaningful way")),
