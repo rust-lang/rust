@@ -1730,8 +1730,23 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let is_rustdoc = suite.ends_with("rustdoc-ui") || suite.ends_with("rustdoc-js");
 
         if mode == "run-make" {
-            let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
-            cmd.arg("--cargo-path").arg(cargo);
+            let cargo_path = if builder.top_stage == 0 {
+                // If we're using `--stage 0`, we should provide the bootstrap cargo.
+                builder.initial_cargo.clone()
+            } else {
+                // We need to properly build cargo using the suitable stage compiler.
+
+                // HACK: currently tool stages are off-by-one compared to compiler stages, i.e. if
+                // you give `tool::Cargo` a stage 1 rustc, it will cause stage 2 rustc to be built
+                // and produce a cargo built with stage 2 rustc. To fix this, we need to chop off
+                // the compiler stage by 1 to align with expected `./x test run-make --stage N`
+                // behavior, i.e. we need to pass `N - 1` compiler stage to cargo. See also Miri
+                // which does a similar hack.
+                let compiler = builder.compiler(builder.top_stage - 1, compiler.host);
+                builder.ensure(tool::Cargo { compiler, target: compiler.host })
+            };
+
+            cmd.arg("--cargo-path").arg(cargo_path);
         }
 
         // Avoid depending on rustdoc when we don't need it.
@@ -2087,8 +2102,6 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if builder.config.cmd.rustfix_coverage() {
             cmd.arg("--rustfix-coverage");
         }
-
-        cmd.env("BOOTSTRAP_CARGO", &builder.initial_cargo);
 
         cmd.arg("--channel").arg(&builder.config.channel);
 
