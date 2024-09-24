@@ -153,7 +153,8 @@ impl<T> Cursor<T> {
     /// let reference = buff.get_mut();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut(&mut self) -> &mut T {
+    #[rustc_const_unstable(feature = "const_mut_cursor", issue = "130801")]
+    pub const fn get_mut(&mut self) -> &mut T {
         &mut self.inner
     }
 
@@ -200,7 +201,8 @@ impl<T> Cursor<T> {
     /// assert_eq!(buff.position(), 4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn set_position(&mut self, pos: u64) {
+    #[rustc_const_unstable(feature = "const_mut_cursor", issue = "130801")]
+    pub const fn set_position(&mut self, pos: u64) {
         self.pos = pos;
     }
 }
