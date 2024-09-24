@@ -554,7 +554,9 @@ Fixes #MMMMM
 ```
 
 to the description of your pull request will ensure the corresponding tickets be closed
-automatically upon merge. The ticket ids can be found in the file name or the `//@ known-bug`
+automatically upon merge.
+Make sure that your fix actually fixes the root cause of the issue and not just a subset first.
+The issue numbers can be found in the file name or the `//@ known-bug`
 directive inside the test file.
 
 [`tests/crashes`]: https://github.com/rust-lang/rust/tree/master/tests/crashes
