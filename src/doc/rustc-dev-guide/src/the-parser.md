@@ -1,8 +1,8 @@
 # Lexing and Parsing
 
-The very first thing the compiler does is take the program (in Unicode) and
-transmute it into a data format the compiler can work with more conveniently
-than strings. This happens in two stages: Lexing and Parsing.
+The very first thing the compiler does is take the program (in UTF-8 Unicode text)
+and turn it into a data format the compiler can work with more conveniently than strings.
+This happens in two stages: Lexing and Parsing.
 
   1. _Lexing_ takes strings and turns them into streams of [tokens]. For
   example, `foo.bar + buz` would be turned into the tokens `foo`, `.`, `bar`,
@@ -13,38 +13,36 @@ than strings. This happens in two stages: Lexing and Parsing.
 
   2. _Parsing_ takes streams of tokens and turns them into a structured form
   which is easier for the compiler to work with, usually called an [*Abstract
-  Syntax Tree* (`AST`)][ast] . 
+  Syntax Tree* (AST)][ast] . 
   
   
-An `AST` mirrors the structure of a Rust program in memory, using a `Span` to
-link a particular `AST` node back to its source text. The `AST` is defined in
+An AST mirrors the structure of a Rust program in memory, using a `Span` to
+link a particular AST node back to its source text. The AST is defined in
 [`rustc_ast`][rustc_ast], along with some definitions for tokens and token
-streams, data structures/`trait`s for mutating `AST`s, and shared definitions for
-other `AST`-related parts of the compiler (like the lexer and
-`macro`-expansion).
+streams, data structures/traits for mutating ASTs, and shared definitions for
+other AST-related parts of the compiler (like the lexer and
+macro-expansion).
 
 The lexer is developed in [`rustc_lexer`][lexer].
 
 The parser is defined in [`rustc_parse`][rustc_parse], along with a
 high-level interface to the lexer and some validation routines that run after
-`macro` expansion. In particular, the [`rustc_parse::parser`][parser] contains
+macro expansion. In particular, the [`rustc_parse::parser`][parser] contains
 the parser implementation.
 
 The main entrypoint to the parser is via the various `parse_*` functions and others in
 [rustc_parse][rustc_parse]. They let you do things like turn a [`SourceFile`][sourcefile]
 (e.g. the source in a single file) into a token stream, create a parser from
-the token stream, and then execute the parser to get a [`Crate`] (the root `AST`
+the token stream, and then execute the parser to get a [`Crate`] (the root AST
 node).
 
-To minimize the amount of copying that is done, both [`StringReader`] and
-[`Parser`] have lifetimes which bind them to the parent [`ParseSess`]. This
-contains all the information needed while parsing, as well as the [`SourceMap`]
-itself.
+To minimize the amount of copying that is done,
+both [`StringReader`] and [`Parser`] have lifetimes which bind them to the parent [`ParseSess`].
+This contains all the information needed while parsing, as well as the [`SourceMap`] itself.
 
-Note that while parsing, we may encounter `macro` definitions or invocations. We
-set these aside to be expanded (see [Macro Expansion](./macro-expansion.md)).
-Expansion itself may require parsing the output of a `macro`, which may reveal
-more `macro`s to be expanded, and so on.
+Note that while parsing, we may encounter macro definitions or invocations.
+We set these aside to be expanded (see [Macro Expansion](./macro-expansion.md)).
+Expansion itself may require parsing the output of a macro, which may reveal more macros to be expanded, and so on.
 
 ## More on Lexical Analysis
 
