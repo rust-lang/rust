@@ -150,10 +150,14 @@
 //!   absent, in which case the pointer does not have permission to access any memory.
 //!
 //! The exact structure of provenance is not yet specified, but the permission defined by a
-//! pointer's provenance have both a *spatial* and *temporal* component:
+//! pointer's provenance have a *spatial* component, a *temporal* component, and a *mutability*
+//! component:
 //!
 //! * Spatial: The set of memory addresses that the pointer is allowed to access.
 //! * Temporal: The timespan during which the pointer is allowed to access those memory addresses.
+//! * Mutability: Whether the pointer may only access the memory for reads, or also access it for
+//!   writes. Note that this can interact with the other components, e.g. a pointer might permit
+//!   mutation only for a subset of addresses, or only for a subset of its maximal timespan.
 //!
 //! When an [allocated object] is created, it has a unique Original Pointer. For alloc
 //! APIs this is literally the pointer the call returns, and for local variables and statics,
@@ -176,6 +180,9 @@
 //! A reference to a slice always has provenance over at least the range that slice describes.
 //! Whether and when exactly the provenance of a reference gets "shrunk" to *exactly* fit
 //! the memory it points to is not yet determined.
+//!
+//! A *shared* reference only ever has provenance that permits reading from memory,
+//! and never permits writes, except inside [`UnsafeCell`].
 //!
 //! Provenance can affect whether a program has undefined behavior:
 //!
@@ -380,6 +387,7 @@
 //! [Miri]: https://github.com/rust-lang/miri
 //! [CHERI]: https://www.cl.cam.ac.uk/research/security/ctsrd/cheri/
 //! [Strict Provenance]: #strict-provenance
+//! [`UnsafeCell`]: core::cell::UnsafeCell
 
 #![stable(feature = "rust1", since = "1.0.0")]
 // There are many unsafe functions taking pointers that don't dereference them.
