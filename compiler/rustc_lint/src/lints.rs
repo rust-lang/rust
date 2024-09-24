@@ -1375,12 +1375,7 @@ pub(crate) enum NonLocalDefinitionsDiag {
         body_name: String,
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
         const_anon: Option<Option<Span>>,
-        move_to: Option<(Span, Vec<Span>)>,
         doctest: bool,
-        may_remove: Option<(Span, String)>,
-        has_trait: bool,
-        self_ty_str: String,
-        of_trait_str: Option<String>,
         macro_to_change: Option<(String, &'static str)>,
     },
     MacroRules {
@@ -1401,22 +1396,13 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 body_name,
                 cargo_update,
                 const_anon,
-                move_to,
                 doctest,
-                may_remove,
-                has_trait,
-                self_ty_str,
-                of_trait_str,
                 macro_to_change,
             } => {
                 diag.primary_message(fluent::lint_non_local_definitions_impl);
                 diag.arg("depth", depth);
                 diag.arg("body_kind_descr", body_kind_descr);
                 diag.arg("body_name", body_name);
-                diag.arg("self_ty_str", self_ty_str);
-                if let Some(of_trait_str) = of_trait_str {
-                    diag.arg("of_trait_str", of_trait_str);
-                }
 
                 if let Some((macro_to_change, macro_kind)) = macro_to_change {
                     diag.arg("macro_to_change", macro_to_change);
@@ -1427,32 +1413,10 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                     diag.subdiagnostic(cargo_update);
                 }
 
-                if has_trait {
-                    diag.note(fluent::lint_bounds);
-                    diag.note(fluent::lint_with_trait);
-                } else {
-                    diag.note(fluent::lint_without_trait);
-                }
+                diag.note(fluent::lint_non_local);
 
-                if let Some((move_help, may_move)) = move_to {
-                    let mut ms = MultiSpan::from_span(move_help);
-                    for sp in may_move {
-                        ms.push_span_label(sp, fluent::lint_non_local_definitions_may_move);
-                    }
-                    diag.span_help(ms, fluent::lint_non_local_definitions_impl_move_help);
-                }
                 if doctest {
                     diag.help(fluent::lint_doctest);
-                }
-
-                if let Some((span, part)) = may_remove {
-                    diag.arg("may_remove_part", part);
-                    diag.span_suggestion(
-                        span,
-                        fluent::lint_remove_help,
-                        "",
-                        Applicability::MaybeIncorrect,
-                    );
                 }
 
                 if let Some(const_anon) = const_anon {
