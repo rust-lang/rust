@@ -34,6 +34,13 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 </g></svg>');
 	--button-left-margin: 4px;
 	--button-border-radius: 2px;
+	/* Used to manage the big screen three column layout */
+	--width-limiter-width: 960px;
+	--desktop-grid-column-gap: 45px;
+	--container-border-radius: 6px;
+	/* height of header, plus header margin, plus top logo section */
+	--desktop-grid-toc-top: calc((1.25 * 1.5rem) + 76px + 23px);
+	--desktop-grid-toc-max-width: 512px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -336,7 +343,7 @@ button#toggle-all-docs {
 main {
 	position: relative;
 	flex-grow: 1;
-	padding: 10px 15px 40px 45px;
+	padding: 10px 15px 40px var(--desktop-grid-column-gap);
 	min-width: 0; /* avoid growing beyond the size limit */
 }
 
@@ -345,7 +352,7 @@ main {
 }
 
 .width-limiter {
-	max-width: 960px;
+	max-width: var(--width-limiter-width);
 	margin-right: auto;
 }
 
@@ -369,6 +376,7 @@ pre {
 }
 pre.item-decl {
 	overflow-x: auto;
+	border-radius: var(--container-border-radius);
 }
 /* This rule allows to have scrolling on the X axis. */
 .item-decl .type-contents-toggle {
@@ -460,7 +468,7 @@ img {
 .sidebar-resizing .sidebar {
 	position: fixed;
 }
-.sidebar-resizing > body {
+.sidebar-resizing .rustdoc {
 	padding-left: var(--resizing-sidebar-width);
 }
 
@@ -534,7 +542,7 @@ img {
 	scrollbar-width: initial;
 	scrollbar-color: var(--scrollbar-color);
 }
-.sidebar {
+.sidebar, #rustdoc-toc section, #rustdoc-modnav section {
 	scrollbar-width: thin;
 	scrollbar-color: var(--scrollbar-color);
 }
@@ -543,17 +551,24 @@ img {
 ::-webkit-scrollbar {
 	width: 12px;
 }
-.sidebar::-webkit-scrollbar {
+.sidebar::-webkit-scrollbar,
+#rustdoc-toc section::-webkit-scrollbar,
+#rustdoc-modnav section::-webkit-scrollbar {
 	width: 8px;
 }
 ::-webkit-scrollbar-track {
 	-webkit-box-shadow: inset 0;
 	background-color: var(--scrollbar-track-background-color);
 }
-.sidebar::-webkit-scrollbar-track {
+.sidebar::-webkit-scrollbar-track,
+#rustdoc-toc section::-webkit-scrollbar-track,
+#rustdoc-modnav section::-webkit-scrollbar-track {
 	background-color: var(--scrollbar-track-background-color);
 }
-::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb,
+#rustdoc-toc section::-webkit-scrollbar-thumb,
+#rustdoc-modnav section::-webkit-scrollbar-thumb {
 	background-color: var(--scrollbar-thumb-background-color);
 }
 
@@ -742,7 +757,7 @@ ul.block, .block li, .block ul {
 	overflow-wrap: break-word;
 }
 
-.sidebar-crate + .version {
+.sidebar > .version {
 	margin-top: -1rem;
 	margin-bottom: 1rem;
 }
@@ -760,7 +775,7 @@ ul.block, .block li, .block ul {
 .rustdoc .example-wrap > pre,
 .rustdoc .scraped-example .src-line-numbers,
 .rustdoc .scraped-example .src-line-numbers > pre {
-	border-radius: 6px;
+	border-radius: var(--container-border-radius);
 }
 
 /*
@@ -2084,6 +2099,115 @@ However, it's not needed with smaller screen width because the doc/code block is
 }
 
 /* Media Queries */
+
+/* Very-large-screen mode. */
+@supports (display: grid) and (display: contents) {
+	@media (min-width: 1600px) {
+		.rustdoc:not(.src) {
+			display: grid;
+			grid-template-columns:
+				var(--desktop-sidebar-width)
+				var(--width-limiter-width)
+				minmax(0, 1fr);
+			grid-template-rows: min-content 1fr;
+			grid-template-areas:
+				"sidebar-title main sidebar-cratenav"
+				"sidebar-modnav main sidebar-toc";
+			grid-column-gap: var(--desktop-grid-column-gap);
+		}
+		.sidebar-resizing .rustdoc:not(.src) {
+			padding-left: 0;
+		}
+		.hide-sidebar .rustdoc:not(.src) {
+			grid-template-columns:
+				var(--width-limiter-width)
+				minmax(0, 1fr);
+			grid-template-rows: minmax(min-content, calc(64px + 0.75rem)) 1fr;
+			grid-template-areas:
+				"main sidebar-cratenav"
+				"main sidebar-toc";
+			padding-left: var(--desktop-grid-column-gap);
+		}
+		.rustdoc:not(.src) .sidebar,
+		.rustdoc:not(.src) main {
+			display: contents;
+		}
+		.width-limiter {
+			grid-area: main;
+			width: var(--width-limiter-width);
+			--desktop-sidebar-width: 0;
+		}
+		.rustdoc:not(.src) nav.sub {
+			padding-top: 10px;
+		}
+		.rustdoc:not(.src) .doc-sidebar-title {
+			grid-area: sidebar-title;
+			background: var(--sidebar-background-color);
+			position: sticky;
+			top: 0;
+		}
+		.rustdoc:not(.src) .sidebar-crate {
+			margin-bottom: 0.5rem;
+		}
+		.rustdoc:not(.src) #rustdoc-toc,
+		.rustdoc:not(.src) #rustdoc-cratenav {
+			grid-area: sidebar-toc;
+			background: var(--main-background-color);
+			padding-left: 0;
+		}
+		.rustdoc:not(.src) #rustdoc-cratenav {
+			grid-area: sidebar-cratenav;
+			align-self: middle;
+		}
+		.rustdoc:not(.src) #rustdoc-modnav {
+			grid-area: sidebar-modnav;
+			background: var(--sidebar-background-color);
+			padding-left: 0;
+		}
+		.rustdoc:not(.src) #rustdoc-modnav .in-crate {
+			display: none;
+		}
+		.rustdoc:not(.src) #rustdoc-toc section,
+		.rustdoc:not(.src) #rustdoc-modnav section {
+			position: sticky;
+			top: 0;
+			bottom: 0;
+			overflow-y: scroll;
+			overscroll-behavior: contain;
+			max-height: 100vh;
+			padding-left: 24px;
+		}
+		.rustdoc:not(.src) #rustdoc-toc .location,
+		.rustdoc:not(.src) #rustdoc-modnav h2 {
+			margin-top: 0;
+		}
+		.rustdoc:not(.src) #rustdoc-modnav section {
+			top: calc(64px + 0.75rem);
+			height: calc(100vh - 64px - 0.75rem);
+			background: var(--sidebar-background-color);
+		}
+		.rustdoc:not(.src) #rustdoc-modnav section.scrolled {
+			border-top: solid 1px var(--border-color);
+		}
+		.rustdoc:not(.src) #rustdoc-toc section {
+			max-height: calc(100vh - (2 * var(--desktop-grid-toc-top)));
+			top: var(--desktop-grid-toc-top);
+			margin: 0 var(--desktop-grid-column-gap) var(--desktop-grid-column-gap) 0;
+			border: solid 1px var(--border-color);
+			padding: 14px 0 14px var(--sidebar-elems-left-padding);
+			border-radius: var(--container-border-radius);
+			max-width: var(--desktop-grid-toc-max-width);
+		}
+		.rustdoc:not(.src) #rustdoc-cratenav .block:last-child,
+		.rustdoc:not(.src) #rustdoc-toc .block:last-child {
+			margin-bottom: 0;
+		}
+		.rustdoc:not(.src) #rustdoc-cratenav a:hover,
+		.rustdoc:not(.src) #rustdoc-toc a:hover {
+			background-color: var(--sidebar-background-color);
+		}
+	}
+}
 
 /* Make sure all the buttons line wrap at the same time */
 @media (max-width: 850px) {

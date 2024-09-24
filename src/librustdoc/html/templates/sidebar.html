@@ -1,12 +1,13 @@
-<div class="sidebar-elems">
-    {% if is_crate %}
+{% if is_crate %}
+    <div class="sidebar-elems" id="rustdoc-cratenav"> {# #}
         <ul class="block"> {# #}
             <li><a id="all-types" href="all.html">All Items</a></li> {# #}
-        </ul>
-    {% endif %}
-
-    {% if self.should_render_blocks() %}
-        <section id="rustdoc-toc">
+        </ul> {# #}
+    </div>
+{% endif %}
+{% if self.should_render_blocks() %}
+    <div class="sidebar-elems" id="rustdoc-toc"> {# #}
+        <section>
             {% if !title.is_empty() %}
             <h2 class="location"> {# #}
                 <a href="#">{{title_prefix}}{{title|wrapped|safe}}</a> {# #}
@@ -51,13 +52,15 @@
                     {% endif %}
                 {% endif %}
             {% endfor %}
-        </section>
-    {% endif %}
-    <div id="rustdoc-modnav">
+        </section> {# #}
+    </div>
+{% endif %}
+<div class="sidebar-elems" id="rustdoc-modnav"> {# #}
+    <section>
     {% if !path.is_empty() %}
         <h2{% if parent_is_crate +%} class="in-crate"{% endif %}> {# #}
             <a href="{% if is_mod %}../{% endif %}index.html">In {{+ path|wrapped|safe}}</a> {# #}
         </h2>
     {% endif %}
-    </div> {# #}
+    </section> {# #}
 </div>
