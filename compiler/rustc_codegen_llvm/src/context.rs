@@ -1,9 +1,8 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
-use std::ffi::CStr;
+use std::ffi::{CStr, c_uint};
 use std::str;
 
-use libc::c_uint;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
@@ -31,6 +30,7 @@ use smallvec::SmallVec;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
+use crate::llvm::{Metadata, MetadataType};
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
@@ -404,17 +404,17 @@ pub(crate) unsafe fn create_module<'ll>(
     let rustc_producer =
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
     let name_metadata = unsafe {
-        llvm::LLVMMDStringInContext(
+        llvm::LLVMMDStringInContext2(
             llcx,
             rustc_producer.as_ptr().cast(),
-            rustc_producer.as_bytes().len() as c_uint,
+            rustc_producer.as_bytes().len(),
         )
     };
     unsafe {
         llvm::LLVMAddNamedMetadataOperand(
             llmod,
             c"llvm.ident".as_ptr(),
-            llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
+            &llvm::LLVMMetadataAsValue(llcx, llvm::LLVMMDNodeInContext2(llcx, &name_metadata, 1)),
         );
     }
 
@@ -1118,6 +1118,14 @@ impl CodegenCx<'_, '_> {
         name.push('.');
         name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
+    }
+
+    /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
+    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: MetadataType, md: &'a Metadata) {
+        unsafe {
+            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
+            llvm::LLVMSetMetadata(val, kind_id as c_uint, node);
+        }
     }
 }
 

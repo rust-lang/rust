@@ -14,7 +14,7 @@ use tracing::debug;
 
 use crate::consts::const_alloc_to_llvm;
 pub(crate) use crate::context::CodegenCx;
-use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
+use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, Metadata, OperandBundleDef, True};
 use crate::type_::Type;
 use crate::value::Value;
 
@@ -79,6 +79,7 @@ impl<'ll> Funclet<'ll> {
 
 impl<'ll> BackendTypes for CodegenCx<'ll, '_> {
     type Value = &'ll Value;
+    type Metadata = &'ll Metadata;
     // FIXME(eddyb) replace this with a `Function` "subclass" of `Value`.
     type Function = &'ll Value;
 

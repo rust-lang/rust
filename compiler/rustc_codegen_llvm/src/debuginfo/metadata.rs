@@ -1547,20 +1547,16 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
 
     unsafe {
-        let typeid = llvm::LLVMMDStringInContext(
+        let typeid = llvm::LLVMMDStringInContext2(
             cx.llcx,
             trait_ref_typeid.as_ptr() as *const c_char,
-            trait_ref_typeid.as_bytes().len() as c_uint,
+            trait_ref_typeid.as_bytes().len(),
         );
-        let v = [cx.const_usize(0), typeid];
+        let v = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
         llvm::LLVMRustGlobalAddMetadata(
             vtable,
             llvm::MD_type as c_uint,
-            llvm::LLVMValueAsMetadata(llvm::LLVMMDNodeInContext(
-                cx.llcx,
-                v.as_ptr(),
-                v.len() as c_uint,
-            )),
+            llvm::LLVMMDNodeInContext2(cx.llcx, v.as_ptr(), v.len()),
         );
         let vcall_visibility = llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64));
         let vcall_visibility_metadata = llvm::LLVMMDNodeInContext2(cx.llcx, &vcall_visibility, 1);
