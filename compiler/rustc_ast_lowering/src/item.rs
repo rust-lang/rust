@@ -1058,7 +1058,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (hir::Defaultness::Default { has_value }, Some(self.lower_span(sp)))
             }
             Defaultness::Final(sp) => {
-                assert!(has_value);
                 (hir::Defaultness::Final, Some(sp))
             }
         }
