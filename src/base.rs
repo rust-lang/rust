@@ -222,7 +222,6 @@ pub fn compile_codegen_unit(
 
             // ... and now that we have everything pre-defined, fill out those definitions.
             for &(mono_item, _) in &mono_items {
-                //println!("{:?}", mono_item);
                 mono_item.define::<Builder<'_, '_, '_>>(&cx);
             }
 

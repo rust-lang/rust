@@ -275,7 +275,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                         assert!(
                             (!expected_ty.is_vector() || actual_ty.is_vector())
                                 && (expected_ty.is_vector() || !actual_ty.is_vector()),
-                            "{:?} ({}) -> {:?} ({}), index: {:?}[{}]",
+                            "{:?} (is vector: {}) -> {:?} (is vector: {}), Function: {:?}[{}]",
                             actual_ty,
                             actual_ty.is_vector(),
                             expected_ty,
@@ -285,7 +285,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                         );
                         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
                         // TODO: remove bitcast now that vector types can be compared?
-                        println!("Name: {}", func_name);
                         self.bitcast(actual_val, expected_ty)
                     }
                 } else {
