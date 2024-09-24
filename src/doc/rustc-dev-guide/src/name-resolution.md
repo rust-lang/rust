@@ -3,25 +3,25 @@
 <!-- toc -->
 
 In the previous chapters, we saw how the [*Abstract Syntax Tree* (`AST`)][ast]
-is built with all `macros` expanded. We saw how doing that requires doing some
-name resolution to resolve imports and `macro` names. In this chapter, we show
+is built with all macros expanded. We saw how doing that requires doing some
+name resolution to resolve imports and macro names. In this chapter, we show
 how this is actually done and more.
 
 [ast]: ./ast-validation.md
 
-In fact, we don't do full name resolution during `macro` expansion -- we only
-resolve imports and `macros` at that time. This is required to know what to even
-expand. Later, after we have the whole `AST`, we do full name resolution to
+In fact, we don't do full name resolution during macro expansion -- we only
+resolve imports and macros at that time. This is required to know what to even
+expand. Later, after we have the whole AST, we do full name resolution to
 resolve all names in the crate. This happens in [`rustc_resolve::late`][late].
-Unlike during `macro` expansion, in this late expansion, we only need to try to
+Unlike during macro expansion, in this late expansion, we only need to try to
 resolve a name once, since no new names can be added. If we fail to resolve a
 name, then it is a compiler error.
 
-Name resolution can be complex. There are different namespaces (e.g.
-`macros`, values, types, lifetimes), and names may be valid at different (nested)
+Name resolution is complex. There are different namespaces (e.g.
+macros, values, types, lifetimes), and names may be valid at different (nested)
 scopes. Also, different types of names can fail resolution differently, and
 failures can happen differently at different scopes. For example, in a module
-scope, failure means no unexpanded `macros` and no unresolved glob imports in
+scope, failure means no unexpanded macros and no unresolved glob imports in
 that module. On the other hand, in a function body scope, failure requires that a
 name be absent from the block we are in, all outer scopes, and the global
 scope.
@@ -53,7 +53,7 @@ expansion and name resolution communicate with each other via the
 The input to the second phase is the syntax tree, produced by parsing input
 files and expanding `macros`. This phase produces links from all the names in the
 source to relevant places where the name was introduced. It also generates
-helpful error messages, like typo suggestions, `trait`s to import or lints about
+helpful error messages, like typo suggestions, traits to import or lints about
 unused items.
 
 A successful run of the second phase ([`Resolver::resolve_crate`]) creates kind
@@ -85,7 +85,7 @@ namespaces, the resolver keeps them separated and builds separate structures for
 them.
 
 In other words, when the code talks about namespaces, it doesn't mean the module
-hierarchy, it's types vs. values vs. `macros`.
+hierarchy, it's types vs. values vs. macros.
 
 ## Scopes and ribs
 
@@ -105,12 +105,12 @@ example:
   modules.
 * Introducing a `let` binding ‒ this can shadow another binding with the same
   name.
-* Macro expansion border ‒ to cope with `macro` hygiene.
+* Macro expansion border ‒ to cope with macro hygiene.
 
 When searching for a name, the stack of [`ribs`] is traversed from the innermost
 outwards. This helps to find the closest meaning of the name (the one not
 shadowed by anything else). The transition to outer [`Rib`] may also affect
-what names are usable ‒ if there are nested functions (not `closure`s),
+what names are usable ‒ if there are nested functions (not closures),
 the inner one can't access parameters and local bindings of the outer one,
 even though they should be visible by ordinary scoping rules. An example:
 
@@ -150,14 +150,14 @@ used even before encountered ‒ therefore every block needs to be first scanned
 for items to fill in its [`Rib`].
 
 Other, even more problematic ones, are imports which need recursive fixed-point
-resolution and `macros`, that need to be resolved and expanded before the rest of
+resolution and macros, that need to be resolved and expanded before the rest of
 the code can be processed.
 
 Therefore, the resolution is performed in multiple stages.
 
 ## Speculative crate loading
 
-To give useful errors, `rustc` suggests importing paths into scope if they're
+To give useful errors, rustc suggests importing paths into scope if they're
 not found. How does it do this? It looks through every module of every crate
 and looks for possible matches. This even includes crates that haven't yet
 been loaded!
@@ -176,7 +176,7 @@ To tell the difference between speculative loads and loads initiated by the
 user, [`rustc_resolve`] passes around a `record_used` parameter, which is `false` when
 the load is speculative.
 
-<!-- ## TODO: [#16](https://github.com/rust-lang/rustc-dev-guide/issues/16)
+## TODO: [#16](https://github.com/rust-lang/rustc-dev-guide/issues/16)
 
 This is a result of the first pass of learning the code. It is definitely
 incomplete and not detailed enough. It also might be inaccurate in places.
@@ -190,4 +190,4 @@ Still, it probably provides useful first guidepost to what happens in there.
 * The overall strategy description is a bit vague.
 * Where does the name `Rib` come from?
 * Does this thing have its own tests, or is it tested only as part of some e2e
-  testing? -->
+  testing?
