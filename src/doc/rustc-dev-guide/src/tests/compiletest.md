@@ -258,10 +258,9 @@ test based on the debugger currently being used:
 >
 > If you want to run lldb debuginfo tests locally, then currently on Windows it is required that:
 > 
-> - You have **exactly** Python 3.10 installed -- not a newer version, not an older version,
->   precisely 3.10.
-> - You have the `python310.dll` available in your `PATH` env var. This is not provided by the
->   standard Python installer you obtain from `python.org`; you need to add this to `PATH` manually.
+> - You have Python 3.10 installed.
+> - You have `python310.dll` available in your `PATH` env var. This is not provided by the standard
+>   Python installer you obtain from `python.org`; you need to add this to `PATH` manually.
 > 
 > Otherwise the lldb debuginfo tests can produce crashes in mysterious ways.
 
