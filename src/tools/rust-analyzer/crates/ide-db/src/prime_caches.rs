@@ -13,6 +13,7 @@ use crate::{
         salsa::{Database, ParallelDatabase, Snapshot},
         Cancelled, CrateId, SourceDatabase, SourceRootDatabase,
     },
+    symbol_index::SymbolsDatabase,
     FxIndexMap, RootDatabase,
 };
 
@@ -54,11 +55,13 @@ pub fn parallel_prime_caches(
         let (progress_sender, progress_receiver) = crossbeam_channel::unbounded();
         let (work_sender, work_receiver) = crossbeam_channel::unbounded();
         let graph = graph.clone();
+        let local_roots = db.local_roots();
         let prime_caches_worker = move |db: Snapshot<RootDatabase>| {
             while let Ok((crate_id, crate_name)) = work_receiver.recv() {
                 progress_sender
                     .send(ParallelPrimeCacheWorkerProgress::BeginCrate { crate_id, crate_name })?;
 
+                // Compute the DefMap and possibly ImportMap
                 let file_id = graph[crate_id].root_file_id;
                 let root_id = db.file_source_root(file_id);
                 if db.source_root(root_id).is_library {
@@ -66,6 +69,19 @@ pub fn parallel_prime_caches(
                 } else {
                     // This also computes the DefMap
                     db.import_map(crate_id);
+                }
+
+                // Compute the symbol search index.
+                // This primes the cache for `ide_db::symbol_index::world_symbols()`.
+                //
+                // We do this for workspace crates only (members of local_roots), because doing it
+                // for all dependencies could be *very* unnecessarily slow in a large project.
+                //
+                // FIXME: We should do it unconditionally if the configuration is set to default to
+                // searching dependencies (rust-analyzer.workspace.symbol.search.scope), but we
+                // would need to pipe that configuration information down here.
+                if local_roots.contains(&root_id) {
+                    db.crate_symbols(crate_id.into());
                 }
 
                 progress_sender.send(ParallelPrimeCacheWorkerProgress::EndCrate { crate_id })?;
