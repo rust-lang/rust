@@ -277,8 +277,6 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             | sym::ptr_read_unaligned
             | sym::ptr_read_volatile
             | sym::ptr_replace
-            | sym::ptr_slice_from_raw_parts
-            | sym::ptr_slice_from_raw_parts_mut
             | sym::ptr_write
             | sym::ptr_write_bytes
             | sym::ptr_write_unaligned
