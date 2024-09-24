@@ -42,6 +42,7 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
                             ref mut cast_kind @ CastKind::PointerCoercion(
                                 PointerCoercion::ArrayToPointer
                                 | PointerCoercion::MutToConstPointer,
+                                _,
                             ),
                             ..,
                         ),

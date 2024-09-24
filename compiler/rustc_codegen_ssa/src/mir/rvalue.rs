@@ -34,7 +34,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::Unsize),
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _),
                 ref source,
                 _,
             ) => {
@@ -465,7 +465,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let lladdr = bx.ptrtoint(llptr, llcast_ty);
                         OperandValue::Immediate(lladdr)
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _) => {
                         match *operand.layout.ty.kind() {
                             ty::FnDef(def_id, args) => {
                                 let instance = ty::Instance::resolve_for_fn_ptr(
@@ -481,7 +481,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _) => {
                         match *operand.layout.ty.kind() {
                             ty::Closure(def_id, args) => {
                                 let instance = Instance::resolve_closure(
@@ -496,11 +496,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
                         }
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _) => {
                         // This is a no-op at the LLVM level.
                         operand.val
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::Unsize) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _) => {
                         assert!(bx.cx().is_backend_scalar_pair(cast));
                         let (lldata, llextra) = operand.val.pointer_parts();
                         let (lldata, llextra) =
@@ -508,7 +508,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         OperandValue::Pair(lldata, llextra)
                     }
                     mir::CastKind::PointerCoercion(
-                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _
                     ) => {
                         bug!("{kind:?} is for borrowck, and should never appear in codegen");
                     }
@@ -526,7 +526,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("unexpected non-pair operand");
                         }
                     }
-                    mir::CastKind::DynStar => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
                         let (lldata, llextra) = operand.val.pointer_parts();
                         let (lldata, llextra) =
                             base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);

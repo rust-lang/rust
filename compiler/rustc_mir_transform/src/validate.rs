@@ -1128,12 +1128,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Cast(kind, operand, target_type) => {
                 let op_ty = operand.ty(self.body, self.tcx);
                 match kind {
-                    CastKind::DynStar => {
-                        // FIXME(dyn-star): make sure nothing needs to be done here.
-                    }
                     // FIXME: Add Checks for these
                     CastKind::PointerWithExposedProvenance | CastKind::PointerExposeProvenance => {}
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _) => {
                         // FIXME: check signature compatibility.
                         check_kinds!(
                             op_ty,
@@ -1146,7 +1143,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::FnPtr(..)
                         );
                     }
-                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _) => {
                         // FIXME: check safety and signature compatibility.
                         check_kinds!(
                             op_ty,
@@ -1159,7 +1156,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::FnPtr(..)
                         );
                     }
-                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(..)) => {
+                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(..), _) => {
                         // FIXME: check safety, captures, and signature compatibility.
                         check_kinds!(
                             op_ty,
@@ -1172,7 +1169,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::FnPtr(..)
                         );
                     }
-                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer, _) => {
                         // FIXME: check same pointee?
                         check_kinds!(
                             op_ty,
@@ -1188,7 +1185,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
                         }
                     }
-                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer, _) => {
                         // FIXME: Check pointee types
                         check_kinds!(
                             op_ty,
@@ -1204,9 +1201,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
                         }
                     }
-                    CastKind::PointerCoercion(PointerCoercion::Unsize) => {
+                    CastKind::PointerCoercion(PointerCoercion::Unsize, _) => {
                         // This is used for all `CoerceUnsized` types,
                         // not just pointers/references, so is hard to check.
+                    }
+                    CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
+                        // FIXME(dyn-star): make sure nothing needs to be done here.
                     }
                     CastKind::IntToInt | CastKind::IntToFloat => {
                         let input_valid = op_ty.is_integral() || op_ty.is_char() || op_ty.is_bool();
