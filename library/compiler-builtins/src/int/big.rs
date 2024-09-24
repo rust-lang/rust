@@ -93,7 +93,7 @@ macro_rules! impl_common {
             type Output = Self;
 
             fn shl(self, rhs: u32) -> Self::Output {
-                todo!()
+                unimplemented!("only used to meet trait bounds")
             }
         }
     };
@@ -101,6 +101,41 @@ macro_rules! impl_common {
 
 impl_common!(i256);
 impl_common!(u256);
+
+impl ops::Shr<u32> for u256 {
+    type Output = Self;
+
+    fn shr(self, rhs: u32) -> Self::Output {
+        assert!(rhs < Self::BITS, "attempted to shift right with overflow");
+
+        if rhs == 0 {
+            return self;
+        }
+
+        let mut ret = self;
+        let byte_shift = rhs / 64;
+        let bit_shift = rhs % 64;
+
+        for idx in 0..4 {
+            let base_idx = idx + byte_shift as usize;
+
+            let Some(base) = ret.0.get(base_idx) else {
+                ret.0[idx] = 0;
+                continue;
+            };
+
+            let mut new_val = base >> bit_shift;
+
+            if let Some(new) = ret.0.get(base_idx + 1) {
+                new_val |= new.overflowing_shl(64 - bit_shift).0;
+            }
+
+            ret.0[idx] = new_val;
+        }
+
+        ret
+    }
+}
 
 macro_rules! word {
     (1, $val:expr) => {

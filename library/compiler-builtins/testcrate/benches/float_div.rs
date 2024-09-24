@@ -1,5 +1,7 @@
+#![cfg_attr(f128_enabled, feature(f128))]
+
 use compiler_builtins::float::div;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_main, Criterion};
 use testcrate::float_bench;
 
 float_bench! {
@@ -64,5 +66,28 @@ float_bench! {
     ],
 }
 
-criterion_group!(float_div, div_f32, div_f64);
+#[cfg(f128_enabled)]
+float_bench! {
+    name: div_f128,
+    sig: (a: f128, b: f128) -> f128,
+    crate_fn: div::__divtf3,
+    crate_fn_ppc: div::__divkf3,
+    sys_fn: __divtf3,
+    sys_fn_ppc: __divkf3,
+    sys_available: not(feature = "no-sys-f128"),
+    asm: []
+}
+
+pub fn float_div() {
+    let mut criterion = Criterion::default().configure_from_args();
+
+    div_f32(&mut criterion);
+    div_f64(&mut criterion);
+
+    #[cfg(f128_enabled)]
+    {
+        div_f128(&mut criterion);
+    }
+}
+
 criterion_main!(float_div);
