@@ -74,7 +74,7 @@ pub fn should_run_pass_for_item<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> bool {
     }
 
     let codegen_fn_attrs = tcx.codegen_fn_attrs(did);
-    matches!(codegen_fn_attrs.inline, InlineAttr::Required { .. } | InlineAttr::Must { .. })
+    codegen_fn_attrs.inline.required()
         || match tcx.sess.mir_opt_level() {
             0 | 1 => false,
             2 => {
@@ -219,8 +219,10 @@ impl<'tcx> Inliner<'tcx> {
         // Intrinsic fallback bodies are automatically made cross-crate inlineable,
         // but at this stage we don't know whether codegen knows the intrinsic,
         // so just conservatively don't inline it.
-        if self.tcx.has_attr(callsite.callee.def_id(), sym::rustc_intrinsic) {
-            return Err("Callee is an intrinsic, do not inline fallback bodies");
+        if self.tcx.has_attr(callsite.callee.def_id(), sym::rustc_intrinsic)
+            && !callee_attrs.inline.required()
+        {
+            return Err("callee is an intrinsic");
         }
 
         let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
@@ -230,7 +232,7 @@ impl<'tcx> Inliner<'tcx> {
             if !arg.node.ty(&caller_body.local_decls, self.tcx).is_sized(self.tcx, self.param_env) {
                 // We do not allow inlining functions with unsized params. Inlining these functions
                 // could create unsized locals, which are unsound and being phased out.
-                return Err("Call has unsized argument");
+                return Err("call has unsized argument");
             }
         }
 
@@ -239,7 +241,8 @@ impl<'tcx> Inliner<'tcx> {
 
         if !self.tcx.consider_optimizing(|| {
             format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
-        }) {
+        }) && !callee_attrs.inline.required()
+        {
             return Err("optimization fuel exhausted");
         }
 
@@ -248,7 +251,8 @@ impl<'tcx> Inliner<'tcx> {
             self.param_env,
             ty::EarlyBinder::bind(callee_body.clone()),
         ) else {
-            return Err("failed to normalize callee body");
+            debug!("failed to normalize callee body");
+            return Err("implementation limitation");
         };
 
         // Normally, this shouldn't be required, but trait normalization failure can create a
@@ -262,7 +266,8 @@ impl<'tcx> Inliner<'tcx> {
         )
         .is_empty()
         {
-            return Err("failed to validate callee body");
+            debug!("failed to validate callee body");
+            return Err("implementation limitation");
         }
 
         // Check call signature compatibility.
@@ -272,14 +277,15 @@ impl<'tcx> Inliner<'tcx> {
         if !util::relate_types(self.tcx, self.param_env, ty::Covariant, output_type, destination_ty)
         {
             trace!(?output_type, ?destination_ty);
-            return Err("failed to normalize return type");
+            debug!("failed to normalize return type");
+            return Err("implementation limitation");
         }
         if callsite.fn_sig.abi() == Abi::RustCall {
             // FIXME: Don't inline user-written `extern "rust-call"` functions,
             // since this is generally perf-negative on rustc, and we hope that
             // LLVM will inline these functions instead.
             if callee_body.spread_arg.is_some() {
-                return Err("do not inline user-written rust-call functions");
+                return Err("user-written rust-call functions");
             }
 
             let (self_arg, arg_tuple) = match &args[..] {
@@ -303,7 +309,8 @@ impl<'tcx> Inliner<'tcx> {
                 if !util::relate_types(self.tcx, self.param_env, ty::Covariant, input_type, arg_ty)
                 {
                     trace!(?arg_ty, ?input_type);
-                    return Err("failed to normalize tuple argument type");
+                    debug!("failed to normalize tuple argument type");
+                    return Err("implementation limitation");
                 }
             }
         } else {
@@ -313,7 +320,8 @@ impl<'tcx> Inliner<'tcx> {
                 if !util::relate_types(self.tcx, self.param_env, ty::Covariant, input_type, arg_ty)
                 {
                     trace!(?arg_ty, ?input_type);
-                    return Err("failed to normalize argument type");
+                    debug!("failed to normalize argument type");
+                    return Err("implementation limitation");
                 }
             }
         }
@@ -342,12 +350,14 @@ impl<'tcx> Inliner<'tcx> {
                 // because it has no MIR because it's an extern function), then the inliner
                 // won't cause cycles on this.
                 if !self.tcx.is_mir_available(callee_def_id) {
-                    return Err("item MIR unavailable");
+                    debug!("item MIR unavailable");
+                    return Err("implementation limitation");
                 }
             }
             // These have no own callable MIR.
             InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
-                return Err("instance without MIR (intrinsic / virtual)");
+                debug!("instance without MIR (intrinsic / virtual)");
+                return Err("implementation limitation");
             }
 
             // FIXME(#127030): `ConstParamHasTy` has bad interactions with
@@ -356,7 +366,8 @@ impl<'tcx> Inliner<'tcx> {
             // the MIR for this instance until all of its const params are
             // substituted.
             InstanceKind::DropGlue(_, Some(ty)) if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) => {
-                return Err("still needs substitution");
+                debug!("still needs substitution");
+                return Err("implementation limitation");
             }
 
             // This cannot result in an immediate cycle since the callee MIR is a shim, which does
@@ -385,7 +396,8 @@ impl<'tcx> Inliner<'tcx> {
             // If we know for sure that the function we're calling will itself try to
             // call us, then we avoid inlining that function.
             if self.tcx.mir_callgraph_reachable((callee, caller_def_id.expect_local())) {
-                return Err("caller might be reachable from callee (query cycle avoidance)");
+                debug!("query cycle avoidance");
+                return Err("caller might be reachable from callee");
             }
 
             Ok(())
@@ -459,7 +471,7 @@ impl<'tcx> Inliner<'tcx> {
         }
 
         if let InlineAttr::Never = callee_attrs.inline {
-            return Err("never inline hint");
+            return Err("never inline attribute");
         }
 
         // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
@@ -528,12 +540,12 @@ impl<'tcx> Inliner<'tcx> {
         let tcx = self.tcx;
 
         if let Some(_) = callee_body.tainted_by_errors {
-            return Err("Body is tainted");
+            return Err("body has errors");
         }
 
         // Callees which require inlining must be inlined to maintain security properties or
         // for performance reasons, so skip any heuristics.
-        if matches!(callee_attrs.inline, InlineAttr::Required { .. } | InlineAttr::Must { .. }) {
+        if callee_attrs.inline.required() {
             debug!("INLINING {:?} [required]", callsite);
             return Ok(());
         }
@@ -594,7 +606,7 @@ impl<'tcx> Inliner<'tcx> {
                 // assign one. However, during this stage we require an exact match when any
                 // inline-asm is detected. LLVM will still possibly do an inline later on
                 // if the no-attribute function ends up with the same instruction set anyway.
-                return Err("Cannot move inline-asm across instruction sets");
+                return Err("cannot move inline-asm across instruction sets");
             } else if let TerminatorKind::TailCall { .. } = term.kind {
                 // FIXME(explicit_tail_calls): figure out how exactly functions containing tail
                 // calls can be inlined (and if they even should)

@@ -62,6 +62,13 @@ pub enum InlineAttr {
 }
 
 impl InlineAttr {
+    pub fn required(&self) -> bool {
+        match self {
+            InlineAttr::Must { .. } | InlineAttr::Required { .. } => true,
+            InlineAttr::None | InlineAttr::Hint | InlineAttr::Always | InlineAttr::Never => false,
+        }
+    }
+
     pub fn always(&self) -> bool {
         match self {
             InlineAttr::Always | InlineAttr::Must { .. } | InlineAttr::Required { .. } => true,
