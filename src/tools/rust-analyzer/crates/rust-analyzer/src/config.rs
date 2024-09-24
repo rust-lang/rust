@@ -440,11 +440,64 @@ config_data! {
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
+        /// A list of full paths to traits to exclude from flyimport.
+        ///
+        /// Traits in this list won't be suggested to be imported by flyimport for their methods. Methods from them won't be available in flyimport completion. They will still be available if in scope.
+        ///
+        /// Note that the trait themselves can still be suggested by flyimport.
+        ///
+        /// This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
+        ///
+        /// This setting defaults to:
+        ///
+        ///  - [`core::borrow::Borrow`](https://doc.rust-lang.org/nightly/core/borrow/trait.Borrow.html)
+        ///  - [`core::borrow::BorrowMut`](https://doc.rust-lang.org/nightly/core/borrow/trait.BorrowMut.html)
+        ///  - [`core::cmp::PartialEq`](https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html)
+        ///  - All operator traits (in [`core::ops`](https://doc.rust-lang.org/nightly/core/ops))
+        ///
+        /// Note that if you override this setting, those traits won't be automatically inserted, so you may want to insert them manually.
+        completion_autoimport_excludeTraits: Vec<String> = vec![
+            "core::borrow::Borrow".to_owned(),
+            "core::borrow::BorrowMut".to_owned(),
+            "core::cmp::PartialEq".to_owned(),
+            "core::ops::Add".to_owned(),
+            "core::ops::AddAssign".to_owned(),
+            "core::ops::BitAnd".to_owned(),
+            "core::ops::BitAndAssign".to_owned(),
+            "core::ops::BitOr".to_owned(),
+            "core::ops::BitOrAssign".to_owned(),
+            "core::ops::BitXor".to_owned(),
+            "core::ops::BitXorAssign".to_owned(),
+            "core::ops::Div".to_owned(),
+            "core::ops::DivAssign".to_owned(),
+            "core::ops::Mul".to_owned(),
+            "core::ops::MulAssign".to_owned(),
+            "core::ops::Rem".to_owned(),
+            "core::ops::RemAssign".to_owned(),
+            "core::ops::Shl".to_owned(),
+            "core::ops::ShlAssign".to_owned(),
+            "core::ops::Shr".to_owned(),
+            "core::ops::ShrAssign".to_owned(),
+            "core::ops::Sub".to_owned(),
+            "core::ops::SubAssign".to_owned(),
+            "core::ops::Neg".to_owned(),
+            "core::ops::Not".to_owned(),
+            "core::ops::Index".to_owned(),
+            "core::ops::IndexMut".to_owned(),
+            "core::ops::Deref".to_owned(),
+            "core::ops::DerefMut".to_owned(),
+        ],
         /// Toggles the additional completions that automatically show method calls and field accesses
         /// with `self` prefixed to them when inside a method.
         completion_autoself_enable: bool        = true,
         /// Whether to add parenthesis and argument snippets when completing function.
         completion_callable_snippets: CallableCompletionDef  = CallableCompletionDef::FillArguments,
+        /// A list of full paths to traits to exclude from completion.
+        ///
+        /// Methods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.
+        ///
+        /// Note that the trait themselves can still be completed.
+        completion_excludeTraits: Vec<String> = Vec::new(),
         /// Whether to show full function/method signatures in completion docs.
         completion_fullFunctionSignatures_enable: bool = false,
         /// Whether to omit deprecated items from autocompletion. By default they are marked as deprecated but not hidden.
@@ -1431,7 +1484,7 @@ impl Config {
         CallHierarchyConfig { exclude_tests: self.references_excludeTests().to_owned() }
     }
 
-    pub fn completion(&self, source_root: Option<SourceRootId>) -> CompletionConfig {
+    pub fn completion(&self, source_root: Option<SourceRootId>) -> CompletionConfig<'_> {
         let client_capability_fields = self.completion_resolve_support_properties();
         CompletionConfig {
             enable_postfix_completions: self.completion_postfix_enable(source_root).to_owned(),
@@ -1462,6 +1515,8 @@ impl Config {
             } else {
                 CompletionFieldsToResolve::from_client_capabilities(&client_capability_fields)
             },
+            exclude_flyimport_traits: self.completion_autoimport_excludeTraits(source_root),
+            exclude_traits: self.completion_excludeTraits(source_root),
         }
     }
 

@@ -7,8 +7,8 @@ mod tests;
 use std::{iter, ops::ControlFlow};
 
 use hir::{
-    HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics, SemanticsScope,
-    Symbol, Type, TypeInfo,
+    db::DefDatabase, HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics,
+    SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
@@ -429,7 +429,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) sema: Semantics<'a, RootDatabase>,
     pub(crate) scope: SemanticsScope<'a>,
     pub(crate) db: &'a RootDatabase,
-    pub(crate) config: &'a CompletionConfig,
+    pub(crate) config: &'a CompletionConfig<'a>,
     pub(crate) position: FilePosition,
 
     /// The token before the cursor, in the original file.
@@ -461,6 +461,17 @@ pub(crate) struct CompletionContext<'a> {
     ///
     /// Here depth will be 2
     pub(crate) depth_from_crate_root: usize,
+
+    /// Traits whose methods will be excluded from flyimport. Flyimport should not suggest
+    /// importing those traits.
+    ///
+    /// Note the trait *themselves* are not excluded, only their methods are.
+    pub(crate) exclude_flyimport_traits: FxHashSet<hir::Trait>,
+    /// Traits whose methods should always be excluded, even when in scope (compare `exclude_flyimport_traits`).
+    /// They will *not* be excluded, however, if they are available as a generic bound.
+    ///
+    /// Note the trait *themselves* are not excluded, only their methods are.
+    pub(crate) exclude_traits: FxHashSet<hir::Trait>,
 
     /// Whether and how to complete semicolon for unit-returning functions.
     pub(crate) complete_semicolon: CompleteSemicolon,
@@ -670,7 +681,7 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn new(
         db: &'a RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
-        config: &'a CompletionConfig,
+        config: &'a CompletionConfig<'a>,
     ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
@@ -753,6 +764,11 @@ impl<'a> CompletionContext<'a> {
             // exclude `m` itself
             .saturating_sub(1);
 
+        let exclude_traits = resolve_exclude_traits_list(db, config.exclude_traits);
+        let mut exclude_flyimport_traits =
+            resolve_exclude_traits_list(db, config.exclude_flyimport_traits);
+        exclude_flyimport_traits.extend(exclude_traits.iter().copied());
+
         let complete_semicolon = if config.add_semicolon_to_unit {
             let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
                 match_ast! {
@@ -817,10 +833,77 @@ impl<'a> CompletionContext<'a> {
             qualifier_ctx,
             locals,
             depth_from_crate_root,
+            exclude_flyimport_traits,
+            exclude_traits,
             complete_semicolon,
         };
         Some((ctx, analysis))
     }
+}
+
+fn resolve_exclude_traits_list(db: &RootDatabase, traits: &[String]) -> FxHashSet<hir::Trait> {
+    let _g = tracing::debug_span!("resolve_exclude_trait_list", ?traits).entered();
+    let crate_graph = db.crate_graph();
+    let mut crate_name_to_def_map = FxHashMap::default();
+    let mut result = FxHashSet::default();
+    'process_traits: for trait_ in traits {
+        let mut segments = trait_.split("::").peekable();
+        let Some(crate_name) = segments.next() else {
+            tracing::error!(
+                ?trait_,
+                "error resolving trait from traits exclude list: invalid path"
+            );
+            continue;
+        };
+        let Some(def_map) = crate_name_to_def_map.entry(crate_name).or_insert_with(|| {
+            let krate = crate_graph
+                .iter()
+                .find(|&krate| crate_graph[krate].display_name.as_deref() == Some(crate_name));
+            let def_map = krate.map(|krate| db.crate_def_map(krate));
+            if def_map.is_none() {
+                tracing::error!(
+                    "error resolving `{trait_}` from trait exclude lists: crate could not be found"
+                );
+            }
+            def_map
+        }) else {
+            // Do not report more than one error for the same crate.
+            continue;
+        };
+        let mut module = &def_map[hir::DefMap::ROOT];
+        let trait_name = 'lookup_mods: {
+            while let Some(segment) = segments.next() {
+                if segments.peek().is_none() {
+                    break 'lookup_mods segment;
+                }
+
+                let Some(&inner) =
+                    module.children.get(&Name::new_symbol_root(hir::Symbol::intern(segment)))
+                else {
+                    tracing::error!(
+                        "error resolving `{trait_}` from trait exclude lists: could not find module `{segment}`"
+                    );
+                    continue 'process_traits;
+                };
+                module = &def_map[inner];
+            }
+
+            tracing::error!("error resolving `{trait_}` from trait exclude lists: invalid path");
+            continue 'process_traits;
+        };
+        let resolved_trait = module
+            .scope
+            .trait_by_name(&Name::new_symbol_root(hir::Symbol::intern(trait_name)))
+            .map(hir::Trait::from);
+        let Some(resolved_trait) = resolved_trait else {
+            tracing::error!(
+                "error resolving `{trait_}` from trait exclude lists: trait could not be found"
+            );
+            continue;
+        };
+        result.insert(resolved_trait);
+    }
+    result
 }
 
 const OP_TRAIT_LANG_NAMES: &[&str] = &[

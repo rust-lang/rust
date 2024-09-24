@@ -267,6 +267,15 @@ fn import_on_the_fly(
                 && !ctx.is_item_hidden(original_item)
                 && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
         })
+        .filter(|import| {
+            if let ModuleDef::Trait(trait_) = import.item_to_import.into_module_def() {
+                let excluded = ctx.exclude_flyimport_traits.contains(&trait_);
+                let trait_itself_imported = import.item_to_import == import.original_item;
+                !excluded || trait_itself_imported
+            } else {
+                true
+            }
+        })
         .sorted_by(|a, b| {
             let key = |import_path| {
                 (
@@ -351,6 +360,13 @@ fn import_on_the_fly_method(
         .filter(|import| {
             !ctx.is_item_hidden(&import.item_to_import)
                 && !ctx.is_item_hidden(&import.original_item)
+        })
+        .filter(|import| {
+            if let ModuleDef::Trait(trait_) = import.item_to_import.into_module_def() {
+                !ctx.exclude_flyimport_traits.contains(&trait_)
+            } else {
+                true
+            }
         })
         .sorted_by(|a, b| {
             let key = |import_path| {

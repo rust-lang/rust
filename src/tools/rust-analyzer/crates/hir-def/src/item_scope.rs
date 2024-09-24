@@ -354,6 +354,13 @@ impl ItemScope {
             .chain(self.unnamed_trait_imports.keys().copied())
     }
 
+    pub fn trait_by_name(&self, name: &Name) -> Option<TraitId> {
+        self.types.get(name).and_then(|def| match def.def {
+            ModuleDefId::TraitId(it) => Some(it),
+            _ => None,
+        })
+    }
+
     pub(crate) fn resolutions(&self) -> impl Iterator<Item = (Option<Name>, PerNs)> + '_ {
         self.entries().map(|(name, res)| (Some(name.clone()), res)).chain(
             self.unnamed_trait_imports.iter().map(|(tr, trait_)| {

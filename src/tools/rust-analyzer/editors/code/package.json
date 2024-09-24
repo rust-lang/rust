@@ -1142,6 +1142,49 @@
             {
                 "title": "completion",
                 "properties": {
+                    "rust-analyzer.completion.autoimport.excludeTraits": {
+                        "markdownDescription": "A list of full paths to traits to exclude from flyimport.\n\nTraits in this list won't be suggested to be imported by flyimport for their methods. Methods from them won't be available in flyimport completion. They will still be available if in scope.\n\nNote that the trait themselves can still be suggested by flyimport.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.\n\nThis setting defaults to:\n\n - [`core::borrow::Borrow`](https://doc.rust-lang.org/nightly/core/borrow/trait.Borrow.html)\n - [`core::borrow::BorrowMut`](https://doc.rust-lang.org/nightly/core/borrow/trait.BorrowMut.html)\n - [`core::cmp::PartialEq`](https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html)\n - All operator traits (in [`core::ops`](https://doc.rust-lang.org/nightly/core/ops))\n\nNote that if you override this setting, those traits won't be automatically inserted, so you may want to insert them manually.",
+                        "default": [
+                            "core::borrow::Borrow",
+                            "core::borrow::BorrowMut",
+                            "core::cmp::PartialEq",
+                            "core::ops::Add",
+                            "core::ops::AddAssign",
+                            "core::ops::BitAnd",
+                            "core::ops::BitAndAssign",
+                            "core::ops::BitOr",
+                            "core::ops::BitOrAssign",
+                            "core::ops::BitXor",
+                            "core::ops::BitXorAssign",
+                            "core::ops::Div",
+                            "core::ops::DivAssign",
+                            "core::ops::Mul",
+                            "core::ops::MulAssign",
+                            "core::ops::Rem",
+                            "core::ops::RemAssign",
+                            "core::ops::Shl",
+                            "core::ops::ShlAssign",
+                            "core::ops::Shr",
+                            "core::ops::ShrAssign",
+                            "core::ops::Sub",
+                            "core::ops::SubAssign",
+                            "core::ops::Neg",
+                            "core::ops::Not",
+                            "core::ops::Index",
+                            "core::ops::IndexMut",
+                            "core::ops::Deref",
+                            "core::ops::DerefMut"
+                        ],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
                     "rust-analyzer.completion.autoself.enable": {
                         "markdownDescription": "Toggles the additional completions that automatically show method calls and field accesses\nwith `self` prefixed to them when inside a method.",
                         "default": true,
@@ -1166,6 +1209,19 @@
                             "Add call parentheses.",
                             "Do no snippet completions for callables."
                         ]
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.excludeTraits": {
+                        "markdownDescription": "A list of full paths to traits to exclude from completion.\n\nMethods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.\n\nNote that the trait themselves can still be completed.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },

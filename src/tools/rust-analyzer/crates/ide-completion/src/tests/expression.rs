@@ -1,10 +1,26 @@
 //! Completion tests for expressions.
 use expect_test::{expect, Expect};
 
-use crate::tests::{check_edit, check_empty, completion_list, BASE_ITEMS_FIXTURE};
+use crate::{
+    tests::{
+        check_edit, check_empty, completion_list, completion_list_with_config, BASE_ITEMS_FIXTURE,
+        TEST_CONFIG,
+    },
+    CompletionConfig,
+};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"));
+    expect.assert_eq(&actual)
+}
+
+fn check_with_config(config: CompletionConfig<'_>, ra_fixture: &str, expect: Expect) {
+    let actual = completion_list_with_config(
+        config,
+        &format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"),
+        true,
+        None,
+    );
     expect.assert_eq(&actual)
 }
 
@@ -1387,6 +1403,369 @@ fn main() {
             sn macro_rules
             sn pd
             sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn excluded_trait_method_is_excluded() {
+    check_with_config(
+        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        r#"
+trait ExcludedTrait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+impl<T> ExcludedTrait for T {}
+
+struct Foo;
+impl Foo {
+    fn inherent(&self) {}
+}
+
+fn foo() {
+    Foo.$0
+}
+        "#,
+        expect![[r#"
+            me inherent() fn(&self)
+            sn box        Box::new(expr)
+            sn call       function(expr)
+            sn dbg        dbg!(expr)
+            sn dbgr       dbg!(&expr)
+            sn deref      *expr
+            sn let        let
+            sn letm       let mut
+            sn match      match expr {}
+            sn ref        &expr
+            sn refm       &mut expr
+            sn return     return expr
+            sn unsafe     unsafe {}
+        "#]],
+    );
+}
+
+#[test]
+fn excluded_trait_not_excluded_when_inherent() {
+    check_with_config(
+        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        r#"
+trait ExcludedTrait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+impl<T> ExcludedTrait for T {}
+
+fn foo(v: &dyn ExcludedTrait) {
+    v.$0
+}
+        "#,
+        expect![[r#"
+            me bar() (as ExcludedTrait) fn(&self)
+            me baz() (as ExcludedTrait) fn(&self)
+            me foo() (as ExcludedTrait) fn(&self)
+            sn box                    Box::new(expr)
+            sn call                   function(expr)
+            sn dbg                    dbg!(expr)
+            sn dbgr                   dbg!(&expr)
+            sn deref                  *expr
+            sn let                    let
+            sn letm                   let mut
+            sn match                  match expr {}
+            sn ref                    &expr
+            sn refm                   &mut expr
+            sn return                 return expr
+            sn unsafe                 unsafe {}
+        "#]],
+    );
+    check_with_config(
+        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        r#"
+trait ExcludedTrait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+impl<T> ExcludedTrait for T {}
+
+fn foo(v: impl ExcludedTrait) {
+    v.$0
+}
+        "#,
+        expect![[r#"
+            me bar() (as ExcludedTrait) fn(&self)
+            me baz() (as ExcludedTrait) fn(&self)
+            me foo() (as ExcludedTrait) fn(&self)
+            sn box                    Box::new(expr)
+            sn call                   function(expr)
+            sn dbg                    dbg!(expr)
+            sn dbgr                   dbg!(&expr)
+            sn deref                  *expr
+            sn let                    let
+            sn letm                   let mut
+            sn match                  match expr {}
+            sn ref                    &expr
+            sn refm                   &mut expr
+            sn return                 return expr
+            sn unsafe                 unsafe {}
+        "#]],
+    );
+    check_with_config(
+        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        r#"
+trait ExcludedTrait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+impl<T> ExcludedTrait for T {}
+
+fn foo<T: ExcludedTrait>(v: T) {
+    v.$0
+}
+        "#,
+        expect![[r#"
+            me bar() (as ExcludedTrait) fn(&self)
+            me baz() (as ExcludedTrait) fn(&self)
+            me foo() (as ExcludedTrait) fn(&self)
+            sn box                    Box::new(expr)
+            sn call                   function(expr)
+            sn dbg                    dbg!(expr)
+            sn dbgr                   dbg!(&expr)
+            sn deref                  *expr
+            sn let                    let
+            sn letm                   let mut
+            sn match                  match expr {}
+            sn ref                    &expr
+            sn refm                   &mut expr
+            sn return                 return expr
+            sn unsafe                 unsafe {}
+        "#]],
+    );
+}
+
+#[test]
+fn excluded_trait_method_is_excluded_from_flyimport() {
+    check_with_config(
+        CompletionConfig {
+            exclude_traits: &["test::module2::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
+        r#"
+mod module2 {
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+struct Foo;
+impl Foo {
+    fn inherent(&self) {}
+}
+
+fn foo() {
+    Foo.$0
+}
+        "#,
+        expect![[r#"
+            me inherent() fn(&self)
+            sn box        Box::new(expr)
+            sn call       function(expr)
+            sn dbg        dbg!(expr)
+            sn dbgr       dbg!(&expr)
+            sn deref      *expr
+            sn let        let
+            sn letm       let mut
+            sn match      match expr {}
+            sn ref        &expr
+            sn refm       &mut expr
+            sn return     return expr
+            sn unsafe     unsafe {}
+        "#]],
+    );
+}
+
+#[test]
+fn flyimport_excluded_trait_method_is_excluded_from_flyimport() {
+    check_with_config(
+        CompletionConfig {
+            exclude_flyimport_traits: &["test::module2::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
+        r#"
+mod module2 {
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+struct Foo;
+impl Foo {
+    fn inherent(&self) {}
+}
+
+fn foo() {
+    Foo.$0
+}
+        "#,
+        expect![[r#"
+            me inherent() fn(&self)
+            sn box        Box::new(expr)
+            sn call       function(expr)
+            sn dbg        dbg!(expr)
+            sn dbgr       dbg!(&expr)
+            sn deref      *expr
+            sn let        let
+            sn letm       let mut
+            sn match      match expr {}
+            sn ref        &expr
+            sn refm       &mut expr
+            sn return     return expr
+            sn unsafe     unsafe {}
+        "#]],
+    );
+}
+
+#[test]
+fn excluded_trait_method_is_excluded_from_path_completion() {
+    check_with_config(
+        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        r#"
+pub trait ExcludedTrait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+impl<T> ExcludedTrait for T {}
+
+struct Foo;
+impl Foo {
+    fn inherent(&self) {}
+}
+
+fn foo() {
+    Foo::$0
+}
+        "#,
+        expect![[r#"
+                me inherent(…) fn(&self)
+            "#]],
+    );
+}
+
+#[test]
+fn excluded_trait_method_is_not_excluded_when_trait_is_specified() {
+    check_with_config(
+        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        r#"
+pub trait ExcludedTrait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+impl<T> ExcludedTrait for T {}
+
+struct Foo;
+impl Foo {
+    fn inherent(&self) {}
+}
+
+fn foo() {
+    ExcludedTrait::$0
+}
+        "#,
+        expect![[r#"
+                me bar(…) (as ExcludedTrait) fn(&self)
+                me baz(…) (as ExcludedTrait) fn(&self)
+                me foo(…) (as ExcludedTrait) fn(&self)
+            "#]],
+    );
+    check_with_config(
+        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        r#"
+pub trait ExcludedTrait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+impl<T> ExcludedTrait for T {}
+
+struct Foo;
+impl Foo {
+    fn inherent(&self) {}
+}
+
+fn foo() {
+    <Foo as ExcludedTrait>::$0
+}
+        "#,
+        expect![[r#"
+                me bar(…) (as ExcludedTrait) fn(&self)
+                me baz(…) (as ExcludedTrait) fn(&self)
+                me foo(…) (as ExcludedTrait) fn(&self)
+            "#]],
+    );
+}
+
+#[test]
+fn excluded_trait_not_excluded_when_inherent_path() {
+    check_with_config(
+        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        r#"
+trait ExcludedTrait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+impl<T> ExcludedTrait for T {}
+
+fn foo() {
+    <dyn ExcludedTrait>::$0
+}
+        "#,
+        expect![[r#"
+            me bar(…) (as ExcludedTrait) fn(&self)
+            me baz(…) (as ExcludedTrait) fn(&self)
+            me foo(…) (as ExcludedTrait) fn(&self)
+        "#]],
+    );
+    check_with_config(
+        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        r#"
+trait ExcludedTrait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+impl<T> ExcludedTrait for T {}
+
+fn foo<T: ExcludedTrait>() {
+    T::$0
+}
+        "#,
+        expect![[r#"
+            me bar(…) (as ExcludedTrait) fn(&self)
+            me baz(…) (as ExcludedTrait) fn(&self)
+            me foo(…) (as ExcludedTrait) fn(&self)
         "#]],
     );
 }
