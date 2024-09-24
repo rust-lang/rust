@@ -1,7 +1,7 @@
 // https://github.com/rust-lang/rust-clippy/issues/3969
 // used to crash: error: internal compiler error:
 // src/librustc_traits/normalize_erasing_regions.rs:43: could not fully normalize `<i32 as
-// std::iter::Iterator>::Item test from rustc ./ui/trivial-bounds/trivial-bounds-inconsistent.rs
+// std::iter::Iterator>::Item` test from rustc ./ui/trivial-bounds/trivial-bounds-inconsistent.rs
 
 // Check that tautalogically false bounds are accepted, and are used
 // in type inference.
@@ -18,7 +18,7 @@ struct Dst<X: ?Sized> {
 struct TwoStrs(str, str)
 where
     str: Sized;
-//~^ ERROR: trait bound str: std::marker::Sized does not depend on any type or lifetim
+//~^ ERROR: trait bound str: std::marker::Sized does not depend on any type or lifetime
 //~| NOTE: `-D trivial-bounds` implied by `-D warnings`
 
 fn unsized_local()

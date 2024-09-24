@@ -3,7 +3,7 @@ use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, QPath};
 use rustc_lint::LateContext;
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 
 use super::BOX_COLLECTION;
 

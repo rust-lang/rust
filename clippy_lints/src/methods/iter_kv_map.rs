@@ -14,7 +14,6 @@ use rustc_span::sym;
 /// - `hashmap.into_iter().map(|(_, v)| v)`
 ///
 /// on `HashMaps` and `BTreeMaps` in std
-
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     map_type: &'tcx str,     // iter / into_iter

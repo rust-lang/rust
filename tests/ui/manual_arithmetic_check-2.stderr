@@ -1,0 +1,75 @@
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:9:23
+   |
+LL |     let result = if a > b { b - a } else { 0 };
+   |                       ^     ----- help: try replacing it with: `a - b`
+   |
+note: this subtraction underflows when `b < a`
+  --> tests/ui/manual_arithmetic_check-2.rs:9:29
+   |
+LL |     let result = if a > b { b - a } else { 0 };
+   |                             ^^^^^
+   = note: `#[deny(clippy::inverted_saturating_sub)]` on by default
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:11:23
+   |
+LL |     let result = if b < a { b - a } else { 0 };
+   |                       ^     ----- help: try replacing it with: `a - b`
+   |
+note: this subtraction underflows when `b < a`
+  --> tests/ui/manual_arithmetic_check-2.rs:11:29
+   |
+LL |     let result = if b < a { b - a } else { 0 };
+   |                             ^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:14:23
+   |
+LL |     let result = if a > b { 0 } else { a - b };
+   |                       ^                ----- help: try replacing it with: `b - a`
+   |
+note: this subtraction underflows when `a < b`
+  --> tests/ui/manual_arithmetic_check-2.rs:14:40
+   |
+LL |     let result = if a > b { 0 } else { a - b };
+   |                                        ^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:16:23
+   |
+LL |     let result = if a >= b { 0 } else { a - b };
+   |                       ^^                ----- help: try replacing it with: `b - a`
+   |
+note: this subtraction underflows when `a < b`
+  --> tests/ui/manual_arithmetic_check-2.rs:16:41
+   |
+LL |     let result = if a >= b { 0 } else { a - b };
+   |                                         ^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:18:23
+   |
+LL |     let result = if b < a { 0 } else { a - b };
+   |                       ^                ----- help: try replacing it with: `b - a`
+   |
+note: this subtraction underflows when `a < b`
+  --> tests/ui/manual_arithmetic_check-2.rs:18:40
+   |
+LL |     let result = if b < a { 0 } else { a - b };
+   |                                        ^^^^^
+
+error: inverted arithmetic check before subtraction
+  --> tests/ui/manual_arithmetic_check-2.rs:20:23
+   |
+LL |     let result = if b <= a { 0 } else { a - b };
+   |                       ^^                ----- help: try replacing it with: `b - a`
+   |
+note: this subtraction underflows when `a < b`
+  --> tests/ui/manual_arithmetic_check-2.rs:20:41
+   |
+LL |     let result = if b <= a { 0 } else { a - b };
+   |                                         ^^^^^
+
+error: aborting due to 6 previous errors
+

@@ -1,4 +1,4 @@
-//@ignore-target-apple
+//@ignore-target: apple
 
 #![feature(no_core, lang_items, start)]
 #![no_core]

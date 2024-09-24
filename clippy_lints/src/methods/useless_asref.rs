@@ -9,7 +9,7 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use core::ops::ControlFlow;
 

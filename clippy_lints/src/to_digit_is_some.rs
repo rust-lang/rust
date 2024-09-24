@@ -56,11 +56,13 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                         && let hir::ExprKind::Path(to_digits_path) = &to_digits_call.kind
                         && let to_digits_call_res = cx.qpath_res(to_digits_path, to_digits_call.hir_id)
                         && let Some(to_digits_def_id) = to_digits_call_res.opt_def_id()
-                        && match_def_path(
-                            cx,
-                            to_digits_def_id,
-                            &["core", "char", "methods", "<impl char>", "to_digit"],
-                        )
+                        && match_def_path(cx, to_digits_def_id, &[
+                            "core",
+                            "char",
+                            "methods",
+                            "<impl char>",
+                            "to_digit",
+                        ])
                     {
                         Some((false, char_arg, radix_arg))
                     } else {

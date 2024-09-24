@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_def_id_trait_method;
 use rustc_hir::def::DefKind;
-use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
+use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, Node, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::{LocalDefId, LocalDefIdSet};
 use rustc_span::Span;
+use rustc_span::def_id::{LocalDefId, LocalDefIdSet};
 
 declare_clippy_lint! {
     /// ### What it does

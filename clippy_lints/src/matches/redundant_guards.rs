@@ -10,11 +10,11 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, MatchSource, Node, PatKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 
-use super::{pat_contains_disallowed_or, REDUNDANT_GUARDS};
+use super::{REDUNDANT_GUARDS, pat_contains_disallowed_or};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv: &Msrv) {
     for outer_arm in arms {
