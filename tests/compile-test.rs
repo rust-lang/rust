@@ -5,9 +5,9 @@
 use cargo_metadata::Message;
 use cargo_metadata::diagnostic::{Applicability, Diagnostic};
 use clippy_config::ClippyConfiguration;
-use clippy_lints::LintInfo;
 use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
+use clippy_lints::{LintInfo, sanitize_explanation};
 use serde::{Deserialize, Serialize};
 use test_utils::IS_RUSTC_TEST_SUITE;
 use ui_test::custom_flags::Flag;
@@ -444,7 +444,12 @@ impl DiagnosticCollector {
                     iter::zip(DEPRECATED, DEPRECATED_VERSION)
                         .map(|((lint, reason), version)| LintMetadata::new_deprecated(lint, reason, version)),
                 )
+                .map(|mut metadata| {
+                    metadata.docs = sanitize_explanation(&metadata.docs);
+                    metadata
+                })
                 .collect();
+
             metadata.sort_unstable_by(|a, b| a.id.cmp(&b.id));
 
             let json = serde_json::to_string_pretty(&metadata).unwrap();

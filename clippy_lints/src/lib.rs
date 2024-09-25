@@ -522,30 +522,35 @@ impl LintInfo {
     }
 }
 
+// Remove code tags and code behind '# 's, as they are not needed for the lint docs and --explain
+pub fn sanitize_explanation(raw_docs: &str) -> String {
+    // Remove tags and hidden code:
+    let mut explanation = String::with_capacity(128);
+    let mut in_code = false;
+    for line in raw_docs.lines().map(|line| line.trim()) {
+        if let Some(lang) = line.strip_prefix("```") {
+            let tag = lang.split_once(',').map_or(lang, |(left, _)| left);
+            if !in_code && matches!(tag, "" | "rust" | "ignore" | "should_panic" | "no_run" | "compile_fail") {
+                explanation += "```rust\n";
+            } else {
+                explanation += line;
+                explanation.push('\n');
+            }
+            in_code = !in_code;
+        } else if !(in_code && line.starts_with("# ")) {
+            explanation += line;
+            explanation.push('\n');
+        }
+    }
+
+    explanation
+}
+
 pub fn explain(name: &str) -> i32 {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
 
     if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
-        // Remove tags and hidden code:
-        let mut explanation = String::with_capacity(128);
-        let mut in_code = false;
-        for line in info.explanation.lines().map(|line| line.trim()) {
-            if let Some(lang) = line.strip_prefix("```") {
-                let tag = lang.split_once(',').map_or(lang, |(left, _)| left);
-                if !in_code && matches!(tag, "" | "rust" | "ignore" | "should_panic" | "no_run" | "compile_fail") {
-                    explanation += "```rust\n";
-                } else {
-                    explanation += line;
-                    explanation.push('\n');
-                }
-                in_code = !in_code;
-            } else if !(in_code && line.starts_with("# ")) {
-                explanation += line;
-                explanation.push('\n');
-            }
-        }
-
-        println!("{}", explanation);
+        println!("{}", sanitize_explanation(info.explanation));
         // Check if the lint has configuration
         let mut mdconf = get_configuration_metadata();
         let name = name.to_ascii_lowercase();
