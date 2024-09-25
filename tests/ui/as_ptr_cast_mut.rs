@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![warn(clippy::as_ptr_cast_mut)]
 #![allow(clippy::wrong_self_convention, clippy::unnecessary_cast)]
-//@no-rustfix
+//@no-rustfix: incorrect suggestion
 
 struct MutPtrWrapper(Vec<u8>);
 impl MutPtrWrapper {
