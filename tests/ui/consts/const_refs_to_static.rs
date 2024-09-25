@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(const_refs_to_static)]
 
 static S: i32 = 0;
 static mut S_MUT: i32 = 0;

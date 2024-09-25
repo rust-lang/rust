@@ -764,7 +764,6 @@ ui/consts/issue-46553.rs
 ui/consts/issue-47789.rs
 ui/consts/issue-50439.rs
 ui/consts/issue-52023-array-size-pointer-cast.rs
-ui/consts/issue-52060.rs
 ui/consts/issue-54224.rs
 ui/consts/issue-54348.rs
 ui/consts/issue-54387.rs
@@ -3830,7 +3829,6 @@ ui/stability-attribute/issue-28388-3.rs
 ui/stability-attribute/issue-99286-stable-intrinsics.rs
 ui/static/auxiliary/issue_24843.rs
 ui/static/issue-1660.rs
-ui/static/issue-18118-2.rs
 ui/static/issue-18118.rs
 ui/static/issue-24446.rs
 ui/static/issue-24843.rs
