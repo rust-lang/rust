@@ -28,9 +28,9 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // Load size/align from vtable.
             let vtable = info.unwrap();
             let size = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_SIZE)
-                .get_usize(bx, vtable);
+                .get_usize(bx, vtable, t);
             let align = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
-                .get_usize(bx, vtable);
+                .get_usize(bx, vtable, t);
 
             // Size is always <= isize::MAX.
             let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
