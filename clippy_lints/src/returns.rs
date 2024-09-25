@@ -421,7 +421,7 @@ fn check_final_expr<'tcx>(
                     if matches!(Level::from_attr(attr), Some(Level::Expect(_)))
                         && let metas = attr.meta_item_list()
                         && let Some(lst) = metas
-                        && let [NestedMetaItem::MetaItem(meta_item)] = lst.as_slice()
+                        && let [NestedMetaItem::MetaItem(meta_item), ..] = lst.as_slice()
                         && let [tool, lint_name] = meta_item.path.segments.as_slice()
                         && tool.ident.name == sym::clippy
                         && matches!(
