@@ -1045,7 +1045,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             if !from_expansion {
                 // These don't depend on a relationship between multiple arms
                 match_wild_err_arm::check(cx, ex, arms);
-                wild_in_or_pats::check(cx, arms);
+                wild_in_or_pats::check(cx, ex, arms);
             }
 
             if let MatchSource::TryDesugar(_) = source {
