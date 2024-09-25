@@ -159,8 +159,7 @@ case $HOST_TARGET in
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
     # Custom target JSON file
-    # FIXME: disabled due to <https://github.com/rust-lang/rust/issues/130818>.
-    #TEST_TARGET=tests/avr.json MIRI_NO_STD=1 run_tests_minimal no_std
+    TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 run_tests_minimal no_std
     ;;
   i686-pc-windows-msvc)
     # Host
