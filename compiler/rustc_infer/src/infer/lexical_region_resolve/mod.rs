@@ -4,7 +4,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
-    Direction, Graph, NodeIndex, INCOMING, OUTGOING,
+    Direction, Graph, INCOMING, NodeIndex, OUTGOING,
 };
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::unord::UnordSet;

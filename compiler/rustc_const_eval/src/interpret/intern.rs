@@ -26,7 +26,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;
 use tracing::{instrument, trace};
 
-use super::{err_ub, AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy};
+use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, err_ub};
 use crate::const_eval;
 use crate::errors::NestedStaticInThreadLocal;
 
@@ -100,11 +100,11 @@ fn intern_as_new_static<'tcx>(
     alloc_id: AllocId,
     alloc: ConstAllocation<'tcx>,
 ) {
-    let feed = tcx.create_def(
-        static_id,
-        sym::nested,
-        DefKind::Static { safety: hir::Safety::Safe, mutability: alloc.0.mutability, nested: true },
-    );
+    let feed = tcx.create_def(static_id, sym::nested, DefKind::Static {
+        safety: hir::Safety::Safe,
+        mutability: alloc.0.mutability,
+        nested: true,
+    });
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
 
     if tcx.is_thread_local_static(static_id.into()) {

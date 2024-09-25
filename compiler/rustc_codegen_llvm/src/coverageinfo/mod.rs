@@ -9,8 +9,8 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_target::abi::{Align, Size};
 use tracing::{debug, instrument};
 

@@ -3,7 +3,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
-use crate::sys::{sgx_ineffective, unsupported, AsInner, FromInner, IntoInner, TryIntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, TryIntoInner, sgx_ineffective, unsupported};
 use crate::time::Duration;
 use crate::{error, fmt};
 

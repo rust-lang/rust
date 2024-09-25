@@ -10,8 +10,8 @@ use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AstDeref, ExprKind, GenericArg, Mutability};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::errors;
@@ -58,11 +58,11 @@ pub(crate) fn expand_option_env<'cx>(
                 ))],
             ))
         }
-        Some(value) => cx.expr_call_global(
-            sp,
-            cx.std_path(&[sym::option, sym::Option, sym::Some]),
-            thin_vec![cx.expr_str(sp, value)],
-        ),
+        Some(value) => {
+            cx.expr_call_global(sp, cx.std_path(&[sym::option, sym::Option, sym::Some]), thin_vec![
+                cx.expr_str(sp, value)
+            ])
+        }
     };
     ExpandResult::Ready(MacEager::expr(e))
 }

@@ -18,14 +18,14 @@ use std::any::Any;
 use std::cell::Cell;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::{join, Lrc};
+use rustc_data_structures::sync::{Lrc, join};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
-use rustc_hir::{intravisit as hir_visit, HirId};
+use rustc_hir::{HirId, intravisit as hir_visit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::lint::LintPass;
 use rustc_session::Session;
+use rustc_session::lint::LintPass;
 use rustc_span::Span;
 use tracing::debug;
 

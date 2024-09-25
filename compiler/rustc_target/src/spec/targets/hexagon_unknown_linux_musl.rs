@@ -1,4 +1,4 @@
-use crate::spec::{base, Cc, LinkerFlavor, Target};
+use crate::spec::{Cc, LinkerFlavor, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();

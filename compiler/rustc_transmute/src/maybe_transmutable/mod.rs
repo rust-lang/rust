@@ -4,7 +4,7 @@ pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
-use crate::layout::{self, dfa, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited};
+use crate::layout::{self, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited, dfa};
 use crate::maybe_transmutable::query_context::QueryContext;
 use crate::{Answer, Condition, Map, Reason};
 

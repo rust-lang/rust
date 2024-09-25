@@ -12,7 +12,7 @@ use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use crate::errors::{FeaturePreviouslyDeclared, FeatureStableTwice};
 

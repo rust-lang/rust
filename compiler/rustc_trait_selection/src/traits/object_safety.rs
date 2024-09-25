@@ -20,17 +20,17 @@ use rustc_middle::ty::{
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, Upcast,
 };
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
 use rustc_target::abi::Abi;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use super::elaborate;
 use crate::infer::TyCtxtInferExt;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
 pub use crate::traits::ObjectSafetyViolation;
-use crate::traits::{util, MethodViolationCode, Obligation, ObligationCause};
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::{MethodViolationCode, Obligation, ObligationCause, util};
 
 /// Returns the object safety violations that affect HIR ty lowering.
 ///

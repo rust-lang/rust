@@ -2,13 +2,13 @@ use std::iter::once;
 use std::path::{self, Path, PathBuf};
 
 use rustc_ast::ptr::P;
-use rustc_ast::{token, AttrVec, Attribute, Inline, Item, ModSpans};
+use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans, token};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
-use rustc_session::parse::ParseSess;
 use rustc_session::Session;
-use rustc_span::symbol::{sym, Ident};
+use rustc_session::parse::ParseSess;
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, sym};
 use thin_vec::ThinVec;
 
 use crate::base::ModuleData;

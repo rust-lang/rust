@@ -5,13 +5,13 @@ use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, attr, GenericParamKind};
+use rustc_ast::{self as ast, GenericParamKind, attr};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{Ident, Symbol, sym};
 use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Span};
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
 use crate::errors;
@@ -170,26 +170,20 @@ pub(crate) fn expand_test_or_bench(
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
-        cx.path(
-            sp,
-            vec![
-                test_id,
-                Ident::from_str_and_span("ShouldPanic", sp),
-                Ident::from_str_and_span(name, sp),
-            ],
-        )
+        cx.path(sp, vec![
+            test_id,
+            Ident::from_str_and_span("ShouldPanic", sp),
+            Ident::from_str_and_span(name, sp),
+        ])
     };
 
     // creates test::TestType::$name
     let test_type_path = |name| {
-        cx.path(
-            sp,
-            vec![
-                test_id,
-                Ident::from_str_and_span("TestType", sp),
-                Ident::from_str_and_span(name, sp),
-            ],
-        )
+        cx.path(sp, vec![
+            test_id,
+            Ident::from_str_and_span("TestType", sp),
+            Ident::from_str_and_span(name, sp),
+        ])
     };
 
     // creates $name: $expr
@@ -209,55 +203,39 @@ pub(crate) fn expand_test_or_bench(
         // A simple ident for a lambda
         let b = Ident::from_str_and_span("b", attr_sp);
 
-        cx.expr_call(
-            sp,
-            cx.expr_path(test_path("StaticBenchFn")),
-            thin_vec![
-                // #[coverage(off)]
-                // |b| self::test::assert_test_result(
-                coverage_off(cx.lambda1(
-                    sp,
+        cx.expr_call(sp, cx.expr_path(test_path("StaticBenchFn")), thin_vec![
+            // #[coverage(off)]
+            // |b| self::test::assert_test_result(
+            coverage_off(cx.lambda1(
+                sp,
+                cx.expr_call(sp, cx.expr_path(test_path("assert_test_result")), thin_vec![
+                    // super::$test_fn(b)
                     cx.expr_call(
-                        sp,
-                        cx.expr_path(test_path("assert_test_result")),
-                        thin_vec![
-                            // super::$test_fn(b)
-                            cx.expr_call(
-                                ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![item.ident])),
-                                thin_vec![cx.expr_ident(sp, b)],
-                            ),
-                        ],
+                        ret_ty_sp,
+                        cx.expr_path(cx.path(sp, vec![item.ident])),
+                        thin_vec![cx.expr_ident(sp, b)],
                     ),
-                    b,
-                )), // )
-            ],
-        )
+                ],),
+                b,
+            )), // )
+        ])
     } else {
-        cx.expr_call(
-            sp,
-            cx.expr_path(test_path("StaticTestFn")),
-            thin_vec![
-                // #[coverage(off)]
-                // || {
-                coverage_off(cx.lambda0(
-                    sp,
-                    // test::assert_test_result(
+        cx.expr_call(sp, cx.expr_path(test_path("StaticTestFn")), thin_vec![
+            // #[coverage(off)]
+            // || {
+            coverage_off(cx.lambda0(
+                sp,
+                // test::assert_test_result(
+                cx.expr_call(sp, cx.expr_path(test_path("assert_test_result")), thin_vec![
+                    // $test_fn()
                     cx.expr_call(
-                        sp,
-                        cx.expr_path(test_path("assert_test_result")),
-                        thin_vec![
-                            // $test_fn()
-                            cx.expr_call(
-                                ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![item.ident])),
-                                ThinVec::new(),
-                            ), // )
-                        ],
-                    ), // }
-                )), // )
-            ],
-        )
+                        ret_ty_sp,
+                        cx.expr_path(cx.path(sp, vec![item.ident])),
+                        ThinVec::new(),
+                    ), // )
+                ],), // }
+            )), // )
+        ])
     };
 
     let test_path_symbol = Symbol::intern(&item_path(
@@ -268,122 +246,107 @@ pub(crate) fn expand_test_or_bench(
 
     let location_info = get_location_info(cx, &item);
 
-    let mut test_const =
-        cx.item(
-            sp,
-            Ident::new(item.ident.name, sp),
-            thin_vec![
-                // #[cfg(test)]
-                cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
-                // #[rustc_test_marker = "test_case_sort_key"]
-                cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
-                // #[doc(hidden)]
-                cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
-            ],
-            // const $ident: test::TestDescAndFn =
-            ast::ItemKind::Const(
-                ast::ConstItem {
-                    defaultness: ast::Defaultness::Final,
-                    generics: ast::Generics::default(),
-                    ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
-                    // test::TestDescAndFn {
-                    expr: Some(
-                        cx.expr_struct(
-                            sp,
-                            test_path("TestDescAndFn"),
-                            thin_vec![
+    let mut test_const = cx.item(
+        sp,
+        Ident::new(item.ident.name, sp),
+        thin_vec![
+            // #[cfg(test)]
+            cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
+            // #[rustc_test_marker = "test_case_sort_key"]
+            cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
+            // #[doc(hidden)]
+            cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
+        ],
+        // const $ident: test::TestDescAndFn =
+        ast::ItemKind::Const(
+            ast::ConstItem {
+                defaultness: ast::Defaultness::Final,
+                generics: ast::Generics::default(),
+                ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+                // test::TestDescAndFn {
+                expr: Some(
+                    cx.expr_struct(sp, test_path("TestDescAndFn"), thin_vec![
                         // desc: test::TestDesc {
                         field(
                             "desc",
-                            cx.expr_struct(
-                                sp,
-                                test_path("TestDesc"),
-                                thin_vec![
-                                    // name: "path::to::test"
-                                    field(
-                                        "name",
-                                        cx.expr_call(
-                                            sp,
-                                            cx.expr_path(test_path("StaticTestName")),
-                                            thin_vec![cx.expr_str(sp, test_path_symbol)],
-                                        ),
+                            cx.expr_struct(sp, test_path("TestDesc"), thin_vec![
+                                // name: "path::to::test"
+                                field(
+                                    "name",
+                                    cx.expr_call(
+                                        sp,
+                                        cx.expr_path(test_path("StaticTestName")),
+                                        thin_vec![cx.expr_str(sp, test_path_symbol)],
                                     ),
-                                    // ignore: true | false
-                                    field("ignore", cx.expr_bool(sp, should_ignore(&item)),),
-                                    // ignore_message: Some("...") | None
-                                    field(
-                                        "ignore_message",
-                                        if let Some(msg) = should_ignore_message(&item) {
-                                            cx.expr_some(sp, cx.expr_str(sp, msg))
-                                        } else {
-                                            cx.expr_none(sp)
-                                        },
+                                ),
+                                // ignore: true | false
+                                field("ignore", cx.expr_bool(sp, should_ignore(&item)),),
+                                // ignore_message: Some("...") | None
+                                field(
+                                    "ignore_message",
+                                    if let Some(msg) = should_ignore_message(&item) {
+                                        cx.expr_some(sp, cx.expr_str(sp, msg))
+                                    } else {
+                                        cx.expr_none(sp)
+                                    },
+                                ),
+                                // source_file: <relative_path_of_source_file>
+                                field("source_file", cx.expr_str(sp, location_info.0)),
+                                // start_line: start line of the test fn identifier.
+                                field("start_line", cx.expr_usize(sp, location_info.1)),
+                                // start_col: start column of the test fn identifier.
+                                field("start_col", cx.expr_usize(sp, location_info.2)),
+                                // end_line: end line of the test fn identifier.
+                                field("end_line", cx.expr_usize(sp, location_info.3)),
+                                // end_col: end column of the test fn identifier.
+                                field("end_col", cx.expr_usize(sp, location_info.4)),
+                                // compile_fail: true | false
+                                field("compile_fail", cx.expr_bool(sp, false)),
+                                // no_run: true | false
+                                field("no_run", cx.expr_bool(sp, false)),
+                                // should_panic: ...
+                                field("should_panic", match should_panic(cx, &item) {
+                                    // test::ShouldPanic::No
+                                    ShouldPanic::No => {
+                                        cx.expr_path(should_panic_path("No"))
+                                    }
+                                    // test::ShouldPanic::Yes
+                                    ShouldPanic::Yes(None) => {
+                                        cx.expr_path(should_panic_path("Yes"))
+                                    }
+                                    // test::ShouldPanic::YesWithMessage("...")
+                                    ShouldPanic::Yes(Some(sym)) => cx.expr_call(
+                                        sp,
+                                        cx.expr_path(should_panic_path("YesWithMessage")),
+                                        thin_vec![cx.expr_str(sp, sym)],
                                     ),
-                                    // source_file: <relative_path_of_source_file>
-                                    field("source_file", cx.expr_str(sp, location_info.0)),
-                                    // start_line: start line of the test fn identifier.
-                                    field("start_line", cx.expr_usize(sp, location_info.1)),
-                                    // start_col: start column of the test fn identifier.
-                                    field("start_col", cx.expr_usize(sp, location_info.2)),
-                                    // end_line: end line of the test fn identifier.
-                                    field("end_line", cx.expr_usize(sp, location_info.3)),
-                                    // end_col: end column of the test fn identifier.
-                                    field("end_col", cx.expr_usize(sp, location_info.4)),
-                                    // compile_fail: true | false
-                                    field("compile_fail", cx.expr_bool(sp, false)),
-                                    // no_run: true | false
-                                    field("no_run", cx.expr_bool(sp, false)),
-                                    // should_panic: ...
-                                    field(
-                                        "should_panic",
-                                        match should_panic(cx, &item) {
-                                            // test::ShouldPanic::No
-                                            ShouldPanic::No => {
-                                                cx.expr_path(should_panic_path("No"))
-                                            }
-                                            // test::ShouldPanic::Yes
-                                            ShouldPanic::Yes(None) => {
-                                                cx.expr_path(should_panic_path("Yes"))
-                                            }
-                                            // test::ShouldPanic::YesWithMessage("...")
-                                            ShouldPanic::Yes(Some(sym)) => cx.expr_call(
-                                                sp,
-                                                cx.expr_path(should_panic_path("YesWithMessage")),
-                                                thin_vec![cx.expr_str(sp, sym)],
-                                            ),
-                                        },
-                                    ),
-                                    // test_type: ...
-                                    field(
-                                        "test_type",
-                                        match test_type(cx) {
-                                            // test::TestType::UnitTest
-                                            TestType::UnitTest => {
-                                                cx.expr_path(test_type_path("UnitTest"))
-                                            }
-                                            // test::TestType::IntegrationTest
-                                            TestType::IntegrationTest => {
-                                                cx.expr_path(test_type_path("IntegrationTest"))
-                                            }
-                                            // test::TestPath::Unknown
-                                            TestType::Unknown => {
-                                                cx.expr_path(test_type_path("Unknown"))
-                                            }
-                                        },
-                                    ),
-                                    // },
-                                ],
-                            ),
+                                },),
+                                // test_type: ...
+                                field("test_type", match test_type(cx) {
+                                    // test::TestType::UnitTest
+                                    TestType::UnitTest => {
+                                        cx.expr_path(test_type_path("UnitTest"))
+                                    }
+                                    // test::TestType::IntegrationTest
+                                    TestType::IntegrationTest => {
+                                        cx.expr_path(test_type_path("IntegrationTest"))
+                                    }
+                                    // test::TestPath::Unknown
+                                    TestType::Unknown => {
+                                        cx.expr_path(test_type_path("Unknown"))
+                                    }
+                                },),
+                                // },
+                            ],),
                         ),
                         // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
                         field("testfn", test_fn), // }
-                    ],
-                        ), // }
-                    ),
-                }
-                .into(),
-            ),
-        );
+                    ]), // }
+                ),
+            }
+            .into(),
+        ),
+    );
     test_const = test_const.map(|mut tc| {
         tc.vis.kind = ast::VisibilityKind::Public;
         tc

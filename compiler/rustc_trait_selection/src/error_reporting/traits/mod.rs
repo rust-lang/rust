@@ -7,7 +7,7 @@ pub mod suggestions;
 use std::{fmt, iter};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{struct_span_code_err, Applicability, Diag, MultiSpan, E0038, E0276};
+use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem};
@@ -15,7 +15,7 @@ use rustc_infer::traits::{
     ObjectSafetyViolation, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
     SelectionError,
 };
-use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
+use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
 use tracing::{info, instrument};

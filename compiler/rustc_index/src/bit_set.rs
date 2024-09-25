@@ -3,11 +3,11 @@ use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds
 use std::rc::Rc;
 use std::{fmt, iter, mem, slice};
 
+use Chunk::*;
 use arrayvec::ArrayVec;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_Generic, Encodable_Generic};
-use smallvec::{smallvec, SmallVec};
-use Chunk::*;
+use smallvec::{SmallVec, smallvec};
 
 use crate::{Idx, IndexVec};
 

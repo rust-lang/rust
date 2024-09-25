@@ -50,10 +50,9 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
             return;
         }
 
-        cx.emit_span_lint(
-            REDUNDANT_SEMICOLONS,
-            span,
-            RedundantSemicolonsDiag { multiple, suggestion: span },
-        );
+        cx.emit_span_lint(REDUNDANT_SEMICOLONS, span, RedundantSemicolonsDiag {
+            multiple,
+            suggestion: span,
+        });
     }
 }

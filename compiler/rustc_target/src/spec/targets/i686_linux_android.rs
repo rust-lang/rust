@@ -1,4 +1,4 @@
-use crate::spec::{base, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions, base};
 
 // See https://developer.android.com/ndk/guides/abis.html#x86
 // for target ABI requirements.

@@ -1,7 +1,7 @@
 //! Signal handler for rustc
 //! Primarily used to extract a backtrace from stack overflow
 
-use std::alloc::{alloc, Layout};
+use std::alloc::{Layout, alloc};
 use std::{fmt, mem, ptr};
 
 use rustc_interface::util::{DEFAULT_STACK_SIZE, STACK_SIZE};

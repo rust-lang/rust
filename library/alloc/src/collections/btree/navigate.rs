@@ -3,7 +3,7 @@ use core::ops::RangeBounds;
 use core::{hint, ptr};
 
 use super::node::ForceResult::*;
-use super::node::{marker, Handle, NodeRef};
+use super::node::{Handle, NodeRef, marker};
 use super::search::SearchBound;
 use crate::alloc::Allocator;
 // `front` and `back` are always both `None` or both `Some`.

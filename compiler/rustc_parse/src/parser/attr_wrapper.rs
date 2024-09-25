@@ -10,7 +10,7 @@ use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, sym};
 
 use super::{
     Capturing, FlatToken, ForceCollect, NodeRange, NodeReplacement, Parser, ParserRange,
@@ -108,7 +108,7 @@ struct LazyAttrTokenStreamImpl {
     start_token: (Token, Spacing),
     cursor_snapshot: TokenCursor,
     num_calls: u32,
-    break_last_token: bool,
+    break_last_token: u32,
     node_replacements: Box<[NodeReplacement]>,
 }
 
@@ -339,17 +339,20 @@ impl<'a> Parser<'a> {
         let parser_replacements_end = self.capture_state.parser_replacements.len();
 
         assert!(
-            !(self.break_last_token && matches!(capture_trailing, Trailing::Yes)),
-            "Cannot set break_last_token and have trailing token"
+            !(self.break_last_token > 0 && matches!(capture_trailing, Trailing::Yes)),
+            "Cannot have break_last_token > 0 and have trailing token"
         );
+        assert!(self.break_last_token <= 2, "cannot break token more than twice");
 
         let end_pos = self.num_bump_calls
             + capture_trailing as u32
-            // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens), then
-            // extend the range of captured tokens to include it, since the parser was not actually
-            // bumped past it. When the `LazyAttrTokenStream` gets converted into an
-            // `AttrTokenStream`, we will create the proper token.
-            + self.break_last_token as u32;
+            // If we "broke" the last token (e.g. breaking a `>>` token once into `>` + `>`, or
+            // breaking a `>>=` token twice into `>` + `>` + `=`), then extend the range of
+            // captured tokens to include it, because the parser was not actually bumped past it.
+            // (Even if we broke twice, it was still just one token originally, hence the `1`.)
+            // When the `LazyAttrTokenStream` gets converted into an `AttrTokenStream`, we will
+            // rebreak that final token once or twice.
+            + if self.break_last_token == 0 { 0 } else { 1 };
 
         let num_calls = end_pos - collect_pos.start_pos;
 
@@ -425,7 +428,7 @@ impl<'a> Parser<'a> {
         // for the `#[cfg]` and/or `#[cfg_attr]` attrs. This allows us to run
         // eager cfg-expansion on the captured token stream.
         if definite_capture_mode {
-            assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
+            assert!(self.break_last_token == 0, "Should not have unglued last token with cfg attr");
 
             // What is the status here when parsing the example code at the top of this method?
             //
@@ -471,7 +474,7 @@ impl<'a> Parser<'a> {
 /// close delims.
 fn make_attr_token_stream(
     iter: impl Iterator<Item = FlatToken>,
-    break_last_token: bool,
+    break_last_token: u32,
 ) -> AttrTokenStream {
     #[derive(Debug)]
     struct FrameData {
@@ -485,10 +488,10 @@ fn make_attr_token_stream(
     for flat_token in iter {
         match flat_token {
             FlatToken::Token((Token { kind: TokenKind::OpenDelim(delim), span }, spacing)) => {
-                stack_rest.push(mem::replace(
-                    &mut stack_top,
-                    FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
-                ));
+                stack_rest.push(mem::replace(&mut stack_top, FrameData {
+                    open_delim_sp: Some((delim, span, spacing)),
+                    inner: vec![],
+                }));
             }
             FlatToken::Token((Token { kind: TokenKind::CloseDelim(delim), span }, spacing)) => {
                 let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
@@ -513,18 +516,17 @@ fn make_attr_token_stream(
         }
     }
 
-    if break_last_token {
+    if break_last_token > 0 {
         let last_token = stack_top.inner.pop().unwrap();
         if let AttrTokenTree::Token(last_token, spacing) = last_token {
-            let unglued_first = last_token.kind.break_two_token_op().unwrap().0;
+            let (unglued, _) = last_token.kind.break_two_token_op(break_last_token).unwrap();
 
-            // An 'unglued' token is always two ASCII characters
+            // Tokens are always ASCII chars, so we can use byte arithmetic here.
             let mut first_span = last_token.span.shrink_to_lo();
-            first_span = first_span.with_hi(first_span.lo() + rustc_span::BytePos(1));
+            first_span =
+                first_span.with_hi(first_span.lo() + rustc_span::BytePos(break_last_token));
 
-            stack_top
-                .inner
-                .push(AttrTokenTree::Token(Token::new(unglued_first, first_span), spacing));
+            stack_top.inner.push(AttrTokenTree::Token(Token::new(unglued, first_span), spacing));
         } else {
             panic!("Unexpected last token {last_token:?}")
         }

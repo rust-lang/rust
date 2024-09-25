@@ -2,8 +2,8 @@ use std::fmt;
 use std::iter::once;
 
 use rustc_arena::DroplessArena;
-use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
+use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::{self, Const};
@@ -14,8 +14,8 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
-use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 
 use crate::constructor::Constructor::*;
 use crate::constructor::{
@@ -24,8 +24,8 @@ use crate::constructor::{
 use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat_column::PatternColumn;
 use crate::rustc::print::EnumInfo;
-use crate::usefulness::{compute_match_usefulness, PlaceValidity};
-use crate::{errors, Captures, PatCx, PrivateUninhabitedField};
+use crate::usefulness::{PlaceValidity, compute_match_usefulness};
+use crate::{Captures, PatCx, PrivateUninhabitedField, errors};
 
 mod print;
 
@@ -352,7 +352,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             ty::Array(sub_ty, len) => {
                 // We treat arrays of a constant but unknown length like slices.
                 ConstructorSet::Slice {
-                    array_len: len.try_eval_target_usize(cx.tcx, cx.param_env).map(|l| l as usize),
+                    array_len: len.try_to_target_usize(cx.tcx).map(|l| l as usize),
                     subtype_is_empty: cx.is_uninhabited(*sub_ty),
                 }
             }
@@ -685,9 +685,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             }
             PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
                 let array_len = match ty.kind() {
-                    ty::Array(_, length) => {
-                        Some(length.eval_target_usize(cx.tcx, cx.param_env) as usize)
-                    }
+                    ty::Array(_, length) => Some(
+                        length
+                            .try_to_target_usize(cx.tcx)
+                            .expect("expected len of array pat to be definite")
+                            as usize,
+                    ),
                     ty::Slice(_) => None,
                     _ => span_bug!(pat.span, "bad ty {} for slice pattern", ty.inner()),
                 };

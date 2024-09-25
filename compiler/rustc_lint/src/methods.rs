@@ -1,8 +1,8 @@
 use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 
 use crate::lints::CStringPtr;
 use crate::{LateContext, LateLintPass, LintContext};
@@ -58,11 +58,10 @@ fn lint_cstring_as_ptr(
         if cx.tcx.is_diagnostic_item(sym::Result, def.did()) {
             if let ty::Adt(adt, _) = args.type_at(0).kind() {
                 if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did()) {
-                    cx.emit_span_lint(
-                        TEMPORARY_CSTRING_AS_PTR,
-                        as_ptr_span,
-                        CStringPtr { as_ptr: as_ptr_span, unwrap: unwrap.span },
-                    );
+                    cx.emit_span_lint(TEMPORARY_CSTRING_AS_PTR, as_ptr_span, CStringPtr {
+                        as_ptr: as_ptr_span,
+                        unwrap: unwrap.span,
+                    });
                 }
             }
         }

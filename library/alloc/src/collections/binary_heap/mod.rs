@@ -145,7 +145,7 @@
 
 use core::alloc::Allocator;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
-use core::mem::{self, swap, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, swap};
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};

@@ -1,7 +1,7 @@
 use core::assert_matches::assert_matches;
 use std::iter;
 use std::ops::Bound::{Excluded, Included, Unbounded};
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
 

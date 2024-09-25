@@ -8,7 +8,7 @@ use std::{io, ops, str};
 use regex::Regex;
 use rustc_graphviz as dot;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, graphviz_safe_def_name, BasicBlock, Body, Location};
+use rustc_middle::mir::{self, BasicBlock, Body, Location, graphviz_safe_def_name};
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
 use super::{Analysis, CallReturnPlaces, Direction, Results, ResultsCursor, ResultsVisitor};
@@ -502,10 +502,10 @@ where
                 r#"<td colspan="{colspan}" {fmt} align="left">{state}</td>"#,
                 colspan = this.style.num_state_columns(),
                 fmt = fmt,
-                state = dot::escape_html(&format!(
-                    "{:?}",
-                    DebugWithAdapter { this: state, ctxt: analysis }
-                )),
+                state = dot::escape_html(&format!("{:?}", DebugWithAdapter {
+                    this: state,
+                    ctxt: analysis
+                })),
             )
         })
     }

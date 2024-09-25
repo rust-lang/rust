@@ -9,7 +9,7 @@ use rustc_middle::ty::{
 };
 use tracing::debug;
 
-use super::{throw_inval, InterpCx, MPlaceTy, MemoryKind};
+use super::{InterpCx, MPlaceTy, MemoryKind, throw_inval};
 use crate::const_eval::{CompileTimeInterpCx, CompileTimeMachine, InterpretationResult};
 
 /// Checks whether a type contains generic parameters which must be instantiated.

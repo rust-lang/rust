@@ -1,9 +1,9 @@
 use core::ptr::addr_of;
 
 use super::api::{self, WinError};
-use super::{to_u16s, IoResult};
+use super::{IoResult, to_u16s};
 use crate::borrow::Cow;
-use crate::ffi::{c_void, OsStr, OsString};
+use crate::ffi::{OsStr, OsString, c_void};
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit};
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
@@ -13,7 +13,7 @@ use crate::sync::Arc;
 use crate::sys::handle::Handle;
 use crate::sys::path::maybe_verbatim;
 use crate::sys::time::SystemTime;
-use crate::sys::{c, cvt, Align8};
+use crate::sys::{Align8, c, cvt};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, ptr, slice};
 

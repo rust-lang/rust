@@ -30,7 +30,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
@@ -45,17 +45,17 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::{Limit, MetadataKind, Session};
-use rustc_span::def_id::{DefPathHash, StableCrateId, CRATE_DEF_ID};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
+use rustc_type_ir::TyKind::*;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::solve::SolverMode;
-use rustc_type_ir::TyKind::*;
-use rustc_type_ir::{search_graph, CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo};
+use rustc_type_ir::{CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo, search_graph};
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
@@ -1015,10 +1015,10 @@ impl<'tcx> CommonLifetimes<'tcx> {
             .map(|i| {
                 (0..NUM_PREINTERNED_RE_LATE_BOUNDS_V)
                     .map(|v| {
-                        mk(ty::ReBound(
-                            ty::DebruijnIndex::from(i),
-                            ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BrAnon },
-                        ))
+                        mk(ty::ReBound(ty::DebruijnIndex::from(i), ty::BoundRegion {
+                            var: ty::BoundVar::from(v),
+                            kind: ty::BrAnon,
+                        }))
                     })
                     .collect()
             })
@@ -3052,15 +3052,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
 
                     let generics = self.generics_of(new_parent);
-                    return ty::Region::new_early_param(
-                        self,
-                        ty::EarlyParamRegion {
-                            index: generics
-                                .param_def_id_to_index(self, ebv.to_def_id())
-                                .expect("early-bound var should be present in fn generics"),
-                            name: self.item_name(ebv.to_def_id()),
-                        },
-                    );
+                    return ty::Region::new_early_param(self, ty::EarlyParamRegion {
+                        index: generics
+                            .param_def_id_to_index(self, ebv.to_def_id())
+                            .expect("early-bound var should be present in fn generics"),
+                        name: self.item_name(ebv.to_def_id()),
+                    });
                 }
                 Some(resolve_bound_vars::ResolvedArg::LateBound(_, _, lbv)) => {
                     let new_parent = self.local_parent(lbv);

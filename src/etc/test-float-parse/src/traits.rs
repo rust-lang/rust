@@ -3,8 +3,8 @@
 use std::str::FromStr;
 use std::{fmt, ops};
 
-use num::bigint::ToBigInt;
 use num::Integer;
+use num::bigint::ToBigInt;
 
 use crate::validate::Constants;
 

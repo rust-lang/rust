@@ -1,10 +1,10 @@
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
+use rustc_hir::GenericArg;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::GenericArg;
 use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };

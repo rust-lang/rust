@@ -1,8 +1,8 @@
 use std::env::args;
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
-use std::process::{exit, Command};
+use std::process::{Command, exit};
 
 fn get_themes<P: AsRef<Path>>(style_path: P) -> Vec<String> {
     let mut ret = Vec::with_capacity(10);

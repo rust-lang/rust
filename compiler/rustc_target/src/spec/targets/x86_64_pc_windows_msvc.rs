@@ -1,4 +1,4 @@
-use crate::spec::{base, SanitizerSet, Target};
+use crate::spec::{SanitizerSet, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();

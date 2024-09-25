@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{base, StackProbeType, Target};
+use crate::spec::{StackProbeType, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::openbsd::opts();

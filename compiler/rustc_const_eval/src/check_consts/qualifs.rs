@@ -206,14 +206,10 @@ impl Qualif for NeedsNonConstDrop {
             cx.tcx,
             ObligationCause::dummy_with_span(cx.body.span),
             cx.param_env,
-            ty::TraitRef::new(
-                cx.tcx,
-                destruct_def_id,
-                [
-                    ty::GenericArg::from(ty),
-                    ty::GenericArg::from(cx.tcx.expected_host_effect_param_for_body(cx.def_id())),
-                ],
-            ),
+            ty::TraitRef::new(cx.tcx, destruct_def_id, [
+                ty::GenericArg::from(ty),
+                ty::GenericArg::from(cx.tcx.expected_host_effect_param_for_body(cx.def_id())),
+            ]),
         );
 
         let infcx = cx.tcx.infer_ctxt().build();

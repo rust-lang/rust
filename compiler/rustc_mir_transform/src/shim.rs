@@ -14,8 +14,8 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
+use rustc_span::{DUMMY_SP, Span};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_target::spec::abi::Abi;
 use tracing::{debug, instrument};
 

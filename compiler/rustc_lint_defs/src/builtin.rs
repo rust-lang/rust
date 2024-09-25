@@ -9,7 +9,7 @@
 
 use rustc_span::edition::Edition;
 
-use crate::{declare_lint, declare_lint_pass, FutureIncompatibilityReason};
+use crate::{FutureIncompatibilityReason, declare_lint, declare_lint_pass};
 
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s

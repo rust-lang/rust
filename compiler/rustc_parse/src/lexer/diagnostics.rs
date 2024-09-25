@@ -1,7 +1,7 @@
 use rustc_ast::token::Delimiter;
 use rustc_errors::Diag;
-use rustc_span::source_map::SourceMap;
 use rustc_span::Span;
+use rustc_span::source_map::SourceMap;
 
 use super::UnmatchedDelim;
 

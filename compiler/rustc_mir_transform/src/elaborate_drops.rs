@@ -1,17 +1,17 @@
 use std::fmt;
 
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::elaborate_drops::{
-    elaborate_drop, DropElaborator, DropFlagMode, DropFlagState, DropStyle, Unwind,
+    DropElaborator, DropFlagMode, DropFlagState, DropStyle, Unwind, elaborate_drop,
 };
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{
-    on_all_children_bits, on_lookup_result_bits, Analysis, MoveDataParamEnv, ResultsCursor,
+    Analysis, MoveDataParamEnv, ResultsCursor, on_all_children_bits, on_lookup_result_bits,
 };
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};

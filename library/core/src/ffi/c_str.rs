@@ -5,7 +5,7 @@ use crate::error::Error;
 use crate::ffi::c_char;
 use crate::iter::FusedIterator;
 use crate::marker::PhantomData;
-use crate::ptr::{addr_of, NonNull};
+use crate::ptr::{NonNull, addr_of};
 use crate::slice::memchr;
 use crate::{fmt, intrinsics, ops, slice, str};
 

@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
 use tracing::trace;
 
-use super::{throw_inval, InterpCx, MPlaceTy, Machine, Projectable};
+use super::{InterpCx, MPlaceTy, Machine, Projectable, throw_inval};
 
 /// How to traverse a value and what to do when we are at the leaves.
 pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {

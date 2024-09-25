@@ -1,8 +1,8 @@
 use std::fmt;
 use std::num::NonZero;
 
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;

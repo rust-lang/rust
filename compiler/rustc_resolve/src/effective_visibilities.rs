@@ -1,9 +1,9 @@
 use std::mem;
 
 use rustc_ast::visit::Visitor;
-use rustc_ast::{ast, visit, Crate, EnumDef};
+use rustc_ast::{Crate, EnumDef, ast, visit};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::ty::Visibility;
 use tracing::info;

@@ -20,7 +20,7 @@ use rustc_target::spec::{
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
-use crate::{lint, EarlyDiagCtxt};
+use crate::{EarlyDiagCtxt, lint};
 
 macro_rules! insert {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr) => {

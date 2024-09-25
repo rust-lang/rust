@@ -19,18 +19,18 @@ mod util;
 mod validity;
 mod visitor;
 
-use eval_context::{from_known_layout, mir_assign_valid_types};
 #[doc(no_inline)]
 pub use rustc_middle::mir::interpret::*; // have all the `interpret` symbols in one place: here
 
 pub use self::call::FnArg;
-pub use self::eval_context::{format_interp_error, InterpCx};
+pub use self::eval_context::{InterpCx, format_interp_error};
+use self::eval_context::{from_known_layout, mir_assign_valid_types};
 pub use self::intern::{
-    intern_const_alloc_for_constprop, intern_const_alloc_recursive, HasStaticRootDefId, InternKind,
-    InternResult,
+    HasStaticRootDefId, InternKind, InternResult, intern_const_alloc_for_constprop,
+    intern_const_alloc_recursive,
 };
 pub(crate) use self::intrinsics::eval_nullary_intrinsic;
-pub use self::machine::{compile_time_machine, AllocMap, Machine, MayLeak, ReturnAction};
+pub use self::machine::{AllocMap, Machine, MayLeak, ReturnAction, compile_time_machine};
 pub use self::memory::{AllocKind, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};
 use self::operand::Operand;
 pub use self::operand::{ImmTy, Immediate, OpTy};

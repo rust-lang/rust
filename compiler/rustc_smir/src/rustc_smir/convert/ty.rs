@@ -6,7 +6,7 @@ use stable_mir::ty::{
     AdtKind, FloatTy, GenericArgs, GenericParamDef, IntTy, Region, RigidTy, TyKind, UintTy,
 };
 
-use crate::rustc_smir::{alloc, Stable, Tables};
+use crate::rustc_smir::{Stable, Tables, alloc};
 
 impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
     type T = stable_mir::ty::AliasKind;
@@ -119,6 +119,7 @@ impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
             }
             PointerCoercion::ArrayToPointer => stable_mir::mir::PointerCoercion::ArrayToPointer,
             PointerCoercion::Unsize => stable_mir::mir::PointerCoercion::Unsize,
+            PointerCoercion::DynStar => unreachable!("represented as `CastKind::DynStar` in smir"),
         }
     }
 }
@@ -815,10 +816,12 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
                 index: early_reg.index,
                 name: early_reg.name.to_string(),
             }),
-            ty::ReBound(db_index, bound_reg) => RegionKind::ReBound(
-                db_index.as_u32(),
-                BoundRegion { var: bound_reg.var.as_u32(), kind: bound_reg.kind.stable(tables) },
-            ),
+            ty::ReBound(db_index, bound_reg) => {
+                RegionKind::ReBound(db_index.as_u32(), BoundRegion {
+                    var: bound_reg.var.as_u32(),
+                    kind: bound_reg.kind.stable(tables),
+                })
+            }
             ty::ReStatic => RegionKind::ReStatic,
             ty::RePlaceholder(place_holder) => {
                 RegionKind::RePlaceholder(stable_mir::ty::Placeholder {

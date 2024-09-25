@@ -2,7 +2,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 use crate::sys::pal::abi;
-use crate::sys::pal::itron::error::{expect_success, expect_success_aborting, fail, ItronError};
+use crate::sys::pal::itron::error::{ItronError, expect_success, expect_success_aborting, fail};
 use crate::sys::pal::itron::spin::SpinIdOnceCell;
 
 pub struct RwLock {

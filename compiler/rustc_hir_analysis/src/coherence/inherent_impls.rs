@@ -11,10 +11,10 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
-use rustc_middle::ty::fast_reject::{simplify_type, SimplifiedType, TreatParams};
+use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams, simplify_type};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
-use rustc_span::symbol::sym;
 use rustc_span::ErrorGuaranteed;
+use rustc_span::symbol::sym;
 
 use crate::errors;
 
@@ -22,36 +22,38 @@ use crate::errors;
 pub(crate) fn crate_inherent_impls(
     tcx: TyCtxt<'_>,
     (): (),
-) -> Result<&'_ CrateInherentImpls, ErrorGuaranteed> {
+) -> (&'_ CrateInherentImpls, Result<(), ErrorGuaranteed>) {
     let mut collect = InherentCollect { tcx, impls_map: Default::default() };
+
     let mut res = Ok(());
     for id in tcx.hir().items() {
         res = res.and(collect.check_item(id));
     }
-    res?;
-    Ok(tcx.arena.alloc(collect.impls_map))
+
+    (tcx.arena.alloc(collect.impls_map), res)
 }
 
-pub(crate) fn crate_incoherent_impls(
+pub(crate) fn crate_inherent_impls_validity_check(
     tcx: TyCtxt<'_>,
-    simp: SimplifiedType,
-) -> Result<&[DefId], ErrorGuaranteed> {
-    let crate_map = tcx.crate_inherent_impls(())?;
-    Ok(tcx.arena.alloc_from_iter(
+    (): (),
+) -> Result<(), ErrorGuaranteed> {
+    tcx.crate_inherent_impls(()).1
+}
+
+pub(crate) fn crate_incoherent_impls(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
+    let (crate_map, _) = tcx.crate_inherent_impls(());
+    tcx.arena.alloc_from_iter(
         crate_map.incoherent_impls.get(&simp).unwrap_or(&Vec::new()).iter().map(|d| d.to_def_id()),
-    ))
+    )
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
-pub(crate) fn inherent_impls(
-    tcx: TyCtxt<'_>,
-    ty_def_id: LocalDefId,
-) -> Result<&[DefId], ErrorGuaranteed> {
-    let crate_map = tcx.crate_inherent_impls(())?;
-    Ok(match crate_map.inherent_impls.get(&ty_def_id) {
+pub(crate) fn inherent_impls(tcx: TyCtxt<'_>, ty_def_id: LocalDefId) -> &[DefId] {
+    let (crate_map, _) = tcx.crate_inherent_impls(());
+    match crate_map.inherent_impls.get(&ty_def_id) {
         Some(v) => &v[..],
         None => &[],
-    })
+    }
 }
 
 struct InherentCollect<'tcx> {

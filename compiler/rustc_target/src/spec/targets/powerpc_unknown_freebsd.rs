@@ -1,13 +1,13 @@
 use crate::abi::Endian;
-use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::freebsd::opts();
     // Extra hint to linker that we are generating secure-PLT code.
-    base.add_pre_link_args(
-        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-        &["-m32", "--target=powerpc-unknown-freebsd13.0"],
-    );
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
+        "-m32",
+        "--target=powerpc-unknown-freebsd13.0",
+    ]);
     base.max_atomic_width = Some(32);
     base.stack_probes = StackProbeType::Inline;
 

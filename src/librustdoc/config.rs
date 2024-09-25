@@ -8,15 +8,15 @@ use std::{fmt, io};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
-    self, get_cmd_lint_options, nightly_options, parse_crate_types_from_list, parse_externs,
-    parse_target_triple, CodegenOptions, CrateType, ErrorOutputType, Externs, Input,
-    JsonUnusedExterns, UnstableOptions,
+    self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
+    UnstableOptions, get_cmd_lint_options, nightly_options, parse_crate_types_from_list,
+    parse_externs, parse_target_triple,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
-use rustc_session::{getopts, EarlyDiagCtxt};
-use rustc_span::edition::Edition;
+use rustc_session::{EarlyDiagCtxt, getopts};
 use rustc_span::FileName;
+use rustc_span::edition::Edition;
 use rustc_target::spec::TargetTriple;
 
 use crate::core::new_dcx;

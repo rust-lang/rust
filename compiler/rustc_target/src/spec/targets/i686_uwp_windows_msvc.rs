@@ -1,4 +1,4 @@
-use crate::spec::{base, Target};
+use crate::spec::{Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_uwp_msvc::opts();

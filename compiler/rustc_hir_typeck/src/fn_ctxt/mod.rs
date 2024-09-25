@@ -17,9 +17,9 @@ use rustc_infer::infer;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
-use rustc_span::{self, sym, Span, DUMMY_SP};
-use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
+use rustc_span::{self, DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
+use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use crate::coercion::DynamicCoerceMany;

@@ -1,21 +1,21 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::edition::Edition;
-use rustc_span::symbol::{kw, sym};
-#[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
-#[allow(hidden_glob_reexports)]
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 pub use BinOpToken::*;
 pub use LitKind::*;
 pub use Nonterminal::*;
 pub use NtExprKind::*;
 pub use NtPatKind::*;
 pub use TokenKind::*;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::Lrc;
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::edition::Edition;
+#[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
+#[allow(hidden_glob_reexports)]
+use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::{kw, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::ast;
 use crate::ptr::P;
@@ -385,35 +385,41 @@ impl TokenKind {
         Literal(Lit::new(kind, symbol, suffix))
     }
 
-    /// An approximation to proc-macro-style single-character operators used by rustc parser.
-    /// If the operator token can be broken into two tokens, the first of which is single-character,
-    /// then this function performs that operation, otherwise it returns `None`.
-    pub fn break_two_token_op(&self) -> Option<(TokenKind, TokenKind)> {
-        Some(match *self {
-            Le => (Lt, Eq),
-            EqEq => (Eq, Eq),
-            Ne => (Not, Eq),
-            Ge => (Gt, Eq),
-            AndAnd => (BinOp(And), BinOp(And)),
-            OrOr => (BinOp(Or), BinOp(Or)),
-            BinOp(Shl) => (Lt, Lt),
-            BinOp(Shr) => (Gt, Gt),
-            BinOpEq(Plus) => (BinOp(Plus), Eq),
-            BinOpEq(Minus) => (BinOp(Minus), Eq),
-            BinOpEq(Star) => (BinOp(Star), Eq),
-            BinOpEq(Slash) => (BinOp(Slash), Eq),
-            BinOpEq(Percent) => (BinOp(Percent), Eq),
-            BinOpEq(Caret) => (BinOp(Caret), Eq),
-            BinOpEq(And) => (BinOp(And), Eq),
-            BinOpEq(Or) => (BinOp(Or), Eq),
-            BinOpEq(Shl) => (Lt, Le),
-            BinOpEq(Shr) => (Gt, Ge),
-            DotDot => (Dot, Dot),
-            DotDotDot => (Dot, DotDot),
-            PathSep => (Colon, Colon),
-            RArrow => (BinOp(Minus), Gt),
-            LArrow => (Lt, BinOp(Minus)),
-            FatArrow => (Eq, Gt),
+    /// An approximation to proc-macro-style single-character operators used by
+    /// rustc parser. If the operator token can be broken into two tokens, the
+    /// first of which has `n` (1 or 2) chars, then this function performs that
+    /// operation, otherwise it returns `None`.
+    pub fn break_two_token_op(&self, n: u32) -> Option<(TokenKind, TokenKind)> {
+        assert!(n == 1 || n == 2);
+        Some(match (self, n) {
+            (Le, 1) => (Lt, Eq),
+            (EqEq, 1) => (Eq, Eq),
+            (Ne, 1) => (Not, Eq),
+            (Ge, 1) => (Gt, Eq),
+            (AndAnd, 1) => (BinOp(And), BinOp(And)),
+            (OrOr, 1) => (BinOp(Or), BinOp(Or)),
+            (BinOp(Shl), 1) => (Lt, Lt),
+            (BinOp(Shr), 1) => (Gt, Gt),
+            (BinOpEq(Plus), 1) => (BinOp(Plus), Eq),
+            (BinOpEq(Minus), 1) => (BinOp(Minus), Eq),
+            (BinOpEq(Star), 1) => (BinOp(Star), Eq),
+            (BinOpEq(Slash), 1) => (BinOp(Slash), Eq),
+            (BinOpEq(Percent), 1) => (BinOp(Percent), Eq),
+            (BinOpEq(Caret), 1) => (BinOp(Caret), Eq),
+            (BinOpEq(And), 1) => (BinOp(And), Eq),
+            (BinOpEq(Or), 1) => (BinOp(Or), Eq),
+            (BinOpEq(Shl), 1) => (Lt, Le),         // `<` + `<=`
+            (BinOpEq(Shl), 2) => (BinOp(Shl), Eq), // `<<` + `=`
+            (BinOpEq(Shr), 1) => (Gt, Ge),         // `>` + `>=`
+            (BinOpEq(Shr), 2) => (BinOp(Shr), Eq), // `>>` + `=`
+            (DotDot, 1) => (Dot, Dot),
+            (DotDotDot, 1) => (Dot, DotDot), // `.` + `..`
+            (DotDotDot, 2) => (DotDot, Dot), // `..` + `.`
+            (DotDotEq, 2) => (DotDot, Eq),
+            (PathSep, 1) => (Colon, Colon),
+            (RArrow, 1) => (BinOp(Minus), Gt),
+            (LArrow, 1) => (Lt, BinOp(Minus)),
+            (FatArrow, 1) => (Eq, Gt),
             _ => return None,
         })
     }

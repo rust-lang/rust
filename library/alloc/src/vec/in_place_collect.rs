@@ -163,7 +163,7 @@ use core::num::NonZero;
 use core::ptr;
 
 use super::{InPlaceDrop, InPlaceDstDataSrcBufDrop, SpecFromIter, SpecFromIterNested, Vec};
-use crate::alloc::{handle_alloc_error, Global};
+use crate::alloc::{Global, handle_alloc_error};
 
 const fn in_place_collectible<DEST, SRC>(
     step_merge: Option<NonZero<usize>>,

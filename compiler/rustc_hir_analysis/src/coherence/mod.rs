@@ -7,12 +7,12 @@
 
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
-use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::LangItem;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
-use rustc_span::{sym, ErrorGuaranteed};
+use rustc_span::{ErrorGuaranteed, sym};
 use tracing::debug;
 
 use crate::errors;
@@ -124,7 +124,10 @@ fn enforce_empty_impls_for_marker_traits(
 
 pub(crate) fn provide(providers: &mut Providers) {
     use self::builtin::coerce_unsized_info;
-    use self::inherent_impls::{crate_incoherent_impls, crate_inherent_impls, inherent_impls};
+    use self::inherent_impls::{
+        crate_incoherent_impls, crate_inherent_impls, crate_inherent_impls_validity_check,
+        inherent_impls,
+    };
     use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;
     use self::orphan::orphan_check_impl;
 
@@ -133,6 +136,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         crate_inherent_impls,
         crate_incoherent_impls,
         inherent_impls,
+        crate_inherent_impls_validity_check,
         crate_inherent_impls_overlap_check,
         coerce_unsized_info,
         orphan_check_impl,

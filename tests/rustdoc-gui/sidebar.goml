@@ -160,12 +160,12 @@ click: "//ul[@class='block mod']/preceding-sibling::h3/a"
 // PAGE: index.html
 assert-css: ("#modules", {"background-color": "#fdffd3"})
 
-// Finally, assert that the `[+]/[−]` toggle doesn't affect sidebar width.
+// Finally, assert that the Summary toggle doesn't affect sidebar width.
 click: "#toggle-all-docs"
-assert-text: ("#toggle-all-docs", "[+]")
+assert-text: ("#toggle-all-docs", "Show all")
 assert-property: (".sidebar", {"clientWidth": "200"})
 click: "#toggle-all-docs"
-assert-text: ("#toggle-all-docs", "[−]")
+assert-text: ("#toggle-all-docs", "Summary")
 assert-property: (".sidebar", {"clientWidth": "200"})
 
 // Checks that all.html and index.html have their sidebar link in the same place.

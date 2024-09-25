@@ -7,14 +7,14 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Display};
 use std::io::IsTerminal;
-use std::path::{absolute, Path, PathBuf};
+use std::path::{Path, PathBuf, absolute};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::OnceLock;
 use std::{cmp, env, fs};
 
 use build_helper::exit;
-use build_helper::git::{get_closest_merge_commit, output_result, GitConfig};
+use build_helper::git::{GitConfig, get_closest_merge_commit, output_result};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -22,7 +22,7 @@ use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
-use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::cache::{INTERNER, Interned};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, output, t};
 
@@ -1745,14 +1745,11 @@ impl Config {
             config.rustc_default_linker = default_linker;
             config.musl_root = musl_root.map(PathBuf::from);
             config.save_toolstates = save_toolstates.map(PathBuf::from);
-            set(
-                &mut config.deny_warnings,
-                match flags.warnings {
-                    Warnings::Deny => Some(true),
-                    Warnings::Warn => Some(false),
-                    Warnings::Default => deny_warnings,
-                },
-            );
+            set(&mut config.deny_warnings, match flags.warnings {
+                Warnings::Deny => Some(true),
+                Warnings::Warn => Some(false),
+                Warnings::Default => deny_warnings,
+            });
             set(&mut config.backtrace_on_ice, backtrace_on_ice);
             set(&mut config.rust_verify_llvm_ir, verify_llvm_ir);
             config.rust_thin_lto_import_instr_limit = thin_lto_import_instr_limit;

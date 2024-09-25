@@ -17,7 +17,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
-use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{FIRST_VARIANT, ReprOptions, VariantIdx};
 use tracing::{debug, info, trace};
 
 use super::{

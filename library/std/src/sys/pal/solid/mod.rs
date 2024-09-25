@@ -62,13 +62,3 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
 pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
 }
-
-pub fn hashmap_random_keys() -> (u64, u64) {
-    unsafe {
-        let mut out = crate::mem::MaybeUninit::<[u64; 2]>::uninit();
-        let result = abi::SOLID_RNG_SampleRandomBytes(out.as_mut_ptr() as *mut u8, 16);
-        assert_eq!(result, 0, "SOLID_RNG_SampleRandomBytes failed: {result}");
-        let [x1, x2] = out.assume_init();
-        (x1, x2)
-    }
-}

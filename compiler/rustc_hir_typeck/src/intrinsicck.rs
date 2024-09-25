@@ -101,7 +101,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             Ok(SizeSkeleton::Generic(size)) => {
-                if let Some(size) = size.try_eval_target_usize(tcx, self.param_env) {
+                if let Some(size) =
+                    self.try_structurally_resolve_const(span, size).try_to_target_usize(tcx)
+                {
                     format!("{size} bytes")
                 } else {
                     format!("generic size {size}")

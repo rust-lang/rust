@@ -4,7 +4,7 @@ use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
-use crate::outlives::{push_outlives_components, Component};
+use crate::outlives::{Component, push_outlives_components};
 use crate::{self as ty, Interner, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that

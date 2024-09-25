@@ -1,6 +1,6 @@
 //! Targets the ARMv5TE, with code as `t32` code by default.
 
-use crate::spec::{base, cvs, FramePointer, Target, TargetOptions};
+use crate::spec::{FramePointer, Target, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {

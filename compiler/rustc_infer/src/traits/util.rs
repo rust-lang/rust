@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::{self, ToPolyTraitRef, TyCtxt};
-use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use rustc_span::symbol::Ident;
 pub use rustc_type_ir::elaborate::*;
 
 use crate::traits::{self, Obligation, ObligationCauseCode, PredicateObligation};

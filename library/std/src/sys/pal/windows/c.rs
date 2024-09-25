@@ -5,7 +5,7 @@
 #![unstable(issue = "none", feature = "windows_c")]
 #![allow(clippy::style)]
 
-use core::ffi::{c_uint, c_ulong, c_ushort, c_void, CStr};
+use core::ffi::{CStr, c_uint, c_ulong, c_ushort, c_void};
 use core::{mem, ptr};
 
 mod windows_sys;

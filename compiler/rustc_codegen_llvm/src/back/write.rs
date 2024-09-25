@@ -20,19 +20,19 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{DiagCtxtHandle, FatalError, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_session::config::{
     self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
 };
-use rustc_session::Session;
-use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
+use rustc_span::symbol::sym;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::debug;
 
 use crate::back::lto::ThinBuffer;
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
-    selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
+    LlvmSelfProfiler, selfprofile_after_pass_callback, selfprofile_before_pass_callback,
 };
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
@@ -41,7 +41,7 @@ use crate::errors::{
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::type_::Type;
-use crate::{base, common, llvm_util, LlvmCodegenBackend, ModuleLlvm};
+use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> FatalError {
     match llvm::last_error() {

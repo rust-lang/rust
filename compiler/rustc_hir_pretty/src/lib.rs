@@ -18,9 +18,9 @@ use rustc_hir::{
     HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
     TraitBoundModifier,
 };
-use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::FileName;
+use rustc_span::source_map::SourceMap;
+use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_target::spec::abi::Abi;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -2026,13 +2026,10 @@ impl<'a> State<'a> {
         let generic_params = generic_params
             .iter()
             .filter(|p| {
-                matches!(
-                    p,
-                    GenericParam {
-                        kind: GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit },
-                        ..
-                    }
-                )
+                matches!(p, GenericParam {
+                    kind: GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit },
+                    ..
+                })
             })
             .collect::<Vec<_>>();
 

@@ -999,8 +999,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
                 #[cfg(feature = "randomize")]
                 {
-                    use rand::seq::SliceRandom;
                     use rand::SeedableRng;
+                    use rand::seq::SliceRandom;
                     // `ReprOptions.field_shuffle_seed` is a deterministic seed we can use to randomize field
                     // ordering.
                     let mut rng =

@@ -1,8 +1,8 @@
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Limit;
-use rustc_span::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_span::Span;
+use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 

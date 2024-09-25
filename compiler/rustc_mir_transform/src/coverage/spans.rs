@@ -8,9 +8,9 @@ use tracing::{debug, debug_span, instrument};
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::spans::from_mir::{
-    extract_covspans_from_mir, ExtractedCovspans, Hole, SpanFromMir,
+    ExtractedCovspans, Hole, SpanFromMir, extract_covspans_from_mir,
 };
-use crate::coverage::{mappings, ExtractedHirInfo};
+use crate::coverage::{ExtractedHirInfo, mappings};
 
 mod from_mir;
 

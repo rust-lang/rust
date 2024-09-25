@@ -9,7 +9,7 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread::{self, scope, ScopedJoinHandle};
+use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
 use tidy::*;

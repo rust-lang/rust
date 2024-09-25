@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir::interpret::{
-    alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer,
-    Provenance,
+    AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer, Provenance, alloc_range,
+    read_target_uint,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -1536,11 +1536,8 @@ pub fn write_allocations<'tcx>(
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,
             Some(GlobalAlloc::Function { instance, .. }) => write!(w, " (fn: {instance})")?,
-            Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
-                write!(w, " (vtable: impl {trait_ref} for {ty})")?
-            }
-            Some(GlobalAlloc::VTable(ty, None)) => {
-                write!(w, " (vtable: impl <auto trait> for {ty})")?
+            Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
+                write!(w, " (vtable: impl {dyn_ty} for {ty})")?
             }
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 match tcx.eval_static_initializer(did) {

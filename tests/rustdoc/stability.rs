@@ -1,6 +1,6 @@
 #![feature(staged_api)]
 
-#![unstable(feature = "test", issue = "none")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 //@ has stability/index.html
 //@ has - '//ul[@class="item-table"]/li[1]//a' AaStable
@@ -10,6 +10,7 @@
 #[stable(feature = "rust2", since = "2.2.2")]
 pub struct AaStable;
 
+#[unstable(feature = "test", issue = "none")]
 pub struct Unstable {
     //@ has stability/struct.Unstable.html \
     //      '//span[@class="item-info"]//div[@class="stab unstable"]' \
@@ -21,3 +22,31 @@ pub struct Unstable {
 
 #[stable(feature = "rust2", since = "2.2.2")]
 pub struct ZzStable;
+
+#[unstable(feature = "unstable", issue = "none")]
+pub mod unstable {
+    //@ !hasraw stability/unstable/struct.Foo.html '//span[@class="since"]'
+    //@ has - '//div[@class="stab unstable"]' 'experimental'
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub struct Foo;
+}
+
+#[stable(feature = "rust2", since = "2.2.2")]
+pub mod stable_later {
+    //@ has stability/stable_later/struct.Bar.html '//span[@class="since"]' '2.2.2'
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub struct Bar;
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub mod stable_earlier {
+    //@ has stability/stable_earlier/struct.Foo.html '//span[@class="since"]' '1.0.0'
+    #[doc(inline)]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub use crate::unstable::Foo;
+
+    //@ has stability/stable_earlier/struct.Bar.html '//span[@class="since"]' '1.0.0'
+    #[doc(inline)]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub use crate::stable_later::Bar;
+}

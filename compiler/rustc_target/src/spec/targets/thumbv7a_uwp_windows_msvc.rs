@@ -1,4 +1,4 @@
-use crate::spec::{base, PanicStrategy, Target, TargetOptions};
+use crate::spec::{PanicStrategy, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {

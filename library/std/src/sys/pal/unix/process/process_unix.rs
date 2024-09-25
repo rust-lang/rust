@@ -1190,8 +1190,8 @@ impl ExitStatusError {
 mod linux_child_ext {
 
     use crate::os::linux::process as os;
-    use crate::sys::pal::unix::linux::pidfd as imp;
     use crate::sys::pal::unix::ErrorKind;
+    use crate::sys::pal::unix::linux::pidfd as imp;
     use crate::sys_common::FromInner;
     use crate::{io, mem};
 

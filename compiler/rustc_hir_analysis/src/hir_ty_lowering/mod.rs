@@ -26,7 +26,7 @@ use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    struct_span_code_err, Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, struct_span_code_err,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -44,8 +44,8 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
@@ -54,7 +54,7 @@ use tracing::{debug, debug_span, instrument};
 
 use crate::bounds::Bounds;
 use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, WildPatTy};
-use crate::hir_ty_lowering::errors::{prohibit_assoc_item_constraint, GenericsArgsErrExtend};
+use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
@@ -1272,7 +1272,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         let candidates: Vec<_> = tcx
-            .inherent_impls(adt_did)?
+            .inherent_impls(adt_did)
             .iter()
             .filter_map(|&impl_| {
                 let (item, scope) =

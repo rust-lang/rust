@@ -27,7 +27,7 @@ use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModul
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -35,11 +35,11 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_session::config::{CrateType, Lto};
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 
 use crate::back::write::save_temp_bitcode;
 use crate::errors::{DynamicLinkingWithLTO, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib};
-use crate::{to_gcc_opt_level, GccCodegenBackend, GccContext, SyncContext};
+use crate::{GccCodegenBackend, GccContext, SyncContext, to_gcc_opt_level};
 
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.

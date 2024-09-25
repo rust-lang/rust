@@ -1,8 +1,8 @@
 use either::{Left, Right};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::at::ToTrace;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
@@ -19,11 +19,11 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument, trace};
 
 use super::{
-    err_inval, throw_inval, throw_ub, throw_ub_custom, Frame, FrameInfo, GlobalId, InterpErrorInfo,
-    InterpResult, MPlaceTy, Machine, MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic,
-    Projectable, Provenance,
+    Frame, FrameInfo, GlobalId, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlaceMeta,
+    Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance, err_inval,
+    throw_inval, throw_ub, throw_ub_custom,
 };
-use crate::{fluent_generated as fluent, util, ReportErrorExt};
+use crate::{ReportErrorExt, fluent_generated as fluent, util};
 
 pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.

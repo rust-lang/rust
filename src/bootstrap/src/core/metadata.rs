@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use serde_derive::Deserialize;
 
 use crate::utils::exec::command;
-use crate::{t, Build, Crate};
+use crate::{Build, Crate, t};
 
 /// For more information, see the output of
 /// <https://doc.rust-lang.org/nightly/cargo/commands/cargo-metadata.html>

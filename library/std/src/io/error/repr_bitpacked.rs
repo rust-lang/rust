@@ -348,6 +348,7 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
         UnexpectedEof,
         Unsupported,
         OutOfMemory,
+        InProgress,
         Uncategorized,
     })
 }

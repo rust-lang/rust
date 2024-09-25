@@ -15,6 +15,7 @@ pub mod dbg;
 pub mod exit_guard;
 pub mod os_str;
 pub mod path;
+pub mod random;
 pub mod sync;
 pub mod thread_local;
 

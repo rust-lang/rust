@@ -6,13 +6,13 @@ use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::bug;
 use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
-use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
+use rustc_trait_selection::traits::ScrubbedTraitError;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
-use rustc_trait_selection::traits::ScrubbedTraitError;
 use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;

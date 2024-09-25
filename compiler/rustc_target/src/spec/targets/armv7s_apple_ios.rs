@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{base, Arch, TargetAbi};
+use crate::spec::base::apple::{Arch, TargetAbi, base};
 use crate::spec::{Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target,
         metadata: crate::spec::TargetMetadata {
-            description: Some("Armv7-A Apple-A6 Apple iOS".into()),
+            description: Some("ARMv7-A Apple-A6 Apple iOS".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),

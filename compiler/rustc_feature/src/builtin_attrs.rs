@@ -2,11 +2,11 @@
 
 use std::sync::LazyLock;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::{sym, Symbol};
 use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_span::symbol::{Symbol, sym};
 
 use crate::{Features, Stability};
 
@@ -859,8 +859,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes,
-        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
-        niche optimizations in libcore and libstd and will never be stable",
+        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document \
+        guaranteed niche optimizations in libcore and libstd and will never be stable\n\
+        (note that the compiler does not even check whether the type indeed is being non-null-optimized; \
+        it is your responsibility to ensure that the attribute is only used on types that are optimized)",
     ),
 
     // ==========================================================================

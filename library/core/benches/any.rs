@@ -1,6 +1,6 @@
 use core::any::*;
 
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 #[bench]
 fn bench_downcast_ref(b: &mut Bencher) {

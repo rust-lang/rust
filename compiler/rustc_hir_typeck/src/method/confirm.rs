@@ -1,8 +1,8 @@
 use std::ops::Deref;
 
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
+use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
@@ -20,12 +20,12 @@ use rustc_middle::ty::{
     UserType,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits;
 use tracing::debug;
 
-use super::{probe, MethodCallee};
-use crate::{callee, FnCtxt};
+use super::{MethodCallee, probe};
+use crate::{FnCtxt, callee};
 
 struct ConfirmContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,

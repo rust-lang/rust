@@ -25,10 +25,10 @@
 use hir::def_id::LocalDefIdSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
+use rustc_hir::Node;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::Node;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy::{self, Level};
@@ -318,10 +318,10 @@ impl<'tcx> ReachableContext<'tcx> {
                     ));
                     self.visit(instance.args);
                 }
-                GlobalAlloc::VTable(ty, trait_ref) => {
+                GlobalAlloc::VTable(ty, dyn_ty) => {
                     self.visit(ty);
                     // Manually visit to actually see the trait's `DefId`. Type visitors won't see it
-                    if let Some(trait_ref) = trait_ref {
+                    if let Some(trait_ref) = dyn_ty.principal() {
                         let ExistentialTraitRef { def_id, args } = trait_ref.skip_binder();
                         self.visit_def_id(def_id, "", &"");
                         self.visit(args);

@@ -43,9 +43,9 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::error::Error;
+use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
-use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]
@@ -62,9 +62,9 @@ use crate::alloc::Allocator;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, from_utf8_unchecked_mut, Chars, Utf8Error};
+use crate::str::{self, Chars, Utf8Error, from_utf8_unchecked_mut};
 #[cfg(not(no_global_oom_handling))]
-use crate::str::{from_boxed_utf8_unchecked, FromStr};
+use crate::str::{FromStr, from_boxed_utf8_unchecked};
 use crate::vec::Vec;
 
 /// A UTF-8–encoded, growable string.

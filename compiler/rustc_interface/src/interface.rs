@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
-use rustc_ast::{token, LitKind, MetaItemKind};
+use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -21,10 +21,10 @@ use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::filesearch::{self, sysroot_candidates};
 use rustc_session::parse::ParseSess;
-use rustc_session::{lint, CompilerIO, EarlyDiagCtxt, Session};
+use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
+use rustc_span::FileName;
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
-use rustc_span::FileName;
 use tracing::trace;
 
 use crate::util;

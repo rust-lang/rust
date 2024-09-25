@@ -51,22 +51,23 @@ store-property: (".mobile-topbar", {"scrollWidth": scrollWidth})
 assert-property: (".mobile-topbar", {"clientWidth": |scrollWidth|})
 assert-css: (".mobile-topbar h2", {"overflow-x": "hidden"})
 
-// Check wrapping for top main-heading h1 and out-of-band.
-// On desktop, they wrap when too big.
+// Check that main heading and toolbar go side-by-side, both on desktop and on mobile.
 set-window-size: (1100, 800)
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
-compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ["y"])
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar", {"x": 550})
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
-compare-elements-position: (".main-heading h1", ".main-heading .out-of-band", ["y"])
-// make sure there is a gap between them
-compare-elements-position-near-false: (".main-heading h1", ".main-heading .out-of-band", {"x": 550})
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar", {"x": 550})
 
 // On mobile, they always wrap.
 set-window-size: (600, 600)
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
-compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ["y"])
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar", {"x": 200})
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
-compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ["y"])
+compare-elements-position: (".main-heading h1", ".main-heading rustdoc-toolbar", ["y"])
+compare-elements-position-near-false: (".main-heading h1", ".main-heading rustdoc-toolbar", {"x": 200})
 
 // Now we will check that the scrolling is working.
 // First on an item with "hidden methods".

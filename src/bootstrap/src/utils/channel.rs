@@ -9,8 +9,8 @@ use std::fs;
 use std::path::Path;
 
 use super::helpers;
-use crate::utils::helpers::{output, t};
 use crate::Build;
+use crate::utils::helpers::{output, t};
 
 #[derive(Clone, Default)]
 pub enum GitInfo {

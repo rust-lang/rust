@@ -1,3 +1,6 @@
+use super::{SocketAddr, sockaddr_un};
+#[cfg(any(doc, target_os = "android", target_os = "linux"))]
+use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to};
 #[cfg(any(
     target_os = "android",
     target_os = "linux",
@@ -8,10 +11,7 @@
     target_os = "nto",
     target_vendor = "apple",
 ))]
-use super::{peer_cred, UCred};
-#[cfg(any(doc, target_os = "android", target_os = "linux"))]
-use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
-use super::{sockaddr_un, SocketAddr};
+use super::{UCred, peer_cred};
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;

@@ -2,7 +2,7 @@
 
 use crate::any::Any;
 use crate::marker::PhantomData;
-use crate::mem::{transmute, ManuallyDrop};
+use crate::mem::{ManuallyDrop, transmute};
 use crate::panic::AssertUnwindSafe;
 use crate::{fmt, ptr};
 

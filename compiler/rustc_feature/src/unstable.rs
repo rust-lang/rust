@@ -1,10 +1,10 @@
 //! List of the unstable feature gates.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 
-use super::{to_nonzero, Feature};
+use super::{Feature, to_nonzero};
 
 pub struct UnstableFeature {
     pub feature: Feature,
@@ -227,6 +227,8 @@ declare_features! (
     (internal, staged_api, "1.0.0", None),
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
+    /// Helps with formatting for `group_imports = "StdExternalCrate"`.
+    (unstable, unqualified_local_imports, "CURRENT_RUSTC_VERSION", None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (unstable, with_negative_coherence, "1.60.0", None),
@@ -578,7 +580,7 @@ declare_features! (
     /// be used to describe E or vise-versa.
     (unstable, result_ffi_guarantees, "1.80.0", Some(110503)),
     /// Allows bounding the return type of AFIT/RPITIT.
-    (incomplete, return_type_notation, "1.70.0", Some(109417)),
+    (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics

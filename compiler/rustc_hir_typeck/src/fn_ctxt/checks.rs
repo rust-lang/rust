@@ -4,8 +4,8 @@ use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    a_or_an, display_list_with_comma_and, pluralize, Applicability, Diag, ErrorGuaranteed,
-    MultiSpan, StashKey,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, a_or_an,
+    display_list_with_comma_and, pluralize,
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -22,28 +22,28 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, kw};
+use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
+use crate::Expectation::*;
+use crate::TupleArgumentsFlag::*;
 use crate::coercion::CoerceMany;
 use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::fn_ctxt::infer::FnCall;
 use crate::gather_locals::Declaration;
+use crate::method::MethodCallee;
 use crate::method::probe::IsSuggestion;
 use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
-use crate::method::MethodCallee;
-use crate::Expectation::*;
-use crate::TupleArgumentsFlag::*;
 use crate::{
-    errors, struct_span_code_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, Needs,
-    TupleArgumentsFlag,
+    BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, Needs, TupleArgumentsFlag, errors,
+    struct_span_code_err,
 };
 
 #[derive(Clone, Copy, Default)]

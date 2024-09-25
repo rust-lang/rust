@@ -7,7 +7,7 @@ mod initialized;
 mod liveness;
 mod storage_liveness;
 
-pub use self::borrowed_locals::{borrowed_locals, MaybeBorrowedLocals};
+pub use self::borrowed_locals::{MaybeBorrowedLocals, borrowed_locals};
 pub use self::initialized::{
     DefinitelyInitializedPlaces, EverInitializedPlaces, MaybeInitializedPlaces,
     MaybeUninitializedPlaces,

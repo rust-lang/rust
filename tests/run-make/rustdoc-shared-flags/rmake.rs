@@ -1,4 +1,4 @@
-use run_make_support::{rustc, rustdoc, Diff};
+use run_make_support::{Diff, rustc, rustdoc};
 
 fn compare_outputs(args: &[&str]) {
     let rustc_output = rustc().args(args).run().stdout_utf8();

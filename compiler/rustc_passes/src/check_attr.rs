@@ -8,16 +8,16 @@ use std::cell::Cell;
 use std::collections::hash_map::Entry;
 
 use rustc_ast::{
-    ast, AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem,
+    AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem, ast,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
-use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, self, FnSig, ForeignItem, HirId, Item, ItemKind, MethodKind, Safety, Target,
-    TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
+    self as hir, self, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem, HirId, Item, ItemKind,
+    MethodKind, Safety, Target, TraitItem,
 };
 use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
@@ -32,8 +32,8 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
@@ -344,12 +344,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn inline_attr_str_error_without_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span,
-            errors::IgnoredAttr { sym },
-        );
+        self.tcx
+            .emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::IgnoredAttr { sym });
     }
 
     /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl.
@@ -1396,12 +1392,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions and some crates used
                 // this, so only emit a warning.
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::Cold { span, on_crate: hir_id == CRATE_HIR_ID },
-                );
+                self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::Cold {
+                    span,
+                    on_crate: hir_id == CRATE_HIR_ID,
+                });
             }
         }
     }
@@ -1416,12 +1410,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span,
-            errors::Link { span: (target != Target::ForeignMod).then_some(span) },
-        );
+        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::Link {
+            span: (target != Target::ForeignMod).then_some(span),
+        });
     }
 
     /// Checks if `#[link_name]` is applied to an item other than a foreign function or static.
@@ -2210,12 +2201,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         };
 
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span,
-            errors::Unused { attr_span: attr.span, note },
-        );
+        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::Unused {
+            attr_span: attr.span,
+            note,
+        });
     }
 
     /// A best effort attempt to create an error for a mismatching proc macro signature.

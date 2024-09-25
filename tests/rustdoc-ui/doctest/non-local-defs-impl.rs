@@ -15,7 +15,10 @@
 /// # use pub_trait::Trait;
 ///
 /// struct Local;
-/// impl Trait for &Local {}
+///
+/// fn foo() {
+///     impl Trait for &Local {}
+/// }
 /// ```
 ///
 /// But this shoudln't produce a warning:

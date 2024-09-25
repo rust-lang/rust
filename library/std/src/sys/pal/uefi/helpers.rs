@@ -14,7 +14,7 @@ use r_efi::protocols::{device_path, device_path_to_text};
 
 use crate::ffi::{OsStr, OsString};
 use crate::io::{self, const_io_error};
-use crate::mem::{size_of, MaybeUninit};
+use crate::mem::{MaybeUninit, size_of};
 use crate::os::uefi::env::boot_services;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::os::uefi::{self};

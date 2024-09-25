@@ -11,7 +11,7 @@ use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModul
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, TargetMachineFactoryConfig};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::{DiagCtxtHandle, FatalError};
@@ -23,7 +23,7 @@ use rustc_session::config::{self, CrateType, Lto};
 use tracing::{debug, info};
 
 use crate::back::write::{
-    self, bitcode_section_name, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers,
+    self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
@@ -844,7 +844,7 @@ impl ThinLTOKeysMap {
                     llvm::LLVMRustComputeLTOCacheKey(rust_str, module.identifier, data.0);
                 })
                 .expect("Invalid ThinLTO module key");
-                (name.clone().into_string().unwrap(), key)
+                (module_name_to_str(name).to_string(), key)
             })
             .collect();
         Self { keys }

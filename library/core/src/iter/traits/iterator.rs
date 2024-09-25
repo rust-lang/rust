@@ -1,8 +1,8 @@
 use super::super::{
-    try_process, ArrayChunks, ByRefSized, Chain, Cloned, Copied, Cycle, Enumerate, Filter,
-    FilterMap, FlatMap, Flatten, Fuse, Inspect, Intersperse, IntersperseWith, Map, MapWhile,
-    MapWindows, Peekable, Product, Rev, Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile,
-    TrustedRandomAccessNoCoerce, Zip,
+    ArrayChunks, ByRefSized, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, FlatMap,
+    Flatten, Fuse, Inspect, Intersperse, IntersperseWith, Map, MapWhile, MapWindows, Peekable,
+    Product, Rev, Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile, TrustedRandomAccessNoCoerce,
+    Zip, try_process,
 };
 use crate::array;
 use crate::cmp::{self, Ordering};

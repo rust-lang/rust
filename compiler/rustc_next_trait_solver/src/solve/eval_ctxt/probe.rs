@@ -6,7 +6,7 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::Candidate;
 use crate::solve::{
-    inspect, BuiltinImplSource, CandidateSource, EvalCtxt, NoSolution, QueryResult,
+    BuiltinImplSource, CandidateSource, EvalCtxt, NoSolution, QueryResult, inspect,
 };
 
 pub(in crate::solve) struct ProbeCtxt<'me, 'a, D, I, F, T>

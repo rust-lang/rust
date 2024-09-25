@@ -13,9 +13,9 @@ use cranelift_module::ModuleError;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::TypeVisitableExt;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::call::{Conv, FnAbi, PassMode};
@@ -508,7 +508,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(
                     nop_inst,
-                    format!("virtual call; self arg pass mode: {:?}", fn_abi.args[0]),
+                    with_no_trimmed_paths!(format!(
+                        "virtual call; self arg pass mode: {:?}",
+                        fn_abi.args[0]
+                    )),
                 );
             }
 

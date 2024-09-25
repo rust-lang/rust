@@ -5,7 +5,7 @@ use rustc_target::abi::FieldIdx;
 use tracing::debug;
 
 use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
-use crate::{places_conflict, AccessDepth, BorrowIndex};
+use crate::{AccessDepth, BorrowIndex, places_conflict};
 
 /// Returns `true` if the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and

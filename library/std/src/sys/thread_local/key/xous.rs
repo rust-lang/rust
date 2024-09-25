@@ -39,7 +39,7 @@
 use core::arch::asm;
 
 use crate::mem::ManuallyDrop;
-use crate::os::xous::ffi::{map_memory, unmap_memory, MemoryFlags};
+use crate::os::xous::ffi::{MemoryFlags, map_memory, unmap_memory};
 use crate::ptr;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::atomic::{AtomicPtr, AtomicUsize};

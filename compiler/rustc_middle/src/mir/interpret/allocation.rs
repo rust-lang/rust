@@ -18,9 +18,9 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    read_target_uint, write_target_uint, AllocId, BadBytesAccess, CtfeProvenance, InterpError,
-    InterpResult, Pointer, PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar,
-    ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo,
+    AllocId, BadBytesAccess, CtfeProvenance, InterpError, InterpResult, Pointer, PointerArithmetic,
+    Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo,
+    UnsupportedOpInfo, read_target_uint, write_target_uint,
 };
 use crate::ty;
 

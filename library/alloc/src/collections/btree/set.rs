@@ -7,10 +7,10 @@ use core::iter::{FusedIterator, Peekable};
 use core::mem::ManuallyDrop;
 use core::ops::{BitAnd, BitOr, BitXor, Bound, RangeBounds, Sub};
 
+use super::Recover;
 use super::map::{BTreeMap, Keys};
 use super::merge_iter::MergeIterInner;
 use super::set_val::SetValZST;
-use super::Recover;
 use crate::alloc::{Allocator, Global};
 use crate::vec::Vec;
 

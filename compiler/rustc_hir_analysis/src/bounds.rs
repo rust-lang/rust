@@ -2,12 +2,12 @@
 //! [`rustc_middle::ty`] form.
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir::def::DefKind;
 use rustc_hir::LangItem;
+use rustc_hir::def::DefKind;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
-use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use rustc_span::def_id::DefId;
 
 use crate::hir_ty_lowering::OnlySelfBounds;
 
@@ -112,14 +112,11 @@ impl<'tcx> Bounds<'tcx> {
                 // This should work for any bound variables as long as they don't have any
                 // bounds e.g. `for<T: Trait>`.
                 // FIXME(effects) reconsider this approach to allow compatibility with `for<T: Tr>`
-                let ty = tcx.replace_bound_vars_uncached(
-                    ty,
-                    FnMutDelegate {
-                        regions: &mut |_| tcx.lifetimes.re_static,
-                        types: &mut |_| tcx.types.unit,
-                        consts: &mut |_| unimplemented!("`~const` does not support const binders"),
-                    },
-                );
+                let ty = tcx.replace_bound_vars_uncached(ty, FnMutDelegate {
+                    regions: &mut |_| tcx.lifetimes.re_static,
+                    types: &mut |_| tcx.types.unit,
+                    consts: &mut |_| unimplemented!("`~const` does not support const binders"),
+                });
 
                 self.effects_min_tys.insert(ty, span);
                 return;
@@ -152,11 +149,11 @@ impl<'tcx> Bounds<'tcx> {
         };
         let self_ty = Ty::new_projection(tcx, assoc, bound_trait_ref.skip_binder().args);
         // make `<T as Tr>::Effects: Compat<runtime>`
-        let new_trait_ref = ty::TraitRef::new(
-            tcx,
-            tcx.require_lang_item(LangItem::EffectsCompat, Some(span)),
-            [ty::GenericArg::from(self_ty), compat_val.into()],
-        );
+        let new_trait_ref =
+            ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::EffectsCompat, Some(span)), [
+                ty::GenericArg::from(self_ty),
+                compat_val.into(),
+            ]);
         self.clauses.push((bound_trait_ref.rebind(new_trait_ref).upcast(tcx), span));
     }
 

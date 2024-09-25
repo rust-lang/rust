@@ -26,7 +26,7 @@
           _9 = const main::promoted[0];
           _3 = &(*_9);
           _2 = &raw const (*_3);
-          _1 = move _2 as *const [i32] (PointerCoercion(Unsize));
+          _1 = move _2 as *const [i32] (PointerCoercion(Unsize, Implicit));
           StorageDead(_2);
           StorageDead(_3);
           StorageLive(_5);

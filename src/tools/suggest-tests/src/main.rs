@@ -1,6 +1,6 @@
 use std::process::ExitCode;
 
-use build_helper::git::{get_git_modified_files, GitConfig};
+use build_helper::git::{GitConfig, get_git_modified_files};
 use suggest_tests::get_suggestions;
 
 fn main() -> ExitCode {

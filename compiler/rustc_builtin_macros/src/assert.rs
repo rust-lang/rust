@@ -3,13 +3,13 @@ mod context;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
-use rustc_ast::{token, DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp};
+use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_parse::parser::Parser;
-use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span};
 use thin_vec::thin_vec;
 
 use crate::edition_panic::use_panic_2021;

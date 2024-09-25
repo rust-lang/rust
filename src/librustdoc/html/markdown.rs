@@ -35,8 +35,8 @@ use std::str::{self, CharIndices};
 use std::sync::OnceLock;
 
 use pulldown_cmark::{
-    html, BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter,
-    Options, Parser, Tag, TagEnd,
+    BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter, Options,
+    Parser, Tag, TagEnd, html,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagMessage};
@@ -261,7 +261,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                                  </pre>\
                              </div>",
                                 added_classes = added_classes.join(" "),
-                                text = Escape(&original_text),
+                                text = Escape(
+                                    original_text.strip_suffix('\n').unwrap_or(&original_text)
+                                ),
                             )
                             .into(),
                         ));

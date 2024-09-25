@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use tracing::instrument;
 
-use super::{nfa, Byte, Nfa, Ref};
+use super::{Byte, Nfa, Ref, nfa};
 use crate::Map;
 
 #[derive(PartialEq, Clone, Debug)]

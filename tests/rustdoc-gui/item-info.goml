@@ -20,7 +20,7 @@ store-position: (
     {"x": second_line_x, "y": second_line_y},
 )
 assert: |first_line_x| != |second_line_x| && |first_line_x| == 516 && |second_line_x| == 272
-assert: |first_line_y| != |second_line_y| && |first_line_y| == 688 && |second_line_y| == 711
+assert: |first_line_y| != |second_line_y| && |first_line_y| == 714 && |second_line_y| == 737
 
 // Now we ensure that they're not rendered on the same line.
 set-window-size: (1100, 800)

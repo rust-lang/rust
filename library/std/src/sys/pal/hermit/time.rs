@@ -2,7 +2,7 @@
 
 use core::hash::{Hash, Hasher};
 
-use super::hermit_abi::{self, timespec, CLOCK_MONOTONIC, CLOCK_REALTIME};
+use super::hermit_abi::{self, CLOCK_MONOTONIC, CLOCK_REALTIME, timespec};
 use crate::cmp::Ordering;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::time::Duration;

@@ -485,6 +485,22 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
   if (ArgsCstrBuff != nullptr) {
+#if LLVM_VERSION_GE(20, 0)
+    int buffer_offset = 0;
+    assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
+    auto Arg0 = std::string(ArgsCstrBuff);
+    buffer_offset = Arg0.size() + 1;
+    auto ArgsCppStr =
+        std::string(ArgsCstrBuff + buffer_offset, ArgsCstrBuffLen - 1);
+    auto i = 0;
+    while (i != std::string::npos) {
+      i = ArgsCppStr.find('\0', i + 1);
+      if (i != std::string::npos)
+        ArgsCppStr.replace(i, i + 1, " ");
+    }
+    Options.MCOptions.Argv0 = Arg0;
+    Options.MCOptions.CommandlineArgs = ArgsCppStr;
+#else
     int buffer_offset = 0;
     assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
 
@@ -510,6 +526,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     Options.MCOptions.Argv0 = arg0;
     Options.MCOptions.CommandLineArgs =
         llvm::ArrayRef<std::string>(cmd_arg_strings, num_cmd_arg_strings);
+#endif
   }
 
   TargetMachine *TM = TheTarget->createTargetMachine(
@@ -518,10 +535,11 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 }
 
 extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
-
+#if LLVM_VERSION_LT(20, 0)
   MCTargetOptions &MCOptions = unwrap(TM)->Options.MCOptions;
   delete[] MCOptions.Argv0;
   delete[] MCOptions.CommandLineArgs.data();
+#endif
 
   delete unwrap(TM);
 }
