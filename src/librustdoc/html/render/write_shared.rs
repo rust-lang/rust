@@ -865,7 +865,7 @@ struct AliasedTypeImpl<'cache> {
     type_aliases: Vec<(&'cache [Symbol], Item)>,
 }
 
-impl<'cx, 'cache> DocVisitor for TypeImplCollector<'cx, 'cache> {
+impl<'cx, 'cache> DocVisitor<'_> for TypeImplCollector<'cx, 'cache> {
     fn visit_item(&mut self, it: &Item) {
         self.visit_item_recur(it);
         let cache = self.cache;

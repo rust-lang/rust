@@ -1,12 +1,12 @@
 use crate::clean::*;
 
-pub(crate) trait DocVisitor: Sized {
-    fn visit_item(&mut self, item: &Item) {
+pub(crate) trait DocVisitor<'a>: Sized {
+    fn visit_item(&mut self, item: &'a Item) {
         self.visit_item_recur(item)
     }
 
     /// don't override!
-    fn visit_inner_recur(&mut self, kind: &ItemKind) {
+    fn visit_inner_recur(&mut self, kind: &'a ItemKind) {
         match kind {
             StrippedItem(..) => unreachable!(),
             ModuleItem(i) => {
@@ -47,18 +47,18 @@ pub(crate) trait DocVisitor: Sized {
     }
 
     /// don't override!
-    fn visit_item_recur(&mut self, item: &Item) {
+    fn visit_item_recur(&mut self, item: &'a Item) {
         match &item.kind {
             StrippedItem(i) => self.visit_inner_recur(&*i),
             _ => self.visit_inner_recur(&item.kind),
         }
     }
 
-    fn visit_mod(&mut self, m: &Module) {
+    fn visit_mod(&mut self, m: &'a Module) {
         m.items.iter().for_each(|i| self.visit_item(i))
     }
 
-    fn visit_crate(&mut self, c: &Crate) {
+    fn visit_crate(&mut self, c: &'a Crate) {
         self.visit_item(&c.module);
 
         for trait_ in c.external_traits.values() {
