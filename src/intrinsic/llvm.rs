@@ -466,12 +466,12 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let arg1_type = gcc_func.get_param_type(0);
                 let arg2_type = gcc_func.get_param_type(1);
                 let arg3_type = gcc_func.get_param_type(2);
-                let arg5_type = gcc_func.get_param_type(4);
+                let arg4_type = gcc_func.get_param_type(3);
                 let a = builder.context.new_rvalue_from_vector(None, arg1_type, &[new_args[0]; 8]);
                 let b = builder.context.new_rvalue_from_vector(None, arg2_type, &[new_args[1]; 8]);
                 let c = builder.context.new_rvalue_from_vector(None, arg3_type, &[new_args[2]; 8]);
-                let arg5 = builder.context.new_rvalue_from_int(arg5_type, 4);
-                args = vec![a, b, c, new_args[3], arg5].into();
+                let arg4 = builder.context.new_rvalue_from_int(arg4_type, -1);
+                args = vec![a, b, c, arg4, new_args[3]].into();
             }
             _ => (),
         }
@@ -604,7 +604,13 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 new_args[2] = builder.context.new_cast(None, new_args[2], builder.double_type);
                 args = new_args.into();
             }
-            "__builtin_ia32_sqrtsh_mask_round" => {
+            "__builtin_ia32_sqrtsh_mask_round"
+            | "__builtin_ia32_vcvtss2sh_mask_round"
+            | "__builtin_ia32_vcvtsd2sh_mask_round"
+            | "__builtin_ia32_vcvtsh2ss_mask_round"
+            | "__builtin_ia32_vcvtsh2sd_mask_round"
+            | "__builtin_ia32_rcpsh_mask"
+            | "__builtin_ia32_rsqrtsh_mask" => {
                 // The first two arguments are inverted, so swap them.
                 let mut new_args = args.to_vec();
                 new_args.swap(0, 1);
@@ -1192,11 +1198,11 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512fp16.mask.vfcmul.csh" => "__builtin_ia32_vfcmulcsh_mask_round",
         "llvm.x86.avx512fp16.mask.vfmadd.cph.512" => "__builtin_ia32_vfmaddcph512_mask3_round",
         "llvm.x86.avx512fp16.maskz.vfmadd.cph.512" => "__builtin_ia32_vfmaddcph512_maskz_round",
-        "llvm.x86.avx512fp16.mask.vfmadd.csh" => "__builtin_ia32_vfmaddcsh_mask3_round",
+        "llvm.x86.avx512fp16.mask.vfmadd.csh" => "__builtin_ia32_vfmaddcsh_mask_round",
         "llvm.x86.avx512fp16.maskz.vfmadd.csh" => "__builtin_ia32_vfmaddcsh_maskz_round",
         "llvm.x86.avx512fp16.mask.vfcmadd.cph.512" => "__builtin_ia32_vfcmaddcph512_mask3_round",
         "llvm.x86.avx512fp16.maskz.vfcmadd.cph.512" => "__builtin_ia32_vfcmaddcph512_maskz_round",
-        "llvm.x86.avx512fp16.mask.vfcmadd.csh" => "__builtin_ia32_vfcmaddcsh_mask_round",
+        "llvm.x86.avx512fp16.mask.vfcmadd.csh" => "__builtin_ia32_vfcmaddcsh_mask3_round",
         "llvm.x86.avx512fp16.maskz.vfcmadd.csh" => "__builtin_ia32_vfcmaddcsh_maskz_round",
         "llvm.x86.avx512fp16.vfmadd.ph.512" => "__builtin_ia32_vfmaddph512_mask",
         "llvm.x86.avx512fp16.vcvtsi642sh" => "__builtin_ia32_vcvtsi2sh64_round",
@@ -1209,7 +1215,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.mask.load.pd.256" => "__builtin_ia32_loadapd256_mask",
         "llvm.x86.avx512.mask.load.d.128" => "__builtin_ia32_movdqa32load128_mask",
         "llvm.x86.avx512.mask.load.q.128" => "__builtin_ia32_movdqa64load128_mask",
-        "llvm.x86.avx512.mask.load.ps.128" => "__builtin_ia32_movdqa64load128_mask",
+        "llvm.x86.avx512.mask.load.ps.128" => "__builtin_ia32_loadaps128_mask",
         "llvm.x86.avx512.mask.load.pd.128" => "__builtin_ia32_loadapd128_mask",
         "llvm.x86.avx512.mask.storeu.d.256" => "__builtin_ia32_storedqusi256_mask",
         "llvm.x86.avx512.mask.storeu.q.256" => "__builtin_ia32_storedqudi256_mask",
@@ -1283,6 +1289,10 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512fp16.mask.vcvttph2uqq.512" => "__builtin_ia32_vcvttph2uqq512_mask_round",
         "llvm.x86.avx512fp16.mask.vcvtph2psx.512" => "__builtin_ia32_vcvtph2psx512_mask_round",
         "llvm.x86.avx512fp16.mask.vcvtph2pd.512" => "__builtin_ia32_vcvtph2pd512_mask_round",
+        "llvm.x86.avx512fp16.mask.vfcmadd.cph.256" => "__builtin_ia32_vfcmaddcph256_mask3",
+        "llvm.x86.avx512fp16.mask.vfmadd.cph.256" => "__builtin_ia32_vfmaddcph256_mask3",
+        "llvm.x86.avx512fp16.mask.vfcmadd.cph.128" => "__builtin_ia32_vfcmaddcph128_mask3",
+        "llvm.x86.avx512fp16.mask.vfmadd.cph.128" => "__builtin_ia32_vfmaddcph128_mask3",
 
         // TODO: support the tile builtins:
         "llvm.x86.ldtilecfg" => "__builtin_trap",

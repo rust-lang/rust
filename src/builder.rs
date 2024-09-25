@@ -285,6 +285,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                         );
                         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
                         // TODO: remove bitcast now that vector types can be compared?
+                        // ==> We use bitcast to avoid having to do many manual casts from e.g. __m256i to __v32qi (in
+                        // the case of _mm256_aesenc_epi128).
                         self.bitcast(actual_val, expected_ty)
                     }
                 } else {
