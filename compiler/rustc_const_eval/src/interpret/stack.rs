@@ -15,9 +15,9 @@ use rustc_span::Span;
 use tracing::{info_span, instrument, trace};
 
 use super::{
-    from_known_layout, throw_ub, throw_unsup, AllocId, CtfeProvenance, Immediate, InterpCx,
-    InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, MemoryKind, Operand, Pointer,
-    Provenance, ReturnAction, Scalar,
+    AllocId, CtfeProvenance, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
+    MemPlaceMeta, MemoryKind, Operand, Pointer, Provenance, ReturnAction, Scalar,
+    from_known_layout, throw_ub, throw_unsup,
 };
 use crate::errors;
 

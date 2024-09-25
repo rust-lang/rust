@@ -1,4 +1,4 @@
-use crate::spec::{base, CodeModel, Target, TargetOptions};
+use crate::spec::{CodeModel, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {

@@ -2,7 +2,7 @@
 mod tests;
 
 use crate::fmt;
-use crate::sync::{mutex, poison, LockResult, MutexGuard, PoisonError};
+use crate::sync::{LockResult, MutexGuard, PoisonError, mutex, poison};
 use crate::sys::sync as sys;
 use crate::time::{Duration, Instant};
 

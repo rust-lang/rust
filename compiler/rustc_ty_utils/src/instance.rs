@@ -1,6 +1,6 @@
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
@@ -11,7 +11,7 @@ use rustc_span::sym;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
 use tracing::debug;
-use traits::{translate_args, Reveal};
+use traits::{Reveal, translate_args};
 
 use crate::errors::UnexpectedFnPtrAssociatedItem;
 

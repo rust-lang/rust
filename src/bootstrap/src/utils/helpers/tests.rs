@@ -1,4 +1,4 @@
-use std::fs::{self, remove_file, File};
+use std::fs::{self, File, remove_file};
 use std::io::Write;
 use std::path::PathBuf;
 

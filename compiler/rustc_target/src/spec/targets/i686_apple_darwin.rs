@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{base, Arch, TargetAbi};
+use crate::spec::base::apple::{Arch, TargetAbi, base};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target,
         metadata: crate::spec::TargetMetadata {
-            description: Some("32-bit macOS (10.12+, Sierra+)".into()),
+            description: Some("x86 Apple macOS (10.12+, Sierra+)".into()),
             tier: Some(3),
             host_tools: Some(true),
             std: Some(true),

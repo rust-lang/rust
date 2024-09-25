@@ -5,7 +5,7 @@ use rustc_middle::ty;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{Ident, sym};
 use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi::Abi;
 use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
@@ -151,11 +151,11 @@ impl NonCamelCaseTypes {
             } else {
                 NonCamelCaseTypeSub::Label { span: ident.span }
             };
-            cx.emit_span_lint(
-                NON_CAMEL_CASE_TYPES,
-                ident.span,
-                NonCamelCaseType { sort, name, sub },
-            );
+            cx.emit_span_lint(NON_CAMEL_CASE_TYPES, ident.span, NonCamelCaseType {
+                sort,
+                name,
+                sub,
+            });
         }
     }
 }
@@ -489,11 +489,11 @@ impl NonUpperCaseGlobals {
             } else {
                 NonUpperCaseGlobalSub::Label { span: ident.span }
             };
-            cx.emit_span_lint(
-                NON_UPPER_CASE_GLOBALS,
-                ident.span,
-                NonUpperCaseGlobal { sort, name, sub },
-            );
+            cx.emit_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, NonUpperCaseGlobal {
+                sort,
+                name,
+                sub,
+            });
         }
     }
 }

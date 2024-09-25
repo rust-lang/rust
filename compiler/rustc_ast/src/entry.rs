@@ -1,7 +1,7 @@
-use rustc_span::symbol::sym;
 use rustc_span::Symbol;
+use rustc_span::symbol::sym;
 
-use crate::{attr, Attribute};
+use crate::{Attribute, attr};
 
 #[derive(Debug)]
 pub enum EntryPointType {

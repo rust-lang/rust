@@ -8,8 +8,8 @@
 
 use std::ops::ControlFlow;
 
-use hir::def_id::DefId;
 use hir::LangItem;
+use hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation, SelectionError};

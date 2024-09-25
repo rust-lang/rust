@@ -6,7 +6,7 @@ use rustc_middle::{bug, span_bug, ty};
 use rustc_span::def_id::DefId;
 
 use crate::interpret::{
-    self, throw_machine_stop, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic,
+    self, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic, throw_machine_stop,
 };
 
 /// Macro for machine-specific `InterpError` without allocation.

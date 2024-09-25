@@ -10,8 +10,8 @@ use rustc_middle::mir::Local;
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::move_paths::MovePathIndex;
 
-use crate::location::{LocationIndex, LocationTable};
 use crate::BorrowIndex;
+use crate::location::{LocationIndex, LocationTable};
 
 #[derive(Copy, Clone, Debug)]
 pub struct RustcFacts;

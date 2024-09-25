@@ -16,11 +16,11 @@ use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_mir_dataflow::impls::{
-    borrowed_locals, LivenessTransferFunction, MaybeTransitiveLiveLocals,
+    LivenessTransferFunction, MaybeTransitiveLiveLocals, borrowed_locals,
 };
-use rustc_mir_dataflow::Analysis;
 
 use crate::util::is_within_packed;
 

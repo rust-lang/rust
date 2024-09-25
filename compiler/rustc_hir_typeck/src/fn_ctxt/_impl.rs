@@ -28,10 +28,10 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::kw;
-use rustc_span::Span;
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
@@ -42,7 +42,7 @@ use tracing::{debug, instrument};
 use crate::callee::{self, DeferredCallResolution};
 use crate::errors::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
-use crate::{rvalue_scopes, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
+use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, rvalue_scopes};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
@@ -224,10 +224,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("fcx {}", self.tag());
 
         if Self::can_contain_user_lifetime_bounds((args, user_self_ty)) {
-            let canonicalized = self.canonicalize_user_type_annotation(UserType::TypeOf(
-                def_id,
-                UserArgs { args, user_self_ty },
-            ));
+            let canonicalized =
+                self.canonicalize_user_type_annotation(UserType::TypeOf(def_id, UserArgs {
+                    args,
+                    user_self_ty,
+                }));
             debug!(?canonicalized);
             self.write_user_type_annotation(hir_id, canonicalized);
         }
@@ -270,13 +271,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let autoborrow_mut = adj.iter().any(|adj| {
-            matches!(
-                adj,
-                &Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })),
-                    ..
-                }
-            )
+            matches!(adj, &Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })),
+                ..
+            })
         });
 
         match self.typeck_results.borrow_mut().adjustments_mut().entry(expr.hir_id) {
@@ -968,16 +966,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut sp = MultiSpan::from_span(path_segment.ident.span);
         sp.push_span_label(
             path_segment.ident.span,
-            format!(
-                "this call modifies {} in-place",
-                match rcvr.kind {
-                    ExprKind::Path(QPath::Resolved(
-                        None,
-                        hir::Path { segments: [segment], .. },
-                    )) => format!("`{}`", segment.ident),
-                    _ => "its receiver".to_string(),
-                }
-            ),
+            format!("this call modifies {} in-place", match rcvr.kind {
+                ExprKind::Path(QPath::Resolved(None, hir::Path { segments: [segment], .. })) =>
+                    format!("`{}`", segment.ident),
+                _ => "its receiver".to_string(),
+            }),
         );
 
         let modifies_rcvr_note =
@@ -1474,6 +1467,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             ty
+        }
+    }
+
+    #[instrument(level = "debug", skip(self, sp), ret)]
+    pub fn try_structurally_resolve_const(&self, sp: Span, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        // FIXME(min_const_generic_exprs): We could process obligations here if `ct` is a var.
+
+        if self.next_trait_solver()
+            && let ty::ConstKind::Unevaluated(..) = ct.kind()
+        {
+            // We need to use a separate variable here as otherwise the temporary for
+            // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
+            // in a reentrant borrow, causing an ICE.
+            let result = self
+                .at(&self.misc(sp), self.param_env)
+                .structurally_normalize_const(ct, &mut **self.fulfillment_cx.borrow_mut());
+            match result {
+                Ok(normalized_ct) => normalized_ct,
+                Err(errors) => {
+                    let guar = self.err_ctxt().report_fulfillment_errors(errors);
+                    return ty::Const::new_error(self.tcx, guar);
+                }
+            }
+        } else if self.tcx.features().generic_const_exprs {
+            ct.normalize(self.tcx, self.param_env)
+        } else {
+            ct
         }
     }
 

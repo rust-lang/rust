@@ -1,5 +1,5 @@
-use hir::def_id::DefId;
 use hir::Node;
+use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::middle::region::{RvalueCandidateType, Scope, ScopeTree};

@@ -27,7 +27,7 @@
           StorageLive(_6);
           StorageLive(_7);
           _7 = &(*_2);
-          _6 = move _7 as &[u8] (PointerCoercion(Unsize));
+          _6 = move _7 as &[u8] (PointerCoercion(Unsize, Implicit));
           StorageDead(_7);
 -         _5 = PtrMetadata(move _6);
 +         _5 = const N;

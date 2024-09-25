@@ -5,7 +5,7 @@ trait Tr {}
 
 fn f(x: dyn* Tr) -> usize {
     x as usize
-    //~^ ERROR casting `(dyn* Tr + 'static)` as `usize` is invalid
+    //~^ ERROR non-primitive cast: `(dyn* Tr + 'static)` as `usize`
 }
 
 fn main() {}

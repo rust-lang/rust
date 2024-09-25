@@ -8,7 +8,7 @@ use tracing::debug;
 
 use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::{self, Item, ItemId, ItemIdSet};
-use crate::fold::{strip_item, DocFolder};
+use crate::fold::{DocFolder, strip_item};
 use crate::formats::cache::Cache;
 use crate::visit_lib::RustdocEffectiveVisibilities;
 

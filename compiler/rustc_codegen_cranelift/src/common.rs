@@ -1,10 +1,10 @@
 use cranelift_codegen::isa::TargetFrontendConfig;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_index::IndexVec;
+use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
-use rustc_middle::ty::TypeFoldable;
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Float, Integer, Primitive};

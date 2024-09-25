@@ -1,8 +1,8 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::OpaqueTyOrigin;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, TyCtxtInferExt as _};
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_macros::extension;
@@ -165,10 +165,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
                 prev.span = prev.span.substitute_dummy(concrete_type.span);
             } else {
-                result.insert(
-                    opaque_type_key.def_id,
-                    OpaqueHiddenType { ty, span: concrete_type.span },
-                );
+                result.insert(opaque_type_key.def_id, OpaqueHiddenType {
+                    ty,
+                    span: concrete_type.span,
+                });
             }
 
             // Check that all opaque types have the same region parameters if they have the same

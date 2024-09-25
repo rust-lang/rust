@@ -11,7 +11,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, Upcast,
 };
 use rustc_span::Span;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 use super::{NormalizeExt, ObligationCause, PredicateObligation, SelectionContext};
@@ -223,15 +223,11 @@ pub(crate) fn closure_trait_ref_and_return_type<'tcx>(
         TupleArgumentsFlag::Yes => Ty::new_tup(tcx, sig.skip_binder().inputs()),
     };
     let trait_ref = if tcx.has_host_param(fn_trait_def_id) {
-        ty::TraitRef::new(
-            tcx,
-            fn_trait_def_id,
-            [
-                ty::GenericArg::from(self_ty),
-                ty::GenericArg::from(arguments_tuple),
-                ty::GenericArg::from(fn_host_effect),
-            ],
-        )
+        ty::TraitRef::new(tcx, fn_trait_def_id, [
+            ty::GenericArg::from(self_ty),
+            ty::GenericArg::from(arguments_tuple),
+            ty::GenericArg::from(fn_host_effect),
+        ])
     } else {
         ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple])
     };

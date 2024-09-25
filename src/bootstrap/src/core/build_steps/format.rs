@@ -3,8 +3,8 @@
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::mpsc::SyncSender;
 use std::sync::Mutex;
+use std::sync::mpsc::SyncSender;
 
 use build_helper::ci::CiEnv;
 use build_helper::git::get_git_modified_files;

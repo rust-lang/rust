@@ -1,12 +1,12 @@
 //! A helper class for dealing with static archives
 
-use std::ffi::{c_char, c_void, CStr, CString};
+use std::ffi::{CStr, CString, c_char, c_void};
 use std::path::{Path, PathBuf};
 use std::{io, mem, ptr, str};
 
 use rustc_codegen_ssa::back::archive::{
-    try_extract_macho_fat_archive, ArArchiveBuilder, ArchiveBuildFailure, ArchiveBuilder,
-    ArchiveBuilderBuilder, ObjectReader, UnknownArchiveKind, DEFAULT_OBJECT_READER,
+    ArArchiveBuilder, ArchiveBuildFailure, ArchiveBuilder, ArchiveBuilderBuilder,
+    DEFAULT_OBJECT_READER, ObjectReader, UnknownArchiveKind, try_extract_macho_fat_archive,
 };
 use rustc_session::Session;
 

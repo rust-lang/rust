@@ -5,8 +5,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_span::def_id::DefIdSet;
 use rustc_span::Symbol;
+use rustc_span::def_id::DefIdSet;
 use tracing::debug;
 
 use crate::common::CodegenCx;
@@ -183,8 +183,8 @@ impl GlobalFileTable {
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
-        use rustc_session::config::RemapPathScopeComponents;
         use rustc_session::RemapFileNameExt;
+        use rustc_session::config::RemapPathScopeComponents;
         let working_dir: &str = &tcx
             .sess
             .opts

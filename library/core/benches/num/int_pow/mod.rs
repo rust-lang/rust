@@ -1,5 +1,5 @@
 use rand::Rng;
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 const ITERATIONS: usize = 128; // Uses an ITERATIONS * 20 Byte stack allocation
 type IntType = i128; // Hardest native type to multiply

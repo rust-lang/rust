@@ -1,5 +1,5 @@
 use core::marker::PhantomData;
-use core::ptr::{self, drop_in_place, NonNull};
+use core::ptr::{self, NonNull, drop_in_place};
 use core::slice::{self};
 
 use crate::alloc::Global;

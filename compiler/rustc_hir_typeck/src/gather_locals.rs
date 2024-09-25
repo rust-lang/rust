@@ -3,8 +3,8 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, PatKind};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{Ty, UserType};
-use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
 use tracing::debug;
 
 use crate::FnCtxt;

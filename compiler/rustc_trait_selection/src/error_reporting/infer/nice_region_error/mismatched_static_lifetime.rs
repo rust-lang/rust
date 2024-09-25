@@ -11,8 +11,8 @@ use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{
-    note_and_explain, DoesNotOutliveStaticFromImpl, ImplicitStaticLifetimeSubdiag,
-    IntroducesStaticBecauseUnmetLifetimeReq, MismatchedStaticLifetime,
+    DoesNotOutliveStaticFromImpl, ImplicitStaticLifetimeSubdiag,
+    IntroducesStaticBecauseUnmetLifetimeReq, MismatchedStaticLifetime, note_and_explain,
 };
 use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;

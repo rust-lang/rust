@@ -1,14 +1,14 @@
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_hir::LangItem;
-use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::IndexVec;
+use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_middle::bug;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use tracing::{debug, instrument};
 
 pub(super) struct ScalarReplacementOfAggregates;

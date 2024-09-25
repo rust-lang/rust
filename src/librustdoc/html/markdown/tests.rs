@@ -1,8 +1,8 @@
-use rustc_span::edition::{Edition, DEFAULT_EDITION};
+use rustc_span::edition::{DEFAULT_EDITION, Edition};
 
 use super::{
-    find_testable_code, plain_text_summary, short_markdown_summary, ErrorCodes, HeadingOffset,
-    IdMap, Ignore, LangString, LangStringToken, Markdown, MarkdownItemInfo, TagIterator,
+    ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, LangStringToken, Markdown,
+    MarkdownItemInfo, TagIterator, find_testable_code, plain_text_summary, short_markdown_summary,
 };
 
 #[test]
@@ -275,14 +275,14 @@ fn test_lang_string_tokenizer() {
     case("foo", &[LangStringToken::LangToken("foo")]);
     case("foo,bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
     case(".foo,.bar", &[]);
-    case(
-        "{.foo,.bar}",
-        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
-    );
-    case(
-        "  {.foo,.bar}  ",
-        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
-    );
+    case("{.foo,.bar}", &[
+        LangStringToken::ClassAttribute("foo"),
+        LangStringToken::ClassAttribute("bar"),
+    ]);
+    case("  {.foo,.bar}  ", &[
+        LangStringToken::ClassAttribute("foo"),
+        LangStringToken::ClassAttribute("bar"),
+    ]);
     case("foo bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
     case("foo\tbar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
     case("foo\t, bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
@@ -524,15 +524,13 @@ fn test_ascii_with_prepending_hashtag() {
 ####.###..#....#....#..#.
 #..#.#....#....#....#..#.
 #..#.#....#....#....#..#.
-#..#.####.####.####..##..
-</code></pre></div>",
+#..#.####.####.####..##..</code></pre></div>",
     );
     t(
         r#"```markdown
 # hello
 ```"#,
         "<div class=\"example-wrap\"><pre class=\"language-markdown\"><code>\
-# hello
-</code></pre></div>",
+# hello</code></pre></div>",
     );
 }

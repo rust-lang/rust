@@ -1,7 +1,7 @@
 use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 
-use crate::environment::{executable_extension, Environment};
+use crate::environment::{Environment, executable_extension};
 use crate::exec::cmd;
 use crate::utils::io::{copy_directory, find_file_in_dir, unpack_archive};
 

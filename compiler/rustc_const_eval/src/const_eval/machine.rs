@@ -6,14 +6,14 @@ use std::ops::ControlFlow;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, LangItem, CRATE_HIR_ID};
+use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 use tracing::debug;
@@ -22,10 +22,10 @@ use super::error::*;
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
-    self, compile_time_machine, err_ub, throw_exhaust, throw_inval, throw_ub_custom, throw_unsup,
-    throw_unsup_format, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic,
-    RangeSet, Scalar, StackPopCleanup,
+    self, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame, GlobalAlloc, ImmTy,
+    InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, RangeSet, Scalar,
+    StackPopCleanup, compile_time_machine, err_ub, throw_exhaust, throw_inval, throw_ub_custom,
+    throw_unsup, throw_unsup_format,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -203,8 +203,8 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
 
-        use rustc_session::config::RemapPathScopeComponents;
         use rustc_session::RemapFileNameExt;
+        use rustc_session::config::RemapPathScopeComponents;
         (
             Symbol::intern(
                 &caller
@@ -641,7 +641,14 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 // current number of evaluated terminators is a power of 2. The latter gives us a cheap
                 // way to implement exponential backoff.
                 let span = ecx.cur_span();
-                ecx.tcx.dcx().emit_warn(LongRunningWarn { span, item_span: ecx.tcx.span });
+                // We store a unique number in `force_duplicate` to evade `-Z deduplicate-diagnostics`.
+                // `new_steps` is guaranteed to be unique because `ecx.machine.num_evaluated_steps` is
+                // always increasing.
+                ecx.tcx.dcx().emit_warn(LongRunningWarn {
+                    span,
+                    item_span: ecx.tcx.span,
+                    force_duplicate: new_steps,
+                });
             }
         }
 

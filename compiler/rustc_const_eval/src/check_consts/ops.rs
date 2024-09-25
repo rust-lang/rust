@@ -2,20 +2,20 @@
 
 use hir::def_id::LocalDefId;
 use hir::{ConstContext, LangItem};
-use rustc_errors::codes::*;
 use rustc_errors::Diag;
+use rustc_errors::codes::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::CallSource;
 use rustc_middle::span_bug;
-use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
+use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, suggest_constraining_type_param, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef,
-    Param, TraitRef, Ty,
+    self, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef, Ty,
+    suggest_constraining_type_param,
 };
-use rustc_middle::util::{call_kind, CallDesugaringKind, CallKind};
+use rustc_middle::util::{CallDesugaringKind, CallKind, call_kind};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};

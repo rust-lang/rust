@@ -1,11 +1,12 @@
 use std::env;
 use std::io::Write;
 use std::path::Path;
+use std::process::Command;
 
 use crate::path::{Dirs, RelPath};
 use crate::prepare::GitRepo;
 use crate::rustc_info::get_file_name;
-use crate::utils::{hyperfine_command, spawn_and_wait, Compiler};
+use crate::utils::{Compiler, spawn_and_wait};
 
 static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
@@ -127,4 +128,38 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         gha_step_summary.write_all(&std::fs::read(bench_run_markdown).unwrap()).unwrap();
         gha_step_summary.write_all(b"\n").unwrap();
     }
+}
+
+#[must_use]
+fn hyperfine_command(
+    warmup: u64,
+    runs: u64,
+    prepare: Option<&str>,
+    cmds: &[(&str, &str)],
+    markdown_export: &Path,
+) -> Command {
+    let mut bench = Command::new("hyperfine");
+
+    bench.arg("--export-markdown").arg(markdown_export);
+
+    if warmup != 0 {
+        bench.arg("--warmup").arg(warmup.to_string());
+    }
+
+    if runs != 0 {
+        bench.arg("--runs").arg(runs.to_string());
+    }
+
+    if let Some(prepare) = prepare {
+        bench.arg("--prepare").arg(prepare);
+    }
+
+    for &(name, cmd) in cmds {
+        if name != "" {
+            bench.arg("-n").arg(name);
+        }
+        bench.arg(cmd);
+    }
+
+    bench
 }

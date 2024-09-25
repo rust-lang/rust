@@ -2,12 +2,12 @@ mod traits;
 mod ui;
 mod validate;
 
-use std::any::{type_name, TypeId};
+use std::any::{TypeId, type_name};
 use std::cmp::min;
 use std::ops::RangeInclusive;
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{mpsc, OnceLock};
+use std::sync::{OnceLock, mpsc};
 use std::{fmt, time};
 
 use indicatif::{MultiProgress, ProgressBar};

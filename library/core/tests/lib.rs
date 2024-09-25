@@ -21,7 +21,6 @@
 #![feature(const_cell_into_inner)]
 #![feature(const_hash)]
 #![feature(const_heap)]
-#![feature(const_intrinsic_copy)]
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]

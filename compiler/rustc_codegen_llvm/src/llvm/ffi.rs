@@ -5,13 +5,13 @@ use std::marker::PhantomData;
 
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
 
+use super::RustString;
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
     DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
     DebugEmissionKind, DebugNameTableKind,
 };
-use super::RustString;
 
 pub type Bool = c_uint;
 
@@ -885,17 +885,7 @@ unsafe extern "C" {
     pub fn LLVMGetPoison(Ty: &Type) -> &Value;
 
     // Operations on metadata
-    // FIXME: deprecated, replace with LLVMMDStringInContext2
-    pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> &Value;
-
     pub fn LLVMMDStringInContext2(C: &Context, Str: *const c_char, SLen: size_t) -> &Metadata;
-
-    // FIXME: deprecated, replace with LLVMMDNodeInContext2
-    pub fn LLVMMDNodeInContext<'a>(
-        C: &'a Context,
-        Vals: *const &'a Value,
-        Count: c_uint,
-    ) -> &'a Value;
     pub fn LLVMMDNodeInContext2<'a>(
         C: &'a Context,
         Vals: *const &'a Metadata,

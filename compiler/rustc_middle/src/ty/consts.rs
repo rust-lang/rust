@@ -18,7 +18,7 @@ mod valtree;
 
 pub use int::*;
 pub use kind::*;
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 pub use valtree::*;
 
 pub type ConstKind<'tcx> = ir::ConstKind<TyCtxt<'tcx>>;
@@ -242,13 +242,10 @@ impl<'tcx> Const<'tcx> {
 
         match Self::try_from_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
-            None => ty::Const::new_unevaluated(
-                tcx,
-                ty::UnevaluatedConst {
-                    def: def.to_def_id(),
-                    args: GenericArgs::identity_for_item(tcx, def.to_def_id()),
-                },
-            ),
+            None => ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst {
+                def: def.to_def_id(),
+                args: GenericArgs::identity_for_item(tcx, def.to_def_id()),
+            }),
         }
     }
 

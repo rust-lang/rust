@@ -12,7 +12,7 @@ use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableS
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
@@ -22,12 +22,12 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
-    add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments, DocFragment,
+    DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
 };
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{FileName, Loc, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, FileName, Loc};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use thin_vec::ThinVec;
@@ -384,7 +384,45 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 impl Item {
     pub(crate) fn stability(&self, tcx: TyCtxt<'_>) -> Option<Stability> {
-        self.def_id().and_then(|did| tcx.lookup_stability(did))
+        let (mut def_id, mut stability) = if let Some(inlined) = self.inline_stmt_id {
+            let inlined_def_id = inlined.to_def_id();
+            if let Some(stability) = tcx.lookup_stability(inlined_def_id) {
+                (inlined_def_id, stability)
+            } else {
+                // For re-exports into crates without `staged_api`, reuse the original stability.
+                // This is necessary, because we always want to mark unstable items.
+                let def_id = self.def_id()?;
+                return tcx.lookup_stability(def_id);
+            }
+        } else {
+            let def_id = self.def_id()?;
+            let stability = tcx.lookup_stability(def_id)?;
+            (def_id, stability)
+        };
+
+        let StabilityLevel::Stable { mut since, allowed_through_unstable_modules: false } =
+            stability.level
+        else {
+            return Some(stability);
+        };
+
+        // If any of the item's ancestors was stabilized later or is still unstable,
+        // then report the ancestor's stability instead.
+        while let Some(parent_def_id) = tcx.opt_parent(def_id) {
+            if let Some(parent_stability) = tcx.lookup_stability(parent_def_id) {
+                match parent_stability.level {
+                    StabilityLevel::Unstable { .. } => return Some(parent_stability),
+                    StabilityLevel::Stable { since: parent_since, .. } => {
+                        if parent_since > since {
+                            stability = parent_stability;
+                            since = parent_since;
+                        }
+                    }
+                }
+            }
+            def_id = parent_def_id;
+        }
+        Some(stability)
     }
 
     pub(crate) fn const_stability(&self, tcx: TyCtxt<'_>) -> Option<ConstStability> {
@@ -1064,10 +1102,14 @@ impl AttributesExt for [ast::Attribute] {
 }
 
 impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a
-        where Self: 'a;
-    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a
-        where Self: 'a;
+    type AttributeIterator<'a>
+        = impl Iterator<Item = ast::NestedMetaItem> + 'a
+    where
+        Self: 'a;
+    type Attributes<'a>
+        = impl Iterator<Item = &'a ast::Attribute> + 'a
+    where
+        Self: 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
         AttributesExt::iter(self)
@@ -1809,8 +1851,8 @@ impl PrimitiveType {
     }
 
     pub(crate) fn simplified_types() -> &'static SimplifiedTypes {
-        use ty::{FloatTy, IntTy, UintTy};
         use PrimitiveType::*;
+        use ty::{FloatTy, IntTy, UintTy};
         static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();
 
         let single = |x| iter::once(x).collect();
@@ -1859,7 +1901,7 @@ impl PrimitiveType {
             .get(self)
             .into_iter()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
             .copied()
     }
 
@@ -1867,7 +1909,7 @@ impl PrimitiveType {
         Self::simplified_types()
             .values()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
             .copied()
     }
 

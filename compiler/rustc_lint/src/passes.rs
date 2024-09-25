@@ -1,5 +1,5 @@
-use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::lint::LintPass;
+use rustc_session::lint::builtin::HardwiredLints;
 
 use crate::context::{EarlyContext, LateContext};
 
@@ -14,6 +14,8 @@ macro_rules! late_lint_methods {
             fn check_mod(a: &'tcx rustc_hir::Mod<'tcx>, b: rustc_hir::HirId);
             fn check_foreign_item(a: &'tcx rustc_hir::ForeignItem<'tcx>);
             fn check_item(a: &'tcx rustc_hir::Item<'tcx>);
+            /// This is called *after* recursing into the item
+            /// (in contrast to `check_item`, which is checked before).
             fn check_item_post(a: &'tcx rustc_hir::Item<'tcx>);
             fn check_local(a: &'tcx rustc_hir::LetStmt<'tcx>);
             fn check_block(a: &'tcx rustc_hir::Block<'tcx>);
@@ -135,6 +137,8 @@ macro_rules! early_lint_methods {
             fn check_crate(a: &rustc_ast::Crate);
             fn check_crate_post(a: &rustc_ast::Crate);
             fn check_item(a: &rustc_ast::Item);
+            /// This is called *after* recursing into the item
+            /// (in contrast to `check_item`, which is checked before).
             fn check_item_post(a: &rustc_ast::Item);
             fn check_local(a: &rustc_ast::Local);
             fn check_block(a: &rustc_ast::Block);

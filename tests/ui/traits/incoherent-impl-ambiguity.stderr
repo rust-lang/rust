@@ -1,0 +1,11 @@
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/incoherent-impl-ambiguity.rs:4:1
+   |
+LL | impl () {}
+   | ^^^^^^^
+   |
+   = help: consider using an extension trait instead
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0390`.

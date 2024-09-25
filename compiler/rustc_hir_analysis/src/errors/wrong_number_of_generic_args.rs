@@ -1,12 +1,12 @@
 use std::iter;
 
+use GenericArgsInfo::*;
 use rustc_errors::codes::*;
-use rustc_errors::{pluralize, Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan};
+use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan, pluralize};
 use rustc_hir as hir;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_span::def_id::DefId;
 use tracing::debug;
-use GenericArgsInfo::*;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.
 pub(crate) struct WrongNumberOfGenericArgs<'a, 'tcx> {

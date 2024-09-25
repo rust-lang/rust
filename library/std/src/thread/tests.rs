@@ -2,7 +2,7 @@ use super::Builder;
 use crate::any::Any;
 use crate::panic::panic_any;
 use crate::sync::atomic::{AtomicBool, Ordering};
-use crate::sync::mpsc::{channel, Sender};
+use crate::sync::mpsc::{Sender, channel};
 use crate::sync::{Arc, Barrier};
 use crate::thread::{self, Scope, ThreadId};
 use crate::time::{Duration, Instant};

@@ -1,7 +1,7 @@
 use rustc_data_structures::stable_hasher::Hash64;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::edition::Edition;
-use rustc_span::{create_session_globals_then, Symbol};
+use rustc_span::{Symbol, create_session_globals_then};
 
 use crate::definitions::{DefKey, DefPathData, DisambiguatedDefPathData};
 

@@ -231,11 +231,11 @@ pub macro panic_2015 {
     }),
 }
 
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+pub use core::panic::Location;
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 pub use core::panic::panic_2021;
-#[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use core::panic::Location;
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub use core::panic::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 

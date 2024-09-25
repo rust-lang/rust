@@ -1,6 +1,6 @@
 use crate::abi::Endian;
 use crate::spec::base::xtensa;
-use crate::spec::{cvs, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, cvs};
 
 pub(crate) fn target() -> Target {
     Target {

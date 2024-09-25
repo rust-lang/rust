@@ -9,7 +9,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::{CoroutineLayout, CoroutineSavedLocal};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
-    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
+    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, MAX_SIMD_LANES, TyAndLayout,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -194,20 +194,14 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Basic scalars.
-        ty::Bool => tcx.mk_layout(LayoutS::scalar(
-            cx,
-            Scalar::Initialized {
-                value: Int(I8, false),
-                valid_range: WrappingRange { start: 0, end: 1 },
-            },
-        )),
-        ty::Char => tcx.mk_layout(LayoutS::scalar(
-            cx,
-            Scalar::Initialized {
-                value: Int(I32, false),
-                valid_range: WrappingRange { start: 0, end: 0x10FFFF },
-            },
-        )),
+        ty::Bool => tcx.mk_layout(LayoutS::scalar(cx, Scalar::Initialized {
+            value: Int(I8, false),
+            valid_range: WrappingRange { start: 0, end: 1 },
+        })),
+        ty::Char => tcx.mk_layout(LayoutS::scalar(cx, Scalar::Initialized {
+            value: Int(I32, false),
+            valid_range: WrappingRange { start: 0, end: 0x10FFFF },
+        })),
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
         ty::Float(fty) => scalar(Float(Float::from_float_ty(fty))),
@@ -510,13 +504,10 @@ fn layout_of_uncached<'tcx>(
                 // Non-power-of-two vectors have padding up to the next power-of-two.
                 // If we're a packed repr, remove the padding while keeping the alignment as close
                 // to a vector as possible.
-                (
-                    Abi::Aggregate { sized: true },
-                    AbiAndPrefAlign {
-                        abi: Align::max_for_offset(size),
-                        pref: dl.vector_align(size).pref,
-                    },
-                )
+                (Abi::Aggregate { sized: true }, AbiAndPrefAlign {
+                    abi: Align::max_for_offset(size),
+                    pref: dl.vector_align(size).pref,
+                })
             } else {
                 (Abi::Vector { element: e_abi, count: e_len }, dl.vector_align(size))
             };
@@ -1124,13 +1115,10 @@ fn variant_info_for_adt<'tcx>(
                 })
                 .collect();
 
-            (
-                variant_infos,
-                match tag_encoding {
-                    TagEncoding::Direct => Some(tag.size(cx)),
-                    _ => None,
-                },
-            )
+            (variant_infos, match tag_encoding {
+                TagEncoding::Direct => Some(tag.size(cx)),
+                _ => None,
+            })
         }
     }
 }
@@ -1250,11 +1238,8 @@ fn variant_info_for_coroutine<'tcx>(
     let end_states: Vec<_> = end_states.collect();
     variant_infos.extend(end_states);
 
-    (
-        variant_infos,
-        match tag_encoding {
-            TagEncoding::Direct => Some(tag.size(cx)),
-            _ => None,
-        },
-    )
+    (variant_infos, match tag_encoding {
+        TagEncoding::Direct => Some(tag.size(cx)),
+        _ => None,
+    })
 }

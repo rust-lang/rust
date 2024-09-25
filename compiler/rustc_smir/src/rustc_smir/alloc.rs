@@ -1,8 +1,8 @@
-use rustc_middle::mir::interpret::{alloc_range, AllocRange, Pointer};
 use rustc_middle::mir::ConstValue;
+use rustc_middle::mir::interpret::{AllocRange, Pointer, alloc_range};
+use stable_mir::Error;
 use stable_mir::mir::Mutability;
 use stable_mir::ty::{Allocation, ProvenanceMap};
-use stable_mir::Error;
 
 use crate::rustc_smir::{Stable, Tables};
 

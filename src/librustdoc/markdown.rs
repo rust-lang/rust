@@ -1,5 +1,5 @@
 use std::fmt::Write as _;
-use std::fs::{create_dir_all, read_to_string, File};
+use std::fs::{File, create_dir_all, read_to_string};
 use std::io::prelude::*;
 use std::path::Path;
 

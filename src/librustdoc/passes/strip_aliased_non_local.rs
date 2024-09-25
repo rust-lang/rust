@@ -3,7 +3,7 @@ use rustc_middle::ty::{TyCtxt, Visibility};
 use crate::clean;
 use crate::clean::Item;
 use crate::core::DocContext;
-use crate::fold::{strip_item, DocFolder};
+use crate::fold::{DocFolder, strip_item};
 use crate::passes::Pass;
 
 pub(crate) const STRIP_ALIASED_NON_LOCAL: Pass = Pass {

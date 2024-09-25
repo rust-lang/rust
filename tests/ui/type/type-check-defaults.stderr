@@ -66,8 +66,8 @@ LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
    |
    = help: the trait `Add<u8>` is not implemented for `i32`
    = help: the following other types implement trait `Add<Rhs>`:
-             `&'a i32` implements `Add<i32>`
-             `&i32` implements `Add<&i32>`
+             `&i32` implements `Add<i32>`
+             `&i32` implements `Add`
              `i32` implements `Add<&i32>`
              `i32` implements `Add`
 

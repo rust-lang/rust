@@ -7,12 +7,12 @@ use std::panic;
 use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_error_messages::{fluent_value_from_str_list_sep_by_and, FluentValue};
+use rustc_error_messages::{FluentValue, fluent_value_from_str_list_sep_by_and};
 use rustc_lint_defs::Applicability;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
 use crate::snippet::Style;

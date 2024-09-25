@@ -1,6 +1,6 @@
 use crate::cell::UnsafeCell;
 use crate::io::Error;
-use crate::mem::{forget, MaybeUninit};
+use crate::mem::{MaybeUninit, forget};
 use crate::sys::cvt_nz;
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 

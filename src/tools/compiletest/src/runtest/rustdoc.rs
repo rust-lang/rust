@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::{remove_and_create_dir_all, TestCx};
+use super::{TestCx, remove_and_create_dir_all};
 
 impl TestCx<'_> {
     pub(super) fn run_rustdoc_test(&self) {

@@ -9,7 +9,7 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);
-        _1 = foo as for<'a> fn(&'a (), &'a ()) (PointerCoercion(ReifyFnPointer));
+        _1 = foo as for<'a> fn(&'a (), &'a ()) (PointerCoercion(ReifyFnPointer, AsCast));
         FakeRead(ForLet(None), _1);
         _0 = const ();
         StorageDead(_1);

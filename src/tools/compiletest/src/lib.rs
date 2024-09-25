@@ -34,10 +34,10 @@ use test::ColorConfig;
 use tracing::*;
 use walkdir::WalkDir;
 
-use self::header::{make_test_description, EarlyProps};
+use self::header::{EarlyProps, make_test_description};
 use crate::common::{
-    expected_output_path, output_base_dir, output_relative_path, Config, Debugger, Mode, PassMode,
-    TestPaths, UI_EXTENSIONS,
+    Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
+    output_base_dir, output_relative_path,
 };
 use crate::header::HeadersCache;
 use crate::util::logv;

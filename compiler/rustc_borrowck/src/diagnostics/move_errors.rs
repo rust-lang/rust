@@ -12,9 +12,9 @@ use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use tracing::debug;
 
+use crate::MirBorrowckCtxt;
 use crate::diagnostics::{CapturedMessageOpt, DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
-use crate::MirBorrowckCtxt;
 
 #[derive(Debug)]
 pub(crate) enum IllegalMoveOriginKind<'tcx> {

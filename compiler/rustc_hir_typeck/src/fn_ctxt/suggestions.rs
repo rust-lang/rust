@@ -19,15 +19,15 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, suggest_constraining_type_params, Article, Binder, IsSuggestable, Ty, TyCtxt,
-    TypeVisitableExt, Upcast,
+    self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Upcast,
+    suggest_constraining_type_params,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{Ident, sym};
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -1502,7 +1502,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Create an dummy type `&[_]` so that both &[] and `&Vec<T>` can coerce to it.
         let dummy_ty = if let ty::Array(elem_ty, size) = peeled.kind()
             && let ty::Infer(_) = elem_ty.kind()
-            && size.try_eval_target_usize(self.tcx, self.param_env) == Some(0)
+            && self
+                .try_structurally_resolve_const(provided_expr.span, *size)
+                .try_to_target_usize(self.tcx)
+                == Some(0)
         {
             let slice = Ty::new_slice(self.tcx, *elem_ty);
             Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, slice)
@@ -2001,17 +2004,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr.kind,
             hir::ExprKind::Call(
                 hir::Expr {
-                    kind: hir::ExprKind::Path(hir::QPath::Resolved(
-                        None,
-                        hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
-                    )),
+                    kind: hir::ExprKind::Path(hir::QPath::Resolved(None, hir::Path {
+                        res: Res::Def(hir::def::DefKind::Ctor(_, _), _),
+                        ..
+                    },)),
                     ..
                 },
                 ..,
-            ) | hir::ExprKind::Path(hir::QPath::Resolved(
-                None,
-                hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
-            )),
+            ) | hir::ExprKind::Path(hir::QPath::Resolved(None, hir::Path {
+                res: Res::Def(hir::def::DefKind::Ctor(_, _), _),
+                ..
+            },)),
         );
 
         let (article, kind, variant, sugg_operator) =

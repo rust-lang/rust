@@ -19,8 +19,8 @@ use rustc_span::sym;
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
-use crate::cfi::typeid::itanium_cxx_abi::encode::EncodeTyOptions;
 use crate::cfi::typeid::TypeIdOptions;
+use crate::cfi::typeid::itanium_cxx_abi::encode::EncodeTyOptions;
 
 /// Options for transform_ty.
 pub(crate) type TransformTyOptions = TypeIdOptions;

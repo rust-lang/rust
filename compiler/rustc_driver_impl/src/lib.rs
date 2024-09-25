@@ -24,7 +24,7 @@ use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
-use std::panic::{self, catch_unwind, PanicHookInfo};
+use std::panic::{self, PanicHookInfo, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -37,30 +37,30 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
 use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::profiling::{
-    get_resident_set_size, print_time_passes_entry, TimePassesFormat,
+    TimePassesFormat, get_resident_set_size, print_time_passes_entry,
 };
 use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    markdown, ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult,
+    ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult, markdown,
 };
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{interface, passes, Linker, Queries};
+use rustc_interface::{Linker, Queries, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
-    nightly_options, ErrorOutputType, Input, OutFileName, OutputType, UnstableOptions, CG_OPTIONS,
-    Z_OPTIONS,
+    CG_OPTIONS, ErrorOutputType, Input, OutFileName, OutputType, UnstableOptions, Z_OPTIONS,
+    nightly_options,
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::collect_crate_types;
-use rustc_session::{config, filesearch, EarlyDiagCtxt, Session};
-use rustc_span::source_map::FileLoader;
+use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
 use rustc_span::FileName;
+use rustc_span::source_map::FileLoader;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTriple};
 use time::OffsetDateTime;
@@ -410,11 +410,9 @@ fn run_compiler(
                     });
                 } else {
                     let krate = queries.parse()?;
-                    pretty::print(
-                        sess,
-                        pp_mode,
-                        pretty::PrintExtra::AfterParsing { krate: &*krate.borrow() },
-                    );
+                    pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing {
+                        krate: &*krate.borrow(),
+                    });
                 }
                 trace!("finished pretty-printing");
                 return early_exit();

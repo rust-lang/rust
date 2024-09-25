@@ -18,14 +18,14 @@ use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::{
-    self as ast, attr, AttrArgs, AttrArgsEq, BindingMode, BlockCheckMode, ByRef, DelimArgs,
-    GenericArg, GenericBound, InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass,
-    InlineAsmTemplatePiece, PatKind, RangeEnd, RangeSyntax, Safety, SelfKind, Term,
+    self as ast, AttrArgs, AttrArgsEq, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg,
+    GenericBound, InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass,
+    InlineAsmTemplatePiece, PatKind, RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
 };
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
-use rustc_span::{BytePos, CharPos, FileName, Pos, Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, IdentPrinter, Symbol, kw, sym};
+use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Pos, Span};
 use thin_vec::ThinVec;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
@@ -292,9 +292,9 @@ pub fn print_crate<'a>(
 /// - #73345: `#[allow(unused)]` must be printed rather than `# [allow(unused)]`
 ///
 fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
-    use token::*;
     use Delimiter::*;
     use TokenTree::{Delimited as Del, Token as Tok};
+    use token::*;
 
     fn is_punct(tt: &TokenTree) -> bool {
         matches!(tt, TokenTree::Token(tok, _) if tok.is_punct())

@@ -8,7 +8,7 @@ use crate::fmt;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sys::sync as sys;
-use crate::thread::{current_id, ThreadId};
+use crate::thread::{ThreadId, current_id};
 
 /// A re-entrant mutual exclusion lock
 ///

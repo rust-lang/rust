@@ -3,26 +3,26 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::Res::Def;
-use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::GenericBound::Trait;
 use rustc_hir::QPath::Resolved;
 use rustc_hir::WherePredicate::BoundPredicate;
+use rustc_hir::def::Res::Def;
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
 use rustc_infer::infer::{NllRegionVariableOrigin, RelateParamBound};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeVisitor};
-use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, kw};
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::{
-    self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
-    HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor,
+    self, HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor, find_anon_type,
+    find_param_with_region, suggest_adding_lifetime_params,
 };
 use rustc_trait_selection::error_reporting::infer::region::unexpected_hidden_region_diagnostic;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 use tracing::{debug, instrument, trace};
@@ -36,7 +36,7 @@ use crate::session_diagnostics::{
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
 use crate::universal_regions::DefiningTy;
-use crate::{borrowck_errors, fluent_generated as fluent, MirBorrowckCtxt};
+use crate::{MirBorrowckCtxt, borrowck_errors, fluent_generated as fluent};
 
 impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
     fn description(&self) -> &'static str {
@@ -47,7 +47,8 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::Yield => "yielding this value ",
             ConstraintCategory::UseAsConst => "using this value as a constant ",
             ConstraintCategory::UseAsStatic => "using this value as a static ",
-            ConstraintCategory::Cast { .. } => "cast ",
+            ConstraintCategory::Cast { is_implicit_coercion: false, .. } => "cast ",
+            ConstraintCategory::Cast { is_implicit_coercion: true, .. } => "coercion ",
             ConstraintCategory::CallArgument(_) => "argument ",
             ConstraintCategory::TypeAnnotation => "type annotation ",
             ConstraintCategory::ClosureBounds => "closure body ",
@@ -1108,15 +1109,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let closure_ty = Ty::new_closure(
             tcx,
             closure_def_id.to_def_id(),
-            ty::ClosureArgs::new(
-                tcx,
-                ty::ClosureArgsParts {
-                    parent_args: args.parent_args(),
-                    closure_kind_ty: args.kind_ty(),
-                    tupled_upvars_ty: args.tupled_upvars_ty(),
-                    closure_sig_as_fn_ptr_ty,
-                },
-            )
+            ty::ClosureArgs::new(tcx, ty::ClosureArgsParts {
+                parent_args: args.parent_args(),
+                closure_kind_ty: args.kind_ty(),
+                tupled_upvars_ty: args.tupled_upvars_ty(),
+                closure_sig_as_fn_ptr_ty,
+            })
             .args,
         );
 

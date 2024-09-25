@@ -1,4 +1,4 @@
-use crate::spec::{add_link_args, base, Cc, LinkArgs, LinkerFlavor, Lld, TargetOptions};
+use crate::spec::{Cc, LinkArgs, LinkerFlavor, Lld, TargetOptions, add_link_args, base};
 
 pub(crate) fn opts() -> TargetOptions {
     let base = base::windows_gnu::opts();

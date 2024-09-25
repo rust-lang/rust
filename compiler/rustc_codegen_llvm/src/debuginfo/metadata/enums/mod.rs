@@ -12,14 +12,14 @@ use rustc_span::Symbol;
 use rustc_target::abi::{FieldIdx, TagEncoding, VariantIdx, Variants};
 
 use super::type_map::{DINodeCreationResult, UniqueTypeId};
-use super::{size_and_align_of, SmallVec};
+use super::{SmallVec, size_and_align_of};
 use crate::common::CodegenCx;
 use crate::debuginfo::metadata::type_map::{self, Stub};
 use crate::debuginfo::metadata::{
-    build_field_di_node, build_generic_type_param_di_nodes, type_di_node, unknown_file_metadata,
-    UNKNOWN_LINE_NUMBER,
+    UNKNOWN_LINE_NUMBER, build_field_di_node, build_generic_type_param_di_nodes, type_di_node,
+    unknown_file_metadata,
 };
-use crate::debuginfo::utils::{create_DIArray, get_namespace_for_item, DIB};
+use crate::debuginfo::utils::{DIB, create_DIArray, get_namespace_for_item};
 use crate::llvm::debuginfo::{DIFlags, DIType};
 use crate::llvm::{self};
 

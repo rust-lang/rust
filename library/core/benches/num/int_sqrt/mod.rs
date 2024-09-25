@@ -1,5 +1,5 @@
 use rand::Rng;
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 macro_rules! int_sqrt_bench {
     ($t:ty, $predictable:ident, $random:ident, $random_small:ident, $random_uniform:ident) => {

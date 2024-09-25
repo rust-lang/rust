@@ -8,19 +8,19 @@
 
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
-use std::collections::hash_map::Entry;
 use std::collections::BTreeSet;
+use std::collections::hash_map::Entry;
 use std::mem::{replace, swap, take};
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{visit_opt, walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, visit_opt, walk_list};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, DiagArgValue, IntoDiagArg, StashKey, Suggestions};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::DelegationFnSig;
@@ -28,16 +28,16 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::parse::feature_err;
-use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::source_map::{Spanned, respan};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, Span, SyntaxContext};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument, trace};
 
 use crate::{
-    errors, path_names_to_string, rustdoc, BindingError, BindingKey, Finalize, LexicalScopeBinding,
-    Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult, ResolutionError, Resolver,
-    Segment, TyCtxt, UseError, Used,
+    BindingError, BindingKey, Finalize, LexicalScopeBinding, Module, ModuleOrUniformRoot,
+    NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment, TyCtxt, UseError,
+    Used, errors, path_names_to_string, rustdoc,
 };
 
 mod diagnostics;
@@ -1801,11 +1801,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             && Some(true) == self.diag_metadata.in_non_gat_assoc_type
                             && let crate::ModuleKind::Def(DefKind::Trait, trait_id, _) = module.kind
                         {
-                            if def_id_matches_path(
-                                self.r.tcx,
-                                trait_id,
-                                &["core", "iter", "traits", "iterator", "Iterator"],
-                            ) {
+                            if def_id_matches_path(self.r.tcx, trait_id, &[
+                                "core", "iter", "traits", "iterator", "Iterator",
+                            ]) {
                                 self.r.dcx().emit_err(errors::LendingIteratorReportError {
                                     lifetime: lifetime.ident.span,
                                     ty: ty.span,
@@ -3412,14 +3410,11 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         match seen_trait_items.entry(id_in_trait) {
             Entry::Occupied(entry) => {
-                self.report_error(
-                    span,
-                    ResolutionError::TraitImplDuplicate {
-                        name: ident.name,
-                        old_span: *entry.get(),
-                        trait_item_span: binding.span,
-                    },
-                );
+                self.report_error(span, ResolutionError::TraitImplDuplicate {
+                    name: ident.name,
+                    old_span: *entry.get(),
+                    trait_item_span: binding.span,
+                });
                 return;
             }
             Entry::Vacant(entry) => {
@@ -3450,16 +3445,13 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         };
         let trait_path = path_names_to_string(path);
-        self.report_error(
-            span,
-            ResolutionError::TraitImplMismatch {
-                name: ident.name,
-                kind,
-                code,
-                trait_path,
-                trait_item_span: binding.span,
-            },
-        );
+        self.report_error(span, ResolutionError::TraitImplMismatch {
+            name: ident.name,
+            kind,
+            code,
+            trait_path,
+            trait_item_span: binding.span,
+        });
     }
 
     fn resolve_const_body(&mut self, expr: &'ast Expr, item: Option<(Ident, ConstantItemKind)>) {
@@ -4447,15 +4439,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 module,
                 segment_name,
             } => {
-                return Err(respan(
-                    span,
-                    ResolutionError::FailedToResolve {
-                        segment: Some(segment_name),
-                        label,
-                        suggestion,
-                        module,
-                    },
-                ));
+                return Err(respan(span, ResolutionError::FailedToResolve {
+                    segment: Some(segment_name),
+                    label,
+                    suggestion,
+                    module,
+                }));
             }
             PathResult::Module(..) | PathResult::Failed { .. } => return Ok(None),
             PathResult::Indeterminate => bug!("indeterminate path result in resolve_qpath"),

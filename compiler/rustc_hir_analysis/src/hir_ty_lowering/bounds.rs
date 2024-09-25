@@ -4,13 +4,13 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
+use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::HirId;
 use rustc_middle::bug;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
@@ -672,15 +672,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut num_bound_vars = candidate.bound_vars().len();
         let args = candidate.skip_binder().args.extend_to(tcx, item_def_id, |param, _| {
             let arg = match param.kind {
-                ty::GenericParamDefKind::Lifetime => ty::Region::new_bound(
-                    tcx,
-                    ty::INNERMOST,
-                    ty::BoundRegion {
+                ty::GenericParamDefKind::Lifetime => {
+                    ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
                         var: ty::BoundVar::from_usize(num_bound_vars),
                         kind: ty::BoundRegionKind::BrNamed(param.def_id, param.name),
-                    },
-                )
-                .into(),
+                    })
+                    .into()
+                }
                 ty::GenericParamDefKind::Type { .. } => {
                     let guar = *emitted_bad_param_err.get_or_insert_with(|| {
                         self.dcx().emit_err(crate::errors::ReturnTypeNotationIllegalParam::Type {

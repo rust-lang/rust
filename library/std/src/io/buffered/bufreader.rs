@@ -4,8 +4,8 @@ use buffer::Buffer;
 
 use crate::fmt;
 use crate::io::{
-    self, uninlined_slow_read_byte, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom,
-    SizeHint, SpecReadByte, DEFAULT_BUF_SIZE,
+    self, BorrowedCursor, BufRead, DEFAULT_BUF_SIZE, IoSliceMut, Read, Seek, SeekFrom, SizeHint,
+    SpecReadByte, uninlined_slow_read_byte,
 };
 
 /// The `BufReader<R>` struct adds buffering to any reader.

@@ -1,14 +1,14 @@
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
+use rustc_hir::GenericArg;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::GenericArg;
 use rustc_middle::span_bug;
 use rustc_session::parse::add_feature_diagnostics;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, DesugaringKind, Span, Symbol, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
+use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span, Symbol};
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::errors::{

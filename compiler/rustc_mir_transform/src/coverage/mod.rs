@@ -9,7 +9,7 @@ mod tests;
 mod unexpand;
 
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::coverage::{
@@ -147,8 +147,8 @@ fn create_mappings<'tcx>(
 
     let source_file = source_map.lookup_source_file(body_span.lo());
 
-    use rustc_session::config::RemapPathScopeComponents;
     use rustc_session::RemapFileNameExt;
+    use rustc_session::config::RemapPathScopeComponents;
     let file_name = Symbol::intern(
         &source_file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
     );

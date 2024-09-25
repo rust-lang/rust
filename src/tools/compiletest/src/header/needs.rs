@@ -1,5 +1,5 @@
 use crate::common::{Config, Sanitizer};
-use crate::header::{llvm_has_libzstd, IgnoreDecision};
+use crate::header::{IgnoreDecision, llvm_has_libzstd};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,

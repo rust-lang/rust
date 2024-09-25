@@ -3,17 +3,17 @@ use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::PredicateOrigin;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{DesugaringKind, Span, Symbol};
 use rustc_target::spec::abi;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
@@ -281,16 +281,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             );
                             this.arena.alloc(this.ty(span, hir::TyKind::Err(guar)))
                         }
-                        Some(ty) => this.lower_ty(
-                            ty,
-                            ImplTraitContext::OpaqueTy {
-                                origin: hir::OpaqueTyOrigin::TyAlias {
-                                    parent: this.local_def_id(id),
-                                    in_assoc_ty: false,
-                                },
-                                fn_kind: None,
+                        Some(ty) => this.lower_ty(ty, ImplTraitContext::OpaqueTy {
+                            origin: hir::OpaqueTyOrigin::TyAlias {
+                                parent: this.local_def_id(id),
+                                in_assoc_ty: false,
                             },
-                        ),
+                            fn_kind: None,
+                        }),
                     },
                 );
                 hir::ItemKind::TyAlias(ty, generics)
@@ -981,16 +978,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             hir::ImplItemKind::Type(ty)
                         }
                         Some(ty) => {
-                            let ty = this.lower_ty(
-                                ty,
-                                ImplTraitContext::OpaqueTy {
-                                    origin: hir::OpaqueTyOrigin::TyAlias {
-                                        parent: this.local_def_id(i.id),
-                                        in_assoc_ty: true,
-                                    },
-                                    fn_kind: None,
+                            let ty = this.lower_ty(ty, ImplTraitContext::OpaqueTy {
+                                origin: hir::OpaqueTyOrigin::TyAlias {
+                                    parent: this.local_def_id(i.id),
+                                    in_assoc_ty: true,
                                 },
-                            );
+                                fn_kind: None,
+                            });
                             hir::ImplItemKind::Type(ty)
                         }
                     },
@@ -1129,13 +1123,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
         self.lower_body(|this| {
-            (
-                &[],
-                match expr {
-                    Some(expr) => this.lower_expr_mut(expr),
-                    None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
-                },
-            )
+            (&[], match expr {
+                Some(expr) => this.lower_expr_mut(expr),
+                None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
+            })
         })
     }
 
@@ -1515,10 +1506,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             for bound in &bound_pred.bounds {
                 if !matches!(
                     *bound,
-                    GenericBound::Trait(
-                        _,
-                        TraitBoundModifiers { polarity: BoundPolarity::Maybe(_), .. }
-                    )
+                    GenericBound::Trait(_, TraitBoundModifiers {
+                        polarity: BoundPolarity::Maybe(_),
+                        ..
+                    })
                 ) {
                     continue;
                 }
@@ -1619,16 +1610,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.children.push((anon_const_did, hir::MaybeOwner::NonOwner(const_id)));
 
             let const_body = self.lower_body(|this| {
-                (
-                    &[],
-                    hir::Expr {
-                        hir_id: const_expr_id,
-                        kind: hir::ExprKind::Lit(
-                            this.arena.alloc(hir::Lit { node: LitKind::Bool(true), span }),
-                        ),
-                        span,
-                    },
-                )
+                (&[], hir::Expr {
+                    hir_id: const_expr_id,
+                    kind: hir::ExprKind::Lit(
+                        this.arena.alloc(hir::Lit { node: LitKind::Bool(true), span }),
+                    ),
+                    span,
+                })
             });
 
             let default_ac = self.arena.alloc(hir::AnonConst {

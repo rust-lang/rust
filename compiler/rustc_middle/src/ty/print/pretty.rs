@@ -3,23 +3,23 @@ use std::fmt::{self, Write as _};
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
-use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{DefIdMap, DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::LangItem;
-use rustc_macros::{extension, Lift};
-use rustc_session::cstore::{ExternCrate, ExternCrateSource};
+use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
+use rustc_hir::definitions::{DefKey, DefPathDataName};
+use rustc_macros::{Lift, extension};
 use rustc_session::Limit;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::FileNameDisplayPreference;
+use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
-use rustc_type_ir::{elaborate, Upcast as _};
+use rustc_type_ir::{Upcast as _, elaborate};
 use smallvec::SmallVec;
 
 // `pretty` is a separate module only for organization.

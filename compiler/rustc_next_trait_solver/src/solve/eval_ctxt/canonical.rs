@@ -22,9 +22,9 @@ use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::NestedGoals;
 use crate::solve::{
-    inspect, response_no_constraints_raw, CanonicalInput, CanonicalResponse, Certainty, EvalCtxt,
-    ExternalConstraintsData, Goal, MaybeCause, NestedNormalizationGoals, NoSolution,
-    PredefinedOpaquesData, QueryInput, QueryResult, Response,
+    CanonicalInput, CanonicalResponse, Certainty, EvalCtxt, ExternalConstraintsData, Goal,
+    MaybeCause, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
+    QueryResult, Response, inspect, response_no_constraints_raw,
 };
 
 trait ResponseT<I: Interner> {

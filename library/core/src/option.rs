@@ -2538,6 +2538,7 @@ impl<T> Option<Option<T>> {
     #[stable(feature = "option_flattening", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn flatten(self) -> Option<T> {
+        // FIXME(const-hack): could be written with `and_then`
         match self {
             Some(inner) => inner,
             None => None,

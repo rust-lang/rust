@@ -1,5 +1,5 @@
-use rustc_errors::codes::*;
 use rustc_errors::DiagArgFromDisplay;
+use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 

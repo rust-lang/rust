@@ -13,10 +13,10 @@ use smallvec::smallvec;
 use crate::common::CodegenCx;
 use crate::debuginfo::metadata::type_map::{self, Stub, StubInfo, UniqueTypeId};
 use crate::debuginfo::metadata::{
-    file_metadata, size_and_align_of, type_di_node, unknown_file_metadata, visibility_di_flags,
-    DINodeCreationResult, SmallVec, NO_GENERICS, UNKNOWN_LINE_NUMBER,
+    DINodeCreationResult, NO_GENERICS, SmallVec, UNKNOWN_LINE_NUMBER, file_metadata,
+    size_and_align_of, type_di_node, unknown_file_metadata, visibility_di_flags,
 };
-use crate::debuginfo::utils::{create_DIArray, get_namespace_for_item, DIB};
+use crate::debuginfo::utils::{DIB, create_DIArray, get_namespace_for_item};
 use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
 use crate::llvm::{self};
 

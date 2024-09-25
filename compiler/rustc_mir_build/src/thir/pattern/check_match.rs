@@ -3,7 +3,7 @@ use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
@@ -22,7 +22,7 @@ use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use tracing::instrument;
 
 use crate::errors::*;

@@ -15,8 +15,8 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use rustc_data_structures::memmap::Mmap;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encoder;
+use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use tracing::debug;
 

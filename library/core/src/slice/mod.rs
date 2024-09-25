@@ -39,11 +39,11 @@ mod raw;
 mod rotate;
 mod specialize;
 
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
+pub use ascii::EscapeAscii;
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 pub use ascii::is_ascii_simple;
-#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
-pub use ascii::EscapeAscii;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]

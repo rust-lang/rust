@@ -1,12 +1,12 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{attr, token, NodeId, PatKind};
-use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
-use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
+use rustc_ast::{NodeId, PatKind, attr, token};
+use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
 use rustc_session::Session;
+use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 

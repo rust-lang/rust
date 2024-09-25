@@ -1,5 +1,5 @@
 use rand::prelude::*;
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 #[bench]
 fn bench_tuple_comparison(b: &mut Bencher) {

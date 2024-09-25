@@ -7,13 +7,13 @@ use rustc_ast::util::classify;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{
-    self as ast, token, BlockCheckMode, FormatAlignment, FormatArgPosition, FormatArgsPiece,
-    FormatCount, FormatDebugHex, FormatSign, FormatTrait,
+    self as ast, BlockCheckMode, FormatAlignment, FormatArgPosition, FormatArgsPiece, FormatCount,
+    FormatDebugHex, FormatSign, FormatTrait, token,
 };
 
 use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::fixup::FixupContext;
-use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
+use crate::pprust::state::{AnnNode, INDENT_UNIT, PrintState, State};
 
 impl<'a> State<'a> {
     fn print_else(&mut self, els: Option<&ast::Expr>) {

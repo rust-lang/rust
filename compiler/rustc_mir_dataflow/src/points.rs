@@ -3,7 +3,7 @@ use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
-use crate::framework::{visit_results, ResultsVisitable, ResultsVisitor};
+use crate::framework::{ResultsVisitable, ResultsVisitor, visit_results};
 
 /// Maps between a `Location` and a `PointIndex` (and vice versa).
 pub struct DenseLocationMap {

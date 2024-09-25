@@ -1,4 +1,4 @@
-use crate::spec::{base, cvs, TargetOptions};
+use crate::spec::{TargetOptions, base, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     let base = base::msvc::opts();

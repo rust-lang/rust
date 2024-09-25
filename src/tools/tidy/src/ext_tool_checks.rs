@@ -172,11 +172,10 @@ fn check_impl(
         let files;
         if file_args_clang_format.is_empty() {
             let llvm_wrapper = root_path.join("compiler/rustc_llvm/llvm-wrapper");
-            files = find_with_extension(
-                root_path,
-                Some(llvm_wrapper.as_path()),
-                &[OsStr::new("h"), OsStr::new("cpp")],
-            )?;
+            files = find_with_extension(root_path, Some(llvm_wrapper.as_path()), &[
+                OsStr::new("h"),
+                OsStr::new("cpp"),
+            ])?;
             file_args_clang_format.extend(files.iter().map(|p| p.as_os_str()));
         }
         let args = merge_args(&cfg_args_clang_format, &file_args_clang_format);

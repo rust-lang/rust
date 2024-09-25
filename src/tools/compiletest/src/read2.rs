@@ -232,9 +232,9 @@ mod imp {
     use std::process::{ChildStderr, ChildStdout};
     use std::{io, slice};
 
+    use miow::Overlapped;
     use miow::iocp::{CompletionPort, CompletionStatus};
     use miow::pipe::NamedPipe;
-    use miow::Overlapped;
     use windows::Win32::Foundation::ERROR_BROKEN_PIPE;
 
     struct Pipe<'a> {

@@ -1,7 +1,7 @@
 //! A target tuple for OpenWrt MIPS64 targets.
 
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();

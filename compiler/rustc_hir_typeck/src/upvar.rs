@@ -36,9 +36,9 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::HirId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::HirId;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
@@ -48,7 +48,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::{sym, BytePos, Pos, Span, Symbol};
+use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use rustc_target::abi::FIRST_VARIANT;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
@@ -287,14 +287,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bug!();
                 };
                 let place = self.place_for_root_variable(closure_def_id, local_id);
-                delegate.capture_information.push((
-                    place,
-                    ty::CaptureInfo {
-                        capture_kind_expr_id: Some(init.hir_id),
-                        path_expr_id: Some(init.hir_id),
-                        capture_kind: UpvarCapture::ByValue,
-                    },
-                ));
+                delegate.capture_information.push((place, ty::CaptureInfo {
+                    capture_kind_expr_id: Some(init.hir_id),
+                    path_expr_id: Some(init.hir_id),
+                    capture_kind: UpvarCapture::ByValue,
+                }));
             }
         }
 
@@ -381,11 +378,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let UpvarArgs::CoroutineClosure(args) = args
             && !args.references_error()
         {
-            let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
-                self.tcx,
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::BrEnv },
-            );
+            let closure_env_region: ty::Region<'_> =
+                ty::Region::new_bound(self.tcx, ty::INNERMOST, ty::BoundRegion {
+                    var: ty::BoundVar::ZERO,
+                    kind: ty::BoundRegionKind::BrEnv,
+                });
 
             let num_args = args
                 .as_coroutine_closure()
@@ -2004,14 +2001,11 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
         assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
 
-        self.capture_information.push((
-            place_with_id.place.clone(),
-            ty::CaptureInfo {
-                capture_kind_expr_id: Some(diag_expr_id),
-                path_expr_id: Some(diag_expr_id),
-                capture_kind: ty::UpvarCapture::ByValue,
-            },
-        ));
+        self.capture_information.push((place_with_id.place.clone(), ty::CaptureInfo {
+            capture_kind_expr_id: Some(diag_expr_id),
+            path_expr_id: Some(diag_expr_id),
+            capture_kind: ty::UpvarCapture::ByValue,
+        }));
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -2038,14 +2032,11 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
             capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow);
         }
 
-        self.capture_information.push((
-            place,
-            ty::CaptureInfo {
-                capture_kind_expr_id: Some(diag_expr_id),
-                path_expr_id: Some(diag_expr_id),
-                capture_kind,
-            },
-        ));
+        self.capture_information.push((place, ty::CaptureInfo {
+            capture_kind_expr_id: Some(diag_expr_id),
+            path_expr_id: Some(diag_expr_id),
+            capture_kind,
+        }));
     }
 
     #[instrument(skip(self), level = "debug")]

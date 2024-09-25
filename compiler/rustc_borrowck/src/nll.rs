@@ -9,17 +9,17 @@ use polonius_engine::{Algorithm, Output};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexSlice;
-use rustc_middle::mir::pretty::{dump_mir_with_options, PrettyPrintMirOptions};
+use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
 use rustc_middle::mir::{
-    create_dump_file, dump_enabled, dump_mir, Body, ClosureOutlivesSubject,
-    ClosureRegionRequirements, PassWhere, Promoted,
+    Body, ClosureOutlivesSubject, ClosureRegionRequirements, PassWhere, Promoted, create_dump_file,
+    dump_enabled, dump_mir,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::ResultsCursor;
 use rustc_session::config::MirIncludeSpans;
 use rustc_span::symbol::sym;
 use tracing::{debug, instrument};
@@ -32,7 +32,7 @@ use crate::location::LocationTable;
 use crate::region_infer::RegionInferenceContext;
 use crate::type_check::{self, MirTypeckRegionConstraints, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;
-use crate::{polonius, renumber, BorrowckInferCtxt};
+use crate::{BorrowckInferCtxt, polonius, renumber};
 
 pub type PoloniusOutput = Output<RustcFacts>;
 

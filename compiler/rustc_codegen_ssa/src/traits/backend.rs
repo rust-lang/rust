@@ -5,22 +5,23 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::ErrorGuaranteed;
-use rustc_metadata::creader::MetadataLoaderDyn;
 use rustc_metadata::EncodedMetadata;
+use rustc_metadata::creader::MetadataLoaderDyn;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
-use rustc_session::config::{self, OutputFilenames, PrintRequest};
 use rustc_session::Session;
+use rustc_session::config::{self, OutputFilenames, PrintRequest};
 use rustc_span::symbol::Symbol;
 
-use super::write::WriteBackendMethods;
 use super::CodegenObject;
+use super::write::WriteBackendMethods;
 use crate::back::write::TargetMachineFactoryFn;
 use crate::{CodegenResults, ModuleCodegen};
 
 pub trait BackendTypes {
     type Value: CodegenObject;
+    type Metadata: CodegenObject;
     type Function: CodegenObject;
 
     type BasicBlock: Copy;

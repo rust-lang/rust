@@ -1,6 +1,6 @@
 // Targets the Cortex-M0, Cortex-M0+ and Cortex-M1 processors (ARMv6-M architecture)
 
-use crate::spec::{base, cvs, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {

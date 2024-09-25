@@ -7,6 +7,7 @@ use std::iter;
 #[cfg(feature = "master")]
 use gccjit::FunctionType;
 use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp};
+use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
@@ -17,18 +18,17 @@ use rustc_codegen_ssa::traits::{
 };
 #[cfg(feature = "master")]
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, MiscCodegenMethods};
-use rustc_codegen_ssa::MemFlags;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_span::{sym, Span, Symbol};
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::abi::HasDataLayout;
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::spec::PanicStrategy;
 #[cfg(feature = "master")]
 use rustc_target::spec::abi::Abi;
-use rustc_target::spec::PanicStrategy;
 
 #[cfg(feature = "master")]
 use crate::abi::FnAbiGccExt;

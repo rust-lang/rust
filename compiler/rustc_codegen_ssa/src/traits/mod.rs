@@ -27,8 +27,8 @@ mod write;
 
 use std::fmt;
 
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_target::abi::call::FnAbi;
 
 pub use self::abi::AbiBuilderMethods;

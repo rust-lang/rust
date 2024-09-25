@@ -1,11 +1,11 @@
-use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_middle::mir::*;
 use rustc_middle::query::{LocalCrate, Providers};
-use rustc_middle::ty::{self, layout, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, layout};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::FFI_UNWIND_CALLS;
-use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
+use rustc_target::spec::abi::Abi;
 use tracing::debug;
 
 use crate::errors;
@@ -86,12 +86,10 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
             let span = terminator.source_info.span;
 
             let foreign = fn_def_id.is_some();
-            tcx.emit_node_span_lint(
-                FFI_UNWIND_CALLS,
-                lint_root,
+            tcx.emit_node_span_lint(FFI_UNWIND_CALLS, lint_root, span, errors::FfiUnwindCall {
                 span,
-                errors::FfiUnwindCall { span, foreign },
-            );
+                foreign,
+            });
 
             tainted = true;
         }

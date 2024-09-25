@@ -1,4 +1,4 @@
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::ffi::{OsStr, OsString};
@@ -12,6 +12,7 @@ use std::{env, fs};
 
 use clap::ValueEnum;
 
+pub use crate::Compiler;
 use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, vendor,
@@ -19,14 +20,13 @@ use crate::core::build_steps::{
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::cache::Cache;
-use crate::utils::exec::{command, BootstrapCommand};
+use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
-    self, add_dylib_path, add_link_lib_path, check_cfg_arg, exe, libdir, linker_args, linker_flags,
-    t, LldThreads,
+    self, LldThreads, add_dylib_path, add_link_lib_path, check_cfg_arg, exe, libdir, linker_args,
+    linker_flags, t,
 };
-pub use crate::Compiler;
 use crate::{
-    prepare_behaviour_dump_dir, Build, CLang, Crate, DocTests, GitRepo, Mode, EXTRA_CHECK_CFGS,
+    Build, CLang, Crate, DocTests, EXTRA_CHECK_CFGS, GitRepo, Mode, prepare_behaviour_dump_dir,
 };
 
 #[cfg(test)]
@@ -314,33 +314,30 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     // actual path is `proc-macro-srv-cli`
     ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
-    (
-        "tests",
-        &[
-            // tidy-alphabetical-start
-            "tests/assembly",
-            "tests/codegen",
-            "tests/codegen-units",
-            "tests/coverage",
-            "tests/coverage-run-rustdoc",
-            "tests/crashes",
-            "tests/debuginfo",
-            "tests/incremental",
-            "tests/mir-opt",
-            "tests/pretty",
-            "tests/run-make",
-            "tests/run-pass-valgrind",
-            "tests/rustdoc",
-            "tests/rustdoc-gui",
-            "tests/rustdoc-js",
-            "tests/rustdoc-js-std",
-            "tests/rustdoc-json",
-            "tests/rustdoc-ui",
-            "tests/ui",
-            "tests/ui-fulldeps",
-            // tidy-alphabetical-end
-        ],
-    ),
+    ("tests", &[
+        // tidy-alphabetical-start
+        "tests/assembly",
+        "tests/codegen",
+        "tests/codegen-units",
+        "tests/coverage",
+        "tests/coverage-run-rustdoc",
+        "tests/crashes",
+        "tests/debuginfo",
+        "tests/incremental",
+        "tests/mir-opt",
+        "tests/pretty",
+        "tests/run-make",
+        "tests/run-pass-valgrind",
+        "tests/rustdoc",
+        "tests/rustdoc-gui",
+        "tests/rustdoc-js",
+        "tests/rustdoc-js-std",
+        "tests/rustdoc-json",
+        "tests/rustdoc-ui",
+        "tests/ui",
+        "tests/ui-fulldeps",
+        // tidy-alphabetical-end
+    ]),
 ];
 
 fn remap_paths(paths: &mut Vec<PathBuf>) {
@@ -1590,12 +1587,6 @@ impl<'a> Builder<'a> {
             // so it has no way of knowing the sysroot.
             rustflags.arg("--sysroot");
             rustflags.arg(sysroot_str);
-        }
-
-        // https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp/topic/.E2.9C.94.20link.20new.20library.20into.20stage1.2Frustc
-        if self.config.llvm_enzyme {
-            rustflags.arg("-l");
-            rustflags.arg("Enzyme-19");
         }
 
         let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {

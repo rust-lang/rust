@@ -1,6 +1,6 @@
 extern crate bar;
 
-use bar::{make_bar, Bar};
+use bar::{Bar, make_bar};
 
 fn main() {
     let b = make_bar(3);

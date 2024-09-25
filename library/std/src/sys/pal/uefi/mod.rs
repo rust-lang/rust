@@ -179,39 +179,6 @@ pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
-#[inline]
-pub fn hashmap_random_keys() -> (u64, u64) {
-    get_random().unwrap()
-}
-
-fn get_random() -> Option<(u64, u64)> {
-    use r_efi::protocols::rng;
-
-    let mut buf = [0u8; 16];
-    let handles = helpers::locate_handles(rng::PROTOCOL_GUID).ok()?;
-    for handle in handles {
-        if let Ok(protocol) = helpers::open_protocol::<rng::Protocol>(handle, rng::PROTOCOL_GUID) {
-            let r = unsafe {
-                ((*protocol.as_ptr()).get_rng)(
-                    protocol.as_ptr(),
-                    crate::ptr::null_mut(),
-                    buf.len(),
-                    buf.as_mut_ptr(),
-                )
-            };
-            if r.is_error() {
-                continue;
-            } else {
-                return Some((
-                    u64::from_le_bytes(buf[..8].try_into().ok()?),
-                    u64::from_le_bytes(buf[8..].try_into().ok()?),
-                ));
-            }
-        }
-    }
-    None
-}
-
 /// Disable access to BootServices if `EVT_SIGNAL_EXIT_BOOT_SERVICES` is signaled
 extern "efiapi" fn exit_boot_service_handler(_e: r_efi::efi::Event, _ctx: *mut crate::ffi::c_void) {
     uefi::env::disable_boot_services();

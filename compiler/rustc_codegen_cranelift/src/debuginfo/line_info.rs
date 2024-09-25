@@ -3,15 +3,15 @@
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
-use cranelift_codegen::binemit::CodeOffset;
 use cranelift_codegen::MachSrcLoc;
+use cranelift_codegen::binemit::CodeOffset;
 use gimli::write::{AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable};
 use rustc_span::{
-    hygiene, FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm,
+    FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm, hygiene,
 };
 
-use crate::debuginfo::emit::address_for_func;
 use crate::debuginfo::FunctionDebugContext;
+use crate::debuginfo::emit::address_for_func;
 use crate::prelude::*;
 
 // OPTIMIZATION: It is cheaper to do this in one pass than using `.parent()` and `.file_name()`.

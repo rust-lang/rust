@@ -1,18 +1,18 @@
-use hir::{is_range_literal, ExprKind, Node};
-use rustc_middle::ty::layout::IntegerExt;
+use hir::{ExprKind, Node, is_range_literal};
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::{bug, ty};
 use rustc_target::abi::{Integer, Size};
 use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
+use crate::LateContext;
 use crate::context::LintContext;
 use crate::lints::{
     OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSignBitSub,
     OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
     RangeEndpointOutOfRange, UseInclusiveRange,
 };
-use crate::types::{TypeLimits, OVERFLOWING_LITERALS};
-use crate::LateContext;
+use crate::types::{OVERFLOWING_LITERALS, TypeLimits};
 
 /// Attempts to special-case the overflowing literal lint when it occurs as a range endpoint (`expr..MAX+1`).
 /// Returns `true` iff the lint was emitted.
@@ -74,11 +74,10 @@ fn lint_overflowing_range_endpoint<'tcx>(
         }
     };
 
-    cx.emit_span_lint(
-        OVERFLOWING_LITERALS,
-        struct_expr.span,
-        RangeEndpointOutOfRange { ty, sub: sub_sugg },
-    );
+    cx.emit_span_lint(OVERFLOWING_LITERALS, struct_expr.span, RangeEndpointOutOfRange {
+        ty,
+        sub: sub_sugg,
+    });
 
     // We've just emitted a lint, special cased for `(...)..MAX+1` ranges,
     // return `true` so the callers don't also emit a lint
@@ -187,19 +186,15 @@ fn report_bin_hex_error(
         })
         .flatten();
 
-    cx.emit_span_lint(
-        OVERFLOWING_LITERALS,
-        expr.span,
-        OverflowingBinHex {
-            ty: t,
-            lit: repr_str.clone(),
-            dec: val,
-            actually,
-            sign,
-            sub,
-            sign_bit_sub,
-        },
-    )
+    cx.emit_span_lint(OVERFLOWING_LITERALS, expr.span, OverflowingBinHex {
+        ty: t,
+        lit: repr_str.clone(),
+        dec: val,
+        actually,
+        sign,
+        sub,
+        sign_bit_sub,
+    })
 }
 
 // Find the "next" fitting integer and return a suggestion string
@@ -266,11 +261,13 @@ fn lint_int_literal<'tcx>(
         let help = get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
-        cx.emit_span_lint(
-            OVERFLOWING_LITERALS,
-            span,
-            OverflowingInt { ty: t.name_str(), lit, min, max, help },
-        );
+        cx.emit_span_lint(OVERFLOWING_LITERALS, span, OverflowingInt {
+            ty: t.name_str(),
+            lit,
+            min,
+            max,
+            help,
+        });
     }
 }
 
@@ -294,11 +291,10 @@ fn lint_uint_literal<'tcx>(
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
-                        cx.emit_span_lint(
-                            OVERFLOWING_LITERALS,
-                            par_e.span,
-                            OnlyCastu8ToChar { span: par_e.span, literal: lit_val },
-                        );
+                        cx.emit_span_lint(OVERFLOWING_LITERALS, par_e.span, OnlyCastu8ToChar {
+                            span: par_e.span,
+                            literal: lit_val,
+                        });
                         return;
                     }
                 }
@@ -321,20 +317,16 @@ fn lint_uint_literal<'tcx>(
             );
             return;
         }
-        cx.emit_span_lint(
-            OVERFLOWING_LITERALS,
-            e.span,
-            OverflowingUInt {
-                ty: t.name_str(),
-                lit: cx
-                    .sess()
-                    .source_map()
-                    .span_to_snippet(lit.span)
-                    .unwrap_or_else(|_| lit_val.to_string()),
-                min,
-                max,
-            },
-        );
+        cx.emit_span_lint(OVERFLOWING_LITERALS, e.span, OverflowingUInt {
+            ty: t.name_str(),
+            lit: cx
+                .sess()
+                .source_map()
+                .span_to_snippet(lit.span)
+                .unwrap_or_else(|_| lit_val.to_string()),
+            min,
+            max,
+        });
     }
 }
 
@@ -367,18 +359,14 @@ pub(crate) fn lint_literal<'tcx>(
                 _ => bug!(),
             };
             if is_infinite == Ok(true) {
-                cx.emit_span_lint(
-                    OVERFLOWING_LITERALS,
-                    e.span,
-                    OverflowingLiteral {
-                        ty: t.name_str(),
-                        lit: cx
-                            .sess()
-                            .source_map()
-                            .span_to_snippet(lit.span)
-                            .unwrap_or_else(|_| sym.to_string()),
-                    },
-                );
+                cx.emit_span_lint(OVERFLOWING_LITERALS, e.span, OverflowingLiteral {
+                    ty: t.name_str(),
+                    lit: cx
+                        .sess()
+                        .source_map()
+                        .span_to_snippet(lit.span)
+                        .unwrap_or_else(|_| sym.to_string()),
+                });
             }
         }
         _ => {}

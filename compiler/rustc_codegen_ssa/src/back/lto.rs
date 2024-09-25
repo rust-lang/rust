@@ -5,8 +5,8 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_errors::FatalError;
 
 use super::write::CodegenContext;
-use crate::traits::*;
 use crate::ModuleCodegen;
+use crate::traits::*;
 
 pub struct ThinModule<B: WriteBackendMethods> {
     pub shared: Arc<ThinShared<B>>,

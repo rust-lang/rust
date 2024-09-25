@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument};
 
-use crate::infer::canonical::instantiate::{instantiate_value, CanonicalExt};
+use crate::infer::canonical::instantiate::{CanonicalExt, instantiate_value};
 use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,

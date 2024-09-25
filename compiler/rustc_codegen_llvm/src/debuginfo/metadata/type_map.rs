@@ -8,9 +8,9 @@ use rustc_middle::bug;
 use rustc_middle::ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_target::abi::{Align, Size, VariantIdx};
 
-use super::{unknown_file_metadata, SmallVec, UNKNOWN_LINE_NUMBER};
+use super::{SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
 use crate::common::CodegenCx;
-use crate::debuginfo::utils::{create_DIArray, debug_context, DIB};
+use crate::debuginfo::utils::{DIB, create_DIArray, debug_context};
 use crate::llvm::debuginfo::{DIFlags, DIScope, DIType};
 use crate::llvm::{self};
 

@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use crate::{sug, Suggestion};
+use crate::{Suggestion, sug};
 
 // FIXME: perhaps this could use `std::lazy` when it is stablizied
 macro_rules! static_suggestions {

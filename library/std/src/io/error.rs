@@ -400,6 +400,11 @@ pub enum ErrorKind {
     #[stable(feature = "out_of_memory_error", since = "1.54.0")]
     OutOfMemory,
 
+    /// The operation was partially successful and needs to be checked
+    /// later on due to not blocking.
+    #[unstable(feature = "io_error_inprogress", issue = "none")]
+    InProgress,
+
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
     // `Other` and `Uncategorized` should remain at the end:
@@ -449,6 +454,7 @@ impl ErrorKind {
             FilesystemQuotaExceeded => "filesystem quota exceeded",
             HostUnreachable => "host unreachable",
             Interrupted => "operation interrupted",
+            InProgress => "in progress",
             InvalidData => "invalid data",
             InvalidFilename => "invalid filename",
             InvalidInput => "invalid input parameter",

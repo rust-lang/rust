@@ -6,8 +6,8 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::Symbol;
+use rustc_span::def_id::LocalDefId;
 use rustc_target::abi::FieldIdx;
 use rustc_target::asm::{
     InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType, ModifierInfo,

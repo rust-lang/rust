@@ -7,7 +7,7 @@ LL |     let refcell = RefCell::new(&mut foo);
    |                                ^^^^^^^^ borrowed value does not live long enough
 LL |
 LL |     let read = &refcell as &RefCell<dyn Read>;
-   |                -------- cast requires that `foo` is borrowed for `'static`
+   |                ------------------------------ cast requires that `foo` is borrowed for `'static`
 ...
 LL | }
    |  - `foo` dropped here while still borrowed
@@ -19,7 +19,7 @@ LL | fn inner(mut foo: &[u8]) {
    |                   - let's call the lifetime of this reference `'1`
 ...
 LL |     let read = &refcell as &RefCell<dyn Read>;
-   |                ^^^^^^^^ cast requires that `'1` must outlive `'static`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cast requires that `'1` must outlive `'static`
 
 error: aborting due to 2 previous errors
 

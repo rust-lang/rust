@@ -7,9 +7,9 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::hygiene::LocalExpnId;
-use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use rustc_span::hygiene::LocalExpnId;
+use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::debug;
 
 use crate::{ImplTraitContext, InvocationParent, PendingAnonConstInfo, Resolver};
@@ -127,15 +127,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     fn visit_macro_invoc(&mut self, id: NodeId) {
         let id = id.placeholder_to_expn_id();
         let pending_anon_const_info = self.pending_anon_const_info.take();
-        let old_parent = self.resolver.invocation_parents.insert(
-            id,
-            InvocationParent {
-                parent_def: self.parent_def,
-                pending_anon_const_info,
-                impl_trait_context: self.impl_trait_context,
-                in_attr: self.in_attr,
-            },
-        );
+        let old_parent = self.resolver.invocation_parents.insert(id, InvocationParent {
+            parent_def: self.parent_def,
+            pending_anon_const_info,
+            impl_trait_context: self.impl_trait_context,
+            in_attr: self.in_attr,
+        });
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
 

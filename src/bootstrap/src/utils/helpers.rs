@@ -12,10 +12,10 @@ use std::{env, fs, io, str};
 
 use build_helper::util::fail;
 
+use crate::LldMode;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
-use crate::LldMode;
 
 #[cfg(test)]
 mod tests;
@@ -46,7 +46,7 @@ macro_rules! t {
 }
 pub use t;
 
-use crate::utils::exec::{command, BootstrapCommand};
+use crate::utils::exec::{BootstrapCommand, command};
 
 pub fn exe(name: &str, target: TargetSelection) -> String {
     crate::utils::shared_helpers::exe(name, &target.triple)

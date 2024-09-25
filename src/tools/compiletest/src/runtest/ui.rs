@@ -2,12 +2,12 @@ use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::Write;
 
-use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
+use rustfix::{Filter, apply_suggestions, get_suggestions_from_json};
 use tracing::debug;
 
 use super::{
     AllowUnused, Emit, ErrorKind, FailMode, LinkToAux, PassMode, TargetLocation, TestCx,
-    TestOutput, Truncated, WillExecute, UI_FIXED,
+    TestOutput, Truncated, UI_FIXED, WillExecute,
 };
 use crate::{errors, json};
 

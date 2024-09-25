@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
 
 use rustc_data_structures::graph::DirectedGraph;
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
     BlockMarkerId, BranchSpan, ConditionInfo, CoverageInfoHi, CoverageKind,
 };
@@ -10,10 +10,10 @@ use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
+use crate::coverage::ExtractedHirInfo;
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
 use crate::coverage::spans::extract_refined_covspans;
 use crate::coverage::unexpand::unexpand_into_body_span;
-use crate::coverage::ExtractedHirInfo;
 
 /// Associates an ordinary executable code span with its corresponding BCB.
 #[derive(Debug)]

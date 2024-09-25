@@ -15,10 +15,10 @@ use rustc_middle::ty::{
 use smallvec::SmallVec;
 use tracing::debug;
 
+use crate::infer::InferCtxt;
 use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
 };
-use crate::infer::InferCtxt;
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Canonicalizes a query value `V`. When we canonicalize a query,

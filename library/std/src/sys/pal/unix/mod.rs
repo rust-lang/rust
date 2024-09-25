@@ -1,6 +1,5 @@
 #![allow(missing_docs, nonstandard_style)]
 
-pub use self::rand::hashmap_random_keys;
 use crate::io::ErrorKind;
 
 #[cfg(not(target_os = "espidf"))]
@@ -26,7 +25,6 @@ pub use self::l4re::net;
 pub mod os;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
@@ -281,6 +279,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ETIMEDOUT => TimedOut,
         libc::ETXTBSY => ExecutableFileBusy,
         libc::EXDEV => CrossesDevices,
+        libc::EINPROGRESS => InProgress,
 
         libc::EACCES | libc::EPERM => PermissionDenied,
 

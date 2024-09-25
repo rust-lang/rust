@@ -4,7 +4,7 @@
 use serde::Serialize;
 
 use crate::ty::{GenericArgs, Span, Ty};
-use crate::{with, Crate, Symbol};
+use crate::{Crate, Symbol, with};
 
 /// A unique identification number for each item accessible for the current compilation unit.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]

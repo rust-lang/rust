@@ -3,8 +3,8 @@
 use super::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use super::validations::{next_code_point, next_code_point_reverse};
 use super::{
-    from_utf8_unchecked, BytesIsNotEmpty, CharEscapeDebugContinue, CharEscapeDefault,
-    CharEscapeUnicode, IsAsciiWhitespace, IsNotEmpty, IsWhitespace, LinesMap, UnsafeBytesToStr,
+    BytesIsNotEmpty, CharEscapeDebugContinue, CharEscapeDefault, CharEscapeUnicode,
+    IsAsciiWhitespace, IsNotEmpty, IsWhitespace, LinesMap, UnsafeBytesToStr, from_utf8_unchecked,
 };
 use crate::fmt::{self, Write};
 use crate::iter::{

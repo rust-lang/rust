@@ -17,7 +17,7 @@ use super::{
     PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
 };
 use crate::infer::type_variable::TypeVariableValue;
-use crate::infer::{relate, InferCtxt, RegionVariableOrigin};
+use crate::infer::{InferCtxt, RegionVariableOrigin, relate};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// The idea is that we should ensure that the type variable `target_vid`
