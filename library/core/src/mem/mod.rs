@@ -895,7 +895,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// assert_eq!(vec![1, 2, 3], v);
 /// ```
 #[inline]
-#[unstable(feature = "mem_reshape", issue = "none")]
+#[unstable(feature = "mem_reshape", issue = "130848")]
 pub fn reshape<T>(dest: &mut T, f: impl FnOnce(T) -> T) {
     // SAFETY: We read from `dest` but directly write to it afterwards,
     // such that the old value is not duplicated. Nothing is dropped and
