@@ -113,7 +113,7 @@ fn test_replace() {
 #[test]
 fn test_reshape() {
     let mut x = Some("test".to_string());
-    reshape(&mut x, |x| None);
+    reshape(&mut x, |_| None);
     assert!(x.is_none());
 
     let mut y = "test".to_string();
