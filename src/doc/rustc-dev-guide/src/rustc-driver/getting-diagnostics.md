@@ -11,7 +11,7 @@ and run [`TyCtxt.analysis`].
 The following was tested with <!-- date-check: september 2024 --> `nightly-2024-09-16`:
 
 ```rust
-{{#include ../examples/rustc-driver-getting-diagnostics.rs}}
+{{#include ../../examples/rustc-driver-getting-diagnostics.rs}}
 ```
 
 [`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
