@@ -1840,6 +1840,8 @@ supported_targets! {
     ("powerpc-wrs-vxworks", powerpc_wrs_vxworks),
     ("powerpc-wrs-vxworks-spe", powerpc_wrs_vxworks_spe),
     ("powerpc64-wrs-vxworks", powerpc64_wrs_vxworks),
+    ("riscv32-wrs-vxworks", riscv32_wrs_vxworks),
+    ("riscv64-wrs-vxworks", riscv64_wrs_vxworks),
 
     ("aarch64-kmc-solid_asp3", aarch64_kmc_solid_asp3),
     ("armv7a-kmc-solid_asp3-eabi", armv7a_kmc_solid_asp3_eabi),
