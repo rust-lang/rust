@@ -1975,8 +1975,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Cast(cast_kind, op, ty) => {
                 self.check_operand(op, location);
 
-                match cast_kind {
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
+                match *cast_kind {
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, coercion_source) => {
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         let src_sig = op.ty(body, tcx).fn_sig(tcx);
 
                         // HACK: This shouldn't be necessary... We can remove this when we actually
@@ -2007,7 +2008,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             self.prove_predicate(
                                 ty::ClauseKind::WellFormed(src_ty.into()),
                                 location.to_locations(),
-                                ConstraintCategory::Cast { unsize_to: None },
+                                ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                             );
 
                             let src_ty = self.normalize(src_ty, location);
@@ -2015,7 +2016,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 src_ty,
                                 *ty,
                                 location.to_locations(),
-                                ConstraintCategory::Cast { unsize_to: None },
+                                ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                             ) {
                                 span_mirbug!(
                                     self,
@@ -2036,7 +2037,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         self.prove_predicate(
                             ty::ClauseKind::WellFormed(src_ty.into()),
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         );
 
                         // The type that we see in the fcx is like
@@ -2049,7 +2050,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             src_ty,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2062,19 +2063,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(safety)) => {
+                    CastKind::PointerCoercion(
+                        PointerCoercion::ClosureFnPointer(safety),
+                        coercion_source,
+                    ) => {
                         let sig = match op.ty(body, tcx).kind() {
                             ty::Closure(_, args) => args.as_closure().sig(),
                             _ => bug!(),
                         };
                         let ty_fn_ptr_from =
-                            Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, *safety));
+                            Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, safety));
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2087,7 +2092,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
+                    CastKind::PointerCoercion(
+                        PointerCoercion::UnsafeFnPointer,
+                        coercion_source,
+                    ) => {
                         let fn_sig = op.ty(body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
@@ -2099,11 +2107,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
                             *ty,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2116,7 +2125,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::Unsize) => {
+                    CastKind::PointerCoercion(PointerCoercion::Unsize, coercion_source) => {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef::new(
                             tcx,
@@ -2124,22 +2133,21 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             [op.ty(body, tcx), ty],
                         );
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
+                        let unsize_to = tcx.fold_regions(ty, |r, _| {
+                            if let ty::ReVar(_) = r.kind() { tcx.lifetimes.re_erased } else { r }
+                        });
                         self.prove_trait_ref(
                             trait_ref,
                             location.to_locations(),
                             ConstraintCategory::Cast {
-                                unsize_to: Some(tcx.fold_regions(ty, |r, _| {
-                                    if let ty::ReVar(_) = r.kind() {
-                                        tcx.lifetimes.re_erased
-                                    } else {
-                                        r
-                                    }
-                                })),
+                                is_implicit_coercion,
+                                unsize_to: Some(unsize_to),
                             },
                         );
                     }
 
-                    CastKind::DynStar => {
+                    CastKind::PointerCoercion(PointerCoercion::DynStar, coercion_source) => {
                         // get the constraints from the target type (`dyn* Clone`)
                         //
                         // apply them to prove that the source type `Foo` implements `Clone` etc
@@ -2150,12 +2158,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let self_ty = op.ty(body, tcx);
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         self.prove_predicates(
                             existential_predicates
                                 .iter()
                                 .map(|predicate| predicate.with_self_ty(tcx, self_ty)),
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         );
 
                         let outlives_predicate = tcx.mk_predicate(Binder::dummy(
@@ -2166,11 +2175,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         self.prove_predicate(
                             outlives_predicate,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         );
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
+                    CastKind::PointerCoercion(
+                        PointerCoercion::MutToConstPointer,
+                        coercion_source,
+                    ) => {
                         let ty::RawPtr(ty_from, hir::Mutability::Mut) = op.ty(body, tcx).kind()
                         else {
                             span_mirbug!(self, rvalue, "unexpected base type for cast {:?}", ty,);
@@ -2180,11 +2192,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             span_mirbug!(self, rvalue, "unexpected target type for cast {:?}", ty,);
                             return;
                         };
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
                             *ty_from,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2197,7 +2210,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer, coercion_source) => {
                         let ty_from = op.ty(body, tcx);
 
                         let opt_ty_elem_mut = match ty_from.kind() {
@@ -2242,11 +2255,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             return;
                         }
 
+                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
                             *ty_elem,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast { unsize_to: None },
+                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2427,7 +2441,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         src_obj,
                                         dst_obj,
                                         location.to_locations(),
-                                        ConstraintCategory::Cast { unsize_to: None },
+                                        ConstraintCategory::Cast {
+                                            is_implicit_coercion: false,
+                                            unsize_to: None,
+                                        },
                                     )
                                     .unwrap();
                                 }

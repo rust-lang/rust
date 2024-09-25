@@ -7,9 +7,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, CallSource, CastKind, Const, ConstOperand, ConstValue, Local,
-    LocalDecl, MirSource, Operand, Place, PlaceElem, RETURN_PLACE, Rvalue, SourceInfo, Statement,
-    StatementKind, Terminator, TerminatorKind, UnwindAction, UnwindTerminateReason,
+    BasicBlock, BasicBlockData, Body, CallSource, CastKind, CoercionSource, Const, ConstOperand,
+    ConstValue, Local, LocalDecl, MirSource, Operand, Place, PlaceElem, RETURN_PLACE, Rvalue,
+    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnwindAction,
+    UnwindTerminateReason,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::{AsyncDropGlueMorphology, Discr};
@@ -329,7 +330,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
         let slice_ptr_ty = Ty::new_mut_ptr(self.tcx, Ty::new_slice(self.tcx, elem_ty));
         self.put_temp_rvalue(Rvalue::Cast(
-            CastKind::PointerCoercion(PointerCoercion::Unsize),
+            CastKind::PointerCoercion(PointerCoercion::Unsize, CoercionSource::Implicit),
             Operand::Copy(Self::SELF_PTR.into()),
             slice_ptr_ty,
         ))

@@ -1272,7 +1272,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         let candidates: Vec<_> = tcx
-            .inherent_impls(adt_did)?
+            .inherent_impls(adt_did)
             .iter()
             .filter_map(|&impl_| {
                 let (item, scope) =

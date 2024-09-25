@@ -170,7 +170,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             let _ = tcx.ensure().coherent_trait(trait_def_id);
         }
         // these queries are executed for side-effects (error reporting):
-        let _ = tcx.ensure().crate_inherent_impls(());
+        let _ = tcx.ensure().crate_inherent_impls_validity_check(());
         let _ = tcx.ensure().crate_inherent_impls_overlap_check(());
     });
 

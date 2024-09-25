@@ -579,7 +579,8 @@ pub struct CopyNonOverlapping<'tcx> {
     pub count: Operand<'tcx>,
 }
 
-/// Represents how a `TerminatorKind::Call` was constructed, used for diagnostics
+/// Represents how a [`TerminatorKind::Call`] was constructed.
+/// Used only for diagnostics.
 #[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, PartialEq, Hash, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum CallSource {
@@ -1403,9 +1404,7 @@ pub enum CastKind {
     /// * [`PointerCoercion::MutToConstPointer`]
     ///
     /// Both are runtime nops, so should be [`CastKind::PtrToPtr`] instead in runtime MIR.
-    PointerCoercion(PointerCoercion),
-    /// Cast into a dyn* object.
-    DynStar,
+    PointerCoercion(PointerCoercion, CoercionSource),
     IntToInt,
     FloatToInt,
     FloatToFloat,
@@ -1419,6 +1418,16 @@ pub enum CastKind {
     ///
     /// Allowed only in [`MirPhase::Runtime`]; Earlier it's a [`TerminatorKind::Call`].
     Transmute,
+}
+
+/// Represents how a [`CastKind::PointerCoercion`] was constructed.
+/// Used only for diagnostics.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+pub enum CoercionSource {
+    /// The coercion was manually written by the user with an `as` cast.
+    AsCast,
+    /// The coercion was automatically inserted by the compiler.
+    Implicit,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

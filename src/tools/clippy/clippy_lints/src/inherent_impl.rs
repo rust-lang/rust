@@ -51,9 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
         // List of spans to lint. (lint_span, first_span)
         let mut lint_spans = Vec::new();
 
-        let Ok(impls) = cx.tcx.crate_inherent_impls(()) else {
-            return;
-        };
+        let (impls, _) = cx.tcx.crate_inherent_impls(());
 
         for (&id, impl_ids) in &impls.inherent_impls {
             if impl_ids.len() < 2

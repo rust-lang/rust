@@ -384,7 +384,45 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 impl Item {
     pub(crate) fn stability(&self, tcx: TyCtxt<'_>) -> Option<Stability> {
-        self.def_id().and_then(|did| tcx.lookup_stability(did))
+        let (mut def_id, mut stability) = if let Some(inlined) = self.inline_stmt_id {
+            let inlined_def_id = inlined.to_def_id();
+            if let Some(stability) = tcx.lookup_stability(inlined_def_id) {
+                (inlined_def_id, stability)
+            } else {
+                // For re-exports into crates without `staged_api`, reuse the original stability.
+                // This is necessary, because we always want to mark unstable items.
+                let def_id = self.def_id()?;
+                return tcx.lookup_stability(def_id);
+            }
+        } else {
+            let def_id = self.def_id()?;
+            let stability = tcx.lookup_stability(def_id)?;
+            (def_id, stability)
+        };
+
+        let StabilityLevel::Stable { mut since, allowed_through_unstable_modules: false } =
+            stability.level
+        else {
+            return Some(stability);
+        };
+
+        // If any of the item's ancestors was stabilized later or is still unstable,
+        // then report the ancestor's stability instead.
+        while let Some(parent_def_id) = tcx.opt_parent(def_id) {
+            if let Some(parent_stability) = tcx.lookup_stability(parent_def_id) {
+                match parent_stability.level {
+                    StabilityLevel::Unstable { .. } => return Some(parent_stability),
+                    StabilityLevel::Stable { since: parent_since, .. } => {
+                        if parent_since > since {
+                            stability = parent_stability;
+                            since = parent_since;
+                        }
+                    }
+                }
+            }
+            def_id = parent_def_id;
+        }
+        Some(stability)
     }
 
     pub(crate) fn const_stability(&self, tcx: TyCtxt<'_>) -> Option<ConstStability> {
@@ -1863,7 +1901,7 @@ impl PrimitiveType {
             .get(self)
             .into_iter()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
             .copied()
     }
 
@@ -1871,7 +1909,7 @@ impl PrimitiveType {
         Self::simplified_types()
             .values()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
             .copied()
     }
 

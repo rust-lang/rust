@@ -333,7 +333,11 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     }
                 }
 
-                if let ConstraintCategory::Cast { unsize_to: Some(unsize_ty) } = category {
+                if let ConstraintCategory::Cast {
+                    is_implicit_coercion: true,
+                    unsize_to: Some(unsize_ty),
+                } = category
+                {
                     self.add_object_lifetime_default_note(tcx, err, unsize_ty);
                 }
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
@@ -740,7 +744,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         // If we see an unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
                         Rvalue::Cast(
-                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            CastKind::PointerCoercion(PointerCoercion::Unsize, _),
                             operand,
                             ty,
                         ) => {

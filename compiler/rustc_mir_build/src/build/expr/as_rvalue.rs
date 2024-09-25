@@ -292,7 +292,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cast_kind = mir_cast_kind(ty, expr.ty);
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
-            ExprKind::PointerCoercion { cast, source } => {
+            ExprKind::PointerCoercion { cast, source, is_from_as_cast } => {
                 let source = unpack!(
                     block = this.as_operand(
                         block,
@@ -302,7 +302,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         NeedsTemporary::No
                     )
                 );
-                block.and(Rvalue::Cast(CastKind::PointerCoercion(cast), source, expr.ty))
+                let origin =
+                    if is_from_as_cast { CoercionSource::AsCast } else { CoercionSource::Implicit };
+                block.and(Rvalue::Cast(CastKind::PointerCoercion(cast, origin), source, expr.ty))
             }
             ExprKind::Array { ref fields } => {
                 // (*) We would (maybe) be closer to codegen if we

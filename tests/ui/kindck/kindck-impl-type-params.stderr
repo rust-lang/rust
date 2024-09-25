@@ -112,13 +112,13 @@ LL |     struct Foo; // does not impl Copy
    |
 
 error: lifetime may not live long enough
-  --> $DIR/kindck-impl-type-params.rs:30:13
+  --> $DIR/kindck-impl-type-params.rs:30:19
    |
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here
 LL |     let t: S<&'a isize> = S(marker::PhantomData);
 LL |     let a = &t as &dyn Gettable<&'a isize>;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: aborting due to 7 previous errors
 

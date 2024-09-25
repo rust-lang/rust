@@ -14,7 +14,7 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = copy _1;
-          _2 = move _3 as &dyn Cache<V = <C as Cache>::V> (PointerCoercion(Unsize));
+          _2 = move _3 as &dyn Cache<V = <C as Cache>::V> (PointerCoercion(Unsize, Implicit));
           StorageDead(_3);
 -         _0 = mk_cycle::<<C as Cache>::V>(move _2) -> [return: bb1, unwind continue];
 +         _0 = <dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache(move _2) -> [return: bb1, unwind continue];

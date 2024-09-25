@@ -652,7 +652,7 @@ fn codegen_stmt<'tcx>(
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::Cast(
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer),
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _),
                     ref operand,
                     to_ty,
                 ) => {
@@ -677,7 +677,7 @@ fn codegen_stmt<'tcx>(
                     }
                 }
                 Rvalue::Cast(
-                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer),
+                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _),
                     ref operand,
                     to_ty,
                 ) => {
@@ -688,6 +688,7 @@ fn codegen_stmt<'tcx>(
                 Rvalue::Cast(
                     CastKind::PointerCoercion(
                         PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+                        _,
                     ),
                     ..,
                 ) => {
@@ -741,7 +742,7 @@ fn codegen_stmt<'tcx>(
                     }
                 }
                 Rvalue::Cast(
-                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
+                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _),
                     ref operand,
                     _to_ty,
                 ) => {
@@ -763,14 +764,18 @@ fn codegen_stmt<'tcx>(
                     }
                 }
                 Rvalue::Cast(
-                    CastKind::PointerCoercion(PointerCoercion::Unsize),
+                    CastKind::PointerCoercion(PointerCoercion::Unsize, _),
                     ref operand,
                     _to_ty,
                 ) => {
                     let operand = codegen_operand(fx, operand);
                     crate::unsize::coerce_unsized_into(fx, operand, lval);
                 }
-                Rvalue::Cast(CastKind::DynStar, ref operand, _) => {
+                Rvalue::Cast(
+                    CastKind::PointerCoercion(PointerCoercion::DynStar, _),
+                    ref operand,
+                    _,
+                ) => {
                     let operand = codegen_operand(fx, operand);
                     crate::unsize::coerce_dyn_star(fx, operand, lval);
                 }

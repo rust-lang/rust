@@ -189,7 +189,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 }
             }
             Rvalue::Cast(
-                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize),
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _),
                 operand,
                 _,
             ) => {

@@ -608,7 +608,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 let mut assoc_items: Vec<_> = tcx
                     .inherent_impls(did)
                     .into_iter()
-                    .flatten()
                     .flat_map(|&imp| {
                         filter_assoc_items_by_name_and_namespace(
                             tcx,
