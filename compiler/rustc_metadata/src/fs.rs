@@ -17,7 +17,7 @@ use crate::errors::{
     BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
     FailedCreateTempdir, FailedWriteError,
 };
-use crate::{encode_metadata, EncodedMetadata};
+use crate::{EncodedMetadata, encode_metadata};
 
 // FIXME(eddyb) maybe include the crate name in this?
 pub const METADATA_FILENAME: &str = "lib.rmeta";
@@ -160,9 +160,11 @@ fn public_api_hash(tcx: TyCtxt<'_>) -> Fingerprint {
                     let item = tcx.hir_node_by_def_id(*local_def_id);
                     let _ = item.ident()?;
                     let has_hir_body = item.body_id().is_some();
-                    let item_path = tcx.def_path_hash(def_id);
+
+                    let item_path = tcx.def_path(def_id);
                     let def_kind = tcx.def_kind(def_id);
-                    item_path.hash_stable(hcx, &mut stable_hasher);
+                    let mut fn_sig = None;
+                    item_path.to_string_no_crate_verbose().hash_stable(hcx, &mut stable_hasher);
                     let has_mir = match def_kind {
                         DefKind::Ctor(_, _)
                         | DefKind::AnonConst
@@ -171,6 +173,7 @@ fn public_api_hash(tcx: TyCtxt<'_>) -> Fingerprint {
                         | DefKind::Const
                         | DefKind::SyntheticCoroutineBody => has_hir_body,
                         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
+                            fn_sig = Some(tcx.fn_sig(def_id));
                             if def_kind == DefKind::Closure && tcx.is_coroutine(def_id) {
                                 has_hir_body
                             } else {
@@ -187,6 +190,9 @@ fn public_api_hash(tcx: TyCtxt<'_>) -> Fingerprint {
                         }
                     };
 
+                    if let Some(sig) = fn_sig {
+                        sig.skip_binder().hash_stable(hcx, &mut stable_hasher);
+                    }
                     if !has_mir {
                         return Some(());
                     }
