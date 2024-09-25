@@ -158,9 +158,11 @@ fn public_api_hash(tcx: TyCtxt<'_>) -> Fingerprint {
                     let def_id = local_def_id.to_def_id();
 
                     let item = tcx.hir_node_by_def_id(*local_def_id);
+                    let _ = item.ident()?;
                     let has_hir_body = item.body_id().is_some();
-                    let ident = item.ident();
+                    let item_path = tcx.def_path_hash(def_id);
                     let def_kind = tcx.def_kind(def_id);
+                    item_path.hash_stable(hcx, &mut stable_hasher);
                     let has_mir = match def_kind {
                         DefKind::Ctor(_, _)
                         | DefKind::AnonConst
@@ -180,11 +182,12 @@ fn public_api_hash(tcx: TyCtxt<'_>) -> Fingerprint {
                                                 || tcx.cross_crate_inlinable(def_id))))
                             }
                         }
-                        _ => false,
+                        _ => {
+                            return None;
+                        }
                     };
-                    ident.hash_stable(hcx, &mut stable_hasher);
+
                     if !has_mir {
-                        item.hash_stable(hcx, &mut stable_hasher);
                         return Some(());
                     }
 
