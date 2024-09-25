@@ -4,8 +4,8 @@ use std::io::ErrorKind;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use crate::*;
 use self::helpers::windows_check_buffer_size;
+use crate::*;
 
 #[derive(Default)]
 pub struct WindowsEnvVars {

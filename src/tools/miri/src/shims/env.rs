@@ -2,8 +2,8 @@ use std::ffi::{OsStr, OsString};
 
 use rustc_data_structures::fx::FxHashMap;
 
-use crate::*;
 use self::shims::{unix::UnixEnvVars, windows::WindowsEnvVars};
+use crate::*;
 
 #[derive(Default)]
 pub enum EnvVars<'tcx> {

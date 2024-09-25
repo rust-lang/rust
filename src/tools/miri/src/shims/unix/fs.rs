@@ -11,11 +11,11 @@ use std::time::SystemTime;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::abi::Size;
 
+use self::shims::time::system_time_to_duration;
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::unix::fd::FileDescriptionRef;
 use crate::shims::unix::*;
 use crate::*;
-use self::shims::time::system_time_to_duration;
 
 use self::fd::FlockOp;
 

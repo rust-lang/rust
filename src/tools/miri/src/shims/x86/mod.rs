@@ -8,8 +8,8 @@ use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::*;
 use self::helpers::bool_to_simd_element;
+use crate::*;
 
 mod aesni;
 mod avx;
