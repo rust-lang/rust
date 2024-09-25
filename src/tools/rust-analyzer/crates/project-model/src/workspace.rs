@@ -109,7 +109,7 @@ impl fmt::Debug for ProjectWorkspace {
             ProjectWorkspaceKind::Cargo {
                 cargo,
                 error: _,
-                build_scripts: _,
+                build_scripts,
                 rustc,
                 cargo_config_extra_env,
             } => f
@@ -126,6 +126,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("toolchain", &toolchain)
                 .field("data_layout", &target_layout)
                 .field("cargo_config_extra_env", &cargo_config_extra_env)
+                .field("build_scripts", &build_scripts.error().unwrap_or("ok"))
                 .finish(),
             ProjectWorkspaceKind::Json(project) => {
                 let mut debug_struct = f.debug_struct("Json");
