@@ -517,6 +517,8 @@ Compatibility Notes
   This code was accidentally accepted. The fix can break generic code that borrows a value of unknown type,
   as there is currently no way to declare "this type has no interior mutability". In the future, stabilizing
   the [`Freeze` trait](https://github.com/rust-lang/rust/issues/121675) will allow proper support for such code.
+- [Change the minimum supported Windows version for the `*-pc-windows-*` targets to 10](https://blog.rust-lang.org/2024/02/26/Windows-7.html)
+  [The `i686-win7-windows-msvc` and `x86_64-win7-windows-msvc` targets](https://doc.rust-lang.org/nightly/rustc/platform-support/win7-windows-msvc.html#-win7-windows-msvc) has been added as Tier 3 targets, which support Windows 7 and higher.
 
 <a id="1.78.0-Internal-Changes"></a>
 
