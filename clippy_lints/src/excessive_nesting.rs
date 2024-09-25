@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use rustc_ast::node_id::NodeSet;
-use rustc_ast::visit::{walk_block, walk_item, Visitor};
+use rustc_ast::visit::{Visitor, walk_block, walk_item};
 use rustc_ast::{Block, Crate, Inline, Item, ItemKind, ModKind, NodeId};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;

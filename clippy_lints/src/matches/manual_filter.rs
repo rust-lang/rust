@@ -6,10 +6,10 @@ use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
 use rustc_lint::LateContext;
-use rustc_span::{sym, SyntaxContext};
+use rustc_span::{SyntaxContext, sym};
 
-use super::manual_utils::{check_with, SomeExpr};
 use super::MANUAL_FILTER;
+use super::manual_utils::{SomeExpr, check_with};
 
 // Function called on the <expr> of `[&+]Some((ref | ref mut) x) => <expr>`
 // Need to check if it's of the form `<expr>=if <cond> {<then_expr>} else {<else_expr>}`

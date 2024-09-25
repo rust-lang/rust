@@ -5,7 +5,7 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
-use syn::{parse_macro_input, Attribute, Error, Expr, ExprLit, Ident, Lit, LitStr, Meta, Result, Token};
+use syn::{Attribute, Error, Expr, ExprLit, Ident, Lit, LitStr, Meta, Result, Token, parse_macro_input};
 
 fn parse_attr<const LEN: usize>(path: [&'static str; LEN], attr: &Attribute) -> Option<LitStr> {
     if let Meta::NameValue(name_value) = &attr.meta {
@@ -140,15 +140,12 @@ pub fn declare_clippy_lint(input: TokenStream) -> TokenStream {
 
     let mut category = category.to_string();
 
-    let level = format_ident!(
-        "{}",
-        match category.as_str() {
-            "correctness" => "Deny",
-            "style" | "suspicious" | "complexity" | "perf" => "Warn",
-            "pedantic" | "restriction" | "cargo" | "nursery" | "internal" => "Allow",
-            _ => panic!("unknown category {category}"),
-        },
-    );
+    let level = format_ident!("{}", match category.as_str() {
+        "correctness" => "Deny",
+        "style" | "suspicious" | "complexity" | "perf" => "Warn",
+        "pedantic" | "restriction" | "cargo" | "nursery" | "internal" => "Allow",
+        _ => panic!("unknown category {category}"),
+    },);
 
     let info_name = format_ident!("{name}_INFO");
 

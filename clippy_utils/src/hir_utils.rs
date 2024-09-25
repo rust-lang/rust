@@ -1,20 +1,20 @@
 use crate::consts::ConstEvalCtxt;
 use crate::macros::macro_backtrace;
-use crate::source::{walk_span_to_context, SpanRange, SpanRangeExt};
+use crate::source::{SpanRange, SpanRangeExt, walk_span_to_context};
 use crate::tokenize_with_text;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
-use rustc_hir::def::Res;
 use rustc_hir::MatchSource::TryDesugar;
+use rustc_hir::def::Res;
 use rustc_hir::{
     ArrayLen, AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
     ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
     LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind,
 };
-use rustc_lexer::{tokenize, TokenKind};
+use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
-use rustc_span::{sym, BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext, sym};
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 
@@ -1194,8 +1194,8 @@ fn eq_span_tokens(
             && let Some(rsrc) = right.get_source_range(cx)
             && let Some(rsrc) = rsrc.as_str()
         {
-            let pred = |t: &(_, _)| pred(t.0);
-            let map = |(_, x)| x;
+            let pred = |&(token, ..): &(TokenKind, _, _)| pred(token);
+            let map = |(_, source, _)| source;
 
             let ltok = tokenize_with_text(lsrc).filter(pred).map(map);
             let rtok = tokenize_with_text(rsrc).filter(pred).map(map);

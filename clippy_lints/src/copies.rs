@@ -1,16 +1,17 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
-use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, IntoSpan, SpanRangeExt};
-use clippy_utils::ty::{needs_ordered_drop, InteriorMut};
+use clippy_utils::source::{IntoSpan, SpanRangeExt, first_line_of_span, indent_of, reindent_multiline, snippet};
+use clippy_utils::ty::{InteriorMut, needs_ordered_drop};
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{
-    capture_local_usage, eq_expr_value, find_binding_init, get_enclosing_block, hash_expr, hash_stmt, if_sequence,
-    is_else_clause, is_lint_allowed, path_to_local, search_same, ContainsName, HirEqInterExpr, SpanlessEq,
+    ContainsName, HirEqInterExpr, SpanlessEq, capture_local_usage, eq_expr_value, find_binding_init,
+    get_enclosing_block, hash_expr, hash_stmt, if_sequence, is_else_clause, is_lint_allowed, path_to_local,
+    search_same,
 };
 use core::iter;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{intravisit, BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;

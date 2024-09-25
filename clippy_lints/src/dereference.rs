@@ -3,14 +3,14 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{implements_trait, is_manually_drop};
 use clippy_utils::{
-    expr_use_ctxt, get_parent_expr, is_block_like, is_lint_allowed, path_to_local, peel_middle_ty_refs, DefinedTy,
-    ExprUseNode,
+    DefinedTy, ExprUseNode, expr_use_ctxt, get_parent_expr, is_block_like, is_lint_allowed, path_to_local,
+    peel_middle_ty_refs,
 };
 use core::mem;
 use rustc_ast::util::parser::{PREC_PREFIX, PREC_UNAMBIGUOUS};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_ty, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{
     self as hir, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat,
     PatKind, Path, QPath, TyKind, UnOp,
@@ -290,13 +290,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             && let Some(ty) = use_node.defined_ty(cx)
                             && TyCoercionStability::for_defined_ty(cx, ty, use_node.is_return()).is_deref_stable()
                         {
-                            self.state = Some((
-                                State::ExplicitDeref { mutability: None },
-                                StateData {
-                                    first_expr: expr,
-                                    adjusted_ty,
-                                },
-                            ));
+                            self.state = Some((State::ExplicitDeref { mutability: None }, StateData {
+                                first_expr: expr,
+                                adjusted_ty,
+                            }));
                         }
                     },
                     RefOp::Method { mutbl, is_ufcs }
@@ -458,13 +455,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             && next_adjust.map_or(true, |a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
                             && iter.all(|a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
                         {
-                            self.state = Some((
-                                State::Borrow { mutability },
-                                StateData {
-                                    first_expr: expr,
-                                    adjusted_ty,
-                                },
-                            ));
+                            self.state = Some((State::Borrow { mutability }, StateData {
+                                first_expr: expr,
+                                adjusted_ty,
+                            }));
                         }
                     },
                     _ => {},
@@ -508,13 +502,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 let stability = state.stability;
                 report(cx, expr, State::DerefedBorrow(state), data, typeck);
                 if stability.is_deref_stable() {
-                    self.state = Some((
-                        State::Borrow { mutability },
-                        StateData {
-                            first_expr: expr,
-                            adjusted_ty,
-                        },
-                    ));
+                    self.state = Some((State::Borrow { mutability }, StateData {
+                        first_expr: expr,
+                        adjusted_ty,
+                    }));
                 }
             },
             (Some((State::DerefedBorrow(state), data)), RefOp::Deref) => {
@@ -539,13 +530,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 } else if stability.is_deref_stable()
                     && let Some(parent) = get_parent_expr(cx, expr)
                 {
-                    self.state = Some((
-                        State::ExplicitDeref { mutability: None },
-                        StateData {
-                            first_expr: parent,
-                            adjusted_ty,
-                        },
-                    ));
+                    self.state = Some((State::ExplicitDeref { mutability: None }, StateData {
+                        first_expr: parent,
+                        adjusted_ty,
+                    }));
                 }
             },
 
@@ -1138,20 +1126,17 @@ impl<'tcx> Dereferencing<'tcx> {
         if let Some(outer_pat) = self.ref_locals.get_mut(&local) {
             if let Some(pat) = outer_pat {
                 // Check for auto-deref
-                if !matches!(
-                    cx.typeck_results().expr_adjustments(e),
-                    [
-                        Adjustment {
-                            kind: Adjust::Deref(_),
-                            ..
-                        },
-                        Adjustment {
-                            kind: Adjust::Deref(_),
-                            ..
-                        },
+                if !matches!(cx.typeck_results().expr_adjustments(e), [
+                    Adjustment {
+                        kind: Adjust::Deref(_),
                         ..
-                    ]
-                ) {
+                    },
+                    Adjustment {
+                        kind: Adjust::Deref(_),
+                        ..
+                    },
+                    ..
+                ]) {
                     match get_parent_expr(cx, e) {
                         // Field accesses are the same no matter the number of references.
                         Some(Expr {

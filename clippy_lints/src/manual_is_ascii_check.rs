@@ -1,17 +1,17 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, is_in_const_context, path_to_local, peel_ref_operators};
-use rustc_ast::ast::RangeLimits;
 use rustc_ast::LitKind::{Byte, Char};
+use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, Param, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does

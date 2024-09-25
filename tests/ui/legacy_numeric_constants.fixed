@@ -22,8 +22,8 @@ macro_rules! b {
     };
 }
 
-use std::u32::MAX;
 use std::u8::MIN;
+use std::u32::MAX;
 use std::{f64, u32};
 
 #[warn(clippy::legacy_numeric_constants)]
@@ -99,8 +99,8 @@ fn allow() {
     ::std::primitive::u8::MIN;
     ::std::u8::MIN;
     ::std::primitive::u8::min_value();
-    use std::u64;
     use std::u8::MIN;
+    use std::u64;
 }
 
 #[warn(clippy::legacy_numeric_constants)]

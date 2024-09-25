@@ -1,5 +1,5 @@
 use core::iter::FusedIterator;
-use rustc_ast::visit::{walk_attribute, walk_expr, Visitor};
+use rustc_ast::visit::{Visitor, walk_attribute, walk_expr};
 use rustc_ast::{Attribute, Expr};
 use rustc_span::symbol::Ident;
 

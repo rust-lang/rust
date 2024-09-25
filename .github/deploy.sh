@@ -25,15 +25,14 @@ if [[ $BETA = "true" ]]; then
 fi
 
 # Generate version index that is shown as root index page
-cp util/gh-pages/versions.html out/index.html
-
-echo "Making the versions.json file"
-python3 ./util/versions.py out
+python3 ./util/versions.py ./util/gh-pages/versions.html out
 
 # Now let's go have some fun with the cloned repo
 cd out
 git config user.name "GHA CI"
 git config user.email "gha@ci.invalid"
+
+git status
 
 if [[ -n $TAG_NAME ]]; then
   # track files, so that the following check works
@@ -46,8 +45,6 @@ if [[ -n $TAG_NAME ]]; then
   git add "$TAG_NAME"
   # Update the symlink
   git add stable
-  # Update versions file
-  git add versions.json
   git commit -m "Add documentation for ${TAG_NAME} release: ${SHA}"
 elif [[ $BETA = "true" ]]; then
   if git diff --exit-code --quiet -- beta/; then

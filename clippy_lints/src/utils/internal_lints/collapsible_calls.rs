@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::{is_expr_path_def_path, is_lint_allowed, peel_blocks_with_stmt, SpanlessEq};
+use clippy_utils::{SpanlessEq, is_expr_path_def_path, is_lint_allowed, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

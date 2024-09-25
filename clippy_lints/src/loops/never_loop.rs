@@ -1,5 +1,5 @@
-use super::utils::make_iterator_snippet;
 use super::NEVER_LOOP;
+use super::utils::make_iterator_snippet;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::macros::root_macro_call_first_node;
@@ -7,7 +7,7 @@ use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind};
 use rustc_lint::LateContext;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::iter::once;
 
 pub(super) fn check<'tcx>(

@@ -78,7 +78,7 @@ pub mod visitors;
 pub use self::attrs::*;
 pub use self::check_proc_macro::{is_from_proc_macro, is_span_if, is_span_match};
 pub use self::hir_utils::{
-    both, count_eq, eq_expr_value, hash_expr, hash_stmt, is_bool, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
+    HirEqInterExpr, SpanlessEq, SpanlessHash, both, count_eq, eq_expr_value, hash_expr, hash_stmt, is_bool, over,
 };
 
 use core::mem;
@@ -94,20 +94,20 @@ use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalModDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
-use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
-use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, def, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind,
-    ConstContext, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem,
-    ImplItemKind, ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode,
-    Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef,
-    TraitRef, TyKind, UnOp,
+    self as hir, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
+    Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
+    ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat,
+    PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef,
+    TyKind, UnOp, def,
 };
-use rustc_lexer::{tokenize, TokenKind};
+use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::Const;
@@ -120,12 +120,12 @@ use rustc_middle::ty::{
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{sym, Span};
+use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{InnerSpan, Span, sym};
 use rustc_target::abi::Integer;
 use visitors::Visitable;
 
-use crate::consts::{mir_to_const, ConstEvalCtxt, Constant};
+use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
@@ -263,9 +263,13 @@ pub fn is_res_lang_ctor(cx: &LateContext<'_>, res: Res, lang_item: LangItem) -> 
     }
 }
 
-
 /// Checks if `{ctor_call_id}(...)` is `{enum_item}::{variant_name}(...)`.
-pub fn is_enum_variant_ctor(cx: &LateContext<'_>, enum_item: Symbol, variant_name: Symbol, ctor_call_id: DefId) -> bool {
+pub fn is_enum_variant_ctor(
+    cx: &LateContext<'_>,
+    enum_item: Symbol,
+    variant_name: Symbol,
+    ctor_call_id: DefId,
+) -> bool {
     let Some(enum_def_id) = cx.tcx.get_diagnostic_item(enum_item) else {
         return false;
     };
@@ -664,6 +668,17 @@ fn item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Re
     }
 }
 
+/// Finds the crates called `name`, may be multiple due to multiple major versions.
+pub fn find_crates(tcx: TyCtxt<'_>, name: Symbol) -> Vec<Res> {
+    tcx.crates(())
+        .iter()
+        .copied()
+        .filter(move |&num| tcx.crate_name(num) == name)
+        .map(CrateNum::as_def_id)
+        .map(|id| Res::Def(tcx.def_kind(id), id))
+        .collect()
+}
+
 /// Resolves a def path like `std::vec::Vec`.
 ///
 /// Can return multiple resolutions when there are multiple versions of the same crate, e.g.
@@ -674,15 +689,7 @@ fn item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Re
 ///
 /// This function is expensive and should be used sparingly.
 pub fn def_path_res(tcx: TyCtxt<'_>, path: &[&str]) -> Vec<Res> {
-    fn find_crates(tcx: TyCtxt<'_>, name: Symbol) -> impl Iterator<Item = DefId> + '_ {
-        tcx.crates(())
-            .iter()
-            .copied()
-            .filter(move |&num| tcx.crate_name(num) == name)
-            .map(CrateNum::as_def_id)
-    }
-
-    let (base, mut path) = match *path {
+    let (base, path) = match *path {
         [primitive] => {
             return vec![PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy)];
         },
@@ -698,18 +705,25 @@ pub fn def_path_res(tcx: TyCtxt<'_>, path: &[&str]) -> Vec<Res> {
         None
     };
 
-    let starts = find_primitive_impls(tcx, base)
-        .chain(find_crates(tcx, base_sym))
+    let crates = find_primitive_impls(tcx, base)
         .chain(local_crate)
-        .map(|id| Res::Def(tcx.def_kind(id), id));
+        .map(|id| Res::Def(tcx.def_kind(id), id))
+        .chain(find_crates(tcx, base_sym))
+        .collect();
 
-    let mut resolutions: Vec<Res> = starts.collect();
+    def_path_res_with_base(tcx, crates, path)
+}
 
+/// Resolves a def path like `vec::Vec` with the base `std`.
+///
+/// This is lighter than [`def_path_res`], and should be called with [`find_crates`] looking up
+/// items from the same crate repeatedly, although should still be used sparingly.
+pub fn def_path_res_with_base(tcx: TyCtxt<'_>, mut base: Vec<Res>, mut path: &[&str]) -> Vec<Res> {
     while let [segment, rest @ ..] = path {
         path = rest;
         let segment = Symbol::intern(segment);
 
-        resolutions = resolutions
+        base = base
             .into_iter()
             .filter_map(|res| res.opt_def_id())
             .flat_map(|def_id| {
@@ -727,7 +741,7 @@ pub fn def_path_res(tcx: TyCtxt<'_>, path: &[&str]) -> Vec<Res> {
             .collect();
     }
 
-    resolutions
+    base
 }
 
 /// Resolves a def path like `std::vec::Vec` to its [`DefId`]s, see [`def_path_res`].
@@ -2940,13 +2954,14 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprU
 }
 
 /// Tokenizes the input while keeping the text associated with each token.
-pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str)> {
+pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str, InnerSpan)> {
     let mut pos = 0;
     tokenize(s).map(move |t| {
         let end = pos + t.len;
         let range = pos as usize..end as usize;
+        let inner = InnerSpan::new(range.start, range.end);
         pos = end;
-        (t.kind, s.get(range).unwrap_or_default())
+        (t.kind, s.get(range).unwrap_or_default(), inner)
     })
 }
 
@@ -2970,8 +2985,8 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
 pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
     let snippet = sm.span_to_snippet(span).unwrap_or_default();
     let res = tokenize_with_text(&snippet)
-        .filter(|(t, _)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
-        .map(|(_, s)| s)
+        .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
+        .map(|(_, s, _)| s)
         .join("\n");
     res
 }
@@ -2991,7 +3006,7 @@ pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
 /// pat: Some(a)
 /// else_body: return None
 /// ```
-
+///
 /// And for this example:
 /// ```ignore
 /// let Some(FooBar { a, b }) = ex else { return None };
@@ -3001,7 +3016,7 @@ pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
 /// pat: Some(FooBar { a, b })
 /// else_body: return None
 /// ```
-
+///
 /// We output `Some(a)` in the first instance, and `Some(FooBar { a, b })` in the second, because
 /// the question mark operator is applicable here. Callers have to check whether we are in a
 /// constant or not.
