@@ -2582,12 +2582,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     nested.extend(
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
-                            .eq(
+                            .sup(
                                 DefineOpaqueTypes::Yes,
+                                bound.rebind(target_principal),
                                 upcast_principal.map_bound(|trait_ref| {
                                     ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
                                 }),
-                                bound.rebind(target_principal),
                             )
                             .map_err(|_| SelectionError::Unimplemented)?
                             .into_obligations(),
@@ -2620,7 +2620,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     nested.extend(
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
-                            .eq(DefineOpaqueTypes::Yes, source_projection, target_projection)
+                            .sup(DefineOpaqueTypes::Yes, target_projection, source_projection)
                             .map_err(|_| SelectionError::Unimplemented)?
                             .into_obligations(),
                     );

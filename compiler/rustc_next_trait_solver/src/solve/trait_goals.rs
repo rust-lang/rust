@@ -896,7 +896,7 @@ where
                     && ecx
                         .probe(|_| ProbeKind::UpcastProjectionCompatibility)
                         .enter(|ecx| -> Result<(), NoSolution> {
-                            ecx.eq(param_env, source_projection, target_projection)?;
+                            ecx.sub(param_env, source_projection, target_projection)?;
                             let _ = ecx.try_evaluate_added_goals()?;
                             Ok(())
                         })
@@ -909,7 +909,7 @@ where
                     // Check that a's supertrait (upcast_principal) is compatible
                     // with the target (b_ty).
                     ty::ExistentialPredicate::Trait(target_principal) => {
-                        ecx.eq(
+                        ecx.sub(
                             param_env,
                             upcast_principal.unwrap(),
                             bound.rebind(target_principal),
@@ -934,7 +934,7 @@ where
                                 Certainty::AMBIGUOUS,
                             );
                         }
-                        ecx.eq(param_env, source_projection, target_projection)?;
+                        ecx.sub(param_env, source_projection, target_projection)?;
                     }
                     // Check that b_ty's auto traits are present in a_ty's bounds.
                     ty::ExistentialPredicate::AutoTrait(def_id) => {
