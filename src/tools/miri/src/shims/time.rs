@@ -36,8 +36,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut relative_clocks;
 
         match this.tcx.sess.target.os.as_ref() {
-            "linux" | "freebsd" => {
-                // Linux and FreeBSD have two main kinds of clocks. REALTIME clocks return the actual time since the
+            "linux" | "freebsd" | "android" => {
+                // Linux, Android, and FreeBSD have two main kinds of clocks. REALTIME clocks return the actual time since the
                 // Unix epoch, including effects which may cause time to move backwards such as NTP.
                 // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
                 // is just specified to be "faster and less precise", so we implement both the same way.
