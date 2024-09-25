@@ -64,11 +64,11 @@
 //! This order consistency is required in a few places in rustc, for
 //! example coroutine inference, and possibly also HIR borrowck.
 
-use rustc_ast::visit::{try_visit, visit_opt, walk_list, VisitorResult};
+use rustc_ast::visit::{VisitorResult, try_visit, visit_opt, walk_list};
 use rustc_ast::{Attribute, Label};
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::Span;
 
 use crate::hir::*;
 

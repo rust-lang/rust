@@ -12,9 +12,9 @@ use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
 use rustc_hir::{HashStableContext, HirId, MissingLifetimeKind};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::edition::Edition;
+pub use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::abi::Abi;
 use serde::{Deserialize, Serialize};
 

@@ -13,9 +13,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
-    self,
+    self, Ty, TyCtxt,
     layout::{LayoutCx, LayoutOf},
-    Ty, TyCtxt,
 };
 use rustc_target::spec::abi::Abi;
 

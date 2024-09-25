@@ -3,8 +3,8 @@ use rustc_hir::CRATE_OWNER_ID;
 use rustc_middle::lint::LintExpectation;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
 use rustc_session::lint::LintExpectationId;
+use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
 use rustc_span::Symbol;
 
 use crate::lints::{Expectation, ExpectationNote};

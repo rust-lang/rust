@@ -21,10 +21,10 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 use tracing::{debug, instrument, trace};
 
 use super::{
-    alloc_range, err_ub, err_ub_custom, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
     AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg, CheckInAllocMsg,
     CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
-    PointerArithmetic, Provenance, Scalar,
+    PointerArithmetic, Provenance, Scalar, alloc_range, err_ub, err_ub_custom, throw_ub,
+    throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -943,12 +943,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if offset.bytes() != 0 {
             throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
         }
-        let Some(GlobalAlloc::VTable(ty, vtable_trait)) = self.tcx.try_get_global_alloc(alloc_id)
+        let Some(GlobalAlloc::VTable(ty, vtable_dyn_type)) =
+            self.tcx.try_get_global_alloc(alloc_id)
         else {
             throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
         };
-        if let Some(expected_trait) = expected_trait {
-            self.check_vtable_for_type(vtable_trait, expected_trait)?;
+        if let Some(expected_dyn_type) = expected_trait {
+            self.check_vtable_for_type(vtable_dyn_type, expected_dyn_type)?;
         }
         Ok(ty)
     }
@@ -1113,11 +1114,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
                         Some(GlobalAlloc::Function { instance, .. }) => {
                             write!(fmt, " (fn: {instance})")?;
                         }
-                        Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
-                            write!(fmt, " (vtable: impl {trait_ref} for {ty})")?;
-                        }
-                        Some(GlobalAlloc::VTable(ty, None)) => {
-                            write!(fmt, " (vtable: impl <auto trait> for {ty})")?;
+                        Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
+                            write!(fmt, " (vtable: impl {dyn_ty} for {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {
                             write!(fmt, " (static: {})", self.ecx.tcx.def_path_str(did))?;

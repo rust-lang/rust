@@ -1,4 +1,4 @@
-use crate::spec::{base, crt_objects, LinkSelfContainedDefault, TargetOptions};
+use crate::spec::{LinkSelfContainedDefault, TargetOptions, base, crt_objects};
 
 pub(crate) fn opts() -> TargetOptions {
     let mut base = base::linux::opts();

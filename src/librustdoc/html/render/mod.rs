@@ -48,30 +48,30 @@ use rinja::Template;
 use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RustcVersion;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{BytePos, FileName, RealFileName, DUMMY_SP};
+use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, FileName, RealFileName};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
-pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
+pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, ItemId, RenderedLink};
 use crate::error::Error;
+use crate::formats::Impl;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::formats::Impl;
 use crate::html::escape::Escape;
 use crate::html::format::{
-    display_fn, href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
-    print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
-    Buffer, Ending, HrefError, PrintWithSpace,
+    Buffer, Ending, HrefError, PrintWithSpace, display_fn, href, join_with_double_colon,
+    print_abi_with_space, print_constness_with_space, print_default_space, print_generic_bounds,
+    print_where_clause, visibility_print_with_space,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -79,7 +79,7 @@ use crate::html::markdown::{
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::html::{highlight, sources};
 use crate::scrape_examples::{CallData, CallLocation};
-use crate::{try_none, DOC_RUST_LANG_ORG_CHANNEL};
+use crate::{DOC_RUST_LANG_ORG_CHANNEL, try_none};
 
 pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {

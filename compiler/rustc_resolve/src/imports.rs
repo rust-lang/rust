@@ -7,36 +7,36 @@ use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::codes::*;
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan};
+use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::DefId;
 use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::{span_bug, ty};
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
-use rustc_session::lint::BuiltinLintDiag;
+use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::symbol::{Ident, Symbol, kw};
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::diagnostics::{import_candidates, DiagMode, Suggestion};
+use crate::Determinacy::{self, *};
+use crate::Namespace::*;
+use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
 use crate::errors::{
     CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
     CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
     ConsiderAddingMacroExport, ConsiderMarkingAsPub, IsNotDirectlyImportable,
     ItemsInTraitsAreNotImportable,
 };
-use crate::Determinacy::{self, *};
-use crate::Namespace::*;
 use crate::{
-    module_to_string, names_to_string, AmbiguityError, AmbiguityKind, BindingKey, Finalize,
-    ImportSuggestion, Module, ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind,
-    ParentScope, PathResult, PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used,
+    AmbiguityError, AmbiguityKind, BindingKey, Finalize, ImportSuggestion, Module,
+    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
+    PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
 };
 
 type Res = def::Res<NodeId>;
@@ -901,15 +901,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
-                    self.report_error(
-                        span,
-                        ResolutionError::FailedToResolve {
-                            segment: Some(segment_name),
-                            label,
-                            suggestion,
-                            module,
-                        },
-                    );
+                    self.report_error(span, ResolutionError::FailedToResolve {
+                        segment: Some(segment_name),
+                        label,
+                        suggestion,
+                        module,
+                    });
                 }
                 return None;
             }

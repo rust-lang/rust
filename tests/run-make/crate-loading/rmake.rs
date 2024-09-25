@@ -64,10 +64,10 @@ note: there are multiple different versions of crate `dependency` in the depende
 5 |     fn foo(&self);
   |     -------------- the method is available for `dep_2_reexport::Type` here
   |
- ::: multiple-dep-versions.rs:4:32
+ ::: multiple-dep-versions.rs:4:18
   |
-4 | use dependency::{do_something, Trait};
-  |                                ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`"#,
+4 | use dependency::{Trait, do_something};
+  |                  ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`"#,
         )
         .assert_stderr_contains(
             r#"
@@ -92,9 +92,9 @@ note: there are multiple different versions of crate `dependency` in the depende
 6 |     fn bar();
   |     --------- the associated function is available for `dep_2_reexport::Type` here
   |
- ::: multiple-dep-versions.rs:4:32
+ ::: multiple-dep-versions.rs:4:18
   |
-4 | use dependency::{do_something, Trait};
-  |                                ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`"#,
+4 | use dependency::{Trait, do_something};
+  |                  ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`"#,
         );
 }

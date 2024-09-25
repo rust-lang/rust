@@ -1,4 +1,4 @@
-use crate::{find_recent_config_change_ids, CONFIG_CHANGE_HISTORY};
+use crate::{CONFIG_CHANGE_HISTORY, find_recent_config_change_ids};
 
 #[test]
 fn test_find_recent_config_change_ids() {

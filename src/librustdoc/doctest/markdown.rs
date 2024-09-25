@@ -8,10 +8,10 @@ use rustc_span::FileName;
 use tempfile::tempdir;
 
 use super::{
-    generate_args_file, CreateRunnableDocTests, DocTestVisitor, GlobalTestOptions, ScrapedDocTest,
+    CreateRunnableDocTests, DocTestVisitor, GlobalTestOptions, ScrapedDocTest, generate_args_file,
 };
 use crate::config::Options;
-use crate::html::markdown::{find_testable_code, ErrorCodes, LangString, MdRelLine};
+use crate::html::markdown::{ErrorCodes, LangString, MdRelLine, find_testable_code};
 
 struct MdCollector {
     tests: Vec<ScrapedDocTest>,

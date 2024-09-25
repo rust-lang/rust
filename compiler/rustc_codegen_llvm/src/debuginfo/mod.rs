@@ -16,8 +16,8 @@ use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, ParamEnv, Ty, TypeVisitableExt};
-use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
+use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::Symbol;
 use rustc_span::{
     BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId,
@@ -26,9 +26,9 @@ use rustc_target::abi::Size;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use self::metadata::{file_metadata, type_di_node, UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
+use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, type_di_node};
 use self::namespace::mangled_name_of_instance;
-use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
+use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::abi::FnAbi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
@@ -555,17 +555,14 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
 
-            let scope = namespace::item_namespace(
-                cx,
-                DefId {
-                    krate: instance.def_id().krate,
-                    index: cx
-                        .tcx
-                        .def_key(instance.def_id())
-                        .parent
-                        .expect("get_containing_scope: missing parent?"),
-                },
-            );
+            let scope = namespace::item_namespace(cx, DefId {
+                krate: instance.def_id().krate,
+                index: cx
+                    .tcx
+                    .def_key(instance.def_id())
+                    .parent
+                    .expect("get_containing_scope: missing parent?"),
+            });
             (scope, false)
         }
     }

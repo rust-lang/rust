@@ -1,4 +1,4 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
 // This target is for uclibc Linux on ARMv7 without NEON,
 // thumb-mode or hardfloat.

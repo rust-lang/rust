@@ -1,6 +1,6 @@
 use rustc_middle::{
     mir::{Mutability, RetagKind},
-    ty::{self, layout::HasParamEnv, Ty},
+    ty::{self, Ty, layout::HasParamEnv},
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Abi, Size};
@@ -19,8 +19,8 @@ mod unimap;
 #[cfg(test)]
 mod exhaustive;
 
-use perms::Permission;
-pub use tree::Tree;
+use self::perms::Permission;
+pub use self::tree::Tree;
 
 pub type AllocState = Tree;
 

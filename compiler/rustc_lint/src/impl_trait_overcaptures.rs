@@ -7,12 +7,12 @@ use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty::relate::{
-    structurally_relate_consts, structurally_relate_tys, Relate, RelateResult, TypeRelation,
+    Relate, RelateResult, TypeRelation, structurally_relate_consts, structurally_relate_tys,
 };
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -22,10 +22,10 @@ use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
 
-use crate::{fluent_generated as fluent, LateContext, LateLintPass};
+use crate::{LateContext, LateLintPass, fluent_generated as fluent};
 
 declare_lint! {
     /// The `impl_trait_overcaptures` lint warns against cases where lifetime
@@ -309,10 +309,12 @@ where
                     // We only computed variance of lifetimes...
                     debug_assert_matches!(self.tcx.def_kind(def_id), DefKind::LifetimeParam);
                     let uncaptured = match *kind {
-                        ParamKind::Early(name, index) => ty::Region::new_early_param(
-                            self.tcx,
-                            ty::EarlyParamRegion { name, index },
-                        ),
+                        ParamKind::Early(name, index) => {
+                            ty::Region::new_early_param(self.tcx, ty::EarlyParamRegion {
+                                name,
+                                index,
+                            })
+                        }
                         ParamKind::Free(def_id, name) => ty::Region::new_late_param(
                             self.tcx,
                             self.parent_def_id.to_def_id(),

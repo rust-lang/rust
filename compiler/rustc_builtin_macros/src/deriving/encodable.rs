@@ -87,9 +87,9 @@
 
 use rustc_ast::{AttrVec, ExprKind, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{Ident, Symbol, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
@@ -116,10 +116,11 @@ pub(crate) fn expand_deriving_rustc_encodable(
         methods: vec![MethodDef {
             name: sym::encode,
             generics: Bounds {
-                bounds: vec![(
-                    typaram,
-                    vec![Path::new_(vec![krate, sym::Encoder], vec![], PathKind::Global)],
-                )],
+                bounds: vec![(typaram, vec![Path::new_(
+                    vec![krate, sym::Encoder],
+                    vec![],
+                    PathKind::Global,
+                )])],
             },
             explicit_self: true,
             nonself_args: vec![(
@@ -157,14 +158,11 @@ fn encodable_substructure(
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = Ident::new(sym::_e, trait_span);
     let blkencoder = cx.expr_ident(trait_span, blkarg);
-    let fn_path = cx.expr_path(cx.path_global(
-        trait_span,
-        vec![
-            Ident::new(krate, trait_span),
-            Ident::new(sym::Encodable, trait_span),
-            Ident::new(sym::encode, trait_span),
-        ],
-    ));
+    let fn_path = cx.expr_path(cx.path_global(trait_span, vec![
+        Ident::new(krate, trait_span),
+        Ident::new(sym::Encodable, trait_span),
+        Ident::new(sym::encode, trait_span),
+    ]));
 
     match substr.fields {
         Struct(_, fields) => {
@@ -180,16 +178,12 @@ fn encodable_substructure(
                 let enc =
                     cx.expr_call(span, fn_path.clone(), thin_vec![self_ref, blkencoder.clone()]);
                 let lambda = cx.lambda1(span, enc, blkarg);
-                let call = cx.expr_call_global(
-                    span,
-                    fn_emit_struct_field_path.clone(),
-                    thin_vec![
-                        blkencoder.clone(),
-                        cx.expr_str(span, name),
-                        cx.expr_usize(span, i),
-                        lambda,
-                    ],
-                );
+                let call = cx.expr_call_global(span, fn_emit_struct_field_path.clone(), thin_vec![
+                    blkencoder.clone(),
+                    cx.expr_str(span, name),
+                    cx.expr_usize(span, i),
+                    lambda,
+                ]);
 
                 // last call doesn't need a try!
                 let last = fields.len() - 1;
@@ -214,16 +208,12 @@ fn encodable_substructure(
             let fn_emit_struct_path =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_struct]);
 
-            let expr = cx.expr_call_global(
-                trait_span,
-                fn_emit_struct_path,
-                thin_vec![
-                    encoder,
-                    cx.expr_str(trait_span, substr.type_ident.name),
-                    cx.expr_usize(trait_span, fields.len()),
-                    blk,
-                ],
-            );
+            let expr = cx.expr_call_global(trait_span, fn_emit_struct_path, thin_vec![
+                encoder,
+                cx.expr_str(trait_span, substr.type_ident.name),
+                cx.expr_usize(trait_span, fields.len()),
+                blk,
+            ]);
             BlockOrExpr::new_expr(expr)
         }
 
@@ -243,11 +233,8 @@ fn encodable_substructure(
                 let last = fields.len() - 1;
                 for (i, &FieldInfo { ref self_expr, span, .. }) in fields.iter().enumerate() {
                     let self_ref = cx.expr_addr_of(span, self_expr.clone());
-                    let enc = cx.expr_call(
-                        span,
-                        fn_path.clone(),
-                        thin_vec![self_ref, blkencoder.clone()],
-                    );
+                    let enc = cx
+                        .expr_call(span, fn_path.clone(), thin_vec![self_ref, blkencoder.clone()]);
                     let lambda = cx.lambda1(span, enc, blkarg);
 
                     let call = cx.expr_call_global(
@@ -274,26 +261,22 @@ fn encodable_substructure(
             let fn_emit_enum_variant_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_enum_variant]);
 
-            let call = cx.expr_call_global(
-                trait_span,
-                fn_emit_enum_variant_path,
-                thin_vec![
-                    blkencoder,
-                    name,
-                    cx.expr_usize(trait_span, *idx),
-                    cx.expr_usize(trait_span, fields.len()),
-                    blk,
-                ],
-            );
+            let call = cx.expr_call_global(trait_span, fn_emit_enum_variant_path, thin_vec![
+                blkencoder,
+                name,
+                cx.expr_usize(trait_span, *idx),
+                cx.expr_usize(trait_span, fields.len()),
+                blk,
+            ]);
 
             let blk = cx.lambda1(trait_span, call, blkarg);
             let fn_emit_enum_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_enum]);
-            let expr = cx.expr_call_global(
-                trait_span,
-                fn_emit_enum_path,
-                thin_vec![encoder, cx.expr_str(trait_span, substr.type_ident.name), blk],
-            );
+            let expr = cx.expr_call_global(trait_span, fn_emit_enum_path, thin_vec![
+                encoder,
+                cx.expr_str(trait_span, substr.type_ident.name),
+                blk
+            ]);
             BlockOrExpr::new_mixed(thin_vec![me], Some(expr))
         }
 

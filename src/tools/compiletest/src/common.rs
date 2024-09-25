@@ -11,7 +11,7 @@ use serde::de::{Deserialize, Deserializer, Error as _};
 use test::{ColorConfig, OutputFormat};
 
 pub use self::Mode::*;
-use crate::util::{add_dylib_path, PathBufExt};
+use crate::util::{PathBufExt, add_dylib_path};
 
 macro_rules! string_enum {
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
@@ -182,6 +182,9 @@ pub struct Config {
 
     /// The rustc executable.
     pub rustc_path: PathBuf,
+
+    /// The cargo executable.
+    pub cargo_path: Option<PathBuf>,
 
     /// The rustdoc executable.
     pub rustdoc_path: Option<PathBuf>,

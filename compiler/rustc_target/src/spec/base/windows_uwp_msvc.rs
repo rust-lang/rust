@@ -1,4 +1,4 @@
-use crate::spec::{base, LinkerFlavor, Lld, TargetOptions};
+use crate::spec::{LinkerFlavor, Lld, TargetOptions, base};
 
 pub(crate) fn opts() -> TargetOptions {
     let mut opts = base::windows_msvc::opts();

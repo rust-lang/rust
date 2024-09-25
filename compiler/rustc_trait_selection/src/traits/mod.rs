@@ -35,20 +35,20 @@ use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFolder, TypeSuperVisitable, Upcast,
 };
-use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use rustc_span::def_id::DefId;
 use tracing::{debug, instrument};
 
 pub use self::coherence::{
-    add_placeholder_note, orphan_check_trait_ref, overlapping_impls, InCrate, IsFirstInputType,
-    OrphanCheckErr, OrphanCheckMode, OverlapResult, UncoveredTyParams,
+    InCrate, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, OverlapResult, UncoveredTyParams,
+    add_placeholder_note, orphan_check_trait_ref, overlapping_impls,
 };
 pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, OldSolverError, PendingPredicateObligation};
 pub use self::normalize::NormalizeExt;
 pub use self::object_safety::{
-    hir_ty_lowering_object_safety_violations, is_vtable_safe_method,
-    object_safety_violations_for_assoc_item, ObjectSafetyViolation,
+    ObjectSafetyViolation, hir_ty_lowering_object_safety_violations, is_vtable_safe_method,
+    object_safety_violations_for_assoc_item,
 };
 pub use self::project::{normalize_inherent_projection, normalize_projection_ty};
 pub use self::select::{
@@ -59,13 +59,13 @@ pub use self::specialize::specialization_graph::{
     FutureCompatOverlapError, FutureCompatOverlapErrorKind,
 };
 pub use self::specialize::{
-    specialization_graph, translate_args, translate_args_with_cause, OverlapError,
+    OverlapError, specialization_graph, translate_args, translate_args_with_cause,
 };
 pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::{
-    elaborate, expand_trait_aliases, impl_item_is_final, supertraits,
+    BoundVarReplacer, PlaceholderReplacer, TraitAliasExpander, TraitAliasExpansionInfo, elaborate,
+    expand_trait_aliases, impl_item_is_final, supertraits,
     transitive_bounds_that_define_assoc_item, upcast_choices, with_replaced_escaping_bound_vars,
-    BoundVarReplacer, PlaceholderReplacer, TraitAliasExpander, TraitAliasExpansionInfo,
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::outlives::env::OutlivesEnvironment;

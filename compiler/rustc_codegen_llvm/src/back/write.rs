@@ -20,28 +20,28 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{DiagCtxtHandle, FatalError, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_session::config::{
     self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
 };
-use rustc_session::Session;
-use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
+use rustc_span::symbol::sym;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::debug;
 
 use crate::back::lto::ThinBuffer;
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
-    selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
+    LlvmSelfProfiler, selfprofile_after_pass_callback, selfprofile_before_pass_callback,
 };
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
     WithLlvmError, WriteBytecode,
 };
-use crate::llvm::diagnostic::OptimizationDiagnosticKind;
+use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::type_::Type;
-use crate::{base, common, llvm_util, LlvmCodegenBackend, ModuleLlvm};
+use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> FatalError {
     match llvm::last_error() {
@@ -157,7 +157,8 @@ fn to_pass_builder_opt_level(cfg: config::OptLevel) -> llvm::PassBuilderOptLevel
 fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
     match relocation_model {
         RelocModel::Static => llvm::RelocModel::Static,
-        // LLVM doesn't have a PIE relocation model, it represents PIE as PIC with an extra attribute.
+        // LLVM doesn't have a PIE relocation model, it represents PIE as PIC with an extra
+        // attribute.
         RelocModel::Pic | RelocModel::Pie => llvm::RelocModel::PIC,
         RelocModel::DynamicNoPic => llvm::RelocModel::DynamicNoPic,
         RelocModel::Ropi => llvm::RelocModel::ROPI,
@@ -188,8 +189,8 @@ pub(crate) fn target_machine_factory(
     let use_softfp = if sess.target.arch == "arm" && sess.target.abi == "eabihf" {
         sess.opts.cg.soft_float
     } else {
-        // `validate_commandline_args_with_session_available` has already warned about this being ignored.
-        // Let's make sure LLVM doesn't suddenly start using this flag on more targets.
+        // `validate_commandline_args_with_session_available` has already warned about this being
+        // ignored. Let's make sure LLVM doesn't suddenly start using this flag on more targets.
         false
     };
 
@@ -446,13 +447,12 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
                 column: opt.column,
                 pass_name: &opt.pass_name,
                 kind: match opt.kind {
-                    OptimizationDiagnosticKind::OptimizationRemark => "success",
-                    OptimizationDiagnosticKind::OptimizationMissed
-                    | OptimizationDiagnosticKind::OptimizationFailure => "missed",
-                    OptimizationDiagnosticKind::OptimizationAnalysis
-                    | OptimizationDiagnosticKind::OptimizationAnalysisFPCommute
-                    | OptimizationDiagnosticKind::OptimizationAnalysisAliasing => "analysis",
-                    OptimizationDiagnosticKind::OptimizationRemarkOther => "other",
+                    OptimizationRemark => "success",
+                    OptimizationMissed | OptimizationFailure => "missed",
+                    OptimizationAnalysis
+                    | OptimizationAnalysisFPCommute
+                    | OptimizationAnalysisAliasing => "analysis",
+                    OptimizationRemarkOther => "other",
                 },
                 message: &opt.message,
             });
@@ -945,11 +945,12 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
 }
 
 fn target_is_apple(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
-    cgcx.opts.target_triple.triple().contains("-ios")
-        || cgcx.opts.target_triple.triple().contains("-darwin")
-        || cgcx.opts.target_triple.triple().contains("-tvos")
-        || cgcx.opts.target_triple.triple().contains("-watchos")
-        || cgcx.opts.target_triple.triple().contains("-visionos")
+    let triple = cgcx.opts.target_triple.triple();
+    triple.contains("-ios")
+        || triple.contains("-darwin")
+        || triple.contains("-tvos")
+        || triple.contains("-watchos")
+        || triple.contains("-visionos")
 }
 
 fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {

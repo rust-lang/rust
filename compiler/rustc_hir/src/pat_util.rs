@@ -1,7 +1,7 @@
 use std::iter::Enumerate;
 
-use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use rustc_span::symbol::Ident;
 
 use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::{DefId, DefIdSet};

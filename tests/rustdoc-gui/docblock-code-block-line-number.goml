@@ -39,7 +39,10 @@ define-function: (
             {
                 "color": |color|,
                 "margin": "0px",
-                "padding": "14px 8px",
+                "padding-top": "14px",
+                "padding-bottom": "14px",
+                "padding-left": "8px",
+                "padding-right": "2px",
                 "text-align": "right",
                 // There should not be a radius on the right of the line numbers.
                 "border-top-left-radius": "6px",
@@ -84,7 +87,7 @@ assert-css: ("#settings", {"display": "block"})
 
 // Then, click the toggle button.
 click: "input#line-numbers"
-wait-for: 100 // wait-for-false does not exist
+wait-for: 100 // FIXME: `wait-for-false` does not exist
 assert-false: "pre.example-line-numbers"
 assert-local-storage: {"rustdoc-line-numbers": "false" }
 
@@ -104,6 +107,8 @@ assert-css: (
 click: "input#line-numbers"
 wait-for: "pre.example-line-numbers"
 assert-local-storage: {"rustdoc-line-numbers": "true" }
+wait-for: 100 // FIXME: `wait-for-false` does not exist
+assert: "pre.example-line-numbers"
 
 // Same check with scraped examples line numbers.
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
@@ -141,3 +146,112 @@ assert-css: (
     },
     ALL,
 )
+
+define-function: (
+    "check-padding",
+    [path, padding_bottom],
+    block {
+        assert-css: (|path| + " .src-line-numbers", {
+            "padding-top": "0px",
+            "padding-bottom": "0px",
+            "padding-left": "0px",
+            "padding-right": "0px",
+        }, ALL)
+        assert-css: (|path| + " .src-line-numbers > pre", {
+            "padding-top": "14px",
+            "padding-bottom": |padding_bottom|,
+            "padding-left": "0px",
+            "padding-right": "0px",
+        }, ALL)
+        assert-css: (|path| + " .src-line-numbers > pre > span", {
+            "padding-top": "0px",
+            "padding-bottom": "0px",
+            "padding-left": "8px",
+            "padding-right": "8px",
+        }, ALL)
+    },
+)
+
+call-function: ("check-padding", {
+    "path": ".scraped-example .example-wrap",
+    "padding_bottom": "0px",
+})
+
+move-cursor-to: ".scraped-example .example-wrap .rust"
+wait-for: ".scraped-example .example-wrap .button-holder .expand"
+click: ".scraped-example .example-wrap .button-holder .expand"
+wait-for: ".scraped-example.expanded"
+
+call-function: ("check-padding", {
+    "path": ".scraped-example.expanded .example-wrap",
+    "padding_bottom": "14px",
+})
+
+define-function: ("check-line-numbers-existence", [], block {
+    assert-local-storage: {"rustdoc-line-numbers": "true" }
+    assert-false: ".example-line-numbers"
+    click: "#settings-menu"
+    wait-for: "#settings"
+
+    // Then, click the toggle button.
+    click: "input#line-numbers"
+    wait-for: 100 // FIXME: `wait-for-false` does not exist
+    assert-local-storage-false: {"rustdoc-line-numbers": "true" }
+    assert-false: ".example-line-numbers"
+    // Line numbers should still be there.
+    assert: ".src-line-numbers"
+    // Now disabling the setting.
+    click: "input#line-numbers"
+    wait-for: 100 // FIXME: `wait-for-false` does not exist
+    assert-local-storage: {"rustdoc-line-numbers": "true" }
+    assert-false: ".example-line-numbers"
+    // Line numbers should still be there.
+    assert: ".src-line-numbers"
+    // Closing settings menu.
+    click: "#settings-menu"
+    wait-for-css: ("#settings", {"display": "none"})
+})
+
+// Checking that turning off the line numbers setting won't remove line numbers from scraped
+// examples.
+call-function: ("check-line-numbers-existence", {})
+
+// Now checking the line numbers in the source code page.
+click: ".src"
+assert-css: (".src-line-numbers", {
+    "padding-top": "20px",
+    "padding-bottom": "20px",
+    "padding-left": "4px",
+    "padding-right": "0px",
+})
+assert-css: (".src-line-numbers > a", {
+    "padding-top": "0px",
+    "padding-bottom": "0px",
+    "padding-left": "8px",
+    "padding-right": "8px",
+})
+// Checking that turning off the line numbers setting won't remove line numbers.
+call-function: ("check-line-numbers-existence", {})
+
+// Now checking that even non-rust code blocks have line numbers generated.
+go-to: "file://" + |DOC_PATH| + "/lib2/sub_mod/struct.Foo.html"
+assert-local-storage: {"rustdoc-line-numbers": "true" }
+assert: ".example-wrap > pre.language-txt"
+assert: ".example-wrap > pre.rust"
+assert-count: (".example-wrap", 2)
+assert-count: (".example-wrap > pre.example-line-numbers", 2)
+
+click: "#settings-menu"
+wait-for: "#settings"
+
+// Then, click the toggle button.
+click: "input#line-numbers"
+wait-for: 100 // FIXME: `wait-for-false` does not exist
+assert-local-storage-false: {"rustdoc-line-numbers": "true" }
+assert-count: (".example-wrap > pre.example-line-numbers", 0)
+
+// Now turning off the setting.
+click: "input#line-numbers"
+wait-for: 100 // FIXME: `wait-for-false` does not exist
+assert-local-storage: {"rustdoc-line-numbers": "true" }
+assert-count: (".example-wrap > pre.example-line-numbers", 2)

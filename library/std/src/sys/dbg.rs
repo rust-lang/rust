@@ -34,7 +34,7 @@ mod os {
 
 #[cfg(any(target_vendor = "apple", target_os = "freebsd"))]
 mod os {
-    use libc::{c_int, sysctl, CTL_KERN, KERN_PROC, KERN_PROC_PID};
+    use libc::{CTL_KERN, KERN_PROC, KERN_PROC_PID, c_int, sysctl};
 
     use super::DebuggerPresence;
     use crate::io::{Cursor, Read, Seek, SeekFrom};

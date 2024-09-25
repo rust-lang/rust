@@ -30,32 +30,26 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
 
     block(4, mir::TerminatorKind::Return);
     block(1, mir::TerminatorKind::Return);
-    block(
-        2,
-        mir::TerminatorKind::Call {
-            func: mir::Operand::Copy(dummy_place.clone()),
-            args: [].into(),
-            destination: dummy_place.clone(),
-            target: Some(mir::START_BLOCK),
-            unwind: mir::UnwindAction::Continue,
-            call_source: mir::CallSource::Misc,
-            fn_span: DUMMY_SP,
-        },
-    );
+    block(2, mir::TerminatorKind::Call {
+        func: mir::Operand::Copy(dummy_place.clone()),
+        args: [].into(),
+        destination: dummy_place.clone(),
+        target: Some(mir::START_BLOCK),
+        unwind: mir::UnwindAction::Continue,
+        call_source: mir::CallSource::Misc,
+        fn_span: DUMMY_SP,
+    });
     block(3, mir::TerminatorKind::Return);
     block(0, mir::TerminatorKind::Return);
-    block(
-        4,
-        mir::TerminatorKind::Call {
-            func: mir::Operand::Copy(dummy_place.clone()),
-            args: [].into(),
-            destination: dummy_place.clone(),
-            target: Some(mir::START_BLOCK),
-            unwind: mir::UnwindAction::Continue,
-            call_source: mir::CallSource::Misc,
-            fn_span: DUMMY_SP,
-        },
-    );
+    block(4, mir::TerminatorKind::Call {
+        func: mir::Operand::Copy(dummy_place.clone()),
+        args: [].into(),
+        destination: dummy_place.clone(),
+        target: Some(mir::START_BLOCK),
+        unwind: mir::UnwindAction::Continue,
+        call_source: mir::CallSource::Misc,
+        fn_span: DUMMY_SP,
+    });
 
     mir::Body::new_cfg_only(blocks)
 }

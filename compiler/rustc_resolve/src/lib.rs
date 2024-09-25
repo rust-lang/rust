@@ -40,8 +40,8 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
-    self as ast, attr, AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind,
-    NodeId, Path, CRATE_NODE_ID,
+    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
+    LitKind, NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -54,7 +54,7 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
     self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS,
 };
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
@@ -70,9 +70,9 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span};
+use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 type Res = def::Res<NodeId>;
@@ -190,6 +190,11 @@ impl InvocationParent {
 
 #[derive(Copy, Debug, Clone)]
 struct PendingAnonConstInfo {
+    // A const arg is only a "trivial" const arg if it has at *most* one set of braces
+    // around the argument. We track whether we have stripped an outter brace so that
+    // if a macro expands to a braced expression *and* the macro was itself inside of
+    // some braces then we can consider it to be a non-trivial const argument.
+    block_was_stripped: bool,
     id: NodeId,
     span: Span,
 }

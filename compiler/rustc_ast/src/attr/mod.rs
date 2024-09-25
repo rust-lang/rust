@@ -4,15 +4,15 @@ use std::iter;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
-use smallvec::{smallvec, SmallVec};
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{Ident, Symbol, sym};
+use smallvec::{SmallVec, smallvec};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::ast::{
-    AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DelimArgs,
-    Expr, ExprKind, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NormalAttr, Path,
-    PathSegment, Safety, DUMMY_NODE_ID,
+    AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID,
+    DelimArgs, Expr, ExprKind, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem,
+    NormalAttr, Path, PathSegment, Safety,
 };
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Token};

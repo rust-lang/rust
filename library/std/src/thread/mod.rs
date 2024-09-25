@@ -162,12 +162,12 @@ use crate::any::Any;
 use crate::cell::{Cell, OnceCell, UnsafeCell};
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
-use crate::mem::{self, forget, ManuallyDrop};
+use crate::mem::{self, ManuallyDrop, forget};
 use crate::num::NonZero;
 use crate::pin::Pin;
 use crate::ptr::addr_of_mut;
-use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::Arc;
+use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::sync::Parker;
 use crate::sys::thread as imp;
 use crate::sys_common::{AsInner, IntoInner};
@@ -178,7 +178,7 @@ use crate::{env, fmt, io, panic, panicking, str};
 mod scoped;
 
 #[stable(feature = "scoped_threads", since = "1.63.0")]
-pub use scoped::{scope, Scope, ScopedJoinHandle};
+pub use scoped::{Scope, ScopedJoinHandle, scope};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage

@@ -16,6 +16,9 @@
 //! The crate itself provides a global allocator which on wasm has no
 //! synchronization as there are no threads!
 
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use crate::alloc::{GlobalAlloc, Layout, System};
 
 static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::Dlmalloc::new();

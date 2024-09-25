@@ -40,8 +40,8 @@ pub(crate) fn emit_unescape_error(
             dcx.emit_err(UnescapeError::InvalidUnicodeEscape { span: err_span, surrogate: false })
         }
         EscapeError::MoreThanOneChar => {
-            use unicode_normalization::char::is_combining_mark;
             use unicode_normalization::UnicodeNormalization;
+            use unicode_normalization::char::is_combining_mark;
             let mut sugg = None;
             let mut note = None;
 

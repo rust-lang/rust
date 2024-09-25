@@ -19,8 +19,8 @@ use rustc_span::sym;
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
-use crate::cfi::typeid::itanium_cxx_abi::encode::EncodeTyOptions;
 use crate::cfi::typeid::TypeIdOptions;
+use crate::cfi::typeid::itanium_cxx_abi::encode::EncodeTyOptions;
 
 /// Options for transform_ty.
 pub(crate) type TransformTyOptions = TypeIdOptions;
@@ -146,7 +146,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                         !is_zst
                     });
                     if let Some(field) = field {
-                        let ty0 = self.tcx.erase_regions(field.ty(self.tcx, args));
+                        let ty0 = self.tcx.normalize_erasing_regions(
+                            ty::ParamEnv::reveal_all(),
+                            field.ty(self.tcx, args),
+                        );
                         // Generalize any repr(transparent) user-defined type that is either a
                         // pointer or reference, and either references itself or any other type that
                         // contains or references itself, to avoid a reference cycle.

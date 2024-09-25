@@ -1,10 +1,10 @@
 //! List of the unstable feature gates.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 
-use super::{to_nonzero, Feature};
+use super::{Feature, to_nonzero};
 
 pub struct UnstableFeature {
     pub feature: Feature,
@@ -227,6 +227,8 @@ declare_features! (
     (internal, staged_api, "1.0.0", None),
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
+    /// Helps with formatting for `group_imports = "StdExternalCrate"`.
+    (unstable, unqualified_local_imports, "CURRENT_RUSTC_VERSION", None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (unstable, with_negative_coherence, "1.60.0", None),
@@ -395,7 +397,7 @@ declare_features! (
     (unstable, closure_lifetime_binder, "1.64.0", Some(97362)),
     /// Allows `#[track_caller]` on closures and coroutines.
     (unstable, closure_track_caller, "1.57.0", Some(87417)),
-    /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
+    /// Allows `extern "C-cmse-nonsecure-entry" fn()`.
     (unstable, cmse_nonsecure_entry, "1.48.0", Some(75835)),
     /// Allows `async {}` expressions in const contexts.
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
@@ -558,6 +560,8 @@ declare_features! (
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
     (unstable, patchable_function_entry, "1.81.0", Some(123115)),
+    /// Experimental features that make `Pin` more ergonomic.
+    (incomplete, pin_ergonomics, "CURRENT_RUSTC_VERSION", Some(130494)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
@@ -576,7 +580,7 @@ declare_features! (
     /// be used to describe E or vise-versa.
     (unstable, result_ffi_guarantees, "1.80.0", Some(110503)),
     /// Allows bounding the return type of AFIT/RPITIT.
-    (incomplete, return_type_notation, "1.70.0", Some(109417)),
+    (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics

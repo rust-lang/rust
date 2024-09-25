@@ -30,7 +30,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::{braced, Expr, Ident, Lit, LitStr, Macro, Token};
+use syn::{Expr, Ident, Lit, LitStr, Macro, Token, braced};
 
 #[cfg(test)]
 mod tests;

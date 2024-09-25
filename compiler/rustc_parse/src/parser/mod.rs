@@ -27,9 +27,9 @@ use rustc_ast::tokenstream::{
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind, DelimArgs,
-    Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit, Visibility,
-    VisibilityKind, DUMMY_NODE_ID,
+    self as ast, AnonConst, AttrArgs, AttrArgsEq, AttrId, ByRef, Const, CoroutineKind,
+    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered,
+    Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -37,8 +37,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -146,21 +146,25 @@ pub struct Parser<'a> {
     token_cursor: TokenCursor,
     // The number of calls to `bump`, i.e. the position in the token stream.
     num_bump_calls: u32,
-    // During parsing we may sometimes need to 'unglue' a glued token into two
-    // component tokens (e.g. '>>' into '>' and '>), so the parser can consume
-    // them one at a time. This process bypasses the normal capturing mechanism
-    // (e.g. `num_bump_calls` will not be incremented), since the 'unglued'
-    // tokens due not exist in the original `TokenStream`.
+    // During parsing we may sometimes need to "unglue" a glued token into two
+    // or three component tokens (e.g. `>>` into `>` and `>`, or `>>=` into `>`
+    // and `>` and `=`), so the parser can consume them one at a time. This
+    // process bypasses the normal capturing mechanism (e.g. `num_bump_calls`
+    // will not be incremented), since the "unglued" tokens due not exist in
+    // the original `TokenStream`.
     //
-    // If we end up consuming both unglued tokens, this is not an issue. We'll
-    // end up capturing the single 'glued' token.
+    // If we end up consuming all the component tokens, this is not an issue,
+    // because we'll end up capturing the single "glued" token.
     //
-    // However, sometimes we may want to capture just the first 'unglued'
+    // However, sometimes we may want to capture not all of the original
     // token. For example, capturing the `Vec<u8>` in `Option<Vec<u8>>`
     // requires us to unglue the trailing `>>` token. The `break_last_token`
-    // field is used to track this token. It gets appended to the captured
+    // field is used to track these tokens. They get appended to the captured
     // stream when we evaluate a `LazyAttrTokenStream`.
-    break_last_token: bool,
+    //
+    // This value is always 0, 1, or 2. It can only reach 2 when splitting
+    // `>>=` or `<<=`.
+    break_last_token: u32,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -453,7 +457,7 @@ impl<'a> Parser<'a> {
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor { tree_cursor: stream.into_trees(), stack: Vec::new() },
             num_bump_calls: 0,
-            break_last_token: false,
+            break_last_token: 0,
             unmatched_angle_bracket_count: 0,
             angle_bracket_nesting: 0,
             last_unexpected_token_span: None,
@@ -773,7 +777,7 @@ impl<'a> Parser<'a> {
             self.bump();
             return true;
         }
-        match self.token.kind.break_two_token_op() {
+        match self.token.kind.break_two_token_op(1) {
             Some((first, second)) if first == expected => {
                 let first_span = self.psess.source_map().start_point(self.token.span);
                 let second_span = self.token.span.with_lo(first_span.hi());
@@ -783,8 +787,8 @@ impl<'a> Parser<'a> {
                 //
                 // If we consume any additional tokens, then this token
                 // is not needed (we'll capture the entire 'glued' token),
-                // and `bump` will set this field to `None`
-                self.break_last_token = true;
+                // and `bump` will set this field to 0.
+                self.break_last_token += 1;
                 // Use the spacing of the glued token as the spacing of the
                 // unglued second token.
                 self.bump_with((Token::new(second, second_span), self.token_spacing));
@@ -1148,10 +1152,9 @@ impl<'a> Parser<'a> {
         // than `.0`/`.1` access.
         let mut next = self.token_cursor.inlined_next();
         self.num_bump_calls += 1;
-        // We've retrieved an token from the underlying
-        // cursor, so we no longer need to worry about
-        // an unglued token. See `break_and_eat` for more details
-        self.break_last_token = false;
+        // We got a token from the underlying cursor and no longer need to
+        // worry about an unglued token. See `break_and_eat` for more details.
+        self.break_last_token = 0;
         if next.0.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
             let fallback_span = self.token.span;
@@ -1562,12 +1565,25 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Checks for `::` or, potentially, `:::` and then look ahead after it.
+    fn check_path_sep_and_look_ahead(&mut self, looker: impl Fn(&Token) -> bool) -> bool {
+        if self.check(&token::PathSep) {
+            if self.may_recover() && self.look_ahead(1, |t| t.kind == token::Colon) {
+                debug_assert!(!self.look_ahead(1, &looker), "Looker must not match on colon");
+                self.look_ahead(2, looker)
+            } else {
+                self.look_ahead(1, looker)
+            }
+        } else {
+            false
+        }
+    }
+
     /// `::{` or `::*`
     fn is_import_coupler(&mut self) -> bool {
-        self.check(&token::PathSep)
-            && self.look_ahead(1, |t| {
-                *t == token::OpenDelim(Delimiter::Brace) || *t == token::BinOp(token::Star)
-            })
+        self.check_path_sep_and_look_ahead(|t| {
+            matches!(t.kind, token::OpenDelim(Delimiter::Brace) | token::BinOp(token::Star))
+        })
     }
 
     // Debug view of the parser's token stream, up to `{lookahead}` tokens.

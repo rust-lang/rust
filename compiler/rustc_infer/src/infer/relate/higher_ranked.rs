@@ -6,8 +6,8 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use tracing::{debug, instrument};
 
 use super::RelateResult;
-use crate::infer::snapshot::CombinedSnapshot;
 use crate::infer::InferCtxt;
+use crate::infer::snapshot::CombinedSnapshot;
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Replaces all bound variables (lifetimes, types, and constants) bound by
@@ -34,22 +34,22 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion| {
-                ty::Region::new_placeholder(
-                    self.tcx,
-                    ty::PlaceholderRegion { universe: next_universe, bound: br },
-                )
+                ty::Region::new_placeholder(self.tcx, ty::PlaceholderRegion {
+                    universe: next_universe,
+                    bound: br,
+                })
             },
             types: &mut |bound_ty: ty::BoundTy| {
-                Ty::new_placeholder(
-                    self.tcx,
-                    ty::PlaceholderType { universe: next_universe, bound: bound_ty },
-                )
+                Ty::new_placeholder(self.tcx, ty::PlaceholderType {
+                    universe: next_universe,
+                    bound: bound_ty,
+                })
             },
             consts: &mut |bound_var: ty::BoundVar| {
-                ty::Const::new_placeholder(
-                    self.tcx,
-                    ty::PlaceholderConst { universe: next_universe, bound: bound_var },
-                )
+                ty::Const::new_placeholder(self.tcx, ty::PlaceholderConst {
+                    universe: next_universe,
+                    bound: bound_var,
+                })
             },
         };
 

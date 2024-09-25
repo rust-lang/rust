@@ -4,8 +4,8 @@ use buffer::Buffer;
 
 use crate::fmt;
 use crate::io::{
-    self, uninlined_slow_read_byte, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom,
-    SizeHint, SpecReadByte, DEFAULT_BUF_SIZE,
+    self, BorrowedCursor, BufRead, DEFAULT_BUF_SIZE, IoSliceMut, Read, Seek, SeekFrom, SizeHint,
+    SpecReadByte, uninlined_slow_read_byte,
 };
 
 /// The `BufReader<R>` struct adds buffering to any reader.
@@ -72,6 +72,14 @@ impl<R: Read> BufReader<R> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: R) -> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
+    }
+
+    pub(crate) fn try_new_buffer() -> io::Result<Buffer> {
+        Buffer::try_with_capacity(DEFAULT_BUF_SIZE)
+    }
+
+    pub(crate) fn with_buffer(inner: R, buf: Buffer) -> Self {
+        Self { inner, buf }
     }
 
     /// Creates a new `BufReader<R>` with the specified buffer capacity.

@@ -4,14 +4,14 @@ use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
 use rustc_hir::HirId;
+use rustc_hir::def::{DefKind, Res};
 use rustc_middle::span_bug;
 use rustc_session::errors::report_lit_error;
-use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{DesugaringKind, Span, DUMMY_SP};
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::source_map::{Spanned, respan};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Span};
+use thin_vec::{ThinVec, thin_vec};
 
 use super::errors::{
     AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
@@ -23,7 +23,7 @@ use super::{
     GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 use crate::errors::YieldInClosure;
-use crate::{fluent_generated, FnDeclKind, ImplTraitPosition};
+use crate::{AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, fluent_generated};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -281,6 +281,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
+                        AllowReturnTypeNotation::No,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                     );
@@ -328,6 +329,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             &se.qself,
                             &se.path,
                             ParamMode::Optional,
+                            AllowReturnTypeNotation::No,
                             ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         )),
@@ -387,7 +389,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let node_id = self.next_node_id();
 
                 // HACK(min_generic_const_args): see lower_anon_const
-                if !arg.is_potential_trivial_const_arg() {
+                if !arg.is_potential_trivial_const_arg(true) {
                     // Add a definition for the in-band const def.
                     self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
                 }
@@ -723,18 +725,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
                 Some(self.allow_gen_future.clone()),
             );
-            self.lower_attrs(
-                inner_hir_id,
-                &[Attribute {
-                    kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(
-                        sym::track_caller,
-                        span,
-                    )))),
-                    id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
-                    style: AttrStyle::Outer,
-                    span: unstable_span,
-                }],
-            );
+            self.lower_attrs(inner_hir_id, &[Attribute {
+                kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(
+                    sym::track_caller,
+                    span,
+                )))),
+                id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
+                style: AttrStyle::Outer,
+                span: unstable_span,
+            }]);
         }
     }
 
@@ -1291,6 +1290,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
+                        AllowReturnTypeNotation::No,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                     );
@@ -1311,6 +1311,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
+                        AllowReturnTypeNotation::No,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                     );
@@ -1336,6 +1337,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &se.qself,
                     &se.path,
                     ParamMode::Optional,
+                    AllowReturnTypeNotation::No,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
                 );

@@ -5,8 +5,8 @@ use rustc_middle::ty::{self, Region};
 use tracing::{debug, instrument};
 
 use super::explicit_outlives_bounds;
-use crate::infer::free_regions::FreeRegionMap;
 use crate::infer::GenericKind;
+use crate::infer::free_regions::FreeRegionMap;
 use crate::traits::query::OutlivesBound;
 
 /// The `OutlivesEnvironment` collects information about what outlives

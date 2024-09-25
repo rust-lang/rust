@@ -9,14 +9,14 @@ use rustc_ast::{
     Path, PathSegment, QSelf,
 };
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
 
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
-use crate::errors::PathSingleColon;
+use crate::errors::{PathSingleColon, PathTripleColon};
 use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use crate::{errors, maybe_whole};
 
@@ -107,10 +107,11 @@ impl<'a> Parser<'a> {
             self.parse_path_segments(&mut path.segments, style, None)?;
         }
 
-        Ok((
-            qself,
-            Path { segments: path.segments, span: lo.to(self.prev_token.span), tokens: None },
-        ))
+        Ok((qself, Path {
+            segments: path.segments,
+            span: lo.to(self.prev_token.span),
+            tokens: None,
+        }))
     }
 
     /// Recover from an invalid single colon, when the user likely meant a qualified path.
@@ -210,7 +211,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let mut segments = ThinVec::new();
         let mod_sep_ctxt = self.token.span.ctxt();
-        if self.eat(&token::PathSep) {
+        if self.eat_path_sep() {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
@@ -246,7 +247,7 @@ impl<'a> Parser<'a> {
             }
             segments.push(segment);
 
-            if self.is_import_coupler() || !self.eat(&token::PathSep) {
+            if self.is_import_coupler() || !self.eat_path_sep() {
                 if style == PathStyle::Expr
                     && self.may_recover()
                     && self.token == token::Colon
@@ -270,6 +271,18 @@ impl<'a> Parser<'a> {
                 return Ok(());
             }
         }
+    }
+
+    /// Eat `::` or, potentially, `:::`.
+    #[must_use]
+    pub(super) fn eat_path_sep(&mut self) -> bool {
+        let result = self.eat(&token::PathSep);
+        if result && self.may_recover() {
+            if self.eat_noexpect(&token::Colon) {
+                self.dcx().emit_err(PathTripleColon { span: self.prev_token.span });
+            }
+        }
+        result
     }
 
     pub(super) fn parse_path_segment(
@@ -297,9 +310,7 @@ impl<'a> Parser<'a> {
 
         Ok(
             if style == PathStyle::Type && check_args_start(self)
-                || style != PathStyle::Mod
-                    && self.check(&token::PathSep)
-                    && self.look_ahead(1, |t| is_args_start(t))
+                || style != PathStyle::Mod && self.check_path_sep_and_look_ahead(is_args_start)
             {
                 // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
                 // it isn't, then we reset the unmatched angle bracket count as we're about to start
@@ -310,7 +321,8 @@ impl<'a> Parser<'a> {
 
                 // Generic arguments are found - `<`, `(`, `::<` or `::(`.
                 // First, eat `::` if it exists.
-                let _ = self.eat(&token::PathSep);
+                let _ = self.eat_path_sep();
+
                 let lo = self.token.span;
                 let args = if self.eat_lt() {
                     // `<'a, T, A = U>`
@@ -476,16 +488,13 @@ impl<'a> Parser<'a> {
 
         error.span_suggestion_verbose(
             prev_token_before_parsing.span,
-            format!(
-                "consider removing the `::` here to {}",
-                match style {
-                    PathStyle::Expr => "call the expression",
-                    PathStyle::Pat => "turn this into a tuple struct pattern",
-                    _ => {
-                        return;
-                    }
+            format!("consider removing the `::` here to {}", match style {
+                PathStyle::Expr => "call the expression",
+                PathStyle::Pat => "turn this into a tuple struct pattern",
+                _ => {
+                    return;
                 }
-            ),
+            }),
             "",
             Applicability::MaybeIncorrect,
         );

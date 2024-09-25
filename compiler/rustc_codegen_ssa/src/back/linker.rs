@@ -1,9 +1,8 @@
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
-use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
-use std::{env, iter, mem, str};
+use std::{env, io, iter, mem, str};
 
 use cc::windows_registry;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -15,8 +14,8 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_session::Session;
+use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_span::symbol::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
@@ -754,7 +753,7 @@ impl<'a> Linker for GccLinker<'a> {
         if self.sess.target.is_like_osx {
             // Write a plain, newline-separated list of symbols
             let res: io::Result<()> = try {
-                let mut f = BufWriter::new(File::create(&path)?);
+                let mut f = File::create_buffered(&path)?;
                 for sym in symbols {
                     debug!("  _{sym}");
                     writeln!(f, "_{sym}")?;
@@ -765,7 +764,7 @@ impl<'a> Linker for GccLinker<'a> {
             }
         } else if is_windows {
             let res: io::Result<()> = try {
-                let mut f = BufWriter::new(File::create(&path)?);
+                let mut f = File::create_buffered(&path)?;
 
                 // .def file similar to MSVC one but without LIBRARY section
                 // because LD doesn't like when it's empty
@@ -781,7 +780,7 @@ impl<'a> Linker for GccLinker<'a> {
         } else {
             // Write an LD version script
             let res: io::Result<()> = try {
-                let mut f = BufWriter::new(File::create(&path)?);
+                let mut f = File::create_buffered(&path)?;
                 writeln!(f, "{{")?;
                 if !symbols.is_empty() {
                     writeln!(f, "  global:")?;
@@ -1059,7 +1058,7 @@ impl<'a> Linker for MsvcLinker<'a> {
 
         let path = tmpdir.join("lib.def");
         let res: io::Result<()> = try {
-            let mut f = BufWriter::new(File::create(&path)?);
+            let mut f = File::create_buffered(&path)?;
 
             // Start off with the standard module name header and then go
             // straight to exports.
@@ -1648,7 +1647,7 @@ impl<'a> Linker for AixLinker<'a> {
     fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         let path = tmpdir.join("list.exp");
         let res: io::Result<()> = try {
-            let mut f = BufWriter::new(File::create(&path)?);
+            let mut f = File::create_buffered(&path)?;
             // FIXME: use llvm-nm to generate export list.
             for symbol in symbols {
                 debug!("  _{symbol}");
@@ -1961,7 +1960,7 @@ impl<'a> Linker for BpfLinker<'a> {
     fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         let path = tmpdir.join("symbols");
         let res: io::Result<()> = try {
-            let mut f = BufWriter::new(File::create(&path)?);
+            let mut f = File::create_buffered(&path)?;
             for sym in symbols {
                 writeln!(f, "{sym}")?;
             }

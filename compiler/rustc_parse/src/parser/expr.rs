@@ -10,25 +10,25 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
-use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
-use rustc_ast::visit::{walk_expr, Visitor};
+use rustc_ast::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
+use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AttrStyle, AttrVec, BinOp, BinOpKind, BlockCheckMode, CaptureBy,
-    ClosureBinder, Expr, ExprField, ExprKind, FnDecl, FnRetTy, Label, MacCall, MetaItemLit,
-    Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp, DUMMY_NODE_ID,
+    ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl, FnRetTy, Label, MacCall,
+    MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
 use rustc_lexer::unescape::unescape_char;
 use rustc_macros::Subdiagnostic;
-use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
-use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
+use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::source_map::{self, Spanned};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, ErrorGuaranteed, Pos, Span};
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
 use super::diagnostics::SnapshotParser;
@@ -811,20 +811,17 @@ impl<'a> Parser<'a> {
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, it is an illegal postfix operator.
         if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) {
-            let msg = format!(
-                "cast cannot be followed by {}",
-                match with_postfix.kind {
-                    ExprKind::Index(..) => "indexing",
-                    ExprKind::Try(_) => "`?`",
-                    ExprKind::Field(_, _) => "a field access",
-                    ExprKind::MethodCall(_) => "a method call",
-                    ExprKind::Call(_, _) => "a function call",
-                    ExprKind::Await(_, _) => "`.await`",
-                    ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
-                    ExprKind::Err(_) => return Ok(with_postfix),
-                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
-                }
-            );
+            let msg = format!("cast cannot be followed by {}", match with_postfix.kind {
+                ExprKind::Index(..) => "indexing",
+                ExprKind::Try(_) => "`?`",
+                ExprKind::Field(_, _) => "a field access",
+                ExprKind::MethodCall(_) => "a method call",
+                ExprKind::Call(_, _) => "a function call",
+                ExprKind::Await(_, _) => "`.await`",
+                ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
+                ExprKind::Err(_) => return Ok(with_postfix),
+                _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
+            });
             let mut err = self.dcx().struct_span_err(span, msg);
 
             let suggest_parens = |err: &mut Diag<'_>| {
@@ -2844,10 +2841,13 @@ impl<'a> Parser<'a> {
                 .emit_err(errors::MissingExpressionInForLoop { span: expr.span.shrink_to_lo() });
             let err_expr = self.mk_expr(expr.span, ExprKind::Err(guar));
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
-            return Ok(self.mk_expr(
-                lo.to(self.prev_token.span),
-                ExprKind::ForLoop { pat, iter: err_expr, body: block, label: opt_label, kind },
-            ));
+            return Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::ForLoop {
+                pat,
+                iter: err_expr,
+                body: block,
+                label: opt_label,
+                kind,
+            }));
         }
 
         let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;

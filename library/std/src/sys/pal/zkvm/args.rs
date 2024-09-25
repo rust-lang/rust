@@ -1,4 +1,4 @@
-use super::{abi, WORD_SIZE};
+use super::{WORD_SIZE, abi};
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::sys::os_str;

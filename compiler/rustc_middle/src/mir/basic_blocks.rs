@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
-use rustc_data_structures::graph::dominators::{dominators, Dominators};
+use rustc_data_structures::graph::dominators::{Dominators, dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceLock;
 use rustc_index::{IndexSlice, IndexVec};
@@ -9,7 +9,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
 use crate::mir::traversal::Postorder;
-use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind, START_BLOCK};
+use crate::mir::{BasicBlock, BasicBlockData, START_BLOCK, Terminator, TerminatorKind};
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlocks<'tcx> {
@@ -71,7 +71,7 @@ impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn reverse_postorder(&self) -> &[BasicBlock] {
         self.cache.reverse_postorder.get_or_init(|| {
-            let mut rpo: Vec<_> = Postorder::new(&self.basic_blocks, START_BLOCK).collect();
+            let mut rpo: Vec<_> = Postorder::new(&self.basic_blocks, START_BLOCK, ()).collect();
             rpo.reverse();
             rpo
         })

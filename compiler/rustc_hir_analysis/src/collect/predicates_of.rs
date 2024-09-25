@@ -9,7 +9,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
 use crate::bounds::Bounds;
@@ -240,7 +240,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     for predicate in hir_generics.predicates {
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
-                let ty = icx.lower_ty(bound_pred.bounded_ty);
+                let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
+
                 let bound_vars = tcx.late_bound_vars(bound_pred.hir_id);
                 // Keep the type around in a dummy predicate, in case of no bounds.
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
@@ -378,10 +379,10 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
     for param in opaque_own_params {
         let orig_lifetime = tcx.map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local());
         if let ty::ReEarlyParam(..) = *orig_lifetime {
-            let dup_lifetime = ty::Region::new_early_param(
-                tcx,
-                ty::EarlyParamRegion { index: param.index, name: param.name },
-            );
+            let dup_lifetime = ty::Region::new_early_param(tcx, ty::EarlyParamRegion {
+                index: param.index,
+                name: param.name,
+            });
             let span = tcx.def_span(param.def_id);
             predicates.push((
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_lifetime, dup_lifetime))
@@ -676,7 +677,61 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
         _ => {}
     }
 
+    assert_only_contains_predicates_from(filter, implied_bounds, tcx.types.self_param);
+
     ty::EarlyBinder::bind(implied_bounds)
+}
+
+// Make sure when elaborating supertraits, probing for associated types, etc.,
+// we really truly are elaborating clauses that have `Self` as their self type.
+// This is very important since downstream code relies on this being correct.
+pub(super) fn assert_only_contains_predicates_from<'tcx>(
+    filter: PredicateFilter,
+    bounds: &'tcx [(ty::Clause<'tcx>, Span)],
+    ty: Ty<'tcx>,
+) {
+    if !cfg!(debug_assertions) {
+        return;
+    }
+
+    match filter {
+        PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {
+            for (clause, _) in bounds {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::Trait(trait_predicate) => {
+                        assert_eq!(
+                            trait_predicate.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                    ty::ClauseKind::Projection(projection_predicate) => {
+                        assert_eq!(
+                            projection_predicate.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                    ty::ClauseKind::TypeOutlives(outlives_predicate) => {
+                        assert_eq!(
+                            outlives_predicate.0, ty,
+                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+
+                    ty::ClauseKind::RegionOutlives(_)
+                    | ty::ClauseKind::ConstArgHasType(_, _)
+                    | ty::ClauseKind::WellFormed(_)
+                    | ty::ClauseKind::ConstEvaluatable(_) => {
+                        bug!(
+                            "unexpected non-`Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                }
+            }
+        }
+        PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {}
+    }
 }
 
 /// Returns the predicates defined on `item_def_id` of the form
@@ -770,6 +825,10 @@ impl<'tcx> ItemCtxt<'tcx> {
                 continue;
             };
 
+            // Subtle: If we're collecting `SelfAndAssociatedTypeBounds`, then we
+            // want to only consider predicates with `Self: ...`, but we don't want
+            // `OnlySelfBounds(true)` since we want to collect the nested associated
+            // type bound as well.
             let (only_self_bounds, assoc_name) = match filter {
                 PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
                     (OnlySelfBounds(false), None)
@@ -780,14 +839,10 @@ impl<'tcx> ItemCtxt<'tcx> {
                 }
             };
 
-            // Subtle: If we're collecting `SelfAndAssociatedTypeBounds`, then we
-            // want to only consider predicates with `Self: ...`, but we don't want
-            // `OnlySelfBounds(true)` since we want to collect the nested associated
-            // type bound as well.
             let bound_ty = if predicate.is_param_bound(param_def_id.to_def_id()) {
                 ty
             } else if matches!(filter, PredicateFilter::All) {
-                self.lower_ty(predicate.bounded_ty)
+                self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty)
             } else {
                 continue;
             };

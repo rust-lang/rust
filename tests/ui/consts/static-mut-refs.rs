@@ -1,6 +1,9 @@
 //@ run-pass
 #![allow(dead_code)]
 
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 // Checks that mutable static items can have mutable slices and other references
 
 

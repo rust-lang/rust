@@ -11,21 +11,21 @@ use rustc_errors::DiagInner;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{
-    self, dep_kinds, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex,
-    SerializedDepNodeIndex,
+    self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
+    dep_kinds,
 };
+use rustc_middle::query::Key;
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
-use rustc_middle::query::Key;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt, TyEncoder};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    force_query, QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects,
-    QueryStackFrame,
+    QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
+    force_query,
 };
 use rustc_query_system::{LayoutOfDepth, QueryOverflow};
 use rustc_serialize::{Decodable, Encodable};

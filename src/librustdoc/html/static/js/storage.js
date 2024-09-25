@@ -274,16 +274,29 @@ class RustdocSearchElement extends HTMLElement {
                     spellcheck="false"
                     placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…"
                     type="search">
-                <div id="help-button" tabindex="-1">
-                    <a href="${rootPath}help.html" title="help">?</a>
-                </div>
-                <div id="settings-menu" tabindex="-1">
-                    <a href="${rootPath}settings.html" title="settings">
-                        Settings
-                    </a>
-                </div>
             </form>
         </nav>`;
     }
 }
 window.customElements.define("rustdoc-search", RustdocSearchElement);
+class RustdocToolbarElement extends HTMLElement {
+    constructor() {
+        super();
+    }
+    connectedCallback() {
+        // Avoid replacing the children after they're already here.
+        if (this.firstElementChild) {
+            return;
+        }
+        const rootPath = getVar("root-path");
+        this.innerHTML = `
+        <div id="settings-menu" tabindex="-1">
+            <a href="${rootPath}settings.html"><span class="label">Settings</span></a>
+        </div>
+        <div id="help-button" tabindex="-1">
+            <a href="${rootPath}help.html"><span class="label">Help</span></a>
+        </div>
+        <button id="toggle-all-docs"><span class="label">Summary</span></button>`;
+    }
+}
+window.customElements.define("rustdoc-toolbar", RustdocToolbarElement);

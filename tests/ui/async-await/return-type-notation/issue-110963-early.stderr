@@ -1,12 +1,3 @@
-warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-110963-early.rs:4:12
-   |
-LL | #![feature(return_type_notation)]
-   |            ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: implementation of `Send` is not general enough
   --> $DIR/issue-110963-early.rs:14:5
    |
@@ -36,5 +27,5 @@ LL | |     });
    = note: ...but `Send` is actually implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'2>(..) }`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 

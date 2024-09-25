@@ -22,9 +22,9 @@ use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::NestedGoals;
 use crate::solve::{
-    inspect, response_no_constraints_raw, CanonicalInput, CanonicalResponse, Certainty, EvalCtxt,
-    ExternalConstraintsData, Goal, MaybeCause, NestedNormalizationGoals, NoSolution,
-    PredefinedOpaquesData, QueryInput, QueryResult, Response,
+    CanonicalInput, CanonicalResponse, Certainty, EvalCtxt, ExternalConstraintsData, Goal,
+    MaybeCause, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
+    QueryResult, Response, inspect, response_no_constraints_raw,
 };
 
 trait ResponseT<I: Interner> {
@@ -156,6 +156,17 @@ where
                 external_constraints: self.cx().mk_external_constraints(external_constraints),
             },
         );
+
+        // HACK: We bail with overflow if the response would have too many non-region
+        // inference variables. This tends to only happen if we encounter a lot of
+        // ambiguous alias types which get replaced with fresh inference variables
+        // during generalization. This prevents a hang in nalgebra.
+        let num_non_region_vars = canonical.variables.iter().filter(|c| !c.is_region()).count();
+        if num_non_region_vars > self.cx().recursion_limit() {
+            return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
+                suggest_increasing_limit: true,
+            }));
+        }
 
         Ok(canonical)
     }

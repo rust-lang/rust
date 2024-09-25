@@ -3,10 +3,10 @@ use either::Either;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::{mir, ty, ty::FloatTy};
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 use rustc_target::abi::{Endian, HasDataLayout};
 
-use crate::helpers::{bool_to_simd_element, check_arg_count, simd_element_to_bool, ToHost, ToSoft};
+use crate::helpers::{ToHost, ToSoft, bool_to_simd_element, check_arg_count, simd_element_to_bool};
 use crate::*;
 
 #[derive(Copy, Clone)]

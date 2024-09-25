@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::iter_header::{iter_header, HeaderLine};
+use crate::iter_header::{HeaderLine, iter_header};
 use crate::walk::filter_not_rust;
 
 const LLVM_COMPONENTS_HEADER: &str = "needs-llvm-components:";

@@ -48,12 +48,12 @@ pub use self::map_while::MapWhile;
 pub use self::map_windows::MapWindows;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::step_by::StepBy;
-#[stable(feature = "iter_zip", since = "1.59.0")]
-pub use self::zip::zip;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::zip::TrustedRandomAccess;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::zip::TrustedRandomAccessNoCoerce;
+#[stable(feature = "iter_zip", since = "1.59.0")]
+pub use self::zip::zip;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
     chain::Chain, cycle::Cycle, enumerate::Enumerate, filter::Filter, filter_map::FilterMap,

@@ -14,49 +14,34 @@
 //!
 //! FIXME: https://github.com/rust-lang/rust/issues/128733 this test uses external
 //! dependencies, and needs an active internet connection
-//!
-//! FIXME: https://github.com/rust-lang/rust/issues/128734 extract bootstrap cargo
-//! to a proper command
 
 //@ only-thumb
 
 use std::path::PathBuf;
 
-use run_make_support::{cmd, env_var, path_helpers, target};
+use run_make_support::{cargo, cmd, env_var, path, target};
 
 const CRATE: &str = "example";
 
 fn main() {
     std::env::set_current_dir(CRATE).unwrap();
 
-    let bootstrap_cargo = env_var("BOOTSTRAP_CARGO");
-    let path = env_var("PATH");
-    let rustc = env_var("RUSTC");
+    let target_dir = path("target");
+    let manifest_path = path("Cargo.toml");
 
-    let target_dir = path_helpers::path("target");
-    let manifest_path = path_helpers::path("Cargo.toml");
+    // Debug
+    cargo()
+        .args(&["run", "--target", &target()])
+        .env("RUSTFLAGS", "-C linker=arm-none-eabi-ld -C link-arg=-Tlink.x")
+        .env("CARGO_TARGET_DIR", &target_dir)
+        .run()
+        .assert_stdout_contains("x = 42");
 
-    let debug = {
-        let mut cmd = cmd(&bootstrap_cargo);
-        cmd.args(&["run", "--target", &target()])
-            .env("RUSTFLAGS", "-C linker=arm-none-eabi-ld -C link-arg=-Tlink.x")
-            .env("CARGO_TARGET_DIR", &target_dir)
-            .env("PATH", &path)
-            .env("RUSTC", &rustc);
-        cmd.run()
-    };
-
-    debug.assert_stdout_contains("x = 42");
-
-    let release = {
-        let mut cmd = cmd(&bootstrap_cargo);
-        cmd.args(&["run", "--release", "--target", &target()])
-            .env("RUSTFLAGS", "-C linker=arm-none-eabi-ld -C link-arg=-Tlink.x")
-            .env("CARGO_TARGET_DIR", &target_dir)
-            .env("PATH", &path)
-            .env("RUSTC", &rustc);
-        cmd.run()
-    };
-
-    release.assert_stdout_contains("x = 42");
+    // Release
+    cargo()
+        .args(&["run", "--release", "--target", &target()])
+        .env("RUSTFLAGS", "-C linker=arm-none-eabi-ld -C link-arg=-Tlink.x")
+        .env("CARGO_TARGET_DIR", &target_dir)
+        .run()
+        .assert_stdout_contains("x = 42");
 }

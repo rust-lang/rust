@@ -87,23 +87,23 @@ use std::borrow::Cow;
 use either::Either;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
-    intern_const_alloc_for_constprop, ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy,
-    Projectable, Scalar,
+    ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
+    intern_const_alloc_for_constprop,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
-use rustc_index::{newtype_index, IndexVec};
+use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{self, Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
+use rustc_span::def_id::DefId;
+use rustc_target::abi::{self, Abi, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
@@ -576,7 +576,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     }
                     value.offset(Size::ZERO, to, &self.ecx).ok()?
                 }
-                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) => {
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let to = self.ecx.layout_of(to).ok()?;
                     let dest = self.ecx.allocate(to, MemoryKind::Stack).ok()?;
@@ -593,7 +593,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
                     ret.into()
                 }
-                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer) => {
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let src = self.ecx.read_immediate(src).ok()?;
                     let to = self.ecx.layout_of(to).ok()?;
@@ -1138,7 +1138,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             (
                 UnOp::PtrMetadata,
                 Value::Cast {
-                    kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize),
+                    kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _),
                     from,
                     to,
                     ..
@@ -1333,8 +1333,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         to: Ty<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
-        use rustc_middle::ty::adjustment::PointerCoercion::*;
         use CastKind::*;
+        use rustc_middle::ty::adjustment::PointerCoercion::*;
 
         let mut from = operand.ty(self.local_decls, self.tcx);
         let mut value = self.simplify_operand(operand, location)?;
@@ -1342,7 +1342,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             return Some(value);
         }
 
-        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_)) = kind {
+        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_), _) = kind {
             // Each reification of a generic fn may get a different pointer.
             // Do not try to merge them.
             return self.new_opaque();
@@ -1429,7 +1429,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // We have an unsizing cast, which assigns the length to fat pointer metadata.
         if let Value::Cast { kind, from, to, .. } = self.get(inner)
-            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) = kind
+            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
             && let Some(from) = from.builtin_deref(true)
             && let ty::Array(_, len) = from.kind()
             && let Some(to) = to.builtin_deref(true)

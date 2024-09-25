@@ -3,8 +3,8 @@
 
 use std::fmt;
 
-use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::Idx;
+use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 
 use super::lattice::MaybeReachable;
 

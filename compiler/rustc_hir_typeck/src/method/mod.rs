@@ -18,14 +18,14 @@ use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use rustc_span::symbol::Ident;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt};
 use tracing::{debug, instrument};
 
-use self::probe::{IsSuggestion, ProbeScope};
 pub(crate) use self::MethodError::*;
+use self::probe::{IsSuggestion, ProbeScope};
 use crate::FnCtxt;
 
 pub(crate) fn provide(providers: &mut Providers) {

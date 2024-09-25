@@ -10,15 +10,15 @@ use rustc_ast::util::case::Case;
 use rustc_ast::{self as ast};
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, Applicability, PResult, StashKey};
+use rustc_errors::{Applicability, PResult, StashKey, struct_span_code_err};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{source_map, ErrorGuaranteed, Span, DUMMY_SP};
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, source_map};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
-use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
+use super::diagnostics::{ConsumeClosingDelim, dummy_arg};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing, UsePreAttrPos,
@@ -707,7 +707,7 @@ impl<'a> Parser<'a> {
             })
         };
 
-        let (ident, item_kind) = if self.eat(&token::PathSep) {
+        let (ident, item_kind) = if self.eat_path_sep() {
             let suffixes = if self.eat(&token::BinOp(token::Star)) {
                 None
             } else {
@@ -1054,7 +1054,7 @@ impl<'a> Parser<'a> {
         {
             // `use *;` or `use ::*;` or `use {...};` or `use ::{...};`
             let mod_sep_ctxt = self.token.span.ctxt();
-            if self.eat(&token::PathSep) {
+            if self.eat_path_sep() {
                 prefix
                     .segments
                     .push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
@@ -1065,7 +1065,7 @@ impl<'a> Parser<'a> {
             // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
             prefix = self.parse_path(PathStyle::Mod)?;
 
-            if self.eat(&token::PathSep) {
+            if self.eat_path_sep() {
                 self.parse_use_tree_glob_or_nested()?
             } else {
                 // Recover from using a colon as path separator.
@@ -1897,10 +1897,10 @@ impl<'a> Parser<'a> {
                 // Try to recover extra trailing angle brackets
                 if let TyKind::Path(_, Path { segments, .. }) = &a_var.ty.kind {
                     if let Some(last_segment) = segments.last() {
-                        let guar = self.check_trailing_angle_brackets(
-                            last_segment,
-                            &[&token::Comma, &token::CloseDelim(Delimiter::Brace)],
-                        );
+                        let guar = self.check_trailing_angle_brackets(last_segment, &[
+                            &token::Comma,
+                            &token::CloseDelim(Delimiter::Brace),
+                        ]);
                         if let Some(_guar) = guar {
                             // Handle a case like `Vec<u8>>,` where we can continue parsing fields
                             // after the comma

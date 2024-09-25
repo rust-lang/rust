@@ -1,13 +1,13 @@
+use rustc_ast::HasTokens;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Nonterminal::*;
 use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
-use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{Ident, kw};
 
 use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};

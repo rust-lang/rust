@@ -467,7 +467,6 @@ ui/closures/issue-87814-2.rs
 ui/closures/issue-90871.rs
 ui/closures/issue-97607.rs
 ui/closures/issue-99565.rs
-ui/cmse-nonsecure/cmse-nonsecure-entry/issue-83475.rs
 ui/codegen/auxiliary/issue-97708-aux.rs
 ui/codegen/issue-101585-128bit-repeat.rs
 ui/codegen/issue-16602-1.rs
@@ -552,7 +551,6 @@ ui/const-generics/infer/issue-77092.rs
 ui/const-generics/issue-102124.rs
 ui/const-generics/issue-105689.rs
 ui/const-generics/issue-106419-struct-with-multiple-const-params.rs
-ui/const-generics/issue-112505-overflow.rs
 ui/const-generics/issue-46511.rs
 ui/const-generics/issue-66451.rs
 ui/const-generics/issue-70408.rs
@@ -1649,7 +1647,6 @@ ui/issues/issue-17068.rs
 ui/issues/issue-17121.rs
 ui/issues/issue-17216.rs
 ui/issues/issue-17252.rs
-ui/issues/issue-17302.rs
 ui/issues/issue-17322.rs
 ui/issues/issue-17336.rs
 ui/issues/issue-17337.rs
@@ -2718,7 +2715,6 @@ ui/limits/issue-15919-32.rs
 ui/limits/issue-15919-64.rs
 ui/limits/issue-17913.rs
 ui/limits/issue-55878.rs
-ui/limits/issue-56762.rs
 ui/limits/issue-69485-var-size-diffs-too-large.rs
 ui/limits/issue-75158-64.rs
 ui/linkage-attr/auxiliary/issue-12133-dylib.rs

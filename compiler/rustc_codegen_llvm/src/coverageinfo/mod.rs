@@ -9,8 +9,8 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Instance;
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_target::abi::{Align, Size};
 use tracing::{debug, instrument};
 
@@ -48,11 +48,10 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
         self.function_coverage_map.replace(FxIndexMap::default())
     }
 
-    /// LLVM use a temp value to record evaluated mcdc test vector of each decision, which is called condition bitmap.
-    /// In order to handle nested decisions, several condition bitmaps can be
-    /// allocated for a function body.
-    /// These values are named `mcdc.addr.{i}` and are a 32-bit integers.
-    /// They respectively hold the condition bitmaps for decisions with a depth of `i`.
+    /// LLVM use a temp value to record evaluated mcdc test vector of each decision, which is
+    /// called condition bitmap. In order to handle nested decisions, several condition bitmaps can
+    /// be allocated for a function body. These values are named `mcdc.addr.{i}` and are a 32-bit
+    /// integers. They respectively hold the condition bitmaps for decisions with a depth of `i`.
     fn try_get_mcdc_condition_bitmap(
         &self,
         instance: &Instance<'tcx>,
@@ -157,8 +156,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             ),
             CoverageKind::CounterIncrement { id } => {
                 func_coverage.mark_counter_id_seen(id);
-                // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,
-                // as that needs an exclusive borrow.
+                // We need to explicitly drop the `RefMut` before calling into
+                // `instrprof_increment`, as that needs an exclusive borrow.
                 drop(coverage_map);
 
                 // The number of counters passed to `llvm.instrprof.increment` might

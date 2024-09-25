@@ -1,5 +1,5 @@
 warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
-  --> $DIR/non_local_defs.rs:11:1
+  --> $DIR/non_local_defs.rs:9:1
    |
 LL | macro_rules! a_macro { () => {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,11 +7,7 @@ LL | macro_rules! a_macro { () => {} }
    = help: remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() { ... }`
    = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-note: the lint level is defined here
-  --> $DIR/non_local_defs.rs:8:9
-   |
-LL | #![warn(non_local_definitions)]
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(non_local_definitions)]` on by default
 
 warning: 1 warning emitted
 

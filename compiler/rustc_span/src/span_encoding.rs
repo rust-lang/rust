@@ -5,7 +5,7 @@ use rustc_serialize::int_overflow::DebugStrictAdd;
 
 use crate::def_id::{DefIndex, LocalDefId};
 use crate::hygiene::SyntaxContext;
-use crate::{BytePos, SpanData, SPAN_TRACK};
+use crate::{BytePos, SPAN_TRACK, SpanData};
 
 /// A compressed span.
 ///

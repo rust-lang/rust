@@ -16,7 +16,7 @@
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::fs::File;
-use std::io::{self, BufWriter, Write as _};
+use std::io::{self, Write as _};
 use std::iter::once;
 use std::marker::PhantomData;
 use std::path::{Component, Path, PathBuf};
@@ -29,26 +29,26 @@ use itertools::Itertools;
 use regex::Regex;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::DefId;
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_span::Symbol;
+use rustc_span::def_id::DefId;
 use serde::de::DeserializeOwned;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize, Serializer};
 
-use super::{collect_paths_for_type, ensure_trailing_slash, Context, RenderMode};
+use super::{Context, RenderMode, collect_paths_for_type, ensure_trailing_slash};
 use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::config::{EmitType, PathToParts, RenderOptions, ShouldMerge};
 use crate::docfs::PathError;
 use crate::error::Error;
+use crate::formats::Impl;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::formats::Impl;
 use crate::html::format::Buffer;
 use crate::html::layout;
 use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
-use crate::html::render::search_index::{build_index, SerializedSearchIndex};
+use crate::html::render::search_index::{SerializedSearchIndex, build_index};
 use crate::html::render::sorted_template::{self, FileFormat, SortedTemplate};
 use crate::html::render::{AssocItemLink, ImplRenderingParameters, StylePath};
 use crate::html::static_files::{self, suffix_path};
@@ -1020,8 +1020,7 @@ where
         for part in parts {
             template.append(part);
         }
-        let file = try_err!(File::create(&path), &path);
-        let mut file = BufWriter::new(file);
+        let mut file = try_err!(File::create_buffered(&path), &path);
         try_err!(write!(file, "{template}"), &path);
         try_err!(file.flush(), &path);
     }

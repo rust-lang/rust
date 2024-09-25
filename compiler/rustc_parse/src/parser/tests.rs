@@ -9,15 +9,15 @@ use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::{self as ast, visit, PatKind};
+use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::HumanEmitter;
 use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{create_default_session_globals_then, BytePos, FileName, Pos, Span};
+use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{BytePos, FileName, Pos, Span, create_default_session_globals_then};
 use termcolor::WriteColor;
 
 use crate::parser::{ForceCollect, Parser};

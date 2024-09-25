@@ -1,4 +1,4 @@
-use crate::spec::base::apple::{base, Arch, TargetAbi};
+use crate::spec::base::apple::{Arch, TargetAbi, base};
 use crate::spec::{Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target,
         metadata: crate::spec::TargetMetadata {
-            description: Some("32-bit x86 iOS".into()),
+            description: Some("x86 Apple iOS Simulator".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),

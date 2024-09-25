@@ -17,13 +17,13 @@ use rustc_middle::ty::{
     UserType,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{sym, Span};
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_span::{Span, sym};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use tracing::{debug, info, instrument, trace};
 
 use crate::errors;
-use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
+use crate::thir::cx::region::Scope;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 impl<'tcx> Cx<'tcx> {
@@ -74,6 +74,7 @@ impl<'tcx> Cx<'tcx> {
         self.thir.exprs.push(expr)
     }
 
+    #[instrument(level = "trace", skip(self, expr, span))]
     fn apply_adjustment(
         &mut self,
         hir_expr: &'tcx hir::Expr<'tcx>,
@@ -103,15 +104,28 @@ impl<'tcx> Cx<'tcx> {
         };
 
         let kind = match adjustment.kind {
-            Adjust::Pointer(PointerCoercion::Unsize) => {
-                adjust_span(&mut expr);
-                ExprKind::PointerCoercion {
-                    cast: PointerCoercion::Unsize,
-                    source: self.thir.exprs.push(expr),
-                }
-            }
             Adjust::Pointer(cast) => {
-                ExprKind::PointerCoercion { cast, source: self.thir.exprs.push(expr) }
+                if cast == PointerCoercion::Unsize {
+                    adjust_span(&mut expr);
+                }
+
+                let is_from_as_cast = if let hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Cast(..),
+                    span: cast_span,
+                    ..
+                }) = self.tcx.parent_hir_node(hir_expr.hir_id)
+                {
+                    // Use the whole span of the `x as T` expression for the coercion.
+                    span = *cast_span;
+                    true
+                } else {
+                    false
+                };
+                ExprKind::PointerCoercion {
+                    cast,
+                    source: self.thir.exprs.push(expr),
+                    is_from_as_cast,
+                }
             }
             Adjust::NeverToAny if adjustment.target.is_never() => return expr,
             Adjust::NeverToAny => ExprKind::NeverToAny { source: self.thir.exprs.push(expr) },
@@ -145,7 +159,67 @@ impl<'tcx> Cx<'tcx> {
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
-            Adjust::DynStar => ExprKind::Cast { source: self.thir.exprs.push(expr) },
+            Adjust::ReborrowPin(region, mutbl) => {
+                debug!("apply ReborrowPin adjustment");
+                // Rewrite `$expr` as `Pin { __pointer: &(mut)? *($expr).__pointer }`
+
+                // We'll need these types later on
+                let pin_ty_args = match expr.ty.kind() {
+                    ty::Adt(_, args) => args,
+                    _ => bug!("ReborrowPin with non-Pin type"),
+                };
+                let pin_ty = pin_ty_args.iter().next().unwrap().expect_ty();
+                let ptr_target_ty = match pin_ty.kind() {
+                    ty::Ref(_, ty, _) => *ty,
+                    _ => bug!("ReborrowPin with non-Ref type"),
+                };
+
+                // pointer = ($expr).__pointer
+                let pointer_target = ExprKind::Field {
+                    lhs: self.thir.exprs.push(expr),
+                    variant_index: FIRST_VARIANT,
+                    name: FieldIdx::from(0u32),
+                };
+                let arg = Expr { temp_lifetime, ty: pin_ty, span, kind: pointer_target };
+                let arg = self.thir.exprs.push(arg);
+
+                // arg = *pointer
+                let expr = ExprKind::Deref { arg };
+                let arg = self.thir.exprs.push(Expr {
+                    temp_lifetime,
+                    ty: ptr_target_ty,
+                    span,
+                    kind: expr,
+                });
+
+                // expr = &mut target
+                let borrow_kind = match mutbl {
+                    hir::Mutability::Mut => BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
+                    hir::Mutability::Not => BorrowKind::Shared,
+                };
+                let new_pin_target = Ty::new_ref(self.tcx, region, ptr_target_ty, mutbl);
+                let expr = self.thir.exprs.push(Expr {
+                    temp_lifetime,
+                    ty: new_pin_target,
+                    span,
+                    kind: ExprKind::Borrow { borrow_kind, arg },
+                });
+
+                // kind = Pin { __pointer: pointer }
+                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, Some(span));
+                let args = self.tcx.mk_args(&[new_pin_target.into()]);
+                let kind = ExprKind::Adt(Box::new(AdtExpr {
+                    adt_def: self.tcx.adt_def(pin_did),
+                    variant_index: FIRST_VARIANT,
+                    args,
+                    fields: Box::new([FieldExpr { name: FieldIdx::from(0u32), expr }]),
+                    user_ty: None,
+                    base: None,
+                }));
+
+                debug!(?kind);
+                kind
+            }
         };
 
         Expr { temp_lifetime, ty: adjustment.target, span, kind }
@@ -174,6 +248,7 @@ impl<'tcx> Cx<'tcx> {
             ExprKind::PointerCoercion {
                 source: self.mirror_expr(source),
                 cast: PointerCoercion::ArrayToPointer,
+                is_from_as_cast: true,
             }
         } else if let hir::ExprKind::Path(ref qpath) = source.kind
             && let res = self.typeck_results().qpath_res(qpath, source.hir_id)
@@ -779,6 +854,7 @@ impl<'tcx> Cx<'tcx> {
                     ExprKind::ValueTypeAscription {
                         source: cast_expr,
                         user_ty: Some(Box::new(*user_ty)),
+                        user_ty_span: cast_ty.span,
                     }
                 } else {
                     cast
@@ -790,9 +866,17 @@ impl<'tcx> Cx<'tcx> {
                 debug!("make_mirror_unadjusted: (type) user_ty={:?}", user_ty);
                 let mirrored = self.mirror_expr(source);
                 if source.is_syntactic_place_expr() {
-                    ExprKind::PlaceTypeAscription { source: mirrored, user_ty }
+                    ExprKind::PlaceTypeAscription {
+                        source: mirrored,
+                        user_ty,
+                        user_ty_span: ty.span,
+                    }
                 } else {
-                    ExprKind::ValueTypeAscription { source: mirrored, user_ty }
+                    ExprKind::ValueTypeAscription {
+                        source: mirrored,
+                        user_ty,
+                        user_ty_span: ty.span,
+                    }
                 }
             }
             hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },
@@ -1014,7 +1098,7 @@ impl<'tcx> Cx<'tcx> {
 
         // Reconstruct the output assuming it's a reference with the
         // same region and mutability as the receiver. This holds for
-        // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
+        // `Deref(Mut)::deref(_mut)` and `Index(Mut)::index(_mut)`.
         let ty::Ref(region, _, mutbl) = *self.thir[args[0]].ty.kind() else {
             span_bug!(span, "overloaded_place: receiver is not a reference");
         };

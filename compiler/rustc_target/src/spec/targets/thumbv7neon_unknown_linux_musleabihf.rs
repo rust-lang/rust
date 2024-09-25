@@ -1,4 +1,4 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
 // This target is for musl Linux on ARMv7 with thumb mode enabled
 // (for consistency with Android and Debian-based distributions)

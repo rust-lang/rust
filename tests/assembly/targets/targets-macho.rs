@@ -18,6 +18,9 @@
 //@ revisions: aarch64_apple_tvos_sim
 //@ [aarch64_apple_tvos_sim] compile-flags: --target aarch64-apple-tvos-sim
 //@ [aarch64_apple_tvos_sim] needs-llvm-components: aarch64
+//@ revisions: arm64e_apple_tvos
+//@ [arm64e_apple_tvos] compile-flags: --target arm64e-apple-tvos
+//@ [arm64e_apple_tvos] needs-llvm-components: aarch64
 //@ revisions: aarch64_apple_watchos
 //@ [aarch64_apple_watchos] compile-flags: --target aarch64-apple-watchos
 //@ [aarch64_apple_watchos] needs-llvm-components: aarch64

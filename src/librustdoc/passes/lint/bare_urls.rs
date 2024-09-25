@@ -77,10 +77,9 @@ fn find_raw_urls(
     // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
     for match_ in URL_REGEX.find_iter(text) {
         let url_range = match_.range();
-        f(
-            cx,
-            "this URL is not a hyperlink",
-            Range { start: range.start + url_range.start, end: range.start + url_range.end },
-        );
+        f(cx, "this URL is not a hyperlink", Range {
+            start: range.start + url_range.start,
+            end: range.start + url_range.end,
+        });
     }
 }

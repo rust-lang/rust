@@ -11,6 +11,6 @@ mod save;
 mod work_product;
 
 pub use fs::{finalize_session_directory, in_incr_comp_dir, in_incr_comp_dir_sess};
-pub use load::{load_query_result_cache, setup_dep_graph, LoadResult};
+pub use load::{LoadResult, load_query_result_cache, setup_dep_graph};
 pub use save::{save_dep_graph, save_work_product_index};
 pub use work_product::copy_cgu_workproduct_to_incr_comp_cache_dir;

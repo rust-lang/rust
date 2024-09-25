@@ -26,7 +26,7 @@ use std::path::{Path, PathBuf};
 use std::{env, iter};
 
 use crate::core::config::TargetSelection;
-use crate::utils::exec::{command, BootstrapCommand};
+use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
 
 // The `cc` crate doesn't provide a way to obtain a path to the detected archiver,

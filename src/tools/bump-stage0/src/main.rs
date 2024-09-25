@@ -1,7 +1,7 @@
 #![deny(unused_variables)]
 
 use anyhow::{Context, Error};
-use build_helper::stage0_parser::{parse_stage0_file, Stage0Config, VersionMetadata};
+use build_helper::stage0_parser::{Stage0Config, VersionMetadata, parse_stage0_file};
 use curl::easy::Easy;
 use indexmap::IndexMap;
 

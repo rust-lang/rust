@@ -5,7 +5,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
-    fn_can_unwind, FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout,
+    FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
@@ -312,6 +312,7 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
         SysV64 { .. } => Conv::X86_64SysV,
         Aapcs { .. } => Conv::ArmAapcs,
         CCmseNonSecureCall => Conv::CCmseNonSecureCall,
+        CCmseNonSecureEntry => Conv::CCmseNonSecureEntry,
         PtxKernel => Conv::PtxKernel,
         Msp430Interrupt => Conv::Msp430Intr,
         X86Interrupt => Conv::X86Intr,

@@ -231,10 +231,10 @@ fn test_two_same_fd_in_same_epoll_instance() {
     //Two notification should be received.
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
     let expected_value = 5 as u64;
-    check_epoll_wait::<8>(
-        epfd,
-        &[(expected_event, expected_value), (expected_event, expected_value)],
-    );
+    check_epoll_wait::<8>(epfd, &[
+        (expected_event, expected_value),
+        (expected_event, expected_value),
+    ]);
 }
 
 fn test_epoll_eventfd() {
@@ -291,10 +291,10 @@ fn test_epoll_socketpair_both_sides() {
     let expected_value0 = fds[0] as u64;
     let expected_event1 = u32::try_from(libc::EPOLLOUT).unwrap();
     let expected_value1 = fds[1] as u64;
-    check_epoll_wait::<8>(
-        epfd,
-        &[(expected_event0, expected_value0), (expected_event1, expected_value1)],
-    );
+    check_epoll_wait::<8>(epfd, &[
+        (expected_event0, expected_value0),
+        (expected_event1, expected_value1),
+    ]);
 
     // Read from fds[0].
     let mut buf: [u8; 5] = [0; 5];
@@ -454,10 +454,10 @@ fn test_socketpair_read() {
     let expected_value0 = fds[0] as u64;
     let expected_event1 = u32::try_from(libc::EPOLLOUT).unwrap();
     let expected_value1 = fds[1] as u64;
-    check_epoll_wait::<8>(
-        epfd,
-        &[(expected_event0, expected_value0), (expected_event1, expected_value1)],
-    );
+    check_epoll_wait::<8>(epfd, &[
+        (expected_event0, expected_value0),
+        (expected_event1, expected_value1),
+    ]);
 
     // Read 3 bytes from fds[0].
     let mut buf: [u8; 3] = [0; 3];

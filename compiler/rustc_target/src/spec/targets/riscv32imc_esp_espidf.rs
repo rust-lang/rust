@@ -1,4 +1,4 @@
-use crate::spec::{cvs, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{PanicStrategy, RelocModel, Target, TargetOptions, cvs};
 
 pub(crate) fn target() -> Target {
     Target {

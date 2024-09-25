@@ -3,6 +3,7 @@
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(exact_size_is_empty)]
+#![feature(file_buffered)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
@@ -17,9 +18,9 @@ pub use self::drop_flag_effects::{
     move_path_children_matching, on_all_children_bits, on_lookup_result_bits,
 };
 pub use self::framework::{
-    fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, Backward, Direction, Engine,
-    Forward, GenKill, GenKillAnalysis, JoinSemiLattice, MaybeReachable, Results, ResultsCursor,
-    ResultsVisitable, ResultsVisitor, SwitchIntEdgeEffects,
+    Analysis, AnalysisDomain, Backward, Direction, Engine, Forward, GenKill, GenKillAnalysis,
+    JoinSemiLattice, MaybeReachable, Results, ResultsCursor, ResultsVisitable, ResultsVisitor,
+    SwitchIntEdgeEffects, fmt, graphviz, lattice, visit_results,
 };
 use self::move_paths::MoveData;
 

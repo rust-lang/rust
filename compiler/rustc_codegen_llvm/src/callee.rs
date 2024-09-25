@@ -15,11 +15,6 @@ use crate::value::Value;
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
-///
-/// # Parameters
-///
-/// - `cx`: the crate context
-/// - `instance`: the instance to be instantiated
 pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value {
     let tcx = cx.tcx();
 
@@ -106,62 +101,42 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
             let is_generic =
                 instance.args.non_erasable_generics(tcx, instance.def_id()).next().is_some();
 
-            if is_generic {
-                // This is a monomorphization. Its expected visibility depends
-                // on whether we are in share-generics mode.
-
-                if cx.tcx.sess.opts.share_generics() {
-                    // We are in share_generics mode.
-
+            let is_hidden = if is_generic {
+                // This is a monomorphization of a generic function.
+                if !cx.tcx.sess.opts.share_generics() {
+                    // When not sharing generics, all instances are in the same
+                    // crate and have hidden visibility.
+                    true
+                } else {
                     if let Some(instance_def_id) = instance_def_id.as_local() {
-                        // This is a definition from the current crate. If the
-                        // definition is unreachable for downstream crates or
-                        // the current crate does not re-export generics, the
-                        // definition of the instance will have been declared
-                        // as `hidden`.
-                        if cx.tcx.is_unreachable_local_definition(instance_def_id)
+                        // This is a monomorphization of a generic function
+                        // defined in the current crate. It is hidden if:
+                        // - the definition is unreachable for downstream
+                        //   crates, or
+                        // - the current crate does not re-export generics
+                        //   (because the crate is a C library or executable)
+                        cx.tcx.is_unreachable_local_definition(instance_def_id)
                             || !cx.tcx.local_crate_exports_generics()
-                        {
-                            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
-                        }
                     } else {
                         // This is a monomorphization of a generic function
-                        // defined in an upstream crate.
-                        if instance.upstream_monomorphization(tcx).is_some() {
-                            // This is instantiated in another crate. It cannot
-                            // be `hidden`.
-                        } else {
-                            // This is a local instantiation of an upstream definition.
-                            // If the current crate does not re-export it
-                            // (because it is a C library or an executable), it
-                            // will have been declared `hidden`.
-                            if !cx.tcx.local_crate_exports_generics() {
-                                llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
-                            }
-                        }
+                        // defined in an upstream crate. It is hidden if:
+                        // - it is instantiated in this crate, and
+                        // - the current crate does not re-export generics
+                        instance.upstream_monomorphization(tcx).is_none()
+                            && !cx.tcx.local_crate_exports_generics()
                     }
-                } else {
-                    // When not sharing generics, all instances are in the same
-                    // crate and have hidden visibility
-                    llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                 }
             } else {
-                // This is a non-generic function
-                if cx.tcx.is_codegened_item(instance_def_id) {
-                    // This is a function that is instantiated in the local crate
-
-                    if instance_def_id.is_local() {
-                        // This is function that is defined in the local crate.
-                        // If it is not reachable, it is hidden.
-                        if !cx.tcx.is_reachable_non_generic(instance_def_id) {
-                            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
-                        }
-                    } else {
-                        // This is a function from an upstream crate that has
-                        // been instantiated here. These are always hidden.
-                        llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
-                    }
-                }
+                // This is a non-generic function. It is hidden if:
+                // - it is instantiated in the local crate, and
+                //   - it is defined an upstream crate (non-local), or
+                //   - it is not reachable
+                cx.tcx.is_codegened_item(instance_def_id)
+                    && (!instance_def_id.is_local()
+                        || !cx.tcx.is_reachable_non_generic(instance_def_id))
+            };
+            if is_hidden {
+                llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
             }
 
             // MinGW: For backward compatibility we rely on the linker to decide whether it

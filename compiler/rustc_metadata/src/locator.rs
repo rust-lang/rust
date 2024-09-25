@@ -224,20 +224,20 @@ use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
+use rustc_session::Session;
 use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;
-use rustc_session::Session;
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
 use rustc_target::spec::{Target, TargetTriple};
 use snap::read::FrameDecoder;
 use tracing::{debug, info};
 
 use crate::creader::{Library, MetadataLoader};
 use crate::errors;
-use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
+use crate::rmeta::{METADATA_HEADER, MetadataBlob, rustc_version};
 
 #[derive(Clone)]
 pub(crate) struct CrateLocator<'a> {

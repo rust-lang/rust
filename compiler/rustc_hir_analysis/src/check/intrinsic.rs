@@ -2,7 +2,7 @@
 //! intrinsics that the compiler exposes.
 
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, DiagMessage};
+use rustc_errors::{DiagMessage, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -190,16 +190,14 @@ pub fn check_intrinsic_type(
     ]);
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
-            let region = ty::Region::new_bound(
-                tcx,
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon },
-            );
-            let env_region = ty::Region::new_bound(
-                tcx,
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_u32(2), kind: ty::BrEnv },
-            );
+            let region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
+                var: ty::BoundVar::ZERO,
+                kind: ty::BrAnon,
+            });
+            let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
+                var: ty::BoundVar::from_u32(2),
+                kind: ty::BrEnv,
+            });
             let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
             (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
         })

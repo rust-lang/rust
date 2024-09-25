@@ -8,8 +8,8 @@ use rustc_macros::LintDiagnostic;
 use rustc_middle::ty;
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::edition::Edition;
 use rustc_span::Span;
+use rustc_span::edition::Edition;
 
 use crate::{LateContext, LateLintPass};
 

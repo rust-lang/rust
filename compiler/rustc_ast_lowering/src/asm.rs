@@ -8,9 +8,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::kw;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use rustc_target::asm;
 
+use super::LoweringContext;
 use super::errors::{
     AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
     InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
@@ -18,10 +19,9 @@ use super::errors::{
     InvalidAsmTemplateModifierRegClassSub, InvalidAsmTemplateModifierSym, InvalidRegister,
     InvalidRegisterClass, RegisterClassOnlyClobber, RegisterConflict,
 };
-use super::LoweringContext;
 use crate::{
-    fluent_generated as fluent, ImplTraitContext, ImplTraitPosition, ParamMode,
-    ResolverAstLoweringExt,
+    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode,
+    ResolverAstLoweringExt, fluent_generated as fluent,
 };
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -201,6 +201,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 &sym.qself,
                                 &sym.path,
                                 ParamMode::Optional,
+                                AllowReturnTypeNotation::No,
                                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                                 None,
                             );
@@ -220,7 +221,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             let parent_def_id = self.current_def_id_parent;
                             let node_id = self.next_node_id();
                             // HACK(min_generic_const_args): see lower_anon_const
-                            if !expr.is_potential_trivial_const_arg() {
+                            if !expr.is_potential_trivial_const_arg(true) {
                                 self.create_def(
                                     parent_def_id,
                                     node_id,

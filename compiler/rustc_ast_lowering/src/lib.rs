@@ -53,7 +53,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::{
     self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, MissingLifetimeKind, ParamName,
     TraitCandidate,
@@ -63,9 +63,9 @@ use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{DesugaringKind, Span, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Span};
+use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
@@ -485,9 +485,23 @@ enum ParamMode {
     Optional,
 }
 
+#[derive(Copy, Clone, Debug)]
+enum AllowReturnTypeNotation {
+    /// Only in types, since RTN is denied later during HIR lowering.
+    Yes,
+    /// All other positions (path expr, method, use tree).
+    No,
+}
+
 enum GenericArgsMode {
+    /// Allow paren sugar, don't allow RTN.
     ParenSugar,
+    /// Allow RTN, don't allow paren sugar.
+    ReturnTypeNotation,
+    // Error if parenthesized generics or RTN are encountered.
     Err,
+    /// Silence errors when lowering generics. Only used with `Res::Err`.
+    Silence,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -1226,7 +1240,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let id = self.lower_node_id(t.id);
-        let qpath = self.lower_qpath(t.id, qself, path, param_mode, itctx, None);
+        let qpath = self.lower_qpath(
+            t.id,
+            qself,
+            path,
+            param_mode,
+            AllowReturnTypeNotation::Yes,
+            itctx,
+            None,
+        );
         self.ty_path(id, t.span, qpath)
     }
 
@@ -2203,6 +2225,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             &None,
             &p.path,
             ParamMode::Explicit,
+            AllowReturnTypeNotation::No,
             itctx,
             Some(modifiers),
         ) {
@@ -2341,6 +2364,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &None,
                     path,
                     ParamMode::Optional,
+                    AllowReturnTypeNotation::No,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
                 );
@@ -2419,6 +2443,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 qself,
                 path,
                 ParamMode::Optional,
+                AllowReturnTypeNotation::No,
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );
@@ -2441,7 +2466,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_const_arg`].
     fn lower_anon_const_to_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
-        if c.value.is_potential_trivial_const_arg() {
+        if c.value.is_potential_trivial_const_arg(true) {
             // HACK(min_generic_const_args): see DefCollector::visit_anon_const
             // Over there, we guess if this is a bare param and only create a def if
             // we think it's not. However we may can guess wrong (see there for example)

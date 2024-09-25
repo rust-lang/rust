@@ -9,18 +9,18 @@ use std::hash::Hash;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{mir, ty};
-use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use rustc_span::def_id::DefId;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use super::{
-    throw_unsup, throw_unsup_format, AllocBytes, AllocId, AllocKind, AllocRange, Allocation,
-    ConstAllocation, CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy,
-    MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, CTFE_ALLOC_SALT,
+    AllocBytes, AllocId, AllocKind, AllocRange, Allocation, CTFE_ALLOC_SALT, ConstAllocation,
+    CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, MemoryKind,
+    Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, throw_unsup, throw_unsup_format,
 };
 
 /// Data returned by [`Machine::after_stack_pop`], and consumed by

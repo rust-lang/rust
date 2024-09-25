@@ -6,8 +6,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer,
-    Scalar as InterpScalar,
+    Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer, Scalar as InterpScalar,
+    read_target_uint,
 };
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::layout::LayoutOf;
@@ -73,8 +73,8 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
 
         // Generating partially-uninit consts is limited to small numbers of chunks,
         // to avoid the cost of generating large complex const expressions.
-        // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element,
-        // and would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
+        // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element, and
+        // would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
         let max = cx.sess().opts.unstable_opts.uninit_const_chunk_threshold;
         let allow_uninit_chunks = chunks.clone().take(max.saturating_add(1)).count() <= max;
 
@@ -249,8 +249,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         trace!(?instance);
 
         let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
-        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure out
-        // the llvm type from the actual evaluated initializer.
+        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure
+        // out the llvm type from the actual evaluated initializer.
         let llty = if nested {
             self.type_i8()
         } else {
@@ -262,7 +262,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     #[instrument(level = "debug", skip(self, llty))]
-    pub(crate) fn get_static_inner(&self, def_id: DefId, llty: &'ll Type) -> &'ll Value {
+    fn get_static_inner(&self, def_id: DefId, llty: &'ll Type) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
         if let Some(&g) = self.instances.borrow().get(&instance) {
             trace!("used cached value");
@@ -320,15 +320,16 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
 
         if !def_id.is_local() {
-            let needs_dll_storage_attr = self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
+            let needs_dll_storage_attr = self.use_dll_storage_attrs
+                && !self.tcx.is_foreign_item(def_id)
                 // Local definitions can never be imported, so we must not apply
                 // the DLLImport annotation.
-                !dso_local &&
+                && !dso_local
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
                 // dynamic linking when linker plugin based LTO is enabled.
-                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
-                self.tcx.sess.lto() != Lto::Thin;
+                && !self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
+                && self.tcx.sess.lto() != Lto::Thin;
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
@@ -442,58 +443,6 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
                 llvm::set_thread_local_mode(g, self.tls_model);
-
-                // Do not allow LLVM to change the alignment of a TLS on macOS.
-                //
-                // By default a global's alignment can be freely increased.
-                // This allows LLVM to generate more performant instructions
-                // e.g., using load-aligned into a SIMD register.
-                //
-                // However, on macOS 10.10 or below, the dynamic linker does not
-                // respect any alignment given on the TLS (radar 24221680).
-                // This will violate the alignment assumption, and causing segfault at runtime.
-                //
-                // This bug is very easy to trigger. In `println!` and `panic!`,
-                // the `LOCAL_STDOUT`/`LOCAL_STDERR` handles are stored in a TLS,
-                // which the values would be `mem::replace`d on initialization.
-                // The implementation of `mem::replace` will use SIMD
-                // whenever the size is 32 bytes or higher. LLVM notices SIMD is used
-                // and tries to align `LOCAL_STDOUT`/`LOCAL_STDERR` to a 32-byte boundary,
-                // which macOS's dyld disregarded and causing crashes
-                // (see issues #51794, #51758, #50867, #48866 and #44056).
-                //
-                // To workaround the bug, we trick LLVM into not increasing
-                // the global's alignment by explicitly assigning a section to it
-                // (equivalent to automatically generating a `#[link_section]` attribute).
-                // See the comment in the `GlobalValue::canIncreaseAlignment()` function
-                // of `lib/IR/Globals.cpp` for why this works.
-                //
-                // When the alignment is not increased, the optimized `mem::replace`
-                // will use load-unaligned instructions instead, and thus avoiding the crash.
-                //
-                // We could remove this hack whenever we decide to drop macOS 10.10 support.
-                if self.tcx.sess.target.is_like_osx {
-                    // The `inspect` method is okay here because we checked for provenance, and
-                    // because we are doing this access to inspect the final interpreter state
-                    // (not as part of the interpreter execution).
-                    //
-                    // FIXME: This check requires that the (arbitrary) value of undefined bytes
-                    // happens to be zero. Instead, we should only check the value of defined bytes
-                    // and set all undefined bytes to zero if this allocation is headed for the
-                    // BSS.
-                    let all_bytes_are_zero = alloc.provenance().ptrs().is_empty()
-                        && alloc
-                            .inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len())
-                            .iter()
-                            .all(|&byte| byte == 0);
-
-                    let sect_name = if all_bytes_are_zero {
-                        c"__DATA,__thread_bss"
-                    } else {
-                        c"__DATA,__thread_data"
-                    };
-                    llvm::LLVMSetSection(g, sect_name.as_ptr());
-                }
             }
 
             // Wasm statics with custom link sections get special treatment as they
@@ -551,8 +500,8 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
                 // on other targets, in particular MachO targets have *their* static constructor
                 // lists broken if `llvm.compiler.used` is emitted rather than `llvm.used`. However,
-                // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_hir_analysis`,
-                // so we don't need to take care of it here.
+                // that check happens when assigning the `CodegenFnAttrFlags` in
+                // `rustc_hir_analysis`, so we don't need to take care of it here.
                 self.add_compiler_used_global(g);
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {

@@ -5,12 +5,13 @@ use rustc_middle::ty::{
     self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_type_ir::Upcast;
 use tracing::{debug, instrument};
 
 use super::ItemCtxt;
+use super::predicates_of::assert_only_contains_predicates_from;
 use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
 
 /// For associated types we include both bounds written on the type
@@ -56,6 +57,9 @@ fn associated_type_bounds<'tcx>(
         tcx.def_path_str(assoc_item_def_id.to_def_id()),
         all_bounds
     );
+
+    assert_only_contains_predicates_from(filter, all_bounds, item_ty);
+
     all_bounds
 }
 
@@ -108,18 +112,21 @@ pub(super) fn explicit_item_bounds_with_filter(
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
             let item = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_item();
             let opaque_ty = item.expect_opaque_ty();
-            return ty::EarlyBinder::bind(opaque_type_bounds(
+            let item_ty = Ty::new_projection_from_args(
+                tcx,
+                def_id.to_def_id(),
+                ty::GenericArgs::identity_for_item(tcx, def_id),
+            );
+            let bounds = opaque_type_bounds(
                 tcx,
                 opaque_def_id.expect_local(),
                 opaque_ty.bounds,
-                Ty::new_projection_from_args(
-                    tcx,
-                    def_id.to_def_id(),
-                    ty::GenericArgs::identity_for_item(tcx, def_id),
-                ),
+                item_ty,
                 item.span,
                 filter,
-            ));
+            );
+            assert_only_contains_predicates_from(filter, bounds, item_ty);
+            return ty::EarlyBinder::bind(bounds);
         }
         Some(ty::ImplTraitInTraitData::Impl { .. }) => span_bug!(
             tcx.def_span(def_id),
@@ -167,7 +174,9 @@ pub(super) fn explicit_item_bounds_with_filter(
         }) => {
             let args = GenericArgs::identity_for_item(tcx, def_id);
             let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-            opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter)
+            let bounds = opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter);
+            assert_only_contains_predicates_from(filter, bounds, item_ty);
+            bounds
         }
         // Since RPITITs are lowered as projections in `<dyn HirTyLowerer>::lower_ty`, when we're
         // asking for the item bounds of the *opaques* in a trait's default method signature, we
@@ -184,15 +193,18 @@ pub(super) fn explicit_item_bounds_with_filter(
             };
             let args = GenericArgs::identity_for_item(tcx, def_id);
             let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-            tcx.arena.alloc_slice(
+            let bounds = &*tcx.arena.alloc_slice(
                 &opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter)
                     .to_vec()
                     .fold_with(&mut AssocTyToOpaque { tcx, fn_def_id: fn_def_id.to_def_id() }),
-            )
+            );
+            assert_only_contains_predicates_from(filter, bounds, item_ty);
+            bounds
         }
         hir::Node::Item(hir::Item { kind: hir::ItemKind::TyAlias(..), .. }) => &[],
         _ => bug!("item_bounds called on {:?}", def_id),
     };
+
     ty::EarlyBinder::bind(bounds)
 }
 

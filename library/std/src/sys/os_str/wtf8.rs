@@ -7,7 +7,7 @@ use crate::borrow::Cow;
 use crate::collections::TryReserveError;
 use crate::rc::Rc;
 use crate::sync::Arc;
-use crate::sys_common::wtf8::{check_utf8_boundary, Wtf8, Wtf8Buf};
+use crate::sys_common::wtf8::{Wtf8, Wtf8Buf, check_utf8_boundary};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, mem};
 

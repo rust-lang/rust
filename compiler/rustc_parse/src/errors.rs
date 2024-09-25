@@ -1116,25 +1116,19 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            match token_descr {
-                Some(TokenDescription::ReservedIdentifier) => {
-                    fluent::parse_expected_identifier_found_reserved_identifier_str
-                }
-                Some(TokenDescription::Keyword) => {
-                    fluent::parse_expected_identifier_found_keyword_str
-                }
-                Some(TokenDescription::ReservedKeyword) => {
-                    fluent::parse_expected_identifier_found_reserved_keyword_str
-                }
-                Some(TokenDescription::DocComment) => {
-                    fluent::parse_expected_identifier_found_doc_comment_str
-                }
-                None => fluent::parse_expected_identifier_found_str,
-            },
-        );
+        let mut diag = Diag::new(dcx, level, match token_descr {
+            Some(TokenDescription::ReservedIdentifier) => {
+                fluent::parse_expected_identifier_found_reserved_identifier_str
+            }
+            Some(TokenDescription::Keyword) => fluent::parse_expected_identifier_found_keyword_str,
+            Some(TokenDescription::ReservedKeyword) => {
+                fluent::parse_expected_identifier_found_reserved_keyword_str
+            }
+            Some(TokenDescription::DocComment) => {
+                fluent::parse_expected_identifier_found_doc_comment_str
+            }
+            None => fluent::parse_expected_identifier_found_str,
+        });
         diag.span(self.span);
         diag.arg("token", self.token);
 
@@ -1176,23 +1170,17 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            match token_descr {
-                Some(TokenDescription::ReservedIdentifier) => {
-                    fluent::parse_expected_semi_found_reserved_identifier_str
-                }
-                Some(TokenDescription::Keyword) => fluent::parse_expected_semi_found_keyword_str,
-                Some(TokenDescription::ReservedKeyword) => {
-                    fluent::parse_expected_semi_found_reserved_keyword_str
-                }
-                Some(TokenDescription::DocComment) => {
-                    fluent::parse_expected_semi_found_doc_comment_str
-                }
-                None => fluent::parse_expected_semi_found_str,
-            },
-        );
+        let mut diag = Diag::new(dcx, level, match token_descr {
+            Some(TokenDescription::ReservedIdentifier) => {
+                fluent::parse_expected_semi_found_reserved_identifier_str
+            }
+            Some(TokenDescription::Keyword) => fluent::parse_expected_semi_found_keyword_str,
+            Some(TokenDescription::ReservedKeyword) => {
+                fluent::parse_expected_semi_found_reserved_keyword_str
+            }
+            Some(TokenDescription::DocComment) => fluent::parse_expected_semi_found_doc_comment_str,
+            None => fluent::parse_expected_semi_found_str,
+        });
         diag.span(self.span);
         diag.arg("token", self.token);
 
@@ -1571,7 +1559,7 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_path_single_colon)]
+#[diag(parse_path_double_colon)]
 pub(crate) struct PathSingleColon {
     #[primary_span]
     pub span: Span,
@@ -1581,6 +1569,14 @@ pub(crate) struct PathSingleColon {
 
     #[note(parse_type_ascription_removed)]
     pub type_ascription: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_path_double_colon)]
+pub(crate) struct PathTripleColon {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "", style = "verbose")]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -10,8 +10,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use smallvec::SmallVec;
 
@@ -234,7 +234,9 @@ pub enum ConstraintCategory<'tcx> {
     UseAsStatic,
     TypeAnnotation,
     Cast {
-        /// Whether this is an unsizing cast and if yes, this contains the target type.
+        /// Whether this cast is a coercion that was automatically inserted by the compiler.
+        is_implicit_coercion: bool,
+        /// Whether this is an unsizing coercion and if yes, this contains the target type.
         /// Region variables are erased to ReErased.
         #[derive_where(skip)]
         unsize_to: Option<Ty<'tcx>>,

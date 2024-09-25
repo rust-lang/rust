@@ -17,12 +17,12 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
-use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{sym, DesugaringKind, Span};
+use rustc_span::symbol::{Symbol, kw};
+use rustc_span::{DesugaringKind, Span, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use tracing::{debug, instrument};
 
-use super::{find_use, RegionName, UseSpans};
+use super::{RegionName, UseSpans, find_use};
 use crate::borrow_set::BorrowData;
 use crate::nll::ConstraintDescription;
 use crate::region_infer::{BlameConstraint, Cause, ExtraConstraintInfo};
@@ -333,7 +333,11 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     }
                 }
 
-                if let ConstraintCategory::Cast { unsize_to: Some(unsize_ty) } = category {
+                if let ConstraintCategory::Cast {
+                    is_implicit_coercion: true,
+                    unsize_to: Some(unsize_ty),
+                } = category
+                {
                     self.add_object_lifetime_default_note(tcx, err, unsize_ty);
                 }
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
@@ -740,7 +744,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         // If we see an unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
                         Rvalue::Cast(
-                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            CastKind::PointerCoercion(PointerCoercion::Unsize, _),
                             operand,
                             ty,
                         ) => {

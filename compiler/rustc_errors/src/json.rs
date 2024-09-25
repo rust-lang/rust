@@ -19,19 +19,19 @@ use derive_setters::Setters;
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_error_messages::FluentArgs;
 use rustc_lint_defs::Applicability;
+use rustc_span::Span;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::source_map::SourceMap;
-use rustc_span::Span;
 use serde::Serialize;
 use termcolor::{ColorSpec, WriteColor};
 
 use crate::diagnostic::IsLint;
 use crate::emitter::{
-    should_show_source_code, ColorConfig, Destination, Emitter, HumanEmitter,
-    HumanReadableErrorType,
+    ColorConfig, Destination, Emitter, HumanEmitter, HumanReadableErrorType,
+    should_show_source_code,
 };
 use crate::registry::Registry;
-use crate::translation::{to_fluent_args, Translate};
+use crate::translation::{Translate, to_fluent_args};
 use crate::{
     CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, Suggestions,
     TerminalUrl,

@@ -2,36 +2,36 @@ use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
-    self as ast, Crate, ItemKind, MetaItemKind, ModKind, NestedMetaItem, NodeId, Path,
-    CRATE_NODE_ID,
+    self as ast, CRATE_NODE_ID, Crate, ItemKind, MetaItemKind, ModKind, NestedMetaItem, NodeId,
+    Path,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
-    ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    report_ambiguity_error, struct_span_code_err,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_hir::PrimTy;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::PrimTy;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_session::lint::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
     MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
-use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, Span, SyntaxContext};
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
 use crate::errors::{
@@ -41,11 +41,11 @@ use crate::errors::{
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::{
-    errors as errs, path_names_to_string, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind,
-    BindingError, BindingKey, Finalize, HasGenericParams, LexicalScopeBinding, MacroRulesScope,
-    Module, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
-    PrivacyError, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
-    VisResolutionError,
+    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, BindingKey, Finalize,
+    HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError,
+    ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError,
+    errors as errs, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -1002,10 +1002,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             VisResolutionError::AncestorOnly(span) => {
                 self.dcx().create_err(errs::AncestorOnly(span))
             }
-            VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
-                span,
-                ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
-            ),
+            VisResolutionError::FailedToResolve(span, label, suggestion) => {
+                self.into_struct_error(span, ResolutionError::FailedToResolve {
+                    segment: None,
+                    label,
+                    suggestion,
+                    module: None,
+                })
+            }
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
             }

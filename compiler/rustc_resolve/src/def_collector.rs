@@ -7,9 +7,9 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::hygiene::LocalExpnId;
-use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use rustc_span::hygiene::LocalExpnId;
+use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::debug;
 
 use crate::{ImplTraitContext, InvocationParent, PendingAnonConstInfo, Resolver};
@@ -127,16 +127,68 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     fn visit_macro_invoc(&mut self, id: NodeId) {
         let id = id.placeholder_to_expn_id();
         let pending_anon_const_info = self.pending_anon_const_info.take();
-        let old_parent = self.resolver.invocation_parents.insert(
-            id,
-            InvocationParent {
-                parent_def: self.parent_def,
-                pending_anon_const_info,
-                impl_trait_context: self.impl_trait_context,
-                in_attr: self.in_attr,
-            },
-        );
+        let old_parent = self.resolver.invocation_parents.insert(id, InvocationParent {
+            parent_def: self.parent_def,
+            pending_anon_const_info,
+            impl_trait_context: self.impl_trait_context,
+            in_attr: self.in_attr,
+        });
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
+    }
+
+    /// Determines whether the const argument `AnonConst` is a simple macro call, optionally
+    /// surrounded with braces.
+    ///
+    /// If this const argument *is* a trivial macro call then the id for the macro call is
+    /// returned along with the information required to build the anon const's def if
+    /// the macro call expands to a non-trivial expression.
+    fn is_const_arg_trivial_macro_expansion(
+        &self,
+        anon_const: &'a AnonConst,
+    ) -> Option<(PendingAnonConstInfo, NodeId)> {
+        let (block_was_stripped, expr) = anon_const.value.maybe_unwrap_block();
+        match expr {
+            Expr { kind: ExprKind::MacCall(..), id, .. } => Some((
+                PendingAnonConstInfo {
+                    id: anon_const.id,
+                    span: anon_const.value.span,
+                    block_was_stripped,
+                },
+                *id,
+            )),
+            _ => None,
+        }
+    }
+
+    /// Determines whether the expression `const_arg_sub_expr` is a simple macro call, sometimes
+    /// surrounded with braces if a set of braces has not already been entered. This is required
+    /// as `{ N }` is treated as equivalent to a bare parameter `N` whereas `{{ N }}` is treated as
+    /// a real block expression and is lowered to an anonymous constant which is not allowed to use
+    /// generic parameters.
+    ///
+    /// If this expression is a trivial macro call then the id for the macro call is
+    /// returned along with the information required to build the anon const's def if
+    /// the macro call expands to a non-trivial expression.
+    fn is_const_arg_sub_expr_trivial_macro_expansion(
+        &self,
+        const_arg_sub_expr: &'a Expr,
+    ) -> Option<(PendingAnonConstInfo, NodeId)> {
+        let pending_anon = self.pending_anon_const_info.unwrap_or_else(||
+            panic!("Checking expr is trivial macro call without having entered anon const: `{const_arg_sub_expr:?}`"),
+        );
+
+        let (block_was_stripped, expr) = if pending_anon.block_was_stripped {
+            (true, const_arg_sub_expr)
+        } else {
+            const_arg_sub_expr.maybe_unwrap_block()
+        };
+
+        match expr {
+            Expr { kind: ExprKind::MacCall(..), id, .. } => {
+                Some((PendingAnonConstInfo { block_was_stripped, ..pending_anon }, *id))
+            }
+            _ => None,
+        }
     }
 }
 
@@ -354,12 +406,12 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         // items will be messed up, but that's ok because there can't be any if we're just looking
         // for bare idents.
 
-        if matches!(constant.value.maybe_unwrap_block().kind, ExprKind::MacCall(..)) {
-            // See self.pending_anon_const_info for explanation
-            self.pending_anon_const_info =
-                Some(PendingAnonConstInfo { id: constant.id, span: constant.value.span });
-            return visit::walk_anon_const(self, constant);
-        } else if constant.value.is_potential_trivial_const_arg() {
+        if let Some((pending_anon, macro_invoc)) =
+            self.is_const_arg_trivial_macro_expansion(constant)
+        {
+            self.pending_anon_const_info = Some(pending_anon);
+            return self.visit_macro_invoc(macro_invoc);
+        } else if constant.value.is_potential_trivial_const_arg(true) {
             return visit::walk_anon_const(self, constant);
         }
 
@@ -368,23 +420,36 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        if matches!(expr.kind, ExprKind::MacCall(..)) {
-            return self.visit_macro_invoc(expr.id);
+        // If we're visiting the expression of a const argument that was a macro call then
+        // check if it is *still* unknown whether it is a trivial const arg or not. If so
+        // recurse into the macro call and delay creating the anon const def until expansion.
+        if self.pending_anon_const_info.is_some()
+            && let Some((pending_anon, macro_invoc)) =
+                self.is_const_arg_sub_expr_trivial_macro_expansion(expr)
+        {
+            self.pending_anon_const_info = Some(pending_anon);
+            return self.visit_macro_invoc(macro_invoc);
         }
 
-        let grandparent_def = if let Some(pending_anon) = self.pending_anon_const_info.take() {
-            // See self.pending_anon_const_info for explanation
-            if !expr.is_potential_trivial_const_arg() {
+        // See self.pending_anon_const_info for explanation
+        let parent_def = self
+            .pending_anon_const_info
+            .take()
+            // If we already stripped away a set of braces then do not do it again when determining
+            // if the macro expanded to a trivial const arg. This arises in cases such as:
+            // `Foo<{ bar!() }>` where `bar!()` expands to `{ N }`. This should not be considered a
+            // trivial const argument even though `{ N }` by itself *is*.
+            .filter(|pending_anon| {
+                !expr.is_potential_trivial_const_arg(!pending_anon.block_was_stripped)
+            })
+            .map(|pending_anon| {
                 self.create_def(pending_anon.id, kw::Empty, DefKind::AnonConst, pending_anon.span)
-            } else {
-                self.parent_def
-            }
-        } else {
-            self.parent_def
-        };
+            })
+            .unwrap_or(self.parent_def);
 
-        self.with_parent(grandparent_def, |this| {
+        self.with_parent(parent_def, |this| {
             let parent_def = match expr.kind {
+                ExprKind::MacCall(..) => return this.visit_macro_invoc(expr.id),
                 ExprKind::Closure(..) | ExprKind::Gen(..) => {
                     this.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
                 }

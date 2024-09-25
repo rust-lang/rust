@@ -14,10 +14,7 @@
 
 //@ only-thumb
 
-use std::path::PathBuf;
-
-use run_make_support::rfs::create_dir;
-use run_make_support::{cmd, env_var, target};
+use run_make_support::{cargo, cmd, env, env_var, target};
 
 const CRATE: &str = "cortex-m";
 const CRATE_URL: &str = "https://github.com/rust-embedded/cortex-m";
@@ -28,32 +25,21 @@ fn main() {
     // See below link for git usage:
     // https://stackoverflow.com/questions/3489173#14091182
     cmd("git").args(["clone", CRATE_URL, CRATE]).run();
-    std::env::set_current_dir(CRATE).unwrap();
+    env::set_current_dir(CRATE);
     cmd("git").args(["reset", "--hard", CRATE_SHA1]).run();
 
-    let target_dir = PathBuf::from("target");
-    let manifest_path = PathBuf::from("Cargo.toml");
-
-    let path = env_var("PATH");
-    let rustc = env_var("RUSTC");
-    let bootstrap_cargo = env_var("BOOTSTRAP_CARGO");
-    // FIXME: extract bootstrap cargo invocations to a proper command
-    // https://github.com/rust-lang/rust/issues/128734
-    let mut cmd = cmd(bootstrap_cargo);
-    cmd.args(&[
-        "build",
-        "--manifest-path",
-        manifest_path.to_str().unwrap(),
-        "-Zbuild-std=core",
-        "--target",
-        &target(),
-    ])
-    .env("PATH", path)
-    .env("RUSTC", rustc)
-    .env("CARGO_TARGET_DIR", &target_dir)
-    // Don't make lints fatal, but they need to at least warn
-    // or they break Cargo's target info parsing.
-    .env("RUSTFLAGS", "-Copt-level=0 -Cdebug-assertions=yes --cap-lints=warn");
-
-    cmd.run();
+    cargo()
+        .args(&[
+            "build",
+            "--manifest-path",
+            "Cargo.toml",
+            "-Zbuild-std=core",
+            "--target",
+            &target(),
+        ])
+        .env("CARGO_TARGET_DIR", "target")
+        // Don't make lints fatal, but they need to at least warn
+        // or they break Cargo's target info parsing.
+        .env("RUSTFLAGS", "-Copt-level=0 -Cdebug-assertions=yes --cap-lints=warn")
+        .run();
 }

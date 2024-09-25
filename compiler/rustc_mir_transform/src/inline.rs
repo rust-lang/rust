@@ -6,8 +6,8 @@ use std::ops::{Range, RangeFrom};
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
 use rustc_index::Idx;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
@@ -885,13 +885,10 @@ impl<'tcx> Inliner<'tcx> {
         });
 
         if let Some(block) = return_block {
-            caller_body[block].statements.insert(
-                0,
-                Statement {
-                    source_info: callsite.source_info,
-                    kind: StatementKind::StorageDead(local),
-                },
-            );
+            caller_body[block].statements.insert(0, Statement {
+                source_info: callsite.source_info,
+                kind: StatementKind::StorageDead(local),
+            });
         }
 
         local

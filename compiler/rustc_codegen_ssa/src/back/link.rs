@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 use std::ffi::OsString;
-use std::fs::{read, File, OpenOptions};
+use std::fs::{File, OpenOptions, read};
 use std::io::{BufWriter, Write};
 use std::ops::{ControlFlow, Deref};
 use std::path::{Path, PathBuf};
@@ -18,7 +18,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::fs::{copy_to_stdout, emit_wrapper_file, METADATA_FILENAME};
+use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{find_native_static_library, walk_native_lib_search_dirs};
 use rustc_middle::bug;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -34,7 +34,7 @@ use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
-use rustc_session::{filesearch, Session};
+use rustc_session::{Session, filesearch};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
@@ -48,11 +48,11 @@ use tracing::{debug, info, warn};
 use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use super::command::Command;
 use super::linker::{self, Linker};
-use super::metadata::{create_wrapper_file, MetadataPosition};
+use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
 use crate::{
-    common, errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo,
-    NativeLib,
+    CodegenResults, CompiledModule, CrateInfo, NativeLib, common, errors,
+    looks_like_rust_object_file,
 };
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
@@ -1197,8 +1197,8 @@ fn escape_linker_output(s: &[u8], flavour: LinkerFlavor) -> String {
 #[cfg(windows)]
 mod win {
     use windows::Win32::Globalization::{
-        GetLocaleInfoEx, MultiByteToWideChar, CP_OEMCP, LOCALE_IUSEUTF8LEGACYOEMCP,
-        LOCALE_NAME_SYSTEM_DEFAULT, LOCALE_RETURN_NUMBER, MB_ERR_INVALID_CHARS,
+        CP_OEMCP, GetLocaleInfoEx, LOCALE_IUSEUTF8LEGACYOEMCP, LOCALE_NAME_SYSTEM_DEFAULT,
+        LOCALE_RETURN_NUMBER, MB_ERR_INVALID_CHARS, MultiByteToWideChar,
     };
 
     /// Get the Windows system OEM code page. This is most notably the code page

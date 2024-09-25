@@ -1,6 +1,6 @@
 use libc::{c_int, c_void, size_t};
 
-use self::netc::{sockaddr, socklen_t, MSG_PEEK};
+use self::netc::{MSG_PEEK, sockaddr, socklen_t};
 use super::abi;
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};

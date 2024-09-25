@@ -2,7 +2,7 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    struct_span_code_err, Applicability, Diag, Subdiagnostic, E0309, E0310, E0311, E0495,
+    Applicability, Diag, E0309, E0310, E0311, E0495, Subdiagnostic, struct_span_code_err,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,13 +17,13 @@ use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol};
 use rustc_type_ir::Upcast as _;
 use tracing::{debug, instrument};
 
-use super::nice_region_error::find_anon_type;
 use super::ObligationCauseAsDiagArg;
-use crate::error_reporting::infer::ObligationCauseExt;
+use super::nice_region_error::find_anon_type;
 use crate::error_reporting::TypeErrCtxt;
+use crate::error_reporting::infer::ObligationCauseExt;
 use crate::errors::{
-    self, note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound,
-    OutlivesContent, RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
+    self, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
+    RefLongerThanData, RegionOriginNote, WhereClauseSuggestions, note_and_explain,
 };
 use crate::fluent_generated as fluent;
 use crate::infer::region_constraints::GenericKind;

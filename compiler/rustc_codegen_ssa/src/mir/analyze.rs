@@ -5,7 +5,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, traversal, DefLocation, Location, TerminatorKind};
+use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind, traversal};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{bug, span_bug};
 use tracing::debug;
@@ -15,6 +15,7 @@ use crate::traits::*;
 
 pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
+    traversal_order: &[mir::BasicBlock],
 ) -> BitSet<mir::Local> {
     let mir = fx.mir;
     let dominators = mir.basic_blocks.dominators();
@@ -24,13 +25,7 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .map(|decl| {
             let ty = fx.monomorphize(decl.ty);
             let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
-            if layout.is_zst() {
-                LocalKind::ZST
-            } else if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
-                LocalKind::Unused
-            } else {
-                LocalKind::Memory
-            }
+            if layout.is_zst() { LocalKind::ZST } else { LocalKind::Unused }
         })
         .collect();
 
@@ -44,7 +39,8 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // If there exists a local definition that dominates all uses of that local,
     // the definition should be visited first. Traverse blocks in an order that
     // is a topological sort of dominance partial order.
-    for (bb, data) in traversal::reverse_postorder(mir) {
+    for bb in traversal_order.iter().copied() {
+        let data = &mir.basic_blocks[bb];
         analyzer.visit_basic_block_data(bb, data);
     }
 
@@ -77,11 +73,22 @@ struct LocalAnalyzer<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
 
 impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx> {
     fn define(&mut self, local: mir::Local, location: DefLocation) {
+        let fx = self.fx;
         let kind = &mut self.locals[local];
+        let decl = &fx.mir.local_decls[local];
         match *kind {
             LocalKind::ZST => {}
             LocalKind::Memory => {}
-            LocalKind::Unused => *kind = LocalKind::SSA(location),
+            LocalKind::Unused => {
+                let ty = fx.monomorphize(decl.ty);
+                let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
+                *kind =
+                    if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
+                        LocalKind::SSA(location)
+                    } else {
+                        LocalKind::Memory
+                    };
+            }
             LocalKind::SSA(_) => *kind = LocalKind::Memory,
         }
     }

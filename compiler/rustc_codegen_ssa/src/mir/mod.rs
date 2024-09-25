@@ -1,9 +1,9 @@
 use std::iter;
 
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::{traversal, UnwindTerminateReason};
+use rustc_middle::mir::{UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
@@ -218,7 +218,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut start_bx);
 
-    let memory_locals = analyze::non_ssa_locals(&fx);
+    let traversal_order = traversal::mono_reachable_reverse_postorder(mir, cx.tcx(), instance);
+    let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order);
 
     // Allocate variable and temp allocas
     let local_values = {
@@ -277,17 +278,20 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
 
-    let reachable_blocks = traversal::mono_reachable_as_bitset(mir, cx.tcx(), instance);
+    let mut unreached_blocks = BitSet::new_filled(mir.basic_blocks.len());
+    // Codegen the body of each reachable block using our reverse postorder list.
+    for bb in traversal_order {
+        fx.codegen_block(bb);
+        unreached_blocks.remove(bb);
+    }
 
-    // Codegen the body of each block using reverse postorder
-    for (bb, _) in traversal::reverse_postorder(mir) {
-        if reachable_blocks.contains(bb) {
-            fx.codegen_block(bb);
-        } else {
-            // We want to skip this block, because it's not reachable. But we still create
-            // the block so terminators in other blocks can reference it.
-            fx.codegen_block_as_unreachable(bb);
-        }
+    // FIXME: These empty unreachable blocks are *mostly* a waste. They are occasionally
+    // targets for a SwitchInt terminator, but the reimplementation of the mono-reachable
+    // simplification in SwitchInt lowering sometimes misses cases that
+    // mono_reachable_reverse_postorder manages to figure out.
+    // The solution is to do something like post-mono GVN. But for now we have this hack.
+    for bb in unreached_blocks.iter() {
+        fx.codegen_block_as_unreachable(bb);
     }
 }
 

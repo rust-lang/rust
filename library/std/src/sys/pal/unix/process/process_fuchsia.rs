@@ -2,7 +2,7 @@ use libc::{c_int, size_t};
 
 use crate::num::NonZero;
 use crate::sys::process::process_common::*;
-use crate::sys::process::zircon::{zx_handle_t, Handle};
+use crate::sys::process::zircon::{Handle, zx_handle_t};
 use crate::{fmt, io, mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////

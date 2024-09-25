@@ -1,29 +1,57 @@
-warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/bad-inputs-and-output.rs:3:12
+error[E0575]: expected associated type, found associated function `Trait::method`
+  --> $DIR/bad-inputs-and-output.rs:27:36
    |
-LL | #![feature(return_type_notation)]
-   |            ^^^^^^^^^^^^^^^^^^^^
+LL | fn foo_qualified<T: Trait>() where <T as Trait>::method(i32): Send {}
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ not a associated type
+
+error[E0575]: expected associated type, found associated function `Trait::method`
+  --> $DIR/bad-inputs-and-output.rs:30:36
    |
-   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+LL | fn bar_qualified<T: Trait>() where <T as Trait>::method() -> (): Send {}
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a associated type
+
+error[E0575]: expected associated type, found associated function `Trait::method`
+  --> $DIR/bad-inputs-and-output.rs:33:36
+   |
+LL | fn baz_qualified<T: Trait>() where <T as Trait>::method(): Send {}
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ not a associated type
 
 error: argument types not allowed with return type notation
-  --> $DIR/bad-inputs-and-output.rs:10:23
+  --> $DIR/bad-inputs-and-output.rs:9:23
    |
 LL | fn foo<T: Trait<method(i32): Send>>() {}
    |                       ^^^^^ help: remove the input types: `()`
 
 error: return type not allowed with return type notation
-  --> $DIR/bad-inputs-and-output.rs:13:25
+  --> $DIR/bad-inputs-and-output.rs:12:25
    |
 LL | fn bar<T: Trait<method() -> (): Send>>() {}
    |                         ^^^^^^ help: remove the return type
 
 error: return type notation arguments must be elided with `..`
-  --> $DIR/bad-inputs-and-output.rs:16:23
+  --> $DIR/bad-inputs-and-output.rs:15:23
    |
 LL | fn baz<T: Trait<method(): Send>>() {}
    |                       ^^ help: add `..`: `(..)`
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: argument types not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:18:40
+   |
+LL | fn foo_path<T: Trait>() where T::method(i32): Send {}
+   |                                        ^^^^^ help: remove the input types: `()`
 
+error: return type not allowed with return type notation
+  --> $DIR/bad-inputs-and-output.rs:21:42
+   |
+LL | fn bar_path<T: Trait>() where T::method() -> (): Send {}
+   |                                          ^^^^^^ help: remove the return type
+
+error: return type notation arguments must be elided with `..`
+  --> $DIR/bad-inputs-and-output.rs:24:40
+   |
+LL | fn baz_path<T: Trait>() where T::method(): Send {}
+   |                                        ^^ help: add `..`: `(..)`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0575`.

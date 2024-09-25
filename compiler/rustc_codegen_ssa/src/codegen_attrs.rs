@@ -1,12 +1,12 @@
-use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
-use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_ast::{MetaItemKind, NestedMetaItem, ast, attr};
+use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr, list_contains_name};
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, DiagMessage, SubdiagMessage};
+use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
-use rustc_hir::{lang_items, LangItem};
+use rustc_hir::{LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
@@ -16,8 +16,8 @@ use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span};
-use rustc_target::spec::{abi, SanitizerSet};
+use rustc_span::{Span, sym};
+use rustc_target::spec::{SanitizerSet, abi};
 
 use crate::errors;
 use crate::target_features::{check_target_feature_trait_unsafe, from_target_feature};
@@ -194,24 +194,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         };
                     }
                 }
-            }
-            sym::cmse_nonsecure_entry => {
-                if let Some(fn_sig) = fn_sig()
-                    && !matches!(fn_sig.skip_binder().abi(), abi::Abi::C { .. })
-                {
-                    struct_span_code_err!(
-                        tcx.dcx(),
-                        attr.span,
-                        E0776,
-                        "`#[cmse_nonsecure_entry]` requires C ABI"
-                    )
-                    .emit();
-                }
-                if !tcx.sess.target.llvm_target.contains("thumbv8m") {
-                    struct_span_code_err!(tcx.dcx(), attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
-                    .emit();
-                }
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
             sym::track_caller => {

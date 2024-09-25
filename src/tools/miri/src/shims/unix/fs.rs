@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::fs::{
-    read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileType, OpenOptions, ReadDir,
+    DirBuilder, File, FileType, OpenOptions, ReadDir, read_dir, remove_dir, remove_file, rename,
 };
 use std::io::{self, ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -15,7 +15,7 @@ use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::unix::fd::FileDescriptionRef;
 use crate::shims::unix::*;
 use crate::*;
-use shims::time::system_time_to_duration;
+use self::shims::time::system_time_to_duration;
 
 use self::fd::FlockOp;
 
@@ -34,32 +34,43 @@ impl FileDescription for FileHandle {
         &self,
         _self_ref: &FileDescriptionRef,
         communicate_allowed: bool,
-        bytes: &mut [u8],
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<usize>> {
+        ptr: Pointer,
+        len: usize,
+        dest: &MPlaceTy<'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        Ok((&mut &self.file).read(bytes))
+        let mut bytes = vec![0; len];
+        let result = (&mut &self.file).read(&mut bytes);
+        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
     }
 
     fn write<'tcx>(
         &self,
         _self_ref: &FileDescriptionRef,
         communicate_allowed: bool,
-        bytes: &[u8],
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<usize>> {
+        ptr: Pointer,
+        len: usize,
+        dest: &MPlaceTy<'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        Ok((&mut &self.file).write(bytes))
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+        let result = (&mut &self.file).write(bytes);
+        ecx.return_written_byte_count_or_error(result, dest)
     }
 
     fn pread<'tcx>(
         &self,
         communicate_allowed: bool,
-        bytes: &mut [u8],
         offset: u64,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<usize>> {
+        ptr: Pointer,
+        len: usize,
+        dest: &MPlaceTy<'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        let mut bytes = vec![0; len];
         // Emulates pread using seek + read + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
         // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
@@ -67,27 +78,31 @@ impl FileDescription for FileHandle {
         let mut f = || {
             let cursor_pos = file.stream_position()?;
             file.seek(SeekFrom::Start(offset))?;
-            let res = file.read(bytes);
+            let res = file.read(&mut bytes);
             // Attempt to restore cursor position even if the read has failed
             file.seek(SeekFrom::Start(cursor_pos))
                 .expect("failed to restore file position, this shouldn't be possible");
             res
         };
-        Ok(f())
+        let result = f();
+        ecx.return_read_bytes_and_count(ptr, &bytes, result, dest)
     }
 
     fn pwrite<'tcx>(
         &self,
         communicate_allowed: bool,
-        bytes: &[u8],
+        ptr: Pointer,
+        len: usize,
         offset: u64,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<usize>> {
+        dest: &MPlaceTy<'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         // Emulates pwrite using seek + write + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
         // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
         let file = &mut &self.file;
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         let mut f = || {
             let cursor_pos = file.stream_position()?;
             file.seek(SeekFrom::Start(offset))?;
@@ -97,7 +112,8 @@ impl FileDescription for FileHandle {
                 .expect("failed to restore file position, this shouldn't be possible");
             res
         };
-        Ok(f())
+        let result = f();
+        ecx.return_written_byte_count_or_error(result, dest)
     }
 
     fn seek<'tcx>(
@@ -173,7 +189,7 @@ impl FileDescription for FileHandle {
             use windows_sys::Win32::{
                 Foundation::{ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE},
                 Storage::FileSystem::{
-                    LockFileEx, UnlockFile, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY,
+                    LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
                 },
             };
             let fh = self.file.as_raw_handle() as HANDLE;

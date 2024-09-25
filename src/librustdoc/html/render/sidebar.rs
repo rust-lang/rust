@@ -8,10 +8,10 @@ use rustc_hir::def_id::DefIdSet;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::debug;
 
-use super::{item_ty_to_section, Context, ItemSection};
+use super::{Context, ItemSection, item_ty_to_section};
 use crate::clean;
-use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
+use crate::formats::item_type::ItemType;
 use crate::html::format::Buffer;
 use crate::html::markdown::{IdMap, MarkdownWithToc};
 

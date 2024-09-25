@@ -11,7 +11,7 @@ use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModul
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, TargetMachineFactoryConfig};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::{DiagCtxtHandle, FatalError};
@@ -23,7 +23,7 @@ use rustc_session::config::{self, CrateType, Lto};
 use tracing::{debug, info};
 
 use crate::back::write::{
-    self, bitcode_section_name, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers,
+    self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
@@ -156,15 +156,15 @@ fn get_bitcode_slice_from_object_data<'a>(
     obj: &'a [u8],
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<&'a [u8], LtoBitcodeFromRlib> {
-    // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR that
-    // won't work. Fortunately, if that's what we have we can just return the object directly, so we sniff
-    // the relevant magic strings here and return.
+    // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR
+    // that won't work. Fortunately, if that's what we have we can just return the object directly,
+    // so we sniff the relevant magic strings here and return.
     if obj.starts_with(b"\xDE\xC0\x17\x0B") || obj.starts_with(b"BC\xC0\xDE") {
         return Ok(obj);
     }
-    // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment name"
-    // which in the public API for sections gets treated as part of the section name, but internally
-    // in MachOObjectFile.cpp gets treated separately.
+    // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment
+    // name" which in the public API for sections gets treated as part of the section name, but
+    // internally in MachOObjectFile.cpp gets treated separately.
     let section_name = bitcode_section_name(cgcx).trim_start_matches("__LLVM,");
     let mut len = 0;
     let data = unsafe {
@@ -808,8 +808,7 @@ struct ThinLTOKeysMap {
 impl ThinLTOKeysMap {
     fn save_to_file(&self, path: &Path) -> io::Result<()> {
         use std::io::Write;
-        let file = File::create(path)?;
-        let mut writer = io::BufWriter::new(file);
+        let mut writer = File::create_buffered(path)?;
         // The entries are loaded back into a hash map in `load_from_file()`, so
         // the order in which we write them to file here does not matter.
         for (module, key) in &self.keys {
@@ -821,8 +820,8 @@ impl ThinLTOKeysMap {
     fn load_from_file(path: &Path) -> io::Result<Self> {
         use std::io::BufRead;
         let mut keys = BTreeMap::default();
-        let file = File::open(path)?;
-        for line in io::BufReader::new(file).lines() {
+        let file = File::open_buffered(path)?;
+        for line in file.lines() {
             let line = line?;
             let mut split = line.split(' ');
             let module = split.next().unwrap();
@@ -844,7 +843,7 @@ impl ThinLTOKeysMap {
                     llvm::LLVMRustComputeLTOCacheKey(rust_str, module.identifier, data.0);
                 })
                 .expect("Invalid ThinLTO module key");
-                (name.clone().into_string().unwrap(), key)
+                (module_name_to_str(name).to_string(), key)
             })
             .collect();
         Self { keys }

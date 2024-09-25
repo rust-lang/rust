@@ -14,14 +14,13 @@ diff --git a/lib.rs b/lib.rs
 index 1e336bf..35e6f54 100644
 --- a/lib.rs
 +++ b/lib.rs
-@@ -1,7 +1,6 @@
+@@ -1,6 +1,5 @@
  #![cfg(test)]
  // tidy-alphabetical-start
- #![cfg_attr(bootstrap, feature(offset_of_nested))]
+ #![cfg_attr(bootstrap, feature(const_mut_refs))]
 -#![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
  #![cfg_attr(test, feature(cfg_match))]
  #![feature(alloc_layout_extra)]
- #![feature(array_chunks)]
 diff --git a/atomic.rs b/atomic.rs
 index b735957..ea728b6 100644
 --- a/atomic.rs

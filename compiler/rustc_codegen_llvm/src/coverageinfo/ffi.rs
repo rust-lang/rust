@@ -121,7 +121,8 @@ mod mcdc {
         num_conditions: u16,
     }
 
-    // ConditionId in llvm is `unsigned int` at 18 while `int16_t` at [19](https://github.com/llvm/llvm-project/pull/81257)
+    // ConditionId in llvm is `unsigned int` at 18 while `int16_t` at
+    // [19](https://github.com/llvm/llvm-project/pull/81257).
     type LLVMConditionId = i16;
 
     /// Must match the layout of `LLVMRustMCDCBranchParameters`.

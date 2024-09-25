@@ -9,7 +9,7 @@ use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
+use std::path::{MAIN_SEPARATOR_STR, Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, fs, io};
 
@@ -19,7 +19,7 @@ use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, hex_encode};
-use crate::{t, Config};
+use crate::{Config, t};
 
 #[cfg(test)]
 mod tests;

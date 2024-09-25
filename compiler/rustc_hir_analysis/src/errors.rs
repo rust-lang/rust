@@ -780,14 +780,15 @@ pub(crate) struct PlaceholderNotAllowedItemSignatures {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_associated_type_trait_uninferred_generic_params, code = E0212)]
-pub(crate) struct AssociatedTypeTraitUninferredGenericParams {
+pub(crate) struct AssociatedItemTraitUninferredGenericParams {
     #[primary_span]
     pub span: Span,
     #[suggestion(style = "verbose", applicability = "maybe-incorrect", code = "{bound}")]
     pub inferred_sugg: Option<Span>,
     pub bound: String,
     #[subdiagnostic]
-    pub mpart_sugg: Option<AssociatedTypeTraitUninferredGenericParamsMultipartSuggestion>,
+    pub mpart_sugg: Option<AssociatedItemTraitUninferredGenericParamsMultipartSuggestion>,
+    pub what: &'static str,
 }
 
 #[derive(Subdiagnostic)]
@@ -795,7 +796,7 @@ pub(crate) struct AssociatedTypeTraitUninferredGenericParams {
     hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion,
     applicability = "maybe-incorrect"
 )]
-pub(crate) struct AssociatedTypeTraitUninferredGenericParamsMultipartSuggestion {
+pub(crate) struct AssociatedItemTraitUninferredGenericParamsMultipartSuggestion {
     #[suggestion_part(code = "{first}")]
     pub fspan: Span,
     pub first: String,
@@ -1523,57 +1524,6 @@ pub(crate) struct OnlyCurrentTraitsPointerSugg<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_static_mut_ref, code = E0796)]
-#[note]
-pub(crate) struct StaticMutRef<'a> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: MutRefSugg,
-    pub shared: &'a str,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum MutRefSugg {
-    #[multipart_suggestion(
-        hir_analysis_suggestion,
-        style = "verbose",
-        applicability = "maybe-incorrect"
-    )]
-    Shared {
-        #[suggestion_part(code = "addr_of!(")]
-        lo: Span,
-        #[suggestion_part(code = ")")]
-        hi: Span,
-    },
-    #[multipart_suggestion(
-        hir_analysis_suggestion_mut,
-        style = "verbose",
-        applicability = "maybe-incorrect"
-    )]
-    Mut {
-        #[suggestion_part(code = "addr_of_mut!(")]
-        lo: Span,
-        #[suggestion_part(code = ")")]
-        hi: Span,
-    },
-}
-
-// STATIC_MUT_REF lint
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_static_mut_refs_lint)]
-#[note]
-#[note(hir_analysis_why_note)]
-pub(crate) struct RefOfMutStatic<'a> {
-    #[label]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: MutRefSugg,
-    pub shared: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_not_supported_delegation)]
 pub(crate) struct UnsupportedDelegation<'a> {
     #[primary_span]
@@ -1741,6 +1691,13 @@ pub(crate) struct CmseCallOutputStackSpill {
 #[derive(Diagnostic)]
 #[diag(hir_analysis_cmse_call_generic, code = E0798)]
 pub(crate) struct CmseCallGeneric {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_bad_return_type_notation_position)]
+pub(crate) struct BadReturnTypeNotation {
     #[primary_span]
     pub span: Span,
 }

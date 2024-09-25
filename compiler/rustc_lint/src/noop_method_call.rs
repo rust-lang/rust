@@ -128,17 +128,13 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                 ty::Adt(def, _) => Some(cx.tcx.def_span(def.did()).shrink_to_lo()),
                 _ => None,
             };
-            cx.emit_span_lint(
-                NOOP_METHOD_CALL,
-                span,
-                NoopMethodCallDiag {
-                    method: call.ident.name,
-                    orig_ty,
-                    trait_,
-                    label: span,
-                    suggest_derive,
-                },
-            );
+            cx.emit_span_lint(NOOP_METHOD_CALL, span, NoopMethodCallDiag {
+                method: call.ident.name,
+                orig_ty,
+                trait_,
+                label: span,
+                suggest_derive,
+            });
         } else {
             match name {
                 // If `type_of(x) == T` and `x.borrow()` is used to get `&T`,

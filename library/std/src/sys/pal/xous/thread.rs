@@ -4,10 +4,10 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::os::xous::ffi::{
-    blocking_scalar, create_thread, do_yield, join_thread, map_memory, update_memory_flags,
-    MemoryFlags, Syscall, ThreadId,
+    MemoryFlags, Syscall, ThreadId, blocking_scalar, create_thread, do_yield, join_thread,
+    map_memory, update_memory_flags,
 };
-use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
+use crate::os::xous::services::{TicktimerScalar, ticktimer_server};
 use crate::time::Duration;
 
 pub struct Thread {

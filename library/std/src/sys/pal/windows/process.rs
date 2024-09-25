@@ -22,8 +22,8 @@ use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::{cvt, path, stdio};
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
+use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::{cmp, env, fmt, mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,10 +253,10 @@ impl Command {
         attribute: usize,
         value: T,
     ) {
-        self.proc_thread_attributes.insert(
-            attribute,
-            ProcThreadAttributeValue { size: mem::size_of::<T>(), data: Box::new(value) },
-        );
+        self.proc_thread_attributes.insert(attribute, ProcThreadAttributeValue {
+            size: mem::size_of::<T>(),
+            data: Box::new(value),
+        });
     }
 
     pub fn spawn(

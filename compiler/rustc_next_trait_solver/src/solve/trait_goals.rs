@@ -6,7 +6,7 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
-use rustc_type_ir::{self as ty, elaborate, Interner, TraitPredicate, Upcast as _};
+use rustc_type_ir::{self as ty, Interner, TraitPredicate, Upcast as _, elaborate};
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -359,21 +359,18 @@ where
             )?;
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty, .. }| {
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_lang_item(TraitSolverLangItem::Sized),
-                    [output_coroutine_ty],
-                )
+                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [
+                    output_coroutine_ty,
+                ])
             },
         );
 
         let pred = tupled_inputs_and_output_and_coroutine
             .map_bound(|AsyncCallableRelevantTypes { tupled_inputs_ty, .. }| {
-                ty::TraitRef::new(
-                    cx,
-                    goal.predicate.def_id(),
-                    [goal.predicate.self_ty(), tupled_inputs_ty],
-                )
+                ty::TraitRef::new(cx, goal.predicate.def_id(), [
+                    goal.predicate.self_ty(),
+                    tupled_inputs_ty,
+                ])
             })
             .upcast(cx);
         // A built-in `AsyncFn` impl only holds if the output is sized.
@@ -1027,11 +1024,9 @@ where
             GoalSource::ImplWhereBound,
             goal.with(
                 cx,
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_lang_item(TraitSolverLangItem::Unsize),
-                    [a_tail_ty, b_tail_ty],
-                ),
+                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Unsize), [
+                    a_tail_ty, b_tail_ty,
+                ]),
             ),
         );
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
@@ -1069,11 +1064,9 @@ where
             GoalSource::ImplWhereBound,
             goal.with(
                 cx,
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_lang_item(TraitSolverLangItem::Unsize),
-                    [a_last_ty, b_last_ty],
-                ),
+                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Unsize), [
+                    a_last_ty, b_last_ty,
+                ]),
             ),
         );
         self.probe_builtin_trait_candidate(BuiltinImplSource::TupleUnsizing)

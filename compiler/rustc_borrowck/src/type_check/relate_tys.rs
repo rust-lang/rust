@@ -4,12 +4,12 @@ use rustc_infer::infer::relate::{
     PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
 };
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
-use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::Obligation;
+use rustc_infer::traits::solve::Goal;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::span_bug;
-use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;

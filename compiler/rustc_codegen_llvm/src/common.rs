@@ -14,7 +14,7 @@ use tracing::debug;
 
 use crate::consts::const_alloc_to_llvm;
 pub(crate) use crate::context::CodegenCx;
-use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
+use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, Metadata, OperandBundleDef, True};
 use crate::type_::Type;
 use crate::value::Value;
 
@@ -79,6 +79,7 @@ impl<'ll> Funclet<'ll> {
 
 impl<'ll> BackendTypes for CodegenCx<'ll, '_> {
     type Value = &'ll Value;
+    type Metadata = &'ll Metadata;
     // FIXME(eddyb) replace this with a `Function` "subclass" of `Value`.
     type Function = &'ll Value;
 
@@ -126,23 +127,12 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMGetPoison(t) }
     }
 
-    fn const_int(&self, t: &'ll Type, i: i64) -> &'ll Value {
-        unsafe { llvm::LLVMConstInt(t, i as u64, True) }
-    }
-
-    fn const_uint(&self, t: &'ll Type, i: u64) -> &'ll Value {
-        unsafe { llvm::LLVMConstInt(t, i, False) }
-    }
-
-    fn const_uint_big(&self, t: &'ll Type, u: u128) -> &'ll Value {
-        unsafe {
-            let words = [u as u64, (u >> 64) as u64];
-            llvm::LLVMConstIntOfArbitraryPrecision(t, 2, words.as_ptr())
-        }
-    }
-
     fn const_bool(&self, val: bool) -> &'ll Value {
         self.const_uint(self.type_i1(), val as u64)
+    }
+
+    fn const_i8(&self, i: i8) -> &'ll Value {
+        self.const_int(self.type_i8(), i as i64)
     }
 
     fn const_i16(&self, i: i16) -> &'ll Value {
@@ -153,8 +143,12 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.const_int(self.type_i32(), i as i64)
     }
 
-    fn const_i8(&self, i: i8) -> &'ll Value {
-        self.const_int(self.type_i8(), i as i64)
+    fn const_int(&self, t: &'ll Type, i: i64) -> &'ll Value {
+        unsafe { llvm::LLVMConstInt(t, i as u64, True) }
+    }
+
+    fn const_u8(&self, i: u8) -> &'ll Value {
+        self.const_uint(self.type_i8(), i as u64)
     }
 
     fn const_u32(&self, i: u32) -> &'ll Value {
@@ -179,8 +173,15 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.const_uint(self.isize_ty, i)
     }
 
-    fn const_u8(&self, i: u8) -> &'ll Value {
-        self.const_uint(self.type_i8(), i as u64)
+    fn const_uint(&self, t: &'ll Type, i: u64) -> &'ll Value {
+        unsafe { llvm::LLVMConstInt(t, i, False) }
+    }
+
+    fn const_uint_big(&self, t: &'ll Type, u: u128) -> &'ll Value {
+        unsafe {
+            let words = [u as u64, (u >> 64) as u64];
+            llvm::LLVMConstIntOfArbitraryPrecision(t, 2, words.as_ptr())
+        }
     }
 
     fn const_real(&self, t: &'ll Type, val: f64) -> &'ll Value {
@@ -290,10 +291,10 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         self.get_fn_addr(instance.polymorphize(self.tcx)),
                         self.data_layout().instruction_address_space,
                     ),
-                    GlobalAlloc::VTable(ty, trait_ref) => {
+                    GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
-                            .global_alloc(self.tcx.vtable_allocation((ty, trait_ref)))
+                            .global_alloc(self.tcx.vtable_allocation((ty, dyn_ty.principal())))
                             .unwrap_memory();
                         let init = const_alloc_to_llvm(self, alloc, /*static*/ false);
                         let value = self.static_addr_of(init, alloc.inner().align, None);

@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{extension, HashStable};
+use rustc_macros::{HashStable, extension};
 use rustc_type_ir as ir;
 use tracing::instrument;
 

@@ -4,7 +4,7 @@ use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{mut_visit, visit, Attribute, HasAttrs, HasTokens, NodeId};
+use rustc_ast::{Attribute, HasAttrs, HasTokens, NodeId, mut_visit, visit};
 use rustc_errors::PResult;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_expand::config::StripUnconfigured;
@@ -12,8 +12,8 @@ use rustc_expand::configure;
 use rustc_feature::Features;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::Session;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 use smallvec::SmallVec;
 use tracing::instrument;
 

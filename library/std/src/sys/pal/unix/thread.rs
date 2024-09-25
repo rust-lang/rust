@@ -516,8 +516,8 @@ mod cgroups {
 
     use crate::borrow::Cow;
     use crate::ffi::OsString;
-    use crate::fs::{exists, File};
-    use crate::io::{BufRead, BufReader, Read};
+    use crate::fs::{File, exists};
+    use crate::io::{BufRead, Read};
     use crate::os::unix::ffi::OsStringExt;
     use crate::path::{Path, PathBuf};
     use crate::str::from_utf8;
@@ -690,7 +690,7 @@ mod cgroups {
     /// If the cgroupfs is a bind mount then `group_path` is adjusted to skip
     /// over the already-included prefix
     fn find_mountpoint(group_path: &Path) -> Option<(Cow<'static, str>, &Path)> {
-        let mut reader = BufReader::new(File::open("/proc/self/mountinfo").ok()?);
+        let mut reader = File::open_buffered("/proc/self/mountinfo").ok()?;
         let mut line = String::with_capacity(256);
         loop {
             line.clear();

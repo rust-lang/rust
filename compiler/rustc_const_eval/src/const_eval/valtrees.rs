@@ -9,12 +9,12 @@ use tracing::{debug, instrument, trace};
 
 use super::eval_queries::{mk_eval_cx_to_read_const_val, op_to_const};
 use super::machine::CompileTimeInterpCx;
-use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
+use super::{VALTREE_MAX_NODES, ValTreeCreationError, ValTreeCreationResult};
 use crate::const_eval::CanAccessMutGlobal;
 use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::{
-    intern_const_alloc_recursive, ImmTy, Immediate, InternKind, MPlaceTy, MemPlaceMeta, MemoryKind,
-    PlaceTy, Projectable, Scalar,
+    ImmTy, Immediate, InternKind, MPlaceTy, MemPlaceMeta, MemoryKind, PlaceTy, Projectable, Scalar,
+    intern_const_alloc_recursive,
 };
 
 #[instrument(skip(ecx), level = "debug")]

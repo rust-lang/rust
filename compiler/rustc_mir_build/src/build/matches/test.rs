@@ -16,12 +16,12 @@ use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
-use crate::build::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
 use crate::build::Builder;
+use crate::build::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
@@ -322,23 +322,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         // `let temp = <Ty as Deref>::deref(ref_src);`
         // or `let temp = <Ty as DerefMut>::deref_mut(ref_src);`
-        self.cfg.terminate(
-            block,
-            source_info,
-            TerminatorKind::Call {
-                func: Operand::Constant(Box::new(ConstOperand {
-                    span,
-                    user_ty: None,
-                    const_: method,
-                })),
-                args: [Spanned { node: Operand::Move(ref_src), span }].into(),
-                destination: temp,
-                target: Some(target_block),
-                unwind: UnwindAction::Continue,
-                call_source: CallSource::Misc,
-                fn_span: source_info.span,
-            },
-        );
+        self.cfg.terminate(block, source_info, TerminatorKind::Call {
+            func: Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_: method })),
+            args: [Spanned { node: Operand::Move(ref_src), span }].into(),
+            destination: temp,
+            target: Some(target_block),
+            unwind: UnwindAction::Continue,
+            call_source: CallSource::Misc,
+            fn_span: source_info.span,
+        });
     }
 
     /// Compare using the provided built-in comparison operator
@@ -415,7 +407,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         temp,
                         Rvalue::Cast(
-                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            CastKind::PointerCoercion(
+                                PointerCoercion::Unsize,
+                                CoercionSource::Implicit,
+                            ),
                             Operand::Copy(val),
                             ty,
                         ),
@@ -429,7 +424,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         slice,
                         Rvalue::Cast(
-                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            CastKind::PointerCoercion(
+                                PointerCoercion::Unsize,
+                                CoercionSource::Implicit,
+                            ),
                             expect,
                             ty,
                         ),
@@ -466,33 +464,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
         let eq_block = self.cfg.start_new_block();
-        self.cfg.terminate(
-            block,
-            source_info,
-            TerminatorKind::Call {
-                func: Operand::Constant(Box::new(ConstOperand {
-                    span: source_info.span,
+        self.cfg.terminate(block, source_info, TerminatorKind::Call {
+            func: Operand::Constant(Box::new(ConstOperand {
+                span: source_info.span,
 
-                    // FIXME(#54571): This constant comes from user input (a
-                    // constant in a pattern). Are there forms where users can add
-                    // type annotations here?  For example, an associated constant?
-                    // Need to experiment.
-                    user_ty: None,
+                // FIXME(#54571): This constant comes from user input (a
+                // constant in a pattern). Are there forms where users can add
+                // type annotations here?  For example, an associated constant?
+                // Need to experiment.
+                user_ty: None,
 
-                    const_: method,
-                })),
-                args: [
-                    Spanned { node: Operand::Copy(val), span: DUMMY_SP },
-                    Spanned { node: expect, span: DUMMY_SP },
-                ]
-                .into(),
-                destination: eq_result,
-                target: Some(eq_block),
-                unwind: UnwindAction::Continue,
-                call_source: CallSource::MatchCmp,
-                fn_span: source_info.span,
-            },
-        );
+                const_: method,
+            })),
+            args: [Spanned { node: Operand::Copy(val), span: DUMMY_SP }, Spanned {
+                node: expect,
+                span: DUMMY_SP,
+            }]
+            .into(),
+            destination: eq_result,
+            target: Some(eq_block),
+            unwind: UnwindAction::Continue,
+            call_source: CallSource::MatchCmp,
+            fn_span: source_info.span,
+        });
         self.diverge_from(block);
 
         // check the result

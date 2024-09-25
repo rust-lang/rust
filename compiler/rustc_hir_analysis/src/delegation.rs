@@ -41,10 +41,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamIndexRemapper<'tcx> {
         if let ty::ReEarlyParam(param) = r.kind()
             && let Some(index) = self.remap_table.get(&param.index).copied()
         {
-            return ty::Region::new_early_param(
-                self.tcx,
-                ty::EarlyParamRegion { index, name: param.name },
-            );
+            return ty::Region::new_early_param(self.tcx, ty::EarlyParamRegion {
+                index,
+                name: param.name,
+            });
         }
         r
     }

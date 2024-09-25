@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{Symbol, kw};
 use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -1169,14 +1169,13 @@ fn simplify_fn_type<'a, 'tcx>(
                                 *stored_bounds = type_bounds;
                             }
                         }
-                        ty_constraints.push((
-                            RenderTypeId::AssociatedType(name),
-                            vec![RenderType {
+                        ty_constraints.push((RenderTypeId::AssociatedType(name), vec![
+                            RenderType {
                                 id: Some(RenderTypeId::Index(idx)),
                                 generics: None,
                                 bindings: None,
-                            }],
-                        ))
+                            },
+                        ]))
                     }
                 }
             }

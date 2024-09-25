@@ -8,8 +8,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
-use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, kw};
 use tracing::{debug, instrument};
 
 use crate::delegation::inherit_generics_for_delegation_item;

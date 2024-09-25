@@ -95,16 +95,16 @@
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
-use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
@@ -116,8 +116,8 @@ use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_pat
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, InstanceKind, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_session::CodegenUnits;
+use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_span::symbol::Symbol;
 use tracing::debug;
 
@@ -255,8 +255,12 @@ where
         }
         let size_estimate = mono_item.size_estimate(cx.tcx);
 
-        cgu.items_mut()
-            .insert(mono_item, MonoItemData { inlined: false, linkage, visibility, size_estimate });
+        cgu.items_mut().insert(mono_item, MonoItemData {
+            inlined: false,
+            linkage,
+            visibility,
+            size_estimate,
+        });
 
         // Get all inlined items that are reachable from `mono_item` without
         // going via another root item. This includes drop-glue, functions from
@@ -1239,8 +1243,7 @@ fn dump_mono_items_stats<'tcx>(
     let ext = format.extension();
     let filename = format!("{crate_name}.mono_items.{ext}");
     let output_path = output_directory.join(&filename);
-    let file = File::create(&output_path)?;
-    let mut file = BufWriter::new(file);
+    let mut file = File::create_buffered(&output_path)?;
 
     // Gather instantiated mono items grouped by def_id
     let mut items_per_def_id: FxIndexMap<_, Vec<_>> = Default::default();

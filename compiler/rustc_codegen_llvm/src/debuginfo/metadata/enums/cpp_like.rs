@@ -15,9 +15,9 @@ use crate::common::CodegenCx;
 use crate::debuginfo::metadata::enums::DiscrResult;
 use crate::debuginfo::metadata::type_map::{self, Stub, UniqueTypeId};
 use crate::debuginfo::metadata::{
+    DINodeCreationResult, NO_GENERICS, NO_SCOPE_METADATA, SmallVec, UNKNOWN_LINE_NUMBER,
     build_field_di_node, file_metadata, size_and_align_of, type_di_node, unknown_file_metadata,
-    visibility_di_flags, DINodeCreationResult, SmallVec, NO_GENERICS, NO_SCOPE_METADATA,
-    UNKNOWN_LINE_NUMBER,
+    visibility_di_flags,
 };
 use crate::debuginfo::utils::DIB;
 use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};

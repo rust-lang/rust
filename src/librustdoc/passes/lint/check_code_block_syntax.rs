@@ -2,14 +2,14 @@
 
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::emitter::Emitter;
-use rustc_errors::translation::{to_fluent_args, Translate};
+use rustc_errors::translation::{Translate, to_fluent_args};
 use rustc_errors::{Applicability, DiagCtxt, DiagInner, LazyFallbackBundle};
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, Transparency};
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{FileName, InnerSpan, DUMMY_SP};
+use rustc_span::{DUMMY_SP, FileName, InnerSpan};
 
 use crate::clean;
 use crate::core::DocContext;

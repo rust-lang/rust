@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_errors::{
-    struct_span_code_err, Diag, EmissionGuarantee, ErrorGuaranteed, FatalError, E0275,
+    Diag, E0275, EmissionGuarantee, ErrorGuaranteed, FatalError, struct_span_code_err,
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;

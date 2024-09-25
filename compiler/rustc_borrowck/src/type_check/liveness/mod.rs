@@ -7,10 +7,10 @@ use rustc_middle::mir::{Body, Local, Location, SourceInfo};
 use rustc_middle::span_bug;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt};
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::ResultsCursor;
 use tracing::debug;
 
 use super::TypeChecker;

@@ -11,11 +11,11 @@ use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
-use shims::unix::android::foreign_items as android;
-use shims::unix::freebsd::foreign_items as freebsd;
-use shims::unix::linux::foreign_items as linux;
-use shims::unix::macos::foreign_items as macos;
-use shims::unix::solarish::foreign_items as solarish;
+use self::shims::unix::android::foreign_items as android;
+use self::shims::unix::freebsd::foreign_items as freebsd;
+use self::shims::unix::linux::foreign_items as linux;
+use self::shims::unix::macos::foreign_items as macos;
+use self::shims::unix::solarish::foreign_items as solarish;
 
 pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {
@@ -92,8 +92,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
                 let count = this.read_target_usize(count)?;
-                let result = this.read(fd, buf, count, None)?;
-                this.write_scalar(result, dest)?;
+                this.read(fd, buf, count, None, dest)?;
             }
             "write" => {
                 let [fd, buf, n] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -101,9 +100,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let buf = this.read_pointer(buf)?;
                 let count = this.read_target_usize(n)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
-                let result = this.write(fd, buf, count, None)?;
-                // Now, `result` is the value we return back to the program.
-                this.write_scalar(result, dest)?;
+                this.write(fd, buf, count, None, dest)?;
             }
             "pread" => {
                 let [fd, buf, count, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -111,8 +108,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let buf = this.read_pointer(buf)?;
                 let count = this.read_target_usize(count)?;
                 let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
-                let result = this.read(fd, buf, count, Some(offset))?;
-                this.write_scalar(result, dest)?;
+                this.read(fd, buf, count, Some(offset), dest)?;
             }
             "pwrite" => {
                 let [fd, buf, n, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -121,9 +117,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let count = this.read_target_usize(n)?;
                 let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
                 trace!("Called pwrite({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
-                let result = this.write(fd, buf, count, Some(offset))?;
-                // Now, `result` is the value we return back to the program.
-                this.write_scalar(result, dest)?;
+                this.write(fd, buf, count, Some(offset), dest)?;
             }
             "pread64" => {
                 let [fd, buf, count, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -131,8 +125,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let buf = this.read_pointer(buf)?;
                 let count = this.read_target_usize(count)?;
                 let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off64_t").size)?;
-                let result = this.read(fd, buf, count, Some(offset))?;
-                this.write_scalar(result, dest)?;
+                this.read(fd, buf, count, Some(offset), dest)?;
             }
             "pwrite64" => {
                 let [fd, buf, n, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -141,9 +134,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let count = this.read_target_usize(n)?;
                 let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off64_t").size)?;
                 trace!("Called pwrite64({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
-                let result = this.write(fd, buf, count, Some(offset))?;
-                // Now, `result` is the value we return back to the program.
-                this.write_scalar(result, dest)?;
+                this.write(fd, buf, count, Some(offset), dest)?;
             }
             "close" => {
                 let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;

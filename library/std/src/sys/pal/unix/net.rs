@@ -1,4 +1,4 @@
-use libc::{c_int, c_void, size_t, sockaddr, socklen_t, MSG_PEEK};
+use libc::{MSG_PEEK, c_int, c_void, size_t, sockaddr, socklen_t};
 
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};

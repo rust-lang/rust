@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_infer::infer::at::At;
 use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::at::At;
 use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
@@ -14,8 +14,8 @@ use rustc_middle::ty::{
 use tracing::instrument;
 
 use super::{FulfillmentCtxt, NextSolverError};
-use crate::error_reporting::traits::OverflowCause;
 use crate::error_reporting::InferCtxtErrorExt;
+use crate::error_reporting::traits::OverflowCause;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
 
@@ -130,12 +130,11 @@ where
         self.depth += 1;
 
         let new_infer_ct = infcx.next_const_var(self.at.cause.span);
-        let obligation = Obligation::new(
-            tcx,
-            self.at.cause.clone(),
-            self.at.param_env,
-            ty::NormalizesTo { alias: uv.into(), term: new_infer_ct.into() },
-        );
+        let obligation =
+            Obligation::new(tcx, self.at.cause.clone(), self.at.param_env, ty::NormalizesTo {
+                alias: uv.into(),
+                term: new_infer_ct.into(),
+            });
 
         let result = if infcx.predicate_may_hold(&obligation) {
             self.fulfill_cx.register_predicate_obligation(infcx, obligation);
@@ -253,20 +252,20 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        deeply_normalize_with_skipped_universes(
-            self.at,
-            ty,
-            vec![None; ty.outer_exclusive_binder().as_usize()],
-        )
+        deeply_normalize_with_skipped_universes(self.at, ty, vec![
+            None;
+            ty.outer_exclusive_binder()
+                .as_usize()
+        ])
         .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ty.super_fold_with(self))
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        deeply_normalize_with_skipped_universes(
-            self.at,
-            ct,
-            vec![None; ct.outer_exclusive_binder().as_usize()],
-        )
+        deeply_normalize_with_skipped_universes(self.at, ct, vec![
+            None;
+            ct.outer_exclusive_binder()
+                .as_usize()
+        ])
         .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ct.super_fold_with(self))
     }
 }

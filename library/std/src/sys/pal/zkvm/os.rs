@@ -1,4 +1,4 @@
-use super::{abi, unsupported, WORD_SIZE};
+use super::{WORD_SIZE, abi, unsupported};
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;

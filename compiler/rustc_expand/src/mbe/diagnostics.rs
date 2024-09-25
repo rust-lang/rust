@@ -12,11 +12,11 @@ use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
 use tracing::debug;
 
-use super::macro_rules::{parser_from_cx, NoopTracker};
-use crate::expand::{parse_ast_fragment, AstFragmentKind};
+use super::macro_rules::{NoopTracker, parser_from_cx};
+use crate::expand::{AstFragmentKind, parse_ast_fragment};
 use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
-use crate::mbe::macro_rules::{try_match_macro, Tracker};
+use crate::mbe::macro_rules::{Tracker, try_match_macro};
 
 pub(super) fn failed_to_match_macro(
     psess: &ParseSess,

@@ -326,6 +326,7 @@ dependencies = [
  "hashbrown",
  "hermit-abi",
  "libc",
+ "memchr",
  "miniz_oxide",
  "object",
  "panic_abort",

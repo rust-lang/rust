@@ -81,17 +81,14 @@ impl CompressionFormat {
         let file = crate::util::create_new_file(path)?;
 
         Ok(match self {
-            CompressionFormat::Gz => Box::new(GzEncoder::new(
-                file,
-                match profile {
-                    CompressionProfile::Fast => flate2::Compression::fast(),
-                    CompressionProfile::Balanced => flate2::Compression::new(6),
-                    CompressionProfile::Best => flate2::Compression::best(),
-                    CompressionProfile::NoOp => panic!(
-                        "compression profile 'no-op' should not call `CompressionFormat::encode`."
-                    ),
-                },
-            )),
+            CompressionFormat::Gz => Box::new(GzEncoder::new(file, match profile {
+                CompressionProfile::Fast => flate2::Compression::fast(),
+                CompressionProfile::Balanced => flate2::Compression::new(6),
+                CompressionProfile::Best => flate2::Compression::best(),
+                CompressionProfile::NoOp => panic!(
+                    "compression profile 'no-op' should not call `CompressionFormat::encode`."
+                ),
+            })),
             CompressionFormat::Xz => {
                 let encoder = match profile {
                     CompressionProfile::NoOp => panic!(

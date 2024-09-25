@@ -7,7 +7,7 @@ use std::thread;
 
 use windows_sys::Win32::Foundation::{FALSE, TRUE};
 use windows_sys::Win32::System::Threading::{
-    InitOnceBeginInitialize, InitOnceComplete, INIT_ONCE, INIT_ONCE_INIT_FAILED,
+    INIT_ONCE, INIT_ONCE_INIT_FAILED, InitOnceBeginInitialize, InitOnceComplete,
 };
 
 // not in windows-sys

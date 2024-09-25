@@ -7,13 +7,13 @@ use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
+use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
-use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
@@ -264,7 +264,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
         match *self {
             LayoutError::Unknown(ty) => write!(f, "the type `{ty}` has an unknown layout"),
             LayoutError::SizeOverflow(ty) => {
-                write!(f, "values of the type `{ty}` are too big for the current architecture")
+                write!(f, "values of the type `{ty}` are too big for the target architecture")
             }
             LayoutError::NormalizationFailure(t, e) => write!(
                 f,
@@ -1191,6 +1191,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         | RiscvInterruptM
         | RiscvInterruptS
         | CCmseNonSecureCall
+        | CCmseNonSecureEntry
         | Unadjusted => false,
         Rust | RustCall | RustCold | RustIntrinsic => {
             tcx.sess.panic_strategy() == PanicStrategy::Unwind
@@ -1294,11 +1295,10 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
                 // However, we don't do this early in order to avoid calling
                 // `def_span` unconditionally (which may have a perf penalty).
                 let span = if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
-                self.handle_fn_abi_err(
-                    *err,
-                    span,
-                    FnAbiRequest::OfInstance { instance, extra_args },
-                )
+                self.handle_fn_abi_err(*err, span, FnAbiRequest::OfInstance {
+                    instance,
+                    extra_args,
+                })
             }),
         )
     }

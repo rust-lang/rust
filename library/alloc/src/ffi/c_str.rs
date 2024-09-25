@@ -4,7 +4,7 @@
 mod tests;
 
 use core::borrow::Borrow;
-use core::ffi::{c_char, CStr};
+use core::ffi::{CStr, c_char};
 use core::num::NonZero;
 use core::slice::memchr;
 use core::str::{self, Utf8Error};

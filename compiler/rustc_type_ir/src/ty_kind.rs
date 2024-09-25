@@ -10,8 +10,8 @@ use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
-pub use self::closure::*;
 use self::TyKind::*;
+pub use self::closure::*;
 use crate::inherent::*;
 use crate::{self as ty, DebruijnIndex, Interner};
 

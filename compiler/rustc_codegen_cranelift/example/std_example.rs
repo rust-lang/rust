@@ -238,10 +238,9 @@ unsafe fn test_simd() {
     let (zero0, zero1) = std::mem::transmute::<_, (u64, u64)>(x);
     assert_eq!((zero0, zero1), (0, 0));
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(or), [7, 7, 7, 7, 7, 7, 7, 7]);
-    assert_eq!(
-        std::mem::transmute::<_, [u16; 8]>(cmp_eq),
-        [0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]
-    );
+    assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_eq), [
+        0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff
+    ]);
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_lt), [0, 0, 0, 0, 0, 0, 0, 0]);
 
     test_mm_slli_si128();
@@ -258,6 +257,9 @@ unsafe fn test_simd() {
     test_mm_extract_epi8();
     test_mm_insert_epi16();
     test_mm_shuffle_epi8();
+
+    #[cfg(not(jit))]
+    test_mm_cmpestri();
 
     test_mm256_shuffle_epi8();
     test_mm256_permute2x128_si256();
@@ -428,6 +430,31 @@ unsafe fn test_mm_shuffle_epi8() {
     let expected = _mm_setr_epi8(5, 0, 5, 4, 9, 13, 7, 4, 13, 6, 6, 11, 5, 2, 9, 1);
     let r = _mm_shuffle_epi8(a, b);
     assert_eq_m128i(r, expected);
+}
+
+// Currently one cannot `load` a &[u8] that is less than 16
+// in length. This makes loading strings less than 16 in length
+// a bit difficult. Rather than `load` and mutate the __m128i,
+// it is easier to memcpy the given string to a local slice with
+// length 16 and `load` the local slice.
+#[cfg(not(jit))]
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "sse4.2")]
+unsafe fn str_to_m128i(s: &[u8]) -> __m128i {
+    assert!(s.len() <= 16);
+    let slice = &mut [0u8; 16];
+    std::ptr::copy_nonoverlapping(s.as_ptr(), slice.as_mut_ptr(), s.len());
+    _mm_loadu_si128(slice.as_ptr() as *const _)
+}
+
+#[cfg(not(jit))]
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "sse4.2")]
+unsafe fn test_mm_cmpestri() {
+    let a = str_to_m128i(b"bar - garbage");
+    let b = str_to_m128i(b"foobar");
+    let i = _mm_cmpestri::<_SIDD_CMP_EQUAL_ORDERED>(a, 3, b, 6);
+    assert_eq!(3, i);
 }
 
 #[cfg(target_arch = "x86_64")]

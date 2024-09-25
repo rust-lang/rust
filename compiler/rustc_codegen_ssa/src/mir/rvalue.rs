@@ -6,8 +6,8 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{self, FieldIdx, FIRST_VARIANT};
+use rustc_span::{DUMMY_SP, Span};
+use rustc_target::abi::{self, FIRST_VARIANT, FieldIdx};
 use tracing::{debug, instrument};
 
 use super::operand::{OperandRef, OperandValue};
@@ -15,7 +15,7 @@ use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 use crate::common::IntPredicate;
 use crate::traits::*;
-use crate::{base, MemFlags};
+use crate::{MemFlags, base};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
@@ -34,7 +34,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::Unsize),
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _),
                 ref source,
                 _,
             ) => {
@@ -114,7 +114,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let count = self
                     .monomorphize(count)
-                    .eval_target_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
+                    .try_to_target_usize(bx.tcx())
+                    .expect("expected monomorphic const in codegen");
 
                 bx.write_operand_repeatedly(cg_elem, count, dest);
             }
@@ -464,7 +465,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let lladdr = bx.ptrtoint(llptr, llcast_ty);
                         OperandValue::Immediate(lladdr)
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _) => {
                         match *operand.layout.ty.kind() {
                             ty::FnDef(def_id, args) => {
                                 let instance = ty::Instance::resolve_for_fn_ptr(
@@ -480,7 +481,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _) => {
                         match *operand.layout.ty.kind() {
                             ty::Closure(def_id, args) => {
                                 let instance = Instance::resolve_closure(
@@ -495,11 +496,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
                         }
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _) => {
                         // This is a no-op at the LLVM level.
                         operand.val
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::Unsize) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _) => {
                         assert!(bx.cx().is_backend_scalar_pair(cast));
                         let (lldata, llextra) = operand.val.pointer_parts();
                         let (lldata, llextra) =
@@ -507,7 +508,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         OperandValue::Pair(lldata, llextra)
                     }
                     mir::CastKind::PointerCoercion(
-                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _
                     ) => {
                         bug!("{kind:?} is for borrowck, and should never appear in codegen");
                     }
@@ -525,7 +526,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("unexpected non-pair operand");
                         }
                     }
-                    mir::CastKind::DynStar => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
                         let (lldata, llextra) = operand.val.pointer_parts();
                         let (lldata, llextra) =
                             base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);
@@ -803,7 +804,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(index) = place.as_local() {
             if let LocalRef::Operand(op) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.kind() {
-                    let n = n.eval_target_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
+                    let n = n
+                        .try_to_target_usize(bx.tcx())
+                        .expect("expected monomorphic const in codegen");
                     return bx.cx().const_usize(n);
                 }
             }

@@ -16,11 +16,11 @@ pub(crate) fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     use std::ffi::CString;
     use std::io;
 
-    use windows::core::PCSTR;
     use windows::Win32::Foundation::{CloseHandle, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0};
     use windows::Win32::System::Threading::{
-        CreateMutexA, ReleaseMutex, WaitForSingleObject, INFINITE,
+        CreateMutexA, INFINITE, ReleaseMutex, WaitForSingleObject,
     };
+    use windows::core::PCSTR;
 
     struct Handle(HANDLE);
 

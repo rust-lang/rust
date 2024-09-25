@@ -9,7 +9,7 @@ LL |     func(Path::new("hello").to_path_buf().to_string_lossy(), "world")
    = help: the following other types implement trait `From<T>`:
              `PathBuf` implements `From<&T>`
              `PathBuf` implements `From<Box<Path>>`
-             `PathBuf` implements `From<Cow<'a, Path>>`
+             `PathBuf` implements `From<Cow<'_, Path>>`
              `PathBuf` implements `From<OsString>`
              `PathBuf` implements `From<String>`
    = note: required for `Cow<'_, str>` to implement `Into<PathBuf>`

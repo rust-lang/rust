@@ -1,8 +1,8 @@
 use super::HashSet;
 use crate::hash::RandomState;
-use crate::panic::{catch_unwind, AssertUnwindSafe};
-use crate::sync::atomic::{AtomicU32, Ordering};
+use crate::panic::{AssertUnwindSafe, catch_unwind};
 use crate::sync::Arc;
+use crate::sync::atomic::{AtomicU32, Ordering};
 
 #[test]
 fn test_zero_capacities() {

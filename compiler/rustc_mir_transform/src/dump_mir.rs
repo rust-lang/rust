@@ -3,7 +3,7 @@
 use std::fs::File;
 use std::io;
 
-use rustc_middle::mir::{write_mir_pretty, Body};
+use rustc_middle::mir::{Body, write_mir_pretty};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutFileName, OutputType};
 
@@ -24,7 +24,7 @@ pub fn emit_mir(tcx: TyCtxt<'_>) -> io::Result<()> {
             write_mir_pretty(tcx, None, &mut f)?;
         }
         OutFileName::Real(path) => {
-            let mut f = io::BufWriter::new(File::create(&path)?);
+            let mut f = File::create_buffered(&path)?;
             write_mir_pretty(tcx, None, &mut f)?;
             if tcx.sess.opts.json_artifact_notifications {
                 tcx.dcx().emit_artifact_notification(&path, "mir", None);

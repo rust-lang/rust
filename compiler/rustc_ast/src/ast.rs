@@ -21,19 +21,19 @@
 use std::borrow::Cow;
 use std::{cmp, fmt, mem};
 
+pub use GenericArgs::*;
+pub use UnsafeSource::*;
 pub use rustc_ast_ir::{Movability, Mutability};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
 pub use rustc_span::AttrId;
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
-use thin_vec::{thin_vec, ThinVec};
-pub use GenericArgs::*;
-pub use UnsafeSource::*;
+use rustc_span::source_map::{Spanned, respan};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use thin_vec::{ThinVec, thin_vec};
 
 pub use crate::format::*;
 use crate::ptr::P;
@@ -288,7 +288,7 @@ impl ParenthesizedArgs {
     }
 }
 
-pub use crate::node_id::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
+pub use crate::node_id::{CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
 
 /// Modifiers on a trait bound like `~const`, `?` and `!`.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
@@ -1187,8 +1187,8 @@ impl Expr {
     /// `min_const_generics` as more complex expressions are not supported.
     ///
     /// Does not ensure that the path resolves to a const param, the caller should check this.
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
-        let this = self.maybe_unwrap_block();
+    pub fn is_potential_trivial_const_arg(&self, strip_identity_block: bool) -> bool {
+        let this = if strip_identity_block { self.maybe_unwrap_block().1 } else { self };
 
         if let ExprKind::Path(None, path) = &this.kind
             && path.is_potential_trivial_const_arg()
@@ -1199,14 +1199,15 @@ impl Expr {
         }
     }
 
-    pub fn maybe_unwrap_block(&self) -> &Expr {
+    /// Returns an expression with (when possible) *one* outter brace removed
+    pub fn maybe_unwrap_block(&self) -> (bool, &Expr) {
         if let ExprKind::Block(block, None) = &self.kind
             && let [stmt] = block.stmts.as_slice()
             && let StmtKind::Expr(expr) = &stmt.kind
         {
-            expr
+            (true, expr)
         } else {
-            self
+            (false, self)
         }
     }
 

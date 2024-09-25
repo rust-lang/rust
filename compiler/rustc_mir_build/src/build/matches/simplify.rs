@@ -16,8 +16,8 @@ use std::mem;
 
 use tracing::{debug, instrument};
 
-use crate::build::matches::{MatchPairTree, PatternExtraData, TestCase};
 use crate::build::Builder;
+use crate::build::matches::{MatchPairTree, PatternExtraData, TestCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Simplify a list of match pairs so they all require a test. Stores relevant bindings and

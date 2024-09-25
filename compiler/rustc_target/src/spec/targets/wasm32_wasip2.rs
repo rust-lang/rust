@@ -16,7 +16,7 @@
 //! You can see more about wasi at <https://wasi.dev> and the component model at
 //! <https://github.com/WebAssembly/component-model>.
 
-use crate::spec::{base, crt_objects, LinkSelfContainedDefault, RelocModel, Target};
+use crate::spec::{LinkSelfContainedDefault, RelocModel, Target, base, crt_objects};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();

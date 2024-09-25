@@ -5,13 +5,12 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, LangItem, Mutability, Pat, PatKind};
 use rustc_infer::infer;
-use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
@@ -19,8 +18,8 @@ use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
@@ -29,7 +28,7 @@ use ty::VariantDef;
 
 use super::report_unexpected_variant_res;
 use crate::gather_locals::DeclOrigin;
-use crate::{errors, FnCtxt, LoweredTy};
+use crate::{FnCtxt, LoweredTy, errors};
 
 const CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ: &str = "\
 This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
@@ -2413,17 +2412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        let len = match len.eval(self.tcx, self.param_env, span) {
-            Ok((_, val)) => val
-                .try_to_scalar()
-                .and_then(|scalar| scalar.try_to_scalar_int().ok())
-                .map(|int| int.to_target_usize(self.tcx)),
-            Err(ErrorHandled::Reported(..)) => {
-                let guar = self.error_scrutinee_unfixed_length(span);
-                return (Some(Ty::new_error(self.tcx, guar)), arr_ty);
-            }
-            Err(ErrorHandled::TooGeneric(..)) => None,
-        };
+        let len = self.try_structurally_resolve_const(span, len).try_to_target_usize(self.tcx);
 
         let guar = if let Some(len) = len {
             // Now we know the length...

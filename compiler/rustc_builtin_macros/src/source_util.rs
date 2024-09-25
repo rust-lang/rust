@@ -8,7 +8,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::{
-    resolve_path, DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult,
+    DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult, resolve_path,
 };
 use rustc_expand::module::DirOwnership;
 use rustc_lint_defs::BuiltinLintDiag;
@@ -73,8 +73,8 @@ pub(crate) fn expand_file(
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    use rustc_session::config::RemapPathScopeComponents;
     use rustc_session::RemapFileNameExt;
+    use rustc_session::config::RemapPathScopeComponents;
     ExpandResult::Ready(MacEager::expr(cx.expr_str(
         topmost,
         Symbol::intern(

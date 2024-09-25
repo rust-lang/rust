@@ -1,8 +1,8 @@
 use std::{mem, ptr};
 
-use rand::distributions::{Alphanumeric, DistString, Standard};
 use rand::Rng;
-use test::{black_box, Bencher};
+use rand::distributions::{Alphanumeric, DistString, Standard};
+use test::{Bencher, black_box};
 
 #[bench]
 fn iterator(b: &mut Bencher) {
