@@ -79,10 +79,17 @@ pub(super) fn check(
                 && let new_span = first_span.with_hi(second_span.lo()).with_lo(first_span.hi())
                 && let Some(snippet) = snippet_opt(cx, new_span)
             {
+                let Some(first) = snippet_opt(cx, first_span) else {
+                    return;
+                };
+                let Some(comment_form) = first.get(..3) else {
+                    return;
+                };
+
                 diag.span_suggestion(
                     new_span,
                     "add an empty line",
-                    format!("{snippet}///\n"),
+                    format!("{snippet}{comment_form}{snippet}"),
                     Applicability::MachineApplicable,
                 );
             }

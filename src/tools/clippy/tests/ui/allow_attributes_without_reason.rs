@@ -15,7 +15,6 @@ use proc_macros::{external, with_span};
 #[warn(deref_nullptr)]
 #[deny(deref_nullptr)]
 #[forbid(deref_nullptr)]
-
 fn main() {
     external! {
         #[allow(dead_code)]

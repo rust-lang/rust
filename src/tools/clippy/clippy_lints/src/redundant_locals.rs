@@ -9,8 +9,8 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::UpvarCapture;
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::Ident;
 use rustc_span::DesugaringKind;
+use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
     /// ### What it does

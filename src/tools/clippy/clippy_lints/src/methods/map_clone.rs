@@ -11,7 +11,7 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::MAP_CLONE;
 

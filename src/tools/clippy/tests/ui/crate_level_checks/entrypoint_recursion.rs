@@ -1,4 +1,4 @@
-//@ignore-target-apple
+//@ignore-target: apple
 
 #![feature(rustc_attrs)]
 

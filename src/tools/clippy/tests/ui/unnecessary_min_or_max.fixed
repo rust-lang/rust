@@ -65,3 +65,32 @@ fn random_u32() -> u32 {
     // random number generator
     0
 }
+
+struct Issue13191 {
+    min: u16,
+    max: u16,
+}
+
+impl Issue13191 {
+    fn new() -> Self {
+        Self { min: 0, max: 0 }
+    }
+
+    fn min(mut self, value: u16) -> Self {
+        self.min = value;
+        self
+    }
+
+    fn max(mut self, value: u16) -> Self {
+        self.max = value;
+        self
+    }
+}
+
+fn issue_13191() {
+    // should not fixed
+    Issue13191::new().min(0);
+
+    // should not fixed
+    Issue13191::new().max(0);
+}

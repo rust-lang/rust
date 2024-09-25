@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{fn_def_id, is_from_proc_macro, is_lint_allowed};
-use hir::intravisit::{walk_expr, Visitor};
+use hir::intravisit::{Visitor, walk_expr};
 use hir::{Expr, ExprKind, FnRetTy, FnSig, Node};
 use rustc_ast::Label;
 use rustc_errors::Applicability;

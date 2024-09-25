@@ -370,9 +370,11 @@ mod test {
         assert_eq!(camel_case_split("AbcDef"), vec!["Abc", "Def"]);
         assert_eq!(camel_case_split("Abc"), vec!["Abc"]);
         assert_eq!(camel_case_split("abcDef"), vec!["abc", "Def"]);
-        assert_eq!(
-            camel_case_split("\u{f6}\u{f6}AabABcd"),
-            vec!["\u{f6}\u{f6}", "Aab", "A", "Bcd"]
-        );
+        assert_eq!(camel_case_split("\u{f6}\u{f6}AabABcd"), vec![
+            "\u{f6}\u{f6}",
+            "Aab",
+            "A",
+            "Bcd"
+        ]);
     }
 }

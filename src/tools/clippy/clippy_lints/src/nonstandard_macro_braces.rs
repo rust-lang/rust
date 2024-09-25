@@ -1,5 +1,5 @@
-use clippy_config::types::MacroMatcher;
 use clippy_config::Conf;
+use clippy_config::types::MacroMatcher;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{SourceText, SpanRangeExt};
 use rustc_ast::ast;
@@ -8,8 +8,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::Span;
+use rustc_span::hygiene::{ExpnKind, MacroKind};
 
 declare_clippy_lint! {
     /// ### What it does

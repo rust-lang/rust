@@ -524,7 +524,7 @@ checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
 
 [[package]]
 name = "clippy"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "anstream",
  "cargo_metadata 0.18.1",
@@ -547,13 +547,13 @@ dependencies = [
  "termize",
  "tokio",
  "toml 0.7.8",
- "ui_test 0.25.0",
+ "ui_test",
  "walkdir",
 ]
 
 [[package]]
 name = "clippy_config"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "itertools",
  "serde",
@@ -576,7 +576,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -600,7 +600,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "arrayvec",
  "clippy_config",
@@ -902,7 +902,7 @@ dependencies = [
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.82"
+version = "0.1.83"
 dependencies = [
  "itertools",
  "quote",
@@ -2269,7 +2269,7 @@ dependencies = [
  "rustc_version",
  "smallvec",
  "tempfile",
- "ui_test 0.26.5",
+ "ui_test",
  "windows-sys 0.52.0",
 ]
 
@@ -5485,33 +5485,6 @@ name = "ucd-trie"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed646292ffc8188ef8ea4d1e0e0150fb15a5c2e12ad9b8fc191ae7a8a7f3c4b9"
-
-[[package]]
-name = "ui_test"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7e4f339f62edc873975c47115f9e71c5454ddaa37c1142b42fc0b2672c8dacb"
-dependencies = [
- "annotate-snippets 0.11.4",
- "anyhow",
- "bstr",
- "cargo-platform",
- "cargo_metadata 0.18.1",
- "color-eyre",
- "colored",
- "comma",
- "crossbeam-channel",
- "indicatif",
- "lazy_static",
- "levenshtein",
- "prettydiff",
- "regex",
- "rustc_version",
- "rustfix",
- "serde",
- "serde_json",
- "spanned",
-]
 
 [[package]]
 name = "ui_test"

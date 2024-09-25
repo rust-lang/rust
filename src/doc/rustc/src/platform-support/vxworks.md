@@ -14,6 +14,8 @@ Target triplets available:
 - `powerpc-wrs-vxworks`
 - `powerpc64-wrs-vxworks`
 - `powerpc-wrs-vxworks-spe`
+- `riscv32-wrs-vxworks`
+- `riscv64-wrs-vxworks`
 
 ## Target maintainers
 

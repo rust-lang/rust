@@ -11,7 +11,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does

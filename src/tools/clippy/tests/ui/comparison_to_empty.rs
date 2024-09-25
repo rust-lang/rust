@@ -33,4 +33,12 @@ fn main() {
     if let [0] = &*s
         && s == [0]
     {}
+
+    // Also lint the `PartialEq` methods
+    let s = String::new();
+    let _ = s.eq("");
+    let _ = s.ne("");
+    let v = vec![0];
+    let _ = v.eq(&[]);
+    let _ = v.ne(&[]);
 }

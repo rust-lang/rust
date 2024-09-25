@@ -23,8 +23,8 @@ mod unnecessary_cast;
 mod utils;
 mod zero_ptr;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::is_hir_ty_cfg_dependant;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -410,19 +410,27 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Though `as` casts between raw pointers are not terrible, `pointer::cast_mut` and
     /// `pointer::cast_const` are safer because they cannot accidentally cast the pointer to another
-    /// type.
+    /// type. Or, when null pointers are involved, `null()` and `null_mut()` can be used directly.
     ///
     /// ### Example
     /// ```no_run
     /// let ptr: *const u32 = &42_u32;
     /// let mut_ptr = ptr as *mut u32;
     /// let ptr = mut_ptr as *const u32;
+    /// let ptr1 = std::ptr::null::<u32>() as *mut u32;
+    /// let ptr2 = std::ptr::null_mut::<u32>() as *const u32;
+    /// let ptr3 = std::ptr::null::<u32>().cast_mut();
+    /// let ptr4 = std::ptr::null_mut::<u32>().cast_const();
     /// ```
     /// Use instead:
     /// ```no_run
     /// let ptr: *const u32 = &42_u32;
     /// let mut_ptr = ptr.cast_mut();
     /// let ptr = mut_ptr.cast_const();
+    /// let ptr1 = std::ptr::null_mut::<u32>();
+    /// let ptr2 = std::ptr::null::<u32>();
+    /// let ptr3 = std::ptr::null_mut::<u32>();
+    /// let ptr4 = std::ptr::null::<u32>();
     /// ```
     #[clippy::version = "1.72.0"]
     pub PTR_CAST_CONSTNESS,
@@ -809,6 +817,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         char_lit_as_u8::check(cx, expr);
         ptr_as_ptr::check(cx, expr, &self.msrv);
         cast_slice_different_sizes::check(cx, expr, &self.msrv);
+        ptr_cast_constness::check_null_ptr_cast_method(cx, expr);
     }
 
     extract_msrv_attr!(LateContext);

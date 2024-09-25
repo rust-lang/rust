@@ -1,4 +1,4 @@
-#[warn(clippy::exit)]
+#![warn(clippy::exit)]
 
 fn not_main() {
     if true {

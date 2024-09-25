@@ -8,7 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::MANUAL_TRY_FOLD;
 

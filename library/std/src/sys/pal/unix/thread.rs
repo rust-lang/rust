@@ -140,7 +140,12 @@ impl Thread {
         }
     }
 
-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd"))]
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "dragonfly",
+        target_os = "openbsd",
+        target_os = "nuttx"
+    ))]
     pub fn set_name(name: &CStr) {
         unsafe {
             libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr());
@@ -747,12 +752,15 @@ unsafe fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 }
 
 // No point in looking up __pthread_get_minstack() on non-glibc platforms.
-#[cfg(all(not(all(target_os = "linux", target_env = "gnu")), not(target_os = "netbsd")))]
+#[cfg(all(
+    not(all(target_os = "linux", target_env = "gnu")),
+    not(any(target_os = "netbsd", target_os = "nuttx"))
+))]
 unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     libc::PTHREAD_STACK_MIN
 }
 
-#[cfg(target_os = "netbsd")]
+#[cfg(any(target_os = "netbsd", target_os = "nuttx"))]
 unsafe fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     static STACK: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
 

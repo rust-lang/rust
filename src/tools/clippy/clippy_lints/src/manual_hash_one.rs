@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::visitors::{is_local_used, local_used_once};

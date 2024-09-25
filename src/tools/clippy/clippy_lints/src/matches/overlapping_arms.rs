@@ -1,4 +1,4 @@
-use clippy_utils::consts::{mir_to_const, ConstEvalCtxt, FullInt};
+use clippy_utils::consts::{ConstEvalCtxt, FullInt, mir_to_const};
 use clippy_utils::diagnostics::span_lint_and_note;
 use core::cmp::Ordering;
 use rustc_hir::{Arm, Expr, PatKind, RangeEnd};
