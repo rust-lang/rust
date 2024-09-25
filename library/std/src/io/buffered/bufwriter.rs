@@ -94,6 +94,16 @@ impl<W: Write> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
+    pub(crate) fn try_new_buffer() -> io::Result<Vec<u8>> {
+        Vec::try_with_capacity(DEFAULT_BUF_SIZE).map_err(|_| {
+            io::const_io_error!(ErrorKind::OutOfMemory, "failed to allocate write buffer")
+        })
+    }
+
+    pub(crate) fn with_buffer(inner: W, buf: Vec<u8>) -> Self {
+        Self { inner, buf, panicked: false }
+    }
+
     /// Creates a new `BufWriter<W>` with at least the specified buffer capacity.
     ///
     /// # Examples

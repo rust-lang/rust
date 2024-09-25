@@ -519,7 +519,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                 write_deps_to_file(&mut file)?;
             }
             OutFileName::Real(ref path) => {
-                let mut file = BufWriter::new(fs::File::create(path)?);
+                let mut file = fs::File::create_buffered(path)?;
                 write_deps_to_file(&mut file)?;
             }
         }

@@ -16,7 +16,7 @@
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::fs::File;
-use std::io::{self, BufWriter, Write as _};
+use std::io::{self, Write as _};
 use std::iter::once;
 use std::marker::PhantomData;
 use std::path::{Component, Path, PathBuf};
@@ -1020,8 +1020,7 @@ where
         for part in parts {
             template.append(part);
         }
-        let file = try_err!(File::create(&path), &path);
-        let mut file = BufWriter::new(file);
+        let mut file = try_err!(File::create_buffered(&path), &path);
         try_err!(write!(file, "{template}"), &path);
         try_err!(file.flush(), &path);
     }

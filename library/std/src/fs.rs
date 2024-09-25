@@ -375,6 +375,44 @@ impl File {
         OpenOptions::new().read(true).open(path.as_ref())
     }
 
+    /// Attempts to open a file in read-only mode with buffering.
+    ///
+    /// See the [`OpenOptions::open`] method, the [`BufReader`][io::BufReader] type,
+    /// and the [`BufRead`][io::BufRead] trait for more details.
+    ///
+    /// If you only need to read the entire file contents,
+    /// consider [`std::fs::read()`][self::read] or
+    /// [`std::fs::read_to_string()`][self::read_to_string] instead.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not already exist.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_buffered)]
+    /// use std::fs::File;
+    /// use std::io::BufRead;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::open_buffered("foo.txt")?;
+    ///     assert!(f.capacity() > 0);
+    ///     for (line, i) in f.lines().zip(1..) {
+    ///         println!("{i:6}: {}", line?);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_buffered", issue = "130804")]
+    pub fn open_buffered<P: AsRef<Path>>(path: P) -> io::Result<io::BufReader<File>> {
+        // Allocate the buffer *first* so we don't affect the filesystem otherwise.
+        let buffer = io::BufReader::<Self>::try_new_buffer()?;
+        let file = File::open(path)?;
+        Ok(io::BufReader::with_buffer(file, buffer))
+    }
+
     /// Opens a file in write-only mode.
     ///
     /// This function will create a file if it does not exist,
@@ -402,6 +440,45 @@ impl File {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().write(true).create(true).truncate(true).open(path.as_ref())
+    }
+
+    /// Opens a file in write-only mode with buffering.
+    ///
+    /// This function will create a file if it does not exist,
+    /// and will truncate it if it does.
+    ///
+    /// Depending on the platform, this function may fail if the
+    /// full directory path does not exist.
+    ///
+    /// See the [`OpenOptions::open`] method and the
+    /// [`BufWriter`][io::BufWriter] type for more details.
+    ///
+    /// See also [`std::fs::write()`][self::write] for a simple function to
+    /// create a file with some given data.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_buffered)]
+    /// use std::fs::File;
+    /// use std::io::Write;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create_buffered("foo.txt")?;
+    ///     assert!(f.capacity() > 0);
+    ///     for i in 0..100 {
+    ///         writeln!(&mut f, "{i}")?;
+    ///     }
+    ///     f.flush()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_buffered", issue = "130804")]
+    pub fn create_buffered<P: AsRef<Path>>(path: P) -> io::Result<io::BufWriter<File>> {
+        // Allocate the buffer *first* so we don't affect the filesystem otherwise.
+        let buffer = io::BufWriter::<Self>::try_new_buffer()?;
+        let file = File::create(path)?;
+        Ok(io::BufWriter::with_buffer(file, buffer))
     }
 
     /// Creates a new file in read-write mode; error if the file exists.

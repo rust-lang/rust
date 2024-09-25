@@ -374,6 +374,7 @@
 #![feature(slice_concat_trait)]
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
+#![feature(try_with_capacity)]
 #![feature(vec_into_raw_parts)]
 // tidy-alphabetical-end
 //

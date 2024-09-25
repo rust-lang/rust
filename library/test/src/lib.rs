@@ -18,6 +18,7 @@
 #![doc(test(attr(deny(warnings))))]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![feature(file_buffered)]
 #![feature(internal_output_capture)]
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
