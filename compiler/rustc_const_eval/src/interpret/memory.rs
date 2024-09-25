@@ -7,10 +7,9 @@
 //! short-circuiting the empty case!
 
 use std::assert_matches::assert_matches;
-use std::borrow::Cow;
-use std::cell::Cell;
+use std::borrow::{Borrow, Cow};
 use std::collections::VecDeque;
-use std::{fmt, ptr};
+use std::{fmt, mem, ptr};
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -22,10 +21,10 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 use tracing::{debug, instrument, trace};
 
 use super::{
-    alloc_range, err_ub, err_ub_custom, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
     AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg, CheckInAllocMsg,
     CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
-    PointerArithmetic, Provenance, Scalar,
+    PointerArithmetic, Provenance, Scalar, alloc_range, err_ub, err_ub_custom, throw_ub,
+    throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -118,7 +117,7 @@ pub struct Memory<'tcx, M: Machine<'tcx>> {
     /// This stores whether we are currently doing reads purely for the purpose of validation.
     /// Those reads do not trigger the machine's hooks for memory reads.
     /// Needless to say, this must only be set with great care!
-    validation_in_progress: Cell<bool>,
+    validation_in_progress: bool,
 }
 
 /// A reference to some allocation that was already bounds-checked for the given region
@@ -145,7 +144,7 @@ impl<'tcx, M: Machine<'tcx>> Memory<'tcx, M> {
             alloc_map: M::MemoryMap::default(),
             extra_fn_ptr_map: FxIndexMap::default(),
             dead_alloc_map: FxIndexMap::default(),
-            validation_in_progress: Cell::new(false),
+            validation_in_progress: false,
         }
     }
 
@@ -223,7 +222,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         } else {
             Allocation::try_uninit(size, align)?
         };
-        self.allocate_raw_ptr(alloc, kind)
+        self.insert_allocation(alloc, kind)
     }
 
     pub fn allocate_bytes_ptr(
@@ -234,14 +233,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         mutability: Mutability,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let alloc = Allocation::from_bytes(bytes, align, mutability);
-        self.allocate_raw_ptr(alloc, kind)
+        self.insert_allocation(alloc, kind)
     }
 
-    pub fn allocate_raw_ptr(
+    pub fn insert_allocation(
         &mut self,
         alloc: Allocation<M::Provenance, (), M::Bytes>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
+        assert!(alloc.size() <= self.max_size_of_val());
         let id = self.tcx.reserve_alloc_id();
         debug_assert_ne!(
             Some(kind),
@@ -387,12 +387,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         size: Size,
     ) -> InterpResult<'tcx, Option<(AllocId, Size, M::ProvenanceExtra)>> {
         let size = i64::try_from(size.bytes()).unwrap(); // it would be an error to even ask for more than isize::MAX bytes
-        self.check_and_deref_ptr(
+        Self::check_and_deref_ptr(
+            self,
             ptr,
             size,
             CheckInAllocMsg::MemoryAccessTest,
-            |alloc_id, offset, prov| {
-                let (size, align) = self
+            |this, alloc_id, offset, prov| {
+                let (size, align) = this
                     .get_live_alloc_size_and_align(alloc_id, CheckInAllocMsg::MemoryAccessTest)?;
                 Ok((size, align, (alloc_id, offset, prov)))
             },
@@ -409,8 +410,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx> {
         let size = i64::try_from(size.bytes()).unwrap(); // it would be an error to even ask for more than isize::MAX bytes
-        self.check_and_deref_ptr(ptr, size, msg, |alloc_id, _, _| {
-            let (size, align) = self.get_live_alloc_size_and_align(alloc_id, msg)?;
+        Self::check_and_deref_ptr(self, ptr, size, msg, |this, alloc_id, _, _| {
+            let (size, align) = this.get_live_alloc_size_and_align(alloc_id, msg)?;
             Ok((size, align, ()))
         })?;
         Ok(())
@@ -425,8 +426,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         size: i64,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx> {
-        self.check_and_deref_ptr(ptr, size, msg, |alloc_id, _, _| {
-            let (size, align) = self.get_live_alloc_size_and_align(alloc_id, msg)?;
+        Self::check_and_deref_ptr(self, ptr, size, msg, |this, alloc_id, _, _| {
+            let (size, align) = this.get_live_alloc_size_and_align(alloc_id, msg)?;
             Ok((size, align, ()))
         })?;
         Ok(())
@@ -440,12 +441,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// `alloc_size` will only get called for non-zero-sized accesses.
     ///
     /// Returns `None` if and only if the size is 0.
-    fn check_and_deref_ptr<T>(
-        &self,
+    fn check_and_deref_ptr<T, R: Borrow<Self>>(
+        this: R,
         ptr: Pointer<Option<M::Provenance>>,
         size: i64,
         msg: CheckInAllocMsg,
         alloc_size: impl FnOnce(
+            R,
             AllocId,
             Size,
             M::ProvenanceExtra,
@@ -456,13 +458,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return Ok(None);
         }
 
-        Ok(match self.ptr_try_get_alloc_id(ptr, size) {
+        Ok(match this.borrow().ptr_try_get_alloc_id(ptr, size) {
             Err(addr) => {
                 // We couldn't get a proper allocation.
                 throw_ub!(DanglingIntPointer { addr, inbounds_size: size, msg });
             }
             Ok((alloc_id, offset, prov)) => {
-                let (alloc_size, _alloc_align, ret_val) = alloc_size(alloc_id, offset, prov)?;
+                let tcx = this.borrow().tcx;
+                let (alloc_size, _alloc_align, ret_val) = alloc_size(this, alloc_id, offset, prov)?;
                 let offset = offset.bytes();
                 // Compute absolute begin and end of the range.
                 let (begin, end) = if size >= 0 {
@@ -476,7 +479,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     throw_ub!(PointerOutOfBounds {
                         alloc_id,
                         alloc_size,
-                        ptr_offset: self.sign_extend_to_target_isize(offset),
+                        ptr_offset: tcx.sign_extend_to_target_isize(offset),
                         inbounds_size: size,
                         msg,
                     })
@@ -670,19 +673,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, Option<AllocRef<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let size_i64 = i64::try_from(size.bytes()).unwrap(); // it would be an error to even ask for more than isize::MAX bytes
-        let ptr_and_alloc = self.check_and_deref_ptr(
+        let ptr_and_alloc = Self::check_and_deref_ptr(
+            self,
             ptr,
             size_i64,
             CheckInAllocMsg::MemoryAccessTest,
-            |alloc_id, offset, prov| {
-                let alloc = self.get_alloc_raw(alloc_id)?;
+            |this, alloc_id, offset, prov| {
+                let alloc = this.get_alloc_raw(alloc_id)?;
                 Ok((alloc.size(), alloc.align, (alloc_id, offset, prov, alloc)))
             },
         )?;
         // We want to call the hook on *all* accesses that involve an AllocId, including zero-sized
         // accesses. That means we cannot rely on the closure above or the `Some` branch below. We
         // do this after `check_and_deref_ptr` to ensure some basic sanity has already been checked.
-        if !self.memory.validation_in_progress.get() {
+        if !self.memory.validation_in_progress {
             if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(ptr, size_i64) {
                 M::before_alloc_read(self, alloc_id)?;
             }
@@ -690,7 +694,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         if let Some((alloc_id, offset, prov, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
-            if !self.memory.validation_in_progress.get() {
+            if !self.memory.validation_in_progress {
                 M::before_memory_read(
                     self.tcx,
                     &self.machine,
@@ -727,7 +731,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // We have "NLL problem case #3" here, which cannot be worked around without loss of
         // efficiency even for the common case where the key is in the map.
         // <https://rust-lang.github.io/rfcs/2094-nll.html#problem-case-3-conditional-control-flow-across-functions>
-        // (Cannot use `get_mut_or` since `get_global_alloc` needs `&self`.)
+        // (Cannot use `get_mut_or` since `get_global_alloc` needs `&self`, and that boils down to
+        // Miri's `adjust_alloc_root_pointer` needing to look up the size of the allocation.
+        // It could be avoided with a totally separate codepath in Miri for handling the absolute address
+        // of global allocations, but that's not worth it.)
         if self.memory.alloc_map.get_mut(id).is_none() {
             // Slow path.
             // Allocation not found locally, go look global.
@@ -763,14 +770,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         size: Size,
     ) -> InterpResult<'tcx, Option<AllocRefMut<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
-        let parts = self.get_ptr_access(ptr, size)?;
-        if let Some((alloc_id, offset, prov)) = parts {
-            let tcx = self.tcx;
-            // FIXME: can we somehow avoid looking up the allocation twice here?
-            // We cannot call `get_raw_mut` inside `check_and_deref_ptr` as that would duplicate `&mut self`.
-            let (alloc, machine) = self.get_alloc_raw_mut(alloc_id)?;
+        let tcx = self.tcx;
+        let validation_in_progress = self.memory.validation_in_progress;
+
+        let size_i64 = i64::try_from(size.bytes()).unwrap(); // it would be an error to even ask for more than isize::MAX bytes
+        let ptr_and_alloc = Self::check_and_deref_ptr(
+            self,
+            ptr,
+            size_i64,
+            CheckInAllocMsg::MemoryAccessTest,
+            |this, alloc_id, offset, prov| {
+                let (alloc, machine) = this.get_alloc_raw_mut(alloc_id)?;
+                Ok((alloc.size(), alloc.align, (alloc_id, offset, prov, alloc, machine)))
+            },
+        )?;
+
+        if let Some((alloc_id, offset, prov, alloc, machine)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
-            M::before_memory_write(tcx, machine, &mut alloc.extra, (alloc_id, prov), range)?;
+            if !validation_in_progress {
+                M::before_memory_write(tcx, machine, &mut alloc.extra, (alloc_id, prov), range)?;
+            }
             Ok(Some(AllocRefMut { alloc, range, tcx: *tcx, alloc_id }))
         } else {
             Ok(None)
@@ -827,7 +846,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let (size, align) = if nested {
                     // Nested anonymous statics are untyped, so let's get their
-                    // size and alignment from the allocaiton itself. This always
+                    // size and alignment from the allocation itself. This always
                     // succeeds, as the query is fed at DefId creation time, so no
                     // evaluation actually occurs.
                     let alloc = self.tcx.eval_static_initializer(def_id).unwrap();
@@ -924,12 +943,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if offset.bytes() != 0 {
             throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
         }
-        let Some(GlobalAlloc::VTable(ty, vtable_trait)) = self.tcx.try_get_global_alloc(alloc_id)
+        let Some(GlobalAlloc::VTable(ty, vtable_dyn_type)) =
+            self.tcx.try_get_global_alloc(alloc_id)
         else {
             throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
         };
-        if let Some(expected_trait) = expected_trait {
-            self.check_vtable_for_type(vtable_trait, expected_trait)?;
+        if let Some(expected_dyn_type) = expected_trait {
+            self.check_vtable_for_type(vtable_dyn_type, expected_dyn_type)?;
         }
         Ok(ty)
     }
@@ -1014,19 +1034,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ///
     /// We do this so Miri's allocation access tracking does not show the validation
     /// reads as spurious accesses.
-    pub fn run_for_validation<R>(&self, f: impl FnOnce() -> R) -> R {
+    pub fn run_for_validation<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
         // This deliberately uses `==` on `bool` to follow the pattern
         // `assert!(val.replace(new) == old)`.
         assert!(
-            self.memory.validation_in_progress.replace(true) == false,
+            mem::replace(&mut self.memory.validation_in_progress, true) == false,
             "`validation_in_progress` was already set"
         );
-        let res = f();
+        let res = f(self);
         assert!(
-            self.memory.validation_in_progress.replace(false) == true,
+            mem::replace(&mut self.memory.validation_in_progress, false) == true,
             "`validation_in_progress` was unset by someone else"
         );
         res
+    }
+
+    pub(super) fn validation_in_progress(&self) -> bool {
+        self.memory.validation_in_progress
     }
 }
 
@@ -1090,11 +1114,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
                         Some(GlobalAlloc::Function { instance, .. }) => {
                             write!(fmt, " (fn: {instance})")?;
                         }
-                        Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
-                            write!(fmt, " (vtable: impl {trait_ref} for {ty})")?;
-                        }
-                        Some(GlobalAlloc::VTable(ty, None)) => {
-                            write!(fmt, " (vtable: impl <auto trait> for {ty})")?;
+                        Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
+                            write!(fmt, " (vtable: impl {dyn_ty} for {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {
                             write!(fmt, " (static: {})", self.ecx.tcx.def_path_str(did))?;
@@ -1112,9 +1133,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
 }
 
 /// Reading and writing.
-impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes>
+impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>
     AllocRefMut<'a, 'tcx, Prov, Extra, Bytes>
 {
+    pub fn as_ref<'b>(&'b self) -> AllocRef<'b, 'tcx, Prov, Extra, Bytes> {
+        AllocRef { alloc: self.alloc, range: self.range, tcx: self.tcx, alloc_id: self.alloc_id }
+    }
+
     /// `range` is relative to this allocation reference, not the base of the allocation.
     pub fn write_scalar(&mut self, range: AllocRange, val: Scalar<Prov>) -> InterpResult<'tcx> {
         let range = self.range.subrange(range);
@@ -1130,16 +1155,33 @@ impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes>
         self.write_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size), val)
     }
 
+    /// Mark the given sub-range (relative to this allocation reference) as uninitialized.
+    pub fn write_uninit(&mut self, range: AllocRange) -> InterpResult<'tcx> {
+        let range = self.range.subrange(range);
+        Ok(self
+            .alloc
+            .write_uninit(&self.tcx, range)
+            .map_err(|e| e.to_interp_error(self.alloc_id))?)
+    }
+
     /// Mark the entire referenced range as uninitialized
-    pub fn write_uninit(&mut self) -> InterpResult<'tcx> {
+    pub fn write_uninit_full(&mut self) -> InterpResult<'tcx> {
         Ok(self
             .alloc
             .write_uninit(&self.tcx, self.range)
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
+
+    /// Remove all provenance in the reference range.
+    pub fn clear_provenance(&mut self) -> InterpResult<'tcx> {
+        Ok(self
+            .alloc
+            .clear_provenance(&self.tcx, self.range)
+            .map_err(|e| e.to_interp_error(self.alloc_id))?)
+    }
 }
 
-impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Prov, Extra, Bytes> {
+impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Prov, Extra, Bytes> {
     /// `range` is relative to this allocation reference, not the base of the allocation.
     pub fn read_scalar(
         &self,
@@ -1278,7 +1320,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
-        assert!(!self.memory.validation_in_progress.get(), "we can't be copying during validation");
+        assert!(!self.memory.validation_in_progress, "we can't be copying during validation");
         M::before_memory_read(
             tcx,
             &self.machine,

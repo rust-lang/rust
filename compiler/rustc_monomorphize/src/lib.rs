@@ -1,5 +1,8 @@
 // tidy-alphabetical-start
 #![feature(array_windows)]
+#![feature(if_let_guard)]
+#![feature(let_chains)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use rustc_hir::lang_items::LangItem;

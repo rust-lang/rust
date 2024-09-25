@@ -2,9 +2,9 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
+use crate::build::Builder;
 use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::build::matches::{FlatPat, MatchPairTree, TestCase};
-use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds and returns [`MatchPairTree`] subtrees, one for each pattern in
@@ -42,7 +42,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
             match place_resolved.ty(&self.local_decls, tcx).ty.kind() {
-                ty::Array(_, length) => (length.eval_target_usize(tcx, self.param_env), true),
+                ty::Array(_, length) => (
+                    length
+                        .try_to_target_usize(tcx)
+                        .expect("expected len of array pat to be definite"),
+                    true,
+                ),
                 _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
             }
         } else {
@@ -162,13 +167,10 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                 let ascription = place.map(|source| {
                     let span = pattern.span;
                     let parent_id = cx.tcx.typeck_root_def_id(cx.def_id.to_def_id());
-                    let args = ty::InlineConstArgs::new(
-                        cx.tcx,
-                        ty::InlineConstArgsParts {
-                            parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
-                            ty: cx.infcx.next_ty_var(span),
-                        },
-                    )
+                    let args = ty::InlineConstArgs::new(cx.tcx, ty::InlineConstArgsParts {
+                        parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
+                        ty: cx.infcx.next_ty_var(span),
+                    })
                     .args;
                     let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::TypeOf(
                         def.to_def_id(),

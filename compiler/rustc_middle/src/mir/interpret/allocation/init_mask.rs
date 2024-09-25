@@ -243,7 +243,7 @@ impl hash::Hash for InitMaskMaterialized {
 }
 
 impl InitMaskMaterialized {
-    pub const BLOCK_SIZE: u64 = 64;
+    const BLOCK_SIZE: u64 = 64;
 
     fn new(size: Size, state: bool) -> Self {
         let mut m = InitMaskMaterialized { blocks: vec![] };

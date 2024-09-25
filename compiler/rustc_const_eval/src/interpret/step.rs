@@ -9,12 +9,12 @@ use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::source_map::Spanned;
 use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use tracing::{info, instrument, trace};
 
 use super::{
-    throw_ub, FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta,
-    PlaceTy, Projectable, Scalar,
+    FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
+    Projectable, Scalar, throw_ub,
 };
 use crate::util;
 

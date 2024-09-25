@@ -3570,10 +3570,9 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// An atomic fence.
 ///
-/// Depending on the specified order, a fence prevents the compiler and CPU from
-/// reordering certain types of memory operations around it.
-/// That creates synchronizes-with relationships between it and atomic operations
-/// or fences in other threads.
+/// Fences create synchronization between themselves and atomic operations or fences in other
+/// threads. To achieve this, a fence prevents the compiler and CPU from reordering certain types of
+/// memory operations around it.
 ///
 /// A fence 'A' which has (at least) [`Release`] ordering semantics, synchronizes
 /// with a fence 'B' with (at least) [`Acquire`] semantics, if and only if there
@@ -3593,6 +3592,12 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 ///                                                      ...
 ///                                                  }
 /// ```
+///
+/// Note that in the example above, it is crucial that the accesses to `x` are atomic. Fences cannot
+/// be used to establish synchronization among non-atomic accesses in different threads. However,
+/// thanks to the happens-before relationship between A and B, any non-atomic accesses that
+/// happen-before A are now also properly synchronized with any non-atomic accesses that
+/// happen-after B.
 ///
 /// Atomic operations with [`Release`] or [`Acquire`] semantics can also synchronize
 /// with a fence.
@@ -3659,33 +3664,30 @@ pub fn fence(order: Ordering) {
     }
 }
 
-/// A compiler memory fence.
+/// A "compiler-only" atomic fence.
 ///
-/// `compiler_fence` does not emit any machine code, but restricts the kinds
-/// of memory re-ordering the compiler is allowed to do. Specifically, depending on
-/// the given [`Ordering`] semantics, the compiler may be disallowed from moving reads
-/// or writes from before or after the call to the other side of the call to
-/// `compiler_fence`. Note that it does **not** prevent the *hardware*
-/// from doing such re-ordering. This is not a problem in a single-threaded,
-/// execution context, but when other threads may modify memory at the same
-/// time, stronger synchronization primitives such as [`fence`] are required.
+/// Like [`fence`], this function establishes synchronization with other atomic operations and
+/// fences. However, unlike [`fence`], `compiler_fence` only establishes synchronization with
+/// operations *in the same thread*. This may at first sound rather useless, since code within a
+/// thread is typically already totally ordered and does not need any further synchronization.
+/// However, there are cases where code can run on the same thread without being ordered:
+/// - The most common case is that of a *signal handler*: a signal handler runs in the same thread
+///   as the code it interrupted, but it is not ordered with respect to that code. `compiler_fence`
+///   can be used to establish synchronization between a thread and its signal handler, the same way
+///   that `fence` can be used to establish synchronization across threads.
+/// - Similar situations can arise in embedded programming with interrupt handlers, or in custom
+///   implementations of preemptive green threads. In general, `compiler_fence` can establish
+///   synchronization with code that is guaranteed to run on the same hardware CPU.
 ///
-/// The re-ordering prevented by the different ordering semantics are:
+/// See [`fence`] for how a fence can be used to achieve synchronization. Note that just like
+/// [`fence`], synchronization still requires atomic operations to be used in both threads -- it is
+/// not possible to perform synchronization entirely with fences and non-atomic operations.
 ///
-///  - with [`SeqCst`], no re-ordering of reads and writes across this point is allowed.
-///  - with [`Release`], preceding reads and writes cannot be moved past subsequent writes.
-///  - with [`Acquire`], subsequent reads and writes cannot be moved ahead of preceding reads.
-///  - with [`AcqRel`], both of the above rules are enforced.
+/// `compiler_fence` does not emit any machine code, but restricts the kinds of memory re-ordering
+/// the compiler is allowed to do. `compiler_fence` corresponds to [`atomic_signal_fence`] in C and
+/// C++.
 ///
-/// `compiler_fence` is generally only useful for preventing a thread from
-/// racing *with itself*. That is, if a given thread is executing one piece
-/// of code, and is then interrupted, and starts executing code elsewhere
-/// (while still in the same thread, and conceptually still on the same
-/// core). In traditional programs, this can only occur when a signal
-/// handler is registered. In more low-level code, such situations can also
-/// arise when handling interrupts, when implementing green threads with
-/// pre-emption, etc. Curious readers are encouraged to read the Linux kernel's
-/// discussion of [memory barriers].
+/// [`atomic_signal_fence`]: https://en.cppreference.com/w/cpp/atomic/atomic_signal_fence
 ///
 /// # Panics
 ///
@@ -3723,8 +3725,6 @@ pub fn fence(order: Ordering) {
 ///     }
 /// }
 /// ```
-///
-/// [memory barriers]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
 #[inline]
 #[stable(feature = "compiler_fences", since = "1.21.0")]
 #[rustc_diagnostic_item = "compiler_fence"]

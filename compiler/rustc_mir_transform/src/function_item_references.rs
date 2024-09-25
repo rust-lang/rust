@@ -4,16 +4,16 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-use crate::{errors, MirLint};
+use crate::errors;
 
-pub struct FunctionItemReferences;
+pub(super) struct FunctionItemReferences;
 
-impl<'tcx> MirLint<'tcx> for FunctionItemReferences {
+impl<'tcx> crate::MirLint<'tcx> for FunctionItemReferences {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = FunctionItemRefChecker { tcx, body };
         checker.visit_body(body);
@@ -92,8 +92,8 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                             {
                                 let mut span = self.nth_arg_span(args, arg_num);
                                 if span.from_expansion() {
-                                    // The operand's ctxt wouldn't display the lint since it's inside a macro so
-                                    // we have to use the callsite's ctxt.
+                                    // The operand's ctxt wouldn't display the lint since it's
+                                    // inside a macro so we have to use the callsite's ctxt.
                                     let callsite_ctxt = span.source_callsite().ctxt();
                                     span = span.with_ctxt(callsite_ctxt);
                                 }

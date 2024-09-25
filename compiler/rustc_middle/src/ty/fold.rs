@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 pub use rustc_type_ir::fold::{
-    shift_region, shift_vars, FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, shift_region, shift_vars,
 };
 use tracing::{debug, instrument};
 
@@ -336,26 +336,21 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let shift_bv = |bv: ty::BoundVar| ty::BoundVar::from_usize(bv.as_usize() + bound_vars);
-        self.replace_escaping_bound_vars_uncached(
-            value,
-            FnMutDelegate {
-                regions: &mut |r: ty::BoundRegion| {
-                    ty::Region::new_bound(
-                        self,
-                        ty::INNERMOST,
-                        ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
-                    )
-                },
-                types: &mut |t: ty::BoundTy| {
-                    Ty::new_bound(
-                        self,
-                        ty::INNERMOST,
-                        ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
-                    )
-                },
-                consts: &mut |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
+        self.replace_escaping_bound_vars_uncached(value, FnMutDelegate {
+            regions: &mut |r: ty::BoundRegion| {
+                ty::Region::new_bound(self, ty::INNERMOST, ty::BoundRegion {
+                    var: shift_bv(r.var),
+                    kind: r.kind,
+                })
             },
-        )
+            types: &mut |t: ty::BoundTy| {
+                Ty::new_bound(self, ty::INNERMOST, ty::BoundTy {
+                    var: shift_bv(t.var),
+                    kind: t.kind,
+                })
+            },
+            consts: &mut |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
+        })
     }
 
     /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also

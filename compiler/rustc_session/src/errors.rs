@@ -183,6 +183,12 @@ pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_target_small_data_threshold_not_supported)]
+pub(crate) struct SmallDataThresholdNotSupportedForTarget<'a> {
+    pub(crate) target_triple: &'a TargetTriple,
+}
+
+#[derive(Diagnostic)]
 #[diag(session_branch_protection_requires_aarch64)]
 pub(crate) struct BranchProtectionRequiresAArch64;
 
@@ -484,3 +490,14 @@ pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 pub(crate) struct FailedToCreateProfiler {
     pub(crate) err: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(session_soft_float_ignored)]
+#[note]
+pub(crate) struct SoftFloatIgnored;
+
+#[derive(Diagnostic)]
+#[diag(session_soft_float_deprecated)]
+#[note]
+#[note(session_soft_float_deprecated_issue)]
+pub(crate) struct SoftFloatDeprecated;

@@ -1,7 +1,9 @@
 //! See docs in build/expr/mod.rs
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_hir::HirId;
 use rustc_middle::middle::region;
+use rustc_middle::middle::region::{Scope, ScopeData};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
@@ -73,11 +75,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 _ if let Some(tail_info) = this.block_context.currently_in_block_tail() => {
                     LocalInfo::BlockTailTemp(tail_info)
                 }
+
+                _ if let Some(Scope { data: ScopeData::IfThenRescope, id }) = temp_lifetime => {
+                    LocalInfo::IfThenRescopeTemp {
+                        if_then: HirId { owner: this.hir_id.owner, local_id: id },
+                    }
+                }
+
                 _ => LocalInfo::Boring,
             };
             **local_decl.local_info.as_mut().assert_crate_local() = local_info;
             this.local_decls.push(local_decl)
         };
+        debug!(?temp);
         if deduplicate_temps {
             this.fixed_temps.insert(expr_id, temp);
         }

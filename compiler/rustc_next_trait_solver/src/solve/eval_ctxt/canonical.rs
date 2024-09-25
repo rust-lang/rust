@@ -22,9 +22,9 @@ use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::NestedGoals;
 use crate::solve::{
-    inspect, response_no_constraints_raw, CanonicalInput, CanonicalResponse, Certainty, EvalCtxt,
-    ExternalConstraintsData, Goal, MaybeCause, NestedNormalizationGoals, NoSolution,
-    PredefinedOpaquesData, QueryInput, QueryResult, Response,
+    CanonicalInput, CanonicalResponse, Certainty, EvalCtxt, ExternalConstraintsData, Goal,
+    MaybeCause, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
+    QueryResult, Response, inspect, response_no_constraints_raw,
 };
 
 trait ResponseT<I: Interner> {
@@ -122,6 +122,21 @@ where
             (certainty, NestedNormalizationGoals::empty())
         };
 
+        if let Certainty::Maybe(cause @ MaybeCause::Overflow { .. }) = certainty {
+            // If we have overflow, it's probable that we're substituting a type
+            // into itself infinitely and any partial substitutions in the query
+            // response are probably not useful anyways, so just return an empty
+            // query response.
+            //
+            // This may prevent us from potentially useful inference, e.g.
+            // 2 candidates, one ambiguous and one overflow, which both
+            // have the same inference constraints.
+            //
+            // Changing this to retain some constraints in the future
+            // won't be a breaking change, so this is good enough for now.
+            return Ok(self.make_ambiguous_response_no_constraints(cause));
+        }
+
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
         let (var_values, mut external_constraints) = (self.var_values, external_constraints)
@@ -141,6 +156,17 @@ where
                 external_constraints: self.cx().mk_external_constraints(external_constraints),
             },
         );
+
+        // HACK: We bail with overflow if the response would have too many non-region
+        // inference variables. This tends to only happen if we encounter a lot of
+        // ambiguous alias types which get replaced with fresh inference variables
+        // during generalization. This prevents a hang in nalgebra.
+        let num_non_region_vars = canonical.variables.iter().filter(|c| !c.is_region()).count();
+        if num_non_region_vars > self.cx().recursion_limit() {
+            return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
+                suggest_increasing_limit: true,
+            }));
+        }
 
         Ok(canonical)
     }
@@ -238,7 +264,7 @@ where
         (normalization_nested_goals.clone(), certainty)
     }
 
-    /// This returns the canoncial variable values to instantiate the bound variables of
+    /// This returns the canonical variable values to instantiate the bound variables of
     /// the canonical response. This depends on the `original_values` for the
     /// bound variables.
     fn compute_query_response_instantiation_values<T: ResponseT<I>>(

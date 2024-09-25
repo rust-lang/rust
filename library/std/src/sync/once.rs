@@ -314,6 +314,16 @@ impl Once {
     pub(crate) fn state(&mut self) -> ExclusiveState {
         self.inner.state()
     }
+
+    /// Sets current state of the `Once` instance.
+    ///
+    /// Since this takes a mutable reference, no initialization can currently
+    /// be running, so the state must be either "incomplete", "poisoned" or
+    /// "complete".
+    #[inline]
+    pub(crate) fn set_state(&mut self, new_state: ExclusiveState) {
+        self.inner.set_state(new_state);
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]

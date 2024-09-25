@@ -2,6 +2,7 @@
 
 use rustc_middle::traits::query::{NoSolution, OutlivesBound};
 use rustc_middle::ty;
+use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
 use super::region_constraints::RegionConstraintData;

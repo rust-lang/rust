@@ -1,4 +1,6 @@
 //@ run-pass
+// FIXME(static_mut_refs): this could use an atomic
+#![allow(static_mut_refs)]
 #![allow(dead_code)]
 
 static mut DROP: isize = 0;

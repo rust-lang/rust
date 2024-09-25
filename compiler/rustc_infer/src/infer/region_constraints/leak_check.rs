@@ -4,6 +4,7 @@ use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_index::Idx;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::TypeError;
+use tracing::{debug, instrument};
 
 use super::*;
 use crate::infer::relate::RelateResult;

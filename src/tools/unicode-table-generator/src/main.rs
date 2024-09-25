@@ -82,7 +82,7 @@ mod raw_emitter;
 mod skiplist;
 mod unicode_download;
 
-use raw_emitter::{emit_codepoints, emit_whitespace, RawEmitter};
+use raw_emitter::{RawEmitter, emit_codepoints, emit_whitespace};
 
 static PROPERTIES: &[&str] = &[
     "Alphabetic",

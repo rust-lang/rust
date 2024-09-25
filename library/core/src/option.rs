@@ -667,7 +667,7 @@ impl<T> Option<T> {
     /// ```
     #[must_use]
     #[inline]
-    #[stable(feature = "is_none_or", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_none_or", since = "1.82.0")]
     pub fn is_none_or(self, f: impl FnOnce(T) -> bool) -> bool {
         match self {
             None => true,
@@ -739,6 +739,7 @@ impl<T> Option<T> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
+        // FIXME(const-hack): use `map` once that is possible
         match Pin::get_ref(self).as_ref() {
             // SAFETY: `x` is guaranteed to be pinned because it comes from `self`
             // which is pinned.
@@ -758,6 +759,7 @@ impl<T> Option<T> {
         // SAFETY: `get_unchecked_mut` is never used to move the `Option` inside `self`.
         // `x` is guaranteed to be pinned because it comes from `self` which is pinned.
         unsafe {
+            // FIXME(const-hack): use `map` once that is possible
             match Pin::get_unchecked_mut(self).as_mut() {
                 Some(x) => Some(Pin::new_unchecked(x)),
                 None => None,
@@ -921,6 +923,7 @@ impl<T> Option<T> {
     #[inline]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "option_expect")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn expect(self, msg: &str) -> T {
         match self {
@@ -958,6 +961,7 @@ impl<T> Option<T> {
     #[inline(always)]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "option_unwrap")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn unwrap(self) -> T {
         match self {
@@ -1065,7 +1069,7 @@ impl<T> Option<T> {
     #[inline]
     #[track_caller]
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const unsafe fn unwrap_unchecked(self) -> T {
         match self {
             Some(val) => val,
@@ -1290,10 +1294,7 @@ impl<T> Option<T> {
     where
         T: Deref,
     {
-        match self.as_ref() {
-            Some(t) => Some(t.deref()),
-            None => None,
-        }
+        self.as_ref().map(|t| t.deref())
     }
 
     /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
@@ -1316,10 +1317,7 @@ impl<T> Option<T> {
     where
         T: DerefMut,
     {
-        match self.as_mut() {
-            Some(t) => Some(t.deref_mut()),
-            None => None,
-        }
+        self.as_mut().map(|t| t.deref_mut())
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -1338,9 +1336,8 @@ impl<T> Option<T> {
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
-    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn iter(&self) -> Iter<'_, T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter { inner: Item { opt: self.as_ref() } }
     }
 
@@ -1633,13 +1630,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert(&mut self, value: T) -> &mut T {
-        if let None = *self {
-            *self = Some(value);
-        }
-
-        // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
-        // variant in the code above.
-        unsafe { self.as_mut().unwrap_unchecked() }
+        self.get_or_insert_with(|| value)
     }
 
     /// Inserts the default value into the option if it is [`None`], then
@@ -1725,7 +1716,7 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn take(&mut self) -> Option<T> {
-        // FIXME replace `mem::replace` by `mem::take` when the latter is const ready
+        // FIXME(const-hack) replace `mem::replace` by `mem::take` when the latter is const ready
         mem::replace(self, None)
     }
 
@@ -1894,7 +1885,7 @@ impl<T> Option<&T> {
     where
         T: Copy,
     {
-        // FIXME: this implementation, which sidesteps using `Option::map` since it's not const
+        // FIXME(const-hack): this implementation, which sidesteps using `Option::map` since it's not const
         // ready yet, should be reverted when possible to avoid code repetition
         match self {
             Some(&v) => Some(v),
@@ -1942,7 +1933,7 @@ impl<T> Option<&mut T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn copied(self) -> Option<T>
     where
         T: Copy,
@@ -2547,6 +2538,7 @@ impl<T> Option<Option<T>> {
     #[stable(feature = "option_flattening", since = "1.40.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn flatten(self) -> Option<T> {
+        // FIXME(const-hack): could be written with `and_then`
         match self {
             Some(inner) => inner,
             None => None,

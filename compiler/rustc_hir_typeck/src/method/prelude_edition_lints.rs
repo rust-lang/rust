@@ -8,13 +8,14 @@ use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
-use rustc_span::symbol::kw::{Empty, Underscore};
-use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use rustc_span::symbol::kw::{Empty, Underscore};
+use rustc_span::symbol::{Ident, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
+use tracing::debug;
 
-use crate::method::probe::{self, Pick};
 use crate::FnCtxt;
+use crate::method::probe::{self, Pick};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(super) fn lint_edition_dependent_dot_call(
@@ -62,8 +63,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Instead, the problem is that the array-into_iter hack will no longer
                     // apply in Rust 2021.
                     (ARRAY_INTO_ITER, "2021")
-                } else if self_ty.is_box()
-                    && self_ty.boxed_ty().is_slice()
+                } else if self_ty.boxed_ty().is_some_and(Ty::is_slice)
                     && !span.at_least_rust_2024()
                 {
                     // In this case, it wasn't really a prelude addition that was the problem.

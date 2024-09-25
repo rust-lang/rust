@@ -3,7 +3,7 @@ mod inherent;
 mod opaque_types;
 mod weak_types;
 
-use rustc_type_ir::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::{self as ty, Interner, NormalizesTo, Upcast as _};
@@ -106,6 +106,12 @@ where
         if let Some(projection_pred) = assumption.as_projection_clause() {
             if projection_pred.projection_def_id() == goal.predicate.def_id() {
                 let cx = ecx.cx();
+                if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                    goal.predicate.alias.args,
+                    projection_pred.skip_binder().projection_term.args,
+                ) {
+                    return Err(NoSolution);
+                }
                 ecx.probe_trait_candidate(source).enter(|ecx| {
                     let assumption_projection_pred =
                         ecx.instantiate_binder_with_infer(projection_pred);
@@ -144,7 +150,7 @@ where
 
         let goal_trait_ref = goal.predicate.alias.trait_ref(cx);
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::new(ecx.cx(), TreatParams::ForLookup).args_may_unify(
+        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx()).args_may_unify(
             goal.predicate.alias.trait_ref(cx).args,
             impl_trait_ref.skip_binder().args,
         ) {
@@ -334,11 +340,10 @@ where
 
         let pred = tupled_inputs_and_output
             .map_bound(|(inputs, output)| ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(
-                    cx,
-                    goal.predicate.def_id(),
-                    [goal.predicate.self_ty(), inputs],
-                ),
+                projection_term: ty::AliasTerm::new(cx, goal.predicate.def_id(), [
+                    goal.predicate.self_ty(),
+                    inputs,
+                ]),
                 term: output.into(),
             })
             .upcast(cx);
@@ -390,26 +395,21 @@ where
                         .is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::CallOnceFuture)
                     {
                         (
-                            ty::AliasTerm::new(
-                                cx,
-                                goal.predicate.def_id(),
-                                [goal.predicate.self_ty(), tupled_inputs_ty],
-                            ),
+                            ty::AliasTerm::new(cx, goal.predicate.def_id(), [
+                                goal.predicate.self_ty(),
+                                tupled_inputs_ty,
+                            ]),
                             output_coroutine_ty.into(),
                         )
                     } else if cx
                         .is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::CallRefFuture)
                     {
                         (
-                            ty::AliasTerm::new(
-                                cx,
-                                goal.predicate.def_id(),
-                                [
-                                    I::GenericArg::from(goal.predicate.self_ty()),
-                                    tupled_inputs_ty.into(),
-                                    env_region.into(),
-                                ],
-                            ),
+                            ty::AliasTerm::new(cx, goal.predicate.def_id(), [
+                                I::GenericArg::from(goal.predicate.self_ty()),
+                                tupled_inputs_ty.into(),
+                                env_region.into(),
+                            ]),
                             output_coroutine_ty.into(),
                         )
                     } else if cx.is_lang_item(
@@ -417,14 +417,10 @@ where
                         TraitSolverLangItem::AsyncFnOnceOutput,
                     ) {
                         (
-                            ty::AliasTerm::new(
-                                cx,
-                                goal.predicate.def_id(),
-                                [
-                                    I::GenericArg::from(goal.predicate.self_ty()),
-                                    tupled_inputs_ty.into(),
-                                ],
-                            ),
+                            ty::AliasTerm::new(cx, goal.predicate.def_id(), [
+                                I::GenericArg::from(goal.predicate.self_ty()),
+                                tupled_inputs_ty.into(),
+                            ]),
                             coroutine_return_ty.into(),
                         )
                     } else {
@@ -550,11 +546,10 @@ where
                     // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
                     // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
                     // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
-                    let sized_predicate = ty::TraitRef::new(
-                        cx,
-                        cx.require_lang_item(TraitSolverLangItem::Sized),
-                        [I::GenericArg::from(goal.predicate.self_ty())],
-                    );
+                    let sized_predicate =
+                        ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [
+                            I::GenericArg::from(goal.predicate.self_ty()),
+                        ]);
                     // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
                     ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate));
                     Ty::new_unit(cx)
@@ -725,11 +720,10 @@ where
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(
-                    ecx.cx(),
-                    goal.predicate.def_id(),
-                    [self_ty, coroutine.resume_ty()],
-                ),
+                projection_term: ty::AliasTerm::new(ecx.cx(), goal.predicate.def_id(), [
+                    self_ty,
+                    coroutine.resume_ty(),
+                ]),
                 term,
             }
             .upcast(cx),

@@ -1,6 +1,6 @@
-use crate::spec::{base, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.max_atomic_width = Some(128);
     base.supports_xray = true;

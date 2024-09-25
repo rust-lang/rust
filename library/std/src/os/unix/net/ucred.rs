@@ -38,7 +38,7 @@ pub(super) use self::impl_linux::peer_cred;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 mod impl_linux {
-    use libc::{c_void, getsockopt, socklen_t, ucred, SOL_SOCKET, SO_PEERCRED};
+    use libc::{SO_PEERCRED, SOL_SOCKET, c_void, getsockopt, socklen_t, ucred};
 
     use super::UCred;
     use crate::os::unix::io::AsRawFd;
@@ -98,7 +98,7 @@ mod impl_bsd {
 
 #[cfg(target_vendor = "apple")]
 mod impl_apple {
-    use libc::{c_void, getpeereid, getsockopt, pid_t, socklen_t, LOCAL_PEERPID, SOL_LOCAL};
+    use libc::{LOCAL_PEERPID, SOL_LOCAL, c_void, getpeereid, getsockopt, pid_t, socklen_t};
 
     use super::UCred;
     use crate::os::unix::io::AsRawFd;

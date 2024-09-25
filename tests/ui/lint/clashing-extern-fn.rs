@@ -1,7 +1,6 @@
 //@ check-pass
 //@ aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
-#![warn(clashing_extern_declarations)]
 
 mod redeclared_different_signature {
     mod a {
@@ -132,7 +131,7 @@ mod banana {
     mod three {
         // This _should_ trigger the lint, because repr(packed) should generate a struct that has a
         // different layout.
-        #[repr(packed)]
+        #[repr(C, packed)]
         struct Banana {
             weight: u32,
             length: u16,
@@ -141,6 +140,79 @@ mod banana {
         extern "C" {
             fn weigh_banana(count: *const Banana) -> u64;
             //~^ WARN `weigh_banana` redeclared with a different signature
+        }
+    }
+
+    mod four {
+        // This _should_ trigger the lint, because the type is not repr(C).
+        struct Banana {
+            weight: u32,
+            length: u16,
+        }
+        #[allow(improper_ctypes)]
+        extern "C" {
+            fn weigh_banana(count: *const Banana) -> u64;
+            //~^ WARN `weigh_banana` redeclared with a different signature
+        }
+    }
+}
+
+// 3-field structs can't be distinguished by ScalarPair, side-stepping some shortucts
+// the logic used to (incorrectly) take.
+mod banana3 {
+    mod one {
+        #[repr(C)]
+        struct Banana {
+            weight: u32,
+            length: u16,
+            color: u8,
+        }
+        extern "C" {
+            fn weigh_banana3(count: *const Banana) -> u64;
+        }
+    }
+
+    mod two {
+        #[repr(C)]
+        struct Banana {
+            weight: u32,
+            length: u16,
+            color: u8,
+        } // note: distinct type
+        // This should not trigger the lint because two::Banana is structurally equivalent to
+        // one::Banana.
+        extern "C" {
+            fn weigh_banana3(count: *const Banana) -> u64;
+        }
+    }
+
+    mod three {
+        // This _should_ trigger the lint, because repr(packed) should generate a struct that has a
+        // different layout.
+        #[repr(C, packed)]
+        struct Banana {
+            weight: u32,
+            length: u16,
+            color: u8,
+        }
+        #[allow(improper_ctypes)]
+        extern "C" {
+            fn weigh_banana3(count: *const Banana) -> u64;
+            //~^ WARN `weigh_banana3` redeclared with a different signature
+        }
+    }
+
+    mod four {
+        // This _should_ trigger the lint, because the type is not repr(C).
+        struct Banana {
+            weight: u32,
+            length: u16,
+            color: u8,
+        }
+        #[allow(improper_ctypes)]
+        extern "C" {
+            fn weigh_banana3(count: *const Banana) -> u64;
+            //~^ WARN `weigh_banana3` redeclared with a different signature
         }
     }
 }
@@ -219,27 +291,6 @@ mod transparent {
             // Should warn, because there's a signedness conversion here:
             fn transparent_incorrect() -> isize;
             //~^ WARN `transparent_incorrect` redeclared with a different signature
-        }
-    }
-}
-
-#[allow(improper_ctypes)]
-mod zst {
-    mod transparent {
-        #[repr(transparent)]
-        struct TransparentZst(());
-        extern "C" {
-            fn zst() -> ();
-            fn transparent_zst() -> TransparentZst;
-        }
-    }
-
-    mod not_transparent {
-        struct NotTransparentZst(());
-        extern "C" {
-            // These shouldn't warn since all return types are zero sized
-            fn zst() -> NotTransparentZst;
-            fn transparent_zst() -> NotTransparentZst;
         }
     }
 }
@@ -384,6 +435,7 @@ mod unknown_layout {
         extern "C" {
             pub fn generic(l: Link<u32>);
         }
+        #[repr(C)]
         pub struct Link<T> {
             pub item: T,
             pub next: *const Link<T>,
@@ -394,6 +446,7 @@ mod unknown_layout {
         extern "C" {
             pub fn generic(l: Link<u32>);
         }
+        #[repr(C)]
         pub struct Link<T> {
             pub item: T,
             pub next: *const Link<T>,

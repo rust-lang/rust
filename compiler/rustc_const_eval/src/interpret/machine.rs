@@ -9,17 +9,18 @@ use std::hash::Hash;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{mir, ty};
-use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use rustc_span::def_id::DefId;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use super::{
-    throw_unsup, throw_unsup_format, AllocBytes, AllocId, AllocKind, AllocRange, Allocation,
-    ConstAllocation, CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy,
-    MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance, CTFE_ALLOC_SALT,
+    AllocBytes, AllocId, AllocKind, AllocRange, Allocation, CTFE_ALLOC_SALT, ConstAllocation,
+    CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, MemoryKind,
+    Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, throw_unsup, throw_unsup_format,
 };
 
 /// Data returned by [`Machine::after_stack_pop`], and consumed by
@@ -362,17 +363,7 @@ pub trait Machine<'tcx>: Sized {
         ecx: &InterpCx<'tcx, Self>,
         id: AllocId,
         alloc: &'b Allocation,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
-    {
-        // The default implementation does a copy; CTFE machines have a more efficient implementation
-        // based on their particular choice for `Provenance`, `AllocExtra`, and `Bytes`.
-        let kind = Self::GLOBAL_KIND
-            .expect("if GLOBAL_KIND is None, adjust_global_allocation must be overwritten");
-        let alloc = alloc.adjust_from_tcx(&ecx.tcx, |ptr| ecx.global_root_pointer(ptr))?;
-        let extra =
-            Self::init_alloc_extra(ecx, id, MemoryKind::Machine(kind), alloc.size(), alloc.align)?;
-        Ok(Cow::Owned(alloc.with_extra(extra)))
-    }
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
 
     /// Initialize the extra state of an allocation.
     ///
@@ -549,10 +540,29 @@ pub trait Machine<'tcx>: Sized {
         Ok(ReturnAction::Normal)
     }
 
+    /// Called immediately after an "immediate" local variable is read
+    /// (i.e., this is called for reads that do not end up accessing addressable memory).
+    #[inline(always)]
+    fn after_local_read(_ecx: &InterpCx<'tcx, Self>, _local: mir::Local) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called immediately after an "immediate" local variable is assigned a new value
+    /// (i.e., this is called for writes that do not end up in memory).
+    /// `storage_live` indicates whether this is the initial write upon `StorageLive`.
+    #[inline(always)]
+    fn after_local_write(
+        _ecx: &mut InterpCx<'tcx, Self>,
+        _local: mir::Local,
+        _storage_live: bool,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
     /// Called immediately after actual memory was allocated for a local
     /// but before the local's stack frame is updated to point to that memory.
     #[inline(always)]
-    fn after_local_allocated(
+    fn after_local_moved_to_memory(
         _ecx: &mut InterpCx<'tcx, Self>,
         _local: mir::Local,
         _mplace: &MPlaceTy<'tcx, Self::Provenance>,
@@ -588,6 +598,15 @@ pub trait Machine<'tcx>: Sized {
         ecx: &InterpCx<'tcx, Self>,
         instance: Option<ty::Instance<'tcx>>,
     ) -> usize;
+
+    fn cached_union_data_range<'e>(
+        _ecx: &'e mut InterpCx<'tcx, Self>,
+        _ty: Ty<'tcx>,
+        compute_range: impl FnOnce() -> RangeSet,
+    ) -> Cow<'e, RangeSet> {
+        // Default to no caching.
+        Cow::Owned(compute_range())
+    }
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines

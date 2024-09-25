@@ -1,6 +1,6 @@
-use crate::spec::{base, PanicStrategy, Target};
+use crate::spec::{PanicStrategy, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::l4re::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;

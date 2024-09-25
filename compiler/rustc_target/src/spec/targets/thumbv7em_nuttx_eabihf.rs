@@ -8,9 +8,9 @@
 //
 // To opt into double precision hardware support, use the `-C target-feature=+fp64` flag.
 
-use crate::spec::{base, cvs, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base, cvs};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv7em-none-eabihf".into(),
         metadata: crate::spec::TargetMetadata {

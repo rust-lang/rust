@@ -8,7 +8,7 @@
 // so we have to stick to C++11 emulation from existing research.
 
 use std::sync::atomic::Ordering::*;
-use std::sync::atomic::{fence, AtomicUsize};
+use std::sync::atomic::{AtomicUsize, fence};
 use std::thread::spawn;
 
 // Spins until it reads the given value

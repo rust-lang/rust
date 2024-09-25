@@ -12,6 +12,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use rustc_hir::HirId;
 use rustc_lint_defs::Applicability;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use {pulldown_cmark as cmarkn, pulldown_cmark_old as cmarko};
@@ -19,17 +20,8 @@ use {pulldown_cmark as cmarkn, pulldown_cmark_old as cmarko};
 use crate::clean::Item;
 use crate::core::DocContext;
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
+pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
     let tcx = cx.tcx;
-    let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
-        // If non-local, no need to check anything.
-        return;
-    };
-
-    let dox = item.doc_value();
-    if dox.is_empty() {
-        return;
-    }
 
     // P1: unintended strikethrough was fixed by requiring single-tildes to flank
     // the same way underscores do, so nothing is done here

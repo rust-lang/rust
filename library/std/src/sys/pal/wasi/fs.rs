@@ -13,7 +13,7 @@ use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 pub use crate::sys_common::fs::exists;
-use crate::sys_common::{ignore_notfound, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner, ignore_notfound};
 use crate::{fmt, iter, ptr};
 
 pub struct File {
@@ -265,7 +265,7 @@ impl OpenOptions {
     pub fn new() -> OpenOptions {
         let mut base = OpenOptions::default();
         base.dirflags = wasi::LOOKUPFLAGS_SYMLINK_FOLLOW;
-        return base;
+        base
     }
 
     pub fn read(&mut self, read: bool) {
@@ -382,7 +382,7 @@ impl OpenOptions {
         base |= wasi::RIGHTS_PATH_UNLINK_FILE;
         base |= wasi::RIGHTS_POLL_FD_READWRITE;
 
-        return base;
+        base
     }
 
     fn rights_inheriting(&self) -> wasi::Rights {

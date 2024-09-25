@@ -58,8 +58,9 @@ case $HOST_TARGET in
     # Strangely, Linux targets do not work here. cargo always says
     # "error: cannot produce cdylib for ... as the target ... does not support these crate types".
     # Only run "pass" tests, which is quite a bit faster.
-    python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass
-    python3 "$X_PY" test --stage 2 src/tools/miri --target i686-pc-windows-gnu --test-args pass
+    #FIXME: Re-enable this once CI issues are fixed
+    #python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass
+    #python3 "$X_PY" test --stage 2 src/tools/miri --target i686-pc-windows-gnu --test-args pass
     ;;
   *)
     echo "FATAL: unexpected host $HOST_TARGET"
@@ -68,6 +69,10 @@ case $HOST_TARGET in
 esac
 # Also smoke-test `x.py miri`. This doesn't run any actual tests (that would take too long),
 # but it ensures that the crates build properly when tested with Miri.
-python3 "$X_PY" miri --stage 2 library/core --test-args notest
-python3 "$X_PY" miri --stage 2 library/alloc --test-args notest
-python3 "$X_PY" miri --stage 2 library/std --test-args notest
+
+#FIXME: Re-enable this for msvc once CI issues are fixed
+if [ "$HOST_TARGET" != "x86_64-pc-windows-msvc" ]; then
+  python3 "$X_PY" miri --stage 2 library/core --test-args notest
+  python3 "$X_PY" miri --stage 2 library/alloc --test-args notest
+  python3 "$X_PY" miri --stage 2 library/std --test-args notest
+fi

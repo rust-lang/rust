@@ -1,5 +1,5 @@
 error: Undefined Behavior: trying to retag from <TAG> for SharedReadOnly permission at ALLOC[0x4], but that tag does not exist in the borrow stack for this location
-  --> $DIR/return_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
    |
 LL |     ret
    |     ^^^
@@ -10,19 +10,19 @@ LL |     ret
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a SharedReadOnly retag at offsets [0x4..0x8]
-  --> $DIR/return_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
    |
 LL |     let ret = unsafe { &(*xraw).1 };
    |                        ^^^^^^^^^^
 help: <TAG> was later invalidated at offsets [0x0..0x8] by a write access
-  --> $DIR/return_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
    |
 LL |     unsafe { *xraw = (42, 23) }; // unfreeze
    |              ^^^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `foo` at $DIR/return_invalid_shr.rs:LL:CC
+   = note: inside `foo` at tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
 note: inside `main`
-  --> $DIR/return_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
    |
 LL |     foo(&mut (1, 2));
    |     ^^^^^^^^^^^^^^^^

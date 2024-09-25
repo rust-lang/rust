@@ -4,9 +4,10 @@ use std::borrow::Cow;
 use rustc_ast::visit::Visitor;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, Span, Symbol};
-use {rustc_ast as ast, rustc_hir as hir};
+use rustc_hir as hir;
+use rustc_session::config::FmtDebug;
+use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Span, Symbol, sym};
 
 use super::LoweringContext;
 
@@ -243,7 +244,10 @@ fn make_argument<'hir>(
         hir::LangItem::FormatArgument,
         match ty {
             Format(Display) => sym::new_display,
-            Format(Debug) => sym::new_debug,
+            Format(Debug) => match ctx.tcx.sess.opts.unstable_opts.fmt_debug {
+                FmtDebug::Full | FmtDebug::Shallow => sym::new_debug,
+                FmtDebug::None => sym::new_debug_noop,
+            },
             Format(LowerExp) => sym::new_lower_exp,
             Format(UpperExp) => sym::new_upper_exp,
             Format(Octal) => sym::new_octal,
@@ -359,16 +363,13 @@ fn make_format_spec<'hir>(
         debug_hex,
     } = &placeholder.format_options;
     let fill = ctx.expr_char(sp, fill.unwrap_or(' '));
-    let align = ctx.expr_lang_item_type_relative(
-        sp,
-        hir::LangItem::FormatAlignment,
-        match alignment {
+    let align =
+        ctx.expr_lang_item_type_relative(sp, hir::LangItem::FormatAlignment, match alignment {
             Some(FormatAlignment::Left) => sym::Left,
             Some(FormatAlignment::Right) => sym::Right,
             Some(FormatAlignment::Center) => sym::Center,
             None => sym::Unknown,
-        },
-    );
+        });
     // This needs to match `Flag` in library/core/src/fmt/rt.rs.
     let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
         | ((sign == Some(FormatSign::Minus)) as u32) << 1

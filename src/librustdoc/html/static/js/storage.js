@@ -196,15 +196,20 @@ updateTheme();
 // This needs to be done here because this JS is render-blocking,
 // so that the sidebar doesn't "jump" after appearing on screen.
 // The user interaction to change this is set up in main.js.
+//
+// At this point in page load, `document.body` is not available yet.
+// Set a class on the `<html>` element instead.
 if (getSettingValue("source-sidebar-show") === "true") {
-    // At this point in page load, `document.body` is not available yet.
-    // Set a class on the `<html>` element instead.
     addClass(document.documentElement, "src-sidebar-expanded");
 }
 if (getSettingValue("hide-sidebar") === "true") {
-    // At this point in page load, `document.body` is not available yet.
-    // Set a class on the `<html>` element instead.
     addClass(document.documentElement, "hide-sidebar");
+}
+if (getSettingValue("hide-toc") === "true") {
+    addClass(document.documentElement, "hide-toc");
+}
+if (getSettingValue("hide-modnav") === "true") {
+    addClass(document.documentElement, "hide-modnav");
 }
 function updateSidebarWidth() {
     const desktopSidebarWidth = getSettingValue("desktop-sidebar-width");
@@ -269,16 +274,29 @@ class RustdocSearchElement extends HTMLElement {
                     spellcheck="false"
                     placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…"
                     type="search">
-                <div id="help-button" tabindex="-1">
-                    <a href="${rootPath}help.html" title="help">?</a>
-                </div>
-                <div id="settings-menu" tabindex="-1">
-                    <a href="${rootPath}settings.html" title="settings">
-                        Settings
-                    </a>
-                </div>
             </form>
         </nav>`;
     }
 }
 window.customElements.define("rustdoc-search", RustdocSearchElement);
+class RustdocToolbarElement extends HTMLElement {
+    constructor() {
+        super();
+    }
+    connectedCallback() {
+        // Avoid replacing the children after they're already here.
+        if (this.firstElementChild) {
+            return;
+        }
+        const rootPath = getVar("root-path");
+        this.innerHTML = `
+        <div id="settings-menu" tabindex="-1">
+            <a href="${rootPath}settings.html"><span class="label">Settings</span></a>
+        </div>
+        <div id="help-button" tabindex="-1">
+            <a href="${rootPath}help.html"><span class="label">Help</span></a>
+        </div>
+        <button id="toggle-all-docs"><span class="label">Summary</span></button>`;
+    }
+}
+window.customElements.define("rustdoc-toolbar", RustdocToolbarElement);

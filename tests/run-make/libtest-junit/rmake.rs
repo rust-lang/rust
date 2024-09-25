@@ -21,7 +21,7 @@ fn run_tests(extra_args: &[&str], expected_file: &str) {
         .run_fail();
     let test_stdout = &cmd_out.stdout_utf8();
 
-    python_command().arg("validate_junit.py").stdin(test_stdout).run();
+    python_command().arg("validate_junit.py").stdin_buf(test_stdout).run();
 
     diff()
         .expected_file(expected_file)

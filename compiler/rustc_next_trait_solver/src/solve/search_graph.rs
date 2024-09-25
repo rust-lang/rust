@@ -1,13 +1,13 @@
 use std::convert::Infallible;
 use std::marker::PhantomData;
 
+use rustc_type_ir::Interner;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::search_graph::{self, PathKind};
 use rustc_type_ir::solve::{CanonicalInput, Certainty, QueryResult};
-use rustc_type_ir::Interner;
 
 use super::inspect::ProofTreeBuilder;
-use super::{has_no_inference_or_external_constraints, FIXPOINT_STEP_LIMIT};
+use super::{FIXPOINT_STEP_LIMIT, has_no_inference_or_external_constraints};
 use crate::delegate::SolverDelegate;
 
 /// This type is never constructed. We only use it to implement `search_graph::Delegate`

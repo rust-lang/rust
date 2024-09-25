@@ -1,3 +1,14 @@
+error: elided lifetime has a name
+  --> tests/ui/needless_lifetimes.rs:266:52
+   |
+LL | fn named_input_elided_output<'a>(_arg: &'a str) -> &str {
+   |                              --                    ^ this elided lifetime gets resolved as `'a`
+   |                              |
+   |                              lifetime `'a` declared here
+   |
+   = note: `-D elided-named-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(elided_named_lifetimes)]`
+
 error: the following explicit lifetimes could be elided: 'a, 'b
   --> tests/ui/needless_lifetimes.rs:17:23
    |
@@ -553,5 +564,5 @@ LL -         fn one_input<'a>(x: &'a u8) -> &'a u8 {
 LL +         fn one_input(x: &u8) -> &u8 {
    |
 
-error: aborting due to 46 previous errors
+error: aborting due to 47 previous errors
 

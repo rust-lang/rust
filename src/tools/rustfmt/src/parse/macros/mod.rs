@@ -1,11 +1,11 @@
 use rustc_ast::token::{Delimiter, NonterminalKind, NtExprKind::*, NtPatKind::*, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ast, ptr};
-use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::MACRO_ARGUMENTS;
+use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{self, kw};
 use rustc_span::Symbol;
+use rustc_span::symbol::{self, kw};
 
 use crate::macros::MacroArg;
 use crate::rewrite::RewriteContext;

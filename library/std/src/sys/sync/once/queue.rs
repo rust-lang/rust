@@ -140,6 +140,15 @@ impl Once {
         }
     }
 
+    #[inline]
+    pub(crate) fn set_state(&mut self, new_state: ExclusiveState) {
+        *self.state_and_queue.get_mut() = match new_state {
+            ExclusiveState::Incomplete => ptr::without_provenance_mut(INCOMPLETE),
+            ExclusiveState::Poisoned => ptr::without_provenance_mut(POISONED),
+            ExclusiveState::Complete => ptr::without_provenance_mut(COMPLETE),
+        };
+    }
+
     #[cold]
     #[track_caller]
     pub fn wait(&self, ignore_poisoning: bool) {

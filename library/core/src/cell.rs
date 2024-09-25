@@ -306,7 +306,7 @@ pub use once::OnceCell;
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
-#[cfg_attr(not(bootstrap), rustc_pub_transparent)]
+#[rustc_pub_transparent]
 pub struct Cell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
@@ -1577,10 +1577,10 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     {
         let (a, b) = f(&*orig);
         let borrow = orig.borrow.clone();
-        (
-            Ref { value: NonNull::from(a), borrow },
-            Ref { value: NonNull::from(b), borrow: orig.borrow },
-        )
+        (Ref { value: NonNull::from(a), borrow }, Ref {
+            value: NonNull::from(b),
+            borrow: orig.borrow,
+        })
     }
 
     /// Converts into a reference to the underlying data.
@@ -1745,10 +1745,11 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     {
         let borrow = orig.borrow.clone();
         let (a, b) = f(&mut *orig);
-        (
-            RefMut { value: NonNull::from(a), borrow, marker: PhantomData },
-            RefMut { value: NonNull::from(b), borrow: orig.borrow, marker: PhantomData },
-        )
+        (RefMut { value: NonNull::from(a), borrow, marker: PhantomData }, RefMut {
+            value: NonNull::from(b),
+            borrow: orig.borrow,
+            marker: PhantomData,
+        })
     }
 
     /// Converts into a mutable reference to the underlying data.
@@ -2056,7 +2057,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 #[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
-#[cfg_attr(not(bootstrap), rustc_pub_transparent)]
+#[rustc_pub_transparent]
 pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }
@@ -2299,7 +2300,7 @@ impl<T> UnsafeCell<*mut T> {
 /// See [`UnsafeCell`] for details.
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 #[repr(transparent)]
-#[cfg_attr(not(bootstrap), rustc_pub_transparent)]
+#[rustc_pub_transparent]
 pub struct SyncUnsafeCell<T: ?Sized> {
     value: UnsafeCell<T>,
 }

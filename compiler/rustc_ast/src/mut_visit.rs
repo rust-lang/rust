@@ -13,10 +13,10 @@ use std::panic;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
-use smallvec::{smallvec, Array, SmallVec};
+use smallvec::{Array, SmallVec, smallvec};
 use thin_vec::ThinVec;
 
 use crate::ast::*;
@@ -752,7 +752,7 @@ fn visit_lazy_tts<T: MutVisitor>(vis: &mut T, lazy_tts: &mut Option<LazyAttrToke
 pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
     let Token { kind, span } = t;
     match kind {
-        token::Ident(name, _ /*raw*/) | token::Lifetime(name) => {
+        token::Ident(name, _is_raw) | token::Lifetime(name, _is_raw) => {
             let mut ident = Ident::new(*name, *span);
             vis.visit_ident(&mut ident);
             *name = ident.name;
@@ -762,7 +762,7 @@ pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
         token::NtIdent(ident, _is_raw) => {
             vis.visit_ident(ident);
         }
-        token::NtLifetime(ident) => {
+        token::NtLifetime(ident, _is_raw) => {
             vis.visit_ident(ident);
         }
         token::Interpolated(nt) => {
@@ -1388,6 +1388,7 @@ fn walk_anon_const<T: MutVisitor>(vis: &mut T, AnonConst { id, value }: &mut Ano
 fn walk_inline_asm<T: MutVisitor>(vis: &mut T, asm: &mut InlineAsm) {
     // FIXME: Visit spans inside all this currently ignored stuff.
     let InlineAsm {
+        asm_macro: _,
         template: _,
         template_strs: _,
         operands,

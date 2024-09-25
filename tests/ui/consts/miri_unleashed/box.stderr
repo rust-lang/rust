@@ -11,16 +11,6 @@ help: skipping check that does not even have a feature gate
    |
 LL |     &mut *(Box::new(0))
    |           ^^^^^^^^^^^^^
-help: skipping check for `const_mut_refs` feature
-  --> $DIR/box.rs:8:5
-   |
-LL |     &mut *(Box::new(0))
-   |     ^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_mut_refs` feature
-  --> $DIR/box.rs:8:5
-   |
-LL |     &mut *(Box::new(0))
-   |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error; 1 warning emitted
 

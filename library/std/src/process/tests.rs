@@ -437,7 +437,7 @@ fn test_proc_thread_attributes() {
     use crate::mem;
     use crate::os::windows::io::AsRawHandle;
     use crate::os::windows::process::CommandExt;
-    use crate::sys::c::{CloseHandle, BOOL, HANDLE};
+    use crate::sys::c::{BOOL, CloseHandle, HANDLE};
     use crate::sys::cvt;
 
     #[repr(C)]

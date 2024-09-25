@@ -1,4 +1,4 @@
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::ffi::{OsStr, OsString};
@@ -12,21 +12,21 @@ use std::{env, fs};
 
 use clap::ValueEnum;
 
+pub use crate::Compiler;
 use crate::core::build_steps::tool::{self, SourceType};
 use crate::core::build_steps::{
-    check, clean, clippy, compile, dist, doc, install, llvm, run, setup, test, vendor,
+    check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, vendor,
 };
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::cache::Cache;
-use crate::utils::exec::{command, BootstrapCommand};
+use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
-    self, add_dylib_path, add_link_lib_path, check_cfg_arg, exe, libdir, linker_args, linker_flags,
-    t, LldThreads,
+    self, LldThreads, add_dylib_path, add_link_lib_path, check_cfg_arg, exe, libdir, linker_args,
+    linker_flags, t,
 };
-pub use crate::Compiler;
 use crate::{
-    prepare_behaviour_dump_dir, Build, CLang, Crate, DocTests, GitRepo, Mode, EXTRA_CHECK_CFGS,
+    Build, CLang, Crate, DocTests, EXTRA_CHECK_CFGS, GitRepo, Mode, prepare_behaviour_dump_dir,
 };
 
 #[cfg(test)]
@@ -314,33 +314,30 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     // actual path is `proc-macro-srv-cli`
     ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
-    (
-        "tests",
-        &[
-            // tidy-alphabetical-start
-            "tests/assembly",
-            "tests/codegen",
-            "tests/codegen-units",
-            "tests/coverage",
-            "tests/coverage-run-rustdoc",
-            "tests/crashes",
-            "tests/debuginfo",
-            "tests/incremental",
-            "tests/mir-opt",
-            "tests/pretty",
-            "tests/run-make",
-            "tests/run-pass-valgrind",
-            "tests/rustdoc",
-            "tests/rustdoc-gui",
-            "tests/rustdoc-js",
-            "tests/rustdoc-js-std",
-            "tests/rustdoc-json",
-            "tests/rustdoc-ui",
-            "tests/ui",
-            "tests/ui-fulldeps",
-            // tidy-alphabetical-end
-        ],
-    ),
+    ("tests", &[
+        // tidy-alphabetical-start
+        "tests/assembly",
+        "tests/codegen",
+        "tests/codegen-units",
+        "tests/coverage",
+        "tests/coverage-run-rustdoc",
+        "tests/crashes",
+        "tests/debuginfo",
+        "tests/incremental",
+        "tests/mir-opt",
+        "tests/pretty",
+        "tests/run-make",
+        "tests/run-pass-valgrind",
+        "tests/rustdoc",
+        "tests/rustdoc-gui",
+        "tests/rustdoc-js",
+        "tests/rustdoc-js-std",
+        "tests/rustdoc-json",
+        "tests/rustdoc-ui",
+        "tests/ui",
+        "tests/ui-fulldeps",
+        // tidy-alphabetical-end
+    ]),
 ];
 
 fn remap_paths(paths: &mut Vec<PathBuf>) {
@@ -793,11 +790,13 @@ impl<'a> Builder<'a> {
                 tool::Clippy,
                 tool::CargoClippy,
                 llvm::Llvm,
+                gcc::Gcc,
                 llvm::Sanitizers,
                 tool::Rustfmt,
                 tool::Miri,
                 tool::CargoMiri,
                 llvm::Lld,
+                llvm::Enzyme,
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
@@ -942,6 +941,8 @@ impl<'a> Builder<'a> {
                 doc::Bootstrap,
                 doc::Releases,
                 doc::RunMakeSupport,
+                doc::BuildHelper,
+                doc::Compiletest,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
@@ -1298,8 +1299,12 @@ impl<'a> Builder<'a> {
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         if run_compiler.stage == 0 {
-            // `ensure(Clippy { stage: 0 })` *builds* clippy with stage0, it doesn't use the beta clippy.
-            let cargo_clippy = self.build.config.download_clippy();
+            let cargo_clippy = self
+                .config
+                .initial_cargo_clippy
+                .clone()
+                .unwrap_or_else(|| self.build.config.download_clippy());
+
             let mut cmd = command(cargo_clippy);
             cmd.env("CARGO", &self.initial_cargo);
             return cmd;
@@ -1612,6 +1617,15 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Csymbol-mangling-version=v0");
         } else {
             rustflags.arg("-Csymbol-mangling-version=legacy");
+        }
+
+        // FIXME: the following components don't build with `-Zrandomize-layout` yet:
+        // - wasm-component-ld, due to the `wast`crate
+        // - rust-analyzer, due to the rowan crate
+        // so we exclude entire categories of steps here due to lack of fine-grained control over
+        // rustflags.
+        if self.config.rust_randomize_layout && mode != Mode::ToolStd && mode != Mode::ToolRustc {
+            rustflags.arg("-Zrandomize-layout");
         }
 
         // Enable compile-time checking of `cfg` names, values and Cargo `features`.
@@ -2189,6 +2203,9 @@ impl<'a> Builder<'a> {
                 rustflags.arg("-Zvalidate-mir");
                 rustflags.arg(&format!("-Zmir-opt-level={mir_opt_level}"));
             }
+            if self.config.rust_randomize_layout {
+                rustflags.arg("--cfg=randomized_layouts");
+            }
             // Always enable inlining MIR when building the standard library.
             // Without this flag, MIR inlining is disabled when incremental compilation is enabled.
             // That causes some mir-opt tests which inline functions from the standard library to
@@ -2440,7 +2457,16 @@ impl Cargo {
         cmd_kind: Kind,
     ) -> Cargo {
         let mut cargo = builder.cargo(compiler, mode, source_type, target, cmd_kind);
-        cargo.configure_linker(builder);
+
+        match cmd_kind {
+            // No need to configure the target linker for these command types,
+            // as they don't invoke rustc at all.
+            Kind::Clean | Kind::Suggest | Kind::Format | Kind::Setup => {}
+            _ => {
+                cargo.configure_linker(builder);
+            }
+        }
+
         cargo
     }
 

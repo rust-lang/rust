@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use Context::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
@@ -9,27 +10,33 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{BytePos, Span};
-use Context::*;
 
 use crate::errors::{
     BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ContinueLabeledBlock, OutsideLoop,
     OutsideLoopSuggestion, UnlabeledCfInWhileCondition, UnlabeledInLabeledBlock,
 };
 
+/// The context in which a block is encountered.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {
     Normal,
     Fn,
     Loop(hir::LoopSource),
     Closure(Span),
-    Coroutine { coroutine_span: Span, kind: hir::CoroutineDesugaring, source: hir::CoroutineSource },
+    Coroutine {
+        coroutine_span: Span,
+        kind: hir::CoroutineDesugaring,
+        source: hir::CoroutineSource,
+    },
     UnlabeledBlock(Span),
     UnlabeledIfBlock(Span),
     LabeledBlock,
-    Constant,
+    /// E.g. The labeled block inside `['_'; 'block: { break 'block 1 + 2; }]`.
+    AnonConst,
+    /// E.g. `const { ... }`.
+    ConstBlock,
 }
 
 #[derive(Clone)]
@@ -56,8 +63,7 @@ impl fmt::Display for BreakContextKind {
 }
 
 #[derive(Clone)]
-struct CheckLoopVisitor<'a, 'tcx> {
-    sess: &'a Session,
+struct CheckLoopVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     // Keep track of a stack of contexts, so that suggestions
     // are not made for contexts where it would be incorrect,
@@ -68,12 +74,8 @@ struct CheckLoopVisitor<'a, 'tcx> {
 }
 
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    let mut check = CheckLoopVisitor {
-        sess: tcx.sess,
-        tcx,
-        cx_stack: vec![Normal],
-        block_breaks: Default::default(),
-    };
+    let mut check =
+        CheckLoopVisitor { tcx, cx_stack: vec![Normal], block_breaks: Default::default() };
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut check);
     check.report_outside_loop_error();
 }
@@ -82,7 +84,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_loops, ..*providers };
 }
 
-impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
+impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -90,11 +92,11 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     }
 
     fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {
-        self.with_context(Constant, |v| intravisit::walk_anon_const(v, c));
+        self.with_context(AnonConst, |v| intravisit::walk_anon_const(v, c));
     }
 
     fn visit_inline_const(&mut self, c: &'hir hir::ConstBlock) {
-        self.with_context(Constant, |v| intravisit::walk_inline_const(v, c));
+        self.with_context(ConstBlock, |v| intravisit::walk_inline_const(v, c));
     }
 
     fn visit_fn(
@@ -121,14 +123,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::If(cond, then, else_opt) => {
                 self.visit_expr(cond);
 
-                let get_block = |ck_loop: &CheckLoopVisitor<'a, 'hir>,
+                let get_block = |ck_loop: &CheckLoopVisitor<'hir>,
                                  expr: &hir::Expr<'hir>|
                  -> Option<&hir::Block<'hir>> {
                     if let hir::ExprKind::Block(b, None) = expr.kind
                         && matches!(
                             ck_loop.cx_stack.last(),
                             Some(&Normal)
-                                | Some(&Constant)
+                                | Some(&AnonConst)
                                 | Some(&UnlabeledBlock(_))
                                 | Some(&UnlabeledIfBlock(_))
                         )
@@ -175,14 +177,18 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Block(ref b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(b));
             }
-            hir::ExprKind::Block(ref b, None) if matches!(self.cx_stack.last(), Some(&Fn)) => {
+            hir::ExprKind::Block(ref b, None)
+                if matches!(self.cx_stack.last(), Some(&Fn) | Some(&ConstBlock)) =>
+            {
                 self.with_context(Normal, |v| v.visit_block(b));
             }
-            hir::ExprKind::Block(ref b, None)
-                if matches!(
-                    self.cx_stack.last(),
-                    Some(&Normal) | Some(&Constant) | Some(&UnlabeledBlock(_))
-                ) =>
+            hir::ExprKind::Block(
+                ref b @ hir::Block { rules: hir::BlockCheckMode::DefaultBlock, .. },
+                None,
+            ) if matches!(
+                self.cx_stack.last(),
+                Some(&Normal) | Some(&AnonConst) | Some(&UnlabeledBlock(_))
+            ) =>
             {
                 self.with_context(UnlabeledBlock(b.span.shrink_to_lo()), |v| v.visit_block(b));
             }
@@ -201,7 +207,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Ok(loop_id) => Some(loop_id),
                     Err(hir::LoopIdError::OutsideLoopScope) => None,
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                        self.sess.dcx().emit_err(UnlabeledCfInWhileCondition {
+                        self.tcx.dcx().emit_err(UnlabeledCfInWhileCondition {
                             span: e.span,
                             cf_type: "break",
                         });
@@ -236,7 +242,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                     .label
                                     .map_or_else(String::new, |l| format!(" {}", l.ident))
                             );
-                            self.sess.dcx().emit_err(BreakNonLoop {
+                            self.tcx.dcx().emit_err(BreakNonLoop {
                                 span: e.span,
                                 head,
                                 kind: kind.name(),
@@ -268,14 +274,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 match destination.target_id {
                     Ok(loop_id) => {
                         if let Node::Block(block) = self.tcx.hir_node(loop_id) {
-                            self.sess.dcx().emit_err(ContinueLabeledBlock {
+                            self.tcx.dcx().emit_err(ContinueLabeledBlock {
                                 span: e.span,
                                 block_span: block.span,
                             });
                         }
                     }
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                        self.sess.dcx().emit_err(UnlabeledCfInWhileCondition {
+                        self.tcx.dcx().emit_err(UnlabeledCfInWhileCondition {
                             span: e.span,
                             cf_type: "continue",
                         });
@@ -294,10 +300,10 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     }
 }
 
-impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
+impl<'hir> CheckLoopVisitor<'hir> {
     fn with_context<F>(&mut self, cx: Context, f: F)
     where
-        F: FnOnce(&mut CheckLoopVisitor<'a, 'hir>),
+        F: FnOnce(&mut CheckLoopVisitor<'hir>),
     {
         self.cx_stack.push(cx);
         f(self);
@@ -314,7 +320,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         match self.cx_stack[cx_pos] {
             LabeledBlock | Loop(_) => {}
             Closure(closure_span) => {
-                self.sess.dcx().emit_err(BreakInsideClosure {
+                self.tcx.dcx().emit_err(BreakInsideClosure {
                     span,
                     closure_span,
                     name: &br_cx_kind.to_string(),
@@ -331,7 +337,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                     hir::CoroutineSource::Closure => "closure",
                     hir::CoroutineSource::Fn => "function",
                 };
-                self.sess.dcx().emit_err(BreakInsideCoroutine {
+                self.tcx.dcx().emit_err(BreakInsideCoroutine {
                     span,
                     coroutine_span,
                     name: &br_cx_kind.to_string(),
@@ -353,8 +359,8 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             UnlabeledIfBlock(_) if br_cx_kind == BreakContextKind::Break => {
                 self.require_break_cx(br_cx_kind, span, break_span, cx_pos - 1);
             }
-            Normal | Constant | Fn | UnlabeledBlock(_) | UnlabeledIfBlock(_) => {
-                self.sess.dcx().emit_err(OutsideLoop {
+            Normal | AnonConst | Fn | UnlabeledBlock(_) | UnlabeledIfBlock(_) | ConstBlock => {
+                self.tcx.dcx().emit_err(OutsideLoop {
                     spans: vec![span],
                     name: &br_cx_kind.to_string(),
                     is_break: br_cx_kind == BreakContextKind::Break,
@@ -365,7 +371,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
     }
 
     fn require_label_in_labeled_block(
-        &mut self,
+        &self,
         span: Span,
         label: &Destination,
         cf_type: &str,
@@ -374,15 +380,15 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             && self.cx_stack.last() == Some(&LabeledBlock)
             && label.label.is_none()
         {
-            self.sess.dcx().emit_err(UnlabeledInLabeledBlock { span, cf_type });
+            self.tcx.dcx().emit_err(UnlabeledInLabeledBlock { span, cf_type });
             return true;
         }
         false
     }
 
-    fn report_outside_loop_error(&mut self) {
+    fn report_outside_loop_error(&self) {
         for (s, block) in &self.block_breaks {
-            self.sess.dcx().emit_err(OutsideLoop {
+            self.tcx.dcx().emit_err(OutsideLoop {
                 spans: block.spans.clone(),
                 name: &block.name,
                 is_break: true,

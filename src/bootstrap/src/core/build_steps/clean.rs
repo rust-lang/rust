@@ -9,7 +9,7 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use crate::core::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, crate_description};
 use crate::utils::helpers::t;
 use crate::{Build, Compiler, Kind, Mode, Subcommand};
 

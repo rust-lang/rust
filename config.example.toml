@@ -42,6 +42,9 @@
 # Unless you're developing for a target where Rust CI doesn't build a compiler
 # toolchain or changing LLVM locally, you probably want to leave this enabled.
 #
+# Set this to `true` to download if CI llvm available otherwise it builds
+# from `src/llvm-project`.
+#
 # Set this to `"if-unchanged"` to download only if the llvm-project has not
 # been modified. You can also use this if you are unsure whether you're on a
 # tier 1 target. All tier 1 targets are currently supported.
@@ -50,7 +53,7 @@
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
-#download-ci-llvm = if rust.channel == "dev" || rust.download-rustc != false { "if-unchanged" } else { false }
+#download-ci-llvm = true
 
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
@@ -77,6 +80,9 @@
 
 # Indicates whether the LLVM plugin is enabled or not
 #plugins = false
+
+# Wheter to build Enzyme as AutoDiff backend.
+#enzyme = false
 
 # Indicates whether ccache is used when building LLVM. Set to `true` to use the first `ccache` in
 # PATH, or set an absolute path to use a specific version.
@@ -229,6 +235,13 @@
 # Instead of downloading the src/stage0 version of rustfmt specified,
 # use this rustfmt binary instead as the stage0 snapshot rustfmt.
 #rustfmt = "/path/to/rustfmt"
+
+# Instead of downloading the src/stage0 version of cargo-clippy specified,
+# use this cargo-clippy binary instead as the stage0 snapshot cargo-clippy.
+#
+# Note that this option should be used with the same toolchain as the `rustc` option above.
+# Otherwise, clippy is likely to fail due to a toolchain conflict.
+#cargo-clippy = "/path/to/cargo-clippy"
 
 # Whether to build documentation by default. If false, rustdoc and
 # friends will still be compiled but they will not be used to generate any
@@ -512,6 +525,9 @@
 # are disabled statically" because `max_level_info` is enabled, set this value to `true`.
 #debug-logging = rust.debug-assertions (boolean)
 
+# Whether or not to build rustc, tools and the libraries with randomized type layout
+#randomize-layout = false
+
 # Whether or not overflow checks are enabled for the compiler and standard
 # library.
 #
@@ -628,7 +644,7 @@
 #stack-protector = "none"
 
 # Prints each test name as it is executed, to help debug issues in the test harness itself.
-#verbose-tests = false
+#verbose-tests = if is_verbose { true } else { false }
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag).
 #optimize-tests = true
@@ -926,3 +942,6 @@
 # Copy the linker, DLLs, and various libraries from MinGW into the Rust toolchain.
 # Only applies when the host or target is pc-windows-gnu.
 #include-mingw-linker = true
+
+# Whether to vendor dependencies for the dist tarball.
+#vendor = if "is a tarball source" || "is a git repository" { true } else { false }

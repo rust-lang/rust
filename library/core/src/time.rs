@@ -213,6 +213,7 @@ impl Duration {
             // SAFETY: nanos < NANOS_PER_SEC, therefore nanos is within the valid range
             Duration { secs, nanos: unsafe { Nanoseconds(nanos) } }
         } else {
+            // FIXME(const-hack): use `.expect` once that is possible.
             let secs = match secs.checked_add((nanos / NANOS_PER_SEC) as u64) {
                 Some(secs) => secs,
                 None => panic!("overflow in Duration::new"),
@@ -250,7 +251,7 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::from_millis(2569);
+    /// let duration = Duration::from_millis(2_569);
     ///
     /// assert_eq!(2, duration.as_secs());
     /// assert_eq!(569_000_000, duration.subsec_nanos());
@@ -279,7 +280,7 @@ impl Duration {
     /// let duration = Duration::from_micros(1_000_002);
     ///
     /// assert_eq!(1, duration.as_secs());
-    /// assert_eq!(2000, duration.subsec_nanos());
+    /// assert_eq!(2_000, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration_from_micros", since = "1.27.0")]
     #[must_use]
@@ -472,7 +473,7 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::new(5, 730023852);
+    /// let duration = Duration::new(5, 730_023_852);
     /// assert_eq!(duration.as_secs(), 5);
     /// ```
     ///
@@ -501,7 +502,7 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::from_millis(5432);
+    /// let duration = Duration::from_millis(5_432);
     /// assert_eq!(duration.as_secs(), 5);
     /// assert_eq!(duration.subsec_millis(), 432);
     /// ```
@@ -547,7 +548,7 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::from_millis(5010);
+    /// let duration = Duration::from_millis(5_010);
     /// assert_eq!(duration.as_secs(), 5);
     /// assert_eq!(duration.subsec_nanos(), 10_000_000);
     /// ```
@@ -566,8 +567,8 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::new(5, 730023852);
-    /// assert_eq!(duration.as_millis(), 5730);
+    /// let duration = Duration::new(5, 730_023_852);
+    /// assert_eq!(duration.as_millis(), 5_730);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
@@ -584,8 +585,8 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::new(5, 730023852);
-    /// assert_eq!(duration.as_micros(), 5730023);
+    /// let duration = Duration::new(5, 730_023_852);
+    /// assert_eq!(duration.as_micros(), 5_730_023);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
@@ -602,8 +603,8 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::new(5, 730023852);
-    /// assert_eq!(duration.as_nanos(), 5730023852);
+    /// let duration = Duration::new(5, 730_023_852);
+    /// assert_eq!(duration.as_nanos(), 5_730_023_852);
     /// ```
     #[stable(feature = "duration_as_u128", since = "1.33.0")]
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
@@ -768,6 +769,7 @@ impl Duration {
         let total_nanos = self.nanos.0 as u64 * rhs as u64;
         let extra_secs = total_nanos / (NANOS_PER_SEC as u64);
         let nanos = (total_nanos % (NANOS_PER_SEC as u64)) as u32;
+        // FIXME(const-hack): use `and_then` once that is possible.
         if let Some(s) = self.secs.checked_mul(rhs as u64) {
             if let Some(secs) = s.checked_add(extra_secs) {
                 debug_assert!(nanos < NANOS_PER_SEC);
@@ -879,7 +881,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 345_678_000);
-    /// assert_eq!(dur.as_millis_f64(), 2345.678);
+    /// assert_eq!(dur.as_millis_f64(), 2_345.678);
     /// ```
     #[unstable(feature = "duration_millis_float", issue = "122451")]
     #[must_use]
@@ -900,7 +902,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 345_678_000);
-    /// assert_eq!(dur.as_millis_f32(), 2345.678);
+    /// assert_eq!(dur.as_millis_f32(), 2_345.678);
     /// ```
     #[unstable(feature = "duration_millis_float", issue = "122451")]
     #[must_use]
@@ -1017,7 +1019,7 @@ impl Duration {
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
-    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847800, 0));
+    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \

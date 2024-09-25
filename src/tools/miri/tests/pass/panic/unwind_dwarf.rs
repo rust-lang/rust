@@ -1,4 +1,4 @@
-//@ignore-target-windows: Windows uses a different unwinding mechanism
+//@ignore-target: windows # Windows uses a different unwinding mechanism
 #![feature(core_intrinsics, panic_unwind, rustc_attrs)]
 #![allow(internal_features)]
 

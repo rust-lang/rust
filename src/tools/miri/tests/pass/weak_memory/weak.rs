@@ -8,7 +8,7 @@
 // the RNG and always read the latest value from the store buffer.
 
 use std::sync::atomic::Ordering::*;
-use std::sync::atomic::{fence, AtomicUsize};
+use std::sync::atomic::{AtomicUsize, fence};
 use std::thread::spawn;
 
 #[allow(dead_code)]

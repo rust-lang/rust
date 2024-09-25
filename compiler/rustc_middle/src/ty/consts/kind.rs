@@ -1,6 +1,6 @@
 use std::assert_matches::assert_matches;
 
-use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension};
 
 use super::Const;
 use crate::mir;
@@ -31,13 +31,10 @@ impl<'tcx> ty::UnevaluatedConst<'tcx> {
         // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
         // we can call `infcx.const_eval_resolve` which handles inference variables.
         if (param_env, self).has_non_region_infer() {
-            (
-                tcx.param_env(self.def),
-                ty::UnevaluatedConst {
-                    def: self.def,
-                    args: ty::GenericArgs::identity_for_item(tcx, self.def),
-                },
-            )
+            (tcx.param_env(self.def), ty::UnevaluatedConst {
+                def: self.def,
+                args: ty::GenericArgs::identity_for_item(tcx, self.def),
+            })
         } else {
             (tcx.erase_regions(param_env).with_reveal_all_normalized(tcx), tcx.erase_regions(self))
         }

@@ -1,4 +1,4 @@
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, TokenKind};

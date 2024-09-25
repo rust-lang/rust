@@ -6,8 +6,8 @@ use gimli::write::{Address, AttributeValue, EndianVec, Result, Sections, Writer}
 use gimli::{RunTimeEndian, SectionId};
 use rustc_data_structures::fx::FxHashMap;
 
-use super::object::WriteDebugInfo;
 use super::DebugContext;
+use super::object::WriteDebugInfo;
 
 pub(super) fn address_for_func(func_id: FuncId) -> Address {
     let symbol = func_id.as_u32();

@@ -4,10 +4,10 @@ use std::ops::Range;
 use serde::Serialize;
 
 use super::mir::{Body, Mutability, Safety};
-use super::{with, DefId, Error, Symbol};
+use super::{DefId, Error, Symbol, with};
 use crate::abi::{FnAbi, Layout};
 use crate::crate_def::{CrateDef, CrateDefType};
-use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
+use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
 use crate::{Filename, Opaque};
@@ -267,7 +267,7 @@ impl Span {
         with(|c| c.get_filename(self))
     }
 
-    /// Return lines that corespond to this `Span`
+    /// Return lines that correspond to this `Span`
     pub fn get_lines(&self) -> LineInfo {
         with(|c| c.get_lines(self))
     }
@@ -1062,6 +1062,7 @@ pub enum Abi {
     AvrInterrupt,
     AvrNonBlockingInterrupt,
     CCmseNonSecureCall,
+    CCmseNonSecureEntry,
     System { unwind: bool },
     RustIntrinsic,
     RustCall,

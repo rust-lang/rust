@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::utils::remove_dir_if_exists;
+use crate::utils::ensure_empty_dir;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Dirs {
@@ -64,7 +64,6 @@ impl RelPath {
 
     pub(crate) fn ensure_fresh(&self, dirs: &Dirs) {
         let path = self.to_path(dirs);
-        remove_dir_if_exists(&path);
-        fs::create_dir_all(path).unwrap();
+        ensure_empty_dir(&path);
     }
 }

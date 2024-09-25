@@ -86,10 +86,10 @@
 -         _7 = &(*_1)[_8];
 +         _7 = &(*_1)[0 of 1];
           _6 = &(*_7);
-          _5 = move _6 as &dyn std::marker::Send (PointerCoercion(Unsize));
+          _5 = move _6 as &dyn std::marker::Send (PointerCoercion(Unsize, AsCast));
           StorageDead(_6);
           _4 = &raw const (*_5);
--         _3 = move _4 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         _3 = move _4 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
 -         StorageDead(_4);
 +         _3 = copy _4;
 +         nop;
@@ -115,10 +115,10 @@
 -         _15 = &(*_1)[_16];
 +         _15 = &(*_1)[1 of 2];
           _14 = &(*_15);
-          _13 = move _14 as &dyn std::marker::Send (PointerCoercion(Unsize));
+          _13 = move _14 as &dyn std::marker::Send (PointerCoercion(Unsize, AsCast));
           StorageDead(_14);
           _12 = &raw const (*_13);
--         _11 = move _12 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         _11 = move _12 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
 -         StorageDead(_12);
 +         _11 = copy _12;
 +         nop;
@@ -132,7 +132,7 @@
           StorageLive(_22);
           StorageLive(_23);
 -         _23 = copy _11;
--         _22 = move _23 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         _22 = move _23 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
 +         _23 = copy _12;
 +         _22 = copy _12;
           StorageDead(_23);
@@ -154,7 +154,7 @@
           StorageLive(_27);
           StorageLive(_28);
 -         _28 = copy _11;
--         _27 = move _28 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         _27 = move _28 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
 +         _28 = copy _12;
 +         _27 = copy _12;
           StorageDead(_28);
@@ -176,7 +176,7 @@
           StorageLive(_32);
           StorageLive(_33);
 -         _33 = copy _11;
--         _32 = move _33 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         _32 = move _33 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
 +         _33 = copy _12;
 +         _32 = copy _12;
           StorageDead(_33);
@@ -198,7 +198,7 @@
           StorageLive(_37);
           StorageLive(_38);
 -         _38 = copy _11;
--         _37 = move _38 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         _37 = move _38 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
 +         _38 = copy _12;
 +         _37 = copy _12;
           StorageDead(_38);
@@ -220,7 +220,7 @@
           StorageLive(_42);
           StorageLive(_43);
 -         _43 = copy _11;
--         _42 = move _43 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         _42 = move _43 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
 +         _43 = copy _12;
 +         _42 = copy _12;
           StorageDead(_43);
@@ -242,7 +242,7 @@
           StorageLive(_47);
           StorageLive(_48);
 -         _48 = copy _11;
--         _47 = move _48 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         _47 = move _48 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
 +         _48 = copy _12;
 +         _47 = copy _12;
           StorageDead(_48);

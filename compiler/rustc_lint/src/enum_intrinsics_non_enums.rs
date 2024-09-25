@@ -1,9 +1,9 @@
 use rustc_hir as hir;
-use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 
 use crate::context::LintContext;
 use crate::lints::{EnumIntrinsicsMemDiscriminate, EnumIntrinsicsMemVariant};
@@ -55,11 +55,10 @@ fn enforce_mem_discriminant(
 ) {
     let ty_param = cx.typeck_results().node_args(func_expr.hir_id).type_at(0);
     if is_non_enum(ty_param) {
-        cx.emit_span_lint(
-            ENUM_INTRINSICS_NON_ENUMS,
-            expr_span,
-            EnumIntrinsicsMemDiscriminate { ty_param, note: args_span },
-        );
+        cx.emit_span_lint(ENUM_INTRINSICS_NON_ENUMS, expr_span, EnumIntrinsicsMemDiscriminate {
+            ty_param,
+            note: args_span,
+        });
     }
 }
 

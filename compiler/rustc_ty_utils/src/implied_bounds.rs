@@ -78,10 +78,10 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                         if matches!(*orig_lt, ty::ReLateParam(..)) {
                             mapping.insert(
                                 orig_lt,
-                                ty::Region::new_early_param(
-                                    tcx,
-                                    ty::EarlyParamRegion { index: param.index, name: param.name },
-                                ),
+                                ty::Region::new_early_param(tcx, ty::EarlyParamRegion {
+                                    index: param.index,
+                                    name: param.name,
+                                }),
                             );
                         }
                     }

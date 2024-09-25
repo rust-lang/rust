@@ -1,8 +1,8 @@
 // MIR for `address_of_reborrow` after SimplifyCfg-initial
 
 | User Type Annotations
-| 0: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:8:5: 8:18, inferred_ty: *const [i32; 10]
-| 1: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:10:5: 10:25, inferred_ty: *const dyn std::marker::Send
+| 0: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:8:10: 8:18, inferred_ty: *const [i32; 10]
+| 1: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:10:10: 10:25, inferred_ty: *const dyn std::marker::Send
 | 2: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:14:12: 14:20, inferred_ty: *const [i32; 10]
 | 3: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:14:12: 14:20, inferred_ty: *const [i32; 10]
 | 4: user_ty: Canonical { value: Ty(*const [i32; 10]), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/address_of.rs:15:12: 15:28, inferred_ty: *const [i32; 10]
@@ -11,8 +11,8 @@
 | 7: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:16:12: 16:27, inferred_ty: *const dyn std::marker::Send
 | 8: user_ty: Canonical { value: Ty(*const [i32]), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/address_of.rs:17:12: 17:24, inferred_ty: *const [i32]
 | 9: user_ty: Canonical { value: Ty(*const [i32]), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/address_of.rs:17:12: 17:24, inferred_ty: *const [i32]
-| 10: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:19:5: 19:18, inferred_ty: *const [i32; 10]
-| 11: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:21:5: 21:25, inferred_ty: *const dyn std::marker::Send
+| 10: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:19:10: 19:18, inferred_ty: *const [i32; 10]
+| 11: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:21:10: 21:25, inferred_ty: *const dyn std::marker::Send
 | 12: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:24:12: 24:20, inferred_ty: *const [i32; 10]
 | 13: user_ty: Canonical { value: Ty(*const ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:24:12: 24:20, inferred_ty: *const [i32; 10]
 | 14: user_ty: Canonical { value: Ty(*const [i32; 10]), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/address_of.rs:25:12: 25:28, inferred_ty: *const [i32; 10]
@@ -21,8 +21,8 @@
 | 17: user_ty: Canonical { value: Ty(*const dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:26:12: 26:27, inferred_ty: *const dyn std::marker::Send
 | 18: user_ty: Canonical { value: Ty(*const [i32]), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/address_of.rs:27:12: 27:24, inferred_ty: *const [i32]
 | 19: user_ty: Canonical { value: Ty(*const [i32]), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/address_of.rs:27:12: 27:24, inferred_ty: *const [i32]
-| 20: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:29:5: 29:16, inferred_ty: *mut [i32; 10]
-| 21: user_ty: Canonical { value: Ty(*mut dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:31:5: 31:23, inferred_ty: *mut dyn std::marker::Send
+| 20: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:29:10: 29:16, inferred_ty: *mut [i32; 10]
+| 21: user_ty: Canonical { value: Ty(*mut dyn std::marker::Send), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:31:10: 31:23, inferred_ty: *mut dyn std::marker::Send
 | 22: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:34:12: 34:18, inferred_ty: *mut [i32; 10]
 | 23: user_ty: Canonical { value: Ty(*mut ^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], defining_opaque_types: [] }, span: $DIR/address_of.rs:34:12: 34:18, inferred_ty: *mut [i32; 10]
 | 24: user_ty: Canonical { value: Ty(*mut [i32; 10]), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/address_of.rs:35:12: 35:26, inferred_ty: *mut [i32; 10]
@@ -150,7 +150,7 @@ fn address_of_reborrow() -> () {
         StorageLive(_9);
         StorageLive(_10);
         _10 = &raw const (*_1);
-        _9 = move _10 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+        _9 = move _10 as *const dyn std::marker::Send (PointerCoercion(Unsize, AsCast));
         StorageDead(_10);
         AscribeUserType(_9, o, UserTypeProjection { base: UserType(1), projs: [] });
         _8 = copy _9;
@@ -159,13 +159,13 @@ fn address_of_reborrow() -> () {
         StorageLive(_11);
         StorageLive(_12);
         _12 = &raw const (*_1);
-        _11 = move _12 as *const [i32] (PointerCoercion(Unsize));
+        _11 = move _12 as *const [i32] (PointerCoercion(Unsize, AsCast));
         StorageDead(_12);
         StorageDead(_11);
         StorageLive(_13);
         StorageLive(_14);
         _14 = &raw const (*_1);
-        _13 = move _14 as *const i32 (PointerCoercion(ArrayToPointer));
+        _13 = move _14 as *const i32 (PointerCoercion(ArrayToPointer, AsCast));
         StorageDead(_14);
         StorageDead(_13);
         StorageLive(_15);
@@ -179,14 +179,14 @@ fn address_of_reborrow() -> () {
         StorageLive(_17);
         StorageLive(_18);
         _18 = &raw const (*_1);
-        _17 = move _18 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+        _17 = move _18 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
         StorageDead(_18);
         FakeRead(ForLet(None), _17);
         AscribeUserType(_17, o, UserTypeProjection { base: UserType(7), projs: [] });
         StorageLive(_19);
         StorageLive(_20);
         _20 = &raw const (*_1);
-        _19 = move _20 as *const [i32] (PointerCoercion(Unsize));
+        _19 = move _20 as *const [i32] (PointerCoercion(Unsize, Implicit));
         StorageDead(_20);
         FakeRead(ForLet(None), _19);
         AscribeUserType(_19, o, UserTypeProjection { base: UserType(9), projs: [] });
@@ -204,7 +204,7 @@ fn address_of_reborrow() -> () {
         StorageLive(_25);
         StorageLive(_26);
         _26 = &raw const (*_3);
-        _25 = move _26 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+        _25 = move _26 as *const dyn std::marker::Send (PointerCoercion(Unsize, AsCast));
         StorageDead(_26);
         AscribeUserType(_25, o, UserTypeProjection { base: UserType(11), projs: [] });
         _24 = copy _25;
@@ -213,7 +213,7 @@ fn address_of_reborrow() -> () {
         StorageLive(_27);
         StorageLive(_28);
         _28 = &raw const (*_3);
-        _27 = move _28 as *const [i32] (PointerCoercion(Unsize));
+        _27 = move _28 as *const [i32] (PointerCoercion(Unsize, AsCast));
         StorageDead(_28);
         StorageDead(_27);
         StorageLive(_29);
@@ -227,14 +227,14 @@ fn address_of_reborrow() -> () {
         StorageLive(_31);
         StorageLive(_32);
         _32 = &raw const (*_3);
-        _31 = move _32 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+        _31 = move _32 as *const dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
         StorageDead(_32);
         FakeRead(ForLet(None), _31);
         AscribeUserType(_31, o, UserTypeProjection { base: UserType(17), projs: [] });
         StorageLive(_33);
         StorageLive(_34);
         _34 = &raw const (*_3);
-        _33 = move _34 as *const [i32] (PointerCoercion(Unsize));
+        _33 = move _34 as *const [i32] (PointerCoercion(Unsize, Implicit));
         StorageDead(_34);
         FakeRead(ForLet(None), _33);
         AscribeUserType(_33, o, UserTypeProjection { base: UserType(19), projs: [] });
@@ -252,7 +252,7 @@ fn address_of_reborrow() -> () {
         StorageLive(_39);
         StorageLive(_40);
         _40 = &raw mut (*_3);
-        _39 = move _40 as *mut dyn std::marker::Send (PointerCoercion(Unsize));
+        _39 = move _40 as *mut dyn std::marker::Send (PointerCoercion(Unsize, AsCast));
         StorageDead(_40);
         AscribeUserType(_39, o, UserTypeProjection { base: UserType(21), projs: [] });
         _38 = copy _39;
@@ -261,7 +261,7 @@ fn address_of_reborrow() -> () {
         StorageLive(_41);
         StorageLive(_42);
         _42 = &raw mut (*_3);
-        _41 = move _42 as *mut [i32] (PointerCoercion(Unsize));
+        _41 = move _42 as *mut [i32] (PointerCoercion(Unsize, AsCast));
         StorageDead(_42);
         StorageDead(_41);
         StorageLive(_43);
@@ -275,14 +275,14 @@ fn address_of_reborrow() -> () {
         StorageLive(_45);
         StorageLive(_46);
         _46 = &raw mut (*_3);
-        _45 = move _46 as *mut dyn std::marker::Send (PointerCoercion(Unsize));
+        _45 = move _46 as *mut dyn std::marker::Send (PointerCoercion(Unsize, Implicit));
         StorageDead(_46);
         FakeRead(ForLet(None), _45);
         AscribeUserType(_45, o, UserTypeProjection { base: UserType(27), projs: [] });
         StorageLive(_47);
         StorageLive(_48);
         _48 = &raw mut (*_3);
-        _47 = move _48 as *mut [i32] (PointerCoercion(Unsize));
+        _47 = move _48 as *mut [i32] (PointerCoercion(Unsize, Implicit));
         StorageDead(_48);
         FakeRead(ForLet(None), _47);
         AscribeUserType(_47, o, UserTypeProjection { base: UserType(29), projs: [] });

@@ -334,6 +334,7 @@ pub trait PermissionsExt {
     /// assert_eq!(permissions.mode(), 0o644);
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "permissions_from_mode")]
     fn from_mode(mode: u32) -> Self;
 }
 

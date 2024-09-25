@@ -22,4 +22,9 @@ macro_rules! t {
     //[e2018]~| WARNING this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
 }
 
+fn test<'gen>() {}
+//~^ ERROR `gen` is a keyword in the 2024 edition
+//[e2015]~| WARNING this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+//[e2018]~| WARNING this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
+
 t!();

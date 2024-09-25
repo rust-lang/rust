@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
-use crate::core::build_steps::tool::{prepare_tool_cargo, SourceType};
+use crate::core::build_steps::tool::{SourceType, prepare_tool_cargo};
 use crate::core::builder::{
-    self, crate_description, Alias, Builder, Kind, RunConfig, ShouldRun, Step,
+    self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::{Compiler, Mode, Subcommand};
@@ -228,7 +228,7 @@ impl Step for Rustc {
             self.override_build_kind.unwrap_or(builder.kind),
         );
 
-        rustc_cargo(builder, &mut cargo, target, &compiler);
+        rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
 
         // For ./x.py clippy, don't run with --all-targets because
         // linting tests and benchmarks can produce very noisy results

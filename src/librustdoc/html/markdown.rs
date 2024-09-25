@@ -35,8 +35,8 @@ use std::str::{self, CharIndices};
 use std::sync::OnceLock;
 
 use pulldown_cmark::{
-    html, BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter,
-    Options, Parser, Tag, TagEnd,
+    BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter, Options,
+    Parser, Tag, TagEnd, html,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagMessage};
@@ -46,16 +46,17 @@ pub(crate) use rustc_resolve::rustdoc::main_body_opts;
 use rustc_resolve::rustdoc::may_be_doc_link;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
+use tracing::{debug, trace};
 
 use crate::clean::RenderedLink;
 use crate::doctest;
 use crate::doctest::GlobalTestOptions;
-use crate::html::escape::Escape;
+use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::length_limit::HtmlWithLimit;
 use crate::html::render::small_url_encode;
-use crate::html::toc::TocBuilder;
+use crate::html::toc::{Toc, TocBuilder};
 
 #[cfg(test)]
 mod tests;
@@ -101,6 +102,7 @@ pub struct Markdown<'a> {
 /// A struct like `Markdown` that renders the markdown with a table of contents.
 pub(crate) struct MarkdownWithToc<'a> {
     pub(crate) content: &'a str,
+    pub(crate) links: &'a [RenderedLink],
     pub(crate) ids: &'a mut IdMap,
     pub(crate) error_codes: ErrorCodes,
     pub(crate) edition: Edition,
@@ -259,7 +261,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                                  </pre>\
                              </div>",
                                 added_classes = added_classes.join(" "),
-                                text = Escape(&original_text),
+                                text = Escape(
+                                    original_text.strip_suffix('\n').unwrap_or(&original_text)
+                                ),
                             )
                             .into(),
                         ));
@@ -532,9 +536,11 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
             let id = self.id_map.derive(id);
 
             if let Some(ref mut builder) = self.toc {
+                let mut text_header = String::new();
+                plain_text_from_events(self.buf.iter().map(|(ev, _)| ev.clone()), &mut text_header);
                 let mut html_header = String::new();
-                html::push_html(&mut html_header, self.buf.iter().map(|(ev, _)| ev.clone()));
-                let sec = builder.push(level as u32, html_header, id.clone());
+                html_text_from_events(self.buf.iter().map(|(ev, _)| ev.clone()), &mut html_header);
+                let sec = builder.push(level as u32, text_header, html_header, id.clone());
                 self.buf.push_front((Event::Html(format!("{sec} ").into()), 0..0));
             }
 
@@ -1411,10 +1417,23 @@ impl Markdown<'_> {
 }
 
 impl MarkdownWithToc<'_> {
-    pub(crate) fn into_string(self) -> String {
-        let MarkdownWithToc { content: md, ids, error_codes: codes, edition, playground } = self;
+    pub(crate) fn into_parts(self) -> (Toc, String) {
+        let MarkdownWithToc { content: md, links, ids, error_codes: codes, edition, playground } =
+            self;
 
-        let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
+        // This is actually common enough to special-case
+        if md.is_empty() {
+            return (Toc { entries: Vec::new() }, String::new());
+        }
+        let mut replacer = |broken_link: BrokenLink<'_>| {
+            links
+                .iter()
+                .find(|link| &*link.original_text == &*broken_link.reference)
+                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
+        };
+
+        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
+        let p = p.into_offset_iter();
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
@@ -1428,7 +1447,11 @@ impl MarkdownWithToc<'_> {
             html::push_html(&mut s, p);
         }
 
-        format!("<nav id=\"TOC\">{toc}</nav>{s}", toc = toc.into_toc().print())
+        (toc.into_toc(), s)
+    }
+    pub(crate) fn into_string(self) -> String {
+        let (toc, s) = self.into_parts();
+        format!("<nav id=\"rustdoc\">{toc}</nav>{s}", toc = toc.print())
     }
 }
 
@@ -1607,7 +1630,16 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
 
     let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
 
-    for event in p {
+    plain_text_from_events(p, &mut s);
+
+    s
+}
+
+pub(crate) fn plain_text_from_events<'a>(
+    events: impl Iterator<Item = pulldown_cmark::Event<'a>>,
+    s: &mut String,
+) {
+    for event in events {
         match &event {
             Event::Text(text) => s.push_str(text),
             Event::Code(code) => {
@@ -1622,8 +1654,29 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
             _ => (),
         }
     }
+}
 
-    s
+pub(crate) fn html_text_from_events<'a>(
+    events: impl Iterator<Item = pulldown_cmark::Event<'a>>,
+    s: &mut String,
+) {
+    for event in events {
+        match &event {
+            Event::Text(text) => {
+                write!(s, "{}", EscapeBodyText(text)).expect("string alloc infallible")
+            }
+            Event::Code(code) => {
+                s.push_str("<code>");
+                write!(s, "{}", EscapeBodyText(code)).expect("string alloc infallible");
+                s.push_str("</code>");
+            }
+            Event::HardBreak | Event::SoftBreak => s.push(' '),
+            Event::Start(Tag::CodeBlock(..)) => break,
+            Event::End(TagEnd::Paragraph) => break,
+            Event::End(TagEnd::Heading(..)) => break,
+            _ => (),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1974,7 +2027,8 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("default-settings".into(), 1);
     map.insert("sidebar-vars".into(), 1);
     map.insert("copy-path".into(), 1);
-    map.insert("TOC".into(), 1);
+    map.insert("rustdoc-toc".into(), 1);
+    map.insert("rustdoc-modnav".into(), 1);
     // This is the list of IDs used by rustdoc sections (but still generated by
     // rustdoc).
     map.insert("fields".into(), 1);

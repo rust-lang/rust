@@ -1,6 +1,9 @@
 use std::cell::{Cell, RefCell};
 use std::fmt;
 
+pub use BoundRegionConversionTime::*;
+pub use RegionVariableOrigin::*;
+pub use SubregionOrigin::*;
 pub use at::DefineOpaqueTypes;
 use free_regions::RegionRelations;
 pub use freshen::TypeFreshener;
@@ -10,8 +13,8 @@ use opaque_types::OpaqueTypeStorage;
 use region_constraints::{
     GenericKind, RegionConstraintCollector, RegionConstraintStorage, VarInfos, VerifyBound,
 };
-pub use relate::combine::{CombineFields, PredicateEmittingRelation};
 pub use relate::StructurallyRelateAliases;
+pub use relate::combine::{CombineFields, PredicateEmittingRelation};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
@@ -26,28 +29,26 @@ use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{
     ConstVariableOrigin, ConstVariableValue, ConstVidKey, EffectVarValue, EffectVidKey,
 };
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
 use rustc_middle::traits::solve::{Goal, NoSolution};
+pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{
     BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
 use rustc_middle::ty::visit::TypeVisitableExt;
-pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{
     self, ConstVid, EffectVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
     GenericParamDefKind, InferConst, IntVid, Ty, TyCtxt, TyVid,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
 use snapshot::undo_log::InferCtxtUndoLogs;
+use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
-pub use BoundRegionConversionTime::*;
-pub use RegionVariableOrigin::*;
-pub use SubregionOrigin::*;
 
 use crate::infer::relate::RelateResult;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
@@ -457,8 +458,8 @@ pub enum RegionVariableOrigin {
     PatternRegion(Span),
 
     /// Regions created by `&` operator.
-    ///
-    AddrOfRegion(Span),
+    BorrowRegion(Span),
+
     /// Regions created as part of an autoref of a method receiver.
     Autoref(Span),
 
@@ -1480,7 +1481,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // This hoists the borrow/release out of the loop body.
         let inner = self.inner.try_borrow();
 
-        return move |infer_var: TyOrConstInferVar| match (infer_var, &inner) {
+        move |infer_var: TyOrConstInferVar| match (infer_var, &inner) {
             (TyOrConstInferVar::Ty(ty_var), Ok(inner)) => {
                 use self::type_variable::TypeVariableValue;
 
@@ -1490,7 +1491,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
             }
             _ => false,
-        };
+        }
     }
 
     /// `ty_or_const_infer_var_changed` is equivalent to one of these two:
@@ -1740,7 +1741,7 @@ impl RegionVariableOrigin {
         match *self {
             MiscVariable(a)
             | PatternRegion(a)
-            | AddrOfRegion(a)
+            | BorrowRegion(a)
             | Autoref(a)
             | Coercion(a)
             | RegionParameterDefinition(a, ..)
@@ -1775,16 +1776,13 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
                     self.idx += 1;
                     idx
                 };
-                Ty::new_placeholder(
-                    self.tcx,
-                    ty::PlaceholderType {
-                        universe: ty::UniverseIndex::ROOT,
-                        bound: ty::BoundTy {
-                            var: ty::BoundVar::from_u32(idx),
-                            kind: ty::BoundTyKind::Anon,
-                        },
+                Ty::new_placeholder(self.tcx, ty::PlaceholderType {
+                    universe: ty::UniverseIndex::ROOT,
+                    bound: ty::BoundTy {
+                        var: ty::BoundVar::from_u32(idx),
+                        kind: ty::BoundTyKind::Anon,
                     },
-                )
+                })
             } else {
                 t.super_fold_with(self)
             }
@@ -1792,17 +1790,14 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 
         fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
             if let ty::ConstKind::Infer(_) = c.kind() {
-                ty::Const::new_placeholder(
-                    self.tcx,
-                    ty::PlaceholderConst {
-                        universe: ty::UniverseIndex::ROOT,
-                        bound: ty::BoundVar::from_u32({
-                            let idx = self.idx;
-                            self.idx += 1;
-                            idx
-                        }),
-                    },
-                )
+                ty::Const::new_placeholder(self.tcx, ty::PlaceholderConst {
+                    universe: ty::UniverseIndex::ROOT,
+                    bound: ty::BoundVar::from_u32({
+                        let idx = self.idx;
+                        self.idx += 1;
+                        idx
+                    }),
+                })
             } else {
                 c.super_fold_with(self)
             }

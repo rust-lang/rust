@@ -303,8 +303,8 @@ LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
    |
    = help: the trait `BitAnd<str>` is not implemented for `i32`
    = help: the following other types implement trait `BitAnd<Rhs>`:
-             `&'a i32` implements `BitAnd<i32>`
-             `&i32` implements `BitAnd<&i32>`
+             `&i32` implements `BitAnd<i32>`
+             `&i32` implements `BitAnd`
              `i32` implements `BitAnd<&i32>`
              `i32` implements `BitAnd`
 

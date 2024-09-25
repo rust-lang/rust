@@ -347,10 +347,10 @@ fn diamond() {
     ));
     assert_eq!(d_count, 1);
     assert_eq!(ok.len(), 0);
-    assert_eq!(
-        err,
-        vec![super::Error { error: "operation failed", backtrace: vec!["D'", "A'.1", "A'"] }]
-    );
+    assert_eq!(err, vec![super::Error {
+        error: "operation failed",
+        backtrace: vec!["D'", "A'.1", "A'"]
+    }]);
 
     let errors = forest.to_errors(());
     assert_eq!(errors.len(), 0);

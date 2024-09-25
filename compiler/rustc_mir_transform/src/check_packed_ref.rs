@@ -3,11 +3,11 @@ use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::{errors, util, MirLint};
+use crate::{errors, util};
 
-pub struct CheckPackedRef;
+pub(super) struct CheckPackedRef;
 
-impl<'tcx> MirLint<'tcx> for CheckPackedRef {
+impl<'tcx> crate::MirLint<'tcx> for CheckPackedRef {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
         let source_info = SourceInfo::outermost(body.span);
@@ -37,24 +37,17 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-        if context.is_borrow() {
-            if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
-                let def_id = self.body.source.instance.def_id();
-                if let Some(impl_def_id) = self.tcx.impl_of_method(def_id)
-                    && self.tcx.is_builtin_derived(impl_def_id)
-                {
-                    // If we ever reach here it means that the generated derive
-                    // code is somehow doing an unaligned reference, which it
-                    // shouldn't do.
-                    span_bug!(
-                        self.source_info.span,
-                        "builtin derive created an unaligned reference"
-                    );
-                } else {
-                    self.tcx
-                        .dcx()
-                        .emit_err(errors::UnalignedPackedRef { span: self.source_info.span });
-                }
+        if context.is_borrow() && util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
+            let def_id = self.body.source.instance.def_id();
+            if let Some(impl_def_id) = self.tcx.impl_of_method(def_id)
+                && self.tcx.is_builtin_derived(impl_def_id)
+            {
+                // If we ever reach here it means that the generated derive
+                // code is somehow doing an unaligned reference, which it
+                // shouldn't do.
+                span_bug!(self.source_info.span, "builtin derive created an unaligned reference");
+            } else {
+                self.tcx.dcx().emit_err(errors::UnalignedPackedRef { span: self.source_info.span });
             }
         }
     }

@@ -51,9 +51,7 @@ static HOSTS: &[&str] = &[
 
 static TARGETS: &[&str] = &[
     "aarch64-apple-darwin",
-    "arm64e-apple-darwin",
     "aarch64-apple-ios",
-    "arm64e-apple-ios",
     "aarch64-apple-ios-macabi",
     "aarch64-apple-ios-sim",
     "aarch64-unknown-fuchsia",
@@ -68,6 +66,9 @@ static TARGETS: &[&str] = &[
     "aarch64-unknown-none-softfloat",
     "aarch64-unknown-redox",
     "aarch64-unknown-uefi",
+    "arm64e-apple-darwin",
+    "arm64e-apple-ios",
+    "arm64e-apple-tvos",
     "arm-linux-androideabi",
     "arm-unknown-linux-gnueabi",
     "arm-unknown-linux-gnueabihf",
@@ -597,14 +598,11 @@ impl Builder {
             })
             .collect();
 
-        dst.insert(
-            pkg.manifest_component_name(),
-            Package {
-                version: version_info.version.unwrap_or_default(),
-                git_commit_hash: version_info.git_commit,
-                target: targets,
-            },
-        );
+        dst.insert(pkg.manifest_component_name(), Package {
+            version: version_info.version.unwrap_or_default(),
+            git_commit_hash: version_info.git_commit,
+            target: targets,
+        });
     }
 
     fn url(&self, path: &Path) -> String {

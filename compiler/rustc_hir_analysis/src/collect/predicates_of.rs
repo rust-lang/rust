@@ -9,7 +9,8 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
+use tracing::{debug, instrument, trace};
 
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
@@ -137,6 +138,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(hir_id);
 
+    if let Some(sig) = node.fn_sig()
+        && let Some(sig_id) = sig.decl.opt_delegation_sig_id()
+    {
+        return inherit_predicates_for_delegation_item(tcx, def_id, sig_id);
+    }
+
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
 
@@ -162,16 +169,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
             ItemKind::Trait(_, _, _, self_bounds, ..) | ItemKind::TraitAlias(_, self_bounds) => {
                 is_trait = Some(self_bounds);
-            }
-
-            ItemKind::Fn(sig, _, _) => {
-                // For a delegation item inherit predicates from callee.
-                if let Some(sig_id) = sig.decl.opt_delegation_sig_id()
-                    && let Some(predicates) =
-                        inherit_predicates_for_delegation_item(tcx, def_id, sig_id)
-                {
-                    return predicates;
-                }
             }
             _ => {}
         }
@@ -243,7 +240,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     for predicate in hir_generics.predicates {
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
-                let ty = icx.lower_ty(bound_pred.bounded_ty);
+                let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
+
                 let bound_vars = tcx.late_bound_vars(bound_pred.hir_id);
                 // Keep the type around in a dummy predicate, in case of no bounds.
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
@@ -381,10 +379,10 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
     for param in opaque_own_params {
         let orig_lifetime = tcx.map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local());
         if let ty::ReEarlyParam(..) = *orig_lifetime {
-            let dup_lifetime = ty::Region::new_early_param(
-                tcx,
-                ty::EarlyParamRegion { index: param.index, name: param.name },
-            );
+            let dup_lifetime = ty::Region::new_early_param(tcx, ty::EarlyParamRegion {
+                index: param.index,
+                name: param.name,
+            });
             let span = tcx.def_span(param.def_id);
             predicates.push((
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_lifetime, dup_lifetime))
@@ -580,24 +578,24 @@ pub(super) fn explicit_predicates_of<'tcx>(
 /// Ensures that the super-predicates of the trait with a `DefId`
 /// of `trait_def_id` are lowered and stored. This also ensures that
 /// the transitive super-predicates are lowered.
-pub(super) fn explicit_super_predicates_of(
-    tcx: TyCtxt<'_>,
+pub(super) fn explicit_super_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_def_id: LocalDefId,
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     implied_predicates_with_filter(tcx, trait_def_id.to_def_id(), PredicateFilter::SelfOnly)
 }
 
-pub(super) fn explicit_supertraits_containing_assoc_item(
-    tcx: TyCtxt<'_>,
+pub(super) fn explicit_supertraits_containing_assoc_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
     (trait_def_id, assoc_name): (DefId, Ident),
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     implied_predicates_with_filter(tcx, trait_def_id, PredicateFilter::SelfThatDefines(assoc_name))
 }
 
-pub(super) fn explicit_implied_predicates_of(
-    tcx: TyCtxt<'_>,
+pub(super) fn explicit_implied_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_def_id: LocalDefId,
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     implied_predicates_with_filter(
         tcx,
         trait_def_id.to_def_id(),
@@ -612,11 +610,11 @@ pub(super) fn explicit_implied_predicates_of(
 /// Ensures that the super-predicates of the trait with a `DefId`
 /// of `trait_def_id` are lowered and stored. This also ensures that
 /// the transitive super-predicates are lowered.
-pub(super) fn implied_predicates_with_filter(
-    tcx: TyCtxt<'_>,
+pub(super) fn implied_predicates_with_filter<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     filter: PredicateFilter,
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     let Some(trait_def_id) = trait_def_id.as_local() else {
         // if `assoc_name` is None, then the query should've been redirected to an
         // external provider
@@ -679,20 +677,70 @@ pub(super) fn implied_predicates_with_filter(
         _ => {}
     }
 
-    ty::GenericPredicates {
-        parent: None,
-        predicates: implied_bounds,
-        effects_min_tys: ty::List::empty(),
+    assert_only_contains_predicates_from(filter, implied_bounds, tcx.types.self_param);
+
+    ty::EarlyBinder::bind(implied_bounds)
+}
+
+// Make sure when elaborating supertraits, probing for associated types, etc.,
+// we really truly are elaborating clauses that have `Self` as their self type.
+// This is very important since downstream code relies on this being correct.
+pub(super) fn assert_only_contains_predicates_from<'tcx>(
+    filter: PredicateFilter,
+    bounds: &'tcx [(ty::Clause<'tcx>, Span)],
+    ty: Ty<'tcx>,
+) {
+    if !cfg!(debug_assertions) {
+        return;
+    }
+
+    match filter {
+        PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {
+            for (clause, _) in bounds {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::Trait(trait_predicate) => {
+                        assert_eq!(
+                            trait_predicate.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                    ty::ClauseKind::Projection(projection_predicate) => {
+                        assert_eq!(
+                            projection_predicate.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                    ty::ClauseKind::TypeOutlives(outlives_predicate) => {
+                        assert_eq!(
+                            outlives_predicate.0, ty,
+                            "expected `Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+
+                    ty::ClauseKind::RegionOutlives(_)
+                    | ty::ClauseKind::ConstArgHasType(_, _)
+                    | ty::ClauseKind::WellFormed(_)
+                    | ty::ClauseKind::ConstEvaluatable(_) => {
+                        bug!(
+                            "unexpected non-`Self` predicate when computing `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
+                }
+            }
+        }
+        PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {}
     }
 }
 
 /// Returns the predicates defined on `item_def_id` of the form
 /// `X: Foo` where `X` is the type parameter `def_id`.
 #[instrument(level = "trace", skip(tcx))]
-pub(super) fn type_param_predicates(
-    tcx: TyCtxt<'_>,
+pub(super) fn type_param_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
     (item_def_id, def_id, assoc_name): (LocalDefId, LocalDefId, Ident),
-) -> ty::GenericPredicates<'_> {
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
 
@@ -713,18 +761,20 @@ pub(super) fn type_param_predicates(
         tcx.generics_of(item_def_id).parent.map(|def_id| def_id.expect_local())
     };
 
-    let mut result = parent
-        .map(|parent| {
-            let icx = ItemCtxt::new(tcx, parent);
-            icx.probe_ty_param_bounds(DUMMY_SP, def_id, assoc_name)
-        })
-        .unwrap_or_default();
+    let result = if let Some(parent) = parent {
+        let icx = ItemCtxt::new(tcx, parent);
+        icx.probe_ty_param_bounds(DUMMY_SP, def_id, assoc_name)
+    } else {
+        ty::EarlyBinder::bind(&[] as &[_])
+    };
     let mut extend = None;
 
     let item_hir_id = tcx.local_def_id_to_hir_id(item_def_id);
 
     let hir_node = tcx.hir_node(item_hir_id);
-    let Some(hir_generics) = hir_node.generics() else { return result };
+    let Some(hir_generics) = hir_node.generics() else {
+        return result;
+    };
     if let Node::Item(item) = hir_node
         && let ItemKind::Trait(..) = item.kind
         // Implied `Self: Trait` and supertrait bounds.
@@ -748,9 +798,10 @@ pub(super) fn type_param_predicates(
             _ => false,
         }),
     );
-    result.predicates =
-        tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(extra_predicates));
-    result
+
+    ty::EarlyBinder::bind(
+        tcx.arena.alloc_from_iter(result.skip_binder().iter().copied().chain(extra_predicates)),
+    )
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
@@ -774,6 +825,10 @@ impl<'tcx> ItemCtxt<'tcx> {
                 continue;
             };
 
+            // Subtle: If we're collecting `SelfAndAssociatedTypeBounds`, then we
+            // want to only consider predicates with `Self: ...`, but we don't want
+            // `OnlySelfBounds(true)` since we want to collect the nested associated
+            // type bound as well.
             let (only_self_bounds, assoc_name) = match filter {
                 PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
                     (OnlySelfBounds(false), None)
@@ -784,14 +839,10 @@ impl<'tcx> ItemCtxt<'tcx> {
                 }
             };
 
-            // Subtle: If we're collecting `SelfAndAssociatedTypeBounds`, then we
-            // want to only consider predicates with `Self: ...`, but we don't want
-            // `OnlySelfBounds(true)` since we want to collect the nested associated
-            // type bound as well.
             let bound_ty = if predicate.is_param_bound(param_def_id.to_def_id()) {
                 ty
             } else if matches!(filter, PredicateFilter::All) {
-                self.lower_ty(predicate.bounded_ty)
+                self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty)
             } else {
                 continue;
             };

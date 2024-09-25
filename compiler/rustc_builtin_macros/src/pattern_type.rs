@@ -1,9 +1,9 @@
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{ast, Pat, Ty};
+use rustc_ast::{Pat, Ty, ast};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 pub(crate) fn expand<'cx>(
     cx: &'cx mut ExtCtxt<'_>,

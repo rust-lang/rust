@@ -1,4 +1,4 @@
-//@ignore-target-windows: no libc
+//@ignore-target: windows # no libc
 //@revisions: isolation no_isolation
 //@[no_isolation]compile-flags: -Zmiri-disable-isolation
 

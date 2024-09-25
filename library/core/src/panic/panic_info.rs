@@ -12,7 +12,7 @@ use crate::panic::Location;
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
 pub struct PanicInfo<'a> {
-    message: fmt::Arguments<'a>,
+    message: &'a fmt::Arguments<'a>,
     location: &'a Location<'a>,
     can_unwind: bool,
     force_no_backtrace: bool,
@@ -26,13 +26,13 @@ pub struct PanicInfo<'a> {
 /// See [`PanicInfo::message`].
 #[stable(feature = "panic_info_message", since = "1.81.0")]
 pub struct PanicMessage<'a> {
-    message: fmt::Arguments<'a>,
+    message: &'a fmt::Arguments<'a>,
 }
 
 impl<'a> PanicInfo<'a> {
     #[inline]
     pub(crate) fn new(
-        message: fmt::Arguments<'a>,
+        message: &'a fmt::Arguments<'a>,
         location: &'a Location<'a>,
         can_unwind: bool,
         force_no_backtrace: bool,
@@ -146,7 +146,7 @@ impl Display for PanicInfo<'_> {
         formatter.write_str("panicked at ")?;
         self.location.fmt(formatter)?;
         formatter.write_str(":\n")?;
-        formatter.write_fmt(self.message)?;
+        formatter.write_fmt(*self.message)?;
         Ok(())
     }
 }
@@ -177,7 +177,7 @@ impl<'a> PanicMessage<'a> {
 impl Display for PanicMessage<'_> {
     #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_fmt(self.message)
+        formatter.write_fmt(*self.message)
     }
 }
 
@@ -185,6 +185,6 @@ impl Display for PanicMessage<'_> {
 impl fmt::Debug for PanicMessage<'_> {
     #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_fmt(self.message)
+        formatter.write_fmt(*self.message)
     }
 }

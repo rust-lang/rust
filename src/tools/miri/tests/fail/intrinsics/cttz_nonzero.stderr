@@ -1,5 +1,5 @@
 error: Undefined Behavior: `cttz_nonzero` called on 0
-  --> $DIR/cttz_nonzero.rs:LL:CC
+  --> tests/fail/intrinsics/cttz_nonzero.rs:LL:CC
    |
 LL |         cttz_nonzero(0u8);
    |         ^^^^^^^^^^^^^^^^^ `cttz_nonzero` called on 0
@@ -7,7 +7,7 @@ LL |         cttz_nonzero(0u8);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/cttz_nonzero.rs:LL:CC
+   = note: inside `main` at tests/fail/intrinsics/cttz_nonzero.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

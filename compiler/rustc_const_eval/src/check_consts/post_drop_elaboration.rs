@@ -1,14 +1,14 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 use tracing::trace;
 
+use super::ConstCx;
 use super::check::Qualifs;
 use super::ops::{self, NonConstOp};
 use super::qualifs::{NeedsNonConstDrop, Qualif};
-use super::ConstCx;
 use crate::check_consts::rustc_allow_const_fn_unstable;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop

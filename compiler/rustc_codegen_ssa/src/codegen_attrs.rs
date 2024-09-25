@@ -1,15 +1,14 @@
-use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
-use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_ast::{MetaItemKind, NestedMetaItem, ast, attr};
+use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr, list_contains_name};
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, DiagMessage, SubdiagMessage};
+use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
-use rustc_hir::{lang_items, LangItem};
+use rustc_hir::{LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, TargetFeature,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
@@ -17,9 +16,8 @@ use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span};
-use rustc_target::abi::VariantIdx;
-use rustc_target::spec::{abi, SanitizerSet};
+use rustc_span::{Span, sym};
+use rustc_target::spec::{SanitizerSet, abi};
 
 use crate::errors;
 use crate::target_features::{check_target_feature_trait_unsafe, from_target_feature};
@@ -80,13 +78,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
 
-    let fn_sig_outer = || {
-        use DefKind::*;
-
-        let def_kind = tcx.def_kind(did);
-        if let Fn | AssocFn | Variant | Ctor(..) = def_kind { Some(tcx.fn_sig(did)) } else { None }
-    };
-
     for attr in attrs.iter() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
         // pass that check that they aren't used anywhere else, rather this module.
@@ -94,12 +85,16 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         // functions (such as calling `fn_sig`, which ICEs if given a non-function). We also
         // report a delayed bug, just in case `check_attr` isn't doing its job.
         let fn_sig = || {
-            let sig = fn_sig_outer();
-            if sig.is_none() {
+            use DefKind::*;
+
+            let def_kind = tcx.def_kind(did);
+            if let Fn | AssocFn | Variant | Ctor(..) = def_kind {
+                Some(tcx.fn_sig(did))
+            } else {
                 tcx.dcx()
                     .span_delayed_bug(attr.span, "this attribute can only be applied to functions");
+                None
             }
-            sig
         };
 
         let Some(Ident { name, .. }) = attr.ident() else {
@@ -199,24 +194,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         };
                     }
                 }
-            }
-            sym::cmse_nonsecure_entry => {
-                if let Some(fn_sig) = fn_sig()
-                    && !matches!(fn_sig.skip_binder().abi(), abi::Abi::C { .. })
-                {
-                    struct_span_code_err!(
-                        tcx.dcx(),
-                        attr.span,
-                        E0776,
-                        "`#[cmse_nonsecure_entry]` requires C ABI"
-                    )
-                    .emit();
-                }
-                if !tcx.sess.target.llvm_target.contains("thumbv8m") {
-                    struct_span_code_err!(tcx.dcx(), attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
-                    .emit();
-                }
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
             sym::track_caller => {
@@ -322,9 +299,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                 "extern mutable statics are not allowed with `#[linkage]`",
                             );
                             diag.note(
-                                "marking the extern static mutable would allow changing which symbol \
-                                 the static references rather than make the target of the symbol \
-                                 mutable",
+                                "marking the extern static mutable would allow changing which \
+                                 symbol the static references rather than make the target of the \
+                                 symbol mutable",
                             );
                             diag.emit();
                         }
@@ -618,122 +595,33 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    if let Some(sig) = fn_sig_outer() {
-        // Collect target features from types reachable from arguments.
-        // We define a type as "reachable" if:
-        //  - it is a function argument
-        //  - it is a field of a reachable struct
-        //  - there is a reachable reference to it
-        // FIXME(struct_target_features): we may want to cache the result of this computation.
-        let mut visited_types = FxHashSet::default();
-        let mut reachable_types: Vec<_> = sig.skip_binder().inputs().skip_binder().to_owned();
-        let mut additional_tf = vec![];
-
-        while let Some(ty) = reachable_types.pop() {
-            if visited_types.contains(&ty) {
-                continue;
-            }
-            visited_types.insert(ty);
-            match ty.kind() {
-                ty::Alias(..) => {
-                    if let Ok(t) =
-                        tcx.try_normalize_erasing_regions(tcx.param_env(did.to_def_id()), ty)
-                    {
-                        reachable_types.push(t)
-                    }
-                }
-
-                ty::Ref(_, inner, _) => reachable_types.push(*inner),
-                ty::Tuple(tys) => reachable_types.extend(tys.iter()),
-                ty::Adt(adt_def, args) => {
-                    additional_tf.extend_from_slice(tcx.struct_target_features(adt_def.did()));
-                    // This only recurses into structs as i.e. an Option<TargetFeature> is an ADT
-                    // that doesn't actually always contain a TargetFeature.
-                    if adt_def.is_struct() {
-                        reachable_types.extend(
-                            adt_def
-                                .variant(VariantIdx::from_usize(0))
-                                .fields
-                                .iter()
-                                .map(|field| field.ty(tcx, args)),
-                        );
-                    }
-                }
-                ty::Bool
-                | ty::Char
-                | ty::Int(..)
-                | ty::Uint(..)
-                | ty::Float(..)
-                | ty::Foreign(..)
-                | ty::Str
-                | ty::Array(..)
-                | ty::Pat(..)
-                | ty::Slice(..)
-                | ty::RawPtr(..)
-                | ty::FnDef(..)
-                | ty::FnPtr(..)
-                | ty::Dynamic(..)
-                | ty::Closure(..)
-                | ty::CoroutineClosure(..)
-                | ty::Coroutine(..)
-                | ty::CoroutineWitness(..)
-                | ty::Never
-                | ty::Param(..)
-                | ty::Bound(..)
-                | ty::Placeholder(..)
-                | ty::Infer(..)
-                | ty::Error(..) => (),
-            }
-        }
-
-        // FIXME(struct_target_features): is this really necessary?
-        if !additional_tf.is_empty() && sig.skip_binder().abi() != abi::Abi::Rust {
-            tcx.dcx().span_err(
-                tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
-                "cannot use a struct with target features in a function with non-Rust ABI",
-            );
-        }
-        if !additional_tf.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
-            tcx.dcx().span_err(
-                tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
-                "cannot use a struct with target features in a #[inline(always)] function",
-            );
-        }
-        codegen_fn_attrs
-            .target_features
-            .extend(additional_tf.iter().map(|tf| TargetFeature { implied: true, ..*tf }));
-    }
-
-    // If a function uses non-default target_features it can't be inlined into general
+    // If a function uses #[target_feature] it can't be inlined into general
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
-    if !codegen_fn_attrs.target_features.is_empty() {
-        if codegen_fn_attrs.inline == InlineAttr::Always {
-            if let Some(span) = inline_span {
-                tcx.dcx().span_err(
-                    span,
-                    "cannot use `#[inline(always)]` with \
+    if !codegen_fn_attrs.target_features.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always
+    {
+        if let Some(span) = inline_span {
+            tcx.dcx().span_err(
+                span,
+                "cannot use `#[inline(always)]` with \
                      `#[target_feature]`",
-                );
-            }
+            );
         }
     }
 
-    if !codegen_fn_attrs.no_sanitize.is_empty() {
-        if codegen_fn_attrs.inline == InlineAttr::Always {
-            if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
-                let hir_id = tcx.local_def_id_to_hir_id(did);
-                tcx.node_span_lint(
-                    lint::builtin::INLINE_NO_SANITIZE,
-                    hir_id,
-                    no_sanitize_span,
-                    |lint| {
-                        lint.primary_message("`no_sanitize` will have no effect after inlining");
-                        lint.span_note(inline_span, "inlining requested here");
-                    },
-                )
-            }
+    if !codegen_fn_attrs.no_sanitize.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
+        if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
+            let hir_id = tcx.local_def_id_to_hir_id(did);
+            tcx.node_span_lint(
+                lint::builtin::INLINE_NO_SANITIZE,
+                hir_id,
+                no_sanitize_span,
+                |lint| {
+                    lint.primary_message("`no_sanitize` will have no effect after inlining");
+                    lint.span_note(inline_span, "inlining requested here");
+                },
+            )
         }
     }
 
@@ -805,18 +693,19 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
     if let Some(MetaItemLit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) =
         sole_meta_list
     {
-        // According to the table at https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header,
-        // the ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
-        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import information
-        // to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
+        // According to the table at
+        // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header, the
+        // ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
+        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import
+        // information to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
         //
-        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for this:
-        // both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that specifies
-        // a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import library
-        // for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an import
-        // library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I don't know yet
-        // if the resulting EXE runs, as I haven't yet built the necessary DLL -- see earlier comment
-        // about LINK.EXE failing.)
+        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for
+        // this: both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that
+        // specifies a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import
+        // library for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an
+        // import library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I
+        // don't know yet if the resulting EXE runs, as I haven't yet built the necessary DLL --
+        // see earlier comment about LINK.EXE failing.)
         if *ordinal <= u16::MAX as u128 {
             Some(ordinal.get() as u16)
         } else {
@@ -849,20 +738,6 @@ fn check_link_name_xor_ordinal(
     }
 }
 
-fn struct_target_features(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[TargetFeature] {
-    let mut features = vec![];
-    let supported_features = tcx.supported_target_features(LOCAL_CRATE);
-    for attr in tcx.get_attrs(def_id, sym::target_feature) {
-        from_target_feature(tcx, attr, supported_features, &mut features);
-    }
-    tcx.arena.alloc_slice(&features)
-}
-
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        codegen_fn_attrs,
-        should_inherit_track_caller,
-        struct_target_features,
-        ..*providers
-    };
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
 }

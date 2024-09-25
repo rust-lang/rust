@@ -131,9 +131,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let idx = generic_args[2]
                 .expect_const()
-                .eval(fx.tcx, ty::ParamEnv::reveal_all(), span)
-                .unwrap()
-                .1
+                .try_to_valtree()
+                .expect("expected monomorphic const in codegen")
                 .unwrap_branch();
 
             assert_eq!(x.layout(), y.layout());
@@ -180,35 +179,20 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             }
 
-            // Make sure this is actually an array, since typeck only checks the length-suffixed
-            // version of this intrinsic.
+            // Make sure this is actually a SIMD vector.
             let idx_ty = fx.monomorphize(idx.node.ty(fx.mir, fx.tcx));
-            let n: u16 = match idx_ty.kind() {
-                ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => len
-                    .try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
-                    .unwrap_or_else(|| {
-                        span_bug!(span, "could not evaluate shuffle index array length")
-                    })
-                    .try_into()
-                    .unwrap(),
-                _ if idx_ty.is_simd()
-                    && matches!(
-                        idx_ty.simd_size_and_type(fx.tcx).1.kind(),
-                        ty::Uint(ty::UintTy::U32)
-                    ) =>
-                {
-                    idx_ty.simd_size_and_type(fx.tcx).0.try_into().unwrap()
-                }
-                _ => {
-                    fx.tcx.dcx().span_err(
-                        span,
-                        format!("simd_shuffle index must be an array of `u32`, got `{}`", idx_ty),
-                    );
-                    // Prevent verifier error
-                    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-                    return;
-                }
+            if !idx_ty.is_simd()
+                || !matches!(idx_ty.simd_size_and_type(fx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
+            {
+                fx.tcx.dcx().span_err(
+                    span,
+                    format!("simd_shuffle index must be a SIMD vector of `u32`, got `{}`", idx_ty),
+                );
+                // Prevent verifier error
+                fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+                return;
             };
+            let n: u16 = idx_ty.simd_size_and_type(fx.tcx).0.try_into().unwrap();
 
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();
@@ -283,10 +267,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let val = codegen_operand(fx, &val.node);
 
             // FIXME validate
-            let idx_const = if let Some(idx_const) =
-                crate::constant::mir_operand_get_const_val(fx, &idx.node)
-            {
-                idx_const
+            let idx_const = if let Some(idx_const) = idx.node.constant() {
+                crate::constant::eval_mir_constant(fx, idx_const).0.try_to_scalar_int().unwrap()
             } else {
                 fx.tcx.dcx().span_fatal(span, "Index argument for `simd_insert` is not a constant");
             };
@@ -319,22 +301,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             }
 
-            let idx_const = if let Some(idx_const) =
-                crate::constant::mir_operand_get_const_val(fx, &idx.node)
-            {
-                idx_const
+            let idx_const = if let Some(idx_const) = idx.node.constant() {
+                crate::constant::eval_mir_constant(fx, idx_const).0.try_to_scalar_int().unwrap()
             } else {
-                fx.tcx.dcx().span_warn(span, "Index argument for `simd_extract` is not a constant");
-                let trap_block = fx.bcx.create_block();
-                let true_ = fx.bcx.ins().iconst(types::I8, 1);
-                let ret_block = fx.get_block(target);
-                fx.bcx.ins().brif(true_, trap_block, &[], ret_block, &[]);
-                fx.bcx.switch_to_block(trap_block);
-                crate::trap::trap_unimplemented(
-                    fx,
-                    "Index argument for `simd_extract` is not a constant",
-                );
-                return;
+                fx.tcx
+                    .dcx()
+                    .span_fatal(span, "Index argument for `simd_extract` is not a constant");
             };
 
             let idx = idx_const.to_u32();
@@ -589,12 +561,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     (sym::simd_round, types::F64) => "round",
                     _ => unreachable!("{:?}", intrinsic),
                 };
-                fx.lib_call(
-                    name,
-                    vec![AbiParam::new(lane_ty)],
-                    vec![AbiParam::new(lane_ty)],
-                    &[lane],
-                )[0]
+                fx.lib_call(name, vec![AbiParam::new(lane_ty)], vec![AbiParam::new(lane_ty)], &[
+                    lane,
+                ])[0]
             });
         }
 

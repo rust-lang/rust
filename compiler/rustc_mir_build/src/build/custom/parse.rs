@@ -68,7 +68,7 @@ macro_rules! parse_by_kind {
 }
 pub(crate) use parse_by_kind;
 
-impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
+impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
     /// Expressions should only ever be matched on after preparsing them. This removes extra scopes
     /// we don't care about.
     fn preparse(&self, expr_id: ExprId) -> ExprId {
@@ -82,13 +82,11 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     fn statement_as_expr(&self, stmt_id: StmtId) -> PResult<ExprId> {
         match &self.thir[stmt_id].kind {
             StmtKind::Expr { expr, .. } => Ok(*expr),
-            kind @ StmtKind::Let { pattern, .. } => {
-                return Err(ParseError {
-                    span: pattern.span,
-                    item_description: format!("{kind:?}"),
-                    expected: "expression".to_string(),
-                });
-            }
+            kind @ StmtKind::Let { pattern, .. } => Err(ParseError {
+                span: pattern.span,
+                item_description: format!("{kind:?}"),
+                expected: "expression".to_string(),
+            }),
         }
     }
 

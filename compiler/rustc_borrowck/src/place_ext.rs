@@ -2,6 +2,7 @@ use rustc_hir as hir;
 use rustc_macros::extension;
 use rustc_middle::mir::{Body, Mutability, Place, ProjectionElem};
 use rustc_middle::ty::{self, TyCtxt};
+use tracing::debug;
 
 use crate::borrow_set::LocalsStateAtExit;
 

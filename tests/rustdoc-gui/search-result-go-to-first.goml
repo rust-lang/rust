@@ -16,4 +16,5 @@ assert-css: ("#main-content", {"display": "none"})
 // Now we can check that the feature is working as expected!
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=struct%3AFoo&go_to_first=true"
 // Waiting for the page to load...
-wait-for-text: (".main-heading h1", "Struct test_docs::FooCopy item path")
+wait-for-text: (".main-heading .rustdoc-breadcrumbs", "test_docs")
+wait-for-text: (".main-heading h1", "Struct FooCopy item path")

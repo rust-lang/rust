@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_x.py_global_optspecs
-	string join \n v/verbose i/incremental config= build-dir= build= host= target= exclude= skip= include-default-paths rustc-error-format= on-fail= dry-run dump-bootstrap-shims stage= keep-stage= keep-stage-std= src= j/jobs= warnings= error-format= json-output color= bypass-bootstrap-lock llvm-skip-rebuild= rust-profile-generate= rust-profile-use= llvm-profile-use= llvm-profile-generate enable-bolt-settings skip-stage0-validation reproducible-artifact= set= h/help
+	string join \n v/verbose i/incremental config= build-dir= build= host= target= exclude= skip= include-default-paths rustc-error-format= on-fail= dry-run dump-bootstrap-shims stage= keep-stage= keep-stage-std= src= j/jobs= warnings= error-format= json-output color= bypass-bootstrap-lock rust-profile-generate= rust-profile-use= llvm-profile-use= llvm-profile-generate enable-bolt-settings skip-stage0-validation reproducible-artifact= set= h/help
 end
 
 function __fish_x.py_needs_command
@@ -41,7 +41,6 @@ complete -c x.py -n "__fish_x.py_needs_command" -s j -l jobs -d 'number of jobs 
 complete -c x.py -n "__fish_x.py_needs_command" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_needs_command" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_needs_command" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_needs_command" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_needs_command" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_needs_command" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_needs_command" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -92,7 +91,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand build" -s j -l jobs -d 'number
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand build" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -126,7 +124,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand check" -s j -l jobs -d 'number
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand check" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -165,7 +162,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s j -l jobs -d 'numbe
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -202,7 +198,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand fix" -s j -l jobs -d 'number o
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand fix" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -236,7 +231,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand fmt" -s j -l jobs -d 'number o
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -272,7 +266,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand doc" -s j -l jobs -d 'number o
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand doc" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -314,7 +307,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand test" -s j -l jobs -d 'number 
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand test" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -356,7 +348,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand miri" -s j -l jobs -d 'number 
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand miri" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -394,7 +385,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand bench" -s j -l jobs -d 'number
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand bench" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -428,7 +418,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand clean" -s j -l jobs -d 'number
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand clean" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -463,7 +452,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand dist" -s j -l jobs -d 'number 
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand dist" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -497,7 +485,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand install" -s j -l jobs -d 'numb
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand install" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -532,7 +519,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand run" -s j -l jobs -d 'number o
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand run" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -566,7 +552,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand setup" -s j -l jobs -d 'number
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand setup" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -600,7 +585,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand suggest" -s j -l jobs -d 'numb
 complete -c x.py -n "__fish_x.py_using_subcommand suggest" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand suggest" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand suggest" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand suggest" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand suggest" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand suggest" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand suggest" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -636,7 +620,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand vendor" -s j -l jobs -d 'numbe
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
@@ -671,7 +654,6 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf" -s j -l jobs -d 'number 
 complete -c x.py -n "__fish_x.py_using_subcommand perf" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf" -l error-format -d 'rustc error format' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand perf" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand perf" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand perf" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F

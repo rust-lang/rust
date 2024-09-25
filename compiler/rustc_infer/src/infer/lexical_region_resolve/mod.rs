@@ -4,7 +4,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
-    Direction, Graph, NodeIndex, INCOMING, OUTGOING,
+    Direction, Graph, INCOMING, NodeIndex, OUTGOING,
 };
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::unord::UnordSet;
@@ -16,6 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
 use super::outlives::test_type_match;
 use crate::infer::region_constraints::{

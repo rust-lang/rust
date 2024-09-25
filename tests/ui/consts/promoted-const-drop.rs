@@ -1,5 +1,4 @@
 #![feature(const_trait_impl)]
-#![feature(const_mut_refs)]
 
 struct A();
 

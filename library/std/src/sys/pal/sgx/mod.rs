@@ -132,24 +132,6 @@ pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
-pub mod rand {
-    pub fn rdrand64() -> u64 {
-        unsafe {
-            let mut ret: u64 = 0;
-            for _ in 0..10 {
-                if crate::arch::x86_64::_rdrand64_step(&mut ret) == 1 {
-                    return ret;
-                }
-            }
-            rtabort!("Failed to obtain random data");
-        }
-    }
-}
-
-pub fn hashmap_random_keys() -> (u64, u64) {
-    (self::rand::rdrand64(), self::rand::rdrand64())
-}
-
 pub use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 pub trait TryIntoInner<Inner>: Sized {

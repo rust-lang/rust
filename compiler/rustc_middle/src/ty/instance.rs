@@ -12,12 +12,12 @@ use rustc_index::bit_set::FiniteBitSet;
 use rustc_macros::{Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable};
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::{debug, instrument};
 
 use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::print::{shrunk_instance_name, FmtPrinter, Printer};
+use crate::ty::print::{FmtPrinter, Printer, shrunk_instance_name};
 use crate::ty::{
     self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -38,7 +38,7 @@ pub struct Instance<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
-/// Describes why a `ReifyShim` was created. This is needed to distingish a ReifyShim created to
+/// Describes why a `ReifyShim` was created. This is needed to distinguish a ReifyShim created to
 /// adjust for things like `#[track_caller]` in a vtable from a `ReifyShim` created to produce a
 /// function pointer from a vtable entry.
 /// Currently, this is only used when KCFI is enabled, as only KCFI needs to treat those two

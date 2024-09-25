@@ -9,6 +9,7 @@ use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryRes
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_span::DUMMY_SP;
+use tracing::instrument;
 
 use crate::infer::at::ToTrace;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;

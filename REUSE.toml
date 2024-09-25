@@ -168,3 +168,37 @@ SPDX-FileCopyrightText = [
     "2003-2019 University of Illinois at Urbana-Champaign.",
 ]
 SPDX-License-Identifier = "NCSA AND Apache-2.0 WITH LLVM-exception"
+
+[[annotations]]
+path = "src/gcc/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (C) 1997-2024 Free Software Foundation, Inc.",
+]
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "src/gcc/gcc/testsuite/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (C) 2000-2024 Free Software Foundation, Inc.",
+]
+SPDX-License-Identifier = "GPL-2.0-only"
+
+[[annotations]]
+path = "src/gcc/gcc/testsuite/c-c++-common/analyzer/*.c"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (c) 2007-2011 Atheros Communications Inc.",
+    "Copyright (c) 2011-2012,2017 Qualcomm Atheros, Inc.",
+    "Copyright (c) 2016-2017 Erik Stromdahl <erik.stromdahl@gmail.com>",
+]
+SPDX-License-Identifier = "ISC"
+
+[[annotations]]
+path = "src/gcc/libstdc++-v3/config/os/aix/os_defines.h"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "Copyright (C) 2000-2024 Free Software Foundation, Inc.",
+]
+SPDX-License-Identifier = "GCC-exception-3.1"

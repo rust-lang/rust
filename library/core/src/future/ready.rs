@@ -39,7 +39,7 @@ impl<T> Ready<T> {
     /// let a = future::ready(1);
     /// assert_eq!(a.into_inner(), 1);
     /// ```
-    #[stable(feature = "ready_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ready_into_inner", since = "1.82.0")]
     #[must_use]
     #[inline]
     pub fn into_inner(self) -> T {

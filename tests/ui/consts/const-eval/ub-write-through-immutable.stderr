@@ -1,11 +1,11 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-write-through-immutable.rs:11:5
+  --> $DIR/ub-write-through-immutable.rs:10:5
    |
 LL |     *ptr = 0;
    |     ^^^^^^^^ writing through a pointer that was derived from a shared (immutable) reference
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-write-through-immutable.rs:18:5
+  --> $DIR/ub-write-through-immutable.rs:17:5
    |
 LL |     *ptr = 0;
    |     ^^^^^^^^ writing through a pointer that was derived from a shared (immutable) reference

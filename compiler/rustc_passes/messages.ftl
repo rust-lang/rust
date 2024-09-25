@@ -484,6 +484,9 @@ passes_must_not_suspend =
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
 
+passes_naked_asm_outside_naked_fn =
+    the `naked_asm!` macro can only be used in functions marked with `#[naked]`
+
 passes_naked_functions_asm_block =
     naked functions must contain a single asm block
     .label_multiple_asm = multiple asm blocks are unsupported in naked functions
@@ -671,10 +674,6 @@ passes_should_be_applied_to_fn =
         [true] cannot be applied to crates
         *[false] not a function definition
     }
-
-passes_should_be_applied_to_fn_or_unit_struct =
-    attribute should be applied to a function definition or unit struct
-    .label = not a function definition or a unit struct
 
 passes_should_be_applied_to_static =
     attribute should be applied to a static

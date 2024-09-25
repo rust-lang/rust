@@ -31,9 +31,6 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
 mod errors;
 pub mod infer;
 pub mod traits;

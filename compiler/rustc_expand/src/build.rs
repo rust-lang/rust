@@ -1,12 +1,12 @@
 use rustc_ast::ptr::P;
 use rustc_ast::util::literal;
 use rustc_ast::{
-    self as ast, attr, token, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp,
+    self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp, attr, token,
 };
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::base::ExtCtxt;
 
@@ -152,18 +152,15 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn trait_bound(&self, path: ast::Path, is_const: bool) -> ast::GenericBound {
-        ast::GenericBound::Trait(
-            self.poly_trait_ref(path.span, path),
-            ast::TraitBoundModifiers {
-                polarity: ast::BoundPolarity::Positive,
-                constness: if is_const {
-                    ast::BoundConstness::Maybe(DUMMY_SP)
-                } else {
-                    ast::BoundConstness::Never
-                },
-                asyncness: ast::BoundAsyncness::Normal,
+        ast::GenericBound::Trait(self.poly_trait_ref(path.span, path), ast::TraitBoundModifiers {
+            polarity: ast::BoundPolarity::Positive,
+            constness: if is_const {
+                ast::BoundConstness::Maybe(DUMMY_SP)
+            } else {
+                ast::BoundConstness::Never
             },
-        )
+            asyncness: ast::BoundAsyncness::Normal,
+        })
     }
 
     pub fn lifetime(&self, span: Span, ident: Ident) -> ast::Lifetime {
@@ -232,14 +229,11 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
-        self.block(
-            expr.span,
-            thin_vec![ast::Stmt {
-                id: ast::DUMMY_NODE_ID,
-                span: expr.span,
-                kind: ast::StmtKind::Expr(expr),
-            }],
-        )
+        self.block(expr.span, thin_vec![ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: expr.span,
+            kind: ast::StmtKind::Expr(expr),
+        }])
     }
     pub fn block(&self, span: Span, stmts: ThinVec<ast::Stmt>) -> P<ast::Block> {
         P(ast::Block {

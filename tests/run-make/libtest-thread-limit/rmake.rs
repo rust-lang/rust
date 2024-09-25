@@ -11,6 +11,9 @@
 // Reason: thread limit modification
 //@ ignore-cross-compile
 // Reason: this test fails armhf-gnu, reasons unknown
+//@ needs-unwind
+// Reason: this should be ignored in cg_clif (Cranelift) CI and anywhere
+// else that uses panic=abort.
 
 use std::ffi::{self, CStr, CString};
 use std::path::PathBuf;

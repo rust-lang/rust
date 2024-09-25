@@ -1,4 +1,4 @@
-//@only-target-windows: Uses win32 api functions
+//@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
 //@error-in-other-file: deadlock
@@ -8,7 +8,7 @@
 use std::thread;
 
 use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
-use windows_sys::Win32::System::Threading::{GetCurrentThread, WaitForSingleObject, INFINITE};
+use windows_sys::Win32::System::Threading::{GetCurrentThread, INFINITE, WaitForSingleObject};
 
 fn main() {
     thread::spawn(|| {

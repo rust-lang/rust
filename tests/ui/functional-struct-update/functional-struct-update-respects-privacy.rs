@@ -2,6 +2,10 @@
 
 // The `foo` module attempts to maintains an invariant that each `S`
 // has a unique `u64` id.
+
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use self::foo::S;
 mod foo {
     use std::cell::{UnsafeCell};

@@ -1,5 +1,5 @@
 warning: reborrow of reference to `extern type`
-  --> $DIR/extern_types.rs:LL:CC
+  --> tests/pass/extern_types.rs:LL:CC
    |
 LL |     let x: &Foo = unsafe { &*(ptr::without_provenance::<()>(16) as *const Foo) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reborrow of a reference to `extern type` is not properly supported
@@ -7,5 +7,5 @@ LL |     let x: &Foo = unsafe { &*(ptr::without_provenance::<()>(16) as *const F
    = help: `extern type` are not compatible with the Stacked Borrows aliasing model implemented by Miri; Miri may miss bugs in this code
    = help: try running with `MIRIFLAGS=-Zmiri-tree-borrows` to use the more permissive but also even more experimental Tree Borrows aliasing checks instead
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/extern_types.rs:LL:CC
+   = note: inside `main` at tests/pass/extern_types.rs:LL:CC
 

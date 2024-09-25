@@ -2,12 +2,13 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_index::Idx;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
-use rustc_index::Idx;
 use rustc_middle::mir::{BasicBlock, Location};
 use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use tracing::debug;
 
 use crate::BorrowIndex;
 
@@ -117,10 +118,8 @@ impl LivenessValues {
         debug!("LivenessValues::add_location(region={:?}, location={:?})", region, location);
         if let Some(points) = &mut self.points {
             points.insert(region, point);
-        } else {
-            if self.elements.point_in_range(point) {
-                self.live_regions.as_mut().unwrap().insert(region);
-            }
+        } else if self.elements.point_in_range(point) {
+            self.live_regions.as_mut().unwrap().insert(region);
         }
 
         // When available, record the loans flowing into this region as live at the given point.
@@ -136,10 +135,8 @@ impl LivenessValues {
         debug!("LivenessValues::add_points(region={:?}, points={:?})", region, points);
         if let Some(this) = &mut self.points {
             this.union_row(region, points);
-        } else {
-            if points.iter().any(|point| self.elements.point_in_range(point)) {
-                self.live_regions.as_mut().unwrap().insert(region);
-            }
+        } else if points.iter().any(|point| self.elements.point_in_range(point)) {
+            self.live_regions.as_mut().unwrap().insert(region);
         }
 
         // When available, record the loans flowing into this region as live at the given points.

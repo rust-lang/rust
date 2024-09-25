@@ -617,14 +617,14 @@ impl<D: Deps> EncoderState<D> {
     }
 }
 
-pub struct GraphEncoder<D: Deps> {
+pub(crate) struct GraphEncoder<D: Deps> {
     profiler: SelfProfilerRef,
     status: Lock<Option<EncoderState<D>>>,
     record_graph: Option<Lock<DepGraphQuery>>,
 }
 
 impl<D: Deps> GraphEncoder<D> {
-    pub fn new(
+    pub(crate) fn new(
         encoder: FileEncoder,
         prev_node_count: usize,
         record_graph: bool,
@@ -723,7 +723,7 @@ impl<D: Deps> GraphEncoder<D> {
         )
     }
 
-    pub fn finish(&self) -> FileEncodeResult {
+    pub(crate) fn finish(&self) -> FileEncodeResult {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph_finish");
 
         self.status.lock().take().unwrap().finish(&self.profiler)

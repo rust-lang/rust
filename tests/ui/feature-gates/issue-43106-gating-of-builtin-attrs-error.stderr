@@ -107,6 +107,21 @@ LL | |
 LL | | }
    | |_- not a struct, enum, or union
 
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:168:8
+   |
+LL |   #[repr(Rust)]
+   |          ^^^^
+LL |
+LL | / mod repr_rust {
+LL | |
+LL | |     mod inner { #![repr(Rust)] }
+LL | |
+...  |
+LL | |
+LL | | }
+   | |_- not a struct, enum, or union
+
 error: attribute should be applied to an `extern crate` item
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:26:1
    |
@@ -329,7 +344,31 @@ error[E0517]: attribute should be applied to a struct, enum, or union
 LL |     #[repr(C)] impl S { }
    |            ^   ---------- not a struct, enum, or union
 
-error: aborting due to 39 previous errors
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:172:25
+   |
+LL |     mod inner { #![repr(Rust)] }
+   |     --------------------^^^^---- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:176:12
+   |
+LL |     #[repr(Rust)] fn f() { }
+   |            ^^^^   ---------- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:182:12
+   |
+LL |     #[repr(Rust)] type T = S;
+   |            ^^^^   ----------- not a struct, enum, or union
+
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:186:12
+   |
+LL |     #[repr(Rust)] impl S { }
+   |            ^^^^   ---------- not a struct, enum, or union
+
+error: aborting due to 44 previous errors
 
 Some errors have detailed explanations: E0517, E0518, E0658.
 For more information about an error, try `rustc --explain E0517`.

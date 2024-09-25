@@ -11,7 +11,7 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = &_1;
-          _2 = move _3 as &[u8] (PointerCoercion(Unsize));
+          _2 = move _3 as &[u8] (PointerCoercion(Unsize, Implicit));
           StorageDead(_3);
 -         _0 = PtrMetadata(move _2);
 +         _0 = const N;

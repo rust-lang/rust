@@ -4,7 +4,7 @@ use rand::Rng;
 
 use rustc_target::abi::{Align, Size};
 
-use crate::{concurrency::VClock, MemoryKind, MiriConfig, ThreadId};
+use crate::{MemoryKind, MiriConfig, ThreadId, concurrency::VClock};
 
 const MAX_POOL_SIZE: usize = 64;
 

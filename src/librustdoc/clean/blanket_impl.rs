@@ -2,10 +2,11 @@ use rustc_hir as hir;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::ty::{self, Upcast};
-use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
+use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use thin_vec::ThinVec;
+use tracing::{debug, instrument, trace};
 
 use crate::clean;
 use crate::clean::{
@@ -24,7 +25,7 @@ pub(crate) fn synthesize_blanket_impls(
     let mut blanket_impls = Vec::new();
     for trait_def_id in tcx.all_traits() {
         if !cx.cache.effective_visibilities.is_reachable(tcx, trait_def_id)
-            || cx.generated_synthetics.get(&(ty.skip_binder(), trait_def_id)).is_some()
+            || cx.generated_synthetics.contains(&(ty.skip_binder(), trait_def_id))
         {
             continue;
         }
@@ -83,42 +84,44 @@ pub(crate) fn synthesize_blanket_impls(
 
             blanket_impls.push(clean::Item {
                 name: None,
-                attrs: Default::default(),
                 item_id: clean::ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
-                kind: Box::new(clean::ImplItem(Box::new(clean::Impl {
-                    safety: hir::Safety::Safe,
-                    generics: clean_ty_generics(
-                        cx,
-                        tcx.generics_of(impl_def_id),
-                        tcx.explicit_predicates_of(impl_def_id),
-                    ),
-                    // FIXME(eddyb) compute both `trait_` and `for_` from
-                    // the post-inference `trait_ref`, as it's more accurate.
-                    trait_: Some(clean_trait_ref_with_constraints(
-                        cx,
-                        ty::Binder::dummy(trait_ref.instantiate_identity()),
-                        ThinVec::new(),
-                    )),
-                    for_: clean_middle_ty(
-                        ty::Binder::dummy(ty.instantiate_identity()),
-                        cx,
-                        None,
-                        None,
-                    ),
-                    items: tcx
-                        .associated_items(impl_def_id)
-                        .in_definition_order()
-                        .filter(|item| !item.is_impl_trait_in_trait())
-                        .map(|item| clean_middle_assoc_item(item, cx))
-                        .collect(),
-                    polarity: ty::ImplPolarity::Positive,
-                    kind: clean::ImplKind::Blanket(Box::new(clean_middle_ty(
-                        ty::Binder::dummy(trait_ref.instantiate_identity().self_ty()),
-                        cx,
-                        None,
-                        None,
-                    ))),
-                }))),
+                inner: Box::new(clean::ItemInner {
+                    attrs: Default::default(),
+                    kind: clean::ImplItem(Box::new(clean::Impl {
+                        safety: hir::Safety::Safe,
+                        generics: clean_ty_generics(
+                            cx,
+                            tcx.generics_of(impl_def_id),
+                            tcx.explicit_predicates_of(impl_def_id),
+                        ),
+                        // FIXME(eddyb) compute both `trait_` and `for_` from
+                        // the post-inference `trait_ref`, as it's more accurate.
+                        trait_: Some(clean_trait_ref_with_constraints(
+                            cx,
+                            ty::Binder::dummy(trait_ref.instantiate_identity()),
+                            ThinVec::new(),
+                        )),
+                        for_: clean_middle_ty(
+                            ty::Binder::dummy(ty.instantiate_identity()),
+                            cx,
+                            None,
+                            None,
+                        ),
+                        items: tcx
+                            .associated_items(impl_def_id)
+                            .in_definition_order()
+                            .filter(|item| !item.is_impl_trait_in_trait())
+                            .map(|item| clean_middle_assoc_item(item, cx))
+                            .collect(),
+                        polarity: ty::ImplPolarity::Positive,
+                        kind: clean::ImplKind::Blanket(Box::new(clean_middle_ty(
+                            ty::Binder::dummy(trait_ref.instantiate_identity().self_ty()),
+                            cx,
+                            None,
+                            None,
+                        ))),
+                    })),
+                }),
                 cfg: None,
                 inline_stmt_id: None,
             });

@@ -498,6 +498,7 @@ impl<T> OnceLock<T> {
     }
 
     #[cold]
+    #[optimize(size)]
     fn initialize<F, E>(&self, f: F) -> Result<(), E>
     where
         F: FnOnce() -> Result<T, E>,
@@ -516,7 +517,7 @@ impl<T> OnceLock<T> {
                     res = Err(e);
 
                     // Treat the underlying `Once` as poisoned since we
-                    // failed to initialize our value. Calls
+                    // failed to initialize our value.
                     p.poison();
                 }
             }

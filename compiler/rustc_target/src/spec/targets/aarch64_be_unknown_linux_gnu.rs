@@ -1,7 +1,7 @@
 use crate::abi::Endian;
-use crate::spec::{base, StackProbeType, Target, TargetOptions};
+use crate::spec::{StackProbeType, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64_be-unknown-linux-gnu".into(),
         metadata: crate::spec::TargetMetadata {

@@ -1,5 +1,5 @@
 use crate::io::{
-    self, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
+    self, DEFAULT_BUF_SIZE, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write,
 };
 use crate::mem::{self, ManuallyDrop};
 use crate::{error, fmt, ptr};

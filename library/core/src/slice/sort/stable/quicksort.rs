@@ -1,9 +1,9 @@
 //! This module contains a stable quicksort and partition implementation.
 
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
+use crate::slice::sort::shared::FreezeMarker;
 use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::StableSmallSortTypeImpl;
-use crate::slice::sort::shared::FreezeMarker;
 use crate::{intrinsics, ptr};
 
 /// Sorts `v` recursively using quicksort.

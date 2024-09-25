@@ -162,12 +162,12 @@ use crate::any::Any;
 use crate::cell::{Cell, OnceCell, UnsafeCell};
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
-use crate::mem::{self, forget, ManuallyDrop};
+use crate::mem::{self, ManuallyDrop, forget};
 use crate::num::NonZero;
 use crate::pin::Pin;
 use crate::ptr::addr_of_mut;
-use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::Arc;
+use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::sync::Parker;
 use crate::sys::thread as imp;
 use crate::sys_common::{AsInner, IntoInner};
@@ -178,7 +178,7 @@ use crate::{env, fmt, io, panic, panicking, str};
 mod scoped;
 
 #[stable(feature = "scoped_threads", since = "1.63.0")]
-pub use scoped::{scope, Scope, ScopedJoinHandle};
+pub use scoped::{Scope, ScopedJoinHandle, scope};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
@@ -432,7 +432,7 @@ impl Builder {
     /// ```
     ///
     /// [`io::Result`]: crate::io::Result
-    #[stable(feature = "thread_spawn_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "thread_spawn_unchecked", since = "1.82.0")]
     pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>>
     where
         F: FnOnce() -> T,
@@ -1501,6 +1501,54 @@ impl Thread {
     #[must_use]
     pub fn name(&self) -> Option<&str> {
         self.inner.name.as_str()
+    }
+
+    /// Consumes the `Thread`, returning a raw pointer.
+    ///
+    /// To avoid a memory leak the pointer must be converted
+    /// back into a `Thread` using [`Thread::from_raw`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(thread_raw)]
+    ///
+    /// use std::thread::{self, Thread};
+    ///
+    /// let thread = thread::current();
+    /// let id = thread.id();
+    /// let ptr = Thread::into_raw(thread);
+    /// unsafe {
+    ///     assert_eq!(Thread::from_raw(ptr).id(), id);
+    /// }
+    /// ```
+    #[unstable(feature = "thread_raw", issue = "97523")]
+    pub fn into_raw(self) -> *const () {
+        // Safety: We only expose an opaque pointer, which maintains the `Pin` invariant.
+        let inner = unsafe { Pin::into_inner_unchecked(self.inner) };
+        Arc::into_raw(inner) as *const ()
+    }
+
+    /// Constructs a `Thread` from a raw pointer.
+    ///
+    /// The raw pointer must have been previously returned
+    /// by a call to [`Thread::into_raw`].
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because improper use may lead
+    /// to memory unsafety, even if the returned `Thread` is never
+    /// accessed.
+    ///
+    /// Creating a `Thread` from a pointer other than one returned
+    /// from [`Thread::into_raw`] is **undefined behavior**.
+    ///
+    /// Calling this function twice on the same raw pointer can lead
+    /// to a double-free if both `Thread` instances are dropped.
+    #[unstable(feature = "thread_raw", issue = "97523")]
+    pub unsafe fn from_raw(ptr: *const ()) -> Thread {
+        // Safety: Upheld by caller.
+        unsafe { Thread { inner: Pin::new_unchecked(Arc::from_raw(ptr as *const Inner)) } }
     }
 
     fn cname(&self) -> Option<&CStr> {

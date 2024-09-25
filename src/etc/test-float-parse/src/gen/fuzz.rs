@@ -1,14 +1,14 @@
-use std::any::{type_name, TypeId};
+use std::any::{TypeId, type_name};
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::marker::PhantomData;
 use std::ops::Range;
 use std::sync::Mutex;
 
-use rand::distributions::{Distribution, Standard};
 use rand::Rng;
-use rand_chacha::rand_core::SeedableRng;
+use rand::distributions::{Distribution, Standard};
 use rand_chacha::ChaCha8Rng;
+use rand_chacha::rand_core::SeedableRng;
 
 use crate::{Float, Generator, Int, SEED};
 

@@ -132,12 +132,11 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             // but correct span? This would make the lint at least accept crate-level lint attributes.
             return;
         };
-        self.tcx.emit_node_span_lint(
-            LARGE_ASSIGNMENTS,
-            lint_root,
+        self.tcx.emit_node_span_lint(LARGE_ASSIGNMENTS, lint_root, span, LargeAssignmentsLint {
             span,
-            LargeAssignmentsLint { span, size: too_large_size.bytes(), limit: limit as u64 },
-        );
+            size: too_large_size.bytes(),
+            limit: limit as u64,
+        });
         self.move_check.move_size_spans.push(span);
     }
 }

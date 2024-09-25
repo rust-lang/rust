@@ -1,5 +1,3 @@
-#![feature(const_mut_refs)]
-
 //@ normalize-stderr-test: "\(size: ., align: .\)" -> ""
 //@ normalize-stderr-test: " +│ ╾─+╼" -> ""
 

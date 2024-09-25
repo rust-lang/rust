@@ -1,26 +1,32 @@
 error: unreachable pattern
-  --> $DIR/uninhabited-patterns.rs:29:9
+  --> $DIR/uninhabited-patterns.rs:30:9
    |
 LL |         Ok(box _) => (),
-   |         ^^^^^^^^^ matches no values because `NotSoSecretlyEmpty` is uninhabited
+   |         ^^^^^^^^^-------
+   |         |
+   |         matches no values because `NotSoSecretlyEmpty` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
-  --> $DIR/uninhabited-patterns.rs:3:9
+  --> $DIR/uninhabited-patterns.rs:4:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/uninhabited-patterns.rs:38:9
+  --> $DIR/uninhabited-patterns.rs:39:9
    |
 LL |         Err(Ok(_y)) => (),
-   |         ^^^^^^^^^^^ matches no values because `NotSoSecretlyEmpty` is uninhabited
+   |         ^^^^^^^^^^^-------
+   |         |
+   |         matches no values because `NotSoSecretlyEmpty` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/uninhabited-patterns.rs:41:15
+  --> $DIR/uninhabited-patterns.rs:42:15
    |
 LL |     while let Some(_y) = foo() {
    |               ^^^^^^^^ matches no values because `NotSoSecretlyEmpty` is uninhabited

@@ -5,6 +5,11 @@
 //!
 //! It also checks that some targets have the correct set cfgs.
 
+// ignore-tidy-linelength
+//@ needs-llvm-components: arm x86
+// Note: without the needs-llvm-components it will fail on LLVM built without the required
+// components listed above.
+
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::path::PathBuf;

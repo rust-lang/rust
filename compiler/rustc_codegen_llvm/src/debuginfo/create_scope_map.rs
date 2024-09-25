@@ -1,7 +1,7 @@
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 use rustc_codegen_ssa::traits::*;
-use rustc_index::bit_set::BitSet;
 use rustc_index::Idx;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{Body, SourceScope};
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance};

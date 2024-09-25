@@ -5,6 +5,7 @@ use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, TyCtxt, TypeVisitableExt};
 use rustc_session::Limit;
 use rustc_span::sym;
+use tracing::{instrument, trace};
 
 // FIXME: check whether it is cheaper to precompute the entire call graph instead of invoking
 // this query ridiculously often.
@@ -135,6 +136,14 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
         }
         false
     }
+    // FIXME(-Znext-solver): Remove this hack when trait solver overflow can return an error.
+    // In code like that pointed out in #128887, the type complexity we ask the solver to deal with
+    // grows as we recurse into the call graph. If we use the same recursion limit here and in the
+    // solver, the solver hits the limit first and emits a fatal error. But if we use a reduced
+    // limit, we will hit the limit first and give up on looking for inlining. And in any case,
+    // the default recursion limits are quite generous for us. If we need to recurse 64 times
+    // into the call graph, we're probably not going to find any useful MIR inlining.
+    let recursion_limit = tcx.recursion_limit() / 2;
     process(
         tcx,
         param_env,
@@ -143,7 +152,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
         &mut Vec::new(),
         &mut FxHashSet::default(),
         &mut FxHashMap::default(),
-        tcx.recursion_limit(),
+        recursion_limit,
     )
 }
 

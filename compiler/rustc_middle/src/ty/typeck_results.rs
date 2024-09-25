@@ -23,8 +23,8 @@ use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::{
-    self, tls, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
-    GenericArgsRef, Ty, UserArgs,
+    self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
+    GenericArgsRef, Ty, UserArgs, tls,
 };
 
 #[derive(TyEncodable, TyDecodable, Debug, HashStable)]

@@ -1,7 +1,6 @@
 //@ run-pass
 
 #![feature(const_ptr_write)]
-#![feature(const_mut_refs)]
 
 // Or, equivalently: `MaybeUninit`.
 pub union BagOfBits<T: Copy> {

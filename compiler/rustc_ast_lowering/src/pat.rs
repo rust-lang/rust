@@ -3,15 +3,15 @@ use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
 };
 use super::{ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt};
-use crate::ImplTraitPosition;
+use crate::{AllowReturnTypeNotation, ImplTraitPosition};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     pub(crate) fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
@@ -38,6 +38,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
+                            AllowReturnTypeNotation::No,
                             ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
@@ -55,6 +56,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
+                            AllowReturnTypeNotation::No,
                             ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
@@ -66,6 +68,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
+                            AllowReturnTypeNotation::No,
                             ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );

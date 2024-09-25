@@ -3,7 +3,6 @@
 //
 //@ build-fail
 //@ stderr-per-bitwidth
-#![feature(const_mut_refs)]
 
 use std::cell::Cell;
 use std::mem::ManuallyDrop;

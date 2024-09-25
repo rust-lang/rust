@@ -237,7 +237,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 #[lang = "maybe_uninit"]
 #[derive(Copy)]
 #[repr(transparent)]
-#[cfg_attr(not(bootstrap), rustc_pub_transparent)]
+#[rustc_pub_transparent]
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
@@ -351,6 +351,9 @@ impl<T> MaybeUninit<T> {
     /// but `MaybeUninit<&'static i32>::zeroed()` is not because references must not
     /// be null.
     ///
+    /// Note that if `T` has padding bytes, those bytes are *not* preserved when the
+    /// `MaybeUninit<T>` value is returned from this function, so those bytes will *not* be zeroed.
+    ///
     /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     ///
@@ -390,7 +393,6 @@ impl<T> MaybeUninit<T> {
     // These are OK to allow since we do not leak &mut to user-visible API
     #[rustc_allow_const_fn_unstable(const_mut_refs)]
     #[rustc_allow_const_fn_unstable(const_ptr_write)]
-    #[rustc_allow_const_fn_unstable(const_maybe_uninit_as_mut_ptr)]
     #[rustc_const_stable(feature = "const_maybe_uninit_zeroed", since = "1.75.0")]
     pub const fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
@@ -567,7 +569,11 @@ impl<T> MaybeUninit<T> {
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_as_mut_ptr", issue = "75251")]
+    #[rustc_const_stable(
+        feature = "const_maybe_uninit_as_mut_ptr",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     #[inline(always)]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         // `MaybeUninit` and `ManuallyDrop` are both `repr(transparent)` so we can cast the pointer.

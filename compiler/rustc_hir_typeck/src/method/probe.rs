@@ -6,15 +6,15 @@ use std::ops::Deref;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
+use rustc_hir::def::DefKind;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
+use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::{
     self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
     ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, Upcast,
@@ -25,21 +25,22 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
     edit_distance_with_substrings, find_best_match_for_name_with_substrings,
 };
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::symbol::{Ident, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::CanonicalTyGoal;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
 };
-use rustc_trait_selection::traits::query::CanonicalTyGoal;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
+use tracing::{debug, instrument};
 
 use self::CandidateKind::*;
 pub(crate) use self::PickKind::*;
-use super::{suggest, CandidateSource, MethodError, NoMatchData};
+use super::{CandidateSource, MethodError, NoMatchData, suggest};
 use crate::FnCtxt;
 
 /// Boolean flag used to indicate if this search is for a suggestion
@@ -374,7 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If our autoderef loop had reached the recursion limit,
         // report an overflow error, but continue going on with
         // the truncated autoderef list.
-        if steps.reached_recursion_limit {
+        if steps.reached_recursion_limit && !is_suggestion.0 {
             self.probe(|_| {
                 let ty = &steps
                     .steps
@@ -402,7 +403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     mode,
                 }));
             } else if bad_ty.reached_raw_pointer
-                && !self.tcx.features().arbitrary_self_types
+                && !self.tcx.features().arbitrary_self_types_pointers
                 && !self.tcx.sess.at_least_rust_2018()
             {
                 // this case used to be allowed by the compiler,
@@ -620,6 +621,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.unsatisfied_predicates.borrow_mut().clear();
     }
 
+    /// When we're looking up a method by path (UFCS), we relate the receiver
+    /// types invariantly. When we are looking up a method by the `.` operator,
+    /// we relate them covariantly.
+    fn variance(&self) -> ty::Variance {
+        match self.mode {
+            Mode::MethodCall => ty::Covariant,
+            Mode::Path => ty::Invariant,
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // CANDIDATE ASSEMBLY
 
@@ -714,16 +725,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_inherent_candidates_for_incoherent_ty(&mut self, self_ty: Ty<'tcx>) {
-        let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsCandidateKey) else {
+        let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::InstantiateWithInfer) else {
             bug!("unexpected incoherent type: {:?}", self_ty)
         };
-        for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter().flatten() {
+        for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter() {
             self.assemble_inherent_impl_probe(impl_def_id);
         }
     }
 
     fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: DefId) {
-        let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id).into_iter().flatten();
+        let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id).into_iter();
         for &impl_def_id in impl_def_ids {
             self.assemble_inherent_impl_probe(impl_def_id);
         }
@@ -1442,7 +1453,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, impl_ty, impl_args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    match ocx.sup(cause, self.param_env, xform_self_ty, self_ty) {
+                    match ocx.relate(cause, self.param_env, self.variance(), self_ty, xform_self_ty)
+                    {
                         Ok(()) => {}
                         Err(err) => {
                             debug!("--> cannot relate self-types {:?}", err);
@@ -1484,8 +1496,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                         // Some trait methods are excluded for boxed slices before 2024.
                         // (`boxed_slice.into_iter()` wants a slice iterator for compatibility.)
-                        if self_ty.is_box()
-                            && self_ty.boxed_ty().is_slice()
+                        if self_ty.boxed_ty().is_some_and(Ty::is_slice)
                             && !method_name.span.at_least_rust_2024()
                         {
                             let trait_def = self.tcx.trait_def(poly_trait_ref.def_id());
@@ -1514,7 +1525,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         {
                             return ProbeResult::NoMatch;
                         }
-                        _ => match ocx.sup(cause, self.param_env, xform_self_ty, self_ty) {
+                        _ => match ocx.relate(
+                            cause,
+                            self.param_env,
+                            self.variance(),
+                            self_ty,
+                            xform_self_ty,
+                        ) {
                             Ok(()) => {}
                             Err(err) => {
                                 debug!("--> cannot relate self-types {:?}", err);
@@ -1560,7 +1577,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    match ocx.sup(cause, self.param_env, xform_self_ty, self_ty) {
+                    match ocx.relate(cause, self.param_env, self.variance(), self_ty, xform_self_ty)
+                    {
                         Ok(()) => {}
                         Err(err) => {
                             debug!("--> cannot relate self-types {:?}", err);
@@ -1603,7 +1621,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 debug!("comparing return_ty {:?} with xform ret ty {:?}", return_ty, xform_ret_ty);
-                match ocx.sup(cause, self.param_env, return_ty, xform_ret_ty) {
+                match ocx.relate(cause, self.param_env, self.variance(), xform_ret_ty, return_ty) {
                     Ok(()) => {}
                     Err(_) => {
                         result = ProbeResult::BadReturnType;

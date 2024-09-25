@@ -10,7 +10,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{sym, FileName};
+use rustc_span::{FileName, sym};
+use tracing::info;
 
 use crate::clean;
 use crate::clean::utils::has_doc_flag;
@@ -25,8 +26,11 @@ pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), E
 
     let dst = cx.dst.join("src").join(krate.name(cx.tcx()).as_str());
     cx.shared.ensure_dir(&dst)?;
+    let crate_name = krate.name(cx.tcx());
+    let crate_name = crate_name.as_str();
 
-    let mut collector = SourceCollector { dst, cx, emitted_local_sources: FxHashSet::default() };
+    let mut collector =
+        SourceCollector { dst, cx, emitted_local_sources: FxHashSet::default(), crate_name };
     collector.visit_crate(krate);
     Ok(())
 }
@@ -114,6 +118,8 @@ struct SourceCollector<'a, 'tcx> {
     /// Root destination to place all HTML output into
     dst: PathBuf,
     emitted_local_sources: FxHashSet<PathBuf>,
+
+    crate_name: &'a str,
 }
 
 impl DocVisitor for SourceCollector<'_, '_> {
@@ -209,6 +215,9 @@ impl SourceCollector<'_, '_> {
             },
         );
 
+        let src_fname = p.file_name().expect("source has no filename").to_os_string();
+        let mut fname = src_fname.clone();
+
         let root_path = PathBuf::from("../../").join(root_path.into_inner());
         let mut root_path = root_path.to_string_lossy();
         if let Some(c) = root_path.as_bytes().last()
@@ -216,12 +225,12 @@ impl SourceCollector<'_, '_> {
         {
             root_path += "/";
         }
+        let mut file_path = Path::new(&self.crate_name).join(&*cur.borrow());
+        file_path.push(&fname);
+        fname.push(".html");
         let mut cur = self.dst.join(cur.into_inner());
         shared.ensure_dir(&cur)?;
 
-        let src_fname = p.file_name().expect("source has no filename").to_os_string();
-        let mut fname = src_fname.clone();
-        fname.push(".html");
         cur.push(&fname);
 
         let title = format!("{} - source", src_fname.to_string_lossy());
@@ -249,7 +258,7 @@ impl SourceCollector<'_, '_> {
                     cx,
                     &root_path,
                     highlight::DecorationInfo::default(),
-                    SourceContext::Standalone,
+                    SourceContext::Standalone { file_path },
                 )
             },
             &shared.style_files,
@@ -289,9 +298,34 @@ where
     }
 }
 
-pub(crate) enum SourceContext {
-    Standalone,
-    Embedded { offset: usize, needs_expansion: bool },
+pub(crate) struct ScrapedInfo<'a> {
+    pub(crate) offset: usize,
+    pub(crate) name: &'a str,
+    pub(crate) url: &'a str,
+    pub(crate) title: &'a str,
+    pub(crate) locations: String,
+    pub(crate) needs_expansion: bool,
+}
+
+#[derive(Template)]
+#[template(path = "scraped_source.html")]
+struct ScrapedSource<'a, Code: std::fmt::Display> {
+    info: ScrapedInfo<'a>,
+    lines: RangeInclusive<usize>,
+    code_html: Code,
+}
+
+#[derive(Template)]
+#[template(path = "source.html")]
+struct Source<Code: std::fmt::Display> {
+    lines: RangeInclusive<usize>,
+    code_html: Code,
+    file_path: Option<(String, String)>,
+}
+
+pub(crate) enum SourceContext<'a> {
+    Standalone { file_path: PathBuf },
+    Embedded(ScrapedInfo<'a>),
 }
 
 /// Wrapper struct to render the source code of a file. This will do things like
@@ -303,23 +337,8 @@ pub(crate) fn print_src(
     context: &Context<'_>,
     root_path: &str,
     decoration_info: highlight::DecorationInfo,
-    source_context: SourceContext,
+    source_context: SourceContext<'_>,
 ) {
-    #[derive(Template)]
-    #[template(path = "source.html")]
-    struct Source<Code: std::fmt::Display> {
-        embedded: bool,
-        needs_expansion: bool,
-        lines: RangeInclusive<usize>,
-        code_html: Code,
-    }
-    let lines = s.lines().count();
-    let (embedded, needs_expansion, lines) = match source_context {
-        SourceContext::Standalone => (false, false, 1..=lines),
-        SourceContext::Embedded { offset, needs_expansion } => {
-            (true, needs_expansion, (1 + offset)..=(lines + offset))
-        }
-    };
     let current_href = context
         .href_from_span(clean::Span::new(file_span), false)
         .expect("only local crates should have sources emitted");
@@ -332,5 +351,24 @@ pub(crate) fn print_src(
         );
         Ok(())
     });
-    Source { embedded, needs_expansion, lines, code_html: code }.render_into(&mut writer).unwrap();
+    let lines = s.lines().count();
+    match source_context {
+        SourceContext::Standalone { file_path } => Source {
+            lines: (1..=lines),
+            code_html: code,
+            file_path: if let Some(file_name) = file_path.file_name()
+                && let Some(file_path) = file_path.parent()
+            {
+                Some((file_path.display().to_string(), file_name.display().to_string()))
+            } else {
+                None
+            },
+        }
+        .render_into(&mut writer)
+        .unwrap(),
+        SourceContext::Embedded(info) => {
+            let lines = (1 + info.offset)..=(lines + info.offset);
+            ScrapedSource { info, lines, code_html: code }.render_into(&mut writer).unwrap();
+        }
+    };
 }

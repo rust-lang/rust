@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use cranelift_module::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::interpret::{read_target_uint, AllocId, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{AllocId, GlobalAlloc, Scalar, read_target_uint};
 use rustc_middle::ty::{Binder, ExistentialTraitRef, ScalarInt};
 
 use crate::prelude::*;
@@ -161,13 +161,13 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                         fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                     }
-                    GlobalAlloc::VTable(ty, trait_ref) => {
+                    GlobalAlloc::VTable(ty, dyn_ty) => {
                         let data_id = data_id_for_vtable(
                             fx.tcx,
                             &mut fx.constants_cx,
                             fx.module,
                             ty,
-                            trait_ref,
+                            dyn_ty.principal(),
                         );
                         let local_data_id =
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
@@ -456,8 +456,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 GlobalAlloc::Memory(target_alloc) => {
                     data_id_for_alloc_id(cx, module, alloc_id, target_alloc.inner().mutability)
                 }
-                GlobalAlloc::VTable(ty, trait_ref) => {
-                    data_id_for_vtable(tcx, cx, module, ty, trait_ref)
+                GlobalAlloc::VTable(ty, dyn_ty) => {
+                    data_id_for_vtable(tcx, cx, module, ty, dyn_ty.principal())
                 }
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
@@ -490,6 +490,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 }
 
 /// Used only for intrinsic implementations that need a compile-time constant
+///
+/// All uses of this function are a bug inside stdarch. [`eval_mir_constant`]
+/// should be used everywhere, but for some vendor intrinsics stdarch forgets
+/// to wrap the immediate argument in `const {}`, necesitating this hack to get
+/// the correct value at compile time instead.
 pub(crate) fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     operand: &Operand<'tcx>,

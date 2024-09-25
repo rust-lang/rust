@@ -108,14 +108,14 @@ use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use rand::{thread_rng, RngCore};
-use rustc_data_structures::base_n::{BaseNString, ToBaseN, CASE_INSENSITIVE};
+use rand::{RngCore, thread_rng};
+use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorGuaranteed;
-use rustc_fs_util::{link_or_copy, try_canonicalize, LinkOrCopy};
+use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
 use rustc_middle::bug;
 use rustc_session::config::CrateType;
 use rustc_session::output::{collect_crate_types, find_crate_name};

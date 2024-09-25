@@ -252,15 +252,6 @@ const PARSED = [
         error: "Unexpected `'` after `b` (not a valid identifier)",
     },
     {
-        query: "a->",
-        elems: [],
-        foundElems: 0,
-        original: "a->",
-        returned: [],
-        userQuery: "a->",
-        error: "Expected at least one item after `->`",
-    },
-    {
         query: '"p" <a>',
         elems: [],
         foundElems: 0,

@@ -2,8 +2,6 @@
 
 //@ edition:2018
 
-#![feature(const_extern_fn)]
-
 fn main() {
     async fn ff1() {} // OK.
     unsafe fn ff2() {} // OK.

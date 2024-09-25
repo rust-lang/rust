@@ -18,7 +18,7 @@
 #[cfg(test)]
 mod tests;
 
-use core::char::{encode_utf16_raw, encode_utf8_raw};
+use core::char::{encode_utf8_raw, encode_utf16_raw};
 use core::clone::CloneToUninit;
 use core::str::next_code_point;
 

@@ -1,6 +1,6 @@
-use crate::spec::{base, RelocModel, Target, TargetOptions};
+use crate::spec::{RelocModel, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let base = base::solid::opts("asp3");
     Target {
         llvm_target: "armv7a-none-eabi".into(),

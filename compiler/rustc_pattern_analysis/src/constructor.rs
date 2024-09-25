@@ -176,13 +176,13 @@
 //! we assume they never cover each other. In order to respect the invariants of
 //! [`SplitConstructorSet`], we give each `Opaque` constructor a unique id so we can recognize it.
 
-use std::cmp::{self, max, min, Ordering};
+use std::cmp::{self, Ordering, max, min};
 use std::fmt;
 use std::iter::once;
 
 use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
-use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::IndexVec;
+use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use smallvec::SmallVec;
 
 use self::Constructor::*;
@@ -288,7 +288,7 @@ impl IntRange {
     /// Best effort; will not know that e.g. `255u8..` is a singleton.
     pub fn is_singleton(&self) -> bool {
         // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
-        // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
+        // to infinite, this correctly only detects ranges that contain exactly one `Finite(x)`.
         self.lo.plus_one() == Some(self.hi)
     }
 

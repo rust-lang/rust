@@ -7,7 +7,7 @@
 use std::fmt::{self, Display};
 
 use crate::def::DefKind;
-use crate::{hir, Item, ItemKind, TraitItem, TraitItemKind};
+use crate::{Item, ItemKind, TraitItem, TraitItemKind, hir};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum GenericParamKind {

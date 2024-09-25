@@ -2,8 +2,8 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, kw};
 use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
@@ -255,7 +255,9 @@ impl<'tcx> Generics {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Lifetime => param,
-            _ => bug!("expected lifetime parameter, but found another generic parameter"),
+            _ => {
+                bug!("expected lifetime parameter, but found another generic parameter: {param:#?}")
+            }
         }
     }
 
@@ -264,7 +266,7 @@ impl<'tcx> Generics {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Type { .. } => param,
-            _ => bug!("expected type parameter, but found another generic parameter"),
+            _ => bug!("expected type parameter, but found another generic parameter: {param:#?}"),
         }
     }
 
@@ -273,7 +275,7 @@ impl<'tcx> Generics {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Const { .. } => param,
-            _ => bug!("expected const parameter, but found another generic parameter"),
+            _ => bug!("expected const parameter, but found another generic parameter: {param:#?}"),
         }
     }
 

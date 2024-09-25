@@ -330,8 +330,12 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Float(FloatTy::F128) => "C4f128",
             ty::Never => "z",
 
-            // Placeholders (should be demangled as `_`).
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => "p",
+            // Should only be encountered with polymorphization,
+            // or within the identity-substituted impl header of an
+            // item nested within an impl item.
+            ty::Param(_) => "p",
+
+            ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
 
             _ => "",
         };
@@ -381,7 +385,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                     let consts = [
                         start.unwrap_or(self.tcx.consts.unit),
                         end.unwrap_or(self.tcx.consts.unit),
-                        ty::Const::from_bool(self.tcx, include_end).into(),
+                        ty::Const::from_bool(self.tcx, include_end),
                     ];
                     // HACK: Represent as tuple until we have something better.
                     // HACK: constants are used in arrays, even if the types don't match.
@@ -416,12 +420,18 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
             | ty::FnDef(def_id, args)
-            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => {
                 self.print_def_path(def_id, args)?;
             }
+
+            // We may still encounter projections here due to the printing
+            // logic sometimes passing identity-substituted impl headers.
+            ty::Alias(ty::Projection, ty::AliasTy { def_id, args, .. }) => {
+                self.print_def_path(def_id, args)?;
+            }
+
             ty::Foreign(def_id) => {
                 self.print_def_path(def_id, &[])?;
             }
@@ -467,8 +477,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 r.print(self)?;
             }
 
-            ty::Alias(ty::Inherent, _) => bug!("symbol_names: unexpected inherent projection"),
-            ty::Alias(ty::Weak, _) => bug!("symbol_names: unexpected weak projection"),
+            ty::Alias(..) => bug!("symbol_names: unexpected alias"),
             ty::CoroutineWitness(..) => bug!("symbol_names: unexpected `CoroutineWitness`"),
         }
 
@@ -550,21 +559,26 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         let (ct_ty, valtree) = match ct.kind() {
             ty::ConstKind::Value(ty, val) => (ty, val),
 
-            // Placeholders (should be demangled as `_`).
-            // NOTE(eddyb) despite `Unevaluated` having a `DefId` (and therefore
-            // a path), even for it we still need to encode a placeholder, as
-            // the path could refer back to e.g. an `impl` using the constant.
-            ty::ConstKind::Unevaluated(_)
-            | ty::ConstKind::Expr(_)
-            | ty::ConstKind::Param(_)
-            | ty::ConstKind::Infer(_)
-            | ty::ConstKind::Bound(..)
-            | ty::ConstKind::Placeholder(_)
-            | ty::ConstKind::Error(_) => {
+            // Should only be encountered with polymorphization,
+            // or within the identity-substituted impl header of an
+            // item nested within an impl item.
+            ty::ConstKind::Param(_) => {
                 // Never cached (single-character).
                 self.push("p");
                 return Ok(());
             }
+
+            // We may still encounter unevaluated consts due to the printing
+            // logic sometimes passing identity-substituted impl headers.
+            ty::Unevaluated(ty::UnevaluatedConst { def, args, .. }) => {
+                return self.print_def_path(def, args);
+            }
+
+            ty::ConstKind::Expr(_)
+            | ty::ConstKind::Infer(_)
+            | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(_)
+            | ty::ConstKind::Error(_) => bug!(),
         };
 
         if let Some(&i) = self.consts.get(&ct) {
@@ -593,45 +607,40 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 let _ = write!(self.out, "{bits:x}_");
             }
 
+            // Handle `str` as partial support for unsized constants
+            ty::Str => {
+                let tcx = self.tcx();
+                // HACK(jaic1): hide the `str` type behind a reference
+                // for the following transformation from valtree to raw bytes
+                let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, ct_ty);
+                let slice = valtree.try_to_raw_bytes(tcx, ref_ty).unwrap_or_else(|| {
+                    bug!("expected to get raw bytes from valtree {:?} for type {:}", valtree, ct_ty)
+                });
+                let s = std::str::from_utf8(slice).expect("non utf8 str from MIR interpreter");
+
+                // "e" for str as a basic type
+                self.push("e");
+
+                // FIXME(eddyb) use a specialized hex-encoding loop.
+                for byte in s.bytes() {
+                    let _ = write!(self.out, "{byte:02x}");
+                }
+
+                self.push("_");
+            }
+
             // FIXME(valtrees): Remove the special case for `str`
             // here and fully support unsized constants.
-            ty::Ref(_, inner_ty, mutbl) => {
+            ty::Ref(_, _, mutbl) => {
                 self.push(match mutbl {
                     hir::Mutability::Not => "R",
                     hir::Mutability::Mut => "Q",
                 });
 
-                match inner_ty.kind() {
-                    ty::Str if mutbl.is_not() => {
-                        let slice =
-                            valtree.try_to_raw_bytes(self.tcx(), ct_ty).unwrap_or_else(|| {
-                                bug!(
-                                    "expected to get raw bytes from valtree {:?} for type {:}",
-                                    valtree,
-                                    ct_ty
-                                )
-                            });
-                        let s =
-                            std::str::from_utf8(slice).expect("non utf8 str from MIR interpreter");
-
-                        self.push("e");
-
-                        // FIXME(eddyb) use a specialized hex-encoding loop.
-                        for byte in s.bytes() {
-                            let _ = write!(self.out, "{byte:02x}");
-                        }
-
-                        self.push("_");
-                    }
-                    _ => {
-                        let pointee_ty = ct_ty
-                            .builtin_deref(true)
-                            .expect("tried to dereference on non-ptr type");
-                        let dereferenced_const =
-                            ty::Const::new_value(self.tcx, valtree, pointee_ty);
-                        dereferenced_const.print(self)?;
-                    }
-                }
+                let pointee_ty =
+                    ct_ty.builtin_deref(true).expect("tried to dereference on non-ptr type");
+                let dereferenced_const = ty::Const::new_value(self.tcx, valtree, pointee_ty);
+                dereferenced_const.print(self)?;
             }
 
             ty::Array(..) | ty::Tuple(..) | ty::Adt(..) | ty::Slice(_) => {

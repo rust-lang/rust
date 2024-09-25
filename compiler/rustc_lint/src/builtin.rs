@@ -28,10 +28,10 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_errors::{Applicability, LintDiagnostic};
-use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
+use rustc_feature::{AttributeGate, BuiltinAttribute, GateIssue, Stability, deprecated_attributes};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{Body, FnDecl, GenericParamKind, PatKind, PredicateOrigin};
 use rustc_middle::bug;
@@ -39,13 +39,13 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
+use rustc_session::lint::FutureIncompatibilityReason;
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;
-use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::Abi;
 use rustc_target::asm::InlineAsmArch;
@@ -68,10 +68,10 @@ use crate::lints::{
     BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
     BuiltinWhileTrue, InvalidAsmLabel,
 };
-use crate::nonstandard_style::{method_context, MethodLateContext};
+use crate::nonstandard_style::{MethodLateContext, method_context};
 use crate::{
-    fluent_generated as fluent, EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level,
-    LintContext,
+    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
+    fluent_generated as fluent,
 };
 
 declare_lint! {
@@ -120,11 +120,10 @@ impl EarlyLintPass for WhileTrue {
                 "{}loop",
                 label.map_or_else(String::new, |label| format!("{}: ", label.ident,))
             );
-            cx.emit_span_lint(
-                WHILE_TRUE,
-                condition_span,
-                BuiltinWhileTrue { suggestion: condition_span, replace },
-            );
+            cx.emit_span_lint(WHILE_TRUE, condition_span, BuiltinWhileTrue {
+                suggestion: condition_span,
+                replace,
+            });
         }
     }
 }
@@ -426,29 +425,20 @@ impl MissingDoc {
         article: &'static str,
         desc: &'static str,
     ) {
-        // If we're building a test harness, then warning about
-        // documentation is probably not really relevant right now.
-        if cx.sess().opts.test {
-            return;
-        }
-
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
         // have a `NodeId`).
-        if def_id != CRATE_DEF_ID {
-            if !cx.effective_visibilities.is_exported(def_id) {
-                return;
-            }
+        if def_id != CRATE_DEF_ID && !cx.effective_visibilities.is_exported(def_id) {
+            return;
         }
 
         let attrs = cx.tcx.hir().attrs(cx.tcx.local_def_id_to_hir_id(def_id));
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
-            cx.emit_span_lint(
-                MISSING_DOCS,
-                cx.tcx.def_span(def_id),
-                BuiltinMissingDoc { article, desc },
-            );
+            cx.emit_span_lint(MISSING_DOCS, cx.tcx.def_span(def_id), BuiltinMissingDoc {
+                article,
+                desc,
+            });
         }
     }
 }
@@ -729,11 +719,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             .next()
             .is_some();
         if !has_impl {
-            cx.emit_span_lint(
-                MISSING_DEBUG_IMPLEMENTATIONS,
-                item.span,
-                BuiltinMissingDebugImpl { tcx: cx.tcx, def_id: debug },
-            );
+            cx.emit_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item.span, BuiltinMissingDebugImpl {
+                tcx: cx.tcx,
+                def_id: debug,
+            });
         }
     }
 }
@@ -855,24 +844,21 @@ impl EarlyLintPass for DeprecatedAttr {
                             BuiltinDeprecatedAttrLinkSuggestion::Default { suggestion: attr.span }
                         }
                     };
-                    cx.emit_span_lint(
-                        DEPRECATED,
-                        attr.span,
-                        BuiltinDeprecatedAttrLink { name, reason, link, suggestion },
-                    );
+                    cx.emit_span_lint(DEPRECATED, attr.span, BuiltinDeprecatedAttrLink {
+                        name,
+                        reason,
+                        link,
+                        suggestion,
+                    });
                 }
                 return;
             }
         }
         if attr.has_name(sym::no_start) || attr.has_name(sym::crate_id) {
-            cx.emit_span_lint(
-                DEPRECATED,
-                attr.span,
-                BuiltinDeprecatedAttrUsed {
-                    name: pprust::path_to_string(&attr.get_normal_item().path),
-                    suggestion: attr.span,
-                },
-            );
+            cx.emit_span_lint(DEPRECATED, attr.span, BuiltinDeprecatedAttrUsed {
+                name: pprust::path_to_string(&attr.get_normal_item().path),
+                suggestion: attr.span,
+            });
         }
     }
 }
@@ -907,11 +893,11 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
                     BuiltinUnusedDocCommentSub::BlockHelp
                 }
             };
-            cx.emit_span_lint(
-                UNUSED_DOC_COMMENTS,
-                span,
-                BuiltinUnusedDocComment { kind: node_kind, label: node_span, sub },
-            );
+            cx.emit_span_lint(UNUSED_DOC_COMMENTS, span, BuiltinUnusedDocComment {
+                kind: node_kind,
+                label: node_span,
+                sub,
+            });
         }
     }
 }
@@ -1041,11 +1027,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                 match param.kind {
                     GenericParamKind::Lifetime { .. } => {}
                     GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                        cx.emit_span_lint(
-                            NO_MANGLE_GENERIC_ITEMS,
-                            span,
-                            BuiltinNoMangleGeneric { suggestion: no_mangle_attr.span },
-                        );
+                        cx.emit_span_lint(NO_MANGLE_GENERIC_ITEMS, span, BuiltinNoMangleGeneric {
+                            suggestion: no_mangle_attr.span,
+                        });
                         break;
                     }
                 }
@@ -1072,11 +1056,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
 
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
-                    cx.emit_span_lint(
-                        NO_MANGLE_CONST_ITEMS,
-                        it.span,
-                        BuiltinConstNoMangle { suggestion },
-                    );
+                    cx.emit_span_lint(NO_MANGLE_CONST_ITEMS, it.span, BuiltinConstNoMangle {
+                        suggestion,
+                    });
                 }
             }
             hir::ItemKind::Impl(hir::Impl { generics, items, .. }) => {
@@ -1324,15 +1306,11 @@ impl UnreachablePub {
                 applicability = Applicability::MaybeIncorrect;
             }
             let def_span = cx.tcx.def_span(def_id);
-            cx.emit_span_lint(
-                UNREACHABLE_PUB,
-                def_span,
-                BuiltinUnreachablePub {
-                    what,
-                    suggestion: (vis_span, applicability),
-                    help: exportable,
-                },
-            );
+            cx.emit_span_lint(UNREACHABLE_PUB, def_span, BuiltinUnreachablePub {
+                what,
+                suggestion: (vis_span, applicability),
+                help: exportable,
+            });
         }
     }
 }
@@ -1476,32 +1454,24 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         let enable_feat_help = cx.tcx.sess.is_nightly_build();
 
         if let [.., label_sp] = *where_spans {
-            cx.emit_span_lint(
-                TYPE_ALIAS_BOUNDS,
-                where_spans,
-                BuiltinTypeAliasBounds {
-                    in_where_clause: true,
-                    label: label_sp,
-                    enable_feat_help,
-                    suggestions: vec![(generics.where_clause_span, String::new())],
-                    preds: generics.predicates,
-                    ty: ty.take(),
-                },
-            );
+            cx.emit_span_lint(TYPE_ALIAS_BOUNDS, where_spans, BuiltinTypeAliasBounds {
+                in_where_clause: true,
+                label: label_sp,
+                enable_feat_help,
+                suggestions: vec![(generics.where_clause_span, String::new())],
+                preds: generics.predicates,
+                ty: ty.take(),
+            });
         }
         if let [.., label_sp] = *inline_spans {
-            cx.emit_span_lint(
-                TYPE_ALIAS_BOUNDS,
-                inline_spans,
-                BuiltinTypeAliasBounds {
-                    in_where_clause: false,
-                    label: label_sp,
-                    enable_feat_help,
-                    suggestions: inline_sugg,
-                    preds: generics.predicates,
-                    ty,
-                },
-            );
+            cx.emit_span_lint(TYPE_ALIAS_BOUNDS, inline_spans, BuiltinTypeAliasBounds {
+                in_where_clause: false,
+                label: label_sp,
+                enable_feat_help,
+                suggestions: inline_sugg,
+                preds: generics.predicates,
+                ty,
+            });
         }
     }
 }
@@ -1587,11 +1557,10 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     | ClauseKind::ConstEvaluatable(..)  => continue,
                 };
                 if predicate.is_global() {
-                    cx.emit_span_lint(
-                        TRIVIAL_BOUNDS,
-                        span,
-                        BuiltinTrivialBounds { predicate_kind_name, predicate },
-                    );
+                    cx.emit_span_lint(TRIVIAL_BOUNDS, span, BuiltinTrivialBounds {
+                        predicate_kind_name,
+                        predicate,
+                    });
                 }
             }
         }
@@ -1851,9 +1820,16 @@ impl KeywordIdents {
                 TokenTree::Token(token, _) => {
                     if let Some((ident, token::IdentIsRaw::No)) = token.ident() {
                         if !prev_dollar {
-                            self.check_ident_token(cx, UnderMacro(true), ident);
+                            self.check_ident_token(cx, UnderMacro(true), ident, "");
                         }
-                    } else if *token == TokenKind::Dollar {
+                    } else if let Some((ident, token::IdentIsRaw::No)) = token.lifetime() {
+                        self.check_ident_token(
+                            cx,
+                            UnderMacro(true),
+                            ident.without_first_quote(),
+                            "'",
+                        );
+                    } else if token.kind == TokenKind::Dollar {
                         prev_dollar = true;
                         continue;
                     }
@@ -1869,6 +1845,7 @@ impl KeywordIdents {
         cx: &EarlyContext<'_>,
         UnderMacro(under_macro): UnderMacro,
         ident: Ident,
+        prefix: &'static str,
     ) {
         let (lint, edition) = match ident.name {
             kw::Async | kw::Await | kw::Try => (KEYWORD_IDENTS_2018, Edition::Edition2018),
@@ -1899,11 +1876,12 @@ impl KeywordIdents {
             return;
         }
 
-        cx.emit_span_lint(
-            lint,
-            ident.span,
-            BuiltinKeywordIdents { kw: ident, next: edition, suggestion: ident.span },
-        );
+        cx.emit_span_lint(lint, ident.span, BuiltinKeywordIdents {
+            kw: ident,
+            next: edition,
+            suggestion: ident.span,
+            prefix,
+        });
     }
 }
 
@@ -1915,7 +1893,11 @@ impl EarlyLintPass for KeywordIdents {
         self.check_tokens(cx, &mac.args.tokens);
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
-        self.check_ident_token(cx, UnderMacro(false), ident);
+        if ident.name.as_str().starts_with('\'') {
+            self.check_ident_token(cx, UnderMacro(false), ident.without_first_quote(), "'");
+        } else {
+            self.check_ident_token(cx, UnderMacro(false), ident, "");
+        }
     }
 }
 
@@ -2318,11 +2300,11 @@ impl EarlyLintPass for IncompleteInternalFeatures {
                     let help =
                         HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
 
-                    cx.emit_span_lint(
-                        INCOMPLETE_FEATURES,
-                        span,
-                        BuiltinIncompleteFeatures { name, note, help },
-                    );
+                    cx.emit_span_lint(INCOMPLETE_FEATURES, span, BuiltinIncompleteFeatures {
+                        name,
+                        note,
+                        help,
+                    });
                 } else {
                     cx.emit_span_lint(INTERNAL_FEATURES, span, BuiltinInternalFeatures { name });
                 }
@@ -2643,17 +2625,13 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     InitKind::Uninit => fluent::lint_builtin_unpermitted_type_init_uninit,
                 };
                 let sub = BuiltinUnpermittedTypeInitSub { err };
-                cx.emit_span_lint(
-                    INVALID_VALUE,
-                    expr.span,
-                    BuiltinUnpermittedTypeInit {
-                        msg,
-                        ty: conjured_ty,
-                        label: expr.span,
-                        sub,
-                        tcx: cx.tcx,
-                    },
-                );
+                cx.emit_span_lint(INVALID_VALUE, expr.span, BuiltinUnpermittedTypeInit {
+                    msg,
+                    ty: conjured_ty,
+                    label: expr.span,
+                    sub,
+                    tcx: cx.tcx,
+                });
             }
         }
     }
@@ -2731,11 +2709,9 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
 
         if let rustc_hir::ExprKind::Unary(rustc_hir::UnOp::Deref, expr_deref) = expr.kind {
             if is_null_ptr(cx, expr_deref) {
-                cx.emit_span_lint(
-                    DEREF_NULLPTR,
-                    expr.span,
-                    BuiltinDerefNullptr { label: expr.span },
-                );
+                cx.emit_span_lint(DEREF_NULLPTR, expr.span, BuiltinDerefNullptr {
+                    label: expr.span,
+                });
             }
         }
     }
@@ -2952,18 +2928,14 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                     let span = span.unwrap_or(*template_span);
                     match label_kind {
                         AsmLabelKind::Named => {
-                            cx.emit_span_lint(
-                                NAMED_ASM_LABELS,
-                                span,
-                                InvalidAsmLabel::Named { missing_precise_span },
-                            );
+                            cx.emit_span_lint(NAMED_ASM_LABELS, span, InvalidAsmLabel::Named {
+                                missing_precise_span,
+                            });
                         }
                         AsmLabelKind::FormatArg => {
-                            cx.emit_span_lint(
-                                NAMED_ASM_LABELS,
-                                span,
-                                InvalidAsmLabel::FormatArg { missing_precise_span },
-                            );
+                            cx.emit_span_lint(NAMED_ASM_LABELS, span, InvalidAsmLabel::FormatArg {
+                                missing_precise_span,
+                            });
                         }
                         // the binary asm issue only occurs when using intel syntax on x86 targets
                         AsmLabelKind::Binary
@@ -2973,11 +2945,10 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                                     Some(InlineAsmArch::X86 | InlineAsmArch::X86_64) | None
                                 ) =>
                         {
-                            cx.emit_span_lint(
-                                BINARY_ASM_LABELS,
+                            cx.emit_span_lint(BINARY_ASM_LABELS, span, InvalidAsmLabel::Binary {
+                                missing_precise_span,
                                 span,
-                                InvalidAsmLabel::Binary { missing_precise_span, span },
-                            )
+                            })
                         }
                         // No lint on anything other than x86
                         AsmLabelKind::Binary => (),

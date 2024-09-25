@@ -14,13 +14,13 @@ use rustc_target::spec::abi::Abi;
 use tracing::{info, instrument, trace};
 
 use super::{
-    throw_ub, throw_ub_custom, throw_unsup_format, CtfeProvenance, FnVal, ImmTy, InterpCx,
-    InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable, Provenance, ReturnAction, Scalar,
-    StackPopCleanup, StackPopInfo,
+    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
+    Projectable, Provenance, ReturnAction, Scalar, StackPopCleanup, StackPopInfo, throw_ub,
+    throw_ub_custom, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
-/// An argment passed to a function.
+/// An argument passed to a function.
 #[derive(Clone, Debug)]
 pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// Pass a copy of the given operand.
@@ -123,7 +123,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
         };
         let inner = self.unfold_transparent(inner, /* may_unfold */ |def| {
-            // Stop at NPO tpyes so that we don't miss that attribute in the check below!
+            // Stop at NPO types so that we don't miss that attribute in the check below!
             def.is_struct() && !is_npo(def)
         });
         Ok(match inner.ty.kind() {
@@ -189,7 +189,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ty::Ref(_, ty, _) => *ty,
                 ty::RawPtr(ty, _) => *ty,
                 // We only accept `Box` with the default allocator.
-                _ if ty.is_box_global(*self.tcx) => ty.boxed_ty(),
+                _ if ty.is_box_global(*self.tcx) => ty.expect_boxed_ty(),
                 _ => return Ok(None),
             }))
         };
@@ -221,7 +221,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
 
         // Fall back to exact equality.
-        // FIXME: We are missing the rules for "repr(C) wrapping compatible types".
         Ok(caller == callee)
     }
 
@@ -234,14 +233,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // so we implement a type-based check that reflects the guaranteed rules for ABI compatibility.
         if self.layout_compat(caller_abi.layout, callee_abi.layout)? {
             // Ensure that our checks imply actual ABI compatibility for this concrete call.
+            // (This can fail e.g. if `#[rustc_nonnull_optimization_guaranteed]` is used incorrectly.)
             assert!(caller_abi.eq_abi(callee_abi));
-            return Ok(true);
+            Ok(true)
         } else {
             trace!(
                 "check_argument_compat: incompatible ABIs:\ncaller: {:?}\ncallee: {:?}",
                 caller_abi, callee_abi
             );
-            return Ok(false);
+            Ok(false)
         }
     }
 
@@ -364,13 +364,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 "caller ABI: {:#?}, args: {:#?}",
                 caller_fn_abi,
                 args.iter()
-                    .map(|arg| (
-                        arg.layout().ty,
-                        match arg {
-                            FnArg::Copy(op) => format!("copy({op:?})"),
-                            FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
-                        }
-                    ))
+                    .map(|arg| (arg.layout().ty, match arg {
+                        FnArg::Copy(op) => format!("copy({op:?})"),
+                        FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
+                    }))
                     .collect::<Vec<_>>()
             );
             trace!(
@@ -823,7 +820,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             (Abi::Rust, fn_abi),
             &[FnArg::Copy(arg.into())],
             false,
-            &ret.into(),
+            &ret,
             Some(target),
             unwind,
         )
@@ -853,13 +850,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         );
 
         // Check `unwinding`.
-        assert_eq!(
-            unwinding,
-            match self.frame().loc {
-                Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
-                Right(_) => true,
-            }
-        );
+        assert_eq!(unwinding, match self.frame().loc {
+            Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
+            Right(_) => true,
+        });
         if unwinding && self.frame_idx() == 0 {
             throw_ub_custom!(fluent::const_eval_unwind_past_top);
         }

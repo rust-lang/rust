@@ -12,6 +12,9 @@ on:
   schedule:
     - cron: '44 4 * * *' # At 4:44 UTC every day.
 
+permissions:
+  contents: write
+
 defaults:
   run:
     shell: bash

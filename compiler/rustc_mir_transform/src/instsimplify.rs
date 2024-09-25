@@ -5,7 +5,7 @@ use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::{self, layout, GenericArgsRef, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, layout};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
@@ -13,23 +13,17 @@ use rustc_target::spec::abi::Abi;
 use crate::simplify::simplify_duplicate_switch_targets;
 use crate::take_array;
 
-pub enum InstSimplify {
+pub(super) enum InstSimplify {
     BeforeInline,
     AfterSimplifyCfg,
 }
 
-impl InstSimplify {
-    pub fn name(&self) -> &'static str {
+impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
+    fn name(&self) -> &'static str {
         match self {
             InstSimplify::BeforeInline => "InstSimplify-before-inline",
             InstSimplify::AfterSimplifyCfg => "InstSimplify-after-simplifycfg",
         }
-    }
-}
-
-impl<'tcx> MirPass<'tcx> for InstSimplify {
-    fn name(&self) -> &'static str {
-        self.name()
     }
 
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
@@ -69,13 +63,13 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
     }
 }
 
-struct InstSimplifyContext<'tcx, 'a> {
+struct InstSimplifyContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
     param_env: ParamEnv<'tcx>,
 }
 
-impl<'tcx> InstSimplifyContext<'tcx, '_> {
+impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     fn should_simplify(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
         self.should_simplify_custom(source_info, "Rvalue", rvalue)
     }

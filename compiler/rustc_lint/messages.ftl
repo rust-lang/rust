@@ -252,6 +252,11 @@ lint_duplicate_macro_attribute =
 
 lint_duplicate_matcher_binding = duplicate matcher binding
 
+lint_elided_named_lifetime = elided lifetime has a name
+    .label_elided = this elided lifetime gets resolved as `{$name}`
+    .label_named = lifetime `{$name}` declared here
+    .suggestion = consider specifying it explicitly
+
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum
@@ -328,6 +333,11 @@ lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
         [Restricted] {""}
         *[other] {" "}{$identifier_type}
     } Unicode general security profile
+
+lint_if_let_rescope = `if let` assigns a shorter lifetime since Edition 2024
+    .label = this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
+    .help = the value is now dropped here in Edition 2024
+    .suggestion = a `match` with a single arm can preserve the drop order up to Edition 2021
 
 lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
 
@@ -580,10 +590,7 @@ lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may 
 lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks should be written at the same level as their item
-    .remove_help = remove `{$may_remove_part}` to make the `impl` local
-    .without_trait = methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
-    .with_trait = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-    .bounds = `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
+    .non_local = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
     .doctest = make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
     .exception = items in an anonymous const item (`const _: () = {"{"} ... {"}"}`) are treated as in the same scope as the anonymous const's declaration for the purpose of this lint
     .const_anon = use a const-anon item to suppress this lint
@@ -604,12 +611,6 @@ lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#
     .help_doctest =
         remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
     .non_local = a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
-
-lint_non_local_definitions_may_move = may need to be moved as well
-
-lint_non_local_definitions_of_trait_not_local = `{$of_trait_str}` is not local
-
-lint_non_local_definitions_self_ty_not_local = `{$self_ty_str}` is not local
 
 lint_non_snake_case = {$sort} `{$name}` should have a snake case name
     .rename_or_convert_suggestion = rename the identifier or convert it to a snake case raw identifier
@@ -695,10 +696,17 @@ lint_ptr_null_checks_ref = references are not nullable, so checking them for nul
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
+lint_query_untracked = `{$method}` accesses information that is not tracked by the query system
+    .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
 lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
 
 lint_range_use_inclusive_range = use an inclusive range instead
 
+
+lint_raw_prefix = prefix `'r` is reserved
+    .label = reserved prefix
+    .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
 
 lint_reason_must_be_string_literal = reason must be a string literal
 
@@ -752,6 +760,13 @@ lint_single_use_lifetime = lifetime parameter `{$ident}` only used once
 
 lint_span_use_eq_ctxt = use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
 
+lint_static_mut_refs_lint = creating a {$shared_label}reference to mutable static is discouraged
+    .label = {$shared_label}reference to mutable static
+    .suggestion = use `&raw const` instead to create a raw pointer
+    .suggestion_mut = use `&raw mut` instead to create a raw pointer
+    .shared_note = shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+    .mut_note = mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+
 lint_supertrait_as_deref_target = this `Deref` implementation is covered by an implicit supertrait coercion
     .label = `{$self_ty}` implements `Deref<Target = dyn {$target_principal}>` which conflicts with supertrait `{$supertrait_principal}`
     .label2 = target type is a supertrait of `{$self_ty}`
@@ -778,6 +793,9 @@ lint_tykind = usage of `ty::TyKind`
 
 lint_tykind_kind = usage of `ty::TyKind::<kind>`
     .suggestion = try using `ty::<kind>` directly
+
+lint_type_ir_inherent_usage = do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
+    .note = the method or struct you're looking for is likely defined somewhere else downstream in the compiler
 
 lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
     .label = argument has type `{$arg_ty}`
@@ -869,6 +887,8 @@ lint_unnameable_test_items = cannot test inner items
 
 lint_unnecessary_qualification = unnecessary qualification
     .suggestion = remove the unnecessary path segments
+
+lint_unqualified_local_imports = `use` of a local item without leading `self::`, `super::`, or `crate::`
 
 lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
     .label = usage of unsafe attribute

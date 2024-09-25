@@ -4,8 +4,8 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::ProcMacroExecutionStrategy;
-use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::Span;
+use rustc_span::profiling::SpannedEventArgRecorder;
 
 use crate::base::{self, *};
 use crate::{errors, proc_macro_server};
@@ -43,9 +43,9 @@ pub struct BangProcMacro {
 }
 
 impl base::BangProcMacro for BangProcMacro {
-    fn expand<'cx>(
+    fn expand(
         &self,
-        ecx: &'cx mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
@@ -73,9 +73,9 @@ pub struct AttrProcMacro {
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
-    fn expand<'cx>(
+    fn expand(
         &self,
-        ecx: &'cx mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_>,
         span: Span,
         annotation: TokenStream,
         annotated: TokenStream,

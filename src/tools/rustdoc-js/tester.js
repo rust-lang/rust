@@ -427,7 +427,6 @@ function loadSearchJS(doc_folder, resource_suffix) {
             return list[descIndex];
         },
         loadedDescShard: function(crate, shard, data) {
-            //console.log(this.descShards);
             this.descShards.get(crate)[shard].resolve(data.split("\n"));
         },
     };
@@ -436,15 +435,15 @@ function loadSearchJS(doc_folder, resource_suffix) {
     const searchJs = fs.readdirSync(staticFiles).find(f => f.match(/search.*\.js$/));
     const searchModule = require(path.join(staticFiles, searchJs));
     searchModule.initSearch(searchIndex.searchIndex);
-
+    const docSearch = searchModule.docSearch;
     return {
         doSearch: function(queryStr, filterCrate, currentCrate) {
-            return searchModule.execQuery(searchModule.parseQuery(queryStr),
+            return docSearch.execQuery(searchModule.parseQuery(queryStr),
                 filterCrate, currentCrate);
         },
         getCorrections: function(queryStr, filterCrate, currentCrate) {
             const parsedQuery = searchModule.parseQuery(queryStr);
-            searchModule.execQuery(parsedQuery, filterCrate, currentCrate);
+            docSearch.execQuery(parsedQuery, filterCrate, currentCrate);
             return parsedQuery.correction;
         },
         parseQuery: searchModule.parseQuery,

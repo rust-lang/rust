@@ -1,5 +1,5 @@
 error: Undefined Behavior: reborrow through <TAG> at ALLOC[0x0] is forbidden
-  --> $DIR/write-during-2phase.rs:LL:CC
+  --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
    |
 LL |     fn add(&mut self, n: u64) -> u64 {
    |            ^^^^^^^^^ reborrow through <TAG> at ALLOC[0x0] is forbidden
@@ -7,20 +7,20 @@ LL |     fn add(&mut self, n: u64) -> u64 {
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> has state Disabled which forbids this reborrow (acting as a child read access)
 help: the accessed tag <TAG> was created here, in the initial state Reserved
-  --> $DIR/write-during-2phase.rs:LL:CC
+  --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
    |
 LL |     let _res = f.add(unsafe {
    |                ^
 help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x8]
-  --> $DIR/write-during-2phase.rs:LL:CC
+  --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
    |
 LL |         *inner = 42;
    |         ^^^^^^^^^^^
    = help: this transition corresponds to a loss of read and write permissions
    = note: BACKTRACE (of the first span):
-   = note: inside `Foo::add` at $DIR/write-during-2phase.rs:LL:CC
+   = note: inside `Foo::add` at tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
 note: inside `main`
-  --> $DIR/write-during-2phase.rs:LL:CC
+  --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
    |
 LL |       let _res = f.add(unsafe {
    |  ________________^

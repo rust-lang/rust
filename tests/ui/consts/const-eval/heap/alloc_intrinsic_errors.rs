@@ -1,6 +1,5 @@
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
-#![feature(const_mut_refs)]
 use std::intrinsics;
 
 const FOO: i32 = foo();

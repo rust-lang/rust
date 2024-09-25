@@ -1,8 +1,8 @@
 use std::fmt;
 
 use either::{Either, Left, Right};
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{HasDataLayout, Size};
 
@@ -305,6 +305,13 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
                 }
             }
         }
+    }
+
+    pub fn clear_provenance(&mut self) -> InterpResult<'tcx> {
+        if matches!(self, Scalar::Ptr(..)) {
+            *self = self.to_scalar_int()?.into();
+        }
+        Ok(())
     }
 
     #[inline(always)]

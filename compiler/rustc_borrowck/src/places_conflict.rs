@@ -59,6 +59,7 @@ use rustc_middle::mir::{
     Body, BorrowKind, FakeBorrowKind, MutBorrowKind, Place, PlaceElem, PlaceRef, ProjectionElem,
 };
 use rustc_middle::ty::{self, TyCtxt};
+use tracing::{debug, instrument};
 
 use crate::{AccessDepth, ArtificialField, Deep, Overlap, Shallow};
 

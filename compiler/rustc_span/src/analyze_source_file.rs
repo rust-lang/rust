@@ -8,7 +8,7 @@ mod tests;
 ///
 /// This function will use an SSE2 enhanced implementation if hardware support
 /// is detected at runtime.
-pub fn analyze_source_file(src: &str) -> (Vec<RelativeBytePos>, Vec<MultiByteChar>) {
+pub(crate) fn analyze_source_file(src: &str) -> (Vec<RelativeBytePos>, Vec<MultiByteChar>) {
     let mut lines = vec![RelativeBytePos::from_u32(0)];
     let mut multi_byte_chars = vec![];
 

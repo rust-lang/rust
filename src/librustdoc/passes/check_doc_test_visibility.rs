@@ -8,13 +8,14 @@
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
+use tracing::debug;
 
 use super::Pass;
 use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::*;
 use crate::core::DocContext;
-use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString, MdRelLine};
+use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine, find_testable_code};
 use crate::visit::DocVisitor;
 
 pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
@@ -56,7 +57,7 @@ impl crate::doctest::DocTestVisitor for Tests {
 pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
     if !cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
         || matches!(
-            *item.kind,
+            item.kind,
             clean::StructFieldItem(_)
                 | clean::VariantItem(_)
                 | clean::AssocConstItem(..)

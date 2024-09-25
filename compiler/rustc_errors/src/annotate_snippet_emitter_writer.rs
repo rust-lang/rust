@@ -8,12 +8,12 @@
 use annotate_snippets::{Renderer, Snippet};
 use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
-use rustc_span::source_map::SourceMap;
 use rustc_span::SourceFile;
+use rustc_span::source_map::SourceMap;
 
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
-use crate::translation::{to_fluent_args, Translate};
+use crate::translation::{Translate, to_fluent_args};
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, FluentBundle, LazyFallbackBundle,
     Level, MultiSpan, Style, Subdiag,
@@ -48,7 +48,7 @@ impl Emitter for AnnotateSnippetEmitter {
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
-        let mut suggestions = diag.suggestions.unwrap_or(vec![]);
+        let mut suggestions = diag.suggestions.unwrap_tag();
         self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(

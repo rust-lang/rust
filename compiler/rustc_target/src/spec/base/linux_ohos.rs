@@ -1,6 +1,6 @@
-use crate::spec::{base, TargetOptions, TlsModel};
+use crate::spec::{TargetOptions, TlsModel, base};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut base = base::linux::opts();
 
     base.env = "ohos".into();

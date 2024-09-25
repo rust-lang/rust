@@ -1,7 +1,9 @@
+// ignore-tidy-linelength
 //@ build-fail
 //@ normalize-stderr-test: "S32" -> "SXX"
 //@ normalize-stderr-test: "S1M" -> "SXX"
-//@ error-pattern: too big for the current
+//@ normalize-stderr-32bit: "values of the type `[^`]+` are too big" -> "values of the type $$REALLY_TOO_BIG are too big"
+//@ normalize-stderr-64bit: "values of the type `[^`]+` are too big" -> "values of the type $$REALLY_TOO_BIG are too big"
 
 struct S32<T> {
     v0: T,
@@ -44,6 +46,6 @@ struct S1M<T> { val: S1k<S1k<T>> }
 
 fn main() {
     let fat: Option<S1M<S1M<S1M<u32>>>> = None;
-    //~^ ERROR are too big for the current architecture
+    //~^ ERROR are too big for the target architecture
 
 }

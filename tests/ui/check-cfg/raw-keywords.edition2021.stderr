@@ -1,0 +1,40 @@
+warning: unexpected `cfg` condition name: `tru`
+  --> $DIR/raw-keywords.rs:14:7
+   |
+LL | #[cfg(tru)]
+   |       ^^^ help: there is a config with a similar name: `r#true`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(tru)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `r#false`
+  --> $DIR/raw-keywords.rs:19:7
+   |
+LL | #[cfg(r#false)]
+   |       ^^^^^^^
+   |
+   = help: expected names are: `r#async`, `clippy`, `debug_assertions`, `doc`, `doctest`, `edition2015`, `edition2021`, `fmt_debug`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `rustfmt`, `sanitize`, `sanitizer_cfi_generalize_pointers`, `sanitizer_cfi_normalize_integers`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `r#true`, `ub_checks`, `unix`, and `windows`
+   = help: to expect this configuration use `--check-cfg=cfg(r#false)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#await`
+  --> $DIR/raw-keywords.rs:28:29
+   |
+LL | #[cfg_attr(edition2021, cfg(r#await))]
+   |                             ^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#await)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `raw`
+  --> $DIR/raw-keywords.rs:33:7
+   |
+LL | #[cfg(r#raw)]
+   |       ^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(raw)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 4 warnings emitted
+

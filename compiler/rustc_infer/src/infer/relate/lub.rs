@@ -4,10 +4,11 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
+use super::StructurallyRelateAliases;
 use super::combine::{CombineFields, PredicateEmittingRelation};
 use super::lattice::{self, LatticeDir};
-use super::StructurallyRelateAliases;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
 use crate::traits::ObligationCause;
 

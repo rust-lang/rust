@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::stable_hasher::{
-    impl_stable_traits_for_trivial_type, FromStableHash, Hash64, StableHasherHash,
+    FromStableHash, Hash64, StableHasherHash, impl_stable_traits_for_trivial_type,
 };
 
 #[cfg(test)]

@@ -4,19 +4,19 @@ use std::env;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
-use rustc_hir::{self as hir, intravisit, CRATE_HIR_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_resolve::rustdoc::span_of_fragments;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
+use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
 
 use super::{DocTestVisitor, ScrapedDocTest};
-use crate::clean::types::AttributesExt;
 use crate::clean::Attributes;
+use crate::clean::types::AttributesExt;
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
@@ -122,23 +122,14 @@ impl<'a, 'tcx> HirCollector<'a, 'tcx> {
         // anything else, this will combine them for us.
         let attrs = Attributes::from_ast(ast_attrs);
         if let Some(doc) = attrs.opt_doc_value() {
-            // Use the outermost invocation, so that doctest names come from where the docs were written.
-            let span = ast_attrs
-                .iter()
-                .find(|attr| attr.doc_str().is_some())
-                .map(|attr| attr.span.ctxt().outer_expn().expansion_cause().unwrap_or(attr.span))
-                .unwrap_or(DUMMY_SP);
+            let span = span_of_fragments(&attrs.doc_strings).unwrap_or(sp);
             self.collector.position = span;
             markdown::find_testable_code(
                 &doc,
                 &mut self.collector,
                 self.codes,
                 self.enable_per_target_ignores,
-                Some(&crate::html::markdown::ExtraInfo::new(
-                    self.tcx,
-                    def_id,
-                    span_of_fragments(&attrs.doc_strings).unwrap_or(sp),
-                )),
+                Some(&crate::html::markdown::ExtraInfo::new(self.tcx, def_id, span)),
             );
         }
 

@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::solaris::opts();
     base.add_pre_link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64"]);
     base.cpu = "x86-64".into();

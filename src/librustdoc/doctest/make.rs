@@ -10,10 +10,11 @@ use rustc_errors::{ColorConfig, FatalError};
 use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::attr::InnerAttrPolicy;
 use rustc_session::parse::ParseSess;
+use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
-use rustc_span::FileName;
+use tracing::debug;
 
 use super::GlobalTestOptions;
 use crate::html::markdown::LangString;
@@ -251,8 +252,8 @@ fn parse_source(
     info: &mut ParseSourceInfo,
     crate_name: &Option<&str>,
 ) -> ParsingResult {
-    use rustc_errors::emitter::{Emitter, HumanEmitter};
     use rustc_errors::DiagCtxt;
+    use rustc_errors::emitter::{Emitter, HumanEmitter};
     use rustc_parse::parser::ForceCollect;
     use rustc_span::source_map::FilePathMapping;
 
@@ -311,7 +312,7 @@ fn parse_source(
             }
             ast::ItemKind::ExternCrate(original) => {
                 if !info.found_extern_crate
-                    && let Some(ref crate_name) = crate_name
+                    && let Some(crate_name) = crate_name
                 {
                     info.found_extern_crate = match original {
                         Some(name) => name.as_str() == *crate_name,
@@ -440,8 +441,8 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> Option<AttrKind>
 
     rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
-            use rustc_errors::emitter::HumanEmitter;
             use rustc_errors::DiagCtxt;
+            use rustc_errors::emitter::HumanEmitter;
             use rustc_span::source_map::FilePathMapping;
 
             let filename = FileName::anon_source_code(source);

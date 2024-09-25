@@ -292,9 +292,14 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
-            PointerCoercion { cast, source } => {
+            PointerCoercion { cast, is_from_as_cast, source } => {
                 print_indented!(self, "Pointer {", depth_lvl);
                 print_indented!(self, format!("cast: {:?}", cast), depth_lvl + 1);
+                print_indented!(
+                    self,
+                    format!("is_from_as_cast: {:?}", is_from_as_cast),
+                    depth_lvl + 1
+                );
                 print_indented!(self, "source:", depth_lvl + 1);
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
@@ -454,16 +459,18 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_adt_expr(&**adt_expr, depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
-            PlaceTypeAscription { source, user_ty } => {
+            PlaceTypeAscription { source, user_ty, user_ty_span } => {
                 print_indented!(self, "PlaceTypeAscription {", depth_lvl);
                 print_indented!(self, format!("user_ty: {:?}", user_ty), depth_lvl + 1);
+                print_indented!(self, format!("user_ty_span: {:?}", user_ty_span), depth_lvl + 1);
                 print_indented!(self, "source:", depth_lvl + 1);
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
-            ValueTypeAscription { source, user_ty } => {
+            ValueTypeAscription { source, user_ty, user_ty_span } => {
                 print_indented!(self, "ValueTypeAscription {", depth_lvl);
                 print_indented!(self, format!("user_ty: {:?}", user_ty), depth_lvl + 1);
+                print_indented!(self, format!("user_ty_span: {:?}", user_ty_span), depth_lvl + 1);
                 print_indented!(self, "source:", depth_lvl + 1);
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);

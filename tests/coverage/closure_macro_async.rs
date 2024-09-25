@@ -2,6 +2,9 @@
 #![feature(noop_waker)]
 //@ edition: 2018
 
+//@ aux-build: executor.rs
+extern crate executor;
+
 macro_rules! bail {
     ($msg:literal $(,)?) => {
         if $msg.len() > 0 {
@@ -44,22 +47,4 @@ pub async fn test() -> Result<(), String> {
 #[coverage(off)]
 fn main() {
     executor::block_on(test()).unwrap();
-}
-
-mod executor {
-    use core::future::Future;
-    use core::pin::pin;
-    use core::task::{Context, Poll, Waker};
-
-    #[coverage(off)]
-    pub fn block_on<F: Future>(mut future: F) -> F::Output {
-        let mut future = pin!(future);
-        let mut context = Context::from_waker(Waker::noop());
-
-        loop {
-            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
-                break val;
-            }
-        }
-    }
 }

@@ -9,17 +9,20 @@ use polonius_engine::{Algorithm, Output};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexSlice;
+use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
 use rustc_middle::mir::{
-    create_dump_file, dump_enabled, dump_mir, Body, ClosureOutlivesSubject,
-    ClosureRegionRequirements, PassWhere, Promoted,
+    Body, ClosureOutlivesSubject, ClosureRegionRequirements, PassWhere, Promoted, create_dump_file,
+    dump_enabled, dump_mir,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::ResultsCursor;
+use rustc_session::config::MirIncludeSpans;
 use rustc_span::symbol::sym;
+use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
@@ -29,7 +32,7 @@ use crate::location::LocationTable;
 use crate::region_infer::RegionInferenceContext;
 use crate::type_check::{self, MirTypeckRegionConstraints, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;
-use crate::{polonius, renumber, BorrowckInferCtxt};
+use crate::{BorrowckInferCtxt, polonius, renumber};
 
 pub type PoloniusOutput = Output<RustcFacts>;
 
@@ -72,14 +75,14 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub(crate) fn compute_regions<'cx, 'tcx>(
+pub(crate) fn compute_regions<'a, 'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'_, 'cx, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     upvars: &[&ty::CapturedPlace<'tcx>],
@@ -208,65 +211,103 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     }
 }
 
-pub(super) fn dump_mir_results<'tcx>(
+/// `-Zdump-mir=nll` dumps MIR annotated with NLL specific information:
+/// - free regions
+/// - inferred region values
+/// - region liveness
+/// - inference constraints and their causes
+///
+/// As well as graphviz `.dot` visualizations of:
+/// - the region constraints graph
+/// - the region SCC graph
+pub(super) fn dump_nll_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    borrow_set: &BorrowSet<'tcx>,
 ) {
-    if !dump_enabled(infcx.tcx, "nll", body.source.def_id()) {
+    let tcx = infcx.tcx;
+    if !dump_enabled(tcx, "nll", body.source.def_id()) {
         return;
     }
 
-    dump_mir(infcx.tcx, false, "nll", &0, body, |pass_where, out| {
-        match pass_where {
-            // Before the CFG, dump out the values for each region variable.
-            PassWhere::BeforeCFG => {
-                regioncx.dump_mir(infcx.tcx, out)?;
-                writeln!(out, "|")?;
-
-                if let Some(closure_region_requirements) = closure_region_requirements {
-                    writeln!(out, "| Free Region Constraints")?;
-                    for_each_region_constraint(
-                        infcx.tcx,
-                        closure_region_requirements,
-                        &mut |msg| writeln!(out, "| {msg}"),
-                    )?;
+    // We want the NLL extra comments printed by default in NLL MIR dumps (they were removed in
+    // #112346). Specifying `-Z mir-include-spans` on the CLI still has priority: for example,
+    // they're always disabled in mir-opt tests to make working with blessed dumps easier.
+    let options = PrettyPrintMirOptions {
+        include_extra_comments: matches!(
+            infcx.tcx.sess.opts.unstable_opts.mir_include_spans,
+            MirIncludeSpans::On | MirIncludeSpans::Nll
+        ),
+    };
+    dump_mir_with_options(
+        tcx,
+        false,
+        "nll",
+        &0,
+        body,
+        |pass_where, out| {
+            match pass_where {
+                // Before the CFG, dump out the values for each region variable.
+                PassWhere::BeforeCFG => {
+                    regioncx.dump_mir(tcx, out)?;
                     writeln!(out, "|")?;
+
+                    if let Some(closure_region_requirements) = closure_region_requirements {
+                        writeln!(out, "| Free Region Constraints")?;
+                        for_each_region_constraint(tcx, closure_region_requirements, &mut |msg| {
+                            writeln!(out, "| {msg}")
+                        })?;
+                        writeln!(out, "|")?;
+                    }
+
+                    if borrow_set.len() > 0 {
+                        writeln!(out, "| Borrows")?;
+                        for (borrow_idx, borrow_data) in borrow_set.iter_enumerated() {
+                            writeln!(
+                                out,
+                                "| {:?}: issued at {:?} in {:?}",
+                                borrow_idx, borrow_data.reserve_location, borrow_data.region
+                            )?;
+                        }
+                        writeln!(out, "|")?;
+                    }
                 }
+
+                PassWhere::BeforeLocation(_) => {}
+
+                PassWhere::AfterTerminator(_) => {}
+
+                PassWhere::BeforeBlock(_) | PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
             }
+            Ok(())
+        },
+        options,
+    );
 
-            PassWhere::BeforeLocation(_) => {}
-
-            PassWhere::AfterTerminator(_) => {}
-
-            PassWhere::BeforeBlock(_) | PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
-        }
-        Ok(())
-    });
-
-    // Also dump the inference graph constraints as a graphviz file.
+    // Also dump the region constraint graph as a graphviz file.
     let _: io::Result<()> = try {
-        let mut file = create_dump_file(infcx.tcx, "regioncx.all.dot", false, "nll", &0, body)?;
+        let mut file = create_dump_file(tcx, "regioncx.all.dot", false, "nll", &0, body)?;
         regioncx.dump_graphviz_raw_constraints(&mut file)?;
     };
 
-    // Also dump the inference graph constraints as a graphviz file.
+    // Also dump the region constraint SCC graph as a graphviz file.
     let _: io::Result<()> = try {
-        let mut file = create_dump_file(infcx.tcx, "regioncx.scc.dot", false, "nll", &0, body)?;
+        let mut file = create_dump_file(tcx, "regioncx.scc.dot", false, "nll", &0, body)?;
         regioncx.dump_graphviz_scc_constraints(&mut file)?;
     };
 }
 
 #[allow(rustc::diagnostic_outside_of_impl)]
 #[allow(rustc::untranslatable_diagnostic)]
-pub(super) fn dump_annotation<'tcx, 'cx>(
-    infcx: &'cx BorrowckInferCtxt<'tcx>,
+pub(super) fn dump_annotation<'tcx, 'infcx>(
+    infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    diags: &mut crate::diags::BorrowckDiags<'cx, 'tcx>,
+    diags: &mut crate::diags::BorrowckDiags<'infcx, 'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());

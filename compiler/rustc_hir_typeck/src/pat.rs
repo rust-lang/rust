@@ -5,13 +5,12 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, LangItem, Mutability, Pat, PatKind};
 use rustc_infer::infer;
-use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
@@ -19,16 +18,17 @@ use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
+use tracing::{debug, instrument, trace};
 use ty::VariantDef;
 
 use super::report_unexpected_variant_res;
 use crate::gather_locals::DeclOrigin;
-use crate::{errors, FnCtxt, LoweredTy};
+use crate::{FnCtxt, LoweredTy, errors};
 
 const CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ: &str = "\
 This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
@@ -82,7 +82,7 @@ struct TopInfo<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-struct PatInfo<'tcx, 'a> {
+struct PatInfo<'a, 'tcx> {
     binding_mode: ByRef,
     max_ref_mutbl: MutblCap,
     top_info: &'a TopInfo<'tcx>,
@@ -221,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Outside of this module, `check_pat_top` should always be used.
     /// Conversely, inside this module, `check_pat_top` should never be used.
     #[instrument(level = "debug", skip(self, pat_info))]
-    fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx, '_>) {
+    fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'_, 'tcx>) {
         let PatInfo { binding_mode, max_ref_mutbl, top_info: ti, current_depth, .. } = pat_info;
 
         let path_res = match &pat.kind {
@@ -667,7 +667,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ident: Ident,
         sub: Option<&'tcx Pat<'tcx>>,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let PatInfo { binding_mode: def_br, top_info: ti, .. } = pat_info;
 
@@ -980,7 +980,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         // Resolve the path and check the definition for errors.
         let (variant, pat_ty) = match self.check_struct_path(qpath, pat.hir_id) {
@@ -1183,7 +1183,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         subpats: &'tcx [Pat<'tcx>],
         ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let on_error = |e| {
@@ -1440,7 +1440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         elements: &'tcx [Pat<'tcx>],
         ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let mut expected_len = elements.len();
@@ -1478,7 +1478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &'tcx ty::VariantDef,
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx;
 
@@ -2069,7 +2069,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         inner: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (box_ty, inner_ty) = self
@@ -2095,7 +2095,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         inner: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         // Register a `DerefPure` bound, which is required by all `deref!()` pats.
@@ -2136,7 +2136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inner: &'tcx Pat<'tcx>,
         pat_mutbl: Mutability,
         mut expected: Ty<'tcx>,
-        mut pat_info: PatInfo<'tcx, '_>,
+        mut pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let features = tcx.features();
@@ -2344,7 +2344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         slice: Option<&'tcx Pat<'tcx>>,
         after: &'tcx [Pat<'tcx>],
         expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> Ty<'tcx> {
         let expected = self.try_structurally_resolve_type(span, expected);
 
@@ -2412,17 +2412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        let len = match len.eval(self.tcx, self.param_env, span) {
-            Ok((_, val)) => val
-                .try_to_scalar()
-                .and_then(|scalar| scalar.try_to_scalar_int().ok())
-                .map(|int| int.to_target_usize(self.tcx)),
-            Err(ErrorHandled::Reported(..)) => {
-                let guar = self.error_scrutinee_unfixed_length(span);
-                return (Some(Ty::new_error(self.tcx, guar)), arr_ty);
-            }
-            Err(ErrorHandled::TooGeneric(..)) => None,
-        };
+        let len = self.try_structurally_resolve_const(span, len).try_to_target_usize(self.tcx);
 
         let guar = if let Some(len) = len {
             // Now we know the length...
@@ -2516,7 +2506,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         expected_ty: Ty<'tcx>,
-        pat_info: PatInfo<'tcx, '_>,
+        pat_info: PatInfo<'_, 'tcx>,
     ) -> ErrorGuaranteed {
         let PatInfo { top_info: ti, current_depth, .. } = pat_info;
 
@@ -2532,6 +2522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.help("the semantics of slice patterns changed recently; see issue #62254");
         } else if self
             .autoderef(span, expected_ty)
+            .silence_errors()
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
             && let Some(span) = ti.span
             && let Some(_) = ti.origin_expr

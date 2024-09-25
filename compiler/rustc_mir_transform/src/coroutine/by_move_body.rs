@@ -82,11 +82,16 @@ use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::kw;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
-pub fn coroutine_by_move_body_def_id<'tcx>(
+pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     tcx: TyCtxt<'tcx>,
     coroutine_def_id: LocalDefId,
 ) -> DefId {
     let body = tcx.mir_built(coroutine_def_id).borrow();
+
+    // If the typeck results are tainted, no need to make a by-ref body.
+    if body.tainted_by_errors.is_some() {
+        return coroutine_def_id.to_def_id();
+    }
 
     let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
         tcx.coroutine_kind(coroutine_def_id)
@@ -98,7 +103,9 @@ pub fn coroutine_by_move_body_def_id<'tcx>(
     // the MIR body will be constructed well.
     let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
-    let ty::Coroutine(_, args) = *coroutine_ty.kind() else { bug!("{body:#?}") };
+    let ty::Coroutine(_, args) = *coroutine_ty.kind() else {
+        bug!("tried to create by-move body of non-coroutine receiver");
+    };
     let args = args.as_coroutine();
 
     let coroutine_kind = args.kind_ty().to_opt_closure_kind().unwrap();
@@ -107,7 +114,7 @@ pub fn coroutine_by_move_body_def_id<'tcx>(
     let ty::CoroutineClosure(_, parent_args) =
         *tcx.type_of(parent_def_id).instantiate_identity().kind()
     else {
-        bug!();
+        bug!("coroutine's parent was not a coroutine-closure");
     };
     if parent_args.references_error() {
         return coroutine_def_id.to_def_id();
@@ -133,10 +140,10 @@ pub fn coroutine_by_move_body_def_id<'tcx>(
             // If the parent capture is by-ref, then we need to apply an additional
             // deref before applying any further projections to this place.
             if parent_capture.is_by_ref() {
-                child_precise_captures.insert(
-                    0,
-                    Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref },
-                );
+                child_precise_captures.insert(0, Projection {
+                    ty: parent_capture.place.ty(),
+                    kind: ProjectionKind::Deref,
+                });
             }
             // If the child capture is by-ref, then we need to apply a "ref"
             // projection (i.e. `&`) at the end. But wait! We don't have that
@@ -207,11 +214,12 @@ pub fn coroutine_by_move_body_def_id<'tcx>(
 
     let mut by_move_body = body.clone();
     MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
-    dump_mir(tcx, false, "coroutine_by_move", &0, &by_move_body, |_, _| Ok(()));
 
-    let body_def = tcx.create_def(coroutine_def_id, kw::Empty, DefKind::SyntheticCoroutineBody);
+    // This will always be `{closure#1}`, since the original coroutine is `{closure#0}`.
+    let body_def = tcx.create_def(parent_def_id, kw::Empty, DefKind::SyntheticCoroutineBody);
     by_move_body.source =
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
+    dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));
 
     // Inherited from the by-ref coroutine.
     body_def.codegen_fn_attrs(tcx.codegen_fn_attrs(coroutine_def_id).clone());

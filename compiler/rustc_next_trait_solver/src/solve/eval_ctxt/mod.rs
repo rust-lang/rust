@@ -17,9 +17,9 @@ use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, Goal, GoalEvaluationKind, GoalSource, MaybeCause,
-    NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult, SolverMode,
-    FIXPOINT_STEP_LIMIT,
+    CanonicalInput, CanonicalResponse, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind,
+    GoalSource, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult,
+    SolverMode,
 };
 
 pub(super) mod canonical;
@@ -92,7 +92,7 @@ where
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 // FIXME: This can be made crate-private once `EvalCtxt` also lives in this crate.
-pub struct NestedGoals<I: Interner> {
+struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation
     /// loop. In each iteration we take the RHS of the projection, replace it with
     /// a fresh inference variable, and only after evaluating that goal do we
@@ -109,11 +109,11 @@ pub struct NestedGoals<I: Interner> {
 }
 
 impl<I: Interner> NestedGoals<I> {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self { normalizes_to_goals: Vec::new(), goals: Vec::new() }
     }
 
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.normalizes_to_goals.is_empty() && self.goals.is_empty()
     }
 }
@@ -370,7 +370,7 @@ where
             canonical_goal,
             &mut goal_evaluation,
         );
-        let canonical_response = match canonical_response {
+        let response = match canonical_response {
             Err(e) => {
                 self.inspect.goal_evaluation(goal_evaluation);
                 return Err(e);
@@ -378,12 +378,11 @@ where
             Ok(response) => response,
         };
 
-        let (normalization_nested_goals, certainty, has_changed) = self
-            .instantiate_response_discarding_overflow(
-                goal.param_env,
-                orig_values,
-                canonical_response,
-            );
+        let has_changed = !response.value.var_values.is_identity_modulo_regions()
+            || !response.value.external_constraints.opaque_types.is_empty();
+
+        let (normalization_nested_goals, certainty) =
+            self.instantiate_and_apply_query_response(goal.param_env, orig_values, response);
         self.inspect.goal_evaluation(goal_evaluation);
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
@@ -396,24 +395,6 @@ where
         // we should re-add an assert here.
 
         Ok((normalization_nested_goals, has_changed, certainty))
-    }
-
-    fn instantiate_response_discarding_overflow(
-        &mut self,
-        param_env: I::ParamEnv,
-        original_values: Vec<I::GenericArg>,
-        response: CanonicalResponse<I>,
-    ) -> (NestedNormalizationGoals<I>, Certainty, bool) {
-        if let Certainty::Maybe(MaybeCause::Overflow { .. }) = response.value.certainty {
-            return (NestedNormalizationGoals::empty(), response.value.certainty, false);
-        }
-
-        let has_changed = !response.value.var_values.is_identity_modulo_regions()
-            || !response.value.external_constraints.opaque_types.is_empty();
-
-        let (normalization_nested_goals, certainty) =
-            self.instantiate_and_apply_query_response(param_env, original_values, response);
-        (normalization_nested_goals, certainty, has_changed)
     }
 
     fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
@@ -516,10 +497,10 @@ where
             // Replace the goal with an unconstrained infer var, so the
             // RHS does not affect projection candidate assembly.
             let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
-            let unconstrained_goal = goal.with(
-                cx,
-                ty::NormalizesTo { alias: goal.predicate.alias, term: unconstrained_rhs },
-            );
+            let unconstrained_goal = goal.with(cx, ty::NormalizesTo {
+                alias: goal.predicate.alias,
+                term: unconstrained_rhs,
+            });
 
             let (NestedNormalizationGoals(nested_goals), _, certainty) = self.evaluate_goal_raw(
                 GoalEvaluationKind::Nested,

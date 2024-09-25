@@ -31,10 +31,6 @@ use libc::fstatat64;
     all(target_os = "linux", target_env = "musl"),
 ))]
 use libc::readdir as readdir64;
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::readdir64;
-#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
-use libc::readdir64_r;
 #[cfg(not(any(
     target_os = "android",
     target_os = "linux",
@@ -50,6 +46,10 @@ use libc::readdir64_r;
     target_os = "hurd",
 )))]
 use libc::readdir_r as readdir64_r;
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
+use libc::readdir64;
+#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
+use libc::readdir64_r;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
@@ -478,6 +478,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "rtems",
     )))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -490,7 +491,12 @@ impl FileAttr {
         SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtime_nsec as i64)
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
+    #[cfg(any(
+        target_os = "vxworks",
+        target_os = "espidf",
+        target_os = "vita",
+        target_os = "rtems",
+    ))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtime as i64, 0)
     }
@@ -506,6 +512,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "rtems",
     )))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
@@ -518,7 +525,12 @@ impl FileAttr {
         SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64)
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
+    #[cfg(any(
+        target_os = "vxworks",
+        target_os = "espidf",
+        target_os = "vita",
+        target_os = "rtems"
+    ))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_atime as i64, 0)
     }
@@ -853,6 +865,7 @@ impl Drop for Dir {
             target_os = "fuchsia",
             target_os = "horizon",
             target_os = "vxworks",
+            target_os = "rtems",
         )))]
         {
             let fd = unsafe { libc::dirfd(self.0) };
@@ -970,6 +983,7 @@ impl DirEntry {
         target_os = "aix",
         target_os = "nto",
         target_os = "hurd",
+        target_os = "rtems",
         target_vendor = "apple",
     ))]
     pub fn ino(&self) -> u64 {
@@ -1717,7 +1731,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     run_path_with_cstr(original, &|original| {
         run_path_with_cstr(link, &|link| {
             cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita"))] {
+                if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita", target_env = "nto70"))] {
                     // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
                     // it implementation-defined whether `link` follows symlinks, so rely on the
                     // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
@@ -1852,7 +1866,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let max_len = u64::MAX;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
-    use super::kernel_copy::{copy_regular_files, CopyResult};
+    use super::kernel_copy::{CopyResult, copy_regular_files};
 
     match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
         CopyResult::Ended(bytes) => Ok(bytes),
@@ -1994,7 +2008,7 @@ mod remove_dir_impl {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{fdopendir, openat64 as openat, unlinkat};
 
-    use super::{lstat, Dir, DirEntry, InnerReadDir, ReadDir};
+    use super::{Dir, DirEntry, InnerReadDir, ReadDir, lstat};
     use crate::ffi::CStr;
     use crate::io;
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};

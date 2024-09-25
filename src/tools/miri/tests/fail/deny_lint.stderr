@@ -1,11 +1,11 @@
 error: struct `Foo` is never constructed
-  --> $DIR/deny_lint.rs:LL:CC
+  --> tests/fail/deny_lint.rs:LL:CC
    |
 LL | struct Foo;
    |        ^^^
    |
 note: the lint level is defined here
-  --> $DIR/deny_lint.rs:LL:CC
+  --> tests/fail/deny_lint.rs:LL:CC
    |
 LL | #![deny(warnings, unused)]
    |                   ^^^^^^

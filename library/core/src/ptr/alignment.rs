@@ -154,6 +154,11 @@ impl Alignment {
         // SAFETY: The alignment is always nonzero, and therefore decrementing won't overflow.
         !(unsafe { self.as_usize().unchecked_sub(1) })
     }
+
+    // Remove me once `Ord::max` is usable in const
+    pub(crate) const fn max(a: Self, b: Self) -> Self {
+        if a.as_usize() > b.as_usize() { a } else { b }
+    }
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
@@ -199,7 +204,6 @@ impl From<Alignment> for usize {
     }
 }
 
-#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl cmp::Ord for Alignment {
     #[inline]
@@ -208,7 +212,6 @@ impl cmp::Ord for Alignment {
     }
 }
 
-#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl cmp::PartialOrd for Alignment {
     #[inline]

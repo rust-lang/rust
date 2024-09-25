@@ -1,5 +1,5 @@
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/const-drop-fail-2.rs:40:25
+  --> $DIR/const-drop-fail-2.rs:39:25
    |
 LL | impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
    |                         ^^^^
@@ -8,13 +8,13 @@ LL | impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
    = note: adding a non-const method body in the future would be a breaking change
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-fail-2.rs:21:26
+  --> $DIR/const-drop-fail-2.rs:20:26
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
    |                          ^^^^^^^^
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/const-drop-fail-2.rs:21:36
+  --> $DIR/const-drop-fail-2.rs:20:36
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
    |                                    ^      - value is dropped here
@@ -22,7 +22,7 @@ LL | const fn check<T: ~const Destruct>(_: T) {}
    |                                    the destructor for this type cannot be evaluated in constant functions
 
 error[E0015]: cannot call non-const fn `<T as A>::a` in constant functions
-  --> $DIR/const-drop-fail-2.rs:42:9
+  --> $DIR/const-drop-fail-2.rs:41:9
    |
 LL |         T::a();
    |         ^^^^^^

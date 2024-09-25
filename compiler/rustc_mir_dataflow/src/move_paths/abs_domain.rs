@@ -15,12 +15,12 @@ use rustc_middle::mir::{Local, Operand, PlaceElem, ProjectionElem};
 use rustc_middle::ty::Ty;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct AbstractOperand;
+pub(crate) struct AbstractOperand;
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct AbstractType;
-pub type AbstractElem = ProjectionElem<AbstractOperand, AbstractType>;
+pub(crate) struct AbstractType;
+pub(crate) type AbstractElem = ProjectionElem<AbstractOperand, AbstractType>;
 
-pub trait Lift {
+pub(crate) trait Lift {
     type Abstract;
     fn lift(&self) -> Self::Abstract;
 }

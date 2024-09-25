@@ -773,15 +773,20 @@ fn offset_of_addr() {
 #[test]
 fn const_maybe_uninit_zeroed() {
     // Sanity check for `MaybeUninit::zeroed` in a realistic const situation (plugin array term)
+
+    // It is crucial that this type has no padding!
     #[repr(C)]
     struct Foo {
-        a: Option<&'static str>,
+        a: Option<&'static u8>,
         b: Bar,
         c: f32,
+        _pad: u32,
         d: *const u8,
     }
+
     #[repr(C)]
     struct Bar(usize);
+
     struct FooPtr(*const Foo);
     unsafe impl Sync for FooPtr {}
 

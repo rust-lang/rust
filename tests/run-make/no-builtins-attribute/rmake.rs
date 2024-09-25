@@ -9,5 +9,5 @@ use run_make_support::{llvm_filecheck, rfs, rustc};
 fn main() {
     rustc().input("no_builtins.rs").emit("link").run();
     rustc().input("main.rs").emit("llvm-ir").run();
-    llvm_filecheck().patterns("filecheck.main.txt").stdin(rfs::read("main.ll")).run();
+    llvm_filecheck().patterns("filecheck.main.txt").stdin_buf(rfs::read("main.ll")).run();
 }

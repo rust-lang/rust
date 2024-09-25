@@ -1,8 +1,8 @@
 #![doc = include_str!("doc.md")]
 
 use std::cell::{OnceCell, RefCell};
-use std::iter;
 use std::ops::Range;
+use std::{iter, ptr};
 
 use libc::c_uint;
 use rustc_codegen_ssa::debuginfo::type_names;
@@ -16,8 +16,8 @@ use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, ParamEnv, Ty, TypeVisitableExt};
-use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
+use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::Symbol;
 use rustc_span::{
     BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId,
@@ -26,9 +26,9 @@ use rustc_target::abi::Size;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use self::metadata::{file_metadata, type_di_node, UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
+use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, type_di_node};
 use self::namespace::mangled_name_of_instance;
-use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
+use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::abi::FnAbi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
@@ -209,6 +209,12 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         }
     }
 
+    fn clear_dbg_loc(&mut self) {
+        unsafe {
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
+        }
+    }
+
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
@@ -280,7 +286,7 @@ impl CodegenCx<'_, '_> {
     }
 }
 
-impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_function_debug_context(
         &self,
         instance: Instance<'tcx>,
@@ -549,17 +555,14 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
 
-            let scope = namespace::item_namespace(
-                cx,
-                DefId {
-                    krate: instance.def_id().krate,
-                    index: cx
-                        .tcx
-                        .def_key(instance.def_id())
-                        .parent
-                        .expect("get_containing_scope: missing parent?"),
-                },
-            );
+            let scope = namespace::item_namespace(cx, DefId {
+                krate: instance.def_id().krate,
+                index: cx
+                    .tcx
+                    .def_key(instance.def_id())
+                    .parent
+                    .expect("get_containing_scope: missing parent?"),
+            });
             (scope, false)
         }
     }

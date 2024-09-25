@@ -47,7 +47,7 @@ KIND=PATH` where `KIND` may be one of:
   directory.
 - `native` — Only search for native libraries in this directory.
 - `framework` — Only search for macOS frameworks in this directory.
-- `all` — Search for all library kinds in this directory. This is the default
+- `all` — Search for all library kinds in this directory, except frameworks. This is the default
   if `KIND` is not specified.
 
 <a id="option-l-link-lib"></a>

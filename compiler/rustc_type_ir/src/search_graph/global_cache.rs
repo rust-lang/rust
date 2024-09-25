@@ -44,22 +44,28 @@ impl<X: Cx> GlobalCache<X> {
         cx: X,
         input: X::Input,
 
-        result: X::Result,
+        origin_result: X::Result,
         dep_node: X::DepNodeIndex,
 
         additional_depth: usize,
         encountered_overflow: bool,
         nested_goals: NestedGoals<X>,
     ) {
-        let result = cx.mk_tracked(result, dep_node);
+        let result = cx.mk_tracked(origin_result, dep_node);
         let entry = self.map.entry(input).or_default();
         if encountered_overflow {
             let with_overflow = WithOverflow { nested_goals, result };
             let prev = entry.with_overflow.insert(additional_depth, with_overflow);
-            assert!(prev.is_none());
+            if let Some(prev) = &prev {
+                assert!(cx.evaluation_is_concurrent());
+                assert_eq!(cx.get_tracked(&prev.result), origin_result);
+            }
         } else {
             let prev = entry.success.replace(Success { additional_depth, nested_goals, result });
-            assert!(prev.is_none());
+            if let Some(prev) = &prev {
+                assert!(cx.evaluation_is_concurrent());
+                assert_eq!(cx.get_tracked(&prev.result), origin_result);
+            }
         }
     }
 

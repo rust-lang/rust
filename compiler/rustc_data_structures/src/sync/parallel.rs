@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 
 use std::any::Any;
-use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
 #[cfg(not(parallel_compiler))]
 pub use disabled::*;
@@ -12,8 +12,8 @@ pub use disabled::*;
 pub use enabled::*;
 use parking_lot::Mutex;
 
-use crate::sync::IntoDynSyncSend;
 use crate::FatalErrorMarker;
+use crate::sync::IntoDynSyncSend;
 
 /// A guard used to hold panics that occur during a parallel section to later by unwound.
 /// This is used for the parallel compiler to prevent fatal errors from non-deterministically
@@ -102,7 +102,7 @@ mod disabled {
 
 #[cfg(parallel_compiler)]
 mod enabled {
-    use crate::sync::{mode, parallel_guard, DynSend, DynSync, FromDyn};
+    use crate::sync::{DynSend, DynSync, FromDyn, mode, parallel_guard};
 
     /// Runs a list of blocks in parallel. The first block is executed immediately on
     /// the current thread. Use that for the longest running block.

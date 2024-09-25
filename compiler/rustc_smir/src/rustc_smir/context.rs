@@ -34,7 +34,7 @@ use stable_mir::{Crate, CrateDef, CrateItem, CrateNum, DefId, Error, Filename, I
 
 use crate::rustc_internal::RustcInternal;
 use crate::rustc_smir::builder::BodyBuilder;
-use crate::rustc_smir::{alloc, new_item_kind, smir_crate, Stable, Tables};
+use crate::rustc_smir::{Stable, Tables, alloc, new_item_kind, smir_crate};
 
 impl<'tcx> Context for TablesWrapper<'tcx> {
     fn target_info(&self) -> MachineInfo {
@@ -784,7 +784,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     }
 }
 
-pub struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
+pub(crate) struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
 
 /// Implement error handling for extracting function ABI information.
 impl<'tcx> FnAbiOfHelpers<'tcx> for Tables<'tcx> {

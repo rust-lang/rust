@@ -22,6 +22,7 @@ cfg_if::cfg_if! {
         target_os = "l4re",
         target_os = "none",
         target_os = "espidf",
+        target_os = "rtems",
     ))] {
         // These "unix" family members do not have unwinder.
     } else if #[cfg(any(
@@ -165,8 +166,15 @@ extern "C" {}
 extern "C" {}
 
 #[cfg(target_os = "nto")]
-#[link(name = "gcc_s")]
-extern "C" {}
+cfg_if::cfg_if! {
+    if #[cfg(target_env = "nto70")] {
+        #[link(name = "gcc")]
+        extern "C" {}
+    } else {
+        #[link(name = "gcc_s")]
+        extern "C" {}
+    }
+}
 
 #[cfg(target_os = "hurd")]
 #[link(name = "gcc_s")]

@@ -3,7 +3,7 @@ task:
   freebsd_instance:
     image: freebsd-13-2-release-amd64
   setup_rust_script:
-    - pkg install -y git bash binutils
+    - pkg install -y git-tiny binutils
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh --default-toolchain none -y --profile=minimal
   target_cache:

@@ -2,7 +2,7 @@
 
 use rustc_span::symbol::sym;
 
-use super::{to_nonzero, Feature};
+use super::{Feature, to_nonzero};
 
 macro_rules! declare_features {
     ($(
@@ -61,7 +61,7 @@ declare_features! (
     /// Allows explicit discriminants on non-unit enum variants.
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553)),
     /// Allows using `const` operands in inline assembly.
-    (accepted, asm_const, "CURRENT_RUSTC_VERSION", Some(93332)),
+    (accepted, asm_const, "1.82.0", Some(93332)),
     /// Allows using `sym` operands in inline assembly.
     (accepted, asm_sym, "1.66.0", Some(93333)),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
@@ -115,8 +115,10 @@ declare_features! (
     (accepted, conservative_impl_trait, "1.26.0", Some(34511)),
     /// Allows calling constructor functions in `const fn`.
     (accepted, const_constructor, "1.40.0", Some(61456)),
+    /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
+    (accepted, const_extern_fn, "CURRENT_RUSTC_VERSION", Some(64926)),
     /// Allows basic arithmetic on floating point types in a `const fn`.
-    (accepted, const_fn_floating_point_arithmetic, "CURRENT_RUSTC_VERSION", Some(57241)),
+    (accepted, const_fn_floating_point_arithmetic, "1.82.0", Some(57241)),
     /// Allows using and casting function pointers in a `const fn`.
     (accepted, const_fn_fn_ptr_basics, "1.61.0", Some(57563)),
     /// Allows trait bounds in `const fn`.
@@ -141,10 +143,14 @@ declare_features! (
     (accepted, const_let, "1.33.0", Some(48821)),
     /// Allows the use of `loop` and `while` in constants.
     (accepted, const_loop, "1.46.0", Some(52000)),
+    /// Allows using `&mut` in constant functions.
+    (accepted, const_mut_refs, "CURRENT_RUSTC_VERSION", Some(57349)),
     /// Allows panicking during const eval (producing compile-time errors).
     (accepted, const_panic, "1.57.0", Some(51999)),
     /// Allows dereferencing raw pointers during const eval.
     (accepted, const_raw_ptr_deref, "1.58.0", Some(51911)),
+    /// Allows references to types with interior mutability within constants
+    (accepted, const_refs_to_cell, "CURRENT_RUSTC_VERSION", Some(80384)),
     /// Allows implementing `Copy` for closures where possible (RFC 2132).
     (accepted, copy_closures, "1.26.0", Some(44490)),
     /// Allows `crate` in paths.
@@ -272,7 +278,7 @@ declare_features! (
     /// Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607)),
     /// Allows exhaustive pattern matching on uninhabited types when matched by value.
-    (accepted, min_exhaustive_patterns, "CURRENT_RUSTC_VERSION", Some(119612)),
+    (accepted, min_exhaustive_patterns, "1.82.0", Some(119612)),
     /// Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544)),
     /// Allows using the MOVBE target feature.
@@ -299,7 +305,7 @@ declare_features! (
     /// Allows `foo.rs` as an alternative to `foo/mod.rs`.
     (accepted, non_modrs_mods, "1.30.0", Some(44660)),
     /// Allows using multiple nested field accesses in offset_of!
-    (accepted, offset_of_nested, "CURRENT_RUSTC_VERSION", Some(120140)),
+    (accepted, offset_of_nested, "1.82.0", Some(120140)),
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (accepted, or_patterns, "1.53.0", Some(54883)),
     /// Allows using `+bundle,+whole-archive` link modifiers with native libs.
@@ -312,7 +318,7 @@ declare_features! (
     /// Allows parentheses in patterns.
     (accepted, pattern_parentheses, "1.31.0", Some(51087)),
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
-    (accepted, precise_capturing, "CURRENT_RUSTC_VERSION", Some(123432)),
+    (accepted, precise_capturing, "1.82.0", Some(123432)),
     /// Allows procedural macros in `proc-macro` crates.
     (accepted, proc_macro, "1.29.0", Some(38356)),
     /// Allows multi-segment paths in attributes and derives.
@@ -326,7 +332,7 @@ declare_features! (
     /// Allows keywords to be escaped for use as identifiers.
     (accepted, raw_identifiers, "1.30.0", Some(48589)),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
-    (accepted, raw_ref_op, "CURRENT_RUSTC_VERSION", Some(64490)),
+    (accepted, raw_ref_op, "1.82.0", Some(64490)),
     /// Allows relaxing the coherence rules such that
     /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
     (accepted, re_rebalance_coherence, "1.41.0", Some(55437)),
@@ -399,11 +405,11 @@ declare_features! (
     /// Allows arbitrary delimited token streams in non-macro attributes.
     (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208)),
     /// Allows unsafe attributes.
-    (accepted, unsafe_attributes, "CURRENT_RUSTC_VERSION", Some(123757)),
+    (accepted, unsafe_attributes, "1.82.0", Some(123757)),
     /// The `unsafe_op_in_unsafe_fn` lint (allowed by default): no longer treat an unsafe function as an unsafe block.
     (accepted, unsafe_block_in_unsafe_fn, "1.52.0", Some(71668)),
     /// Allows unsafe on extern declarations and safety qualifiers over internal items.
-    (accepted, unsafe_extern_blocks, "CURRENT_RUSTC_VERSION", Some(123743)),
+    (accepted, unsafe_extern_blocks, "1.82.0", Some(123743)),
     /// Allows importing and reexporting macros with `use`,
     /// enables macro modularization in general.
     (accepted, use_extern_macros, "1.30.0", Some(35896)),

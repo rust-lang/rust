@@ -14,7 +14,7 @@ use crate::errors::SymbolAlreadyDefined;
 use crate::type_of::LayoutLlvmExt;
 use crate::{base, llvm};
 
-impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
+impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(
         &self,
         def_id: DefId,
@@ -24,8 +24,8 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
     ) {
         let instance = Instance::mono(self.tcx, def_id);
         let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
-        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure out
-        // the llvm type from the actual evaluated initializer.
+        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure
+        // out the llvm type from the actual evaluated initializer.
         let ty = if nested {
             self.tcx.types.unit
         } else {

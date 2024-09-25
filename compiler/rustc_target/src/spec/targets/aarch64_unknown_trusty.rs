@@ -2,7 +2,7 @@
 
 use crate::spec::{LinkSelfContainedDefault, PanicStrategy, RelroLevel, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-unknown-musl".into(),
         metadata: crate::spec::TargetMetadata {

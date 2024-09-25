@@ -1,5 +1,4 @@
 #![feature(const_for)]
-#![feature(const_mut_refs)]
 
 const _: () = {
     for _ in 0..5 {}

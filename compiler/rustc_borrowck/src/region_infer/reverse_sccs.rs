@@ -5,8 +5,8 @@ use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_middle::ty::RegionVid;
 
-use crate::constraints::ConstraintSccIndex;
 use crate::RegionInferenceContext;
+use crate::constraints::ConstraintSccIndex;
 
 pub(crate) struct ReverseSccGraph {
     graph: VecGraph<ConstraintSccIndex>,

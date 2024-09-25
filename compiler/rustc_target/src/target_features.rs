@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 
 /// Features that control behaviour of rustc, rather than the codegen.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
@@ -243,17 +243,13 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sve2p1", Unstable(sym::aarch64_unstable_target_feature), &["sve2"]),
     // FEAT_TME
     ("tme", Stable, &[]),
-    (
-        "v8.1a",
-        Unstable(sym::aarch64_ver_target_feature),
-        &["crc", "lse", "rdm", "pan", "lor", "vh"],
-    ),
+    ("v8.1a", Unstable(sym::aarch64_ver_target_feature), &[
+        "crc", "lse", "rdm", "pan", "lor", "vh",
+    ]),
     ("v8.2a", Unstable(sym::aarch64_ver_target_feature), &["v8.1a", "ras", "dpb"]),
-    (
-        "v8.3a",
-        Unstable(sym::aarch64_ver_target_feature),
-        &["v8.2a", "rcpc", "paca", "pacg", "jsconv"],
-    ),
+    ("v8.3a", Unstable(sym::aarch64_ver_target_feature), &[
+        "v8.2a", "rcpc", "paca", "pacg", "jsconv",
+    ]),
     ("v8.4a", Unstable(sym::aarch64_ver_target_feature), &["v8.3a", "dotprod", "dit", "flagm"]),
     ("v8.5a", Unstable(sym::aarch64_ver_target_feature), &["v8.4a", "ssbs", "sb", "dpb2", "bti"]),
     ("v8.6a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a", "bf16", "i8mm"]),

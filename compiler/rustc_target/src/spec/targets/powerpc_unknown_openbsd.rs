@@ -1,7 +1,7 @@
 use crate::abi::Endian;
-use crate::spec::{base, StackProbeType, Target};
+use crate::spec::{StackProbeType, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::openbsd::opts();
     base.endian = Endian::Big;
     base.max_atomic_width = Some(32);

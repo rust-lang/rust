@@ -55,6 +55,15 @@ impl Once {
         }
     }
 
+    #[inline]
+    pub(crate) fn set_state(&mut self, new_state: ExclusiveState) {
+        self.state.set(match new_state {
+            ExclusiveState::Incomplete => State::Incomplete,
+            ExclusiveState::Poisoned => State::Poisoned,
+            ExclusiveState::Complete => State::Complete,
+        });
+    }
+
     #[cold]
     #[track_caller]
     pub fn wait(&self, _ignore_poisoning: bool) {

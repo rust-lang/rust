@@ -12,9 +12,9 @@
 ))]
 use libc::MSG_NOSIGNAL;
 
+use super::{SocketAddr, sockaddr_un};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
-use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
-use super::{sockaddr_un, SocketAddr};
+use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use crate::io::{IoSlice, IoSliceMut};
 use crate::net::Shutdown;

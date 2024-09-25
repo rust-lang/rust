@@ -157,7 +157,7 @@ use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::num::NonZero;
 use crate::path::Path;
-use crate::sys::pipe::{read2, AnonPipe};
+use crate::sys::pipe::{AnonPipe, read2};
 use crate::sys::process as imp;
 #[stable(feature = "command_access", since = "1.57.0")]
 pub use crate::sys_common::process::CommandEnvs;
@@ -617,8 +617,6 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```no_run
     /// use std::process::Command;
     ///
@@ -699,8 +697,6 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```no_run
     /// use std::process::Command;
     ///
@@ -748,8 +744,6 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```no_run
     /// use std::process::Command;
     ///
@@ -786,8 +780,6 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```no_run
     /// use std::process::Command;
     ///
@@ -821,8 +813,6 @@ impl Command {
     /// and case-sensitive on all other platforms.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```no_run
     /// use std::process::{Command, Stdio};
@@ -870,8 +860,6 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```no_run
     /// use std::process::Command;
     ///
@@ -900,8 +888,6 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```no_run
     /// use std::process::Command;
     ///
@@ -927,8 +913,6 @@ impl Command {
     /// [`canonicalize`] to get an absolute program path instead.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```no_run
     /// use std::process::Command;
@@ -959,8 +943,6 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```no_run
     /// use std::process::{Command, Stdio};
     ///
@@ -987,8 +969,6 @@ impl Command {
     /// [`output`]: Self::output
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```no_run
     /// use std::process::{Command, Stdio};
@@ -1017,8 +997,6 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```no_run
     /// use std::process::{Command, Stdio};
     ///
@@ -1038,8 +1016,6 @@ impl Command {
     /// By default, stdin, stdout and stderr are inherited from the parent.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```no_run
     /// use std::process::Command;
@@ -1934,10 +1910,14 @@ impl crate::error::Error for ExitStatusError {}
 /// to its parent under normal termination.
 ///
 /// `ExitCode` is intended to be consumed only by the standard library (via
-/// [`Termination::report()`]), and intentionally does not provide accessors like
-/// `PartialEq`, `Eq`, or `Hash`. Instead the standard library provides the
-/// canonical `SUCCESS` and `FAILURE` exit codes as well as `From<u8> for
-/// ExitCode` for constructing other arbitrary exit codes.
+/// [`Termination::report()`]). For forwards compatibility with potentially
+/// unusual targets, this type currently does not provide `Eq`, `Hash`, or
+/// access to the raw value. This type does provide `PartialEq` for
+/// comparison, but note that there may potentially be multiple failure
+/// codes, some of which will _not_ compare equal to `ExitCode::FAILURE`.
+/// The standard library provides the canonical `SUCCESS` and `FAILURE`
+/// exit codes as well as `From<u8> for ExitCode` for constructing other
+/// arbitrary exit codes.
 ///
 /// # Portability
 ///
@@ -1976,7 +1956,7 @@ impl crate::error::Error for ExitStatusError {}
 ///     ExitCode::SUCCESS
 /// }
 /// ```
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 pub struct ExitCode(imp::ExitCode);
 
@@ -2105,8 +2085,6 @@ impl Child {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```no_run
     /// use std::process::Command;
     ///
@@ -2128,8 +2106,6 @@ impl Child {
     /// Returns the OS-assigned process identifier associated with this child.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```no_run
     /// use std::process::Command;
@@ -2157,8 +2133,6 @@ impl Child {
     /// the parent waits for the child to exit.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```no_run
     /// use std::process::Command;
@@ -2193,8 +2167,6 @@ impl Child {
     /// Note that unlike `wait`, this function will not attempt to drop stdin.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```no_run
     /// use std::process::Command;
@@ -2398,15 +2370,11 @@ pub fn abort() -> ! {
 ///
 /// # Examples
 ///
-/// Basic usage:
-///
 /// ```no_run
 /// use std::process;
 ///
 /// println!("My pid is {}", process::id());
 /// ```
-///
-///
 #[must_use]
 #[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {

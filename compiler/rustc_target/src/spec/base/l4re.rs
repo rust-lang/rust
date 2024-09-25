@@ -1,6 +1,6 @@
-use crate::spec::{cvs, Cc, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions, cvs};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         os: "l4re".into(),
         env: "uclibc".into(),

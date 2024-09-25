@@ -1,6 +1,6 @@
 // FIXME: This is currently disabled on *BSD.
 
-use super::{sockaddr_un, SocketAddr};
+use super::{SocketAddr, sockaddr_un};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
 use crate::mem::zeroed;

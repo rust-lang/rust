@@ -11,8 +11,8 @@ fn main() {
         let p = cwd();
         path_bc = p.join("nonexistant_dir_bc");
         path_ir = p.join("nonexistant_dir_ir");
-        rustc().input("-").stdin("fn main() {}").out_dir(&path_bc).emit("llvm-bc").run();
-        rustc().input("-").stdin("fn main() {}").out_dir(&path_ir).emit("llvm-ir").run();
+        rustc().input("-").stdin_buf("fn main() {}").out_dir(&path_bc).emit("llvm-bc").run();
+        rustc().input("-").stdin_buf("fn main() {}").out_dir(&path_ir).emit("llvm-ir").run();
         assert!(path_bc.exists());
         assert!(path_ir.exists());
     });

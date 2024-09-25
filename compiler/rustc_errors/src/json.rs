@@ -19,21 +19,22 @@ use derive_setters::Setters;
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_error_messages::FluentArgs;
 use rustc_lint_defs::Applicability;
+use rustc_span::Span;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::source_map::SourceMap;
-use rustc_span::Span;
 use serde::Serialize;
 use termcolor::{ColorSpec, WriteColor};
 
 use crate::diagnostic::IsLint;
 use crate::emitter::{
-    should_show_source_code, ColorConfig, Destination, Emitter, HumanEmitter,
-    HumanReadableErrorType,
+    ColorConfig, Destination, Emitter, HumanEmitter, HumanReadableErrorType,
+    should_show_source_code,
 };
 use crate::registry::Registry;
-use crate::translation::{to_fluent_args, Translate};
+use crate::translation::{Translate, to_fluent_args};
 use crate::{
-    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, TerminalUrl,
+    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, Suggestions,
+    TerminalUrl,
 };
 
 #[cfg(test)]
@@ -292,7 +293,7 @@ impl Diagnostic {
     /// Converts from `rustc_errors::DiagInner` to `Diagnostic`.
     fn from_errors_diagnostic(diag: crate::DiagInner, je: &JsonEmitter) -> Diagnostic {
         let args = to_fluent_args(diag.args.iter());
-        let sugg = diag.suggestions.iter().flatten().map(|sugg| {
+        let sugg_to_diag = |sugg: &CodeSuggestion| {
             let translated_message =
                 je.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();
             Diagnostic {
@@ -303,7 +304,12 @@ impl Diagnostic {
                 children: vec![],
                 rendered: None,
             }
-        });
+        };
+        let sugg = match &diag.suggestions {
+            Suggestions::Enabled(suggestions) => suggestions.iter().map(sugg_to_diag),
+            Suggestions::Sealed(suggestions) => suggestions.iter().map(sugg_to_diag),
+            Suggestions::Disabled => [].iter().map(sugg_to_diag),
+        };
 
         // generate regular command line output and store it in the json
 

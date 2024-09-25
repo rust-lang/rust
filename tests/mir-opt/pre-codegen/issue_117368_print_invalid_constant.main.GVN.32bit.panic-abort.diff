@@ -93,7 +93,7 @@
       bb5: {
           StorageLive(_15);
           _16 = &_13;
-          _15 = copy _16 as &dyn std::fmt::Debug (PointerCoercion(Unsize));
+          _15 = copy _16 as &dyn std::fmt::Debug (PointerCoercion(Unsize, Implicit));
           _14 = result::unwrap_failed(const "called `Result::unwrap()` on an `Err` value", move _15) -> unwind unreachable;
       }
   

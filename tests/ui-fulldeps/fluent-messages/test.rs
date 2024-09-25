@@ -80,3 +80,8 @@ mod bad_escape {
     //~| ERROR invalid escape `\"`
     //~| ERROR invalid escape `\'`
 }
+
+mod many_lines {
+    rustc_fluent_macro::fluent_messages! { "./many-lines.ftl" }
+    //~^ ERROR could not parse Fluent resource
+}

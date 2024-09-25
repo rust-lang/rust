@@ -5,8 +5,8 @@
 
 use std::mem;
 
-use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use hir::ItemKind;
+use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 use rustc_target::abi::FieldIdx;
 
 use crate::errors::{
@@ -394,7 +394,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
         }
 
-        return false;
+        false
     }
 
     fn visit_node(&mut self, node: Node<'tcx>) {
@@ -439,7 +439,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 _ => intravisit::walk_item(self, item),
             },
             Node::TraitItem(trait_item) => {
-                // mark corresponing ImplTerm live
+                // mark corresponding ImplTerm live
                 let trait_item_id = trait_item.owner_id.to_def_id();
                 if let Some(trait_id) = self.tcx.trait_of_item(trait_item_id) {
                     // mark the trait live
@@ -1035,7 +1035,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
 
         let encl_def_id = parent_item.unwrap_or(first_item.def_id);
-        // If parent of encl_def_id is an enum, use the parent ID intead.
+        // If parent of encl_def_id is an enum, use the parent ID instead.
         let encl_def_id = get_parent_if_enum_variant(tcx, encl_def_id);
 
         let ignored_derived_impls =
