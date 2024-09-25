@@ -19,6 +19,15 @@ impl CiEnv {
     pub fn is_ci() -> bool {
         Self::current() != CiEnv::None
     }
+
+    /// Checks if running in rust-lang/rust managed CI job.
+    pub fn is_rust_lang_managed_ci_job() -> bool {
+        Self::is_ci()
+            // If both are present, we can assume it's an upstream CI job
+            // as they are always set unconditionally.
+            && std::env::var_os("CI_JOB_NAME").is_some()
+            && std::env::var_os("TOOLSTATE_REPO").is_some()
+    }
 }
 
 pub mod gha {
