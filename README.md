@@ -21,7 +21,7 @@ standard library, and documentation.
 
 ## Why Rust?
 
-- **Performance:** Fast and memory-efficient, suitable for critical services, and embedded devices, and easily integrated with other languages.
+- **Performance:** Fast and memory-efficient, suitable for critical services and embedded devices, and easily integrated with other languages.
 
 - **Reliability:** Our rich type system and ownership model ensure memory and thread safety, reducing bugs at compile-time.
 
