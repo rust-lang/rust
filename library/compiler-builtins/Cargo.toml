@@ -34,7 +34,7 @@ test = false
 core = { version = "1.0.0", optional = true, package = 'rustc-std-workspace-core' }
 
 [build-dependencies]
-cc = { optional = true, version = "1.0" }
+cc = { optional = true, version = "1.1" }
 
 [dev-dependencies]
 panic-handler = { path = 'crates/panic-handler' }
