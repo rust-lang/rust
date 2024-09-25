@@ -21,6 +21,7 @@ cfg_if::cfg_if! {
         target_os = "haiku",
         target_os = "l4re",
         target_os = "nto",
+        target_os = "nuttx",
         target_vendor = "apple",
     ))] {
         use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
