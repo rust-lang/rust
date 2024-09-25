@@ -22,7 +22,7 @@
 //!
 //! 1) Identify `dest = src;` statements with values for `dest` and `src` whose storage can soundly
 //!    be merged.
-//! 2) Replace all mentions of `src` with `dest` ("unifying" them and propagating the destination
+//! 2) Replace all mentions of `dest` with `src` ("unifying" them and propagating the destination
 //!    backwards).
 //! 3) Delete the `dest = src;` statement (by making it a `nop`).
 //!
