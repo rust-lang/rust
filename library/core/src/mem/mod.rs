@@ -874,6 +874,18 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
     }
 }
 
+#[inline]
+#[unstable(feature = "mem_reshape", issue = "none")]
+pub fn reshape<T>(dest: &mut T, f: impl FnOnce(T) -> T) {
+    // SAFETY: We read from `dest` but directly write to it afterwards,
+    // such that the old value is not duplicated. Nothing is dropped and
+    // nothing here can panic.
+    unsafe {
+        let result = ptr::read(dest);
+        ptr::write(dest, f(result));
+    }
+}
+
 /// Disposes of a value.
 ///
 /// This does so by calling the argument's implementation of [`Drop`][drop].
