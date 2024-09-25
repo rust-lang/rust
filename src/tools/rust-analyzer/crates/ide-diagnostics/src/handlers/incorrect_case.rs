@@ -370,6 +370,23 @@ mod F {
     }
 
     #[test]
+    fn external_macro() {
+        check_diagnostics(
+            r#"
+//- /library.rs library crate:library
+#[macro_export]
+macro_rules! trigger_lint {
+    () => { let FOO: () };
+}
+//- /user.rs crate:user deps:library
+fn foo() {
+    library::trigger_lint!();
+}
+    "#,
+        );
+    }
+
+    #[test]
     fn complex_ignore() {
         check_diagnostics(
             r#"
@@ -416,6 +433,64 @@ fn f((_O): u8) {}
    // ^^ 💡 warn: Variable `_O` should have snake_case name, e.g. `_o`
 "#,
         )
+    }
+
+    #[test]
+    fn ignores_no_mangle_items() {
+        cov_mark::check!(extern_func_no_mangle_ignored);
+        check_diagnostics(
+            r#"
+#[no_mangle]
+extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+            "#,
+        );
+    }
+
+    #[test]
+    fn ignores_no_mangle_items_with_no_abi() {
+        cov_mark::check!(extern_func_no_mangle_ignored);
+        check_diagnostics(
+            r#"
+#[no_mangle]
+extern fn NonSnakeCaseName(some_var: u8) -> u8;
+            "#,
+        );
+    }
+
+    #[test]
+    fn no_mangle_items_with_rust_abi() {
+        check_diagnostics(
+            r#"
+#[no_mangle]
+extern "Rust" fn NonSnakeCaseName(some_var: u8) -> u8;
+              // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+            "#,
+        );
+    }
+
+    #[test]
+    fn no_mangle_items_non_extern() {
+        check_diagnostics(
+            r#"
+#[no_mangle]
+fn NonSnakeCaseName(some_var: u8) -> u8;
+// ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+            "#,
+        );
+    }
+
+    #[test]
+    fn extern_fn_name() {
+        check_diagnostics(
+            r#"
+extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+           // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+extern "Rust" fn NonSnakeCaseName(some_var: u8) -> u8;
+              // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+extern fn NonSnakeCaseName(some_var: u8) -> u8;
+       // ^^^^^^^^^^^^^^^^ 💡 warn: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+            "#,
+        );
     }
 
     #[test]
@@ -593,7 +668,7 @@ mod CheckBadStyle {
 }
 
 mod F {
-  //^ 💡 warn: Module `F` should have snake_case name, e.g. `f`
+  //^ 💡 error: Module `F` should have snake_case name, e.g. `f`
     #![deny(non_snake_case)]
     fn CheckItWorksWithModAttr() {}
      //^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: Function `CheckItWorksWithModAttr` should have snake_case name, e.g. `check_it_works_with_mod_attr`
@@ -854,6 +929,106 @@ fn func() {
     for non_snake in [] { non_snake; }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn override_lint_level() {
+        check_diagnostics(
+            r#"
+#[warn(nonstandard_style)]
+fn foo() {
+    let BAR;
+     // ^^^ 💡 warn: Variable `BAR` should have snake_case name, e.g. `bar`
+    #[allow(non_snake_case)]
+    let FOO;
+}
+
+#[warn(nonstandard_style)]
+fn foo() {
+    let BAR;
+     // ^^^ 💡 warn: Variable `BAR` should have snake_case name, e.g. `bar`
+    #[expect(non_snake_case)]
+    let FOO;
+    #[allow(non_snake_case)]
+    struct qux;
+        // ^^^ 💡 warn: Structure `qux` should have CamelCase name, e.g. `Qux`
+
+    fn BAZ() {
+    // ^^^ 💡 error: Function `BAZ` should have snake_case name, e.g. `baz`
+        #![forbid(bad_style)]
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn different_files() {
+        check_diagnostics(
+            r#"
+//- /lib.rs
+#![expect(nonstandard_style)]
+
+mod BAD_CASE;
+
+fn BAD_CASE() {}
+
+//- /BAD_CASE.rs
+mod OtherBadCase;
+ // ^^^^^^^^^^^^ 💡 error: Module `OtherBadCase` should have snake_case name, e.g. `other_bad_case`
+
+//- /BAD_CASE/OtherBadCase.rs
+#![deny(non_snake_case)]
+
+fn FOO() {}
+// ^^^ 💡 error: Function `FOO` should have snake_case name, e.g. `foo`
+
+#[allow(bad_style)]
+mod FINE_WITH_BAD_CASE;
+
+//- /BAD_CASE/OtherBadCase/FINE_WITH_BAD_CASE.rs
+struct QUX;
+const foo: i32 = 0;
+fn BAR() {
+    let BAZ;
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn cfged_lint_attrs() {
+        check_diagnostics(
+            r#"
+//- /lib.rs cfg:feature=cool_feature
+#[cfg_attr(any(), allow(non_snake_case))]
+fn FOO() {}
+// ^^^ 💡 warn: Function `FOO` should have snake_case name, e.g. `foo`
+
+#[cfg_attr(non_existent, allow(non_snake_case))]
+fn BAR() {}
+// ^^^ 💡 warn: Function `BAR` should have snake_case name, e.g. `bar`
+
+#[cfg_attr(feature = "cool_feature", allow(non_snake_case))]
+fn BAZ() {}
+
+#[cfg_attr(feature = "cool_feature", cfg_attr ( all ( ) , allow ( non_snake_case ) ) ) ]
+fn QUX() {}
+        "#,
+        );
+    }
+
+    #[test]
+    fn allow_with_comment() {
+        check_diagnostics(
+            r#"
+#[allow(
+    // Yo, sup
+    non_snake_case
+)]
+fn foo(_HelloWorld: ()) {}
+        "#,
         );
     }
 }

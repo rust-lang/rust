@@ -11,7 +11,7 @@ use base_db::{
 use hir_def::{
     db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, CallableDefId,
     ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
-    LifetimeParamId, LocalFieldId, StaticId, TypeAliasId, TypeOrConstParamId, VariantId,
+    LifetimeParamId, LocalFieldId, StaticId, TraitId, TypeAliasId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
 use smallvec::SmallVec;
@@ -24,6 +24,7 @@ use crate::{
     lower::{GenericDefaults, GenericPredicates},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
+    object_safety::ObjectSafetyViolation,
     Binders, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult, Interner,
     PolyFnSig, Substitution, TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
@@ -107,6 +108,9 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::layout::target_data_layout_query)]
     fn target_data_layout(&self, krate: CrateId) -> Result<Arc<TargetDataLayout>, Arc<str>>;
 
+    #[salsa::invoke(crate::object_safety::object_safety_of_trait_query)]
+    fn object_safety_of_trait(&self, trait_: TraitId) -> Option<ObjectSafetyViolation>;
+
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]
     fn ty(&self, def: TyDefId) -> Binders<Ty>;
@@ -149,6 +153,9 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
+
+    #[salsa::invoke(crate::lower::generic_predicates_without_parent_query)]
+    fn generic_predicates_without_parent(&self, def: GenericDefId) -> GenericPredicates;
 
     #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
     #[salsa::transparent]

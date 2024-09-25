@@ -2,8 +2,8 @@
 use std::{iter, mem, str::FromStr, sync};
 
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileChange,
-    FileSet, LangCrateOrigin, SourceRoot, SourceRootDatabase, Version, VfsPath,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, CrateWorkspaceData, Dependency,
+    Env, FileChange, FileSet, LangCrateOrigin, SourceRoot, SourceRootDatabase, Version, VfsPath,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -13,7 +13,7 @@ use hir_expand::{
     proc_macro::{
         ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacrosBuilder,
     },
-    FileRange,
+    quote, FileRange,
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
@@ -95,8 +95,10 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     fn test_crate(&self) -> CrateId {
         let crate_graph = self.crate_graph();
         let mut it = crate_graph.iter();
-        let res = it.next().unwrap();
-        assert!(it.next().is_none());
+        let mut res = it.next().unwrap();
+        while crate_graph[res].origin.is_lang() {
+            res = it.next().unwrap();
+        }
         res
     }
 }
@@ -352,23 +354,27 @@ impl ChangeFixture {
         };
         roots.push(root);
 
-        let mut change = ChangeWithProcMacros {
-            source_change,
-            proc_macros: Some(proc_macros.build()),
-            toolchains: Some(iter::repeat(toolchain).take(crate_graph.len()).collect()),
-            target_data_layouts: Some(
-                iter::repeat(target_data_layout).take(crate_graph.len()).collect(),
-            ),
-        };
+        let mut change =
+            ChangeWithProcMacros { source_change, proc_macros: Some(proc_macros.build()) };
 
         change.source_change.set_roots(roots);
+        change.source_change.set_ws_data(
+            crate_graph
+                .iter()
+                .zip(iter::repeat(From::from(CrateWorkspaceData {
+                    proc_macro_cwd: None,
+                    data_layout: target_data_layout,
+                    toolchain,
+                })))
+                .collect(),
+        );
         change.source_change.set_crate_graph(crate_graph);
 
         ChangeFixture { file_position, files, change }
     }
 }
 
-fn default_test_proc_macros() -> [(String, ProcMacro); 5] {
+fn default_test_proc_macros() -> [(String, ProcMacro); 6] {
     [
         (
             r#"
@@ -442,6 +448,21 @@ pub fn shorten(input: TokenStream) -> TokenStream {
                 name: Symbol::intern("shorten"),
                 kind: ProcMacroKind::Bang,
                 expander: sync::Arc::new(ShortenProcMacroExpander),
+                disabled: false,
+            },
+        ),
+        (
+            r#"
+#[proc_macro_attribute]
+pub fn issue_18089(_attr: TokenStream, _item: TokenStream) -> TokenStream {
+    loop {}
+}
+"#
+            .into(),
+            ProcMacro {
+                name: Symbol::intern("issue_18089"),
+                kind: ProcMacroKind::Attr,
+                expander: sync::Arc::new(Issue18089ProcMacroExpander),
                 disabled: false,
             },
         ),
@@ -565,8 +586,38 @@ impl ProcMacroExpander for IdentityProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         Ok(subtree.clone())
+    }
+}
+
+// Expands to a macro_rules! macro, for issue #18089.
+#[derive(Debug)]
+struct Issue18089ProcMacroExpander;
+impl ProcMacroExpander for Issue18089ProcMacroExpander {
+    fn expand(
+        &self,
+        subtree: &Subtree<Span>,
+        _: Option<&Subtree<Span>>,
+        _: &Env,
+        _: Span,
+        call_site: Span,
+        _: Span,
+        _: Option<String>,
+    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
+        let macro_name = &subtree.token_trees[1];
+        Ok(quote! { call_site =>
+            #[macro_export]
+            macro_rules! my_macro___ {
+                ($($token:tt)*) => {{
+                }};
+            }
+
+            pub use my_macro___ as #macro_name;
+
+            #subtree
+        })
     }
 }
 
@@ -582,6 +633,7 @@ impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         attrs
             .cloned()
@@ -600,6 +652,7 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         fn traverse(input: &Subtree<Span>) -> Subtree<Span> {
             let mut token_trees = vec![];
@@ -630,6 +683,7 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
+        _: Option<String>,
     ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         return Ok(traverse(input));
 

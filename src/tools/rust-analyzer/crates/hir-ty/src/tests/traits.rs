@@ -1448,14 +1448,20 @@ fn foo<X>() -> Foo<impl Future<Output = ()>> {
 fn dyn_trait() {
     check_infer(
         r#"
-//- minicore: sized
+//- minicore: deref, dispatch_from_dyn
 trait Trait<T> {
     fn foo(&self) -> T;
     fn foo2(&self) -> i64;
 }
-fn bar() -> dyn Trait<u64> {}
 
-fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
+struct Box<T: ?Sized> {}
+impl<T: ?Sized> core::ops::Deref for Box<T> {
+    type Target = T;
+}
+
+fn bar() -> Box<dyn Trait<u64>> {}
+
+fn test(x: Box<dyn Trait<u64>>, y: &dyn Trait<u64>) {
     x;
     y;
     let z = bar();
@@ -1469,27 +1475,27 @@ fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
         expect![[r#"
             29..33 'self': &'? Self
             54..58 'self': &'? Self
-            97..99 '{}': dyn Trait<u64>
-            109..110 'x': dyn Trait<u64>
-            128..129 'y': &'? dyn Trait<u64>
-            148..265 '{     ...2(); }': ()
-            154..155 'x': dyn Trait<u64>
-            161..162 'y': &'? dyn Trait<u64>
-            172..173 'z': dyn Trait<u64>
-            176..179 'bar': fn bar() -> dyn Trait<u64>
-            176..181 'bar()': dyn Trait<u64>
-            187..188 'x': dyn Trait<u64>
-            187..194 'x.foo()': u64
-            200..201 'y': &'? dyn Trait<u64>
-            200..207 'y.foo()': u64
-            213..214 'z': dyn Trait<u64>
-            213..220 'z.foo()': u64
-            226..227 'x': dyn Trait<u64>
-            226..234 'x.foo2()': i64
-            240..241 'y': &'? dyn Trait<u64>
-            240..248 'y.foo2()': i64
-            254..255 'z': dyn Trait<u64>
-            254..262 'z.foo2()': i64
+            198..200 '{}': Box<dyn Trait<u64>>
+            210..211 'x': Box<dyn Trait<u64>>
+            234..235 'y': &'? dyn Trait<u64>
+            254..371 '{     ...2(); }': ()
+            260..261 'x': Box<dyn Trait<u64>>
+            267..268 'y': &'? dyn Trait<u64>
+            278..279 'z': Box<dyn Trait<u64>>
+            282..285 'bar': fn bar() -> Box<dyn Trait<u64>>
+            282..287 'bar()': Box<dyn Trait<u64>>
+            293..294 'x': Box<dyn Trait<u64>>
+            293..300 'x.foo()': u64
+            306..307 'y': &'? dyn Trait<u64>
+            306..313 'y.foo()': u64
+            319..320 'z': Box<dyn Trait<u64>>
+            319..326 'z.foo()': u64
+            332..333 'x': Box<dyn Trait<u64>>
+            332..340 'x.foo2()': i64
+            346..347 'y': &'? dyn Trait<u64>
+            346..354 'y.foo2()': i64
+            360..361 'z': Box<dyn Trait<u64>>
+            360..368 'z.foo2()': i64
         "#]],
     );
 }
@@ -1534,7 +1540,7 @@ fn test(s: S<u32, i32>) {
 fn dyn_trait_bare() {
     check_infer(
         r#"
-//- minicore: sized
+//- minicore: sized, dispatch_from_dyn
 trait Trait {
     fn foo(&self) -> u64;
 }
@@ -1570,7 +1576,7 @@ fn test(x: Trait, y: &Trait) -> u64 {
 
     check_infer_with_mismatches(
         r#"
-//- minicore: fn, coerce_unsized
+//- minicore: fn, coerce_unsized, dispatch_from_dyn
 struct S;
 impl S {
     fn foo(&self) {}
@@ -3106,7 +3112,7 @@ fn dyn_fn_param_informs_call_site_closure_signature() {
     cov_mark::check!(dyn_fn_param_informs_call_site_closure_signature);
     check_types(
         r#"
-//- minicore: fn, coerce_unsized
+//- minicore: fn, coerce_unsized, dispatch_from_dyn
 struct S;
 impl S {
     fn inherent(&self) -> u8 { 0 }
@@ -3151,7 +3157,7 @@ fn infer_box_fn_arg() {
     // The type mismatch is because we don't define Unsize and CoerceUnsized
     check_infer_with_mismatches(
         r#"
-//- minicore: fn, deref, option
+//- minicore: fn, deref, option, dispatch_from_dyn
 #[lang = "owned_box"]
 pub struct Box<T: ?Sized> {
     inner: *mut T,

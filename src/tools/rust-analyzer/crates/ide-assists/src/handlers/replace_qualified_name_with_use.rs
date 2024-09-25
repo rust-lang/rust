@@ -29,7 +29,7 @@ pub(crate) fn replace_qualified_name_with_use(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    let original_path: ast::Path = ctx.find_node_at_offset()?;
+    let mut original_path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
     if original_path.syntax().ancestors().find_map(ast::UseTree::cast).is_some() {
         cov_mark::hit!(not_applicable_in_use);
@@ -37,8 +37,7 @@ pub(crate) fn replace_qualified_name_with_use(
     }
 
     if original_path.qualifier().is_none() {
-        cov_mark::hit!(dont_import_trivial_paths);
-        return None;
+        original_path = original_path.parent_path()?;
     }
 
     // only offer replacement for non assoc items
@@ -237,12 +236,6 @@ fs::Path
     }
 
     #[test]
-    fn dont_import_trivial_paths() {
-        cov_mark::check!(dont_import_trivial_paths);
-        check_assist_not_applicable(replace_qualified_name_with_use, r"impl foo$0 for () {}");
-    }
-
-    #[test]
     fn test_replace_not_applicable_in_use() {
         cov_mark::check!(not_applicable_in_use);
         check_assist_not_applicable(replace_qualified_name_with_use, r"use std::fmt$0;");
@@ -266,6 +259,29 @@ mod std { pub mod fmt { pub trait Debug {} } }
 fn main() {
     Debug;
     let x: Debug = Debug;
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn assist_runs_on_first_segment() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+mod std { pub mod fmt { pub trait Debug {} } }
+fn main() {
+    $0std::fmt::Debug;
+    let x: std::fmt::Debug = std::fmt::Debug;
+}
+    ",
+            r"
+use std::fmt;
+
+mod std { pub mod fmt { pub trait Debug {} } }
+fn main() {
+    fmt::Debug;
+    let x: fmt::Debug = fmt::Debug;
 }
     ",
         );

@@ -9,7 +9,8 @@ use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex, Mutability, TyVariableKin
 use either::Either;
 use hir_def::{
     hir::{
-        ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
+        ArithOp, Array, AsmOperand, AsmOptions, BinaryOp, ClosureKind, Expr, ExprId, LabelId,
+        Literal, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArg, GenericArgs, Path},
@@ -41,9 +42,9 @@ use crate::{
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
-    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, FnAbi, FnPointer, FnSig,
-    FnSubst, Interner, Rawness, Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder,
-    TyExt, TyKind,
+    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, FnAbi, FnPointer,
+    FnSig, FnSubst, Interner, Rawness, Scalar, Substitution, TraitEnvironment, TraitRef, Ty,
+    TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -610,7 +611,12 @@ impl InferenceContext<'_> {
             Expr::Cast { expr, type_ref } => {
                 let cast_ty = self.make_ty(type_ref);
                 let expr_ty = self.infer_expr(*expr, &Expectation::Castable(cast_ty.clone()));
-                self.deferred_cast_checks.push(CastCheck::new(expr_ty, cast_ty.clone()));
+                self.deferred_cast_checks.push(CastCheck::new(
+                    tgt_expr,
+                    *expr,
+                    expr_ty,
+                    cast_ty.clone(),
+                ));
                 cast_ty
             }
             Expr::Ref { expr, rawness, mutability } => {
@@ -845,7 +851,7 @@ impl InferenceContext<'_> {
                 };
 
                 for (expr, ty) in exprs.iter().zip(tys.iter_mut()) {
-                    self.infer_expr_coerce(*expr, &Expectation::has_type(ty.clone()));
+                    *ty = self.infer_expr_coerce(*expr, &Expectation::has_type(ty.clone()));
                 }
 
                 TyKind::Tuple(tys.len(), Substitution::from_iter(Interner, tys)).intern(Interner)
@@ -889,21 +895,52 @@ impl InferenceContext<'_> {
                         TyKind::Scalar(Scalar::Int(primitive::int_ty_from_builtin(*int_ty)))
                             .intern(Interner)
                     }
-                    None => self.table.new_integer_var(),
+                    None => {
+                        let expected_ty = expected.to_option(&mut self.table);
+                        let opt_ty = match expected_ty.as_ref().map(|it| it.kind(Interner)) {
+                            Some(TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))) => expected_ty,
+                            Some(TyKind::Scalar(Scalar::Char)) => {
+                                Some(TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner))
+                            }
+                            Some(TyKind::Raw(..) | TyKind::FnDef(..) | TyKind::Function(..)) => {
+                                Some(TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner))
+                            }
+                            _ => None,
+                        };
+                        opt_ty.unwrap_or_else(|| self.table.new_integer_var())
+                    }
                 },
                 Literal::Uint(_v, ty) => match ty {
                     Some(int_ty) => {
                         TyKind::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(*int_ty)))
                             .intern(Interner)
                     }
-                    None => self.table.new_integer_var(),
+                    None => {
+                        let expected_ty = expected.to_option(&mut self.table);
+                        let opt_ty = match expected_ty.as_ref().map(|it| it.kind(Interner)) {
+                            Some(TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))) => expected_ty,
+                            Some(TyKind::Scalar(Scalar::Char)) => {
+                                Some(TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner))
+                            }
+                            Some(TyKind::Raw(..) | TyKind::FnDef(..) | TyKind::Function(..)) => {
+                                Some(TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner))
+                            }
+                            _ => None,
+                        };
+                        opt_ty.unwrap_or_else(|| self.table.new_integer_var())
+                    }
                 },
                 Literal::Float(_v, ty) => match ty {
                     Some(float_ty) => {
                         TyKind::Scalar(Scalar::Float(primitive::float_ty_from_builtin(*float_ty)))
                             .intern(Interner)
                     }
-                    None => self.table.new_float_var(),
+                    None => {
+                        let opt_ty = expected.to_option(&mut self.table).filter(|ty| {
+                            matches!(ty.kind(Interner), TyKind::Scalar(Scalar::Float(_)))
+                        });
+                        opt_ty.unwrap_or_else(|| self.table.new_float_var())
+                    }
                 },
             },
             Expr::Underscore => {
@@ -919,9 +956,61 @@ impl InferenceContext<'_> {
                 expected
             }
             Expr::OffsetOf(_) => TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner),
-            Expr::InlineAsm(it) => {
-                self.infer_expr_no_expect(it.e);
-                self.result.standard_types.unit.clone()
+            Expr::InlineAsm(asm) => {
+                let mut check_expr_asm_operand = |expr, is_input: bool| {
+                    let ty = self.infer_expr_no_expect(expr);
+
+                    // If this is an input value, we require its type to be fully resolved
+                    // at this point. This allows us to provide helpful coercions which help
+                    // pass the type candidate list in a later pass.
+                    //
+                    // We don't require output types to be resolved at this point, which
+                    // allows them to be inferred based on how they are used later in the
+                    // function.
+                    if is_input {
+                        let ty = self.resolve_ty_shallow(&ty);
+                        match ty.kind(Interner) {
+                            TyKind::FnDef(def, parameters) => {
+                                let fnptr_ty = TyKind::Function(
+                                    CallableSig::from_def(self.db, *def, parameters).to_fn_ptr(),
+                                )
+                                .intern(Interner);
+                                _ = self.coerce(Some(expr), &ty, &fnptr_ty);
+                            }
+                            TyKind::Ref(mutbl, _, base_ty) => {
+                                let ptr_ty = TyKind::Raw(*mutbl, base_ty.clone()).intern(Interner);
+                                _ = self.coerce(Some(expr), &ty, &ptr_ty);
+                            }
+                            _ => {}
+                        }
+                    }
+                };
+
+                let diverge = asm.options.contains(AsmOptions::NORETURN);
+                asm.operands.iter().for_each(|(_, operand)| match *operand {
+                    AsmOperand::In { expr, .. } => check_expr_asm_operand(expr, true),
+                    AsmOperand::Out { expr: Some(expr), .. } | AsmOperand::InOut { expr, .. } => {
+                        check_expr_asm_operand(expr, false)
+                    }
+                    AsmOperand::Out { expr: None, .. } => (),
+                    AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        check_expr_asm_operand(in_expr, true);
+                        if let Some(out_expr) = out_expr {
+                            check_expr_asm_operand(out_expr, false);
+                        }
+                    }
+                    // FIXME
+                    AsmOperand::Label(_) => (),
+                    // FIXME
+                    AsmOperand::Const(_) => (),
+                    // FIXME
+                    AsmOperand::Sym(_) => (),
+                });
+                if diverge {
+                    self.result.standard_types.never.clone()
+                } else {
+                    self.result.standard_types.unit.clone()
+                }
             }
         };
         // use a new type variable if we got unknown here

@@ -11,9 +11,14 @@ use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
 pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Diagnostic {
+    let code = if d.only_lint {
+        DiagnosticCode::RustcLint("unsafe_op_in_unsafe_fn")
+    } else {
+        DiagnosticCode::RustcHardError("E0133")
+    };
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
-        DiagnosticCode::RustcHardError("E0133"),
+        code,
         "this operation is unsafe and requires an unsafe function or block",
         d.expr.map(|it| it.into()),
     )
@@ -99,8 +104,9 @@ mod tests {
     fn missing_unsafe_diagnostic_with_raw_ptr() {
         check_diagnostics(
             r#"
+//- minicore: sized
 fn main() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     unsafe { let _y = *x; }
     let _z = *x;
 }          //^^💡 error: this operation is unsafe and requires an unsafe function or block
@@ -112,17 +118,18 @@ fn main() {
     fn missing_unsafe_diagnostic_with_unsafe_call() {
         check_diagnostics(
             r#"
+//- minicore: sized
 struct HasUnsafe;
 
 impl HasUnsafe {
     unsafe fn unsafe_fn(&self) {
-        let x = &5 as *const usize;
+        let x = &5_usize as *const usize;
         let _y = *x;
     }
 }
 
 unsafe fn unsafe_fn() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let _y = *x;
 }
 
@@ -158,6 +165,56 @@ fn main() {
     unsafe {
         let _x = STATIC_MUT.a;
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn missing_unsafe_diagnostic_with_extern_static() {
+        check_diagnostics(
+            r#"
+//- minicore: copy
+
+extern "C" {
+    static EXTERN: i32;
+    static mut EXTERN_MUT: i32;
+}
+
+fn main() {
+    let _x = EXTERN;
+           //^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
+    let _x = EXTERN_MUT;
+           //^^^^^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
+    unsafe {
+        let _x = EXTERN;
+        let _x = EXTERN_MUT;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_unsafe_diagnostic_with_addr_of_static() {
+        check_diagnostics(
+            r#"
+//- minicore: copy, addr_of
+
+use core::ptr::{addr_of, addr_of_mut};
+
+extern "C" {
+    static EXTERN: i32;
+    static mut EXTERN_MUT: i32;
+}
+static mut STATIC_MUT: i32 = 0;
+
+fn main() {
+    let _x = addr_of!(EXTERN);
+    let _x = addr_of!(EXTERN_MUT);
+    let _x = addr_of!(STATIC_MUT);
+    let _x = addr_of_mut!(EXTERN_MUT);
+    let _x = addr_of_mut!(STATIC_MUT);
 }
 "#,
         );
@@ -200,14 +257,15 @@ fn main() {
     fn add_unsafe_block_when_dereferencing_a_raw_pointer() {
         check_fix(
             r#"
+//- minicore: sized
 fn main() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let _z = *x$0;
 }
 "#,
             r#"
 fn main() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let _z = unsafe { *x };
 }
 "#,
@@ -218,8 +276,9 @@ fn main() {
     fn add_unsafe_block_when_calling_unsafe_function() {
         check_fix(
             r#"
+//- minicore: sized
 unsafe fn func() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let z = *x;
 }
 fn main() {
@@ -228,7 +287,7 @@ fn main() {
 "#,
             r#"
 unsafe fn func() {
-    let x = &5 as *const usize;
+    let x = &5_usize as *const usize;
     let z = *x;
 }
 fn main() {
@@ -242,6 +301,7 @@ fn main() {
     fn add_unsafe_block_when_calling_unsafe_method() {
         check_fix(
             r#"
+//- minicore: sized
 struct S(usize);
 impl S {
     unsafe fn func(&self) {
@@ -507,6 +567,30 @@ fn main() {
     ed2021::safe();
     ed2024::not_safe();
   //^^^^^^^^^^^^^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn unsafe_op_in_unsafe_fn_allowed_by_default() {
+        check_diagnostics(
+            r#"
+unsafe fn foo(p: *mut i32) {
+    *p = 123;
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn unsafe_op_in_unsafe_fn() {
+        check_diagnostics(
+            r#"
+#![warn(unsafe_op_in_unsafe_fn)]
+unsafe fn foo(p: *mut i32) {
+    *p = 123;
+  //^^💡 warn: this operation is unsafe and requires an unsafe function or block
 }
             "#,
         )

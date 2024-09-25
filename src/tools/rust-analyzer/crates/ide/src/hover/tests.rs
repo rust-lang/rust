@@ -182,13 +182,26 @@ fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
 
 fn check_actions(ra_fixture: &str, expect: Expect) {
     let (analysis, file_id, position) = fixture::range_or_position(ra_fixture);
-    let hover = analysis
+    let mut hover = analysis
         .hover(
             &HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG },
             FileRange { file_id, range: position.range_or_empty() },
         )
         .unwrap()
         .unwrap();
+    // stub out ranges into minicore as they can change every now and then
+    hover.info.actions.iter_mut().for_each(|action| match action {
+        super::HoverAction::GoToType(act) => act.iter_mut().for_each(|data| {
+            if data.nav.file_id == file_id {
+                return;
+            }
+            data.nav.full_range = TextRange::empty(span::TextSize::new(!0));
+            if let Some(range) = &mut data.nav.focus_range {
+                *range = TextRange::empty(span::TextSize::new(!0));
+            }
+        }),
+        _ => (),
+    });
     expect.assert_debug_eq(&hover.info.actions)
 }
 
@@ -200,10 +213,23 @@ fn check_hover_range(ra_fixture: &str, expect: Expect) {
 
 fn check_hover_range_actions(ra_fixture: &str, expect: Expect) {
     let (analysis, range) = fixture::range(ra_fixture);
-    let hover = analysis
+    let mut hover = analysis
         .hover(&HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG }, range)
         .unwrap()
         .unwrap();
+    // stub out ranges into minicore as they can change every now and then
+    hover.info.actions.iter_mut().for_each(|action| match action {
+        super::HoverAction::GoToType(act) => act.iter_mut().for_each(|data| {
+            if data.nav.file_id == range.file_id {
+                return;
+            }
+            data.nav.full_range = TextRange::empty(span::TextSize::new(!0));
+            if let Some(range) = &mut data.nav.focus_range {
+                *range = TextRange::empty(span::TextSize::new(!0));
+            }
+        }),
+        _ => (),
+    });
     expect.assert_debug_eq(&hover.info.actions);
 }
 
@@ -483,8 +509,8 @@ fn main() {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 632..867,
-                                focus_range: 693..699,
+                                full_range: 4294967295..4294967295,
+                                focus_range: 4294967295..4294967295,
                                 name: "FnOnce",
                                 kind: Trait,
                                 container_name: "function",
@@ -1465,6 +1491,24 @@ const foo$0: u32 = {
 
             ```rust
             const BAR: bool = false
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_unsigned_max_const() {
+    check(
+        r#"const $0A: u128 = -1_i128 as u128;"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const A: u128 = 340282366920938463463374607431768211455 (0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
             ```
         "#]],
     );
@@ -3104,26 +3148,26 @@ struct S{ f1: u32 }
 fn main() { let s$0t = S{ f1:0 }; }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..19,
-                                    focus_range: 7..8,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..19,
+                                focus_range: 7..8,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3616,8 +3660,8 @@ pub mod future {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 21..69,
-                                focus_range: 60..66,
+                                full_range: 4294967295..4294967295,
+                                focus_range: 4294967295..4294967295,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -5442,7 +5486,7 @@ const FOO$0: Option<&i32> = Some(2).as_ref();
 fn hover_const_eval_dyn_trait() {
     check(
         r#"
-//- minicore: fmt, coerce_unsized, builtin_impls
+//- minicore: fmt, coerce_unsized, builtin_impls, dispatch_from_dyn
 use core::fmt::Debug;
 
 const FOO$0: &dyn Debug = &2i32;
@@ -6292,7 +6336,19 @@ fn hover_lint() {
 
                 arithmetic operation overflows
             "#]],
-    )
+    );
+    check(
+        r#"#![expect(arithmetic_overflow$0)]"#,
+        expect![[r#"
+                *arithmetic_overflow*
+                ```
+                arithmetic_overflow
+                ```
+                ___
+
+                arithmetic operation overflows
+            "#]],
+    );
 }
 
 #[test]
@@ -6308,7 +6364,19 @@ fn hover_clippy_lint() {
 
                 Checks for `foo = bar; bar = foo` sequences.
             "#]],
-    )
+    );
+    check(
+        r#"#![expect(clippy::almost_swapped$0)]"#,
+        expect![[r#"
+                *almost_swapped*
+                ```
+                clippy::almost_swapped
+                ```
+                ___
+
+                Checks for `foo = bar; bar = foo` sequences.
+            "#]],
+    );
 }
 
 #[test]
@@ -7107,6 +7175,7 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: Yes
             trait T {}
             ```
         "#]],
@@ -7126,6 +7195,7 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: Yes
             trait T {}
             ```
         "#]],
@@ -7149,6 +7219,9 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: No
+            // - Reason: has a method `func` that is non dispatchable because of:
+            //   - missing a receiver
             trait T { /* … */ }
             ```
         "#]],
@@ -7172,6 +7245,9 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: No
+            // - Reason: has a method `func` that is non dispatchable because of:
+            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7199,6 +7275,9 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: No
+            // - Reason: has a method `func` that is non dispatchable because of:
+            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7226,6 +7305,9 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: No
+            // - Reason: has a method `func` that is non dispatchable because of:
+            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -8465,8 +8547,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 7800..8042,
-                                focus_range: 7865..7871,
+                                full_range: 4294967295..4294967295,
+                                focus_range: 4294967295..4294967295,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -8479,8 +8561,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 8672..9171,
-                                focus_range: 8749..8757,
+                                full_range: 4294967295..4294967295,
+                                focus_range: 4294967295..4294967295,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",
@@ -8698,6 +8780,184 @@ fn foo() {
 
             ```rust
             pub fn dyn()
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_function_with_pat_param() {
+    check(
+        r#"fn test_1$0((start_range, end_range): (u32, u32), a: i32) {}"#,
+        expect![[r#"
+            *test_1*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_1((start_range, end_range): (u32, u32), a: i32)
+            ```
+        "#]],
+    );
+
+    // Test case with tuple pattern and mutable parameters
+    check(
+        r#"fn test_2$0((mut x, y): (i32, i32)) {}"#,
+        expect![[r#"
+            *test_2*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_2((mut x, y): (i32, i32))
+            ```
+        "#]],
+    );
+
+    // Test case with a pattern in a reference type
+    check(
+        r#"fn test_3$0(&(a, b): &(i32, i32)) {}"#,
+        expect![[r#"
+            *test_3*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_3(&(a, b): &(i32, i32))
+            ```
+        "#]],
+    );
+
+    // Test case with complex pattern (struct destructuring)
+    check(
+        r#"struct Point { x: i32, y: i32 } fn test_4$0(Point { x, y }: Point) {}"#,
+        expect![[r#"
+            *test_4*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_4(Point { x, y }: Point)
+            ```
+        "#]],
+    );
+
+    // Test case with a nested pattern
+    check(
+        r#"fn test_5$0(((a, b), c): ((i32, i32), i32)) {}"#,
+        expect![[r#"
+            *test_5*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_5(((a, b), c): ((i32, i32), i32))
+            ```
+        "#]],
+    );
+
+    // Test case with an unused variable in the pattern
+    check(
+        r#"fn test_6$0((_, y): (i32, i64)) {}"#,
+        expect![[r#"
+            *test_6*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_6((_, y): (i32, i64))
+            ```
+        "#]],
+    );
+
+    // Test case with a complex pattern involving both tuple and struct
+    check(
+        r#"struct Foo { a: i32, b: i32 } fn test_7$0((x, Foo { a, b }): (i32, Foo)) {}"#,
+        expect![[r#"
+            *test_7*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_7((x, Foo { a, b }): (i32, Foo))
+            ```
+        "#]],
+    );
+
+    // Test case with Enum and Or pattern
+    check(
+        r#"enum MyEnum { A(i32), B(i32) } fn test_8$0((MyEnum::A(x) | MyEnum::B(x)): MyEnum) {}"#,
+        expect![[r#"
+            *test_8*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_8((MyEnum::A(x) | MyEnum::B(x)): MyEnum)
+            ```
+        "#]],
+    );
+
+    // Test case with a pattern as a function parameter
+    check(
+        r#"struct Foo { a: i32, b: i32 } fn test_9$0(Foo { a, b }: Foo) {}"#,
+        expect![[r#"
+            *test_9*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_9(Foo { a, b }: Foo)
+            ```
+        "#]],
+    );
+
+    // Test case with a pattern as a function parameter with a different name
+    check(
+        r#"struct Foo { a: i32, b: i32 } fn test_10$0(Foo { a, b: b1 }: Foo) {}"#,
+        expect![[r#"
+            *test_10*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_10(Foo { a, b: b1 }: Foo)
+            ```
+        "#]],
+    );
+
+    // Test case with a pattern as a function parameter with annotations
+    check(
+        r#"struct Foo { a: i32, b: i32 } fn test_10$0(Foo { a, b: mut b }: Foo) {}"#,
+        expect![[r#"
+            *test_10*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn test_10(Foo { a, b: mut b }: Foo)
             ```
         "#]],
     );

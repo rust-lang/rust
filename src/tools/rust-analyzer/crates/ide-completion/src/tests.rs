@@ -70,6 +70,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     term_search_fuel: 200,
     full_function_signatures: false,
     callable: Some(CallableSnippets::FillArguments),
+    add_semicolon_to_unit: true,
     snippet_cap: SnippetCap::new(true),
     insert_use: InsertUseConfig {
         granularity: ImportGranularity::Crate,

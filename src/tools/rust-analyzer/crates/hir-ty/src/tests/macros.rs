@@ -1,7 +1,7 @@
 use expect_test::expect;
 use test_utils::{bench, bench_fixture, skip_slow_tests};
 
-use crate::tests::check_infer_with_mismatches;
+use crate::tests::{check_infer_with_mismatches, check_no_mismatches};
 
 use super::{check_infer, check_types};
 
@@ -206,6 +206,7 @@ fn expr_macro_def_expanded_in_various_places() {
             100..119 'for _ ...!() {}': ()
             100..119 'for _ ...!() {}': ()
             100..119 'for _ ...!() {}': ()
+            100..119 'for _ ...!() {}': ()
             104..105 '_': IntoIterator::Item<isize>
             117..119 '{}': ()
             124..134 '|| spam!()': impl Fn() -> isize
@@ -296,6 +297,7 @@ fn expr_macro_rules_expanded_in_various_places() {
             114..133 'for _ ...!() {}': &'? mut IntoIterator::IntoIter<isize>
             114..133 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&'? mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
             114..133 'for _ ...!() {}': Option<IntoIterator::Item<isize>>
+            114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
@@ -1403,4 +1405,106 @@ fn foo(t: Tensor) {
 }
 "#,
     );
+}
+
+#[test]
+fn asm_unit() {
+    check_no_mismatches(
+        r#"
+//- minicore: asm
+fn unit() {
+    core::arch::asm!("")
+}
+"#,
+    );
+}
+
+#[test]
+fn asm_no_return() {
+    check_no_mismatches(
+        r#"
+//- minicore: asm
+fn unit() -> ! {
+    core::arch::asm!("", options(noreturn))
+}
+"#,
+    );
+}
+
+#[test]
+fn asm_things() {
+    check_infer(
+        r#"
+//- minicore: asm, concat
+fn main() {
+    unsafe {
+        let foo = 1;
+        let mut o = 0;
+        core::arch::asm!(
+            "%input = OpLoad _ {0}",
+            concat!("%result = ", bar, " _ %input"),
+            "OpStore {1} %result",
+            in(reg) &foo,
+            in(reg) &mut o,
+        );
+        o
+
+        let thread_id: usize;
+        core::arch::asm!("
+            mov {0}, gs:[0x30]
+            mov {0}, [{0}+0x48]
+        ", out(reg) thread_id, options(pure, readonly, nostack));
+
+        static UNMAP_BASE: usize;
+        const MEM_RELEASE: usize;
+        static VirtualFree: usize;
+        const OffPtr: usize;
+        const OffFn: usize;
+        core::arch::asm!("
+            push {free_type}
+            push {free_size}
+            push {base}
+
+            mov eax, fs:[30h]
+            mov eax, [eax+8h]
+            add eax, {off_fn}
+            mov [eax-{off_fn}+{off_ptr}], eax
+
+            push eax
+
+            jmp {virtual_free}
+            ",
+            off_ptr = const OffPtr,
+            off_fn  = const OffFn,
+
+            free_size = const 0,
+            free_type = const MEM_RELEASE,
+
+            virtual_free = sym VirtualFree,
+
+            base = sym UNMAP_BASE,
+            options(noreturn),
+        );
+    }
+}
+"#,
+        expect![[r#"
+            !0..122 'builti...muto,)': ()
+            !0..136 'builti...tack))': ()
+            !0..449 'builti...urn),)': !
+            10..1236 '{     ...   } }': ()
+            16..1234 'unsafe...     }': ()
+            37..40 'foo': i32
+            43..44 '1': i32
+            58..63 'mut o': i32
+            66..67 '0': i32
+            !95..104 'thread_id': usize
+            !103..107 '&foo': &'? i32
+            !104..107 'foo': i32
+            !115..120 '&muto': &'? mut i32
+            !119..120 'o': i32
+            293..294 'o': i32
+            308..317 'thread_id': usize
+        "#]],
+    )
 }

@@ -13,7 +13,8 @@ use either::Either;
 use hir_def::{
     hir::Expr,
     lower::LowerCtx,
-    nameres::MacroSubNs,
+    nameres::{MacroSubNs, ModuleOrigin},
+    path::ModPath,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
     AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
@@ -31,7 +32,7 @@ use intern::Symbol;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::{EditionedFileId, FileId};
+use span::{EditionedFileId, FileId, HirFileIdRepr};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
@@ -46,9 +47,9 @@ use crate::{
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     Access, Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
     ConstParam, Crate, DeriveHelper, Enum, Field, Function, HasSource, HirFileId, Impl, InFile,
-    Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef,
-    Static, Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias, TypeParam, Union,
-    Variant, VariantDef,
+    InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name,
+    OverloadedDeref, Path, ScopeDef, Static, Struct, ToolModule, Trait, TraitAlias, TupleField,
+    Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
 };
 
 const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
@@ -322,6 +323,47 @@ impl<'db> SemanticsImpl<'db> {
         tree
     }
 
+    pub fn find_parent_file(&self, file_id: HirFileId) -> Option<InFile<SyntaxNode>> {
+        match file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => {
+                let module = self.file_to_module_defs(file_id.file_id()).next()?;
+                let def_map = self.db.crate_def_map(module.krate().id);
+                match def_map[module.id.local_id].origin {
+                    ModuleOrigin::CrateRoot { .. } => None,
+                    ModuleOrigin::File { declaration, declaration_tree_id, .. } => {
+                        let file_id = declaration_tree_id.file_id();
+                        let in_file = InFile::new(file_id, declaration);
+                        let node = in_file.to_node(self.db.upcast());
+                        let root = find_root(node.syntax());
+                        self.cache(root, file_id);
+                        Some(in_file.with_value(node.syntax().clone()))
+                    }
+                    _ => unreachable!("FileId can only belong to a file module"),
+                }
+            }
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let node = self
+                    .db
+                    .lookup_intern_macro_call(macro_file.macro_call_id)
+                    .to_node(self.db.upcast());
+                let root = find_root(&node.value);
+                self.cache(root, node.file_id);
+                Some(node)
+            }
+        }
+    }
+
+    /// Returns the `SyntaxNode` of the module. If this is a file module, returns
+    /// the `SyntaxNode` of the *definition* file, not of the *declaration*.
+    pub fn module_definition_node(&self, module: Module) -> InFile<SyntaxNode> {
+        let def_map = module.id.def_map(self.db.upcast());
+        let definition = def_map[module.id.local_id].origin.definition_source(self.db.upcast());
+        let definition = definition.map(|it| it.node());
+        let root_node = find_root(&definition.value);
+        self.cache(root_node, definition.file_id);
+        definition
+    }
+
     pub fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode {
         let node = self.db.parse_or_expand(file_id);
         self.cache(node.clone(), file_id);
@@ -342,6 +384,19 @@ impl<'db> SemanticsImpl<'db> {
 
         let node = self.parse_or_expand(file_id.into());
         Some(node)
+    }
+
+    pub fn check_cfg_attr(&self, attr: &ast::TokenTree) -> Option<bool> {
+        let file_id = self.find_file(attr.syntax()).file_id;
+        let krate = match file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => {
+                self.file_to_module_defs(file_id.file_id()).next()?.krate().id
+            }
+            HirFileIdRepr::MacroFile(macro_file) => {
+                self.db.lookup_intern_macro_call(macro_file.macro_call_id).krate
+            }
+        };
+        hir_expand::check_cfg_attr_value(self.db.upcast(), attr, krate)
     }
 
     /// Expands the macro if it isn't one of the built-in ones that expand to custom syntax or dummy
@@ -367,7 +422,6 @@ impl<'db> SemanticsImpl<'db> {
                     | BuiltinFnLikeExpander::File
                     | BuiltinFnLikeExpander::ModulePath
                     | BuiltinFnLikeExpander::Asm
-                    | BuiltinFnLikeExpander::LlvmAsm
                     | BuiltinFnLikeExpander::GlobalAsm
                     | BuiltinFnLikeExpander::LogSyntax
                     | BuiltinFnLikeExpander::TraceMacros
@@ -408,7 +462,7 @@ impl<'db> SemanticsImpl<'db> {
             Some(
                 calls
                     .into_iter()
-                    .map(|call| macro_call_to_macro_id(ctx, call?).map(|id| Macro { id }))
+                    .map(|call| macro_call_to_macro_id(self, ctx, call?).map(|id| Macro { id }))
                     .collect(),
             )
         })
@@ -546,11 +600,11 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
-    /// Retrieves all the formatting parts of the format_args! template string.
+    /// Retrieves all the formatting parts of the format_args! (or `asm!`) template string.
     pub fn as_format_args_parts(
         &self,
         string: &ast::String,
-    ) -> Option<Vec<(TextRange, Option<PathResolution>)>> {
+    ) -> Option<Vec<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)>> {
         let quote = string.open_quote_text_range()?;
 
         let token = self.wrap_token_infile(string.syntax().clone()).into_real_file().ok()?;
@@ -560,14 +614,33 @@ impl<'db> SemanticsImpl<'db> {
                 let string = ast::String::cast(token)?;
                 let literal =
                     string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
-                let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
-                let source_analyzer = self.analyze_no_infer(format_args.syntax())?;
-                let format_args = self.wrap_node_infile(format_args);
-                let res = source_analyzer
-                    .as_format_args_parts(self.db, format_args.as_ref())?
-                    .map(|(range, res)| (range + quote.end(), res))
-                    .collect();
-                Some(res)
+                let parent = literal.parent()?;
+                if let Some(format_args) = ast::FormatArgsExpr::cast(parent.clone()) {
+                    let source_analyzer = self.analyze_no_infer(format_args.syntax())?;
+                    let format_args = self.wrap_node_infile(format_args);
+                    let res = source_analyzer
+                        .as_format_args_parts(self.db, format_args.as_ref())?
+                        .map(|(range, res)| (range + quote.end(), res.map(Either::Left)))
+                        .collect();
+                    Some(res)
+                } else {
+                    let asm = ast::AsmExpr::cast(parent)?;
+                    let source_analyzer = self.analyze_no_infer(asm.syntax())?;
+                    let line = asm.template().position(|it| *it.syntax() == literal)?;
+                    let asm = self.wrap_node_infile(asm);
+                    let (owner, (expr, asm_parts)) = source_analyzer.as_asm_parts(asm.as_ref())?;
+                    let res = asm_parts
+                        .get(line)?
+                        .iter()
+                        .map(|&(range, index)| {
+                            (
+                                range + quote.end(),
+                                Some(Either::Right(InlineAsmOperand { owner, expr, index })),
+                            )
+                        })
+                        .collect();
+                    Some(res)
+                }
             })()
             .map_or(ControlFlow::Continue(()), ControlFlow::Break)
         })
@@ -578,7 +651,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         original_token: SyntaxToken,
         offset: TextSize,
-    ) -> Option<(TextRange, Option<PathResolution>)> {
+    ) -> Option<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)> {
         let original_string = ast::String::cast(original_token.clone())?;
         let original_token = self.wrap_token_infile(original_token).into_real_file().ok()?;
         let quote = original_string.open_quote_text_range()?;
@@ -599,13 +672,27 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         string: ast::String,
         offset: TextSize,
-    ) -> Option<(TextRange, Option<PathResolution>)> {
+    ) -> Option<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)> {
         debug_assert!(offset <= string.syntax().text_range().len());
         let literal = string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
-        let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
-        let source_analyzer = &self.analyze_no_infer(format_args.syntax())?;
-        let format_args = self.wrap_node_infile(format_args);
-        source_analyzer.resolve_offset_in_format_args(self.db, format_args.as_ref(), offset)
+        let parent = literal.parent()?;
+        if let Some(format_args) = ast::FormatArgsExpr::cast(parent.clone()) {
+            let source_analyzer = &self.analyze_no_infer(format_args.syntax())?;
+            let format_args = self.wrap_node_infile(format_args);
+            source_analyzer
+                .resolve_offset_in_format_args(self.db, format_args.as_ref(), offset)
+                .map(|(range, res)| (range, res.map(Either::Left)))
+        } else {
+            let asm = ast::AsmExpr::cast(parent)?;
+            let source_analyzer = &self.analyze_no_infer(asm.syntax())?;
+            let line = asm.template().position(|it| *it.syntax() == literal)?;
+            let asm = self.wrap_node_infile(asm);
+            source_analyzer.resolve_offset_in_asm_template(asm.as_ref(), line, offset).map(
+                |(owner, (expr, range, index))| {
+                    (range, Some(Either::Right(InlineAsmOperand { owner, expr, index })))
+                },
+            )
+        }
     }
 
     /// Maps a node down by mapping its first and last token down.
@@ -818,16 +905,7 @@ impl<'db> SemanticsImpl<'db> {
             let InMacroFile { file_id, value: mapped_tokens } = self.with_ctx(|ctx| {
                 Some(
                     ctx.cache
-                        .expansion_info_cache
-                        .entry(macro_file)
-                        .or_insert_with(|| {
-                            let exp_info = macro_file.expansion_info(self.db.upcast());
-
-                            let InMacroFile { file_id, value } = exp_info.expanded();
-                            self.cache(value, file_id.into());
-
-                            exp_info
-                        })
+                        .get_or_insert_expansion(self, macro_file)
                         .map_range_down(span)?
                         .map(SmallVec::<[_; 2]>::from_iter),
                 )
@@ -1113,11 +1191,7 @@ impl<'db> SemanticsImpl<'db> {
                     let macro_file = file_id.macro_file()?;
 
                     self.with_ctx(|ctx| {
-                        let expansion_info = ctx
-                            .cache
-                            .expansion_info_cache
-                            .entry(macro_file)
-                            .or_insert_with(|| macro_file.expansion_info(self.db.upcast()));
+                        let expansion_info = ctx.cache.get_or_insert_expansion(self, macro_file);
                         expansion_info.arg().map(|node| node?.parent()).transpose()
                     })
                 }
@@ -1333,7 +1407,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
         self.with_ctx(|ctx| {
             ctx.macro_call_to_macro_call(macro_call)
-                .and_then(|call| macro_call_to_macro_id(ctx, call))
+                .and_then(|call| macro_call_to_macro_id(self, ctx, call))
                 .map(Into::into)
         })
         .or_else(|| {
@@ -1375,13 +1449,23 @@ impl<'db> SemanticsImpl<'db> {
         let item_in_file = self.wrap_node_infile(item.clone());
         let id = self.with_ctx(|ctx| {
             let macro_call_id = ctx.item_to_macro_call(item_in_file.as_ref())?;
-            macro_call_to_macro_id(ctx, macro_call_id)
+            macro_call_to_macro_id(self, ctx, macro_call_id)
         })?;
         Some(Macro { id })
     }
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax())?.resolve_path(self.db, path)
+    }
+
+    pub fn resolve_mod_path(
+        &self,
+        scope: &SyntaxNode,
+        path: &ModPath,
+    ) -> Option<impl Iterator<Item = ItemInNs>> {
+        let analyze = self.analyze(scope)?;
+        let items = analyze.resolver.resolve_module_path_in_items(self.db.upcast(), path);
+        Some(items.iter_items().map(|(item, _)| item.into()))
     }
 
     fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
@@ -1685,6 +1769,7 @@ impl<'db> SemanticsImpl<'db> {
 }
 
 fn macro_call_to_macro_id(
+    sema: &SemanticsImpl<'_>,
     ctx: &mut SourceToDefCtx<'_, '_>,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
@@ -1700,11 +1785,7 @@ fn macro_call_to_macro_id(
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
-                    let expansion_info = ctx
-                        .cache
-                        .expansion_info_cache
-                        .entry(macro_file)
-                        .or_insert_with(|| macro_file.expansion_info(ctx.db.upcast()));
+                    let expansion_info = ctx.cache.get_or_insert_expansion(sema, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }
             };
@@ -1716,11 +1797,7 @@ fn macro_call_to_macro_id(
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
-                    let expansion_info = ctx
-                        .cache
-                        .expansion_info_cache
-                        .entry(macro_file)
-                        .or_insert_with(|| macro_file.expansion_info(ctx.db.upcast()));
+                    let expansion_info = ctx.cache.get_or_insert_expansion(sema, macro_file);
                     it.to_ptr(db).to_node(&expansion_info.expanded().value)
                 }
             };
@@ -1771,6 +1848,7 @@ to_def_impls![
     (crate::Label, ast::Label, label_to_def),
     (crate::Adt, ast::Adt, adt_to_def),
     (crate::ExternCrateDecl, ast::ExternCrate, extern_crate_to_def),
+    (crate::InlineAsmOperand, ast::AsmOperandNamed, asm_operand_to_def),
     (MacroCallId, ast::MacroCall, macro_call_to_macro_call),
 ];
 

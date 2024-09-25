@@ -63,7 +63,7 @@ fn _alpha() {}
 "#,
         r#"
 fn main() {
-    _alpha()$0
+    _alpha();$0
 }
 fn _alpha() {}
 "#,

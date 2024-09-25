@@ -10,8 +10,8 @@ use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
     Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
-    Function, GenericParam, HasVisibility, HirDisplay, Impl, Label, Local, Macro, Module,
-    ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, ToolModule, Trait,
+    Function, GenericParam, HasVisibility, HirDisplay, Impl, InlineAsmOperand, Label, Local, Macro,
+    Module, ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, ToolModule, Trait,
     TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
 use span::Edition;
@@ -50,6 +50,8 @@ pub enum Definition {
     BuiltinAttr(BuiltinAttr),
     ToolModule(ToolModule),
     ExternCrateDecl(ExternCrateDecl),
+    InlineAsmRegOrRegClass(()),
+    InlineAsmOperand(InlineAsmOperand),
 }
 
 impl Definition {
@@ -83,11 +85,13 @@ impl Definition {
             Definition::Label(it) => it.module(db),
             Definition::ExternCrateDecl(it) => it.module(db),
             Definition::DeriveHelper(it) => it.derive().module(db),
+            Definition::InlineAsmOperand(it) => it.parent(db).module(db),
             Definition::BuiltinAttr(_)
             | Definition::BuiltinType(_)
             | Definition::BuiltinLifetime(_)
             | Definition::TupleField(_)
-            | Definition::ToolModule(_) => return None,
+            | Definition::ToolModule(_)
+            | Definition::InlineAsmRegOrRegClass(_) => return None,
         };
         Some(module)
     }
@@ -121,7 +125,9 @@ impl Definition {
             | Definition::Local(_)
             | Definition::GenericParam(_)
             | Definition::Label(_)
-            | Definition::DeriveHelper(_) => return None,
+            | Definition::DeriveHelper(_)
+            | Definition::InlineAsmRegOrRegClass(_)
+            | Definition::InlineAsmOperand(_) => return None,
         };
         Some(vis)
     }
@@ -150,6 +156,8 @@ impl Definition {
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),
             Definition::ExternCrateDecl(it) => return it.alias_or_name(db),
+            Definition::InlineAsmRegOrRegClass(_) => return None,
+            Definition::InlineAsmOperand(op) => return op.name(db),
         };
         Some(name)
     }
@@ -212,6 +220,7 @@ impl Definition {
             Definition::ToolModule(_) => None,
             Definition::DeriveHelper(_) => None,
             Definition::TupleField(_) => None,
+            Definition::InlineAsmRegOrRegClass(_) | Definition::InlineAsmOperand(_) => None,
         };
 
         docs.or_else(|| {
@@ -268,6 +277,9 @@ impl Definition {
             Definition::DeriveHelper(it) => {
                 format!("derive_helper {}", it.name(db).display(db, edition))
             }
+            // FIXME
+            Definition::InlineAsmRegOrRegClass(_) => "inline_asm_reg_or_reg_class".to_owned(),
+            Definition::InlineAsmOperand(_) => "inline_asm_reg_operand".to_owned(),
         }
     }
 }
@@ -429,7 +441,6 @@ impl NameClass {
         let _p = tracing::info_span!("NameClass::classify").entered();
 
         let parent = name.syntax().parent()?;
-
         let definition = match_ast! {
             match parent {
                 ast::Item(it) => classify_item(sema, it)?,
@@ -440,6 +451,7 @@ impl NameClass {
                 ast::Variant(it) => Definition::Variant(sema.to_def(&it)?),
                 ast::TypeParam(it) => Definition::GenericParam(sema.to_def(&it)?.into()),
                 ast::ConstParam(it) => Definition::GenericParam(sema.to_def(&it)?.into()),
+                ast::AsmOperandNamed(it) => Definition::InlineAsmOperand(sema.to_def(&it)?),
                 _ => return None,
             }
         };
@@ -699,6 +711,9 @@ impl NameRefClass {
                         NameRefClass::ExternCrateShorthand { krate, decl: extern_crate }
                     })
                 },
+                ast::AsmRegSpec(_) => {
+                    Some(NameRefClass::Definition(Definition::InlineAsmRegOrRegClass(())))
+                },
                 _ => None
             }
         }
@@ -750,6 +765,18 @@ impl_from!(
 impl From<Impl> for Definition {
     fn from(impl_: Impl) -> Self {
         Definition::SelfType(impl_)
+    }
+}
+
+impl From<InlineAsmOperand> for Definition {
+    fn from(value: InlineAsmOperand) -> Self {
+        Definition::InlineAsmOperand(value)
+    }
+}
+
+impl From<Either<PathResolution, InlineAsmOperand>> for Definition {
+    fn from(value: Either<PathResolution, InlineAsmOperand>) -> Self {
+        value.either(Definition::from, Definition::from)
     }
 }
 

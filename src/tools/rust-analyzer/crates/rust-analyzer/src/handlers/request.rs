@@ -40,7 +40,10 @@ use crate::{
     hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
-        ext::InternalTestingFetchConfigParams,
+        ext::{
+            InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
+            InternalTestingFetchConfigResponse,
+        },
         from_proto, to_proto,
         utils::{all_edits_are_disjoint, invalid_params_error},
         LspError,
@@ -256,7 +259,7 @@ pub(crate) fn handle_run_test(
 
             let handle = CargoTestHandle::new(
                 test_path,
-                state.config.cargo_test_options(),
+                state.config.cargo_test_options(None),
                 cargo.workspace_root(),
                 test_target,
                 state.test_run_sender.clone(),
@@ -565,7 +568,7 @@ pub(crate) fn handle_workspace_symbol(
 ) -> anyhow::Result<Option<lsp_types::WorkspaceSymbolResponse>> {
     let _p = tracing::info_span!("handle_workspace_symbol").entered();
 
-    let config = snap.config.workspace_symbol();
+    let config = snap.config.workspace_symbol(None);
     let (all_symbols, libs) = decide_search_scope_and_kind(&params, &config);
 
     let query = {
@@ -852,6 +855,7 @@ pub(crate) fn handle_runnables(
 ) -> anyhow::Result<Vec<lsp_ext::Runnable>> {
     let _p = tracing::info_span!("handle_runnables").entered();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let source_root = snap.analysis.source_root_id(file_id).ok();
     let line_index = snap.file_line_index(file_id)?;
     let offset = params.position.and_then(|it| from_proto::offset(&line_index, it).ok());
     let target_spec = TargetSpec::for_file(&snap, file_id)?;
@@ -894,7 +898,7 @@ pub(crate) fn handle_runnables(
     }
 
     // Add `cargo check` and `cargo test` for all targets of the whole package
-    let config = snap.config.runnables();
+    let config = snap.config.runnables(source_root);
     match target_spec {
         Some(TargetSpec::Cargo(spec)) => {
             let is_crate_no_std = snap.analysis.is_crate_no_std(spec.crate_id)?;
@@ -1602,14 +1606,14 @@ pub(crate) fn handle_inlay_hints_resolve(
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
-    let hint_position = from_proto::offset(&line_index, original_hint.position)?;
+    let range = from_proto::text_range(&line_index, resolve_data.resolve_range)?;
 
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
     let resolve_hints = snap.analysis.inlay_hints_resolve(
         &forced_resolve_inlay_hints_config,
         file_id,
-        hint_position,
+        range,
         hash,
         |hint| {
             std::hash::BuildHasher::hash_one(
@@ -2119,7 +2123,7 @@ fn run_rustfmt(
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             // FIXME: Set RUSTUP_TOOLCHAIN
             let mut cmd = process::Command::new(toolchain::Tool::Rustfmt.path());
-            cmd.envs(snap.config.extra_env());
+            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(extra_args);
 
             if let Some(edition) = edition {
@@ -2177,7 +2181,7 @@ fn run_rustfmt(
                 _ => process::Command::new(cmd),
             };
 
-            cmd.envs(snap.config.extra_env());
+            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(args);
             cmd
         }
@@ -2291,7 +2295,7 @@ pub(crate) fn fetch_dependency_list(
 pub(crate) fn internal_testing_fetch_config(
     state: GlobalStateSnapshot,
     params: InternalTestingFetchConfigParams,
-) -> anyhow::Result<serde_json::Value> {
+) -> anyhow::Result<Option<InternalTestingFetchConfigResponse>> {
     let source_root = params
         .text_document
         .map(|it| {
@@ -2301,15 +2305,18 @@ pub(crate) fn internal_testing_fetch_config(
                 .map_err(anyhow::Error::from)
         })
         .transpose()?;
-    serde_json::to_value(match &*params.config {
-        "local" => state.config.assist(source_root).assist_emit_must_use,
-        "workspace" => matches!(
-            state.config.rustfmt(source_root),
-            RustfmtConfig::Rustfmt { enable_range_formatting: true, .. }
-        ),
-        _ => return Err(anyhow::anyhow!("Unknown test config key: {}", params.config)),
-    })
-    .map_err(Into::into)
+    Ok(Some(match params.config {
+        InternalTestingFetchConfigOption::AssistEmitMustUse => {
+            InternalTestingFetchConfigResponse::AssistEmitMustUse(
+                state.config.assist(source_root).assist_emit_must_use,
+            )
+        }
+        InternalTestingFetchConfigOption::CheckWorkspace => {
+            InternalTestingFetchConfigResponse::CheckWorkspace(
+                state.config.flycheck_workspace(source_root),
+            )
+        }
+    }))
 }
 
 /// Searches for the directory of a Rust crate given this crate's root file path.

@@ -14,8 +14,8 @@ use smallvec::{smallvec, SmallVec};
 use span::{Edition, EditionedFileId};
 use stdx::never;
 use syntax::{
-    ast::{self, AstNode},
-    match_ast, NodeOrToken, SyntaxNode, TextRange, TextSize,
+    ast::{self, AstNode, HasGenericParams},
+    format_smolstr, match_ast, SmolStr, SyntaxNode, TextRange, TextSize, WalkEvent,
 };
 use text_edit::TextEdit;
 
@@ -29,12 +29,229 @@ mod closing_brace;
 mod closure_captures;
 mod closure_ret;
 mod discriminant;
-mod fn_lifetime_fn;
 mod generic_param;
 mod implicit_drop;
 mod implicit_static;
+mod lifetime;
 mod param_name;
 mod range_exclusive;
+
+// Feature: Inlay Hints
+//
+// rust-analyzer shows additional information inline with the source code.
+// Editors usually render this using read-only virtual text snippets interspersed with code.
+//
+// rust-analyzer by default shows hints for
+//
+// * types of local variables
+// * names of function arguments
+// * names of const generic parameters
+// * types of chained expressions
+//
+// Optionally, one can enable additional hints for
+//
+// * return types of closure expressions
+// * elided lifetimes
+// * compiler inserted reborrows
+// * names of generic type and lifetime parameters
+//
+// Note: inlay hints for function argument names are heuristically omitted to reduce noise and will not appear if
+// any of the
+// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L92-L99[following criteria]
+// are met:
+//
+// * the parameter name is a suffix of the function's name
+// * the argument is a qualified constructing or call expression where the qualifier is an ADT
+// * exact argument<->parameter match(ignoring leading underscore) or parameter is a prefix/suffix
+//   of argument with _ splitting it off
+// * the parameter name starts with `ra_fixture`
+// * the parameter name is a
+// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L200[well known name]
+// in a unary function
+// * the parameter name is a
+// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L201[single character]
+// in a unary function
+//
+// image::https://user-images.githubusercontent.com/48062697/113020660-b5f98b80-917a-11eb-8d70-3be3fd558cdd.png[]
+pub(crate) fn inlay_hints(
+    db: &RootDatabase,
+    file_id: FileId,
+    range_limit: Option<TextRange>,
+    config: &InlayHintsConfig,
+) -> Vec<InlayHint> {
+    let _p = tracing::info_span!("inlay_hints").entered();
+    let sema = Semantics::new(db);
+    let file_id = sema
+        .attach_first_edition(file_id)
+        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+    let file = sema.parse(file_id);
+    let file = file.syntax();
+
+    let mut acc = Vec::new();
+
+    let Some(scope) = sema.scope(file) else {
+        return acc;
+    };
+    let famous_defs = FamousDefs(&sema, scope.krate());
+
+    let ctx = &mut InlayHintCtx::default();
+    let mut hints = |event| {
+        if let Some(node) = handle_event(ctx, event) {
+            hints(&mut acc, ctx, &famous_defs, config, file_id, node);
+        }
+    };
+    let mut preorder = file.preorder();
+    while let Some(event) = preorder.next() {
+        // FIXME: This can miss some hints that require the parent of the range to calculate
+        if matches!((&event, range_limit), (WalkEvent::Enter(node), Some(range)) if range.intersect(node.text_range()).is_none())
+        {
+            preorder.skip_subtree();
+            continue;
+        }
+        hints(event);
+    }
+    acc
+}
+
+#[derive(Default)]
+struct InlayHintCtx {
+    lifetime_stacks: Vec<Vec<SmolStr>>,
+}
+
+pub(crate) fn inlay_hints_resolve(
+    db: &RootDatabase,
+    file_id: FileId,
+    resolve_range: TextRange,
+    hash: u64,
+    config: &InlayHintsConfig,
+    hasher: impl Fn(&InlayHint) -> u64,
+) -> Option<InlayHint> {
+    let _p = tracing::info_span!("inlay_hints_resolve").entered();
+    let sema = Semantics::new(db);
+    let file_id = sema
+        .attach_first_edition(file_id)
+        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+    let file = sema.parse(file_id);
+    let file = file.syntax();
+
+    let scope = sema.scope(file)?;
+    let famous_defs = FamousDefs(&sema, scope.krate());
+    let mut acc = Vec::new();
+
+    let ctx = &mut InlayHintCtx::default();
+    let mut hints = |event| {
+        if let Some(node) = handle_event(ctx, event) {
+            hints(&mut acc, ctx, &famous_defs, config, file_id, node);
+        }
+    };
+
+    let mut preorder = file.preorder();
+    while let Some(event) = preorder.next() {
+        // FIXME: This can miss some hints that require the parent of the range to calculate
+        if matches!(&event, WalkEvent::Enter(node) if resolve_range.intersect(node.text_range()).is_none())
+        {
+            preorder.skip_subtree();
+            continue;
+        }
+        hints(event);
+    }
+    acc.into_iter().find(|hint| hasher(hint) == hash)
+}
+
+fn handle_event(ctx: &mut InlayHintCtx, node: WalkEvent<SyntaxNode>) -> Option<SyntaxNode> {
+    match node {
+        WalkEvent::Enter(node) => {
+            if let Some(node) = ast::AnyHasGenericParams::cast(node.clone()) {
+                let params = node
+                    .generic_param_list()
+                    .map(|it| {
+                        it.lifetime_params()
+                            .filter_map(|it| {
+                                it.lifetime().map(|it| format_smolstr!("{}", &it.text()[1..]))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                ctx.lifetime_stacks.push(params);
+            }
+            Some(node)
+        }
+        WalkEvent::Leave(n) => {
+            if ast::AnyHasGenericParams::can_cast(n.kind()) {
+                ctx.lifetime_stacks.pop();
+            }
+            None
+        }
+    }
+}
+
+// FIXME: At some point when our hir infra is fleshed out enough we should flip this and traverse the
+// HIR instead of the syntax tree.
+fn hints(
+    hints: &mut Vec<InlayHint>,
+    ctx: &mut InlayHintCtx,
+    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
+    config: &InlayHintsConfig,
+    file_id: EditionedFileId,
+    node: SyntaxNode,
+) {
+    closing_brace::hints(hints, sema, config, file_id, node.clone());
+    if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
+        generic_param::hints(hints, sema, config, any_has_generic_args);
+    }
+
+    match_ast! {
+        match node {
+            ast::Expr(expr) => {
+                chaining::hints(hints, famous_defs, config, file_id, &expr);
+                adjustment::hints(hints, famous_defs, config, file_id, &expr);
+                match expr {
+                    ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it)),
+                    ast::Expr::MethodCallExpr(it) => {
+                        param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it))
+                    }
+                    ast::Expr::ClosureExpr(it) => {
+                        closure_captures::hints(hints, famous_defs, config, file_id, it.clone());
+                        closure_ret::hints(hints, famous_defs, config, file_id, it)
+                    },
+                    ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, file_id,  it),
+                    _ => Some(()),
+                }
+            },
+            ast::Pat(it) => {
+                binding_mode::hints(hints, famous_defs, config, file_id,  &it);
+                match it {
+                    ast::Pat::IdentPat(it) => {
+                        bind_pat::hints(hints, famous_defs, config, file_id, &it);
+                    }
+                    ast::Pat::RangePat(it) => {
+                        range_exclusive::hints(hints, famous_defs, config, file_id, it);
+                    }
+                    _ => {}
+                }
+                Some(())
+            },
+            ast::Item(it) => match it {
+                ast::Item::Fn(it) => {
+                    implicit_drop::hints(hints, famous_defs, config, file_id, &it);
+                    lifetime::fn_hints(hints, ctx, famous_defs, config, file_id, it)
+                },
+                // static type elisions
+                ast::Item::Static(it) => implicit_static::hints(hints, famous_defs, config, file_id, Either::Left(it)),
+                ast::Item::Const(it) => implicit_static::hints(hints, famous_defs, config, file_id, Either::Right(it)),
+                ast::Item::Enum(it) => discriminant::enum_hints(hints, famous_defs, config, file_id, it),
+                _ => None,
+            },
+            // FIXME: trait object type elisions
+            ast::Type(ty) => match ty {
+                ast::Type::FnPtrType(ptr) => lifetime::fn_ptr_hints(hints, ctx, famous_defs, config, file_id, ptr),
+                ast::Type::PathType(path) => lifetime::fn_path_hints(hints, ctx, famous_defs, config, file_id, path),
+                _ => Some(()),
+            },
+            _ => Some(()),
+        }
+    };
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -162,6 +379,9 @@ pub struct InlayHint {
     pub label: InlayHintLabel,
     /// Text edit to apply when "accepting" this inlay hint.
     pub text_edit: Option<TextEdit>,
+    /// Range to recompute inlay hints when trying to resolve for this hint. If this is none, the
+    /// hint does not support resolving.
+    pub resolve_parent: Option<TextRange>,
 }
 
 impl std::hash::Hash for InlayHint {
@@ -186,6 +406,7 @@ impl InlayHint {
             position: InlayHintPosition::After,
             pad_left: false,
             pad_right: false,
+            resolve_parent: None,
         }
     }
 
@@ -198,11 +419,12 @@ impl InlayHint {
             position: InlayHintPosition::Before,
             pad_left: false,
             pad_right: false,
+            resolve_parent: None,
         }
     }
 
-    pub fn needs_resolve(&self) -> bool {
-        self.text_edit.is_some() || self.label.needs_resolve()
+    pub fn needs_resolve(&self) -> Option<TextRange> {
+        self.resolve_parent.filter(|_| self.text_edit.is_some() || self.label.needs_resolve())
     }
 }
 
@@ -355,11 +577,14 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
 
 impl InlayHintLabelBuilder<'_> {
     fn make_new_part(&mut self) {
-        self.result.parts.push(InlayHintLabelPart {
-            text: take(&mut self.last_part),
-            linked_location: self.location.take(),
-            tooltip: None,
-        });
+        let text = take(&mut self.last_part);
+        if !text.is_empty() {
+            self.result.parts.push(InlayHintLabelPart {
+                text,
+                linked_location: self.location.take(),
+                tooltip: None,
+            });
+        }
     }
 
     fn finish(mut self) -> InlayHintLabel {
@@ -434,190 +659,6 @@ fn label_of_ty(
     Some(r)
 }
 
-fn ty_to_text_edit(
-    sema: &Semantics<'_, RootDatabase>,
-    node_for_hint: &SyntaxNode,
-    ty: &hir::Type,
-    offset_to_insert: TextSize,
-    prefix: String,
-) -> Option<TextEdit> {
-    let scope = sema.scope(node_for_hint)?;
-    // FIXME: Limit the length and bail out on excess somehow?
-    let rendered = ty.display_source_code(scope.db, scope.module().into(), false).ok()?;
-
-    let mut builder = TextEdit::builder();
-    builder.insert(offset_to_insert, prefix);
-    builder.insert(offset_to_insert, rendered);
-    Some(builder.finish())
-}
-
-// Feature: Inlay Hints
-//
-// rust-analyzer shows additional information inline with the source code.
-// Editors usually render this using read-only virtual text snippets interspersed with code.
-//
-// rust-analyzer by default shows hints for
-//
-// * types of local variables
-// * names of function arguments
-// * names of const generic parameters
-// * types of chained expressions
-//
-// Optionally, one can enable additional hints for
-//
-// * return types of closure expressions
-// * elided lifetimes
-// * compiler inserted reborrows
-// * names of generic type and lifetime parameters
-//
-// Note: inlay hints for function argument names are heuristically omitted to reduce noise and will not appear if
-// any of the
-// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L92-L99[following criteria]
-// are met:
-//
-// * the parameter name is a suffix of the function's name
-// * the argument is a qualified constructing or call expression where the qualifier is an ADT
-// * exact argument<->parameter match(ignoring leading underscore) or parameter is a prefix/suffix
-//   of argument with _ splitting it off
-// * the parameter name starts with `ra_fixture`
-// * the parameter name is a
-// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L200[well known name]
-// in a unary function
-// * the parameter name is a
-// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L201[single character]
-// in a unary function
-//
-// image::https://user-images.githubusercontent.com/48062697/113020660-b5f98b80-917a-11eb-8d70-3be3fd558cdd.png[]
-pub(crate) fn inlay_hints(
-    db: &RootDatabase,
-    file_id: FileId,
-    range_limit: Option<TextRange>,
-    config: &InlayHintsConfig,
-) -> Vec<InlayHint> {
-    let _p = tracing::info_span!("inlay_hints").entered();
-    let sema = Semantics::new(db);
-    let file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-    let file = sema.parse(file_id);
-    let file = file.syntax();
-
-    let mut acc = Vec::new();
-
-    if let Some(scope) = sema.scope(file) {
-        let famous_defs = FamousDefs(&sema, scope.krate());
-
-        let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);
-        match range_limit {
-            Some(range) => match file.covering_element(range) {
-                NodeOrToken::Token(_) => return acc,
-                NodeOrToken::Node(n) => n
-                    .descendants()
-                    .filter(|descendant| range.intersect(descendant.text_range()).is_some())
-                    .for_each(hints),
-            },
-            None => file.descendants().for_each(hints),
-        };
-    }
-
-    acc
-}
-
-pub(crate) fn inlay_hints_resolve(
-    db: &RootDatabase,
-    file_id: FileId,
-    position: TextSize,
-    hash: u64,
-    config: &InlayHintsConfig,
-    hasher: impl Fn(&InlayHint) -> u64,
-) -> Option<InlayHint> {
-    let _p = tracing::info_span!("inlay_hints_resolve").entered();
-    let sema = Semantics::new(db);
-    let file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-    let file = sema.parse(file_id);
-    let file = file.syntax();
-
-    let scope = sema.scope(file)?;
-    let famous_defs = FamousDefs(&sema, scope.krate());
-    let mut acc = Vec::new();
-
-    let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);
-    let token = file.token_at_offset(position).left_biased()?;
-    if let Some(parent_block) = token.parent_ancestors().find_map(ast::BlockExpr::cast) {
-        parent_block.syntax().descendants().for_each(hints)
-    } else if let Some(parent_item) = token.parent_ancestors().find_map(ast::Item::cast) {
-        parent_item.syntax().descendants().for_each(hints)
-    } else {
-        return None;
-    }
-
-    acc.into_iter().find(|hint| hasher(hint) == hash)
-}
-
-fn hints(
-    hints: &mut Vec<InlayHint>,
-    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
-    file_id: EditionedFileId,
-    node: SyntaxNode,
-) {
-    closing_brace::hints(hints, sema, config, file_id, node.clone());
-    if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
-        generic_param::hints(hints, sema, config, any_has_generic_args);
-    }
-    match_ast! {
-        match node {
-            ast::Expr(expr) => {
-                chaining::hints(hints, famous_defs, config, file_id, &expr);
-                adjustment::hints(hints, sema, config, file_id, &expr);
-                match expr {
-                    ast::Expr::CallExpr(it) => param_name::hints(hints, sema, config, ast::Expr::from(it)),
-                    ast::Expr::MethodCallExpr(it) => {
-                        param_name::hints(hints, sema, config, ast::Expr::from(it))
-                    }
-                    ast::Expr::ClosureExpr(it) => {
-                        closure_captures::hints(hints, famous_defs, config, file_id, it.clone());
-                        closure_ret::hints(hints, famous_defs, config, file_id, it)
-                    },
-                    ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, config, it),
-                    _ => None,
-                }
-            },
-            ast::Pat(it) => {
-                binding_mode::hints(hints, sema, config, &it);
-                match it {
-                    ast::Pat::IdentPat(it) => {
-                        bind_pat::hints(hints, famous_defs, config, file_id, &it);
-                    }
-                    ast::Pat::RangePat(it) => {
-                        range_exclusive::hints(hints, config, it);
-                    }
-                    _ => {}
-                }
-                Some(())
-            },
-            ast::Item(it) => match it {
-                // FIXME: record impl lifetimes so they aren't being reused in assoc item lifetime inlay hints
-                ast::Item::Impl(_) => None,
-                ast::Item::Fn(it) => {
-                    implicit_drop::hints(hints, sema, config, file_id, &it);
-                    fn_lifetime_fn::hints(hints, config, it)
-                },
-                // static type elisions
-                ast::Item::Static(it) => implicit_static::hints(hints, config, Either::Left(it)),
-                ast::Item::Const(it) => implicit_static::hints(hints, config, Either::Right(it)),
-                ast::Item::Enum(it) => discriminant::enum_hints(hints, famous_defs, config, file_id, it),
-                _ => None,
-            },
-            // FIXME: fn-ptr type, dyn fn type, and trait object type elisions
-            ast::Type(_) => None,
-            _ => None,
-        }
-    };
-}
-
 /// Checks if the type is an Iterator from std::iter and returns the iterator trait and the item type of the concrete iterator.
 fn hint_iterator(
     sema: &Semantics<'_, RootDatabase>,
@@ -651,6 +692,23 @@ fn hint_iterator(
     }
 
     None
+}
+
+fn ty_to_text_edit(
+    sema: &Semantics<'_, RootDatabase>,
+    node_for_hint: &SyntaxNode,
+    ty: &hir::Type,
+    offset_to_insert: TextSize,
+    prefix: String,
+) -> Option<TextEdit> {
+    let scope = sema.scope(node_for_hint)?;
+    // FIXME: Limit the length and bail out on excess somehow?
+    let rendered = ty.display_source_code(scope.db, scope.module().into(), false).ok()?;
+
+    let mut builder = TextEdit::builder();
+    builder.insert(offset_to_insert, prefix);
+    builder.insert(offset_to_insert, rendered);
+    Some(builder.finish())
 }
 
 fn closure_has_block_body(closure: &ast::ClosureExpr) -> bool {

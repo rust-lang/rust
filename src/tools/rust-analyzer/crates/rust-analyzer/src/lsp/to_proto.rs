@@ -80,6 +80,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         | SymbolKind::ValueParam
         | SymbolKind::Label => lsp_types::SymbolKind::VARIABLE,
         SymbolKind::Union => lsp_types::SymbolKind::STRUCT,
+        SymbolKind::InlineAsmRegOrRegClass => lsp_types::SymbolKind::VARIABLE,
     }
 }
 
@@ -159,6 +160,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Variant => lsp_types::CompletionItemKind::ENUM_MEMBER,
             SymbolKind::BuiltinAttr => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::ToolModule => lsp_types::CompletionItemKind::MODULE,
+            SymbolKind::InlineAsmRegOrRegClass => lsp_types::CompletionItemKind::KEYWORD,
         },
     }
 }
@@ -228,8 +230,12 @@ pub(crate) fn completion_items(
     line_index: &LineIndex,
     version: Option<i32>,
     tdpp: lsp_types::TextDocumentPositionParams,
-    items: Vec<CompletionItem>,
+    mut items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
+    if config.completion_hide_deprecated() {
+        items.retain(|item| !item.deprecated);
+    }
+
     let max_relevance = items.iter().map(|it| it.relevance.score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
@@ -452,10 +458,13 @@ pub(crate) fn inlay_hint(
     file_id: FileId,
     mut inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    let resolve_hash = inlay_hint.needs_resolve().then(|| {
-        std::hash::BuildHasher::hash_one(
-            &std::hash::BuildHasherDefault::<FxHasher>::default(),
-            &inlay_hint,
+    let resolve_range_and_hash = inlay_hint.needs_resolve().map(|range| {
+        (
+            range,
+            std::hash::BuildHasher::hash_one(
+                &std::hash::BuildHasherDefault::<FxHasher>::default(),
+                &inlay_hint,
+            ),
         )
     });
 
@@ -465,7 +474,7 @@ pub(crate) fn inlay_hint(
         .visual_studio_code_version()
         // https://github.com/microsoft/vscode/issues/193124
         .map_or(true, |version| VersionReq::parse(">=1.86.0").unwrap().matches(version))
-        && resolve_hash.is_some()
+        && resolve_range_and_hash.is_some()
         && fields_to_resolve.resolve_text_edits
     {
         something_to_resolve |= inlay_hint.text_edit.is_some();
@@ -477,16 +486,17 @@ pub(crate) fn inlay_hint(
         snap,
         fields_to_resolve,
         &mut something_to_resolve,
-        resolve_hash.is_some(),
+        resolve_range_and_hash.is_some(),
         inlay_hint.label,
     )?;
 
-    let data = match resolve_hash {
-        Some(hash) if something_to_resolve => Some(
+    let data = match resolve_range_and_hash {
+        Some((resolve_range, hash)) if something_to_resolve => Some(
             to_value(lsp_ext::InlayHintResolveData {
                 file_id: file_id.index(),
                 hash: hash.to_string(),
                 version: snap.file_version(file_id),
+                resolve_range: range(line_index, resolve_range),
             })
             .unwrap(),
         ),
@@ -694,6 +704,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::ProcMacro => types::PROC_MACRO,
             SymbolKind::BuiltinAttr => types::BUILTIN_ATTRIBUTE,
             SymbolKind::ToolModule => types::TOOL_MODULE,
+            SymbolKind::InlineAsmRegOrRegClass => types::KEYWORD,
         },
         HlTag::AttributeBracket => types::ATTRIBUTE_BRACKET,
         HlTag::BoolLiteral => types::BOOLEAN,
@@ -1365,8 +1376,9 @@ pub(crate) fn runnable(
     snap: &GlobalStateSnapshot,
     runnable: Runnable,
 ) -> Cancellable<Option<lsp_ext::Runnable>> {
-    let config = snap.config.runnables();
     let target_spec = TargetSpec::for_file(snap, runnable.nav.file_id)?;
+    let source_root = snap.analysis.source_root_id(runnable.nav.file_id).ok();
+    let config = snap.config.runnables(source_root);
 
     match target_spec {
         Some(TargetSpec::Cargo(spec)) => {

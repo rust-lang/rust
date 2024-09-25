@@ -18,6 +18,7 @@ rustc-hash.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 arrayvec.workspace = true
+ra-ap-rustc_lexer.workspace = true
 
 # local deps
 syntax.workspace = true
@@ -30,6 +31,7 @@ syntax-bridge.workspace = true
 
 [dev-dependencies]
 test-utils.workspace = true
+expect-test.workspace = true
 
 [features]
 in-rust-tree = ["parser/in-rust-tree", "tt/in-rust-tree", "syntax/in-rust-tree"]

@@ -7,13 +7,20 @@ use syntax::{
     SyntaxNode, SyntaxToken, WalkEvent, T,
 };
 
-// FIXME: It would also be cool to share logic here and in the mbe tests,
-// which are pretty unreadable at the moment.
 /// Renders a [`SyntaxNode`] with whitespace inserted between tokens that require them.
-pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
+///
+/// This is an internal API that is only exported because `mbe` needs it for tests and cannot depend
+/// on `hir-expand`. For any purpose other than tests, you are supposed to use the `prettify_macro_expansion`
+/// from `hir-expand` that handles `$crate` for you.
+#[deprecated = "use `hir_expand::prettify_macro_expansion()` instead"]
+pub fn prettify_macro_expansion(
+    syn: SyntaxNode,
+    dollar_crate_replacement: &mut dyn FnMut(&SyntaxToken) -> SyntaxToken,
+) -> SyntaxNode {
     let mut indent = 0;
     let mut last: Option<SyntaxKind> = None;
     let mut mods = Vec::new();
+    let mut dollar_crate_replacements = Vec::new();
     let syn = syn.clone_subtree().clone_for_update();
 
     let before = Position::before;
@@ -51,6 +58,9 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
             }
             _ => continue,
         };
+        if token.kind() == SyntaxKind::IDENT && token.text() == "$crate" {
+            dollar_crate_replacements.push((token.clone(), dollar_crate_replacement(&token)));
+        }
         let tok = &token;
 
         let is_next = |f: fn(SyntaxKind) -> bool, default| -> bool {
@@ -121,6 +131,9 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
 
     for (pos, insert) in mods {
         ted::insert(pos, insert);
+    }
+    for (old, new) in dollar_crate_replacements {
+        ted::replace(old, new);
     }
 
     if let Some(it) = syn.last_token().filter(|it| it.kind() == SyntaxKind::WHITESPACE) {

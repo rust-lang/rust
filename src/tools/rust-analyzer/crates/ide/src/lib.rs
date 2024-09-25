@@ -57,7 +57,7 @@ mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
 
-use std::panic::UnwindSafe;
+use std::{iter, panic::UnwindSafe};
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
@@ -65,7 +65,8 @@ use hir::{sym, ChangeWithProcMacros};
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
-        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, SourceRootDatabase, VfsPath,
+        CrateOrigin, CrateWorkspaceData, Env, FileLoader, FileSet, SourceDatabase,
+        SourceRootDatabase, VfsPath,
     },
     prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
@@ -256,9 +257,16 @@ impl Analysis {
             CrateOrigin::Local { repo: None, name: None },
         );
         change.change_file(file_id, Some(text));
-        change.set_crate_graph(crate_graph);
-        change.set_target_data_layouts(vec![Err("fixture has no layout".into())]);
-        change.set_toolchains(vec![None]);
+        let ws_data = crate_graph
+            .iter()
+            .zip(iter::repeat(Arc::new(CrateWorkspaceData {
+                proc_macro_cwd: None,
+                data_layout: Err("fixture has no layout".into()),
+                toolchain: None,
+            })))
+            .collect();
+        change.set_crate_graph(crate_graph, ws_data);
+
         host.apply_change(change);
         (host.analysis(), file_id)
     }
@@ -439,12 +447,12 @@ impl Analysis {
         &self,
         config: &InlayHintsConfig,
         file_id: FileId,
-        position: TextSize,
+        resolve_range: TextRange,
         hash: u64,
         hasher: impl Fn(&InlayHint) -> u64 + Send + UnwindSafe,
     ) -> Cancellable<Option<InlayHint>> {
         self.with_db(|db| {
-            inlay_hints::inlay_hints_resolve(db, file_id, position, hash, config, hasher)
+            inlay_hints::inlay_hints_resolve(db, file_id, resolve_range, hash, config, hasher)
         })
     }
 

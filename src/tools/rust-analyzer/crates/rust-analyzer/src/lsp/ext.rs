@@ -16,9 +16,22 @@ use serde::{Deserialize, Serialize};
 
 pub enum InternalTestingFetchConfig {}
 
+#[derive(Deserialize, Serialize, Debug)]
+pub enum InternalTestingFetchConfigOption {
+    AssistEmitMustUse,
+    CheckWorkspace,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+pub enum InternalTestingFetchConfigResponse {
+    AssistEmitMustUse(bool),
+    CheckWorkspace(bool),
+}
+
 impl Request for InternalTestingFetchConfig {
     type Params = InternalTestingFetchConfigParams;
-    type Result = serde_json::Value;
+    // Option is solely to circumvent Default bound.
+    type Result = Option<InternalTestingFetchConfigResponse>;
     const METHOD: &'static str = "rust-analyzer-internal/internalTestingFetchConfig";
 }
 
@@ -26,7 +39,7 @@ impl Request for InternalTestingFetchConfig {
 #[serde(rename_all = "camelCase")]
 pub struct InternalTestingFetchConfigParams {
     pub text_document: Option<TextDocumentIdentifier>,
-    pub config: String,
+    pub config: InternalTestingFetchConfigOption,
 }
 pub enum AnalyzerStatus {}
 
@@ -819,6 +832,7 @@ pub struct InlayHintResolveData {
     pub file_id: u32,
     // This is a string instead of a u64 as javascript can't represent u64 fully
     pub hash: String,
+    pub resolve_range: lsp_types::Range,
     pub version: Option<i32>,
 }
 

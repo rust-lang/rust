@@ -58,7 +58,7 @@ use crate::{
     },
     db::HirDatabase,
     error_lifetime,
-    generics::{generics, Generics},
+    generics::{generics, trait_self_param_idx, Generics},
     make_binders,
     mapping::{from_chalk_trait_id, lt_to_placeholder_idx, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
@@ -516,8 +516,11 @@ impl<'a> TyLoweringContext<'a> {
             TypeNs::TraitId(trait_) => {
                 let ty = match remaining_segments.len() {
                     1 => {
-                        let trait_ref =
-                            self.lower_trait_ref_from_resolved_path(trait_, resolved_segment, None);
+                        let trait_ref = self.lower_trait_ref_from_resolved_path(
+                            trait_,
+                            resolved_segment,
+                            TyKind::Error.intern(Interner),
+                        );
                         let segment = remaining_segments.first().unwrap();
                         let found = self
                             .db
@@ -952,11 +955,17 @@ impl<'a> TyLoweringContext<'a> {
         Substitution::from_iter(Interner, substs)
     }
 
-    fn lower_trait_ref_from_path(
+    pub(crate) fn lower_trait_ref_from_resolved_path(
         &self,
-        path: &Path,
-        explicit_self_ty: Option<Ty>,
-    ) -> Option<TraitRef> {
+        resolved: TraitId,
+        segment: PathSegment<'_>,
+        explicit_self_ty: Ty,
+    ) -> TraitRef {
+        let substs = self.trait_ref_substs_from_path(segment, resolved, explicit_self_ty);
+        TraitRef { trait_id: to_chalk_trait_id(resolved), substitution: substs }
+    }
+
+    fn lower_trait_ref_from_path(&self, path: &Path, explicit_self_ty: Ty) -> Option<TraitRef> {
         let resolved = match self.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), path)? {
             // FIXME(trait_alias): We need to handle trait alias here.
             TypeNs::TraitId(tr) => tr,
@@ -966,21 +975,7 @@ impl<'a> TyLoweringContext<'a> {
         Some(self.lower_trait_ref_from_resolved_path(resolved, segment, explicit_self_ty))
     }
 
-    pub(crate) fn lower_trait_ref_from_resolved_path(
-        &self,
-        resolved: TraitId,
-        segment: PathSegment<'_>,
-        explicit_self_ty: Option<Ty>,
-    ) -> TraitRef {
-        let substs = self.trait_ref_substs_from_path(segment, resolved, explicit_self_ty);
-        TraitRef { trait_id: to_chalk_trait_id(resolved), substitution: substs }
-    }
-
-    fn lower_trait_ref(
-        &self,
-        trait_ref: &HirTraitRef,
-        explicit_self_ty: Option<Ty>,
-    ) -> Option<TraitRef> {
+    fn lower_trait_ref(&self, trait_ref: &HirTraitRef, explicit_self_ty: Ty) -> Option<TraitRef> {
         self.lower_trait_ref_from_path(&trait_ref.path, explicit_self_ty)
     }
 
@@ -988,9 +983,9 @@ impl<'a> TyLoweringContext<'a> {
         &self,
         segment: PathSegment<'_>,
         resolved: TraitId,
-        explicit_self_ty: Option<Ty>,
+        explicit_self_ty: Ty,
     ) -> Substitution {
-        self.substs_from_path_segment(segment, Some(resolved.into()), false, explicit_self_ty)
+        self.substs_from_path_segment(segment, Some(resolved.into()), false, Some(explicit_self_ty))
     }
 
     pub(crate) fn lower_where_predicate<'b>(
@@ -1041,7 +1036,7 @@ impl<'a> TyLoweringContext<'a> {
         let mut trait_ref = None;
         let clause = match bound.as_ref() {
             TypeBound::Path(path, TraitBoundModifier::None) => {
-                trait_ref = self.lower_trait_ref_from_path(path, Some(self_ty));
+                trait_ref = self.lower_trait_ref_from_path(path, self_ty);
                 trait_ref.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
             }
             TypeBound::Path(path, TraitBoundModifier::Maybe) => {
@@ -1053,7 +1048,7 @@ impl<'a> TyLoweringContext<'a> {
                 // `?Sized` has no of them.
                 // If we got another trait here ignore the bound completely.
                 let trait_id = self
-                    .lower_trait_ref_from_path(path, Some(self_ty.clone()))
+                    .lower_trait_ref_from_path(path, self_ty.clone())
                     .map(|trait_ref| trait_ref.hir_trait_id());
                 if trait_id == sized_trait {
                     self.unsized_types.borrow_mut().insert(self_ty);
@@ -1062,7 +1057,7 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeBound::ForLifetime(_, path) => {
                 // FIXME Don't silently drop the hrtb lifetimes here
-                trait_ref = self.lower_trait_ref_from_path(path, Some(self_ty));
+                trait_ref = self.lower_trait_ref_from_path(path, self_ty);
                 trait_ref.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
             }
             TypeBound::Lifetime(l) => {
@@ -1700,6 +1695,28 @@ pub(crate) fn generic_predicates_query(
     db: &dyn HirDatabase,
     def: GenericDefId,
 ) -> GenericPredicates {
+    generic_predicates_filtered_by(db, def, |_, _| true)
+}
+
+/// Resolve the where clause(s) of an item with generics,
+/// except the ones inherited from the parent
+pub(crate) fn generic_predicates_without_parent_query(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+) -> GenericPredicates {
+    generic_predicates_filtered_by(db, def, |_, d| *d == def)
+}
+
+/// Resolve the where clause(s) of an item with generics,
+/// except the ones inherited from the parent
+fn generic_predicates_filtered_by<F>(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+    filter: F,
+) -> GenericPredicates
+where
+    F: Fn(&WherePredicate, &GenericDefId) -> bool,
+{
     let resolver = def.resolver(db.upcast());
     let (impl_trait_lowering, param_lowering) = match def {
         GenericDefId::FunctionId(_) => {
@@ -1714,6 +1731,7 @@ pub(crate) fn generic_predicates_query(
 
     let mut predicates = resolver
         .where_predicates_in_scope()
+        .filter(|(pred, def)| filter(pred, def))
         .flat_map(|(pred, def)| {
             ctx.lower_where_predicate(pred, def, false).map(|p| make_binders(db, &generics, p))
         })
@@ -1747,21 +1765,7 @@ fn implicitly_sized_clauses<'a, 'subst: 'a>(
         .lang_item(resolver.krate(), LangItem::Sized)
         .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id))?;
 
-    let get_trait_self_idx = |container: ItemContainerId| {
-        if matches!(container, ItemContainerId::TraitId(_)) {
-            let generics = generics(db.upcast(), def);
-            Some(generics.len_self())
-        } else {
-            None
-        }
-    };
-    let trait_self_idx = match def {
-        GenericDefId::TraitId(_) => Some(0),
-        GenericDefId::FunctionId(it) => get_trait_self_idx(it.lookup(db.upcast()).container),
-        GenericDefId::ConstId(it) => get_trait_self_idx(it.lookup(db.upcast()).container),
-        GenericDefId::TypeAliasId(it) => get_trait_self_idx(it.lookup(db.upcast()).container),
-        _ => None,
-    };
+    let trait_self_idx = trait_self_param_idx(db.upcast(), def);
 
     Some(
         substitution
@@ -2117,7 +2121,7 @@ pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<
         .with_type_param_mode(ParamLoweringMode::Variable);
     let (self_ty, binders) = db.impl_self_ty(impl_id).into_value_and_skipped_binders();
     let target_trait = impl_data.target_trait.as_ref()?;
-    Some(Binders::new(binders, ctx.lower_trait_ref(target_trait, Some(self_ty))?))
+    Some(Binders::new(binders, ctx.lower_trait_ref(target_trait, self_ty)?))
 }
 
 pub(crate) fn return_type_impl_traits(
