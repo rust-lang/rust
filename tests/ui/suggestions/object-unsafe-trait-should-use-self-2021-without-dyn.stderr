@@ -17,7 +17,7 @@ error[E0038]: the trait `A` cannot be made into an object
 LL |     fn f(a: A) -> A;
    |             ^ `A` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:3:10
    |
 LL | trait A: Sized {
@@ -44,7 +44,7 @@ error[E0038]: the trait `B` cannot be made into an object
 LL |     fn f(b: B) -> B;
    |             ^ `B` cannot be made into an object
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:11:8
    |
 LL | trait B {
@@ -81,7 +81,7 @@ LL |     fn f(&self, c: C) -> C;
    |          |
    |          help: consider changing method `f`'s `self` parameter to be `&self` (notice the capitalization): `&Self`
    |
-note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:18:10
    |
 LL | trait C {
@@ -95,7 +95,7 @@ error[E0782]: trait objects must include the `dyn` keyword
 LL |     fn f(a: A) -> A;
    |             ^
    |
-   = note: `A` it is not object safe, so it can't be `dyn`
+   = note: `A` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `A`
    |
 LL |     fn f<T: A>(a: T) -> A;
@@ -111,7 +111,7 @@ error[E0782]: trait objects must include the `dyn` keyword
 LL |     fn f(a: A) -> A;
    |                   ^
    |
-help: `A` is not object safe, use `impl A` to return an opaque type, as long as you return a single underlying type
+help: `A` is dyn-incompatible, use `impl A` to return an opaque type, as long as you return a single underlying type
    |
 LL |     fn f(a: A) -> impl A;
    |                   ++++
@@ -122,7 +122,7 @@ error[E0782]: trait objects must include the `dyn` keyword
 LL |     fn f(b: B) -> B;
    |             ^
    |
-   = note: `B` it is not object safe, so it can't be `dyn`
+   = note: `B` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `B`
    |
 LL |     fn f<T: B>(b: T) -> B;
@@ -138,7 +138,7 @@ error[E0782]: trait objects must include the `dyn` keyword
 LL |     fn f(b: B) -> B;
    |                   ^
    |
-help: `B` is not object safe, use `impl B` to return an opaque type, as long as you return a single underlying type
+help: `B` is dyn-incompatible, use `impl B` to return an opaque type, as long as you return a single underlying type
    |
 LL |     fn f(b: B) -> impl B;
    |                   ++++
@@ -149,7 +149,7 @@ error[E0782]: trait objects must include the `dyn` keyword
 LL |     fn f(&self, c: C) -> C;
    |                    ^
    |
-   = note: `C` it is not object safe, so it can't be `dyn`
+   = note: `C` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `C`
    |
 LL |     fn f<T: C>(&self, c: T) -> C;
@@ -165,7 +165,7 @@ error[E0782]: trait objects must include the `dyn` keyword
 LL |     fn f(&self, c: C) -> C;
    |                          ^
    |
-help: `C` is not object safe, use `impl C` to return an opaque type, as long as you return a single underlying type
+help: `C` is dyn-incompatible, use `impl C` to return an opaque type, as long as you return a single underlying type
    |
 LL |     fn f(&self, c: C) -> impl C;
    |                          ++++

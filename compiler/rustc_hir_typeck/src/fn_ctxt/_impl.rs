@@ -757,7 +757,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // give us a `QPath::TypeRelative` with a trait object as
                 // `qself`. In that case, we want to avoid registering a WF obligation
                 // for `dyn MyTrait`, since we don't actually need the trait
-                // to be object-safe.
+                // to be dyn-compatible.
                 // We manually call `register_wf_obligation` in the success path
                 // below.
                 let ty = self.lowerer().lower_ty(qself);

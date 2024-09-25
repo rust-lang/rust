@@ -50,7 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
             | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
             | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
-            | ty::PredicateKind::ObjectSafe(..)
+            | ty::PredicateKind::DynCompatible(..)
             | ty::PredicateKind::NormalizesTo(..)
             | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))

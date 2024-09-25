@@ -832,8 +832,8 @@ where
         let cx = self.cx();
         let Goal { predicate: (a_ty, _), .. } = goal;
 
-        // Can only unsize to an object-safe trait.
-        if b_data.principal_def_id().is_some_and(|def_id| !cx.trait_is_object_safe(def_id)) {
+        // Can only unsize to an dyn-compatible trait.
+        if b_data.principal_def_id().is_some_and(|def_id| !cx.trait_is_dyn_compatible(def_id)) {
             return Err(NoSolution);
         }
 

@@ -598,7 +598,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // codegen'd / interpreted as virtual calls through the vtable.
             ty::InstanceKind::Virtual(def_id, idx) => {
                 let mut args = args.to_vec();
-                // We have to implement all "object safe receivers". So we have to go search for a
+                // We have to implement all "dyn-compatible receivers". So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
                 // unwrap those newtypes until we are there.
                 // An `InPlace` does nothing here, we keep the original receiver intact. We can't

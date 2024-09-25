@@ -779,8 +779,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         });
 
         // It is illegal to invoke a method on a trait instance that refers to
-        // the `Self` type. An [`ObjectSafetyViolation::SupertraitSelf`] error
-        // will be reported by `object_safety.rs` if the method refers to the
+        // the `Self` type. An [`DynCompatibilityViolation::SupertraitSelf`] error
+        // will be reported by `dyn_compatibility.rs` if the method refers to the
         // `Self` type anywhere other than the receiver. Here, we use a
         // instantiation that replaces `Self` with the object type itself. Hence,
         // a `&self` method will wind up with an argument type like `&dyn Trait`.

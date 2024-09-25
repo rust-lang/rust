@@ -527,8 +527,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_is_alias(trait_def_id)
     }
 
-    fn trait_is_object_safe(self, trait_def_id: DefId) -> bool {
-        self.is_object_safe(trait_def_id)
+    fn trait_is_dyn_compatible(self, trait_def_id: DefId) -> bool {
+        self.is_dyn_compatible(trait_def_id)
     }
 
     fn trait_is_fundamental(self, def_id: DefId) -> bool {

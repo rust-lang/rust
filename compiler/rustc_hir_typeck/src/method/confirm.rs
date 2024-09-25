@@ -292,7 +292,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     // distinct types (e.g., if `Self` appeared as an
                     // argument type), but those cases have already
                     // been ruled out when we deemed the trait to be
-                    // "object safe".
+                    // "dyn-compatible".
                     let original_poly_trait_ref = principal.with_self_ty(this.tcx, object_ty);
                     let upcast_poly_trait_ref = this.upcast(original_poly_trait_ref, trait_def_id);
                     let upcast_trait_ref =

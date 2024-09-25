@@ -15,10 +15,10 @@
 
 mod bounds;
 mod cmse;
+mod dyn_compatibility;
 pub mod errors;
 pub mod generics;
 mod lint;
-mod object_safety;
 
 use std::slice;
 

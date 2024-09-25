@@ -3088,8 +3088,8 @@ define_print! {
             }
             ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
             ty::PredicateKind::Coerce(predicate) => p!(print(predicate)),
-            ty::PredicateKind::ObjectSafe(trait_def_id) => {
-                p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
+            ty::PredicateKind::DynCompatible(trait_def_id) => {
+                p!("the trait `", print_def_path(trait_def_id, &[]), "` is dyn-compatible")
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 p!("the constant `", print(c1), "` equals `", print(c2), "`")

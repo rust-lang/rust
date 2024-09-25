@@ -374,7 +374,7 @@ fn check_trait_item<'tcx>(
         hir::TraitItemKind::Type(_bounds, Some(ty)) => (None, ty.span),
         _ => (None, trait_item.span),
     };
-    check_object_unsafe_self_trait_by_name(tcx, trait_item);
+    check_dyn_incompatible_self_trait_by_name(tcx, trait_item);
     let mut res = check_associated_item(tcx, def_id, span, method_sig);
 
     if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {
@@ -838,9 +838,10 @@ fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
     }
 }
 
-/// Detect when an object unsafe trait is referring to itself in one of its associated items.
-/// When this is done, suggest using `Self` instead.
-fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
+/// Detect when a dyn-incompatible trait is referring to itself in one of its associated items.
+///
+/// In such cases, suggest using `Self` instead.
+fn check_dyn_incompatible_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
     let (trait_name, trait_def_id) =
         match tcx.hir_node_by_def_id(tcx.hir().get_parent_item(item.hir_id()).def_id) {
             hir::Node::Item(item) => match item.kind {
@@ -872,7 +873,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
         _ => {}
     }
     if !trait_should_be_self.is_empty() {
-        if tcx.is_object_safe(trait_def_id) {
+        if tcx.is_dyn_compatible(trait_def_id) {
             return;
         }
         let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();

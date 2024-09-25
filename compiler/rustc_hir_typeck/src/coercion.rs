@@ -655,7 +655,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     return Err(TypeError::Mismatch);
                 }
 
-                // Object safety violations or miscellaneous.
+                // Dyn-compatibility violations or miscellaneous.
                 Err(err) => {
                     self.err_ctxt().report_selection_error(obligation.clone(), &obligation, &err);
                     // Treat this like an obligation and follow through

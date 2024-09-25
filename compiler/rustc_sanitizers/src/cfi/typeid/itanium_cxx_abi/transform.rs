@@ -475,7 +475,7 @@ fn implemented_method<'tcx>(
     } else {
         return None;
     };
-    let vtable_possible =
-        traits::is_vtable_safe_method(tcx, trait_id, trait_method) && tcx.is_object_safe(trait_id);
+    let vtable_possible = traits::is_vtable_safe_method(tcx, trait_id, trait_method)
+        && tcx.is_dyn_compatible(trait_id);
     vtable_possible.then_some((trait_ref, method_id, ancestor))
 }
