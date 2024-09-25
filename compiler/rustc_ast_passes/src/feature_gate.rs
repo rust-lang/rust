@@ -4,9 +4,9 @@ use rustc_ast::{NodeId, PatKind, attr, token};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 
@@ -483,6 +483,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     maybe_stage_features(sess, features, krate);
     check_incompatible_features(sess, features);
+    check_new_solver_banned_features(sess, features);
+
     let mut visitor = PostExpansionVisitor { sess, features };
 
     let spans = sess.psess.gated_spans.spans.borrow();
@@ -660,5 +662,24 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
                 });
             }
         }
+    }
+}
+
+fn check_new_solver_banned_features(sess: &Session, features: &Features) {
+    if !sess.opts.unstable_opts.next_solver.is_some_and(|n| n.globally) {
+        return;
+    }
+
+    // Ban GCE with the new solver, because it does not implement GCE correctly.
+    if let Some(&(_, gce_span, _)) = features
+        .declared_lang_features
+        .iter()
+        .find(|&&(feat, _, _)| feat == sym::generic_const_exprs)
+    {
+        sess.dcx().emit_err(errors::IncompatibleFeatures {
+            spans: vec![gce_span],
+            f1: Symbol::intern("-Znext-solver=globally"),
+            f2: sym::generic_const_exprs,
+        });
     }
 }
