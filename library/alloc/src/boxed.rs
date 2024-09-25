@@ -225,6 +225,7 @@ pub use thin::ThinBox;
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
+#[cfg_attr(not(bootstrap), doc(search_unbox))]
 // The declaration of the `Box` struct must be kept in sync with the
 // compiler or ICEs will happen.
 pub struct Box<

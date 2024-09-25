@@ -38,12 +38,6 @@ const EXPECTED = [
         'others': [
             { 'path': 'generics_match_ambiguity', 'name': 'baaa' },
             { 'path': 'generics_match_ambiguity', 'name': 'baab' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baac' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baad' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baae' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baaf' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baag' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baah' },
         ],
     },
     {
@@ -51,12 +45,6 @@ const EXPECTED = [
         'others': [
             { 'path': 'generics_match_ambiguity', 'name': 'baaa' },
             { 'path': 'generics_match_ambiguity', 'name': 'baab' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baac' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baad' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baae' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baaf' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baag' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baah' },
         ],
     },
     {
@@ -71,18 +59,10 @@ const EXPECTED = [
     },
     {
         'query': 'W2<i32>, W3<i32, u32>',
-        'others': [
-            { 'path': 'generics_match_ambiguity', 'name': 'baac' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baaf' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baag' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baah' },
-        ],
+        'others': [],
     },
     {
         'query': 'W2<i32>, W2<i32>',
-        'others': [
-            { 'path': 'generics_match_ambiguity', 'name': 'baag' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baah' },
-        ],
+        'others': [],
     },
 ];

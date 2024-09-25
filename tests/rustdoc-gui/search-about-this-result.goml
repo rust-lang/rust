@@ -11,8 +11,8 @@ assert-count: ("#search-tabs button", 1)
 assert-count: (".search-results > a", 1)
 
 assert: "//div[@class='type-signature']/strong[text()='Iterator']"
-assert: "//div[@class='type-signature']/strong[text()='(']"
-assert: "//div[@class='type-signature']/strong[text()=')']"
+assert: "//div[@class='type-signature']/strong[text()='(B']"
+assert: "//div[@class='type-signature']/strong[text()='B)']"
 
 assert: "//div[@class='type-signature']/div[@class='where']/strong[text()='FnMut']"
 assert: "//div[@class='type-signature']/div[@class='where']/strong[text()='Iterator::Item']"

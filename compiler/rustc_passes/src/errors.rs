@@ -245,6 +245,13 @@ pub(crate) struct DocKeywordOnlyImpl {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_doc_search_unbox_invalid)]
+pub(crate) struct DocSearchUnboxInvalid {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_doc_inline_conflict)]
 #[help]
 pub(crate) struct DocKeywordConflict {

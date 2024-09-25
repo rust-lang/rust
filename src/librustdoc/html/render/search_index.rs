@@ -13,8 +13,8 @@ use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
-use crate::clean;
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
+use crate::clean::{self, utils};
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
@@ -66,7 +66,7 @@ pub(crate) fn build_index<'tcx>(
     let mut associated_types = FxHashMap::default();
 
     // item type, display path, re-exported internal path
-    let mut crate_paths: Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)> = vec![];
+    let mut crate_paths: Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)> = vec![];
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
@@ -132,10 +132,11 @@ pub(crate) fn build_index<'tcx>(
             map: &mut FxHashMap<F, isize>,
             itemid: F,
             lastpathid: &mut isize,
-            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)>,
             item_type: ItemType,
             path: &[Symbol],
             exact_path: Option<&[Symbol]>,
+            search_unbox: bool,
         ) -> RenderTypeId {
             match map.entry(itemid) {
                 Entry::Occupied(entry) => RenderTypeId::Index(*entry.get()),
@@ -147,6 +148,7 @@ pub(crate) fn build_index<'tcx>(
                         item_type,
                         path.to_vec(),
                         exact_path.map(|path| path.to_vec()),
+                        search_unbox,
                     ));
                     RenderTypeId::Index(pathid)
                 }
@@ -160,9 +162,21 @@ pub(crate) fn build_index<'tcx>(
             primitives: &mut FxHashMap<Symbol, isize>,
             associated_types: &mut FxHashMap<Symbol, isize>,
             lastpathid: &mut isize,
-            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)>,
+            tcx: TyCtxt<'_>,
         ) -> Option<RenderTypeId> {
+            use crate::clean::PrimitiveType;
             let Cache { ref paths, ref external_paths, ref exact_paths, .. } = *cache;
+            let search_unbox = match id {
+                RenderTypeId::Mut => false,
+                RenderTypeId::DefId(defid) => utils::has_doc_flag(tcx, defid, sym::search_unbox),
+                RenderTypeId::Primitive(PrimitiveType::Reference | PrimitiveType::Tuple) => true,
+                RenderTypeId::Primitive(..) => false,
+                RenderTypeId::AssociatedType(..) => false,
+                // this bool is only used by `insert_into_map`, so it doesn't matter what we set here
+                // because Index means we've already inserted into the map
+                RenderTypeId::Index(_) => false,
+            };
             match id {
                 RenderTypeId::Mut => Some(insert_into_map(
                     primitives,
@@ -172,6 +186,7 @@ pub(crate) fn build_index<'tcx>(
                     ItemType::Keyword,
                     &[kw::Mut],
                     None,
+                    search_unbox,
                 )),
                 RenderTypeId::DefId(defid) => {
                     if let Some(&(ref fqp, item_type)) =
@@ -195,6 +210,7 @@ pub(crate) fn build_index<'tcx>(
                             item_type,
                             fqp,
                             exact_fqp.map(|x| &x[..]).filter(|exact_fqp| exact_fqp != fqp),
+                            search_unbox,
                         ))
                     } else {
                         None
@@ -210,6 +226,7 @@ pub(crate) fn build_index<'tcx>(
                         ItemType::Primitive,
                         &[sym],
                         None,
+                        search_unbox,
                     ))
                 }
                 RenderTypeId::Index(_) => Some(id),
@@ -221,6 +238,7 @@ pub(crate) fn build_index<'tcx>(
                     ItemType::AssocType,
                     &[sym],
                     None,
+                    search_unbox,
                 )),
             }
         }
@@ -232,7 +250,8 @@ pub(crate) fn build_index<'tcx>(
             primitives: &mut FxHashMap<Symbol, isize>,
             associated_types: &mut FxHashMap<Symbol, isize>,
             lastpathid: &mut isize,
-            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
+            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)>,
+            tcx: TyCtxt<'_>,
         ) {
             if let Some(generics) = &mut ty.generics {
                 for item in generics {
@@ -244,6 +263,7 @@ pub(crate) fn build_index<'tcx>(
                         associated_types,
                         lastpathid,
                         crate_paths,
+                        tcx,
                     );
                 }
             }
@@ -257,6 +277,7 @@ pub(crate) fn build_index<'tcx>(
                         associated_types,
                         lastpathid,
                         crate_paths,
+                        tcx,
                     );
                     let Some(converted_associated_type) = converted_associated_type else {
                         return false;
@@ -271,6 +292,7 @@ pub(crate) fn build_index<'tcx>(
                             associated_types,
                             lastpathid,
                             crate_paths,
+                            tcx,
                         );
                     }
                     true
@@ -288,6 +310,7 @@ pub(crate) fn build_index<'tcx>(
                 associated_types,
                 lastpathid,
                 crate_paths,
+                tcx,
             );
         }
         if let Some(search_type) = &mut item.search_type {
@@ -300,6 +323,7 @@ pub(crate) fn build_index<'tcx>(
                     &mut associated_types,
                     &mut lastpathid,
                     &mut crate_paths,
+                    tcx,
                 );
             }
             for item in &mut search_type.output {
@@ -311,6 +335,7 @@ pub(crate) fn build_index<'tcx>(
                     &mut associated_types,
                     &mut lastpathid,
                     &mut crate_paths,
+                    tcx,
                 );
             }
             for constraint in &mut search_type.where_clause {
@@ -323,6 +348,7 @@ pub(crate) fn build_index<'tcx>(
                         &mut associated_types,
                         &mut lastpathid,
                         &mut crate_paths,
+                        tcx,
                     );
                 }
             }
@@ -350,7 +376,12 @@ pub(crate) fn build_index<'tcx>(
                                 .filter(|exact_fqp| {
                                     exact_fqp.last() == Some(&item.name) && *exact_fqp != fqp
                                 });
-                            crate_paths.push((short, fqp.clone(), exact_fqp.cloned()));
+                            crate_paths.push((
+                                short,
+                                fqp.clone(),
+                                exact_fqp.cloned(),
+                                utils::has_doc_flag(tcx, defid, sym::search_unbox),
+                            ));
                             Some(pathid)
                         } else {
                             None
@@ -431,7 +462,7 @@ pub(crate) fn build_index<'tcx>(
 
     struct CrateData<'a> {
         items: Vec<&'a IndexItem>,
-        paths: Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
+        paths: Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)>,
         // The String is alias name and the vec is the list of the elements with this alias.
         //
         // To be noted: the `usize` elements are indexes to `items`.
@@ -450,6 +481,7 @@ pub(crate) fn build_index<'tcx>(
         name: Symbol,
         path: Option<usize>,
         exact_path: Option<usize>,
+        search_unbox: bool,
     }
 
     impl Serialize for Paths {
@@ -466,6 +498,15 @@ pub(crate) fn build_index<'tcx>(
             if let Some(ref path) = self.exact_path {
                 assert!(self.path.is_some());
                 seq.serialize_element(path)?;
+            }
+            if self.search_unbox {
+                if self.path.is_none() {
+                    seq.serialize_element(&None::<u8>)?;
+                }
+                if self.exact_path.is_none() {
+                    seq.serialize_element(&None::<u8>)?;
+                }
+                seq.serialize_element(&1)?;
             }
             seq.end()
         }
@@ -489,9 +530,15 @@ pub(crate) fn build_index<'tcx>(
                 mod_paths.insert(&item.path, index);
             }
             let mut paths = Vec::with_capacity(self.paths.len());
-            for (ty, path, exact) in &self.paths {
+            for &(ty, ref path, ref exact, search_unbox) in &self.paths {
                 if path.len() < 2 {
-                    paths.push(Paths { ty: *ty, name: path[0], path: None, exact_path: None });
+                    paths.push(Paths {
+                        ty,
+                        name: path[0],
+                        path: None,
+                        exact_path: None,
+                        search_unbox,
+                    });
                     continue;
                 }
                 let full_path = join_with_double_colon(&path[..path.len() - 1]);
@@ -517,10 +564,11 @@ pub(crate) fn build_index<'tcx>(
                 });
                 if let Some(index) = mod_paths.get(&full_path) {
                     paths.push(Paths {
-                        ty: *ty,
+                        ty,
                         name: *path.last().unwrap(),
                         path: Some(*index),
                         exact_path,
+                        search_unbox,
                     });
                     continue;
                 }
@@ -532,10 +580,11 @@ pub(crate) fn build_index<'tcx>(
                 match extra_paths.entry(full_path.clone()) {
                     Entry::Occupied(entry) => {
                         paths.push(Paths {
-                            ty: *ty,
+                            ty,
                             name: *path.last().unwrap(),
                             path: Some(*entry.get()),
                             exact_path,
+                            search_unbox,
                         });
                     }
                     Entry::Vacant(entry) => {
@@ -544,10 +593,11 @@ pub(crate) fn build_index<'tcx>(
                             revert_extra_paths.insert(index, full_path);
                         }
                         paths.push(Paths {
-                            ty: *ty,
+                            ty,
                             name: *path.last().unwrap(),
                             path: Some(index),
                             exact_path,
+                            search_unbox,
                         });
                     }
                 }

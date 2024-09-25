@@ -234,6 +234,9 @@ passes_doc_masked_only_extern_crate =
 passes_doc_rust_logo =
     the `#[doc(rust_logo)]` attribute is used for Rust branding
 
+passes_doc_search_unbox_invalid =
+    `#[doc(search_unbox)]` should be used on generic structs and enums
+
 passes_doc_test_literal = `#![doc(test(...)]` does not take a literal
 
 passes_doc_test_takes_list =
