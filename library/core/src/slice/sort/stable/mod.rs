@@ -1,22 +1,22 @@
 //! This module contains the entry points for `slice::sort`.
 
-#[cfg(not(feature = "optimize_for_size"))]
+#[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 use crate::cmp;
 use crate::intrinsics;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
-#[cfg(not(feature = "optimize_for_size"))]
+#[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 use crate::slice::sort::shared::smallsort::{
     SMALL_SORT_GENERAL_SCRATCH_LEN, StableSmallSortTypeImpl, insertion_sort_shift_left,
 };
 
 pub(crate) mod merge;
 
-#[cfg(not(feature = "optimize_for_size"))]
+#[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 pub(crate) mod drift;
-#[cfg(not(feature = "optimize_for_size"))]
+#[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 pub(crate) mod quicksort;
 
-#[cfg(feature = "optimize_for_size")]
+#[cfg(any(feature = "optimize_for_size", target_pointer_width = "16"))]
 pub(crate) mod tiny;
 
 /// Stable sort called driftsort by Orson Peters and Lukas Bergdoll.
@@ -45,7 +45,7 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
 
             cfg_if! {
                 if #[cfg(target_pointer_width = "16")] {
-                    let heap_buf = BufT::with_capacity(alloc_len);
+                    let mut heap_buf = BufT::with_capacity(alloc_len);
                     let scratch = heap_buf.as_uninit_slice_mut();
                 } else {
                     // For small inputs 4KiB of stack storage suffices, which allows us to avoid
@@ -85,7 +85,7 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
 ///
 /// Deliberately don't inline the main sorting routine entrypoint to ensure the
 /// inlined insertion sort i-cache footprint remains minimal.
-#[cfg(not(feature = "optimize_for_size"))]
+#[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 #[inline(never)]
 fn driftsort_main<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less: &mut F) {
     // By allocating n elements of memory we can ensure the entire input can
