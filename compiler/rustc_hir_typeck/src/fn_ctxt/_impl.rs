@@ -20,7 +20,6 @@ use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryRespons
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
@@ -29,20 +28,21 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::symbol::{kw, sym};
-use rustc_span::Span;
+use rustc_span::symbol::kw;
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
-    self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
+    self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt,
 };
+use tracing::{debug, instrument};
 
 use crate::callee::{self, DeferredCallResolution};
 use crate::errors::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
-use crate::{rvalue_scopes, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
+use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, rvalue_scopes};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
@@ -224,10 +224,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("fcx {}", self.tag());
 
         if Self::can_contain_user_lifetime_bounds((args, user_self_ty)) {
-            let canonicalized = self.canonicalize_user_type_annotation(UserType::TypeOf(
-                def_id,
-                UserArgs { args, user_self_ty },
-            ));
+            let canonicalized =
+                self.canonicalize_user_type_annotation(UserType::TypeOf(def_id, UserArgs {
+                    args,
+                    user_self_ty,
+                }));
             debug!(?canonicalized);
             self.write_user_type_annotation(hir_id, canonicalized);
         }
@@ -270,13 +271,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let autoborrow_mut = adj.iter().any(|adj| {
-            matches!(
-                adj,
-                &Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })),
-                    ..
-                }
-            )
+            matches!(adj, &Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })),
+                ..
+            })
         });
 
         match self.typeck_results.borrow_mut().adjustments_mut().entry(expr.hir_id) {
@@ -688,42 +686,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         vec![ty_error; len]
     }
 
-    /// Unifies the output type with the expected type early, for more coercions
-    /// and forward type information on the input expressions.
-    #[instrument(skip(self, call_span), level = "debug")]
-    pub(crate) fn expected_inputs_for_expected_output(
-        &self,
-        call_span: Span,
-        expected_ret: Expectation<'tcx>,
-        formal_ret: Ty<'tcx>,
-        formal_args: &[Ty<'tcx>],
-    ) -> Option<Vec<Ty<'tcx>>> {
-        let formal_ret = self.resolve_vars_with_obligations(formal_ret);
-        let ret_ty = expected_ret.only_has_type(self)?;
-
-        let expect_args = self
-            .fudge_inference_if_ok(|| {
-                let ocx = ObligationCtxt::new(self);
-
-                // Attempt to apply a subtyping relationship between the formal
-                // return type (likely containing type variables if the function
-                // is polymorphic) and the expected return type.
-                // No argument expectations are produced if unification fails.
-                let origin = self.misc(call_span);
-                ocx.sup(&origin, self.param_env, ret_ty, formal_ret)?;
-                if !ocx.select_where_possible().is_empty() {
-                    return Err(TypeError::Mismatch);
-                }
-
-                // Record all the argument types, with the args
-                // produced from the above subtyping unification.
-                Ok(Some(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect()))
-            })
-            .unwrap_or_default();
-        debug!(?formal_args, ?formal_ret, ?expect_args, ?expected_ret);
-        expect_args
-    }
-
     pub(crate) fn resolve_lang_item_path(
         &self,
         lang_item: hir::LangItem,
@@ -895,38 +857,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    /// Given a `HirId`, return the `HirId` of the enclosing function, its `FnDecl`, and whether a
-    /// suggestion can be made, `None` otherwise.
+    /// Given a `HirId`, return the `HirId` of the enclosing function and its `FnDecl`.
     pub(crate) fn get_fn_decl(
         &self,
         blk_id: HirId,
-    ) -> Option<(LocalDefId, &'tcx hir::FnDecl<'tcx>, bool)> {
+    ) -> Option<(LocalDefId, &'tcx hir::FnDecl<'tcx>)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_fn_id_for_return_block(blk_id).and_then(|item_id| {
             match self.tcx.hir_node(item_id) {
                 Node::Item(&hir::Item {
-                    ident,
-                    kind: hir::ItemKind::Fn(ref sig, ..),
-                    owner_id,
-                    ..
-                }) => {
-                    // This is less than ideal, it will not suggest a return type span on any
-                    // method called `main`, regardless of whether it is actually the entry point,
-                    // but it will still present it as the reason for the expected type.
-                    Some((owner_id.def_id, sig.decl, ident.name != sym::main))
-                }
+                    kind: hir::ItemKind::Fn(ref sig, ..), owner_id, ..
+                }) => Some((owner_id.def_id, sig.decl)),
                 Node::TraitItem(&hir::TraitItem {
                     kind: hir::TraitItemKind::Fn(ref sig, ..),
                     owner_id,
                     ..
-                }) => Some((owner_id.def_id, sig.decl, true)),
-                // FIXME: Suggestable if this is not a trait implementation
+                }) => Some((owner_id.def_id, sig.decl)),
                 Node::ImplItem(&hir::ImplItem {
                     kind: hir::ImplItemKind::Fn(ref sig, ..),
                     owner_id,
                     ..
-                }) => Some((owner_id.def_id, sig.decl, false)),
+                }) => Some((owner_id.def_id, sig.decl)),
                 Node::Expr(&hir::Expr {
                     hir_id,
                     kind: hir::ExprKind::Closure(&hir::Closure { def_id, kind, fn_decl, .. }),
@@ -937,33 +889,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // FIXME(async_closures): Implement this.
                             return None;
                         }
-                        hir::ClosureKind::Closure => Some((def_id, fn_decl, true)),
+                        hir::ClosureKind::Closure => Some((def_id, fn_decl)),
                         hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                             _,
                             hir::CoroutineSource::Fn,
                         )) => {
-                            let (ident, sig, owner_id) = match self.tcx.parent_hir_node(hir_id) {
+                            let (sig, owner_id) = match self.tcx.parent_hir_node(hir_id) {
                                 Node::Item(&hir::Item {
-                                    ident,
                                     kind: hir::ItemKind::Fn(ref sig, ..),
                                     owner_id,
                                     ..
-                                }) => (ident, sig, owner_id),
+                                }) => (sig, owner_id),
                                 Node::TraitItem(&hir::TraitItem {
-                                    ident,
                                     kind: hir::TraitItemKind::Fn(ref sig, ..),
                                     owner_id,
                                     ..
-                                }) => (ident, sig, owner_id),
+                                }) => (sig, owner_id),
                                 Node::ImplItem(&hir::ImplItem {
-                                    ident,
                                     kind: hir::ImplItemKind::Fn(ref sig, ..),
                                     owner_id,
                                     ..
-                                }) => (ident, sig, owner_id),
+                                }) => (sig, owner_id),
                                 _ => return None,
                             };
-                            Some((owner_id.def_id, sig.decl, ident.name != sym::main))
+                            Some((owner_id.def_id, sig.decl))
                         }
                         _ => None,
                     }
@@ -1017,16 +966,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut sp = MultiSpan::from_span(path_segment.ident.span);
         sp.push_span_label(
             path_segment.ident.span,
-            format!(
-                "this call modifies {} in-place",
-                match rcvr.kind {
-                    ExprKind::Path(QPath::Resolved(
-                        None,
-                        hir::Path { segments: [segment], .. },
-                    )) => format!("`{}`", segment.ident),
-                    _ => "its receiver".to_string(),
-                }
-            ),
+            format!("this call modifies {} in-place", match rcvr.kind {
+                ExprKind::Path(QPath::Resolved(None, hir::Path { segments: [segment], .. })) =>
+                    format!("`{}`", segment.ident),
+                _ => "its receiver".to_string(),
+            }),
         );
 
         let modifies_rcvr_note =
@@ -1283,7 +1227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             infer_args_for_err: &'a FxHashSet<usize>,
             segments: &'tcx [hir::PathSegment<'tcx>],
         }
-        impl<'tcx, 'a> GenericArgsLowerer<'a, 'tcx> for CtorGenericArgsCtxt<'a, 'tcx> {
+        impl<'a, 'tcx> GenericArgsLowerer<'a, 'tcx> for CtorGenericArgsCtxt<'a, 'tcx> {
             fn args_for_def_id(
                 &mut self,
                 def_id: DefId,
@@ -1437,10 +1381,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).instantiate(tcx, args));
             let self_ty = self.normalize(span, self_ty);
-            match self.at(&self.misc(span), self.param_env).sub(
+            match self.at(&self.misc(span), self.param_env).eq(
                 DefineOpaqueTypes::Yes,
-                self_ty,
                 impl_ty,
+                self_ty,
             ) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
@@ -1523,6 +1467,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             ty
+        }
+    }
+
+    #[instrument(level = "debug", skip(self, sp), ret)]
+    pub fn try_structurally_resolve_const(&self, sp: Span, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        // FIXME(min_const_generic_exprs): We could process obligations here if `ct` is a var.
+
+        if self.next_trait_solver()
+            && let ty::ConstKind::Unevaluated(..) = ct.kind()
+        {
+            // We need to use a separate variable here as otherwise the temporary for
+            // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
+            // in a reentrant borrow, causing an ICE.
+            let result = self
+                .at(&self.misc(sp), self.param_env)
+                .structurally_normalize_const(ct, &mut **self.fulfillment_cx.borrow_mut());
+            match result {
+                Ok(normalized_ct) => normalized_ct,
+                Err(errors) => {
+                    let guar = self.err_ctxt().report_fulfillment_errors(errors);
+                    return ty::Const::new_error(self.tcx, guar);
+                }
+            }
+        } else if self.tcx.features().generic_const_exprs {
+            ct.normalize(self.tcx, self.param_env)
+        } else {
+            ct
         }
     }
 

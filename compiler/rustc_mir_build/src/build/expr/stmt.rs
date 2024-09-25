@@ -123,11 +123,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     unpack!(block = this.break_for_tail_call(block, &args, source_info));
 
-                    this.cfg.terminate(
-                        block,
-                        source_info,
-                        TerminatorKind::TailCall { func: fun, args, fn_span },
-                    );
+                    this.cfg.terminate(block, source_info, TerminatorKind::TailCall {
+                        func: fun,
+                        args,
+                        fn_span,
+                    });
 
                     this.cfg.start_new_block().unit()
                 })

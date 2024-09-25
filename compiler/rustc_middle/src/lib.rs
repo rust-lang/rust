@@ -28,12 +28,12 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::potential_query_instability)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(min_exhaustive_patterns, unsafe_extern_blocks))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
+#![feature(associated_type_defaults)]
 #![feature(box_as_ptr)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]
@@ -62,6 +62,7 @@
 #![feature(try_blocks)]
 #![feature(type_alias_impl_trait)]
 #![feature(yeet_expr)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 #[cfg(test)]

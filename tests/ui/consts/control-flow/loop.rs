@@ -52,14 +52,12 @@ const _: i32 = {
 
     for i in 0..4 { //~ ERROR `for` is not allowed in a `const`
         //~^ ERROR: cannot call
-        //~| ERROR: mutable references
         //~| ERROR: cannot convert
         x += i;
     }
 
     for i in 0..4 { //~ ERROR `for` is not allowed in a `const`
         //~^ ERROR: cannot call
-        //~| ERROR: mutable references
         //~| ERROR: cannot convert
         x += i;
     }

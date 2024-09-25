@@ -93,6 +93,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![cfg_attr(not(no_global_oom_handling), feature(const_btree_len))]
+#![cfg_attr(test, feature(str_as_str))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_chunks)]
@@ -110,11 +111,9 @@
 #![feature(const_cow_is_borrowed)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]
-#![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_write)]
 #![feature(const_option)]
 #![feature(const_pin)]
-#![feature(const_refs_to_cell)]
 #![feature(const_size_of_val)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
@@ -164,13 +163,14 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(const_mut_refs))]
+#![cfg_attr(bootstrap, feature(const_refs_to_cell))]
 #![cfg_attr(not(test), feature(coroutine_trait))]
 #![cfg_attr(test, feature(panic_update_hook))]
 #![cfg_attr(test, feature(test))]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
 #![feature(cfg_sanitize)]
-#![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_write)]
 #![feature(const_try)]
@@ -183,6 +183,7 @@
 #![feature(multiple_supertrait_upcastable)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(optimize_attribute)]
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
 #![feature(slice_internals)]

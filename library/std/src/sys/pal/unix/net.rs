@@ -1,4 +1,4 @@
-use libc::{c_int, c_void, size_t, sockaddr, socklen_t, MSG_PEEK};
+use libc::{MSG_PEEK, c_int, c_void, size_t, sockaddr, socklen_t};
 
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
@@ -215,7 +215,7 @@ impl Socket {
                 _ => {
                     if cfg!(target_os = "vxworks") {
                         // VxWorks poll does not return  POLLHUP or POLLERR in revents. Check if the
-                        // connnection actually succeeded and return ok only when the socket is
+                        // connection actually succeeded and return ok only when the socket is
                         // ready and no errors were found.
                         if let Some(e) = self.take_error()? {
                             return Err(e);

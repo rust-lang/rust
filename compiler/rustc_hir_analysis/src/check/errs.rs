@@ -79,11 +79,10 @@ fn handle_static_mut_ref(
         } else {
             (errors::MutRefSugg::Shared { lo, hi }, "shared")
         };
-        tcx.emit_node_span_lint(
-            STATIC_MUT_REFS,
-            hir_id,
+        tcx.emit_node_span_lint(STATIC_MUT_REFS, hir_id, span, errors::RefOfMutStatic {
             span,
-            errors::RefOfMutStatic { span, sugg, shared },
-        );
+            sugg,
+            shared,
+        });
     }
 }

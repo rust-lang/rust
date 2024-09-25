@@ -1,15 +1,16 @@
 //! Global machine state as well as implementation of the interpreter engine
 //! `Machine` trait.
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::path::Path;
 use std::process;
 
-use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 
 use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -19,9 +20,8 @@ use rustc_middle::{
     mir,
     query::TyCtxtAt,
     ty::{
-        self,
-        layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout},
-        Instance, Ty, TyCtxt,
+        self, Instance, Ty, TyCtxt,
+        layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout},
     },
 };
 use rustc_session::config::InliningThreshold;
@@ -80,24 +80,42 @@ pub struct FrameExtra<'tcx> {
     /// an additional bit of "salt" into the cache key. This salt is fixed per-frame
     /// so that within a call, a const will have a stable address.
     salt: usize,
+
+    /// Data race detector per-frame data.
+    pub data_race: Option<data_race::FrameState>,
 }
 
 impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _, salt: _ } =
-            self;
+        let FrameExtra {
+            borrow_tracker,
+            catch_unwind,
+            timing: _,
+            is_user_relevant,
+            salt,
+            data_race,
+        } = self;
         f.debug_struct("FrameData")
             .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
+            .field("is_user_relevant", is_user_relevant)
+            .field("salt", salt)
+            .field("data_race", data_race)
             .finish()
     }
 }
 
 impl VisitProvenance for FrameExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _, salt: _ } =
-            self;
+        let FrameExtra {
+            catch_unwind,
+            borrow_tracker,
+            timing: _,
+            is_user_relevant: _,
+            salt: _,
+            data_race: _,
+        } = self;
 
         catch_unwind.visit_provenance(visit);
         borrow_tracker.visit_provenance(visit);
@@ -362,8 +380,8 @@ pub struct PrimitiveLayouts<'tcx> {
 }
 
 impl<'tcx> PrimitiveLayouts<'tcx> {
-    fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, &'tcx LayoutError<'tcx>> {
-        let tcx = layout_cx.tcx;
+    fn new(layout_cx: LayoutCx<'tcx>) -> Result<Self, &'tcx LayoutError<'tcx>> {
+        let tcx = layout_cx.tcx();
         let mut_raw_ptr = Ty::new_mut_ptr(tcx, tcx.types.unit);
         let const_raw_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
         Ok(Self {
@@ -534,9 +552,9 @@ pub struct MiriMachine<'tcx> {
     pub(crate) basic_block_count: u64,
 
     /// Handle of the optional shared object file for native functions.
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     pub native_lib: Option<(libloading::Library, std::path::PathBuf)>,
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(unix))]
     pub native_lib: Option<!>,
 
     /// Run a garbage collector for BorTags every N basic blocks.
@@ -571,22 +589,20 @@ pub struct MiriMachine<'tcx> {
     /// Invariant: the promised alignment will never be less than the native alignment of the
     /// allocation.
     pub(crate) symbolic_alignment: RefCell<FxHashMap<AllocId, (Size, Align)>>,
+
+    /// A cache of "data range" computations for unions (i.e., the offsets of non-padding bytes).
+    union_data_ranges: FxHashMap<Ty<'tcx>, RangeSet>,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
-    pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
-        let tcx = layout_cx.tcx;
+    pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx>) -> Self {
+        let tcx = layout_cx.tcx();
         let local_crates = helpers::get_local_crates(tcx);
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
-            let crate_name = layout_cx
-                .tcx
-                .sess
-                .opts
-                .crate_name
-                .clone()
-                .unwrap_or_else(|| "unknown-crate".to_string());
+            let crate_name =
+                tcx.sess.opts.crate_name.clone().unwrap_or_else(|| "unknown-crate".to_string());
             let pid = process::id();
             // We adopt the same naming scheme for the profiler output that rustc uses. In rustc,
             // the PID is padded so that the nondeterministic value of the PID does not spread
@@ -677,9 +693,9 @@ impl<'tcx> MiriMachine<'tcx> {
             report_progress: config.report_progress,
             basic_block_count: 0,
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
-            #[cfg(target_os = "linux")]
+            #[cfg(unix)]
             native_lib: config.native_lib.as_ref().map(|lib_file_path| {
-                let target_triple = layout_cx.tcx.sess.opts.target_triple.triple();
+                let target_triple = tcx.sess.opts.target_triple.triple();
                 // Check if host target == the session target.
                 if env!("TARGET") != target_triple {
                     panic!(
@@ -699,9 +715,9 @@ impl<'tcx> MiriMachine<'tcx> {
                     lib_file_path.clone(),
                 )
             }),
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(not(unix))]
             native_lib: config.native_lib.as_ref().map(|_| {
-                panic!("loading external .so files is only supported on Linux")
+                panic!("calling functions from native libraries via FFI is only supported on Unix")
             }),
             gc_interval: config.gc_interval,
             since_gc: 0,
@@ -713,6 +729,7 @@ impl<'tcx> MiriMachine<'tcx> {
             allocation_spans: RefCell::new(FxHashMap::default()),
             const_cache: RefCell::new(FxHashMap::default()),
             symbolic_alignment: RefCell::new(FxHashMap::default()),
+            union_data_ranges: FxHashMap::default(),
         }
     }
 
@@ -825,6 +842,7 @@ impl VisitProvenance for MiriMachine<'_> {
             allocation_spans: _,
             const_cache: _,
             symbolic_alignment: _,
+            union_data_ranges: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -1061,13 +1079,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Call the lang item.
         let panic = ecx.tcx.lang_items().get(reason.lang_item()).unwrap();
         let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
-        ecx.call_function(
-            panic,
-            Abi::Rust,
-            &[],
-            None,
-            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
-        )?;
+        ecx.call_function(panic, Abi::Rust, &[], None, StackPopCleanup::Goto {
+            ret: None,
+            unwind: mir::UnwindAction::Unreachable,
+        })?;
         Ok(())
     }
 
@@ -1261,6 +1276,30 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         })
     }
 
+    /// Called to adjust global allocations to the Provenance and AllocExtra of this machine.
+    ///
+    /// If `alloc` contains pointers, then they are all pointing to globals.
+    ///
+    /// This should avoid copying if no work has to be done! If this returns an owned
+    /// allocation (because a copy had to be done to adjust things), machine memory will
+    /// cache the result. (This relies on `AllocMap::get_or` being able to add the
+    /// owned allocation to the map even when the map is shared.)
+    fn adjust_global_allocation<'b>(
+        ecx: &InterpCx<'tcx, Self>,
+        id: AllocId,
+        alloc: &'b Allocation,
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
+    {
+        let kind = Self::GLOBAL_KIND.unwrap().into();
+        let alloc = alloc.adjust_from_tcx(
+            &ecx.tcx,
+            |bytes, align| ecx.get_global_alloc_bytes(id, kind, bytes, align),
+            |ptr| ecx.global_root_pointer(ptr),
+        )?;
+        let extra = Self::init_alloc_extra(ecx, id, kind, alloc.size(), alloc.align)?;
+        Ok(Cow::Owned(alloc.with_extra(extra)))
+    }
+
     #[inline(always)]
     fn before_memory_read(
         _tcx: TyCtxtAt<'tcx>,
@@ -1416,6 +1455,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
             salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL,
+            data_race: ecx.machine.data_race.as_ref().map(|_| data_race::FrameState::default()),
         };
 
         Ok(frame.with_extra(extra))
@@ -1521,7 +1561,25 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         res
     }
 
-    fn after_local_allocated(
+    fn after_local_read(ecx: &InterpCx<'tcx, Self>, local: mir::Local) -> InterpResult<'tcx> {
+        if let Some(data_race) = &ecx.frame().extra.data_race {
+            data_race.local_read(local, &ecx.machine);
+        }
+        Ok(())
+    }
+
+    fn after_local_write(
+        ecx: &mut InterpCx<'tcx, Self>,
+        local: mir::Local,
+        storage_live: bool,
+    ) -> InterpResult<'tcx> {
+        if let Some(data_race) = &ecx.frame().extra.data_race {
+            data_race.local_write(local, storage_live, &ecx.machine);
+        }
+        Ok(())
+    }
+
+    fn after_local_moved_to_memory(
         ecx: &mut InterpCx<'tcx, Self>,
         local: mir::Local,
         mplace: &MPlaceTy<'tcx>,
@@ -1529,9 +1587,17 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         let Some(Provenance::Concrete { alloc_id, .. }) = mplace.ptr().provenance else {
             panic!("after_local_allocated should only be called on fresh allocations");
         };
+        // Record the span where this was allocated: the declaration of the local.
         let local_decl = &ecx.frame().body().local_decls[local];
         let span = local_decl.source_info.span;
         ecx.machine.allocation_spans.borrow_mut().insert(alloc_id, (span, None));
+        // The data race system has to fix the clocks used for this write.
+        let (alloc_info, machine) = ecx.get_alloc_extra_mut(alloc_id)?;
+        if let Some(data_race) =
+            &machine.threads.active_thread_stack().last().unwrap().extra.data_race
+        {
+            data_race.local_moved_to_memory(local, alloc_info.data_race.as_mut().unwrap(), machine);
+        }
         Ok(())
     }
 
@@ -1601,5 +1667,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         } else {
             ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL
         }
+    }
+
+    fn cached_union_data_range<'e>(
+        ecx: &'e mut InterpCx<'tcx, Self>,
+        ty: Ty<'tcx>,
+        compute_range: impl FnOnce() -> RangeSet,
+    ) -> Cow<'e, RangeSet> {
+        Cow::Borrowed(ecx.machine.union_data_ranges.entry(ty).or_insert_with(compute_range))
     }
 }

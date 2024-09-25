@@ -8,7 +8,7 @@
 //@ only-linux
 //@ ignore-cross-compile
 
-use run_make_support::{llvm_readobj, run_in_tmpdir, Rustc};
+use run_make_support::{Rustc, llvm_readobj, run_in_tmpdir};
 
 fn check_compression(compression: &str, to_find: &str) {
     // check compressed debug sections via rustc flag

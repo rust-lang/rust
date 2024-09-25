@@ -455,9 +455,10 @@ fn get_and_check_lib_features(
                     if f.tracking_issue != s.tracking_issue && f.level != Status::Accepted {
                         tidy_error!(
                             bad,
-                            "{}:{}: `issue` \"{}\" mismatches the {} `issue` of \"{}\"",
+                            "{}:{}: feature gate {} has inconsistent `issue`: \"{}\" mismatches the {} `issue` of \"{}\"",
                             file.display(),
                             line,
+                            name,
                             f.tracking_issue_display(),
                             display,
                             s.tracking_issue_display(),

@@ -1,18 +1,18 @@
 use std::mem;
 
+use rustc_ast::ExprKind;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, LitKind, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::ExprKind;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
+use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::{ParseSess, SymbolGallery};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
-use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::{with_metavar_spans, Span, Symbol, SyntaxContext};
-use smallvec::{smallvec, SmallVec};
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, sym};
+use rustc_span::{Span, Symbol, SyntaxContext, with_metavar_spans};
+use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
     CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
@@ -283,9 +283,9 @@ pub(super) fn transcribe<'a>(
                             let kind = token::NtIdent(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
-                        MatchedSingle(ParseNtResult::Lifetime(ident)) => {
+                        MatchedSingle(ParseNtResult::Lifetime(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
-                            let kind = token::NtLifetime(*ident);
+                            let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
                         MatchedSingle(ParseNtResult::Nt(nt)) => {
@@ -773,18 +773,20 @@ fn extract_symbol_from_pnr<'a>(
     match pnr {
         ParseNtResult::Ident(nt_ident, is_raw) => {
             if let IdentIsRaw::Yes = is_raw {
-                return Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR));
+                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
+            } else {
+                Ok(nt_ident.name)
             }
-            return Ok(nt_ident.name);
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token { kind: TokenKind::Ident(symbol, is_raw), .. },
             _,
         )) => {
             if let IdentIsRaw::Yes = is_raw {
-                return Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR));
+                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
+            } else {
+                Ok(*symbol)
             }
-            return Ok(*symbol);
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token {
@@ -792,15 +794,13 @@ fn extract_symbol_from_pnr<'a>(
                 ..
             },
             _,
-        )) => {
-            return Ok(*symbol);
-        }
+        )) => Ok(*symbol),
         ParseNtResult::Nt(nt)
             if let Nonterminal::NtLiteral(expr) = &**nt
                 && let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) =
                     &expr.kind =>
         {
-            return Ok(*symbol);
+            Ok(*symbol)
         }
         _ => Err(dcx
             .struct_err(

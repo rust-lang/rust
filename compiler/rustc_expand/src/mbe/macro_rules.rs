@@ -8,23 +8,23 @@ use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
-use rustc_ast::{NodeId, DUMMY_NODE_ID};
+use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_feature::Features;
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
-use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::parser::{ParseNtResult, Parser, Recovery};
-use rustc_session::parse::ParseSess;
 use rustc_session::Session;
+use rustc_session::parse::ParseSess;
+use rustc_span::Span;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::Span;
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, kw, sym};
 use tracing::{debug, instrument, trace, trace_span};
 
 use super::diagnostics;
@@ -33,7 +33,7 @@ use crate::base::{
     DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult, SyntaxExtension,
     SyntaxExtensionKind, TTMacroExpander,
 };
-use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
+use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
 use crate::mbe;
 use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
 use crate::mbe::macro_check;
@@ -408,35 +408,29 @@ pub fn compile_declarative_macro(
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
     let argument_gram = vec![
-        mbe::TokenTree::Sequence(
-            DelimSpan::dummy(),
-            mbe::SequenceRepetition {
-                tts: vec![
-                    mbe::TokenTree::MetaVarDecl(def.span, lhs_nm, tt_spec),
-                    mbe::TokenTree::token(token::FatArrow, def.span),
-                    mbe::TokenTree::MetaVarDecl(def.span, rhs_nm, tt_spec),
-                ],
-                separator: Some(Token::new(
-                    if macro_rules { token::Semi } else { token::Comma },
-                    def.span,
-                )),
-                kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, def.span),
-                num_captures: 2,
-            },
-        ),
+        mbe::TokenTree::Sequence(DelimSpan::dummy(), mbe::SequenceRepetition {
+            tts: vec![
+                mbe::TokenTree::MetaVarDecl(def.span, lhs_nm, tt_spec),
+                mbe::TokenTree::token(token::FatArrow, def.span),
+                mbe::TokenTree::MetaVarDecl(def.span, rhs_nm, tt_spec),
+            ],
+            separator: Some(Token::new(
+                if macro_rules { token::Semi } else { token::Comma },
+                def.span,
+            )),
+            kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, def.span),
+            num_captures: 2,
+        }),
         // to phase into semicolon-termination instead of semicolon-separation
-        mbe::TokenTree::Sequence(
-            DelimSpan::dummy(),
-            mbe::SequenceRepetition {
-                tts: vec![mbe::TokenTree::token(
-                    if macro_rules { token::Semi } else { token::Comma },
-                    def.span,
-                )],
-                separator: None,
-                kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, def.span),
-                num_captures: 0,
-            },
-        ),
+        mbe::TokenTree::Sequence(DelimSpan::dummy(), mbe::SequenceRepetition {
+            tts: vec![mbe::TokenTree::token(
+                if macro_rules { token::Semi } else { token::Comma },
+                def.span,
+            )],
+            separator: None,
+            kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, def.span),
+            num_captures: 0,
+        }),
     ];
     // Convert it into `MatcherLoc` form.
     let argument_gram = mbe::macro_parser::compute_locs(&argument_gram);

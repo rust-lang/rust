@@ -354,12 +354,8 @@ impl Error for VarError {
 /// }
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
-#[cfg_attr(bootstrap, rustc_deprecated_safe_2024)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_deprecated_safe_2024(
-        audit_that = "the environment access only happens in single-threaded code"
-    )
+#[rustc_deprecated_safe_2024(
+    audit_that = "the environment access only happens in single-threaded code"
 )]
 #[stable(feature = "env", since = "1.0.0")]
 pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
@@ -424,12 +420,8 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 /// }
 /// assert!(env::var(key).is_err());
 /// ```
-#[cfg_attr(bootstrap, rustc_deprecated_safe_2024)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_deprecated_safe_2024(
-        audit_that = "the environment access only happens in single-threaded code"
-    )
+#[rustc_deprecated_safe_2024(
+    audit_that = "the environment access only happens in single-threaded code"
 )]
 #[stable(feature = "env", since = "1.0.0")]
 pub unsafe fn remove_var<K: AsRef<OsStr>>(key: K) {
@@ -943,106 +935,147 @@ impl fmt::Debug for ArgsOs {
 pub mod consts {
     use crate::sys::env::os;
 
-    /// A string describing the architecture of the CPU that is currently
-    /// in use.
+    /// A string describing the architecture of the CPU that is currently in use.
+    /// An example value may be: `"x86"`, `"arm"` or `"riscv64"`.
     ///
-    /// Some possible values:
+    /// <details><summary>Full list of possible values</summary>
     ///
-    /// - x86
-    /// - x86_64
-    /// - arm
-    /// - aarch64
-    /// - loongarch64
-    /// - m68k
-    /// - csky
-    /// - mips
-    /// - mips64
-    /// - powerpc
-    /// - powerpc64
-    /// - riscv64
-    /// - s390x
-    /// - sparc64
+    /// * `"x86"`
+    /// * `"x86_64"`
+    /// * `"arm"`
+    /// * `"aarch64"`
+    /// * `"m68k"`
+    /// * `"mips"`
+    /// * `"mips32r6"`
+    /// * `"mips64"`
+    /// * `"mips64r6"`
+    /// * `"csky"`
+    /// * `"powerpc"`
+    /// * `"powerpc64"`
+    /// * `"riscv32"`
+    /// * `"riscv64"`
+    /// * `"s390x"`
+    /// * `"sparc"`
+    /// * `"sparc64"`
+    /// * `"hexagon"`
+    /// * `"loongarch64"`
+    ///
+    /// </details>
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &str = env!("STD_ENV_ARCH");
 
-    /// The family of the operating system. Example value is `unix`.
+    /// A string describing the family of the operating system.
+    /// An example value may be: `"unix"`, or `"windows"`.
     ///
-    /// Some possible values:
+    /// This value may be an empty string if the family is unknown.
     ///
-    /// - unix
-    /// - windows
+    /// <details><summary>Full list of possible values</summary>
+    ///
+    /// * `"unix"`
+    /// * `"windows"`
+    /// * `"itron"`
+    /// * `"wasm"`
+    /// * `""`
+    ///
+    /// </details>
     #[stable(feature = "env", since = "1.0.0")]
     pub const FAMILY: &str = os::FAMILY;
 
     /// A string describing the specific operating system in use.
-    /// Example value is `linux`.
+    /// An example value may be: `"linux"`, or `"freebsd"`.
     ///
-    /// Some possible values:
+    /// <details><summary>Full list of possible values</summary>
     ///
-    /// - linux
-    /// - macos
-    /// - ios
-    /// - freebsd
-    /// - dragonfly
-    /// - netbsd
-    /// - openbsd
-    /// - solaris
-    /// - android
-    /// - windows
+    /// * `"linux"`
+    /// * `"windows"`
+    /// * `"macos"`
+    /// * `"android"`
+    /// * `"ios"`
+    /// * `"openbsd"`
+    /// * `"freebsd"`
+    /// * `"netbsd"`
+    /// * `"wasi"`
+    /// * `"hermit"`
+    /// * `"aix"`
+    /// * `"apple"`
+    /// * `"dragonfly"`
+    /// * `"emscripten"`
+    /// * `"espidf"`
+    /// * `"fortanix"`
+    /// * `"uefi"`
+    /// * `"fuchsia"`
+    /// * `"haiku"`
+    /// * `"hermit"`
+    /// * `"watchos"`
+    /// * `"visionos"`
+    /// * `"tvos"`
+    /// * `"horizon"`
+    /// * `"hurd"`
+    /// * `"illumos"`
+    /// * `"l4re"`
+    /// * `"nto"`
+    /// * `"redox"`
+    /// * `"solaris"`
+    /// * `"solid_asp3`
+    /// * `"vita"`
+    /// * `"vxworks"`
+    /// * `"xous"`
+    ///
+    /// </details>
     #[stable(feature = "env", since = "1.0.0")]
     pub const OS: &str = os::OS;
 
-    /// Specifies the filename prefix used for shared libraries on this
-    /// platform. Example value is `lib`.
-    ///
-    /// Some possible values:
-    ///
-    /// - lib
-    /// - `""` (an empty string)
+    /// Specifies the filename prefix, if any, used for shared libraries on this platform.
+    /// This is either `"lib"` or an empty string. (`""`).
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_PREFIX: &str = os::DLL_PREFIX;
 
-    /// Specifies the filename suffix used for shared libraries on this
-    /// platform. Example value is `.so`.
+    /// Specifies the filename suffix, if any, used for shared libraries on this platform.
+    /// An example value may be: `".so"`, `".elf"`, or `".dll"`.
     ///
-    /// Some possible values:
-    ///
-    /// - .so
-    /// - .dylib
-    /// - .dll
+    /// The possible values are identical to those of [`DLL_EXTENSION`], but with the leading period included.
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_SUFFIX: &str = os::DLL_SUFFIX;
 
-    /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot. Example value is `so`.
+    /// Specifies the file extension, if any, used for shared libraries on this platform that goes after the dot.
+    /// An example value may be: `"so"`, `"elf"`, or `"dll"`.
     ///
-    /// Some possible values:
+    /// <details><summary>Full list of possible values</summary>
     ///
-    /// - so
-    /// - dylib
-    /// - dll
+    /// * `"so"`
+    /// * `"dylib"`
+    /// * `"dll"`
+    /// * `"sgxs"`
+    /// * `"a"`
+    /// * `"elf"`
+    /// * `"wasm"`
+    /// * `""` (an empty string)
+    ///
+    /// </details>
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_EXTENSION: &str = os::DLL_EXTENSION;
 
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform. Example value is `.exe`.
+    /// Specifies the filename suffix, if any, used for executable binaries on this platform.
+    /// An example value may be: `".exe"`, or `".efi"`.
     ///
-    /// Some possible values:
-    ///
-    /// - .exe
-    /// - .nexe
-    /// - .pexe
-    /// - `""` (an empty string)
+    /// The possible values are identical to those of [`EXE_EXTENSION`], but with the leading period included.
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_SUFFIX: &str = os::EXE_SUFFIX;
 
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform. Example value is `exe`.
+    /// Specifies the file extension, if any, used for executable binaries on this platform.
+    /// An example value may be: `"exe"`, or an empty string (`""`).
     ///
-    /// Some possible values:
+    /// <details><summary>Full list of possible values</summary>
     ///
-    /// - exe
-    /// - `""` (an empty string)
+    /// * `"exe"`
+    /// * `"efi"`
+    /// * `"js"`
+    /// * `"sgxs"`
+    /// * `"elf"`
+    /// * `"wasm"`
+    /// * `""` (an empty string)
+    ///
+    /// </details>
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_EXTENSION: &str = os::EXE_EXTENSION;
 }

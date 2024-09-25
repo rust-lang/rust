@@ -3,10 +3,10 @@ use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
 use rustc_feature::Features;
 use rustc_session::Session;
+use rustc_span::DUMMY_SP;
 use rustc_span::edition::Edition::*;
 use rustc_span::hygiene::AstPass;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use thin_vec::thin_vec;
 
 pub fn inject(

@@ -305,6 +305,7 @@ wait-for-css: ("#help-button .popover", {"display": "block"})
 // Now we go to the settings page to check that the CSS is loaded as expected.
 go-to: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
+assert-false: "#settings-menu"
 assert-css: (".setting-radio", {"cursor": "pointer"})
 
 assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
@@ -324,6 +325,5 @@ javascript: true
 show-text: true
 reload:
 set-window-size: (300, 1000)
-click: "#settings-menu"
 wait-for: "#settings"
 assert-css: (".setting-radio", {"cursor": "pointer"})

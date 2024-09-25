@@ -1,5 +1,5 @@
-use rustc_errors::codes::*;
 use rustc_errors::MultiSpan;
+use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{GenericArg, Ty};
 use rustc_span::Span;
@@ -415,7 +415,7 @@ pub(crate) enum CaptureReasonSuggest<'tcx> {
         span: Span,
     },
     #[suggestion(
-        borrowck_suggest_create_freash_reborrow,
+        borrowck_suggest_create_fresh_reborrow,
         applicability = "maybe-incorrect",
         code = ".as_mut()",
         style = "verbose"

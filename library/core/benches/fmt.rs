@@ -1,7 +1,7 @@
 use std::fmt::{self, Write as FmtWrite};
 use std::io::{self, Write as IoWrite};
 
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 #[bench]
 fn write_vec_value(bh: &mut Bencher) {

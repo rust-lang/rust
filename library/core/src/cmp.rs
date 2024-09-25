@@ -901,7 +901,6 @@ pub trait Ord: Eq + PartialOrd<Self> {
     fn clamp(self, min: Self, max: Self) -> Self
     where
         Self: Sized,
-        Self: PartialOrd,
     {
         assert!(min <= max);
         if self < min {

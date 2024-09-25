@@ -21,21 +21,21 @@ use std::ops::{Deref, DerefMut};
 
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::Features;
 use rustc_parse::validate_attr;
+use rustc_session::Session;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
-use rustc_session::Session;
-use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_target::spec::abi;
 use thin_vec::thin_vec;
 
@@ -447,13 +447,13 @@ impl<'a> AstValidator<'a> {
     fn check_item_safety(&self, span: Span, safety: Safety) {
         match self.extern_mod_safety {
             Some(extern_safety) => {
-                if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_)) {
-                    if extern_safety == Safety::Default {
-                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
-                            item_span: span,
-                            block: Some(self.current_extern_span().shrink_to_lo()),
-                        });
-                    }
+                if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_))
+                    && extern_safety == Safety::Default
+                {
+                    self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                        item_span: span,
+                        block: Some(self.current_extern_span().shrink_to_lo()),
+                    });
                 }
             }
             None => {
@@ -1418,21 +1418,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
-            constness: Const::Yes(cspan),
+            constness: Const::Yes(const_span),
             coroutine_kind: Some(coroutine_kind),
             ..
         }) = fk.header()
         {
-            let aspan = match coroutine_kind {
-                CoroutineKind::Async { span: aspan, .. }
-                | CoroutineKind::Gen { span: aspan, .. }
-                | CoroutineKind::AsyncGen { span: aspan, .. } => aspan,
-            };
-            // FIXME(gen_blocks): Report a different error for `const gen`
-            self.dcx().emit_err(errors::ConstAndAsync {
-                spans: vec![cspan, aspan],
-                cspan,
-                aspan,
+            self.dcx().emit_err(errors::ConstAndCoroutine {
+                spans: vec![coroutine_kind.span(), const_span],
+                const_span,
+                coroutine_span: coroutine_kind.span(),
+                coroutine_kind: coroutine_kind.as_str(),
                 span,
             });
         }
@@ -1485,7 +1480,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         let disallowed = (!tilde_const_allowed).then(|| match fk {
             FnKind::Fn(_, ident, _, _, _, _) => TildeConstReason::Function { ident: ident.span },
-            FnKind::Closure(_, _, _) => TildeConstReason::Closure,
+            FnKind::Closure(..) => TildeConstReason::Closure,
         });
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
     }

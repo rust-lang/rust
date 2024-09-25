@@ -1,7 +1,7 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
-use super::{get_rpath_relative_to_output, minimize_rpaths, rpaths_to_flags, RPathConfig};
+use super::{RPathConfig, get_rpath_relative_to_output, minimize_rpaths, rpaths_to_flags};
 
 #[test]
 fn test_rpaths_to_flags() {
@@ -74,13 +74,10 @@ fn test_rpath_relative_issue_119571() {
 fn test_xlinker() {
     let args = rpaths_to_flags(vec!["a/normal/path".into(), "a,comma,path".into()]);
 
-    assert_eq!(
-        args,
-        vec![
-            OsString::from("-Wl,-rpath,a/normal/path"),
-            OsString::from("-Wl,-rpath"),
-            OsString::from("-Xlinker"),
-            OsString::from("a,comma,path")
-        ]
-    );
+    assert_eq!(args, vec![
+        OsString::from("-Wl,-rpath,a/normal/path"),
+        OsString::from("-Wl,-rpath"),
+        OsString::from("-Xlinker"),
+        OsString::from("a,comma,path")
+    ]);
 }

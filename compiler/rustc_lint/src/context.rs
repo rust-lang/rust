@@ -29,15 +29,15 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::bug;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError, PrintTraitRefExt as _, Printer};
+use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
 use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt};
 use rustc_session::lint::{
     BuiltinLintDiag, FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
 };
 use rustc_session::{LintStoreMarker, Session};
-use rustc_span::edit_distance::find_best_match_for_names;
-use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
+use rustc_span::edit_distance::find_best_match_for_names;
+use rustc_span::symbol::{Ident, Symbol, sym};
 use rustc_target::abi;
 use tracing::debug;
 
@@ -251,14 +251,11 @@ impl LintStore {
     }
 
     pub fn register_group_alias(&mut self, lint_name: &'static str, alias: &'static str) {
-        self.lint_groups.insert(
-            alias,
-            LintGroup {
-                lint_ids: vec![],
-                is_externally_loaded: false,
-                depr: Some(LintAlias { name: lint_name, silent: true }),
-            },
-        );
+        self.lint_groups.insert(alias, LintGroup {
+            lint_ids: vec![],
+            is_externally_loaded: false,
+            depr: Some(LintAlias { name: lint_name, silent: true }),
+        });
     }
 
     pub fn register_group(
@@ -273,14 +270,11 @@ impl LintStore {
             .insert(name, LintGroup { lint_ids: to, is_externally_loaded, depr: None })
             .is_none();
         if let Some(deprecated) = deprecated_name {
-            self.lint_groups.insert(
-                deprecated,
-                LintGroup {
-                    lint_ids: vec![],
-                    is_externally_loaded,
-                    depr: Some(LintAlias { name, silent: false }),
-                },
-            );
+            self.lint_groups.insert(deprecated, LintGroup {
+                lint_ids: vec![],
+                is_externally_loaded,
+                depr: Some(LintAlias { name, silent: false }),
+            });
         }
 
         if !new {

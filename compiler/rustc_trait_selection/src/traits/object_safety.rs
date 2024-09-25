@@ -20,16 +20,17 @@ use rustc_middle::ty::{
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, Upcast,
 };
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
 use rustc_target::abi::Abi;
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
 use super::elaborate;
 use crate::infer::TyCtxtInferExt;
+pub use crate::traits::ObjectSafetyViolation;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{util, Obligation, ObligationCause};
-pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
+use crate::traits::{MethodViolationCode, Obligation, ObligationCause, util};
 
 /// Returns the object safety violations that affect HIR ty lowering.
 ///
@@ -185,12 +186,11 @@ fn predicates_reference_self(
 ) -> SmallVec<[Span; 1]> {
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     let predicates = if supertraits_only {
-        tcx.explicit_super_predicates_of(trait_def_id)
+        tcx.explicit_super_predicates_of(trait_def_id).skip_binder()
     } else {
-        tcx.predicates_of(trait_def_id)
+        tcx.predicates_of(trait_def_id).predicates
     };
     predicates
-        .predicates
         .iter()
         .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, trait_ref), sp))
         .filter_map(|(clause, sp)| {
@@ -266,9 +266,8 @@ fn super_predicates_have_non_lifetime_binders(
         return SmallVec::new();
     }
     tcx.explicit_super_predicates_of(trait_def_id)
-        .predicates
-        .iter()
-        .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(*span))
+        .iter_identity_copied()
+        .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(span))
         .collect()
 }
 
@@ -513,7 +512,7 @@ fn virtual_call_violations_for_method<'tcx>(
 ///
 /// This check is outlined from the object safety check to avoid cycles with
 /// layout computation, which relies on knowing whether methods are object safe.
-pub fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: ty::AssocItem) {
+fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: ty::AssocItem) {
     if !is_vtable_safe_method(tcx, trait_def_id, method) {
         return;
     }
@@ -907,7 +906,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEscapingBoundRegions<'tcx> {
     }
 }
 
-pub fn contains_illegal_impl_trait_in_trait<'tcx>(
+fn contains_illegal_impl_trait_in_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_def_id: DefId,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
@@ -931,7 +930,7 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
     })
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         object_safety_violations,
         is_object_safe,

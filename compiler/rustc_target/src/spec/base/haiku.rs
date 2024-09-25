@@ -1,6 +1,6 @@
-use crate::spec::{cvs, RelroLevel, TargetOptions};
+use crate::spec::{RelroLevel, TargetOptions, cvs};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         os: "haiku".into(),
         dynamic_linking: true,

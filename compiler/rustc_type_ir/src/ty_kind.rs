@@ -10,8 +10,8 @@ use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
-pub use self::closure::*;
 use self::TyKind::*;
+pub use self::closure::*;
 use crate::inherent::*;
 use crate::{self as ty, DebruijnIndex, Interner};
 
@@ -252,13 +252,6 @@ pub enum TyKind<I: Interner> {
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
     Error(I::ErrorGuaranteed),
-}
-
-impl<I: Interner> TyKind<I> {
-    #[inline]
-    pub fn is_primitive(&self) -> bool {
-        matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
-    }
 }
 
 // This is manually implemented because a derive would require `I: Debug`

@@ -6,7 +6,7 @@ mod util;
 
 use std::ops::Range;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 
 #[derive(Clone, Debug)]
 pub enum Command {

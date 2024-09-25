@@ -53,6 +53,7 @@ fn main() {
         || target_os == "uefi"
         || target_os == "teeos"
         || target_os == "zkvm"
+        || target_os == "rtems"
 
         // See src/bootstrap/src/core/build_steps/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
@@ -142,7 +143,7 @@ fn main() {
 
     // Configure platforms that have reliable basics but may have unreliable math.
 
-    // LLVM is currenlty adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
+    // LLVM is currently adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
     let has_reliable_f16_math = has_reliable_f16
         && match (target_arch.as_str(), target_os.as_str()) {
             // FIXME: Disabled on Miri as the intrinsics are not implemented yet.

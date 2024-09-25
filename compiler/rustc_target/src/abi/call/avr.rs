@@ -44,7 +44,7 @@ fn classify_arg_ty<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-pub fn compute_abi_info<Ty>(fty: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<Ty>(fty: &mut FnAbi<'_, Ty>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(&mut fty.ret);
     }

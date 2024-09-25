@@ -2,11 +2,11 @@
 
 use rustc_ast_ir::Movability;
 use rustc_type_ir::data_structures::IndexSet;
-use rustc_type_ir::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
-use rustc_type_ir::{self as ty, elaborate, Interner, TraitPredicate, Upcast as _};
+use rustc_type_ir::{self as ty, Interner, TraitPredicate, Upcast as _, elaborate};
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -47,7 +47,7 @@ where
         let cx = ecx.cx();
 
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::new(ecx.cx(), TreatParams::ForLookup)
+        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
             .args_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args)
         {
             return Err(NoSolution);
@@ -124,6 +124,13 @@ where
             if trait_clause.def_id() == goal.predicate.def_id()
                 && trait_clause.polarity() == goal.predicate.polarity
             {
+                if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                    goal.predicate.trait_ref.args,
+                    trait_clause.skip_binder().trait_ref.args,
+                ) {
+                    return Err(NoSolution);
+                }
+
                 ecx.probe_trait_candidate(source).enter(|ecx| {
                     let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
                     ecx.eq(
@@ -352,21 +359,18 @@ where
             )?;
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty, .. }| {
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_lang_item(TraitSolverLangItem::Sized),
-                    [output_coroutine_ty],
-                )
+                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [
+                    output_coroutine_ty,
+                ])
             },
         );
 
         let pred = tupled_inputs_and_output_and_coroutine
             .map_bound(|AsyncCallableRelevantTypes { tupled_inputs_ty, .. }| {
-                ty::TraitRef::new(
-                    cx,
-                    goal.predicate.def_id(),
-                    [goal.predicate.self_ty(), tupled_inputs_ty],
-                )
+                ty::TraitRef::new(cx, goal.predicate.def_id(), [
+                    goal.predicate.self_ty(),
+                    tupled_inputs_ty,
+                ])
             })
             .upcast(cx);
         // A built-in `AsyncFn` impl only holds if the output is sized.
@@ -628,7 +632,7 @@ where
         }
 
         // FIXME: This actually should destructure the `Result` we get from transmutability and
-        // register candiates. We probably need to register >1 since we may have an OR of ANDs.
+        // register candidates. We probably need to register >1 since we may have an OR of ANDs.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let certainty = ecx.is_transmutable(
                 goal.param_env,
@@ -876,7 +880,6 @@ where
             .into_iter()
             .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
                 elaborate::supertrait_def_ids(self.cx(), principal_def_id)
-                    .into_iter()
                     .filter(|def_id| self.cx().trait_is_auto(*def_id))
             }))
             .collect();
@@ -1021,11 +1024,9 @@ where
             GoalSource::ImplWhereBound,
             goal.with(
                 cx,
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_lang_item(TraitSolverLangItem::Unsize),
-                    [a_tail_ty, b_tail_ty],
-                ),
+                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Unsize), [
+                    a_tail_ty, b_tail_ty,
+                ]),
             ),
         );
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
@@ -1063,11 +1064,9 @@ where
             GoalSource::ImplWhereBound,
             goal.with(
                 cx,
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_lang_item(TraitSolverLangItem::Unsize),
-                    [a_last_ty, b_last_ty],
-                ),
+                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Unsize), [
+                    a_last_ty, b_last_ty,
+                ]),
             ),
         );
         self.probe_builtin_trait_candidate(BuiltinImplSource::TupleUnsizing)

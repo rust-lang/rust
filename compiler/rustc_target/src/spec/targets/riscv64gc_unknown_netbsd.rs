@@ -1,6 +1,6 @@
-use crate::spec::{base, CodeModel, Target, TargetOptions};
+use crate::spec::{CodeModel, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "riscv64-unknown-netbsd".into(),
         metadata: crate::spec::TargetMetadata {

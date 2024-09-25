@@ -1,6 +1,6 @@
-use crate::spec::{base, StackProbeType, Target};
+use crate::spec::{StackProbeType, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::teeos::opts();
     base.features = "+strict-align,+neon,+fp-armv8".into();
     base.max_atomic_width = Some(128);

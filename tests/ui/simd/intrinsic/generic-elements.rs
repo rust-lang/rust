@@ -6,28 +6,28 @@
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct i32x2(i32, i32);
+struct i32x2([i32; 2]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct i32x4(i32, i32, i32, i32);
+struct i32x4([i32; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct i32x8(i32, i32, i32, i32, i32, i32, i32, i32);
+struct i32x8([i32; 8]);
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct f32x2(f32, f32);
+struct f32x2([f32; 2]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct f32x4(f32, f32, f32, f32);
+struct f32x4([f32; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct f32x8(f32, f32, f32, f32, f32, f32, f32, f32);
+struct f32x8([f32; 8]);
 
 extern "rust-intrinsic" {
     fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
@@ -37,8 +37,11 @@ extern "rust-intrinsic" {
     fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 }
 
+#[repr(simd)]
+struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);
+
 fn main() {
-    let x = i32x4(0, 0, 0, 0);
+    let x = i32x4([0, 0, 0, 0]);
 
     unsafe {
         simd_insert(0, 0, 0);
@@ -48,13 +51,13 @@ fn main() {
         simd_extract::<_, f32>(x, 0);
         //~^ ERROR expected return type `i32` (element of input `i32x4`), found `f32`
 
-        const IDX2: [u32; 2] = [0; 2];
+        const IDX2: SimdShuffleIdx<2> = SimdShuffleIdx([0; 2]);
         simd_shuffle::<i32, _, i32>(0, 0, IDX2);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
-        const IDX4: [u32; 4] = [0; 4];
+        const IDX4: SimdShuffleIdx<4> = SimdShuffleIdx([0; 4]);
         simd_shuffle::<i32, _, i32>(0, 0, IDX4);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
-        const IDX8: [u32; 8] = [0; 8];
+        const IDX8: SimdShuffleIdx<8> = SimdShuffleIdx([0; 8]);
         simd_shuffle::<i32, _, i32>(0, 0, IDX8);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
 

@@ -13,13 +13,6 @@ LL |         Dst: TransmuteFrom<Src, ASSUME_ALIGNMENT>,
 note: required by a const generic parameter in `TransmuteFrom`
   --> $SRC_DIR/core/src/mem/transmutability.rs:LL:COL
 
-error[E0308]: mismatched types
-  --> $DIR/issue-101739-1.rs:8:33
-   |
-LL |         Dst: TransmuteFrom<Src, ASSUME_ALIGNMENT>,
-   |                                 ^^^^^^^^^^^^^^^^ expected `Assume`, found `bool`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0308, E0412.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0412`.

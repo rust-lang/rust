@@ -1,6 +1,6 @@
-use crate::spec::{base, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-fuchsia".into(),
         metadata: crate::spec::TargetMetadata {

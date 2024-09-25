@@ -87,30 +87,31 @@ use std::borrow::Cow;
 use either::Either;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
-    intern_const_alloc_for_constprop, ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy,
-    Projectable, Scalar,
+    ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
+    intern_const_alloc_for_constprop,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
-use rustc_index::{newtype_index, IndexVec};
+use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{self, Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
+use rustc_span::def_id::DefId;
+use rustc_target::abi::{self, Abi, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use smallvec::SmallVec;
+use tracing::{debug, instrument, trace};
 
 use crate::ssa::{AssignedValue, SsaLocals};
 
-pub struct GVN;
+pub(super) struct GVN;
 
-impl<'tcx> MirPass<'tcx> for GVN {
+impl<'tcx> crate::MirPass<'tcx> for GVN {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }
@@ -118,53 +119,50 @@ impl<'tcx> MirPass<'tcx> for GVN {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
-        propagate_ssa(tcx, body);
-    }
-}
 
-fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-    let ssa = SsaLocals::new(tcx, body, param_env);
-    // Clone dominators as we need them while mutating the body.
-    let dominators = body.basic_blocks.dominators().clone();
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        let ssa = SsaLocals::new(tcx, body, param_env);
+        // Clone dominators because we need them while mutating the body.
+        let dominators = body.basic_blocks.dominators().clone();
 
-    let mut state = VnState::new(tcx, body, param_env, &ssa, &dominators, &body.local_decls);
-    ssa.for_each_assignment_mut(
-        body.basic_blocks.as_mut_preserves_cfg(),
-        |local, value, location| {
-            let value = match value {
-                // We do not know anything of this assigned value.
-                AssignedValue::Arg | AssignedValue::Terminator => None,
-                // Try to get some insight.
-                AssignedValue::Rvalue(rvalue) => {
-                    let value = state.simplify_rvalue(rvalue, location);
-                    // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
-                    // reusable if we have an exact type match.
-                    if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
-                        return;
+        let mut state = VnState::new(tcx, body, param_env, &ssa, dominators, &body.local_decls);
+        ssa.for_each_assignment_mut(
+            body.basic_blocks.as_mut_preserves_cfg(),
+            |local, value, location| {
+                let value = match value {
+                    // We do not know anything of this assigned value.
+                    AssignedValue::Arg | AssignedValue::Terminator => None,
+                    // Try to get some insight.
+                    AssignedValue::Rvalue(rvalue) => {
+                        let value = state.simplify_rvalue(rvalue, location);
+                        // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
+                        // `local` as reusable if we have an exact type match.
+                        if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
+                            return;
+                        }
+                        value
                     }
-                    value
-                }
-            };
-            // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
-            let value = value.or_else(|| state.new_opaque()).unwrap();
-            state.assign(local, value);
-        },
-    );
+                };
+                // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
+                let value = value.or_else(|| state.new_opaque()).unwrap();
+                state.assign(local, value);
+            },
+        );
 
-    // Stop creating opaques during replacement as it is useless.
-    state.next_opaque = None;
+        // Stop creating opaques during replacement as it is useless.
+        state.next_opaque = None;
 
-    let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
-    for bb in reverse_postorder {
-        let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
-        state.visit_basic_block_data(bb, data);
+        let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
+        for bb in reverse_postorder {
+            let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
+            state.visit_basic_block_data(bb, data);
+        }
+
+        // For each local that is reused (`y` above), we remove its storage statements do avoid any
+        // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
+        // statements.
+        StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
     }
-
-    // For each local that is reused (`y` above), we remove its storage statements do avoid any
-    // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
-    // statements.
-    StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
 }
 
 newtype_index! {
@@ -260,7 +258,7 @@ struct VnState<'body, 'tcx> {
     /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
     feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
-    dominators: &'body Dominators<BasicBlock>,
+    dominators: Dominators<BasicBlock>,
     reused_locals: BitSet<Local>,
 }
 
@@ -270,7 +268,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         body: &Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         ssa: &'body SsaLocals,
-        dominators: &'body Dominators<BasicBlock>,
+        dominators: Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
     ) -> Self {
         // Compute a rough estimate of the number of values in the body from the number of
@@ -479,7 +477,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let pointer = self.evaluated[local].as_ref()?;
                 let mut mplace = self.ecx.deref_pointer(pointer).ok()?;
                 for proj in place.projection.iter().skip(1) {
-                    // We have no call stack to associate a local with a value, so we cannot interpret indexing.
+                    // We have no call stack to associate a local with a value, so we cannot
+                    // interpret indexing.
                     if matches!(proj, ProjectionElem::Index(_)) {
                         return None;
                     }
@@ -577,7 +576,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     }
                     value.offset(Size::ZERO, to, &self.ecx).ok()?
                 }
-                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) => {
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let to = self.ecx.layout_of(to).ok()?;
                     let dest = self.ecx.allocate(to, MemoryKind::Stack).ok()?;
@@ -594,7 +593,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
                     ret.into()
                 }
-                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer) => {
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let src = self.ecx.read_immediate(src).ok()?;
                     let to = self.ecx.layout_of(to).ok()?;
@@ -876,6 +875,95 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         None
     }
 
+    fn try_as_place_elem(
+        &mut self,
+        proj: ProjectionElem<VnIndex, Ty<'tcx>>,
+        loc: Location,
+    ) -> Option<PlaceElem<'tcx>> {
+        Some(match proj {
+            ProjectionElem::Deref => ProjectionElem::Deref,
+            ProjectionElem::Field(idx, ty) => ProjectionElem::Field(idx, ty),
+            ProjectionElem::Index(idx) => {
+                let Some(local) = self.try_as_local(idx, loc) else {
+                    return None;
+                };
+                self.reused_locals.insert(local);
+                ProjectionElem::Index(local)
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                ProjectionElem::ConstantIndex { offset, min_length, from_end }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                ProjectionElem::Subslice { from, to, from_end }
+            }
+            ProjectionElem::Downcast(symbol, idx) => ProjectionElem::Downcast(symbol, idx),
+            ProjectionElem::OpaqueCast(idx) => ProjectionElem::OpaqueCast(idx),
+            ProjectionElem::Subtype(idx) => ProjectionElem::Subtype(idx),
+        })
+    }
+
+    fn simplify_aggregate_to_copy(
+        &mut self,
+        rvalue: &mut Rvalue<'tcx>,
+        location: Location,
+        fields: &[VnIndex],
+        variant_index: VariantIdx,
+    ) -> Option<VnIndex> {
+        let Some(&first_field) = fields.first() else {
+            return None;
+        };
+        let Value::Projection(copy_from_value, _) = *self.get(first_field) else {
+            return None;
+        };
+        // All fields must correspond one-to-one and come from the same aggregate value.
+        if fields.iter().enumerate().any(|(index, &v)| {
+            if let Value::Projection(pointer, ProjectionElem::Field(from_index, _)) = *self.get(v)
+                && copy_from_value == pointer
+                && from_index.index() == index
+            {
+                return false;
+            }
+            true
+        }) {
+            return None;
+        }
+
+        let mut copy_from_local_value = copy_from_value;
+        if let Value::Projection(pointer, proj) = *self.get(copy_from_value)
+            && let ProjectionElem::Downcast(_, read_variant) = proj
+        {
+            if variant_index == read_variant {
+                // When copying a variant, there is no need to downcast.
+                copy_from_local_value = pointer;
+            } else {
+                // The copied variant must be identical.
+                return None;
+            }
+        }
+
+        let tcx = self.tcx;
+        let mut projection = SmallVec::<[PlaceElem<'tcx>; 1]>::new();
+        loop {
+            if let Some(local) = self.try_as_local(copy_from_local_value, location) {
+                projection.reverse();
+                let place = Place { local, projection: tcx.mk_place_elems(projection.as_slice()) };
+                if rvalue.ty(self.local_decls, tcx) == place.ty(self.local_decls, tcx).ty {
+                    self.reused_locals.insert(local);
+                    *rvalue = Rvalue::Use(Operand::Copy(place));
+                    return Some(copy_from_value);
+                }
+                return None;
+            } else if let Value::Projection(pointer, proj) = *self.get(copy_from_local_value)
+                && let Some(proj) = self.try_as_place_elem(proj, location)
+            {
+                projection.push(proj);
+                copy_from_local_value = pointer;
+            } else {
+                return None;
+            }
+        }
+    }
+
     fn simplify_aggregate(
         &mut self,
         rvalue: &mut Rvalue<'tcx>,
@@ -972,6 +1060,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
+        if let AggregateTy::Def(_, _) = ty
+            && let Some(value) =
+                self.simplify_aggregate_to_copy(rvalue, location, &fields, variant_index)
+        {
+            return Some(value);
+        }
+
         Some(self.insert(Value::Aggregate(ty, variant_index, fields)))
     }
 
@@ -1043,7 +1138,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             (
                 UnOp::PtrMetadata,
                 Value::Cast {
-                    kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize),
+                    kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _),
                     from,
                     to,
                     ..
@@ -1238,8 +1333,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         to: Ty<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
-        use rustc_middle::ty::adjustment::PointerCoercion::*;
         use CastKind::*;
+        use rustc_middle::ty::adjustment::PointerCoercion::*;
 
         let mut from = operand.ty(self.local_decls, self.tcx);
         let mut value = self.simplify_operand(operand, location)?;
@@ -1247,7 +1342,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             return Some(value);
         }
 
-        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_)) = kind {
+        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_), _) = kind {
             // Each reification of a generic fn may get a different pointer.
             // Do not try to merge them.
             return self.new_opaque();
@@ -1334,7 +1429,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // We have an unsizing cast, which assigns the length to fat pointer metadata.
         if let Value::Cast { kind, from, to, .. } = self.get(inner)
-            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) = kind
+            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
             && let Some(from) = from.builtin_deref(true)
             && let ty::Array(_, len) = from.kind()
             && let Some(to) = to.builtin_deref(true)
@@ -1381,7 +1476,8 @@ fn op_to_prop_const<'tcx>(
         return Some(ConstValue::ZeroSized);
     }
 
-    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
+    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to
+    // avoid.
     if !matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
         return None;
     }
@@ -1485,12 +1581,12 @@ impl<'tcx> VnState<'_, 'tcx> {
     }
 
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
-    /// return it.
+    /// return it. If you used this local, add it to `reused_locals` to remove storage statements.
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
         let other = self.rev_locals.get(index)?;
         other
             .iter()
-            .find(|&&other| self.ssa.assignment_dominates(self.dominators, other, loc))
+            .find(|&&other| self.ssa.assignment_dominates(&self.dominators, other, loc))
             .copied()
     }
 }

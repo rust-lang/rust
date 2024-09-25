@@ -307,9 +307,9 @@ pub(crate) use error::const_io_error;
 pub use self::buffered::WriterPanicked;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use self::error::RawOsError;
-pub(crate) use self::stdio::attempt_print_to_stderr;
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
+pub(crate) use self::stdio::attempt_print_to_stderr;
 #[unstable(feature = "print_internals", issue = "none")]
 #[doc(hidden)]
 pub use self::stdio::{_eprint, _print};
@@ -322,8 +322,8 @@ pub use self::{
     copy::copy,
     cursor::Cursor,
     error::{Error, ErrorKind, Result},
-    stdio::{stderr, stdin, stdout, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock},
-    util::{empty, repeat, sink, Empty, Repeat, Sink},
+    stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
+    util::{Empty, Repeat, Sink, empty, repeat, sink},
 };
 use crate::mem::take;
 use crate::ops::{Deref, DerefMut};
@@ -398,8 +398,7 @@ where
 // - avoid passing large buffers to readers that always initialize the free capacity if they perform short reads (#23815, #23820)
 // - pass large buffers to readers that do not initialize the spare capacity. this can amortize per-call overheads
 // - and finally pass not-too-small and not-too-large buffers to Windows read APIs because they manage to suffer from both problems
-//   at the same time, i.e. small reads suffer from syscall overhead, all reads incur initialization cost
-//   proportional to buffer size (#110650)
+//   at the same time, i.e. small reads suffer from syscall overhead, all reads incur costs proportional to buffer size (#110650)
 //
 pub(crate) fn default_read_to_end<R: Read + ?Sized>(
     r: &mut R,
@@ -443,6 +442,8 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             return Ok(0);
         }
     }
+
+    let mut consecutive_short_reads = 0;
 
     loop {
         if buf.len() == buf.capacity() && buf.capacity() == start_cap {
@@ -489,6 +490,12 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             return Ok(buf.len() - start_len);
         }
 
+        if bytes_read < buf_len {
+            consecutive_short_reads += 1;
+        } else {
+            consecutive_short_reads = 0;
+        }
+
         // store how much was initialized but not filled
         initialized = unfilled_but_initialized;
 
@@ -503,7 +510,10 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             // The reader is returning short reads but it doesn't call ensure_init().
             // In that case we no longer need to restrict read sizes to avoid
             // initialization costs.
-            if !was_fully_initialized {
+            // When reading from disk we usually don't get any short reads except at EOF.
+            // So we wait for at least 2 short reads before uncapping the read buffer;
+            // this helps with the Windows issue.
+            if !was_fully_initialized && consecutive_short_reads > 1 {
                 max_read_size = usize::MAX;
             }
 
@@ -2058,6 +2068,7 @@ pub trait Seek {
 /// It is used by the [`Seek`] trait.
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "SeekFrom")]
 pub enum SeekFrom {
     /// Sets the offset to the provided number of bytes.
     #[stable(feature = "rust1", since = "1.0.0")]

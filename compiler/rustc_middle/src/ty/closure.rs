@@ -3,8 +3,8 @@ use std::fmt::Write;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::symbol::Ident;
@@ -88,9 +88,6 @@ pub struct CapturedPlace<'tcx> {
 
     /// Represents if `place` can be mutated or not.
     pub mutability: hir::Mutability,
-
-    /// Region of the resulting reference if the upvar is captured by ref.
-    pub region: Option<ty::Region<'tcx>>,
 }
 
 impl<'tcx> CapturedPlace<'tcx> {

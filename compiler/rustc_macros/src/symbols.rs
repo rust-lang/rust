@@ -30,7 +30,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::{braced, Expr, Ident, Lit, LitStr, Macro, Token};
+use syn::{Expr, Ident, Lit, LitStr, Macro, Token, braced};
 
 #[cfg(test)]
 mod tests;
@@ -131,7 +131,7 @@ impl Errors {
     }
 }
 
-pub fn symbols(input: TokenStream) -> TokenStream {
+pub(super) fn symbols(input: TokenStream) -> TokenStream {
     let (mut output, errors) = symbols_with_errors(input);
 
     // If we generated any errors, then report them as compiler_error!() macro calls.

@@ -19,30 +19,24 @@ mod groups;
 /// level of the lint, which will be more difficult to support, since rustc
 /// currently does not track that historical information.
 static RENAMES: &[(Level, &[(&str, &str)])] = &[
-    (
-        Level::Allow,
-        &[
-            ("single-use-lifetime", "single-use-lifetimes"),
-            ("elided-lifetime-in-path", "elided-lifetimes-in-paths"),
-            ("async-idents", "keyword-idents"),
-            ("disjoint-capture-migration", "rust-2021-incompatible-closure-captures"),
-            ("keyword-idents", "keyword-idents-2018"),
-            ("or-patterns-back-compat", "rust-2021-incompatible-or-patterns"),
-        ],
-    ),
-    (
-        Level::Warn,
-        &[
-            ("bare-trait-object", "bare-trait-objects"),
-            ("unstable-name-collision", "unstable-name-collisions"),
-            ("unused-doc-comment", "unused-doc-comments"),
-            ("redundant-semicolon", "redundant-semicolons"),
-            ("overlapping-patterns", "overlapping-range-endpoints"),
-            ("non-fmt-panic", "non-fmt-panics"),
-            ("unused-tuple-struct-fields", "dead-code"),
-            ("static-mut-ref", "static-mut-refs"),
-        ],
-    ),
+    (Level::Allow, &[
+        ("single-use-lifetime", "single-use-lifetimes"),
+        ("elided-lifetime-in-path", "elided-lifetimes-in-paths"),
+        ("async-idents", "keyword-idents"),
+        ("disjoint-capture-migration", "rust-2021-incompatible-closure-captures"),
+        ("keyword-idents", "keyword-idents-2018"),
+        ("or-patterns-back-compat", "rust-2021-incompatible-or-patterns"),
+    ]),
+    (Level::Warn, &[
+        ("bare-trait-object", "bare-trait-objects"),
+        ("unstable-name-collision", "unstable-name-collisions"),
+        ("unused-doc-comment", "unused-doc-comments"),
+        ("redundant-semicolon", "redundant-semicolons"),
+        ("overlapping-patterns", "overlapping-range-endpoints"),
+        ("non-fmt-panic", "non-fmt-panics"),
+        ("unused-tuple-struct-fields", "dead-code"),
+        ("static-mut-ref", "static-mut-refs"),
+    ]),
     (Level::Deny, &[("exceeding-bitshifts", "arithmetic-overflow")]),
 ];
 
@@ -56,6 +50,8 @@ pub struct LintExtractor<'a> {
     pub rustc_path: &'a Path,
     /// The target arch to build the docs for.
     pub rustc_target: &'a str,
+    /// The target linker overriding `rustc`'s default
+    pub rustc_linker: Option<&'a str>,
     /// Verbose output.
     pub verbose: bool,
     /// Validate the style and the code example.
@@ -459,6 +455,9 @@ impl<'a> LintExtractor<'a> {
         }
         cmd.arg("--error-format=json");
         cmd.arg("--target").arg(self.rustc_target);
+        if let Some(target_linker) = self.rustc_linker {
+            cmd.arg(format!("-Clinker={target_linker}"));
+        }
         if options.contains(&"test") {
             cmd.arg("--test");
         }

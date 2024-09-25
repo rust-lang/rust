@@ -8,7 +8,7 @@ use either::Either;
 
 use crate::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
-use crate::sync::{is_dyn_thread_safe, CacheAligned};
+use crate::sync::{CacheAligned, is_dyn_thread_safe};
 use crate::sync::{Lock, LockGuard, Mode};
 
 // 32 shards is sufficient to reduce contention on an 8-core Ryzen 7 1700,

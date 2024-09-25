@@ -221,6 +221,10 @@ impl<'a, V> UniEntry<'a, V> {
         }
         self.inner.as_mut().unwrap()
     }
+
+    pub fn get(&self) -> Option<&V> {
+        self.inner.as_ref()
+    }
 }
 
 mod tests {

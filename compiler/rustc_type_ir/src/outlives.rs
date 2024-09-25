@@ -3,7 +3,7 @@
 //! RFC for reference.
 
 use derive_where::derive_where;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;

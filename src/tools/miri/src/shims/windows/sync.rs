@@ -10,9 +10,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Windows sync primitives are pointer sized.
     // We only use the first 4 bytes for the id.
 
-    fn init_once_get_id(&mut self, init_once_op: &OpTy<'tcx>) -> InterpResult<'tcx, InitOnceId> {
+    fn init_once_get_id(&mut self, init_once_ptr: &OpTy<'tcx>) -> InterpResult<'tcx, InitOnceId> {
         let this = self.eval_context_mut();
-        this.init_once_get_or_create_id(init_once_op, this.windows_ty_layout("INIT_ONCE"), 0)
+        let init_once = this.deref_pointer(init_once_ptr)?;
+        this.init_once_get_or_create_id(&init_once, 0)
     }
 
     /// Returns `true` if we were succssful, `false` if we would block.

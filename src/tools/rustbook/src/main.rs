@@ -1,9 +1,9 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
-use clap::{arg, crate_version, ArgMatches, Command};
-use mdbook::errors::Result as Result3;
+use clap::{ArgMatches, Command, arg, crate_version};
 use mdbook::MDBook;
+use mdbook::errors::Result as Result3;
 use mdbook_i18n_helpers::preprocessors::Gettext;
 use mdbook_spec::Spec;
 use mdbook_trpl_listing::TrplListing;

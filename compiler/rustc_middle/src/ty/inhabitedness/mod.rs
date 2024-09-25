@@ -81,10 +81,6 @@ impl<'tcx> VariantDef {
         adt: ty::AdtDef<'_>,
     ) -> InhabitedPredicate<'tcx> {
         debug_assert!(!adt.is_union());
-        if self.is_field_list_non_exhaustive() && !self.def_id.is_local() {
-            // Non-exhaustive variants from other crates are always considered inhabited.
-            return InhabitedPredicate::True;
-        }
         InhabitedPredicate::all(
             tcx,
             self.fields.iter().map(|field| {

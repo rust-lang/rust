@@ -6,9 +6,9 @@ use rustc_pattern_analysis::{Captures, MatchArm, PatCx, PrivateUninhabitedField}
 
 /// Sets up `tracing` for easier debugging. Tries to look like the `rustc` setup.
 pub fn init_tracing() {
+    use tracing_subscriber::Layer;
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
-    use tracing_subscriber::Layer;
     let _ = tracing_tree::HierarchicalLayer::default()
         .with_writer(std::io::stderr)
         .with_ansi(true)

@@ -35,6 +35,9 @@ pub enum PointerCoercion {
     /// type. Codegen backends and miri figure out what has to be done
     /// based on the precise source/target type at hand.
     Unsize,
+
+    /// Go from a pointer-like type to a `dyn*` object.
+    DynStar,
 }
 
 /// Represents coercing a value to a different type of value.
@@ -102,8 +105,8 @@ pub enum Adjust<'tcx> {
 
     Pointer(PointerCoercion),
 
-    /// Cast into a dyn* object.
-    DynStar,
+    /// Take a pinned reference and reborrow as a `Pin<&mut T>` or `Pin<&T>`.
+    ReborrowPin(ty::Region<'tcx>, hir::Mutability),
 }
 
 /// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`

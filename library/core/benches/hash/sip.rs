@@ -2,7 +2,7 @@
 
 use core::hash::*;
 
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 fn hash_bytes<H: Hasher>(mut s: H, x: &[u8]) -> u64 {
     Hasher::write(&mut s, x);

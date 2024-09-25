@@ -9,8 +9,8 @@ use super::utils::Backoff;
 use super::waker::Waker;
 use crate::cell::UnsafeCell;
 use crate::marker::PhantomData;
-use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::Mutex;
+use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::time::Instant;
 use crate::{fmt, ptr};
 

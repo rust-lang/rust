@@ -1,11 +1,11 @@
 //! Unwind info generation (`.eh_frame`)
 
 use cranelift_codegen::ir::Endianness;
-use cranelift_codegen::isa::unwind::UnwindInfo;
 use cranelift_codegen::isa::TargetIsa;
+use cranelift_codegen::isa::unwind::UnwindInfo;
 use cranelift_object::ObjectProduct;
-use gimli::write::{CieId, EhFrame, FrameTable, Section};
 use gimli::RunTimeEndian;
+use gimli::write::{CieId, EhFrame, FrameTable, Section};
 
 use super::emit::address_for_func;
 use super::object::WriteDebugInfo;

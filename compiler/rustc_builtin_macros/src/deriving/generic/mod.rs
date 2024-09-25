@@ -178,6 +178,8 @@ use std::cell::RefCell;
 use std::ops::Not;
 use std::{iter, vec};
 
+pub(crate) use StaticFields::*;
+pub(crate) use SubstructureFields::*;
 use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
@@ -185,12 +187,10 @@ use rustc_ast::{
 };
 use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span};
+use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
-pub(crate) use StaticFields::*;
-pub(crate) use SubstructureFields::*;
 
 use crate::{deriving, errors};
 
@@ -1228,12 +1228,10 @@ impl<'a> MethodDef<'a> {
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
-                    let variant_value = deriving::call_intrinsic(
-                        cx,
-                        span,
-                        sym::discriminant_value,
-                        thin_vec![selflike_arg.clone()],
-                    );
+                    let variant_value =
+                        deriving::call_intrinsic(cx, span, sym::discriminant_value, thin_vec![
+                            selflike_arg.clone()
+                        ]);
                     cx.stmt_let(span, false, ident, variant_value)
                 })
                 .collect();

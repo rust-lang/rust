@@ -1,9 +1,9 @@
-thread 'main' panicked at $DIR/return_pointer_on_unwind.rs:LL:CC:
+thread 'main' panicked at tests/fail/function_calls/return_pointer_on_unwind.rs:LL:CC:
 explicit panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
-  --> $DIR/return_pointer_on_unwind.rs:LL:CC
+  --> tests/fail/function_calls/return_pointer_on_unwind.rs:LL:CC
    |
 LL |     dbg!(x.0);
    |     ^^^^^^^^^ using uninitialized data, but this operation requires initialized memory

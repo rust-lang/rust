@@ -1,8 +1,6 @@
 #![crate_name = "foo"]
 
-#![unstable(feature = "humans",
-            reason = "who ever let humans program computers, we're apparently really bad at it",
-            issue = "none")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 #![feature(foo, foo2)]
 #![feature(staged_api)]
@@ -48,10 +46,18 @@ pub const unsafe fn foo2_gated() -> u32 { 42 }
 #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
 pub const unsafe fn bar2_gated() -> u32 { 42 }
 
-//@ has 'foo/fn.bar_not_gated.html' '//pre' 'pub const unsafe fn bar_not_gated() -> u32'
-//@ !hasraw - '//span[@class="since"]'
-pub const unsafe fn bar_not_gated() -> u32 { 42 }
+#[unstable(
+    feature = "humans",
+    reason = "who ever let humans program computers, we're apparently really bad at it",
+    issue = "none",
+)]
+pub mod unstable {
+    //@ has 'foo/unstable/fn.bar_not_gated.html' '//pre' 'pub const unsafe fn bar_not_gated() -> u32'
+    //@ !hasraw - '//span[@class="since"]'
+    pub const unsafe fn bar_not_gated() -> u32 { 42 }
+}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Foo;
 
 impl Foo {

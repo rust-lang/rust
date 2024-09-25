@@ -7,19 +7,20 @@ use std::path::Path;
 
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
-    elf, pe, xcoff, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
-    ObjectSymbol, SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope,
+    Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, ObjectSymbol,
+    SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope, elf, pe,
+    xcoff,
 };
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
+use rustc_data_structures::owned_slice::{OwnedSlice, try_slice_owned};
+use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::fs::METADATA_FILENAME;
-use rustc_metadata::EncodedMetadata;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_span::sym;
 use rustc_target::abi::Endian;
-use rustc_target::spec::{ef_avr_arch, RelocModel, Target};
+use rustc_target::spec::{RelocModel, Target, ef_avr_arch};
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -32,7 +33,7 @@ use rustc_target::spec::{ef_avr_arch, RelocModel, Target};
 /// <dd>The metadata can be found in the `.rustc` section of the shared library.</dd>
 /// </dl>
 #[derive(Debug)]
-pub struct DefaultMetadataLoader;
+pub(crate) struct DefaultMetadataLoader;
 
 static AIX_METADATA_SYMBOL_NAME: &'static str = "__aix_rust_metadata";
 
@@ -171,10 +172,10 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
                 "Metadata at offset {offset} with size {len} is beyond .info section"
             ));
         }
-        return Ok(&info_data[offset..(offset + len)]);
+        Ok(&info_data[offset..(offset + len)])
     } else {
-        return Err(format!("Unable to find symbol {AIX_METADATA_SYMBOL_NAME}"));
-    };
+        Err(format!("Unable to find symbol {AIX_METADATA_SYMBOL_NAME}"))
+    }
 }
 
 pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {
@@ -372,36 +373,51 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     Some(file)
 }
 
-/// Since Xcode 15 Apple's LD requires object files to contain information about what they were
-/// built for (LC_BUILD_VERSION): the platform (macOS/watchOS etc), minimum OS version, and SDK
-/// version. This returns a `MachOBuildVersion` for the target.
+/// Mach-O files contain information about:
+/// - The platform/OS they were built for (macOS/watchOS/Mac Catalyst/iOS simulator etc).
+/// - The minimum OS version / deployment target.
+/// - The version of the SDK they were targetting.
+///
+/// In the past, this was accomplished using the LC_VERSION_MIN_MACOSX, LC_VERSION_MIN_IPHONEOS,
+/// LC_VERSION_MIN_TVOS or LC_VERSION_MIN_WATCHOS load commands, which each contain information
+/// about the deployment target and SDK version, and implicitly, by their presence, which OS they
+/// target. Simulator targets were determined if the architecture was x86_64, but there was e.g. a
+/// LC_VERSION_MIN_IPHONEOS present.
+///
+/// This is of course brittle and limited, so modern tooling emit the LC_BUILD_VERSION load
+/// command (which contains all three pieces of information in one) when the deployment target is
+/// high enough, or the target is something that wouldn't be encodable with the old load commands
+/// (such as Mac Catalyst, or Aarch64 iOS simulator).
+///
+/// Since Xcode 15, Apple's LD apparently requires object files to use this load command, so this
+/// returns the `MachOBuildVersion` for the target to do so.
 fn macho_object_build_version_for_target(target: &Target) -> object::write::MachOBuildVersion {
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
-    fn pack_version((major, minor): (u32, u32)) -> u32 {
-        (major << 16) | (minor << 8)
+    fn pack_version((major, minor, patch): (u16, u8, u8)) -> u32 {
+        let (major, minor, patch) = (major as u32, minor as u32, patch as u32);
+        (major << 16) | (minor << 8) | patch
     }
 
     let platform =
         rustc_target::spec::current_apple_platform(target).expect("unknown Apple target OS");
-    let min_os = rustc_target::spec::current_apple_deployment_target(target)
-        .expect("unknown Apple target OS");
-    let sdk =
+    let min_os = rustc_target::spec::current_apple_deployment_target(target);
+    let (sdk_major, sdk_minor) =
         rustc_target::spec::current_apple_sdk_version(platform).expect("unknown Apple target OS");
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;
     build_version.minos = pack_version(min_os);
-    build_version.sdk = pack_version(sdk);
+    build_version.sdk = pack_version((sdk_major, sdk_minor, 0));
     build_version
 }
 
 /// Is Apple's CPU subtype `arm64e`s
 fn macho_is_arm64e(target: &Target) -> bool {
-    return target.llvm_target.starts_with("arm64e");
+    target.llvm_target.starts_with("arm64e")
 }
 
-pub enum MetadataPosition {
+pub(crate) enum MetadataPosition {
     First,
     Last,
 }
@@ -437,7 +453,7 @@ pub enum MetadataPosition {
 /// * ELF - All other targets are similar to Windows in that there's a
 ///   `SHF_EXCLUDE` flag we can set on sections in an object file to get
 ///   automatically removed from the final output.
-pub fn create_wrapper_file(
+pub(crate) fn create_wrapper_file(
     sess: &Session,
     section_name: String,
     data: &[u8],
@@ -653,17 +669,13 @@ pub fn create_metadata_file_for_wasm(sess: &Session, data: &[u8], section_name: 
     let mut imports = wasm_encoder::ImportSection::new();
 
     if sess.target.pointer_width == 64 {
-        imports.import(
-            "env",
-            "__linear_memory",
-            wasm_encoder::MemoryType {
-                minimum: 0,
-                maximum: None,
-                memory64: true,
-                shared: false,
-                page_size_log2: None,
-            },
-        );
+        imports.import("env", "__linear_memory", wasm_encoder::MemoryType {
+            minimum: 0,
+            maximum: None,
+            memory64: true,
+            shared: false,
+            page_size_log2: None,
+        });
     }
 
     if imports.len() > 0 {

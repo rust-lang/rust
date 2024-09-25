@@ -18,24 +18,31 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
-use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use rustc_span::hygiene::ExpnId;
+use rustc_span::symbol::{Symbol, kw};
 
 use super::{Decodable, DecodeContext, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
-use crate::rmeta::table::IsDefault;
 use crate::rmeta::AttrFlags;
+use crate::rmeta::table::IsDefault;
 use crate::{foreign_modules, native_libs};
 
 trait ProcessQueryValue<'tcx, T> {
     fn process_decoded(self, _tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> T;
 }
 
-impl<T> ProcessQueryValue<'_, Option<T>> for Option<T> {
+impl<T> ProcessQueryValue<'_, T> for T {
     #[inline(always)]
-    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Option<T> {
+    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> T {
         self
+    }
+}
+
+impl<'tcx, T> ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, T>> for T {
+    #[inline(always)]
+    fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> ty::EarlyBinder<'tcx, T> {
+        ty::EarlyBinder::bind(self)
     }
 }
 
@@ -64,8 +71,26 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
     for Option<DecodeIterator<'a, 'tcx, T>>
 {
     #[inline(always)]
-    fn process_decoded(self, tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> &'tcx [T] {
-        if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { &[] }
+    fn process_decoded(self, tcx: TyCtxt<'tcx>, err: impl Fn() -> !) -> &'tcx [T] {
+        if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { err() }
+    }
+}
+
+impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
+    ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, &'tcx [T]>>
+    for Option<DecodeIterator<'a, 'tcx, T>>
+{
+    #[inline(always)]
+    fn process_decoded(
+        self,
+        tcx: TyCtxt<'tcx>,
+        err: impl Fn() -> !,
+    ) -> ty::EarlyBinder<'tcx, &'tcx [T]> {
+        ty::EarlyBinder::bind(if let Some(iter) = self {
+            tcx.arena.alloc_from_iter(iter)
+        } else {
+            err()
+        })
     }
 }
 
@@ -103,7 +128,12 @@ macro_rules! provide_one {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
                 let lazy = $cdata.root.tables.$name.get($cdata, $def_id.index);
-                if lazy.is_default() { &[] } else { $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx))) }
+                let value = if lazy.is_default() {
+                    &[] as &[_]
+                } else {
+                    $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx)))
+                };
+                value.process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }
     };
@@ -212,19 +242,18 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
 }
 
 provide! { tcx, def_id, other, cdata,
-    explicit_item_bounds => { cdata.get_explicit_item_bounds(def_id.index, tcx) }
-    explicit_item_super_predicates => { cdata.get_explicit_item_super_predicates(def_id.index, tcx) }
+    explicit_item_bounds => { table_defaulted_array }
+    explicit_item_super_predicates => { table_defaulted_array }
     explicit_predicates_of => { table }
     generics_of => { table }
     inferred_outlives_of => { table_defaulted_array }
-    explicit_super_predicates_of => { table }
-    explicit_implied_predicates_of => { table }
+    explicit_super_predicates_of => { table_defaulted_array }
+    explicit_implied_predicates_of => { table_defaulted_array }
     type_of => { table }
-    type_alias_is_lazy => { cdata.root.tables.type_alias_is_lazy.get(cdata, def_id.index) }
+    type_alias_is_lazy => { table_direct }
     variances_of => { table }
     fn_sig => { table }
     codegen_fn_attrs => { table }
-    struct_target_features => { table }
     impl_trait_header => { table }
     const_param_default => { table }
     object_lifetime_default => { table }
@@ -241,7 +270,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    unused_generic_params => { cdata.root.tables.unused_generic_params.get(cdata, def_id.index) }
+    unused_generic_params => { table_direct }
     def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
     defaultness => { table_direct }
@@ -261,6 +290,7 @@ provide! { tcx, def_id, other, cdata,
     fn_arg_names => { table }
     coroutine_kind => { table_direct }
     coroutine_for_closure => { table }
+    coroutine_by_move_body_def_id => { table }
     eval_static_initializer => {
         Ok(cdata
             .root
@@ -271,7 +301,20 @@ provide! { tcx, def_id, other, cdata,
             .unwrap_or_else(|| panic!("{def_id:?} does not have eval_static_initializer")))
     }
     trait_def => { table }
-    deduced_param_attrs => { table }
+    deduced_param_attrs => {
+        // FIXME: `deduced_param_attrs` has some sketchy encoding settings,
+        // where we don't encode unless we're optimizing, doing codegen,
+        // and not incremental (see `encoder.rs`). I don't think this is right!
+        cdata
+            .root
+            .tables
+            .deduced_param_attrs
+            .get(cdata, def_id.index)
+            .map(|lazy| {
+                &*tcx.arena.alloc_from_iter(lazy.decode((cdata, tcx)))
+            })
+            .unwrap_or_default()
+    }
     is_type_alias_impl_trait => {
         debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
         cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
@@ -287,9 +330,7 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
 
-    associated_type_for_effects => {
-        table
-    }
+    associated_type_for_effects => { table }
     associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
 
     visibility => { cdata.get_visibility(def_id.index) }
@@ -306,11 +347,11 @@ provide! { tcx, def_id, other, cdata,
         tcx.arena.alloc_from_iter(cdata.get_associated_item_or_field_def_ids(def_id.index))
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
-    inherent_impls => { Ok(cdata.get_inherent_implementations_for_type(tcx, def_id.index)) }
+    inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
-    cross_crate_inlinable => { cdata.cross_crate_inlinable(def_id.index) }
+    cross_crate_inlinable => { table_direct }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_private_dep => { cdata.private_dep }
@@ -352,7 +393,7 @@ provide! { tcx, def_id, other, cdata,
     traits => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
     trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
-    crate_incoherent_impls => { Ok(cdata.get_incoherent_impls(tcx, other)) }
+    crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 
     dep_kind => { cdata.dep_kind }
     module_children => {

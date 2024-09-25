@@ -1,4 +1,4 @@
-use ast::util::unicode::{contains_text_flow_control_chars, TEXT_FLOW_CONTROL_CHARS};
+use ast::util::unicode::{TEXT_FLOW_CONTROL_CHARS, contains_text_flow_control_chars};
 use rustc_ast as ast;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{BytePos, Span, Symbol};
@@ -73,11 +73,13 @@ impl HiddenUnicodeCodepoints {
             HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
         };
 
-        cx.emit_span_lint(
-            TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
-            span,
-            HiddenUnicodeCodepointsDiag { label, count, span_label: span, labels, sub },
-        );
+        cx.emit_span_lint(TEXT_DIRECTION_CODEPOINT_IN_LITERAL, span, HiddenUnicodeCodepointsDiag {
+            label,
+            count,
+            span_label: span,
+            labels,
+            sub,
+        });
     }
 }
 impl EarlyLintPass for HiddenUnicodeCodepoints {

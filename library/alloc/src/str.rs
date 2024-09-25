@@ -9,9 +9,6 @@
 
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::pattern;
-use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
@@ -20,12 +17,11 @@ pub use core::str::SplitAsciiWhitespace;
 pub use core::str::SplitInclusive;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::SplitWhitespace;
-#[unstable(feature = "str_from_raw_parts", issue = "119206")]
-pub use core::str::{from_raw_parts, from_raw_parts_mut};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8, from_utf8_mut, Bytes, CharIndices, Chars};
+pub use core::str::pattern;
+use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
+pub use core::str::{Bytes, CharIndices, Chars, from_utf8, from_utf8_mut};
 #[stable(feature = "str_escape", since = "1.34.0")]
 pub use core::str::{EscapeDebug, EscapeDefault, EscapeUnicode};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -38,6 +34,8 @@ pub use core::str::{MatchIndices, RMatchIndices};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Matches, RMatches};
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use core::str::{ParseBoolError, from_utf8_unchecked, from_utf8_unchecked_mut};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplit, Split};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitN, SplitN};
@@ -45,6 +43,8 @@ pub use core::str::{RSplitN, SplitN};
 pub use core::str::{RSplitTerminator, SplitTerminator};
 #[stable(feature = "utf8_chunks", since = "1.79.0")]
 pub use core::str::{Utf8Chunk, Utf8Chunks};
+#[unstable(feature = "str_from_raw_parts", issue = "119206")]
+pub use core::str::{from_raw_parts, from_raw_parts_mut};
 use core::unicode::conversions;
 use core::{mem, ptr};
 

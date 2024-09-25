@@ -12,7 +12,6 @@ so long as `Bar: Foo`.
 
 ```rust,edition2018
 #![feature(trait_upcasting)]
-#![allow(incomplete_features)]
 
 trait Foo {}
 

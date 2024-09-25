@@ -16,7 +16,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
-use rustc_index::{newtype_index, IndexVec};
+use rustc_index::{IndexVec, newtype_index};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
@@ -338,6 +338,8 @@ pub enum ExprKind<'tcx> {
     PointerCoercion {
         cast: PointerCoercion,
         source: ExprId,
+        /// Whether this coercion is written with an `as` cast in the source code.
+        is_from_as_cast: bool,
     },
     /// A `loop` expression.
     Loop {
@@ -453,12 +455,14 @@ pub enum ExprKind<'tcx> {
         source: ExprId,
         /// Type that the user gave to this expression
         user_ty: UserTy<'tcx>,
+        user_ty_span: Span,
     },
-    /// A type ascription on a value, e.g. `42: i32`.
+    /// A type ascription on a value, e.g. `type_ascribe!(42, i32)` or `42 as i32`.
     ValueTypeAscription {
         source: ExprId,
         /// Type that the user gave to this expression
         user_ty: UserTy<'tcx>,
+        user_ty_span: Span,
     },
     /// A closure definition.
     Closure(Box<ClosureExpr<'tcx>>),

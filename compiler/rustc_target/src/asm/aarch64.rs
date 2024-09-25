@@ -70,7 +70,7 @@ impl AArch64InlineAsmRegClass {
     }
 }
 
-pub fn target_reserves_x18(target: &Target) -> bool {
+pub(crate) fn target_reserves_x18(target: &Target) -> bool {
     target.os == "android" || target.os == "fuchsia" || target.is_like_osx || target.is_like_windows
 }
 

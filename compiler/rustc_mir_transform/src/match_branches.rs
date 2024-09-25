@@ -10,9 +10,9 @@ use rustc_type_ir::TyKind::*;
 
 use super::simplify::simplify_cfg;
 
-pub struct MatchBranchSimplification;
+pub(super) struct MatchBranchSimplification;
 
-impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
+impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 1
     }
@@ -57,8 +57,9 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
 }
 
 trait SimplifyMatch<'tcx> {
-    /// Simplifies a match statement, returning true if the simplification succeeds, false otherwise.
-    /// Generic code is written here, and we generally don't need a custom implementation.
+    /// Simplifies a match statement, returning true if the simplification succeeds, false
+    /// otherwise. Generic code is written here, and we generally don't need a custom
+    /// implementation.
     fn simplify(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -240,7 +241,8 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
                         // Same value in both blocks. Use statement as is.
                         patch.add_statement(parent_end, f.kind.clone());
                     } else {
-                        // Different value between blocks. Make value conditional on switch condition.
+                        // Different value between blocks. Make value conditional on switch
+                        // condition.
                         let size = tcx.layout_of(param_env.and(discr_ty)).unwrap().size;
                         let const_cmp = Operand::const_from_scalar(
                             tcx,
@@ -289,11 +291,11 @@ fn can_cast(
 
 #[derive(Default)]
 struct SimplifyToExp {
-    transfrom_kinds: Vec<TransfromKind>,
+    transform_kinds: Vec<TransformKind>,
 }
 
 #[derive(Clone, Copy)]
-enum ExpectedTransformKind<'tcx, 'a> {
+enum ExpectedTransformKind<'a, 'tcx> {
     /// Identical statements.
     Same(&'a StatementKind<'tcx>),
     /// Assignment statements have the same value.
@@ -302,17 +304,17 @@ enum ExpectedTransformKind<'tcx, 'a> {
     Cast { place: &'a Place<'tcx>, ty: Ty<'tcx> },
 }
 
-enum TransfromKind {
+enum TransformKind {
     Same,
     Cast,
 }
 
-impl From<ExpectedTransformKind<'_, '_>> for TransfromKind {
+impl From<ExpectedTransformKind<'_, '_>> for TransformKind {
     fn from(compare_type: ExpectedTransformKind<'_, '_>) -> Self {
         match compare_type {
-            ExpectedTransformKind::Same(_) => TransfromKind::Same,
-            ExpectedTransformKind::SameByEq { .. } => TransfromKind::Same,
-            ExpectedTransformKind::Cast { .. } => TransfromKind::Cast,
+            ExpectedTransformKind::Same(_) => TransformKind::Same,
+            ExpectedTransformKind::SameByEq { .. } => TransformKind::Same,
+            ExpectedTransformKind::Cast { .. } => TransformKind::Cast,
         }
     }
 }
@@ -394,14 +396,16 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
             return None;
         }
 
-        // We first compare the two branches, and then the other branches need to fulfill the same conditions.
+        // We first compare the two branches, and then the other branches need to fulfill the same
+        // conditions.
         let mut expected_transform_kinds = Vec::new();
         for (f, s) in iter::zip(first_stmts, second_stmts) {
             let compare_type = match (&f.kind, &s.kind) {
                 // If two statements are exactly the same, we can optimize.
                 (f_s, s_s) if f_s == s_s => ExpectedTransformKind::Same(f_s),
 
-                // If two statements are assignments with the match values to the same place, we can optimize.
+                // If two statements are assignments with the match values to the same place, we
+                // can optimize.
                 (
                     StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
                     StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
@@ -475,7 +479,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                 }
             }
         }
-        self.transfrom_kinds = expected_transform_kinds.into_iter().map(|c| c.into()).collect();
+        self.transform_kinds = expected_transform_kinds.into_iter().map(|c| c.into()).collect();
         Some(())
     }
 
@@ -493,13 +497,13 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         let (_, first) = targets.iter().next().unwrap();
         let first = &bbs[first];
 
-        for (t, s) in iter::zip(&self.transfrom_kinds, &first.statements) {
+        for (t, s) in iter::zip(&self.transform_kinds, &first.statements) {
             match (t, &s.kind) {
-                (TransfromKind::Same, _) => {
+                (TransformKind::Same, _) => {
                     patch.add_statement(parent_end, s.kind.clone());
                 }
                 (
-                    TransfromKind::Cast,
+                    TransformKind::Cast,
                     StatementKind::Assign(box (lhs, Rvalue::Use(Operand::Constant(f_c)))),
                 ) => {
                     let operand = Operand::Copy(Place::from(discr_local));

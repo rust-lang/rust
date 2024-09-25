@@ -12,11 +12,11 @@ use tracing::instrument;
 
 mod encode;
 mod transform;
-use crate::cfi::typeid::itanium_cxx_abi::encode::{encode_ty, DictKey, EncodeTyOptions};
-use crate::cfi::typeid::itanium_cxx_abi::transform::{
-    transform_instance, TransformTy, TransformTyOptions,
-};
 use crate::cfi::typeid::TypeIdOptions;
+use crate::cfi::typeid::itanium_cxx_abi::encode::{DictKey, EncodeTyOptions, encode_ty};
+use crate::cfi::typeid::itanium_cxx_abi::transform::{
+    TransformTy, TransformTyOptions, transform_instance,
+};
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor
 /// extended type qualifiers and types for Rust types that are not used at the FFI boundary.

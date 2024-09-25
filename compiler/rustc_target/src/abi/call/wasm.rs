@@ -40,12 +40,12 @@ where
     }
     arg.extend_integer_width_to(32);
     if arg.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, arg) {
-        arg.make_indirect_byval(None);
+        arg.make_indirect();
     }
 }
 
 /// The purpose of this ABI is to match the C ABI (aka clang) exactly.
-pub fn compute_c_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_c_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
@@ -69,7 +69,7 @@ where
 /// This ABI is *bad*! It uses `PassMode::Direct` for `abi::Aggregate` types, which leaks LLVM
 /// implementation details into the ABI. It's just hard to fix because ABIs are hard to change.
 /// Also see <https://github.com/rust-lang/rust/issues/115666>.
-pub fn compute_wasm_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_wasm_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     if !fn_abi.ret.is_ignore() {
         classify_ret_wasm_abi(&mut fn_abi.ret);
     }

@@ -1,4 +1,4 @@
-//@only-target-apple: F_FULLFSYNC only on apple systems
+//@only-target: apple # F_FULLFSYNC only on apple systems
 //@compile-flags: -Zmiri-isolation-error=warn-nobacktrace
 
 use std::io::Error;

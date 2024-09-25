@@ -10,7 +10,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{BytePos, ExpnKind, Span};
 
-use crate::clean::{self, rustc_span, PrimitiveType};
+use crate::clean::{self, PrimitiveType, rustc_span};
 use crate::html::sources;
 
 /// This enum allows us to store two different kinds of information:

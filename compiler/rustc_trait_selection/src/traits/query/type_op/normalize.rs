@@ -1,8 +1,8 @@
 use std::fmt;
 
-pub use rustc_middle::traits::query::type_op::Normalize;
-use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::query::NoSolution;
+pub use rustc_middle::traits::query::type_op::Normalize;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 

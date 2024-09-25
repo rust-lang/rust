@@ -26,8 +26,8 @@ pub struct CodegenFnAttrs {
     /// be set when `link_name` is set. This is for foreign items with the
     /// "raw-dylib" kind.
     pub link_ordinal: Option<u16>,
-    /// All the target features that are enabled for this function. Some features might be enabled
-    /// implicitly.
+    /// The `#[target_feature(enable = "...")]` attribute and the enabled
+    /// features (only enabled features are supported right now).
     pub target_features: Vec<TargetFeature>,
     /// The `#[linkage = "..."]` attribute on Rust-defined items and the value we found.
     pub linkage: Option<Linkage>,
@@ -55,8 +55,8 @@ pub struct CodegenFnAttrs {
 pub struct TargetFeature {
     /// The name of the target feature (e.g. "avx")
     pub name: Symbol,
-    /// The feature is implied by another feature or by an argument, rather than explicitly
-    /// added by the `#[target_feature]` attribute
+    /// The feature is implied by another feature, rather than explicitly added by the
+    /// `#[target_feature]` attribute
     pub implied: bool,
 }
 
@@ -120,9 +120,7 @@ bitflags::bitflags! {
         /// #[ffi_const]: applies clang's `const` attribute to a foreign function
         /// declaration.
         const FFI_CONST                 = 1 << 12;
-        /// #[cmse_nonsecure_entry]: with a TrustZone-M extension, declare a
-        /// function as an entry function from Non-Secure code.
-        const CMSE_NONSECURE_ENTRY      = 1 << 13;
+        // (Bit 13 was used for `#[cmse_nonsecure_entry]`, but is now unused.)
         // (Bit 14 was used for `#[coverage(off)]`, but is now unused.)
         /// `#[used(linker)]`:
         /// indicates that neither LLVM nor the linker will eliminate this function.

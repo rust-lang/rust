@@ -1,9 +1,9 @@
 // This defines the aarch64 target for UEFI systems as described in the UEFI specification. See the
 // uefi-base module for generic UEFI options.
 
-use crate::spec::{base, LinkerFlavor, Lld, Target};
+use crate::spec::{LinkerFlavor, Lld, Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
 
     base.max_atomic_width = Some(128);

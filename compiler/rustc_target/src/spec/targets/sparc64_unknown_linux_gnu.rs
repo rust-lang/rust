@@ -1,7 +1,7 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target};
+use crate::spec::{Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
     base.endian = Endian::Big;
     base.cpu = "v9".into();

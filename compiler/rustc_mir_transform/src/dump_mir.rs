@@ -3,15 +3,13 @@
 use std::fs::File;
 use std::io;
 
-use rustc_middle::mir::{write_mir_pretty, Body};
+use rustc_middle::mir::{Body, write_mir_pretty};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutFileName, OutputType};
 
-use crate::MirPass;
+pub(super) struct Marker(pub &'static str);
 
-pub struct Marker(pub &'static str);
-
-impl<'tcx> MirPass<'tcx> for Marker {
+impl<'tcx> crate::MirPass<'tcx> for Marker {
     fn name(&self) -> &'static str {
         self.0
     }

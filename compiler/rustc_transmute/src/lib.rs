@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 #![feature(alloc_layout_extra)]
 #![feature(never_type)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};

@@ -32,10 +32,8 @@
 #![feature(unwrap_infallible)]
 #![feature(yeet_expr)]
 #![recursion_limit = "512"] // For rustdoc
+#![warn(unreachable_pub)] // For rustdoc
 // tidy-alphabetical-end
-
-#[macro_use]
-extern crate tracing;
 
 pub mod error_reporting;
 pub mod errors;

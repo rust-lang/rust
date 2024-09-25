@@ -9,9 +9,6 @@
 //@ revisions: aarch64_be_unknown_netbsd
 //@ [aarch64_be_unknown_netbsd] compile-flags: --target aarch64_be-unknown-netbsd
 //@ [aarch64_be_unknown_netbsd] needs-llvm-components: aarch64
-//@ revisions: aarch64_fuchsia
-//@ [aarch64_fuchsia] compile-flags: --target aarch64-fuchsia
-//@ [aarch64_fuchsia] needs-llvm-components: aarch64
 //@ revisions: aarch64_kmc_solid_asp3
 //@ [aarch64_kmc_solid_asp3] compile-flags: --target aarch64-kmc-solid_asp3
 //@ [aarch64_kmc_solid_asp3] needs-llvm-components: aarch64
@@ -54,6 +51,9 @@
 //@ revisions: aarch64_unknown_none_softfloat
 //@ [aarch64_unknown_none_softfloat] compile-flags: --target aarch64-unknown-none-softfloat
 //@ [aarch64_unknown_none_softfloat] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nto_qnx700
+//@ [aarch64_unknown_nto_qnx700] compile-flags: --target aarch64-unknown-nto-qnx700
+//@ [aarch64_unknown_nto_qnx700] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_nto_qnx710
 //@ [aarch64_unknown_nto_qnx710] compile-flags: --target aarch64-unknown-nto-qnx710
 //@ [aarch64_unknown_nto_qnx710] needs-llvm-components: aarch64
@@ -126,6 +126,9 @@
 //@ revisions: armv7_linux_androideabi
 //@ [armv7_linux_androideabi] compile-flags: --target armv7-linux-androideabi
 //@ [armv7_linux_androideabi] needs-llvm-components: arm
+//@ revisions: armv7_rtems_eabihf
+//@ [armv7_rtems_eabihf] compile-flags: --target armv7-rtems-eabihf
+//@ [armv7_rtems_eabihf] needs-llvm-components: arm
 //@ revisions: armv7_sony_vita_newlibeabihf
 //@ [armv7_sony_vita_newlibeabihf] compile-flags: --target armv7-sony-vita-newlibeabihf
 //@ [armv7_sony_vita_newlibeabihf] needs-llvm-components: arm
@@ -246,6 +249,9 @@
 //@ revisions: loongarch64_unknown_linux_musl
 //@ [loongarch64_unknown_linux_musl] compile-flags: --target loongarch64-unknown-linux-musl
 //@ [loongarch64_unknown_linux_musl] needs-llvm-components: loongarch
+//@ revisions: loongarch64_unknown_linux_ohos
+//@ [loongarch64_unknown_linux_ohos] compile-flags: --target loongarch64-unknown-linux-ohos
+//@ [loongarch64_unknown_linux_ohos] needs-llvm-components: loongarch
 //@ revisions: loongarch64_unknown_none
 //@ [loongarch64_unknown_none] compile-flags: --target loongarch64-unknown-none
 //@ [loongarch64_unknown_none] needs-llvm-components: loongarch
@@ -519,9 +525,6 @@
 //@ revisions: x86_64_fortanix_unknown_sgx
 //@ [x86_64_fortanix_unknown_sgx] compile-flags: --target x86_64-fortanix-unknown-sgx
 //@ [x86_64_fortanix_unknown_sgx] needs-llvm-components: x86
-//@ revisions: x86_64_fuchsia
-//@ [x86_64_fuchsia] compile-flags: --target x86_64-fuchsia
-//@ [x86_64_fuchsia] needs-llvm-components: x86
 //@ revisions: x86_64_linux_android
 //@ [x86_64_linux_android] compile-flags: --target x86_64-linux-android
 //@ [x86_64_linux_android] needs-llvm-components: x86
@@ -546,6 +549,9 @@
 //@ revisions: x86_64_unknown_haiku
 //@ [x86_64_unknown_haiku] compile-flags: --target x86_64-unknown-haiku
 //@ [x86_64_unknown_haiku] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_hurd_gnu
+//@ [x86_64_unknown_hurd_gnu] compile-flags: --target x86_64-unknown-hurd-gnu
+//@ [x86_64_unknown_hurd_gnu] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_hermit
 //@ [x86_64_unknown_hermit] compile-flags: --target x86_64-unknown-hermit
 //@ [x86_64_unknown_hermit] needs-llvm-components: x86

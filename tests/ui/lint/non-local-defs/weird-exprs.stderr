@@ -1,29 +1,24 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:10:5
+  --> $DIR/weird-exprs.rs:8:5
    |
 LL |   type A = [u32; {
    |  ________________-
 LL | |     impl Uto for *mut Test {}
-   | |     ^^^^^---^^^^^---------
-   | |          |       |
-   | |          |       `*mut Test` is not local
+   | |     ^^^^^---^^^^^^^^^^----
+   | |          |            |
+   | |          |            `Test` is not local
    | |          `Uto` is not local
 LL | |
 ...  |
 LL | | }];
    | |_- move the `impl` block outside of this constant expression `<unnameable>`
    |
-   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-note: the lint level is defined here
-  --> $DIR/weird-exprs.rs:4:9
-   |
-LL | #![warn(non_local_definitions)]
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(non_local_definitions)]` on by default
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:18:9
+  --> $DIR/weird-exprs.rs:16:9
    |
 LL |       Discr = {
    |  _____________-
@@ -37,12 +32,11 @@ LL | |
 LL | |     }
    | |_____- move the `impl` block outside of this constant expression `<unnameable>`
    |
-   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:27:9
+  --> $DIR/weird-exprs.rs:25:9
    |
 LL |       let _array = [0i32; {
    |  _________________________-
@@ -57,63 +51,61 @@ LL | |         1
 LL | |     }];
    | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
    |
-   = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:36:9
+  --> $DIR/weird-exprs.rs:34:9
    |
 LL |       type A = [u32; {
    |  ____________________-
 LL | |         impl Uto for &Test {}
-   | |         ^^^^^---^^^^^-----
-   | |              |       |
-   | |              |       `&'_ Test` is not local
+   | |         ^^^^^---^^^^^^----
+   | |              |        |
+   | |              |        `Test` is not local
    | |              `Uto` is not local
 LL | |
 ...  |
 LL | |     }];
    | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
    |
-   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:43:9
+  --> $DIR/weird-exprs.rs:41:9
    |
 LL |       fn a(_: [u32; {
    |  ___________________-
 LL | |         impl Uto for &(Test,) {}
-   | |         ^^^^^---^^^^^--------
-   | |              |       |
-   | |              |       `&'_ (Test,)` is not local
+   | |         ^^^^^---^^^^^^^----^^
+   | |              |         |
+   | |              |         `Test` is not local
    | |              `Uto` is not local
 LL | |
 ...  |
 LL | |     }]) {}
    | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
    |
-   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:50:9
+  --> $DIR/weird-exprs.rs:48:9
    |
 LL |       fn b() -> [u32; {
    |  _____________________-
 LL | |         impl Uto for &(Test,Test) {}
-   | |         ^^^^^---^^^^^------------
-   | |              |       |
-   | |              |       `&'_ (Test, Test)` is not local
+   | |         ^^^^^---^^^^^^^----^----^
+   | |              |         |    |
+   | |              |         |    `Test` is not local
+   | |              |         `Test` is not local
    | |              `Uto` is not local
 LL | |
 ...  |
 LL | |     }] { todo!() }
    | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
    |
-   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 

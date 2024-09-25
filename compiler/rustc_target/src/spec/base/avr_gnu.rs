@@ -6,7 +6,7 @@ use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
 ///
 /// Requires GNU avr-gcc and avr-binutils on the host system.
 /// FIXME: Remove the second parameter when const string concatenation is possible.
-pub fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
+pub(crate) fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
     Target {
         arch: "avr".into(),
         metadata: crate::spec::TargetMetadata {
@@ -26,10 +26,9 @@ pub fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
             linker: Some("avr-gcc".into()),
             eh_frame_header: false,
             pre_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[mmcu]),
-            late_link_args: TargetOptions::link_args(
-                LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-                &["-lgcc"],
-            ),
+            late_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
+                "-lgcc",
+            ]),
             max_atomic_width: Some(16),
             atomic_cas: false,
             relocation_model: RelocModel::Static,

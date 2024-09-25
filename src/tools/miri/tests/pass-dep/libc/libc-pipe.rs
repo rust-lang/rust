@@ -1,4 +1,4 @@
-//@ignore-target-windows: No libc pipe on Windows
+//@ignore-target: windows # No libc pipe on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 use std::thread;
@@ -6,6 +6,7 @@ fn main() {
     test_pipe();
     test_pipe_threaded();
     test_race();
+    test_pipe_array();
 }
 
 fn test_pipe() {
@@ -71,6 +72,8 @@ fn test_pipe_threaded() {
     thread2.join().unwrap();
 }
 
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#[allow(static_mut_refs)]
 fn test_race() {
     static mut VAL: u8 = 0;
     let mut fds = [-1, -1];
@@ -96,4 +99,14 @@ fn test_race() {
     assert_eq!(res, 1);
     thread::yield_now();
     thread1.join().unwrap();
+}
+
+fn test_pipe_array() {
+    // Declare `pipe` to take an array rather than a `*mut i32`.
+    extern "C" {
+        fn pipe(pipefd: &mut [i32; 2]) -> i32;
+    }
+
+    let mut fds: [i32; 2] = [0; 2];
+    assert_eq!(unsafe { pipe(&mut fds) }, 0);
 }

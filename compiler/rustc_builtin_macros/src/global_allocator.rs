@@ -1,5 +1,5 @@
 use rustc_ast::expand::allocator::{
-    global_fn_name, AllocatorMethod, AllocatorMethodInput, AllocatorTy, ALLOCATOR_METHODS,
+    ALLOCATOR_METHODS, AllocatorMethod, AllocatorMethodInput, AllocatorTy, global_fn_name,
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{
@@ -7,9 +7,9 @@ use rustc_ast::{
     Stmt, StmtKind, Ty, TyKind,
 };
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::errors;
 use crate::util::check_builtin_macro_attribute;
@@ -65,7 +65,7 @@ struct AllocFnFactory<'a, 'b> {
     span: Span,
     ty_span: Span,
     global: Ident,
-    cx: &'b ExtCtxt<'a>,
+    cx: &'a ExtCtxt<'b>,
 }
 
 impl AllocFnFactory<'_, '_> {

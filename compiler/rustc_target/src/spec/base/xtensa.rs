@@ -1,7 +1,7 @@
 use crate::abi::Endian;
 use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, TargetOptions};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         os: "none".into(),
         endian: Endian::Little,

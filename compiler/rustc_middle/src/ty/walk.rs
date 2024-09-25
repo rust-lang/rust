@@ -2,7 +2,7 @@
 //! WARNING: this does not keep track of the region depth.
 
 use rustc_data_structures::sso::SsoHashSet;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 use crate::ty::{self, GenericArg, GenericArgKind, Ty};

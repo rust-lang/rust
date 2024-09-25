@@ -34,7 +34,7 @@ fn check_crate_is_unstable(cr: &Crate) {
         .target(target())
         .extern_(name, path)
         .input("-")
-        .stdin(format!("extern crate {name};"))
+        .stdin_buf(format!("extern crate {name};"))
         .run_fail();
 
     // Make sure it failed for the intended reason, not some other reason.

@@ -4,6 +4,7 @@ use rustc_data_structures::snapshot_map::{self, SnapshotMapRef, SnapshotMapStora
 use rustc_data_structures::undo_log::Rollback;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty;
+use tracing::{debug, info};
 
 use super::PredicateObligation;
 use crate::infer::snapshot::undo_log::InferCtxtUndoLogs;
@@ -199,10 +200,10 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
                 if result.must_apply_considering_regions() {
                     ty.obligations = vec![];
                 }
-                map.insert(
-                    key,
-                    ProjectionCacheEntry::NormalizedTerm { ty, complete: Some(result) },
-                );
+                map.insert(key, ProjectionCacheEntry::NormalizedTerm {
+                    ty,
+                    complete: Some(result),
+                });
             }
             ref value => {
                 // Type inference could "strand behind" old cache entries. Leave

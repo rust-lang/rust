@@ -1,5 +1,5 @@
 error: Undefined Behavior: reborrow through <TAG> at ALLOC[0x0] is forbidden
-  --> $DIR/pass_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/pass_invalid_shr.rs:LL:CC
    |
 LL |     foo(xref);
    |         ^^^^ reborrow through <TAG> at ALLOC[0x0] is forbidden
@@ -7,18 +7,18 @@ LL |     foo(xref);
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> has state Disabled which forbids this reborrow (acting as a child read access)
 help: the accessed tag <TAG> was created here, in the initial state Frozen
-  --> $DIR/pass_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/pass_invalid_shr.rs:LL:CC
    |
 LL |     let xref = unsafe { &*xraw };
    |                         ^^^^^^
 help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x4]
-  --> $DIR/pass_invalid_shr.rs:LL:CC
+  --> tests/fail/both_borrows/pass_invalid_shr.rs:LL:CC
    |
 LL |     unsafe { *xraw = 42 }; // unfreeze
    |              ^^^^^^^^^^
    = help: this transition corresponds to a loss of read permissions
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/pass_invalid_shr.rs:LL:CC
+   = note: inside `main` at tests/fail/both_borrows/pass_invalid_shr.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

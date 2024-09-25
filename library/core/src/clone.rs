@@ -161,7 +161,7 @@ pub trait Clone: Sized {
     #[must_use = "cloning is often expensive and is not expected to have side effects"]
     // Clone::clone is special because the compiler generates MIR to implement it for some types.
     // See InstanceKind::CloneShim.
-    #[cfg_attr(not(bootstrap), lang = "clone_fn")]
+    #[lang = "clone_fn"]
     fn clone(&self) -> Self;
 
     /// Performs copy-assignment from `source`.

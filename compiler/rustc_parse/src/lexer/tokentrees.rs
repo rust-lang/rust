@@ -5,7 +5,7 @@ use rustc_errors::{Applicability, PErr};
 use rustc_span::symbol::kw;
 
 use super::diagnostics::{
-    report_suspicious_mismatch_block, same_indentation_level, TokenTreeDiagInfo,
+    TokenTreeDiagInfo, report_suspicious_mismatch_block, same_indentation_level,
 };
 use super::{StringReader, UnmatchedDelim};
 use crate::Parser;
@@ -299,7 +299,7 @@ impl<'psess, 'src> TokenTreesReader<'psess, 'src> {
             }
             return diff_errs;
         }
-        return errs;
+        errs
     }
 
     fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'psess> {

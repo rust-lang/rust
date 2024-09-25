@@ -2,7 +2,7 @@ error[E0277]: `()` cannot be safely transmuted into `ExplicitlyPadded`
   --> $DIR/huge-len.rs:21:41
    |
 LL |     assert::is_maybe_transmutable::<(), ExplicitlyPadded>();
-   |                                         ^^^^^^^^^^^^^^^^ values of the type `ExplicitlyPadded` are too big for the current architecture
+   |                                         ^^^^^^^^^^^^^^^^ values of the type `ExplicitlyPadded` are too big for the target architecture
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/huge-len.rs:8:14
@@ -17,7 +17,7 @@ error[E0277]: `ExplicitlyPadded` cannot be safely transmuted into `()`
   --> $DIR/huge-len.rs:24:55
    |
 LL |     assert::is_maybe_transmutable::<ExplicitlyPadded, ()>();
-   |                                                       ^^ values of the type `ExplicitlyPadded` are too big for the current architecture
+   |                                                       ^^ values of the type `ExplicitlyPadded` are too big for the target architecture
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/huge-len.rs:8:14

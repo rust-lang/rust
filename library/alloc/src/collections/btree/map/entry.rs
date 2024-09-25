@@ -5,7 +5,7 @@ use core::mem;
 use Entry::*;
 
 use super::super::borrow::DormantMutRef;
-use super::super::node::{marker, Handle, NodeRef};
+use super::super::node::{Handle, NodeRef, marker};
 use super::BTreeMap;
 use crate::alloc::{Allocator, Global};
 

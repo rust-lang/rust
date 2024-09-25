@@ -1,9 +1,9 @@
 pub mod archive;
-pub mod command;
+pub(crate) mod command;
 pub mod link;
-pub mod linker;
+pub(crate) mod linker;
 pub mod lto;
 pub mod metadata;
-pub mod rpath;
+pub(crate) mod rpath;
 pub mod symbol_export;
 pub mod write;

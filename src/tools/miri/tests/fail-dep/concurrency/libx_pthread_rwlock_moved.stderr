@@ -1,0 +1,15 @@
+error: Undefined Behavior: pthread_rwlock_t can't be moved after first use
+  --> tests/fail-dep/concurrency/libx_pthread_rwlock_moved.rs:LL:CC
+   |
+LL |         libc::pthread_rwlock_unlock(&mut rw2 as *mut _);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pthread_rwlock_t can't be moved after first use
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at tests/fail-dep/concurrency/libx_pthread_rwlock_moved.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

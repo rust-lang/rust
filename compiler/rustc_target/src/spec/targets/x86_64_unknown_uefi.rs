@@ -6,9 +6,9 @@
 // LLVM. "x86_64-unknown-windows" is used to get the minimal subset of windows-specific features.
 
 use crate::abi::call::Conv;
-use crate::spec::{base, Target};
+use crate::spec::{Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;

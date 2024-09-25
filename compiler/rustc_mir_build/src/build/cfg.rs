@@ -40,10 +40,10 @@ impl<'tcx> CFG<'tcx> {
         place: Place<'tcx>,
         rvalue: Rvalue<'tcx>,
     ) {
-        self.push(
-            block,
-            Statement { source_info, kind: StatementKind::Assign(Box::new((place, rvalue))) },
-        );
+        self.push(block, Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((place, rvalue))),
+        });
     }
 
     pub(crate) fn push_assign_constant(

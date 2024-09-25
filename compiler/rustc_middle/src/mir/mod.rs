@@ -3,8 +3,6 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use std::borrow::Cow;
-use std::cell::RefCell;
-use std::collections::hash_map::Entry;
 use std::fmt::{self, Debug, Formatter};
 use std::ops::{Index, IndexMut};
 use std::{iter, mem};
@@ -18,7 +16,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{
     self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
 };
@@ -26,10 +24,9 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use tracing::trace;
 
@@ -39,7 +36,7 @@ use crate::mir::interpret::{AllocRange, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::ty::print::{pretty_print_const, with_no_trimmed_paths, FmtPrinter, Printer};
+use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
     self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt,
@@ -75,7 +72,7 @@ pub use terminator::*;
 pub use self::generic_graph::graphviz_safe_def_name;
 pub use self::graphviz::write_mir_graphviz;
 pub use self::pretty::{
-    create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty, PassWhere,
+    PassWhere, create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty,
 };
 
 /// Types for locals
@@ -103,65 +100,6 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
     #[inline]
     fn local_decls(&self) -> &LocalDecls<'tcx> {
         &self.local_decls
-    }
-}
-
-thread_local! {
-    static PASS_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
-        RefCell::new(FxHashMap::default())
-    };
-}
-
-/// Converts a MIR pass name into a snake case form to match the profiling naming style.
-fn to_profiler_name(type_name: &'static str) -> &'static str {
-    PASS_NAMES.with(|names| match names.borrow_mut().entry(type_name) {
-        Entry::Occupied(e) => *e.get(),
-        Entry::Vacant(e) => {
-            let snake_case: String = type_name
-                .chars()
-                .flat_map(|c| {
-                    if c.is_ascii_uppercase() {
-                        vec!['_', c.to_ascii_lowercase()]
-                    } else if c == '-' {
-                        vec!['_']
-                    } else {
-                        vec![c]
-                    }
-                })
-                .collect();
-            let result = &*String::leak(format!("mir_pass{}", snake_case));
-            e.insert(result);
-            result
-        }
-    })
-}
-
-/// A streamlined trait that you can implement to create a pass; the
-/// pass will be named after the type, and it will consist of a main
-/// loop that goes over each available MIR and applies `run_pass`.
-pub trait MirPass<'tcx> {
-    fn name(&self) -> &'static str {
-        // FIXME Simplify the implementation once more `str` methods get const-stable.
-        // See copypaste in `MirLint`
-        const {
-            let name = std::any::type_name::<Self>();
-            crate::util::common::c_name(name)
-        }
-    }
-
-    fn profiler_name(&self) -> &'static str {
-        to_profiler_name(self.name())
-    }
-
-    /// Returns `true` if this pass is enabled with the current combination of compiler flags.
-    fn is_enabled(&self, _sess: &Session) -> bool {
-        true
-    }
-
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
-
-    fn is_mir_dump_enabled(&self) -> bool {
-        true
     }
 }
 
@@ -1146,6 +1084,9 @@ pub enum LocalInfo<'tcx> {
     /// (with no intervening statement context).
     // FIXME(matthewjasper) Don't store in this in `Body`
     BlockTailTemp(BlockTailInfo),
+    /// A temporary created during evaluating `if` predicate, possibly for pattern matching for `let`s,
+    /// and subject to Edition 2024 temporary lifetime rules
+    IfThenRescopeTemp { if_then: HirId },
     /// A temporary created during the pass `Derefer` to avoid it's retagging
     DerefTemp,
     /// A temporary created for borrow checking.
@@ -1228,10 +1169,9 @@ impl<'tcx> LocalDecl<'tcx> {
     /// Returns `true` if this is a DerefTemp
     pub fn is_deref_temp(&self) -> bool {
         match self.local_info() {
-            LocalInfo::DerefTemp => return true,
-            _ => (),
+            LocalInfo::DerefTemp => true,
+            _ => false,
         }
-        return false;
     }
 
     /// Returns `true` is the local is from a compiler desugaring, e.g.,
@@ -1459,10 +1399,10 @@ impl<'tcx> BasicBlockData<'tcx> {
         // existing elements from before the gap to the end of the gap.
         // For now, this is safe code, emulating a gap but initializing it.
         let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
-        self.statements.resize(
-            gap.end,
-            Statement { source_info: SourceInfo::outermost(DUMMY_SP), kind: StatementKind::Nop },
-        );
+        self.statements.resize(gap.end, Statement {
+            source_info: SourceInfo::outermost(DUMMY_SP),
+            kind: StatementKind::Nop,
+        });
         for (splice_start, new_stmts) in splices.into_iter().rev() {
             let splice_end = splice_start + new_stmts.size_hint().0;
             while gap.end > splice_end {
@@ -1483,6 +1423,19 @@ impl<'tcx> BasicBlockData<'tcx> {
     #[inline]
     pub fn is_empty_unreachable(&self) -> bool {
         self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
+    }
+
+    /// Like [`Terminator::successors`] but tries to use information available from the [`Instance`]
+    /// to skip successors like the `false` side of an `if const {`.
+    ///
+    /// This is used to implement [`traversal::mono_reachable`] and
+    /// [`traversal::mono_reachable_reverse_postorder`].
+    pub fn mono_successors(&self, tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Successors<'_> {
+        if let Some((bits, targets)) = Body::try_const_mono_switchint(tcx, instance, self) {
+            targets.successors_for_value(bits)
+        } else {
+            self.terminator().successors()
+        }
     }
 }
 

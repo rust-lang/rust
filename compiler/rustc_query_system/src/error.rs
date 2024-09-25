@@ -5,7 +5,7 @@ use rustc_span::{Span, Symbol};
 
 #[derive(Subdiagnostic)]
 #[note(query_system_cycle_stack_middle)]
-pub struct CycleStack {
+pub(crate) struct CycleStack {
     #[primary_span]
     pub span: Span,
     pub desc: String,
@@ -20,7 +20,7 @@ pub enum HandleCycleError {
 }
 
 #[derive(Subdiagnostic)]
-pub enum StackCount {
+pub(crate) enum StackCount {
     #[note(query_system_cycle_stack_single)]
     Single,
     #[note(query_system_cycle_stack_multiple)]
@@ -28,7 +28,7 @@ pub enum StackCount {
 }
 
 #[derive(Subdiagnostic)]
-pub enum Alias {
+pub(crate) enum Alias {
     #[note(query_system_cycle_recursive_ty_alias)]
     #[help(query_system_cycle_recursive_ty_alias_help1)]
     #[help(query_system_cycle_recursive_ty_alias_help2)]
@@ -39,7 +39,7 @@ pub enum Alias {
 
 #[derive(Subdiagnostic)]
 #[note(query_system_cycle_usage)]
-pub struct CycleUsage {
+pub(crate) struct CycleUsage {
     #[primary_span]
     pub span: Span,
     pub usage: String,
@@ -47,7 +47,7 @@ pub struct CycleUsage {
 
 #[derive(Diagnostic)]
 #[diag(query_system_cycle, code = E0391)]
-pub struct Cycle {
+pub(crate) struct Cycle {
     #[primary_span]
     pub span: Span,
     pub stack_bottom: String,
@@ -65,14 +65,14 @@ pub struct Cycle {
 
 #[derive(Diagnostic)]
 #[diag(query_system_reentrant)]
-pub struct Reentrant;
+pub(crate) struct Reentrant;
 
 #[derive(Diagnostic)]
 #[diag(query_system_increment_compilation)]
 #[help]
 #[note(query_system_increment_compilation_note1)]
 #[note(query_system_increment_compilation_note2)]
-pub struct IncrementCompilation {
+pub(crate) struct IncrementCompilation {
     pub run_cmd: String,
     pub dep_node: String,
 }

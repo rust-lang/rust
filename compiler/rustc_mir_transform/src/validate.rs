@@ -2,8 +2,8 @@
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_infer::traits::Reveal;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
@@ -14,7 +14,7 @@ use rustc_middle::ty::{
     Variance,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_target::abi::{Size, FIRST_VARIANT};
+use rustc_target::abi::{FIRST_VARIANT, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::util::{is_within_packed, relate_types};
@@ -25,7 +25,7 @@ enum EdgeKind {
     Normal,
 }
 
-pub struct Validator {
+pub(super) struct Validator {
     /// Describes at which point in the pipeline this validation is happening.
     pub when: String,
     /// The phase for which we are upholding the dialect. If the given phase forbids a specific
@@ -36,7 +36,7 @@ pub struct Validator {
     pub mir_phase: MirPhase,
 }
 
-impl<'tcx> MirPass<'tcx> for Validator {
+impl<'tcx> crate::MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // FIXME(JakobDegen): These bodies never instantiated in codegend anyway, so it's not
         // terribly important that they pass the validator. However, I think other passes might
@@ -387,10 +387,11 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     }
                     self.check_unwind_edge(location, unwind);
 
-                    // The code generation assumes that there are no critical call edges. The assumption
-                    // is used to simplify inserting code that should be executed along the return edge
-                    // from the call. FIXME(tmiasko): Since this is a strictly code generation concern,
-                    // the code generation should be responsible for handling it.
+                    // The code generation assumes that there are no critical call edges. The
+                    // assumption is used to simplify inserting code that should be executed along
+                    // the return edge from the call. FIXME(tmiasko): Since this is a strictly code
+                    // generation concern, the code generation should be responsible for handling
+                    // it.
                     if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Optimized)
                         && self.is_critical_call_edge(target, unwind)
                     {
@@ -403,8 +404,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                         );
                     }
 
-                    // The call destination place and Operand::Move place used as an argument might be
-                    // passed by a reference to the callee. Consequently they cannot be packed.
+                    // The call destination place and Operand::Move place used as an argument might
+                    // be passed by a reference to the callee. Consequently they cannot be packed.
                     if is_within_packed(self.tcx, &self.body.local_decls, destination).is_some() {
                         // This is bad! The callee will expect the memory to be aligned.
                         self.fail(
@@ -530,7 +531,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 ///
 /// `caller_body` is used to detect cycles in MIR inlining and MIR validation before
 /// `optimized_mir` is available.
-pub fn validate_types<'tcx>(
+pub(super) fn validate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_phase: MirPhase,
     param_env: ty::ParamEnv<'tcx>,
@@ -714,7 +715,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             // since we may be in the process of computing this MIR in the
                             // first place.
                             let layout = if def_id == self.caller_body.source.def_id() {
-                                // FIXME: This is not right for async closures.
+                                self.caller_body.coroutine_layout_raw()
+                            } else if self.tcx.needs_coroutine_by_move_body_def_id(def_id)
+                                && let ty::ClosureKind::FnOnce =
+                                    args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap()
+                                && self.caller_body.source.def_id()
+                                    == self.tcx.coroutine_by_move_body_def_id(def_id)
+                            {
+                                // Same if this is the by-move body of a coroutine-closure.
                                 self.caller_body.coroutine_layout_raw()
                             } else {
                                 self.tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty())
@@ -942,9 +950,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
                 AggregateKind::RawPtr(pointee_ty, mutability) => {
                     if !matches!(self.mir_phase, MirPhase::Runtime(_)) {
-                        // It would probably be fine to support this in earlier phases,
-                        // but at the time of writing it's only ever introduced from intrinsic lowering,
-                        // so earlier things just `bug!` on it.
+                        // It would probably be fine to support this in earlier phases, but at the
+                        // time of writing it's only ever introduced from intrinsic lowering, so
+                        // earlier things just `bug!` on it.
                         self.fail(location, "RawPtr should be in runtime MIR only");
                     }
 
@@ -1098,10 +1106,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                     UnOp::PtrMetadata => {
                         if !matches!(self.mir_phase, MirPhase::Runtime(_)) {
-                            // It would probably be fine to support this in earlier phases,
-                            // but at the time of writing it's only ever introduced from intrinsic lowering
-                            // or other runtime-phase optimization passes,
-                            // so earlier things can just `bug!` on it.
+                            // It would probably be fine to support this in earlier phases, but at
+                            // the time of writing it's only ever introduced from intrinsic
+                            // lowering or other runtime-phase optimization passes, so earlier
+                            // things can just `bug!` on it.
                             self.fail(location, "PtrMetadata should be in runtime MIR only");
                         }
 
@@ -1120,12 +1128,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Cast(kind, operand, target_type) => {
                 let op_ty = operand.ty(self.body, self.tcx);
                 match kind {
-                    CastKind::DynStar => {
-                        // FIXME(dyn-star): make sure nothing needs to be done here.
-                    }
                     // FIXME: Add Checks for these
                     CastKind::PointerWithExposedProvenance | CastKind::PointerExposeProvenance => {}
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _) => {
                         // FIXME: check signature compatibility.
                         check_kinds!(
                             op_ty,
@@ -1138,7 +1143,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::FnPtr(..)
                         );
                     }
-                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _) => {
                         // FIXME: check safety and signature compatibility.
                         check_kinds!(
                             op_ty,
@@ -1151,7 +1156,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::FnPtr(..)
                         );
                     }
-                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(..)) => {
+                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(..), _) => {
                         // FIXME: check safety, captures, and signature compatibility.
                         check_kinds!(
                             op_ty,
@@ -1164,7 +1169,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::FnPtr(..)
                         );
                     }
-                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer, _) => {
                         // FIXME: check same pointee?
                         check_kinds!(
                             op_ty,
@@ -1180,7 +1185,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
                         }
                     }
-                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer, _) => {
                         // FIXME: Check pointee types
                         check_kinds!(
                             op_ty,
@@ -1196,9 +1201,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
                         }
                     }
-                    CastKind::PointerCoercion(PointerCoercion::Unsize) => {
+                    CastKind::PointerCoercion(PointerCoercion::Unsize, _) => {
                         // This is used for all `CoerceUnsized` types,
                         // not just pointers/references, so is hard to check.
+                    }
+                    CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
+                        // FIXME(dyn-star): make sure nothing needs to be done here.
                     }
                     CastKind::IntToInt | CastKind::IntToFloat => {
                         let input_valid = op_ty.is_integral() || op_ty.is_char() || op_ty.is_bool();
@@ -1495,7 +1503,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
 
                 if let TerminatorKind::TailCall { .. } = terminator.kind {
-                    // FIXME(explicit_tail_calls): implement tail-call specific checks here (such as signature matching, forbidding closures, etc)
+                    // FIXME(explicit_tail_calls): implement tail-call specific checks here (such
+                    // as signature matching, forbidding closures, etc)
                 }
             }
             TerminatorKind::Assert { cond, .. } => {

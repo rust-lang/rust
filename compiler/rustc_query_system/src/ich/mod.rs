@@ -1,6 +1,6 @@
 //! ICH - Incremental Compilation Hash
 
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 
 pub use self::hcx::StableHashingContext;
 

@@ -17,9 +17,9 @@ use rustc_infer::infer;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
-use rustc_span::{self, sym, Span, DUMMY_SP};
-use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
+use rustc_span::{self, DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
+use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use crate::coercion::DynamicCoerceMany;
@@ -263,27 +263,24 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         _: Span,
         def_id: LocalDefId,
         _: Ident,
-    ) -> ty::GenericPredicates<'tcx> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         let tcx = self.tcx;
         let item_def_id = tcx.hir().ty_param_owner(def_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id.to_def_id()];
         // HACK(eddyb) should get the original `Span`.
         let span = tcx.def_span(def_id);
-        ty::GenericPredicates {
-            parent: None,
-            predicates: tcx.arena.alloc_from_iter(
-                self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                    match predicate.kind().skip_binder() {
-                        ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                            Some((predicate, span))
-                        }
-                        _ => None,
+
+        ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(
+            self.param_env.caller_bounds().iter().filter_map(|predicate| {
+                match predicate.kind().skip_binder() {
+                    ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
+                        Some((predicate, span))
                     }
-                }),
-            ),
-            effects_min_tys: ty::List::empty(),
-        }
+                    _ => None,
+                }
+            }),
+        ))
     }
 
     fn lower_assoc_ty(

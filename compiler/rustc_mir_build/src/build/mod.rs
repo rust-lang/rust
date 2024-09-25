@@ -1,6 +1,6 @@
 use itertools::Itertools;
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;

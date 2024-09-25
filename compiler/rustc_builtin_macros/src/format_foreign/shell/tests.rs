@@ -1,4 +1,4 @@
-use super::{parse_next_substitution as pns, Substitution as S};
+use super::{Substitution as S, parse_next_substitution as pns};
 
 macro_rules! assert_eq_pnsat {
     ($lhs:expr, $rhs:expr) => {
@@ -38,10 +38,11 @@ fn test_iter() {
     use super::iter_subs;
     let s = "The $0'th word $$ is: `$WORD` $!\n";
     let subs: Vec<_> = iter_subs(s, 0).map(|sub| sub.translate().ok()).collect();
-    assert_eq!(
-        subs.iter().map(Option::as_deref).collect::<Vec<_>>(),
-        vec![Some("{0}"), None, Some("{WORD}")]
-    );
+    assert_eq!(subs.iter().map(Option::as_deref).collect::<Vec<_>>(), vec![
+        Some("{0}"),
+        None,
+        Some("{WORD}")
+    ]);
 }
 
 #[test]

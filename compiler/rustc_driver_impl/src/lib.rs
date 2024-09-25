@@ -7,7 +7,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-#![cfg_attr(bootstrap, feature(unsafe_extern_blocks))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(decl_macro)]
@@ -25,7 +24,7 @@ use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
-use std::panic::{self, catch_unwind, PanicHookInfo};
+use std::panic::{self, PanicHookInfo, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -38,31 +37,30 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
 use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::profiling::{
-    get_resident_set_size, print_time_passes_entry, TimePassesFormat,
+    TimePassesFormat, get_resident_set_size, print_time_passes_entry,
 };
 use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    markdown, ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult,
+    ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult, markdown,
 };
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{interface, passes, Linker, Queries};
+use rustc_interface::{Linker, Queries, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
-    nightly_options, ErrorOutputType, Input, OutFileName, OutputType, UnstableOptions, CG_OPTIONS,
-    Z_OPTIONS,
+    CG_OPTIONS, ErrorOutputType, Input, OutFileName, OutputType, UnstableOptions, Z_OPTIONS,
+    nightly_options,
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::collect_crate_types;
-use rustc_session::{config, filesearch, EarlyDiagCtxt, Session};
-use rustc_span::source_map::FileLoader;
-use rustc_span::symbol::sym;
+use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
 use rustc_span::FileName;
+use rustc_span::source_map::FileLoader;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTriple};
 use time::OffsetDateTime;
@@ -209,17 +207,17 @@ pub fn diagnostics_registry() -> Registry {
 }
 
 /// This is the primary entry point for rustc.
-pub struct RunCompiler<'a, 'b> {
+pub struct RunCompiler<'a> {
     at_args: &'a [String],
-    callbacks: &'b mut (dyn Callbacks + Send),
+    callbacks: &'a mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     make_codegen_backend:
         Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
     using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 }
 
-impl<'a, 'b> RunCompiler<'a, 'b> {
-    pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
+impl<'a> RunCompiler<'a> {
+    pub fn new(at_args: &'a [String], callbacks: &'a mut (dyn Callbacks + Send)) -> Self {
         Self {
             at_args,
             callbacks,
@@ -322,7 +320,7 @@ fn run_compiler(
         output_dir: odir,
         ice_file,
         file_loader,
-        locale_resources: DEFAULT_LOCALE_RESOURCES,
+        locale_resources: DEFAULT_LOCALE_RESOURCES.to_vec(),
         lint_caps: Default::default(),
         psess_created: None,
         hash_untracked_state: None,
@@ -412,11 +410,9 @@ fn run_compiler(
                     });
                 } else {
                     let krate = queries.parse()?;
-                    pretty::print(
-                        sess,
-                        pp_mode,
-                        pretty::PrintExtra::AfterParsing { krate: &*krate.borrow() },
-                    );
+                    pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing {
+                        krate: &*krate.borrow(),
+                    });
                 }
                 trace!("finished pretty-printing");
                 return early_exit();
@@ -777,16 +773,8 @@ fn print_crate_info(
                     .config
                     .iter()
                     .filter_map(|&(name, value)| {
-                        // Note that crt-static is a specially recognized cfg
-                        // directive that's printed out here as part of
-                        // rust-lang/rust#37406, but in general the
-                        // `target_feature` cfg is gated under
-                        // rust-lang/rust#29717. For now this is just
-                        // specifically allowing the crt-static cfg and that's
-                        // it, this is intended to get into Cargo and then go
-                        // through to build scripts.
-                        if (name != sym::target_feature || value != Some(sym::crt_dash_static))
-                            && !sess.is_nightly_build()
+                        // On stable, exclude unstable flags.
+                        if !sess.is_nightly_build()
                             && find_gated_cfg(|cfg_sym| cfg_sym == name).is_some()
                         {
                             return None;
@@ -871,9 +859,9 @@ fn print_crate_info(
                 use rustc_target::spec::current_apple_deployment_target;
 
                 if sess.target.is_like_osx {
-                    let (major, minor) = current_apple_deployment_target(&sess.target)
-                        .expect("unknown Apple target OS");
-                    println_info!("deployment_target={}", format!("{major}.{minor}"))
+                    let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+                    let patch = if patch != 0 { format!(".{patch}") } else { String::new() };
+                    println_info!("deployment_target={major}.{minor}{patch}")
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")
@@ -1228,17 +1216,30 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
     // Parse with *all* options defined in the compiler, we don't worry about
     // option stability here we just want to parse as much as possible.
     let mut options = getopts::Options::new();
-    for option in config::rustc_optgroups() {
+    let optgroups = config::rustc_optgroups();
+    for option in &optgroups {
         (option.apply)(&mut options);
     }
     let matches = options.parse(args).unwrap_or_else(|e| {
-        let msg = match e {
+        let msg: Option<String> = match e {
             getopts::Fail::UnrecognizedOption(ref opt) => CG_OPTIONS
                 .iter()
                 .map(|&(name, ..)| ('C', name))
                 .chain(Z_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
                 .find(|&(_, name)| *opt == name.replace('_', "-"))
                 .map(|(flag, _)| format!("{e}. Did you mean `-{flag} {opt}`?")),
+            getopts::Fail::ArgumentMissing(ref opt) => {
+                optgroups.iter().find(|option| option.name == opt).map(|option| {
+                    // Print the help just for the option in question.
+                    let mut options = getopts::Options::new();
+                    (option.apply)(&mut options);
+                    // getopt requires us to pass a function for joining an iterator of
+                    // strings, even though in this case we expect exactly one string.
+                    options.usage_with_format(|it| {
+                        it.fold(format!("{e}\nUsage:"), |a, b| a + "\n" + &b)
+                    })
+                })
+            }
             _ => None,
         };
         early_dcx.early_fatal(msg.unwrap_or_else(|| e.to_string()));

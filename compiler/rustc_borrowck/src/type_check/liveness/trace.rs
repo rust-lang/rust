@@ -8,13 +8,14 @@ use rustc_infer::infer::outlives::for_liveness;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
-use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use tracing::debug;
 
 use crate::location::RichLocation;
 use crate::region_infer::values::{self, LiveLoans};
@@ -36,11 +37,11 @@ use crate::type_check::{NormalizeLocation, TypeChecker};
 /// DROP-LIVE set are to the liveness sets for regions found in the
 /// `dropck_outlives` result of the variable's type (in particular,
 /// this respects `#[may_dangle]` annotations).
-pub(super) fn trace<'mir, 'tcx>(
+pub(super) fn trace<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &Rc<DenseLocationMap>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
@@ -98,29 +99,29 @@ pub(super) fn trace<'mir, 'tcx>(
 }
 
 /// Contextual state for the type-liveness coroutine.
-struct LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx> {
+struct LivenessContext<'a, 'typeck, 'b, 'tcx> {
     /// Current type-checker, giving us our inference context etc.
-    typeck: &'me mut TypeChecker<'typeck, 'tcx>,
+    typeck: &'a mut TypeChecker<'typeck, 'tcx>,
 
     /// Defines the `PointIndex` mapping
-    elements: &'me DenseLocationMap,
+    elements: &'a DenseLocationMap,
 
     /// MIR we are analyzing.
-    body: &'me Body<'tcx>,
+    body: &'a Body<'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
-    move_data: &'me MoveData<'tcx>,
+    move_data: &'a MoveData<'tcx>,
 
     /// Cache for the results of `dropck_outlives` query.
     drop_data: FxIndexMap<Ty<'tcx>, DropData<'tcx>>,
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: &'me mut ResultsCursor<'flow, 'tcx, MaybeInitializedPlaces<'a, 'flow, 'tcx>>,
+    flow_inits: &'a mut ResultsCursor<'b, 'tcx, MaybeInitializedPlaces<'b, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
-    local_use_map: &'me LocalUseMap,
+    local_use_map: &'a LocalUseMap,
 }
 
 struct DropData<'tcx> {
@@ -128,8 +129,8 @@ struct DropData<'tcx> {
     region_constraint_data: Option<&'tcx QueryRegionConstraints<'tcx>>,
 }
 
-struct LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
-    cx: LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx>,
+struct LivenessResults<'a, 'typeck, 'b, 'tcx> {
+    cx: LivenessContext<'a, 'typeck, 'b, 'tcx>,
 
     /// Set of points that define the current local.
     defs: BitSet<PointIndex>,
@@ -150,8 +151,8 @@ struct LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
     stack: Vec<PointIndex>,
 }
 
-impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
-    fn new(cx: LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx>) -> Self {
+impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
+    fn new(cx: LivenessContext<'a, 'typeck, 'b, 'tcx>) -> Self {
         let num_points = cx.elements.num_points();
         LivenessResults {
             cx,
@@ -217,7 +218,7 @@ impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tc
         // This collect is more necessary than immediately apparent
         // because these facts go into `add_drop_live_facts_for()`,
         // which also writes to `all_facts`, and so this is genuinely
-        // a simulatneous overlapping mutable borrow.
+        // a simultaneous overlapping mutable borrow.
         // FIXME for future hackers: investigate whether this is
         // actually necessary; these facts come from Polonius
         // and probably maybe plausibly does not need to go back in.
@@ -352,11 +353,11 @@ impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tc
             let location = self.cx.elements.to_location(drop_point);
             debug_assert_eq!(self.cx.body.terminator_loc(location.block), location,);
 
-            if self.cx.initialized_at_terminator(location.block, mpi) {
-                if self.drop_live_at.insert(drop_point) {
-                    self.drop_locations.push(location);
-                    self.stack.push(drop_point);
-                }
+            if self.cx.initialized_at_terminator(location.block, mpi)
+                && self.drop_live_at.insert(drop_point)
+            {
+                self.drop_locations.push(location);
+                self.stack.push(drop_point);
             }
         }
 
@@ -504,7 +505,7 @@ impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tc
     }
 }
 
-impl<'tcx> LivenessContext<'_, '_, '_, '_, 'tcx> {
+impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     /// Returns `true` if the local variable (or some part of it) is initialized at the current
     /// cursor position. Callers should call one of the `seek` methods immediately before to point
     /// the cursor to the desired location.

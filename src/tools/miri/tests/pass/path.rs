@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
-use std::path::{absolute, Path, PathBuf};
+use std::path::{Path, PathBuf, absolute};
 
 #[path = "../utils/mod.rs"]
 mod utils;

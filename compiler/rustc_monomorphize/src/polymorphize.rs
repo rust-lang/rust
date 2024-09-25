@@ -5,9 +5,9 @@
 //! generic parameters are unused (and eventually, in what ways generic parameters are used - only
 //! for their size, offset of a field, etc.).
 
+use rustc_hir::ConstContext;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::ConstContext;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::{self, Local, LocalDecl, Location};
 use rustc_middle::query::Providers;
@@ -19,7 +19,7 @@ use tracing::{debug, instrument};
 use crate::errors::UnusedGenericParamsHint;
 
 /// Provide implementations of queries relating to polymorphization analysis.
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.unused_generic_params = unused_generic_params;
 }
 

@@ -7,10 +7,10 @@ use core::iter::{FusedIterator, Peekable};
 use core::mem::ManuallyDrop;
 use core::ops::{BitAnd, BitOr, BitXor, Bound, RangeBounds, Sub};
 
+use super::Recover;
 use super::map::{BTreeMap, Keys};
 use super::merge_iter::MergeIterInner;
 use super::set_val::SetValZST;
-use super::Recover;
 use crate::alloc::{Allocator, Global};
 use crate::vec::Vec;
 
@@ -1132,6 +1132,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "btreeset_iter")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { iter: self.map.keys() }
     }
@@ -2298,7 +2299,7 @@ impl<'a, T: Ord, A: Allocator + Clone> CursorMut<'a, T, A> {
         self.inner.remove_next().map(|(k, _)| k)
     }
 
-    /// Removes the precending element from the `BTreeSet`.
+    /// Removes the preceding element from the `BTreeSet`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).
@@ -2384,7 +2385,7 @@ impl<'a, T: Ord, A: Allocator + Clone> CursorMutKey<'a, T, A> {
         self.inner.remove_next().map(|(k, _)| k)
     }
 
-    /// Removes the precending element from the `BTreeSet`.
+    /// Removes the preceding element from the `BTreeSet`.
     ///
     /// The element that was removed is returned. The cursor position is
     /// unchanged (after the removed element).

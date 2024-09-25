@@ -39,11 +39,11 @@ mod raw;
 mod rotate;
 mod specialize;
 
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
+pub use ascii::EscapeAscii;
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 pub use ascii::is_ascii_simple;
-#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
-pub use ascii::EscapeAscii;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
@@ -156,7 +156,7 @@ impl<T> [T] {
         if let [first, ..] = self { Some(first) } else { None }
     }
 
-    /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
+    /// Returns a mutable reference to the first element of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -529,7 +529,7 @@ impl<T> [T] {
             None
         } else {
             // SAFETY: We manually verified the bounds of the slice.
-            // FIXME: Without const traits, we need this instead of `get_unchecked`.
+            // FIXME(const-hack): Without const traits, we need this instead of `get_unchecked`.
             let last = unsafe { self.split_at_unchecked(self.len() - N).1 };
 
             // SAFETY: We explicitly check for the correct number of elements,
@@ -563,7 +563,7 @@ impl<T> [T] {
             None
         } else {
             // SAFETY: We manually verified the bounds of the slice.
-            // FIXME: Without const traits, we need this instead of `get_unchecked`.
+            // FIXME(const-hack): Without const traits, we need this instead of `get_unchecked`.
             let last = unsafe { self.split_at_mut_unchecked(self.len() - N).1 };
 
             // SAFETY: We explicitly check for the correct number of elements,
@@ -846,7 +846,7 @@ impl<T> [T] {
     /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "slice_ptr_range", since = "1.48.0")]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[rustc_allow_const_fn_unstable(const_mut_refs)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs, const_refs_to_cell))]
     #[inline]
     #[must_use]
     pub const fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
@@ -1010,6 +1010,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "slice_iter")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter::new(self)
     }
@@ -1952,7 +1953,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
-        // HACK: the const function `from_raw_parts` is used to make this
+        // FIXME(const-hack): the const function `from_raw_parts` is used to make this
         // function const; previously the implementation used
         // `(self.get_unchecked(..mid), self.get_unchecked(mid..))`
 
@@ -4088,7 +4089,7 @@ impl<T> [T] {
     /// assert!(![0.0, 1.0, f32::NAN].is_sorted());
     /// ```
     #[inline]
-    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[must_use]
     pub fn is_sorted(&self) -> bool
     where
@@ -4115,7 +4116,7 @@ impl<T> [T] {
     /// assert!(empty.is_sorted_by(|a, b| false));
     /// assert!(empty.is_sorted_by(|a, b| true));
     /// ```
-    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[must_use]
     pub fn is_sorted_by<'a, F>(&'a self, mut compare: F) -> bool
     where
@@ -4139,7 +4140,7 @@ impl<T> [T] {
     /// assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     /// ```
     #[inline]
-    #[stable(feature = "is_sorted", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "is_sorted", since = "1.82.0")]
     #[must_use]
     pub fn is_sorted_by_key<'a, F, K>(&'a self, f: F) -> bool
     where

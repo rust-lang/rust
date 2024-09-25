@@ -240,7 +240,7 @@ fn test_zip_trusted_random_access_composition() {
 #[test]
 #[cfg(panic = "unwind")]
 fn test_zip_trusted_random_access_next_back_drop() {
-    use std::panic::{catch_unwind, AssertUnwindSafe};
+    use std::panic::{AssertUnwindSafe, catch_unwind};
 
     let mut counter = 0;
 

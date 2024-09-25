@@ -1,4 +1,4 @@
-version = "Two"
+style_edition = "2024"
 use_small_heuristics = "Max"
 match_arm_blocks = false
 match_arm_leading_pipes = "Preserve"

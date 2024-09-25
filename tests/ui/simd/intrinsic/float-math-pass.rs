@@ -13,7 +13,7 @@
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-struct f32x4(pub f32, pub f32, pub f32, pub f32);
+struct f32x4(pub [f32; 4]);
 
 extern "rust-intrinsic" {
     fn simd_fsqrt<T>(x: T) -> T;
@@ -47,19 +47,19 @@ macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({
         let a = $a;
         let b = $b;
-        assert_approx_eq_f32!(a.0, b.0);
-        assert_approx_eq_f32!(a.1, b.1);
-        assert_approx_eq_f32!(a.2, b.2);
-        assert_approx_eq_f32!(a.3, b.3);
+        assert_approx_eq_f32!(a.0[0], b.0[0]);
+        assert_approx_eq_f32!(a.0[1], b.0[1]);
+        assert_approx_eq_f32!(a.0[2], b.0[2]);
+        assert_approx_eq_f32!(a.0[3], b.0[3]);
     })
 }
 
 fn main() {
-    let x = f32x4(1.0, 1.0, 1.0, 1.0);
-    let y = f32x4(-1.0, -1.0, -1.0, -1.0);
-    let z = f32x4(0.0, 0.0, 0.0, 0.0);
+    let x = f32x4([1.0, 1.0, 1.0, 1.0]);
+    let y = f32x4([-1.0, -1.0, -1.0, -1.0]);
+    let z = f32x4([0.0, 0.0, 0.0, 0.0]);
 
-    let h = f32x4(0.5, 0.5, 0.5, 0.5);
+    let h = f32x4([0.5, 0.5, 0.5, 0.5]);
 
     unsafe {
         let r = simd_fabs(y);

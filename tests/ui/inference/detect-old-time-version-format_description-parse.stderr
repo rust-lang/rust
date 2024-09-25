@@ -1,8 +1,11 @@
-error[E0282]: type annotations needed for `Box<Vec<_>>`
-  --> $DIR/detect-old-time-version-format_description-parse.rs:4:9
+error[E0282]: type annotations needed for `Box<_>`
+  --> $DIR/detect-old-time-version-format_description-parse.rs:9:9
    |
-LL |     let items = Box::new(vec![]);
-   |         ^^^^^   ---------------- type must be known at this point
+LL |     let items = iter.collect::<Option<Box<_>>>()?;
+   |         ^^^^^
+LL |
+LL |     Some(items.into())
+   |                ---- type must be known at this point
    |
    = note: this is an inference error on crate `time` caused by an API change in Rust 1.80.0; update `time` to version `>=0.3.35` by calling `cargo update`
 

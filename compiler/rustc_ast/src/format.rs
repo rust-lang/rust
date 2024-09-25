@@ -1,10 +1,10 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_macros::{Decodable, Encodable};
-use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, Symbol};
 
-use crate::ptr::P;
 use crate::Expr;
+use crate::ptr::P;
 
 // Definitions:
 //

@@ -108,15 +108,12 @@ fn test_unescape_str_warn() {
     check("\\\n", &[]);
     check("\\\n ", &[]);
 
-    check(
-        "\\\n \u{a0} x",
-        &[
-            (0..5, Err(EscapeError::UnskippedWhitespaceWarning)),
-            (3..5, Ok('\u{a0}')),
-            (5..6, Ok(' ')),
-            (6..7, Ok('x')),
-        ],
-    );
+    check("\\\n \u{a0} x", &[
+        (0..5, Err(EscapeError::UnskippedWhitespaceWarning)),
+        (3..5, Ok('\u{a0}')),
+        (5..6, Ok(' ')),
+        (6..7, Ok('x')),
+    ]);
     check("\\\n  \n  x", &[(0..7, Err(EscapeError::MultipleSkippedLinesWarning)), (7..8, Ok('x'))]);
 }
 

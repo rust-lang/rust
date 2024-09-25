@@ -1,7 +1,7 @@
 use std::str;
 
-use rustc_span::source_map::FilePathMapping;
 use rustc_span::BytePos;
+use rustc_span::source_map::FilePathMapping;
 use serde::Deserialize;
 
 use super::*;
@@ -69,128 +69,96 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
 
 #[test]
 fn empty() {
-    test_positions(
-        " ",
-        (0, 1),
-        SpanTestData {
-            byte_start: 0,
-            byte_end: 1,
-            line_start: 1,
-            column_start: 1,
-            line_end: 1,
-            column_end: 2,
-        },
-    )
+    test_positions(" ", (0, 1), SpanTestData {
+        byte_start: 0,
+        byte_end: 1,
+        line_start: 1,
+        column_start: 1,
+        line_end: 1,
+        column_end: 2,
+    })
 }
 
 #[test]
 fn bom() {
-    test_positions(
-        "\u{feff} ",
-        (0, 1),
-        SpanTestData {
-            byte_start: 3,
-            byte_end: 4,
-            line_start: 1,
-            column_start: 1,
-            line_end: 1,
-            column_end: 2,
-        },
-    )
+    test_positions("\u{feff} ", (0, 1), SpanTestData {
+        byte_start: 3,
+        byte_end: 4,
+        line_start: 1,
+        column_start: 1,
+        line_end: 1,
+        column_end: 2,
+    })
 }
 
 #[test]
 fn lf_newlines() {
-    test_positions(
-        "\nmod foo;\nmod bar;\n",
-        (5, 12),
-        SpanTestData {
-            byte_start: 5,
-            byte_end: 12,
-            line_start: 2,
-            column_start: 5,
-            line_end: 3,
-            column_end: 3,
-        },
-    )
+    test_positions("\nmod foo;\nmod bar;\n", (5, 12), SpanTestData {
+        byte_start: 5,
+        byte_end: 12,
+        line_start: 2,
+        column_start: 5,
+        line_end: 3,
+        column_end: 3,
+    })
 }
 
 #[test]
 fn crlf_newlines() {
-    test_positions(
-        "\r\nmod foo;\r\nmod bar;\r\n",
-        (5, 12),
-        SpanTestData {
-            byte_start: 6,
-            byte_end: 14,
-            line_start: 2,
-            column_start: 5,
-            line_end: 3,
-            column_end: 3,
-        },
-    )
+    test_positions("\r\nmod foo;\r\nmod bar;\r\n", (5, 12), SpanTestData {
+        byte_start: 6,
+        byte_end: 14,
+        line_start: 2,
+        column_start: 5,
+        line_end: 3,
+        column_end: 3,
+    })
 }
 
 #[test]
 fn crlf_newlines_with_bom() {
-    test_positions(
-        "\u{feff}\r\nmod foo;\r\nmod bar;\r\n",
-        (5, 12),
-        SpanTestData {
-            byte_start: 9,
-            byte_end: 17,
-            line_start: 2,
-            column_start: 5,
-            line_end: 3,
-            column_end: 3,
-        },
-    )
+    test_positions("\u{feff}\r\nmod foo;\r\nmod bar;\r\n", (5, 12), SpanTestData {
+        byte_start: 9,
+        byte_end: 17,
+        line_start: 2,
+        column_start: 5,
+        line_end: 3,
+        column_end: 3,
+    })
 }
 
 #[test]
 fn span_before_crlf() {
-    test_positions(
-        "foo\r\nbar",
-        (2, 3),
-        SpanTestData {
-            byte_start: 2,
-            byte_end: 3,
-            line_start: 1,
-            column_start: 3,
-            line_end: 1,
-            column_end: 4,
-        },
-    )
+    test_positions("foo\r\nbar", (2, 3), SpanTestData {
+        byte_start: 2,
+        byte_end: 3,
+        line_start: 1,
+        column_start: 3,
+        line_end: 1,
+        column_end: 4,
+    })
 }
 
 #[test]
 fn span_on_crlf() {
-    test_positions(
-        "foo\r\nbar",
-        (3, 4),
-        SpanTestData {
-            byte_start: 3,
-            byte_end: 5,
-            line_start: 1,
-            column_start: 4,
-            line_end: 2,
-            column_end: 1,
-        },
-    )
+    test_positions("foo\r\nbar", (3, 4), SpanTestData {
+        byte_start: 3,
+        byte_end: 5,
+        line_start: 1,
+        column_start: 4,
+        line_end: 2,
+        column_end: 1,
+    })
 }
 
 #[test]
 fn span_after_crlf() {
-    test_positions(
-        "foo\r\nbar",
-        (4, 5),
-        SpanTestData {
-            byte_start: 5,
-            byte_end: 6,
-            line_start: 2,
-            column_start: 1,
-            line_end: 2,
-            column_end: 2,
-        },
-    )
+    test_positions("foo\r\nbar", (4, 5), SpanTestData {
+        byte_start: 5,
+        byte_end: 6,
+        line_start: 2,
+        column_start: 1,
+        line_end: 2,
+        column_end: 2,
+    })
 }

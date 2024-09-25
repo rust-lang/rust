@@ -7,13 +7,13 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::{
-    AttrStyle, AttrVec, Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, LocalKind, MacCall,
-    MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind, DUMMY_NODE_ID,
+    AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
+    LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
 };
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, ErrorGuaranteed, Span};
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 
 use super::attr::InnerAttrForbiddenReason;
 use super::diagnostics::AttemptLocalParseRecovery;
@@ -29,6 +29,9 @@ use crate::{errors, maybe_whole};
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
+    ///
+    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of
+    /// whether or not we have attributes.
     // Public for rustfmt usage.
     pub(super) fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
         Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|e| {
@@ -66,7 +69,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        Ok(Some(if self.token.is_keyword(kw::Let) {
+        let stmt = if self.token.is_keyword(kw::Let) {
             self.collect_tokens(None, attrs, force_collect, |this, attrs| {
                 this.expect_keyword(kw::Let)?;
                 let local = this.parse_local(attrs)?;
@@ -163,7 +166,10 @@ impl<'a> Parser<'a> {
         } else {
             self.error_outer_attrs(attrs);
             return Ok(None);
-        }))
+        };
+
+        self.maybe_augment_stashed_expr_in_pats_with_suggestions(&stmt);
+        Ok(Some(stmt))
     }
 
     fn parse_stmt_path_start(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {
@@ -411,20 +417,14 @@ impl<'a> Parser<'a> {
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
             let (span, sugg) = match trailing {
-                TrailingBrace::MacCall(mac) => (
-                    mac.span(),
-                    errors::WrapInParentheses::MacroArgs {
-                        left: mac.args.dspan.open,
-                        right: mac.args.dspan.close,
-                    },
-                ),
-                TrailingBrace::Expr(expr) => (
-                    expr.span,
-                    errors::WrapInParentheses::Expression {
-                        left: expr.span.shrink_to_lo(),
-                        right: expr.span.shrink_to_hi(),
-                    },
-                ),
+                TrailingBrace::MacCall(mac) => (mac.span(), errors::WrapInParentheses::MacroArgs {
+                    left: mac.args.dspan.open,
+                    right: mac.args.dspan.close,
+                }),
+                TrailingBrace::Expr(expr) => (expr.span, errors::WrapInParentheses::Expression {
+                    left: expr.span.shrink_to_lo(),
+                    right: expr.span.shrink_to_hi(),
+                }),
             };
             self.dcx().emit_err(errors::InvalidCurlyInLetElse {
                 span: span.with_lo(span.hi() - BytePos(1)),

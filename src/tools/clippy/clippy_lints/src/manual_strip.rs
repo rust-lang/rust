@@ -4,7 +4,7 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::usage::mutated_variables;
-use clippy_utils::{eq_expr_value, higher, match_def_path, paths};
+use clippy_utils::{eq_expr_value, higher};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -14,7 +14,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use std::iter;
 
 declare_clippy_lint! {
@@ -76,9 +76,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
             && self.msrv.meets(msrvs::STR_STRIP_PREFIX)
             && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id)
         {
-            let strip_kind = if match_def_path(cx, method_def_id, &paths::STR_STARTS_WITH) {
+            let strip_kind = if cx.tcx.is_diagnostic_item(sym::str_starts_with, method_def_id) {
                 StripKind::Prefix
-            } else if match_def_path(cx, method_def_id, &paths::STR_ENDS_WITH) {
+            } else if cx.tcx.is_diagnostic_item(sym::str_ends_with, method_def_id) {
                 StripKind::Suffix
             } else {
                 return;
@@ -137,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 fn len_arg<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::MethodCall(_, arg, [], _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && match_def_path(cx, method_def_id, &paths::STR_LEN)
+        && cx.tcx.is_diagnostic_item(sym::str_len, method_def_id)
     {
         Some(arg)
     } else {

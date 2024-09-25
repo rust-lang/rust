@@ -10,7 +10,7 @@ use rustc_span::sym;
 
 use crate::{inline, pass_manager as pm};
 
-pub fn provide(providers: &mut Providers) {
+pub(super) fn provide(providers: &mut Providers) {
     providers.cross_crate_inlinable = cross_crate_inlinable;
 }
 
@@ -24,7 +24,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
     // This just reproduces the logic from Instance::requires_inline.
     match tcx.def_kind(def_id) {
-        DefKind::Ctor(..) | DefKind::Closure => return true,
+        DefKind::Ctor(..) | DefKind::Closure | DefKind::SyntheticCoroutineBody => return true,
         DefKind::Fn | DefKind::AssocFn => {}
         _ => return false,
     }

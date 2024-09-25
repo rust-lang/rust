@@ -7,12 +7,12 @@ use std::time::Duration;
 
 use rand::RngCore;
 
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::{
-    def::{DefKind, Namespace},
-    def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE},
     Safety,
+    def::{DefKind, Namespace},
+    def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE},
 };
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -21,9 +21,8 @@ use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, MaybeResult};
 use rustc_middle::ty::{
-    self,
+    self, FloatTy, IntTy, Ty, TyCtxt, UintTy,
     layout::{LayoutOf, TyAndLayout},
-    FloatTy, IntTy, Ty, TyCtxt, UintTy,
 };
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
@@ -630,14 +629,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 self.ecx
             }
 
-            fn aggregate_field_order(memory_index: &IndexVec<FieldIdx, u32>, idx: usize) -> usize {
-                // We need to do an *inverse* lookup: find the field that has position `idx` in memory order.
-                for (src_field, &mem_pos) in memory_index.iter_enumerated() {
-                    if mem_pos as usize == idx {
-                        return src_field.as_usize();
-                    }
-                }
-                panic!("invalid `memory_index`, could not find {}-th field in memory order", idx);
+            fn aggregate_field_iter(
+                memory_index: &IndexVec<FieldIdx, u32>,
+            ) -> impl Iterator<Item = FieldIdx> + 'static {
+                let inverse_memory_index = memory_index.invert_bijective_mapping();
+                inverse_memory_index.into_iter()
             }
 
             // Hook to detect `UnsafeCell`.
@@ -872,7 +868,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Dereference a pointer operand to a place using `layout` instead of the pointer's declared type
     fn deref_pointer_as(
         &self,
-        op: &impl Readable<'tcx, Provenance>,
+        op: &impl Projectable<'tcx, Provenance>,
         layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let this = self.eval_context_ref();
@@ -883,7 +879,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Calculates the MPlaceTy given the offset and layout of an access on an operand
     fn deref_pointer_and_offset(
         &self,
-        op: &impl Readable<'tcx, Provenance>,
+        op: &impl Projectable<'tcx, Provenance>,
         offset: u64,
         base_layout: TyAndLayout<'tcx>,
         value_layout: TyAndLayout<'tcx>,
@@ -900,7 +896,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn deref_pointer_and_read(
         &self,
-        op: &impl Readable<'tcx, Provenance>,
+        op: &impl Projectable<'tcx, Provenance>,
         offset: u64,
         base_layout: TyAndLayout<'tcx>,
         value_layout: TyAndLayout<'tcx>,
@@ -912,7 +908,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn deref_pointer_and_write(
         &mut self,
-        op: &impl Readable<'tcx, Provenance>,
+        op: &impl Projectable<'tcx, Provenance>,
         offset: u64,
         value: impl Into<Scalar>,
         base_layout: TyAndLayout<'tcx>,

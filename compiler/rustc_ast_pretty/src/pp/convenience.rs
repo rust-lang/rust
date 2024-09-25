@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::pp::{BeginToken, BreakToken, Breaks, IndentStyle, Printer, Token, SIZE_INFINITY};
+use crate::pp::{BeginToken, BreakToken, Breaks, IndentStyle, Printer, SIZE_INFINITY, Token};
 
 impl Printer {
     /// "raw box"

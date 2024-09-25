@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use crate::fluent_generated as fluent;

@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-use crate::{has_ptr_meta, DebugContext, RevealAllLayoutCx};
+use crate::{DebugContext, RevealAllLayoutCx, has_ptr_meta};
 
 #[derive(Default)]
 pub(crate) struct TypeDebugContext<'tcx> {
@@ -44,7 +44,7 @@ impl DebugContext {
                 type_dbg,
                 ty,
                 *elem_ty,
-                len.eval_target_usize(tcx, ty::ParamEnv::reveal_all()),
+                len.try_to_target_usize(tcx).expect("expected monomorphic const in codegen"),
             ),
             // ty::Slice(_) | ty::Str
             // ty::Dynamic

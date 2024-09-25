@@ -9,7 +9,7 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 | Res |        └────<TAG=y, callee:y, caller:y>
 ──────────────────────────────────────────────────
 error: Undefined Behavior: write access through <TAG> (y, callee:y, caller:y) at ALLOC[0x0] is forbidden
-  --> $DIR/int-protected-write.rs:LL:CC
+  --> tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
    |
 LL |             *y = 0;
    |             ^^^^^^ write access through <TAG> (y, callee:y, caller:y) at ALLOC[0x0] is forbidden
@@ -19,19 +19,19 @@ LL |             *y = 0;
    = help: this foreign write access would cause the protected tag <TAG> (callee:x) (currently Reserved) to become Disabled
    = help: protected tags must never be Disabled
 help: the accessed tag <TAG> was created here
-  --> $DIR/int-protected-write.rs:LL:CC
+  --> tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
    |
 LL |         let y = (&mut *n) as *mut _;
    |                 ^^^^^^^^^
 help: the protected tag <TAG> was created here, in the initial state Reserved
-  --> $DIR/int-protected-write.rs:LL:CC
+  --> tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
    |
 LL |         unsafe fn write_second(x: &mut u8, y: *mut u8) {
    |                                ^
    = note: BACKTRACE (of the first span):
-   = note: inside `main::write_second` at $DIR/int-protected-write.rs:LL:CC
+   = note: inside `main::write_second` at tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
 note: inside `main`
-  --> $DIR/int-protected-write.rs:LL:CC
+  --> tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
    |
 LL |         write_second(x, y);
    |         ^^^^^^^^^^^^^^^^^^

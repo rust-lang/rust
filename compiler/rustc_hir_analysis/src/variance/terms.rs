@@ -15,6 +15,7 @@ use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
 use rustc_middle::ty::{self, TyCtxt};
+use tracing::debug;
 
 use self::VarianceTerm::*;
 

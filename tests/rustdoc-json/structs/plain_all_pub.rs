@@ -8,4 +8,4 @@ pub struct Demo {
 //@ is "$.index[*][?(@.name=='Demo')].inner.struct.kind.plain.fields[0]" $x
 //@ is "$.index[*][?(@.name=='Demo')].inner.struct.kind.plain.fields[1]" $y
 //@ count "$.index[*][?(@.name=='Demo')].inner.struct.kind.plain.fields[*]" 2
-//@ is "$.index[*][?(@.name=='Demo')].inner.struct.kind.plain.fields_stripped" false
+//@ is "$.index[*][?(@.name=='Demo')].inner.struct.kind.plain.has_stripped_fields" false

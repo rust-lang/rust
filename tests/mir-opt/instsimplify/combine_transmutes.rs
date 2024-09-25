@@ -5,7 +5,7 @@
 #![feature(custom_mir)]
 
 use std::intrinsics::mir::*;
-use std::mem::{transmute, ManuallyDrop, MaybeUninit};
+use std::mem::{ManuallyDrop, MaybeUninit, transmute};
 
 // EMIT_MIR combine_transmutes.identity_transmutes.InstSimplify-after-simplifycfg.diff
 pub unsafe fn identity_transmutes() {

@@ -1,11 +1,11 @@
 error: memory leaked: ALLOC (C heap, size: 0, align: 64), allocated here:
-  --> $DIR/posix_memalign_size_zero_leak.rs:LL:CC
+  --> tests/fail-dep/libc/posix_memalign_size_zero_leak.rs:LL:CC
    |
 LL |     let _ = unsafe { libc::posix_memalign(&mut ptr, align, size) };
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/posix_memalign_size_zero_leak.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/libc/posix_memalign_size_zero_leak.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

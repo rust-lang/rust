@@ -1,6 +1,8 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), feature(unqualified_local_imports))]
+#![cfg_attr(not(bootstrap), warn(unqualified_local_imports))]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -14,6 +16,7 @@
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod check_consts;
@@ -24,9 +27,10 @@ pub mod util;
 
 use std::sync::atomic::AtomicBool;
 
-pub use errors::ReportErrorExt;
 use rustc_middle::ty;
 use rustc_middle::util::Providers;
+
+pub use self::errors::ReportErrorExt;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

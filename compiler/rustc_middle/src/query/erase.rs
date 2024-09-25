@@ -1,6 +1,8 @@
 use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
+use rustc_span::ErrorGuaranteed;
+
 use crate::query::CyclePlaceholder;
 use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty};
@@ -214,6 +216,10 @@ impl<T0, T1> EraseType for (&'_ T0, &'_ T1) {
 
 impl<T0, T1> EraseType for (&'_ T0, &'_ [T1]) {
     type Result = [u8; size_of::<(&'static (), &'static [()])>()];
+}
+
+impl<T0> EraseType for (&'_ T0, Result<(), ErrorGuaranteed>) {
+    type Result = [u8; size_of::<(&'static (), Result<(), ErrorGuaranteed>)>()];
 }
 
 macro_rules! trivial {

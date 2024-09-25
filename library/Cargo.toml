@@ -31,8 +31,10 @@ codegen-units = 10000
 # helps to improve link times a little bit.
 [profile.release.package]
 addr2line.debug = 0
+addr2line.opt-level = "s"
 adler.debug = 0
 gimli.debug = 0
+gimli.opt-level = "s"
 miniz_oxide.debug = 0
 object.debug = 0
 rustc-demangle.debug = 0

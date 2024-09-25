@@ -2,10 +2,10 @@ use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::codes::*;
 use rustc_errors::MultiSpan;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_errors::codes::*;
 use rustc_hir::Node;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
@@ -22,11 +22,12 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_target::abi::FieldIdx;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_type_ir::fold::TypeFoldable;
+use tracing::{debug, instrument};
 use {rustc_attr as attr, rustc_hir as hir};
 
 use super::compare_impl_item::{check_type_bounds, compare_impl_method, compare_impl_ty};
@@ -1063,20 +1064,29 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
             return;
         }
-        let e = fields[FieldIdx::ZERO].ty(tcx, args);
-        if !fields.iter().all(|f| f.ty(tcx, args) == e) {
-            struct_span_code_err!(tcx.dcx(), sp, E0076, "SIMD vector should be homogeneous")
-                .with_span_label(sp, "SIMD elements must have the same type")
+
+        let array_field = &fields[FieldIdx::ZERO];
+        let array_ty = array_field.ty(tcx, args);
+        let ty::Array(element_ty, len_const) = array_ty.kind() else {
+            struct_span_code_err!(
+                tcx.dcx(),
+                sp,
+                E0076,
+                "SIMD vector's only field must be an array"
+            )
+            .with_span_label(tcx.def_span(array_field.did), "not an array")
+            .emit();
+            return;
+        };
+
+        if let Some(second_field) = fields.get(FieldIdx::from_u32(1)) {
+            struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot have multiple fields")
+                .with_span_label(tcx.def_span(second_field.did), "excess field")
                 .emit();
             return;
         }
 
-        let len = if let ty::Array(_ty, c) = e.kind() {
-            c.try_eval_target_usize(tcx, tcx.param_env(def.did()))
-        } else {
-            Some(fields.len() as u64)
-        };
-        if let Some(len) = len {
+        if let Some(len) = len_const.try_eval_target_usize(tcx, tcx.param_env(def.did())) {
             if len == 0 {
                 struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
                 return;
@@ -1096,16 +1106,9 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         // These are scalar types which directly match a "machine" type
         // Yes: Integers, floats, "thin" pointers
         // No: char, "fat" pointers, compound types
-        match e.kind() {
-            ty::Param(_) => (), // pass struct<T>(T, T, T, T) through, let monomorphization catch errors
-            ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _) => (), // struct(u8, u8, u8, u8) is ok
-            ty::Array(t, _) if matches!(t.kind(), ty::Param(_)) => (), // pass struct<T>([T; N]) through, let monomorphization catch errors
-            ty::Array(t, _clen)
-                if matches!(
-                    t.kind(),
-                    ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _)
-                ) =>
-            { /* struct([f32; 4]) is ok */ }
+        match element_ty.kind() {
+            ty::Param(_) => (), // pass struct<T>([T; 4]) through, let monomorphization catch errors
+            ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_, _) => (), // struct([u8; 4]) is ok
             _ => {
                 struct_span_code_err!(
                     tcx.dcx(),
@@ -1148,42 +1151,40 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                 "type has conflicting packed and align representation hints"
             )
             .emit();
-        } else {
-            if let Some(def_spans) = check_packed_inner(tcx, def.did(), &mut vec![]) {
-                let mut err = struct_span_code_err!(
-                    tcx.dcx(),
-                    sp,
-                    E0588,
-                    "packed type cannot transitively contain a `#[repr(align)]` type"
-                );
+        } else if let Some(def_spans) = check_packed_inner(tcx, def.did(), &mut vec![]) {
+            let mut err = struct_span_code_err!(
+                tcx.dcx(),
+                sp,
+                E0588,
+                "packed type cannot transitively contain a `#[repr(align)]` type"
+            );
 
-                err.span_note(
-                    tcx.def_span(def_spans[0].0),
-                    format!("`{}` has a `#[repr(align)]` attribute", tcx.item_name(def_spans[0].0)),
-                );
+            err.span_note(
+                tcx.def_span(def_spans[0].0),
+                format!("`{}` has a `#[repr(align)]` attribute", tcx.item_name(def_spans[0].0)),
+            );
 
-                if def_spans.len() > 2 {
-                    let mut first = true;
-                    for (adt_def, span) in def_spans.iter().skip(1).rev() {
-                        let ident = tcx.item_name(*adt_def);
-                        err.span_note(
-                            *span,
-                            if first {
-                                format!(
-                                    "`{}` contains a field of type `{}`",
-                                    tcx.type_of(def.did()).instantiate_identity(),
-                                    ident
-                                )
-                            } else {
-                                format!("...which contains a field of type `{ident}`")
-                            },
-                        );
-                        first = false;
-                    }
+            if def_spans.len() > 2 {
+                let mut first = true;
+                for (adt_def, span) in def_spans.iter().skip(1).rev() {
+                    let ident = tcx.item_name(*adt_def);
+                    err.span_note(
+                        *span,
+                        if first {
+                            format!(
+                                "`{}` contains a field of type `{}`",
+                                tcx.type_of(def.did()).instantiate_identity(),
+                                ident
+                            )
+                        } else {
+                            format!("...which contains a field of type `{ident}`")
+                        },
+                    );
+                    first = false;
                 }
-
-                err.emit();
             }
+
+            err.emit();
         }
     }
 }

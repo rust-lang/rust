@@ -32,8 +32,8 @@
 
 use std::cmp::Ordering;
 
-use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::Idx;
+use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
 use rustc_middle::ty::TyCtxt;
 
@@ -49,7 +49,7 @@ pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::engine::{Engine, Results};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
-pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
+pub use self::visitor::{ResultsVisitable, ResultsVisitor, visit_results};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
 /// operations needed by all of them.
@@ -510,7 +510,7 @@ impl<T: Idx> GenKill<T> for lattice::Dual<BitSet<T>> {
 
 // NOTE: DO NOT CHANGE VARIANT ORDER. The derived `Ord` impls rely on the current order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Effect {
+enum Effect {
     /// The "before" effect (e.g., `apply_before_statement_effect`) for a statement (or
     /// terminator).
     Before,
@@ -520,7 +520,7 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub const fn at_index(self, statement_index: usize) -> EffectIndex {
+    const fn at_index(self, statement_index: usize) -> EffectIndex {
         EffectIndex { effect: self, statement_index }
     }
 }

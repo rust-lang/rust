@@ -14,6 +14,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::traits::{
     self, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, UncoveredTyParams,
 };
+use tracing::{debug, instrument};
 
 use crate::errors;
 

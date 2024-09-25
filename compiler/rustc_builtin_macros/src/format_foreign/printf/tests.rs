@@ -1,4 +1,4 @@
-use super::{iter_subs, parse_next_substitution as pns, Format as F, Num as N, Substitution as S};
+use super::{Format as F, Num as N, Substitution as S, iter_subs, parse_next_substitution as pns};
 
 macro_rules! assert_eq_pnsat {
     ($lhs:expr, $rhs:expr) => {
@@ -99,10 +99,12 @@ fn test_parse() {
 fn test_iter() {
     let s = "The %d'th word %% is: `%.*s` %!\n";
     let subs: Vec<_> = iter_subs(s, 0).map(|sub| sub.translate().ok()).collect();
-    assert_eq!(
-        subs.iter().map(Option::as_deref).collect::<Vec<_>>(),
-        vec![Some("{}"), None, Some("{:.*}"), None]
-    );
+    assert_eq!(subs.iter().map(Option::as_deref).collect::<Vec<_>>(), vec![
+        Some("{}"),
+        None,
+        Some("{:.*}"),
+        None
+    ]);
 }
 
 /// Checks that the translations are what we expect.

@@ -51,7 +51,7 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
                 if has_advanced {
                     ptr::copy(it.ptr.as_ptr(), it.buf.as_ptr(), it.len());
                 }
-                return Vec::from_nonnull(it.buf, it.len(), it.cap);
+                return Vec::from_parts(it.buf, it.len(), it.cap);
             }
         }
 

@@ -7,6 +7,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::{self, Region, TyCtxt};
+use tracing::debug;
 
 /// This function calls the `visit_ty` method for the parameters
 /// corresponding to the anonymous regions. The `nested_visitor.found_type`

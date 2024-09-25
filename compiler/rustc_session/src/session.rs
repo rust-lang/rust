@@ -2,9 +2,9 @@ use std::any::Any;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
-use std::sync::Arc;
 use std::{env, fmt, io};
 
 use rustc_data_structures::flock;
@@ -16,12 +16,12 @@ use rustc_data_structures::sync::{
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter, HumanReadableErrorType};
+use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    fallback_fluent_bundle, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic,
-    ErrorGuaranteed, FatalAbort, FluentBundle, LazyFallbackBundle, TerminalUrl,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
+    FluentBundle, LazyFallbackBundle, TerminalUrl, fallback_fluent_bundle,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -30,8 +30,8 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo,
-    StackProtector, Target, TargetTriple, TlsModel,
+    CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    SmallDataThresholdSupport, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
 };
 
 use crate::code_stats::CodeStats;
@@ -41,7 +41,7 @@ use crate::config::{
     InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
     SwitchWithOptPath,
 };
-use crate::parse::{add_feature_diagnostics, ParseSess};
+use crate::parse::{ParseSess, add_feature_diagnostics};
 use crate::search_paths::{PathKind, SearchPath};
 use crate::{errors, filesearch, lint};
 
@@ -1278,6 +1278,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    if sess.opts.unstable_opts.small_data_threshold.is_some() {
+        if sess.target.small_data_threshold_support() == SmallDataThresholdSupport::None {
+            sess.dcx().emit_warn(errors::SmallDataThresholdNotSupportedForTarget {
+                target_triple: &sess.opts.target_triple,
+            })
+        }
+    }
+
     if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch != "aarch64" {
         sess.dcx().emit_err(errors::BranchProtectionRequiresAArch64);
     }
@@ -1338,6 +1346,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             {
                 sess.dcx().emit_err(errors::FunctionReturnThunkExternRequiresNonLargeCodeModel);
             }
+        }
+    }
+
+    if sess.opts.cg.soft_float {
+        if sess.target.arch == "arm" && sess.target.abi == "eabihf" {
+            sess.dcx().emit_warn(errors::SoftFloatDeprecated);
+        } else {
+            // All `use_softfp` does is the equivalent of `-mfloat-abi` in GCC/clang, which only exists on ARM targets.
+            // We document this flag to only affect `*eabihf` targets, so let's show a warning for all other targets.
+            sess.dcx().emit_warn(errors::SoftFloatIgnored);
         }
     }
 }

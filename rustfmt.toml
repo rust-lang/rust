@@ -1,5 +1,5 @@
 # Run rustfmt with this config (it should be picked up automatically).
-version = "Two"
+style_edition = "2024"
 use_small_heuristics = "Max"
 merge_derives = false
 group_imports = "StdExternalCrate"
@@ -45,6 +45,7 @@ ignore = [
     "src/tools/rust-analyzer",
     "src/tools/rustc-perf",
     "src/tools/rustfmt",
+    "src/gcc",
 
     # These are ignored by a standard cargo fmt run.
     "compiler/rustc_codegen_cranelift/scripts",

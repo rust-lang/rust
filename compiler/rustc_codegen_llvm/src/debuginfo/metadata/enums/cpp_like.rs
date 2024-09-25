@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use libc::c_uint;
 use rustc_codegen_ssa::debuginfo::type_names::compute_debuginfo_type_name;
 use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
-use rustc_codegen_ssa::traits::ConstMethods;
+use rustc_codegen_ssa::traits::ConstCodegenMethods;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
@@ -15,9 +15,9 @@ use crate::common::CodegenCx;
 use crate::debuginfo::metadata::enums::DiscrResult;
 use crate::debuginfo::metadata::type_map::{self, Stub, UniqueTypeId};
 use crate::debuginfo::metadata::{
+    DINodeCreationResult, NO_GENERICS, NO_SCOPE_METADATA, SmallVec, UNKNOWN_LINE_NUMBER,
     build_field_di_node, file_metadata, size_and_align_of, type_di_node, unknown_file_metadata,
-    visibility_di_flags, DINodeCreationResult, SmallVec, NO_GENERICS, NO_SCOPE_METADATA,
-    UNKNOWN_LINE_NUMBER,
+    visibility_di_flags,
 };
 use crate::debuginfo::utils::DIB;
 use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};

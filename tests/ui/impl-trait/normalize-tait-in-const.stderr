@@ -1,17 +1,17 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:27:42
+  --> $DIR/normalize-tait-in-const.rs:26:42
    |
 LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
    |                                          ^^^^^^^^^^^^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:27:69
+  --> $DIR/normalize-tait-in-const.rs:26:69
    |
 LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
    |                                                                     ^^^^^^^^
 
 error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/normalize-tait-in-const.rs:28:5
+  --> $DIR/normalize-tait-in-const.rs:27:5
    |
 LL |     fun(filter_positive());
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL + #![feature(effects)]
    |
 
 error[E0493]: destructor of `F` cannot be evaluated at compile-time
-  --> $DIR/normalize-tait-in-const.rs:27:79
+  --> $DIR/normalize-tait-in-const.rs:26:79
    |
 LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
    |                                                                               ^^^ the destructor for this type cannot be evaluated in constant functions

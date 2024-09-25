@@ -1,5 +1,8 @@
-//@only-target-linux
+//@only-target: linux
 //@compile-flags: -Zmiri-disable-isolation
+
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
 
 use std::mem::MaybeUninit;
 use std::ptr::{self, addr_of};
@@ -158,7 +161,9 @@ fn wait_wake() {
         );
     }
 
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    // When running this in stress-gc mode, things can take quite long.
+    // So the timeout is 3000 ms.
+    assert!((200..3000).contains(&start.elapsed().as_millis()));
     t.join().unwrap();
 }
 

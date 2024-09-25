@@ -254,7 +254,7 @@ pub struct WinError {
     pub code: u32,
 }
 impl WinError {
-    const fn new(code: u32) -> Self {
+    pub const fn new(code: u32) -> Self {
         Self { code }
     }
 }
@@ -272,8 +272,11 @@ impl WinError {
     // tidy-alphabetical-start
     pub const ACCESS_DENIED: Self = Self::new(c::ERROR_ACCESS_DENIED);
     pub const ALREADY_EXISTS: Self = Self::new(c::ERROR_ALREADY_EXISTS);
+    pub const BAD_NET_NAME: Self = Self::new(c::ERROR_BAD_NET_NAME);
+    pub const BAD_NETPATH: Self = Self::new(c::ERROR_BAD_NETPATH);
     pub const CANT_ACCESS_FILE: Self = Self::new(c::ERROR_CANT_ACCESS_FILE);
     pub const DELETE_PENDING: Self = Self::new(c::ERROR_DELETE_PENDING);
+    pub const DIR_NOT_EMPTY: Self = Self::new(c::ERROR_DIR_NOT_EMPTY);
     pub const DIRECTORY: Self = Self::new(c::ERROR_DIRECTORY);
     pub const FILE_NOT_FOUND: Self = Self::new(c::ERROR_FILE_NOT_FOUND);
     pub const INSUFFICIENT_BUFFER: Self = Self::new(c::ERROR_INSUFFICIENT_BUFFER);

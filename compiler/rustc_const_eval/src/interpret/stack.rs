@@ -1,5 +1,5 @@
 //! Manages the low-level pushing and popping of stack frames and the (de)allocation of local variables.
-//! For hadling of argument passing and return values, see the `call` module.
+//! For handling of argument passing and return values, see the `call` module.
 use std::cell::Cell;
 use std::{fmt, mem};
 
@@ -15,9 +15,9 @@ use rustc_span::Span;
 use tracing::{info_span, instrument, trace};
 
 use super::{
-    from_known_layout, throw_ub, throw_unsup, AllocId, CtfeProvenance, Immediate, InterpCx,
-    InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, MemoryKind, Operand, Pointer,
-    Provenance, ReturnAction, Scalar,
+    AllocId, CtfeProvenance, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
+    MemPlaceMeta, MemoryKind, Operand, Pointer, Provenance, ReturnAction, Scalar,
+    from_known_layout, throw_ub, throw_unsup,
 };
 use crate::errors;
 
@@ -534,8 +534,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
             Operand::Indirect(*dest_place.mplace())
         } else {
-            assert!(!meta.has_meta()); // we're dropping the metadata
             // Just make this an efficient immediate.
+            assert!(!meta.has_meta()); // we're dropping the metadata
+            // Make sure the machine knows this "write" is happening. (This is important so that
+            // races involving local variable allocation can be detected by Miri.)
+            M::after_local_write(self, local, /*storage_live*/ true)?;
             // Note that not calling `layout_of` here does have one real consequence:
             // if the type is too big, we'll only notice this when the local is actually initialized,
             // which is a bit too late -- we should ideally notice this already here, when the memory

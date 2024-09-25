@@ -1,6 +1,6 @@
-use crate::spec::{cvs, PanicStrategy, RelocModel, TargetOptions};
+use crate::spec::{PanicStrategy, RelocModel, TargetOptions, cvs};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         os: "linux".into(),
         env: "musl".into(),

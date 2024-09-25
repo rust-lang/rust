@@ -1,0 +1,95 @@
+error: using `#![feature(effects)]` without enabling next trait solver globally
+   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
+
+warning: this function depends on never type fallback being `()`
+  --> $DIR/unsupported.rs:20:9
+   |
+LL |         fn opaque_ret() -> impl Trait { unimplemented!() }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: opaque::Trait` will fail
+  --> $DIR/unsupported.rs:20:28
+   |
+LL |         fn opaque_ret() -> impl Trait { unimplemented!() }
+   |                            ^^^^^^^^^^
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:26:5: 26:24>::{synthetic#0}`
+  --> $DIR/unsupported.rs:27:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   |
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/unsupported.rs:27:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:26:5: 26:24>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:26:5: 26:24>` is well-formed
+  --> $DIR/unsupported.rs:26:5
+   |
+LL |     impl ToReuse for u8 {
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+warning: this function depends on never type fallback being `()`
+  --> $DIR/unsupported.rs:14:9
+   |
+LL |         pub fn opaque_ret() -> impl Trait { unimplemented!() }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: opaque::Trait` will fail
+  --> $DIR/unsupported.rs:14:32
+   |
+LL |         pub fn opaque_ret() -> impl Trait { unimplemented!() }
+   |                                ^^^^^^^^^^
+
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:29:5: 29:25>::{synthetic#0}`
+  --> $DIR/unsupported.rs:30:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   |
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/unsupported.rs:30:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:29:5: 29:25>::{synthetic#0}`, completing the cycle
+note: cycle used when checking that `opaque::<impl at $DIR/unsupported.rs:29:5: 29:25>` is well-formed
+  --> $DIR/unsupported.rs:29:5
+   |
+LL |     impl ToReuse for u16 {
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: recursive delegation is not supported yet
+  --> $DIR/unsupported.rs:43:22
+   |
+LL |         pub reuse to_reuse2::foo;
+   |                              --- callee defined here
+...
+LL |     reuse to_reuse1::foo;
+   |                      ^^^
+
+error: delegation to a function with effect parameter is not supported yet
+  --> $DIR/unsupported.rs:53:18
+   |
+LL |         fn foo();
+   |         --------- callee defined here
+...
+LL |     reuse Trait::foo;
+   |                  ^^^
+
+error: aborting due to 5 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0391`.

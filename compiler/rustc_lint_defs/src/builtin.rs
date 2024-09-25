@@ -9,7 +9,7 @@
 
 use rustc_span::edition::Edition;
 
-use crate::{declare_lint, declare_lint_pass, FutureIncompatibilityReason};
+use crate::{FutureIncompatibilityReason, declare_lint, declare_lint_pass};
 
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
@@ -29,7 +29,6 @@ declare_lint_pass! {
         CENUM_IMPL_DROP_CAST,
         COHERENCE_LEAK_CHECK,
         CONFLICTING_REPR_HINTS,
-        CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
         DEAD_CODE,
@@ -42,6 +41,7 @@ declare_lint_pass! {
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
+        ELIDED_NAMED_LIFETIMES,
         EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
@@ -99,7 +99,6 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
-        STATIC_MUT_REFS,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         TRIVIAL_CASTS,
@@ -1863,6 +1862,39 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `elided_named_lifetimes` lint detects when an elided
+    /// lifetime ends up being a named lifetime, such as `'static`
+    /// or some lifetime parameter `'a`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # #[cfg_attr(bootstrap)] compile_error!(); // Remove this in bootstrap bump.
+    /// #![deny(elided_named_lifetimes)]
+    /// struct Foo;
+    /// impl Foo {
+    ///     pub fn get_mut(&'static self, x: &mut u8) -> &mut u8 {
+    ///         unsafe { &mut *(x as *mut _) }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Lifetime elision is quite useful, because it frees you from having
+    /// to give each lifetime its own name, but sometimes it can produce
+    /// somewhat surprising resolutions. In safe code, it is mostly okay,
+    /// because the borrow checker prevents any unsoundness, so the worst
+    /// case scenario is you get a confusing error message in some other place.
+    /// But with `unsafe` code, such unexpected resolutions may lead to unsound code.
+    pub ELIDED_NAMED_LIFETIMES,
+    Warn,
+    "detects when an elided lifetime gets resolved to be `'static` or some named parameter"
+}
+
+declare_lint! {
     /// The `bare_trait_objects` lint suggests using `dyn Trait` for trait
     /// objects.
     ///
@@ -1891,57 +1923,6 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>",
-    };
-}
-
-declare_lint! {
-    /// The `static_mut_refs` lint checks for shared or mutable references
-    /// of mutable static inside `unsafe` blocks and `unsafe` functions.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,edition2021
-    /// fn main() {
-    ///     static mut X: i32 = 23;
-    ///     static mut Y: i32 = 24;
-    ///
-    ///     unsafe {
-    ///         let y = &X;
-    ///         let ref x = X;
-    ///         let (x, y) = (&X, &Y);
-    ///         foo(&X);
-    ///     }
-    /// }
-    ///
-    /// unsafe fn _foo() {
-    ///     static mut X: i32 = 23;
-    ///     static mut Y: i32 = 24;
-    ///
-    ///     let y = &X;
-    ///     let ref x = X;
-    ///     let (x, y) = (&X, &Y);
-    ///     foo(&X);
-    /// }
-    ///
-    /// fn foo<'a>(_x: &'a i32) {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Shared or mutable references of mutable static are almost always a mistake and
-    /// can lead to undefined behavior and various other problems in your code.
-    ///
-    /// This lint is "warn" by default on editions up to 2021, in 2024 there is
-    /// a hard error instead.
-    pub STATIC_MUT_REFS,
-    Warn,
-    "shared references or mutable references of mutable static is discouraged",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "issue #114447 <https://github.com/rust-lang/rust/issues/114447>",
-        explain_reason: false,
     };
 }
 
@@ -2769,51 +2750,6 @@ declare_lint! {
     Allow,
     "a lossy pointer to integer cast is used",
     @feature_gate = strict_provenance;
-}
-
-declare_lint! {
-    /// The `const_eval_mutable_ptr_in_final_value` lint detects if a mutable pointer
-    /// has leaked into the final value of a const expression.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// pub enum JsValue {
-    ///     Undefined,
-    ///     Object(std::cell::Cell<bool>),
-    /// }
-    ///
-    /// impl ::std::ops::Drop for JsValue {
-    ///     fn drop(&mut self) {}
-    /// }
-    ///
-    /// const UNDEFINED: &JsValue = &JsValue::Undefined;
-    ///
-    /// fn main() {
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// In the 1.77 release, the const evaluation machinery adopted some
-    /// stricter rules to reject expressions with values that could
-    /// end up holding mutable references to state stored in static memory
-    /// (which is inherently immutable).
-    ///
-    /// This is a [future-incompatible] lint to ease the transition to an error.
-    /// See [issue #122153] for more details.
-    ///
-    /// [issue #122153]: https://github.com/rust-lang/rust/issues/122153
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub CONST_EVAL_MUTABLE_PTR_IN_FINAL_VALUE,
-    Warn,
-    "detects a mutable pointer that has leaked into final value of a const expression",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #122153 <https://github.com/rust-lang/rust/issues/122153>",
-    };
 }
 
 declare_lint! {
@@ -3673,7 +3609,7 @@ declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
 
 declare_lint! {
     /// The `missing_abi` lint detects cases where the ABI is omitted from
-    /// extern declarations.
+    /// `extern` declarations.
     ///
     /// ### Example
     ///
@@ -3687,10 +3623,12 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Historically, Rust implicitly selected C as the ABI for extern
-    /// declarations. We expect to add new ABIs, like `C-unwind`, in the future,
-    /// though this has not yet happened, and especially with their addition
-    /// seeing the ABI easily will make code review easier.
+    /// For historic reasons, Rust implicitly selects `C` as the default ABI for
+    /// `extern` declarations. [Other ABIs] like `C-unwind` and `system` have
+    /// been added since then, and especially with their addition seeing the ABI
+    /// easily makes code review easier.
+    ///
+    /// [Other ABIs]: https://doc.rust-lang.org/reference/items/external-blocks.html#abi
     pub MISSING_ABI,
     Allow,
     "No declared ABI for extern declaration"
@@ -4771,7 +4709,7 @@ declare_lint! {
     /// version of Rust this will be fixed and therefore dependencies relying
     /// on the non-spec-compliant C ABI will stop functioning.
     pub WASM_C_ABI,
-    Warn,
+    Deny,
     "detects dependencies that are incompatible with the Wasm C ABI",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,

@@ -10,7 +10,7 @@ use crate::spec::{
     Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, StackProbeType, Target, TargetOptions,
 };
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         abi: "softfloat".into(),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),

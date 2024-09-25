@@ -36,10 +36,13 @@ pub struct Rustc {
 
 crate::macros::impl_common_helpers!(Rustc);
 
+pub fn rustc_path() -> String {
+    env_var("RUSTC")
+}
+
 #[track_caller]
 fn setup_common() -> Command {
-    let rustc = env_var("RUSTC");
-    let mut cmd = Command::new(rustc);
+    let mut cmd = Command::new(rustc_path());
     set_host_rpath(&mut cmd);
     cmd
 }
@@ -291,9 +294,9 @@ impl Rustc {
         self
     }
 
-    /// Specify a stdin input
-    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.stdin(input);
+    /// Specify a stdin input buffer.
+    pub fn stdin_buf<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.cmd.stdin_buf(input);
         self
     }
 

@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_errors::{
-    struct_span_code_err, Diag, EmissionGuarantee, ErrorGuaranteed, FatalError, E0275,
+    Diag, E0275, EmissionGuarantee, ErrorGuaranteed, FatalError, struct_span_code_err,
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::Span;
 use rustc_type_ir::Upcast;
+use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;
 

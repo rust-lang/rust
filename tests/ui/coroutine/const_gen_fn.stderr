@@ -1,0 +1,20 @@
+error: functions cannot be both `const` and `gen`
+  --> $DIR/const_gen_fn.rs:6:1
+   |
+LL | const gen fn a() {}
+   | ^^^^^-^^^----------
+   | |     |
+   | |     `gen` because of this
+   | `const` because of this
+
+error: functions cannot be both `const` and `async gen`
+  --> $DIR/const_gen_fn.rs:9:1
+   |
+LL | const async gen fn b() {}
+   | ^^^^^-^^^^^^^^^----------
+   | |     |
+   | |     `async gen` because of this
+   | `const` because of this
+
+error: aborting due to 2 previous errors
+

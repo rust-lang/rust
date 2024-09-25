@@ -22,16 +22,16 @@ use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::Visibility;
+use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::{bug, implement_ty_decoder};
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
-use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_session::Session;
+use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::symbol::kw;
-use rustc_span::{BytePos, Pos, SpanData, SpanDecoder, SyntaxContext, DUMMY_SP};
+use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext};
 use tracing::debug;
 
 use crate::creader::CStore;
@@ -56,13 +56,13 @@ impl std::ops::Deref for MetadataBlob {
 
 impl MetadataBlob {
     /// Runs the [`MemDecoder`] validation and if it passes, constructs a new [`MetadataBlob`].
-    pub fn new(slice: OwnedSlice) -> Result<Self, ()> {
+    pub(crate) fn new(slice: OwnedSlice) -> Result<Self, ()> {
         if MemDecoder::new(&slice, 0).is_ok() { Ok(Self(slice)) } else { Err(()) }
     }
 
     /// Since this has passed the validation of [`MetadataBlob::new`], this returns bytes which are
     /// known to pass the [`MemDecoder`] validation.
-    pub fn bytes(&self) -> &OwnedSlice {
+    pub(crate) fn bytes(&self) -> &OwnedSlice {
         &self.0
     }
 }
@@ -332,12 +332,12 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn blob(&self) -> &'a MetadataBlob {
+    pub(crate) fn blob(&self) -> &'a MetadataBlob {
         self.blob
     }
 
     #[inline]
-    pub fn cdata(&self) -> CrateMetadataRef<'a> {
+    fn cdata(&self) -> CrateMetadataRef<'a> {
         debug_assert!(self.cdata.is_some(), "missing CrateMetadata in DecodeContext");
         self.cdata.unwrap()
     }
@@ -377,7 +377,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
+    fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
         self.opaque.read_raw_bytes(len)
     }
 }
@@ -1070,34 +1070,6 @@ impl<'a> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_explicit_item_bounds<'tcx>(
-        self,
-        index: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        let lazy = self.root.tables.explicit_item_bounds.get(self, index);
-        let output = if lazy.is_default() {
-            &mut []
-        } else {
-            tcx.arena.alloc_from_iter(lazy.decode((self, tcx)))
-        };
-        ty::EarlyBinder::bind(&*output)
-    }
-
-    fn get_explicit_item_super_predicates<'tcx>(
-        self,
-        index: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        let lazy = self.root.tables.explicit_item_super_predicates.get(self, index);
-        let output = if lazy.is_default() {
-            &mut []
-        } else {
-            tcx.arena.alloc_from_iter(lazy.decode((self, tcx)))
-        };
-        ty::EarlyBinder::bind(&*output)
-    }
-
     fn get_variant(
         self,
         kind: DefKind,
@@ -1321,10 +1293,6 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn is_item_mir_available(self, id: DefIndex) -> bool {
         self.root.tables.optimized_mir.get(self, id).is_some()
-    }
-
-    fn cross_crate_inlinable(self, id: DefIndex) -> bool {
-        self.root.tables.cross_crate_inlinable.get(self, id)
     }
 
     fn get_fn_has_self_parameter(self, id: DefIndex, sess: &'a Session) -> bool {

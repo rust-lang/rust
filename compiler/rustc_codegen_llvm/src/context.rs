@@ -1,13 +1,12 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
-use std::ffi::CStr;
+use std::ffi::{CStr, c_uint};
 use std::str;
 
-use libc::c_uint;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::base_n::{ToBaseN, ALPHANUMERIC_ONLY};
+use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
@@ -15,30 +14,29 @@ use rustc_middle::middle::codegen_fn_attrs::PatchableFunctionEntry;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
-    TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
+use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, PAuthKey, PacRet,
 };
-use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::call::FnAbi;
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{HasDataLayout, TargetDataLayout, VariantIdx};
-use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
+use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
+use crate::llvm::{Metadata, MetadataType};
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
 
-/// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
-/// `llvm::Context` so that several compilation units may be optimized in parallel.
+/// There is one `CodegenCx` per codegen unit. Each one has its own LLVM
+/// `llvm::Context` so that several codegen units may be processed in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
 pub(crate) struct CodegenCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
@@ -122,14 +120,6 @@ pub(crate) unsafe fn create_module<'ll>(
 
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
-    if llvm_version < (18, 0, 0) {
-        if sess.target.arch == "x86" || sess.target.arch == "x86_64" {
-            // LLVM 18 adjusts i128 to be 128-bit aligned on x86 variants.
-            // Earlier LLVMs leave this as default alignment, so remove it.
-            // See https://reviews.llvm.org/D86310
-            target_data_layout = target_data_layout.replace("-i128:128", "");
-        }
-    }
 
     if llvm_version < (19, 0, 0) {
         if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
@@ -241,7 +231,8 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
-    // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
+    // Enable LTO unit splitting if specified or if CFI is enabled. (See
+    // https://reviews.llvm.org/D53891.)
     if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
         let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr();
         unsafe {
@@ -387,6 +378,24 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
+    match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
+    {
+        // Set up the small-data optimization limit for architectures that use
+        // an LLVM module flag to control this.
+        (Some(threshold), SmallDataThresholdSupport::LlvmModuleFlag(flag)) => {
+            let flag = SmallCStr::new(flag.as_ref());
+            unsafe {
+                llvm::LLVMRustAddModuleFlagU32(
+                    llmod,
+                    llvm::LLVMModFlagBehavior::Error,
+                    flag.as_c_str().as_ptr(),
+                    threshold as u32,
+                )
+            }
+        }
+        _ => (),
+    };
+
     // Insert `llvm.ident` metadata.
     //
     // On the wasm targets it will get hooked up to the "producer" sections
@@ -395,17 +404,17 @@ pub(crate) unsafe fn create_module<'ll>(
     let rustc_producer =
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
     let name_metadata = unsafe {
-        llvm::LLVMMDStringInContext(
+        llvm::LLVMMDStringInContext2(
             llcx,
             rustc_producer.as_ptr().cast(),
-            rustc_producer.as_bytes().len() as c_uint,
+            rustc_producer.as_bytes().len(),
         )
     };
     unsafe {
         llvm::LLVMAddNamedMetadataOperand(
             llmod,
             c"llvm.ident".as_ptr(),
-            llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
+            &llvm::LLVMMetadataAsValue(llcx, llvm::LLVMMDNodeInContext2(llcx, &name_metadata, 1)),
         );
     }
 
@@ -580,7 +589,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(
         &self,
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
@@ -1110,6 +1119,14 @@ impl CodegenCx<'_, '_> {
         name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
+
+    /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
+    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: MetadataType, md: &'a Metadata) {
+        unsafe {
+            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
+            llvm::LLVMSetMetadata(val, kind_id as c_uint, node);
+        }
+    }
 }
 
 impl HasDataLayout for CodegenCx<'_, '_> {
@@ -1140,8 +1157,6 @@ impl<'tcx, 'll> HasParamEnv<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
-    type LayoutOfResult = TyAndLayout<'tcx>;
-
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
@@ -1153,8 +1168,6 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
 }
 
 impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
-    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
-
     #[inline]
     fn handle_fn_abi_err(
         &self,

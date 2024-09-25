@@ -94,6 +94,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         line: source_util::expand_line,
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
+        naked_asm: asm::expand_naked_asm,
         option_env: env::expand_option_env,
         pattern_type: pattern_type::expand,
         std_panic: edition_panic::expand_panic,

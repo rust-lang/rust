@@ -5,11 +5,12 @@ use std::num::NonZero;
 
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::InterpResult;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
 use tracing::trace;
 
-use super::{throw_inval, InterpCx, MPlaceTy, Machine, Projectable};
+use super::{InterpCx, MPlaceTy, Machine, Projectable, throw_inval};
 
 /// How to traverse a value and what to do when we are at the leaves.
 pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
@@ -25,14 +26,15 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
     }
 
     /// This function provides the chance to reorder the order in which fields are visited for
-    /// `FieldsShape::Aggregate`: The order of fields will be
-    /// `(0..num_fields).map(aggregate_field_order)`.
+    /// `FieldsShape::Aggregate`.
     ///
-    /// The default means we iterate in source declaration order; alternative this can do an inverse
-    /// lookup in `memory_index` to use memory field order instead.
+    /// The default means we iterate in source declaration order; alternatively this can do some
+    /// work with `memory_index` to iterate in memory order.
     #[inline(always)]
-    fn aggregate_field_order(_memory_index: &IndexVec<FieldIdx, u32>, idx: usize) -> usize {
-        idx
+    fn aggregate_field_iter(
+        memory_index: &IndexVec<FieldIdx, u32>,
+    ) -> impl Iterator<Item = FieldIdx> + 'static {
+        memory_index.indices()
     }
 
     // Recursive actions, ready to be overloaded.
@@ -81,6 +83,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
         self.visit_value(new_val)
     }
 
+    /// Traversal logic; should not be overloaded.
     fn walk_value(&mut self, v: &Self::V) -> InterpResult<'tcx> {
         let ty = v.layout().ty;
         trace!("walk_value: type: {ty}");
@@ -103,6 +106,17 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 // DynStar types. Very different from a dyn type (but strangely part of the
                 // same variant in `TyKind`): These are pairs where the 2nd component is the
                 // vtable, and the first component is the data (which must be ptr-sized).
+
+                // First make sure the vtable can be read at its type.
+                // The type of this vtable is fake, it claims to be a reference to some actual memory but that isn't true.
+                // So we transmute it to a raw pointer.
+                let raw_ptr_ty = Ty::new_mut_ptr(*self.ecx().tcx, self.ecx().tcx.types.unit);
+                let raw_ptr_ty = self.ecx().layout_of(raw_ptr_ty)?;
+                let vtable_field =
+                    self.ecx().project_field(v, 1)?.transmute(raw_ptr_ty, self.ecx())?;
+                self.visit_field(v, 1, &vtable_field)?;
+
+                // Then unpack the first field, and continue.
                 let data = self.ecx().unpack_dyn_star(v, data)?;
                 return self.visit_field(v, 0, &data);
             }
@@ -172,9 +186,9 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
             &FieldsShape::Union(fields) => {
                 self.visit_union(v, fields)?;
             }
-            FieldsShape::Arbitrary { offsets, memory_index } => {
-                for idx in 0..offsets.len() {
-                    let idx = Self::aggregate_field_order(memory_index, idx);
+            FieldsShape::Arbitrary { memory_index, .. } => {
+                for idx in Self::aggregate_field_iter(memory_index) {
+                    let idx = idx.as_usize();
                     let field = self.ecx().project_field(v, idx)?;
                     self.visit_field(v, idx, &field)?;
                 }

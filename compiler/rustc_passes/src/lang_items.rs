@@ -11,13 +11,13 @@ use rustc_ast as ast;
 use rustc_ast::visit;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::{extract, GenericRequirement};
+use rustc_hir::lang_items::{GenericRequirement, extract};
 use rustc_hir::{LangItem, LanguageItems, MethodKind, Target};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
-use rustc_span::symbol::kw::Empty;
 use rustc_span::Span;
+use rustc_span::symbol::kw::Empty;
 
 use crate::errors::{
     DuplicateLangItem, IncorrectTarget, LangItemOnIncorrectTarget, UnknownLangItem,
@@ -359,6 +359,6 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.get_lang_items = get_lang_items;
 }

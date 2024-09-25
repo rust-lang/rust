@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `T` in this scope
+error[E0800]: cannot find type or const parameter `T` in this scope
   --> $DIR/bad-params.rs:1:34
    |
 LL | fn missing() -> impl Sized + use<T> {}
@@ -9,7 +9,7 @@ help: you might be missing a type parameter
 LL | fn missing<T>() -> impl Sized + use<T> {}
    |           +++
 
-error[E0411]: cannot find type `Self` in this scope
+error[E0411]: cannot find type or const parameter `Self` in this scope
   --> $DIR/bad-params.rs:4:39
    |
 LL | fn missing_self() -> impl Sized + use<Self> {}
@@ -17,7 +17,19 @@ LL | fn missing_self() -> impl Sized + use<Self> {}
    |    |
    |    `Self` not allowed in a function
 
-error: `Self` can't be captured in `use<...>` precise captures list, since it is an alias
+error[E0799]: expected type or const parameter, found function `hello`
+  --> $DIR/bad-params.rs:13:32
+   |
+LL | fn hello() -> impl Sized + use<hello> {}
+   |                                ^^^^^ not a type or const parameter
+
+error[E0799]: expected type or const parameter, found local variable `x`
+  --> $DIR/bad-params.rs:16:35
+   |
+LL | fn arg(x: ()) -> impl Sized + use<x> {}
+   |                                   ^ not a type or const parameter
+
+error[E0799]: `Self` can't be captured in `use<...>` precise captures list, since it is an alias
   --> $DIR/bad-params.rs:9:48
    |
 LL | impl MyType {
@@ -25,13 +37,7 @@ LL | impl MyType {
 LL |     fn self_is_not_param() -> impl Sized + use<Self> {}
    |                                                ^^^^
 
-error: expected type or const parameter in `use<...>` precise captures list, found function
-  --> $DIR/bad-params.rs:13:32
-   |
-LL | fn hello() -> impl Sized + use<hello> {}
-   |                                ^^^^^
+error: aborting due to 5 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0411, E0412.
+Some errors have detailed explanations: E0411, E0799, E0800.
 For more information about an error, try `rustc --explain E0411`.

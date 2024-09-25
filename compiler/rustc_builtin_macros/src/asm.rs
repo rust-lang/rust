@@ -1,5 +1,6 @@
 use ast::token::IdentIsRaw;
 use lint::BuiltinLintDiag;
+use rustc_ast::AsmMacro;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
@@ -9,7 +10,7 @@ use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::Parser;
 use rustc_session::lint;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
@@ -234,13 +235,11 @@ pub fn parse_asm_args<'a>(
                 continue;
             }
             args.named_args.insert(name, slot);
-        } else {
-            if !args.named_args.is_empty() || !args.reg_args.is_empty() {
-                let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
-                let explicit = args.reg_args.iter().map(|p| args.operands[p].1).collect();
+        } else if !args.named_args.is_empty() || !args.reg_args.is_empty() {
+            let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
+            let explicit = args.reg_args.iter().map(|p| args.operands[p].1).collect();
 
-                dcx.emit_err(errors::AsmPositionalAfter { span, named, explicit });
-            }
+            dcx.emit_err(errors::AsmPositionalAfter { span, named, explicit });
         }
     }
 
@@ -484,6 +483,7 @@ fn parse_reg<'a>(
 
 fn expand_preparsed_asm(
     ecx: &mut ExtCtxt<'_>,
+    asm_macro: ast::AsmMacro,
     args: AsmArgs,
 ) -> ExpandResult<Result<ast::InlineAsm, ErrorGuaranteed>, ()> {
     let mut template = vec![];
@@ -774,6 +774,7 @@ fn expand_preparsed_asm(
     }
 
     ExpandResult::Ready(Ok(ast::InlineAsm {
+        asm_macro,
         template,
         template_strs: template_strs.into_boxed_slice(),
         operands: args.operands,
@@ -790,7 +791,7 @@ pub(super) fn expand_asm<'cx>(
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(match parse_args(ecx, sp, tts, false) {
         Ok(args) => {
-            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, AsmMacro::Asm, args) else {
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
@@ -812,6 +813,45 @@ pub(super) fn expand_asm<'cx>(
     })
 }
 
+pub(super) fn expand_naked_asm<'cx>(
+    ecx: &'cx mut ExtCtxt<'_>,
+    sp: Span,
+    tts: TokenStream,
+) -> MacroExpanderResult<'cx> {
+    ExpandResult::Ready(match parse_args(ecx, sp, tts, false) {
+        Ok(args) => {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, AsmMacro::NakedAsm, args)
+            else {
+                return ExpandResult::Retry(());
+            };
+            let expr = match mac {
+                Ok(mut inline_asm) => {
+                    // for future compatibility, we always set the NORETURN option.
+                    //
+                    // When we turn `asm!` into `naked_asm!` with this implementation, we can drop
+                    // the `options(noreturn)`, which makes the upgrade smooth when `naked_asm!`
+                    // starts disallowing the `noreturn` option in the future
+                    inline_asm.options |= ast::InlineAsmOptions::NORETURN;
+
+                    P(ast::Expr {
+                        id: ast::DUMMY_NODE_ID,
+                        kind: ast::ExprKind::InlineAsm(P(inline_asm)),
+                        span: sp,
+                        attrs: ast::AttrVec::new(),
+                        tokens: None,
+                    })
+                }
+                Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
+            };
+            MacEager::expr(expr)
+        }
+        Err(err) => {
+            let guar = err.emit();
+            DummyResult::any(sp, guar)
+        }
+    })
+}
+
 pub(super) fn expand_global_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -819,7 +859,8 @@ pub(super) fn expand_global_asm<'cx>(
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(match parse_args(ecx, sp, tts, true) {
         Ok(args) => {
-            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, args) else {
+            let ExpandResult::Ready(mac) = expand_preparsed_asm(ecx, AsmMacro::GlobalAsm, args)
+            else {
                 return ExpandResult::Retry(());
             };
             match mac {

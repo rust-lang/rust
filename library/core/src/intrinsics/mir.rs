@@ -310,7 +310,7 @@ define!(
 );
 define!(
     "mir_unwind_cleanup",
-    /// An unwind action that continues execution in a given basic blok.
+    /// An unwind action that continues execution in a given basic block.
     fn UnwindCleanup(goto: BasicBlock) -> UnwindActionArg
 );
 

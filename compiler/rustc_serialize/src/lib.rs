@@ -16,6 +16,7 @@
 #![feature(never_type)]
 #![feature(ptr_sub_ptr)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};

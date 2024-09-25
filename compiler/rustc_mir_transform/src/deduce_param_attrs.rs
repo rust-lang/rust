@@ -8,7 +8,7 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{Body, Location, Operand, Place, Terminator, TerminatorKind, RETURN_PLACE};
+use rustc_middle::mir::{Body, Location, Operand, Place, RETURN_PLACE, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 
@@ -42,9 +42,9 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
             }
             PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => {
                 // Whether mutating though a `&raw const` is allowed is still undecided, so we
-                // disable any sketchy `readonly` optimizations for now.
-                // But we only need to do this if the pointer would point into the argument.
-                // IOW: for indirect places, like `&raw (*local).field`, this surely cannot mutate `local`.
+                // disable any sketchy `readonly` optimizations for now. But we only need to do
+                // this if the pointer would point into the argument. IOW: for indirect places,
+                // like `&raw (*local).field`, this surely cannot mutate `local`.
                 !place.is_indirect()
             }
             PlaceContext::NonMutatingUse(..) | PlaceContext::NonUse(..) => {
@@ -150,7 +150,7 @@ fn type_will_always_be_passed_directly(ty: Ty<'_>) -> bool {
 /// body of the function instead of just the signature. These can be useful for optimization
 /// purposes on a best-effort basis. We compute them here and store them into the crate metadata so
 /// dependent crates can use them.
-pub fn deduced_param_attrs<'tcx>(
+pub(super) fn deduced_param_attrs<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> &'tcx [DeducedParamAttrs] {
@@ -168,17 +168,16 @@ pub fn deduced_param_attrs<'tcx>(
     // Codegen won't use this information for anything if all the function parameters are passed
     // directly. Detect that and bail, for compilation speed.
     let fn_ty = tcx.type_of(def_id).instantiate_identity();
-    if matches!(fn_ty.kind(), ty::FnDef(..)) {
-        if fn_ty
+    if matches!(fn_ty.kind(), ty::FnDef(..))
+        && fn_ty
             .fn_sig(tcx)
             .inputs()
             .skip_binder()
             .iter()
             .cloned()
             .all(type_will_always_be_passed_directly)
-        {
-            return &[];
-        }
+    {
+        return &[];
     }
 
     // Don't deduce any attributes for functions that have no MIR.

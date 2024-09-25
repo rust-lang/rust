@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter};
+use rustc_errors::emitter::{DynEmitter, HumanEmitter, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
@@ -17,14 +17,15 @@ use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
 use rustc_interface::interface;
-use rustc_lint::{late_lint_mod, MissingDoc};
+use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
-use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
+use rustc_session::config::{self, CrateType, ErrorOutputType, Input, ResolveDocLinks};
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
-use rustc_session::{lint, Session};
+use rustc_session::{Session, lint};
 use rustc_span::symbol::sym;
-use rustc_span::{source_map, Span};
+use rustc_span::{Span, source_map};
+use tracing::{debug, info};
 
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
@@ -176,8 +177,8 @@ pub(crate) fn new_dcx(
 
 /// Parse, resolve, and typecheck the given crate.
 pub(crate) fn create_config(
+    input: Input,
     RustdocOptions {
-        input,
         crate_name,
         proc_macro_crate,
         error_format,
@@ -261,7 +262,7 @@ pub(crate) fn create_config(
         output_file: None,
         output_dir: None,
         file_loader: None,
-        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
+        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         lint_caps,
         psess_created: None,
         hash_untracked_state: None,
@@ -288,7 +289,7 @@ pub(crate) fn create_config(
                 let hir = tcx.hir();
                 let body = hir.body_owned_by(def_id);
                 debug!("visiting body for {def_id:?}");
-                EmitIgnoredResolutionErrors::new(tcx).visit_body(&body);
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),

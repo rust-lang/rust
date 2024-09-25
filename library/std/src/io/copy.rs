@@ -1,4 +1,4 @@
-use super::{BorrowedBuf, BufReader, BufWriter, Read, Result, Write, DEFAULT_BUF_SIZE};
+use super::{BorrowedBuf, BufReader, BufWriter, DEFAULT_BUF_SIZE, Read, Result, Write};
 use crate::alloc::Allocator;
 use crate::cmp;
 use crate::collections::VecDeque;

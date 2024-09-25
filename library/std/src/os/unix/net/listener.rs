@@ -1,4 +1,4 @@
-use super::{sockaddr_un, SocketAddr, UnixStream};
+use super::{SocketAddr, UnixStream, sockaddr_un};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sys::cvt;

@@ -17,7 +17,10 @@ warning: unreachable pattern
   --> $DIR/unreachable-try-pattern.rs:19:24
    |
 LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
-   |                        ^^^^^ matches no values because `!` is uninhabited
+   |                        ^^^^^-----------------
+   |                        |
+   |                        matches no values because `!` is uninhabited
+   |                        help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
@@ -30,7 +33,10 @@ warning: unreachable pattern
   --> $DIR/unreachable-try-pattern.rs:30:40
    |
 LL |     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
-   |                                        ^^^^^^ matches no values because `Void` is uninhabited
+   |                                        ^^^^^^----------
+   |                                        |
+   |                                        matches no values because `Void` is uninhabited
+   |                                        help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 

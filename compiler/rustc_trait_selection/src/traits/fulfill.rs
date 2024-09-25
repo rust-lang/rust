@@ -13,12 +13,13 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt};
+use tracing::{debug, debug_span, instrument};
 
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::{
-    const_evaluatable, wf, EvaluationResult, FulfillmentError, FulfillmentErrorCode,
-    PredicateObligation, ScrubbedTraitError, Unimplemented,
+    EvaluationResult, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
+    ScrubbedTraitError, Unimplemented, const_evaluatable, wf,
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
@@ -471,7 +472,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     };
 
                     match infcx.at(&obligation.cause, obligation.param_env).eq(
-                        // Only really excercised by generic_const_exprs
+                        // Only really exercised by generic_const_exprs
                         DefineOpaqueTypes::Yes,
                         ct_ty,
                         ty,

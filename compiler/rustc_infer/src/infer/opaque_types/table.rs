@@ -1,6 +1,7 @@
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty};
+use tracing::instrument;
 
 use super::{OpaqueTypeDecl, OpaqueTypeMap};
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};

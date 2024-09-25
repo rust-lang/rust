@@ -432,9 +432,8 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::IntToFloat
                 | CastKind::FnPtrToPtr
                 | CastKind::PtrToPtr
-                | CastKind::PointerCoercion(_)
+                | CastKind::PointerCoercion(_, _)
                 | CastKind::PointerWithExposedProvenance
-                | CastKind::DynStar
                 | CastKind::Transmute,
                 _,
                 _,

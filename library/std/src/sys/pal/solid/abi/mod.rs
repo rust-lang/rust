@@ -4,7 +4,7 @@ mod fs;
 pub mod sockets;
 pub use self::fs::*;
 // `solid_types.h`
-pub use super::itron::abi::{ER, ER_ID, E_TMOUT, ID};
+pub use super::itron::abi::{E_TMOUT, ER, ER_ID, ID};
 
 pub const SOLID_ERR_NOTFOUND: ER = -1000;
 pub const SOLID_ERR_NOTSUPPORTED: ER = -1001;

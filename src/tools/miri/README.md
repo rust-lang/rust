@@ -187,7 +187,7 @@ Here is an example job for GitHub Actions:
     name: "Miri"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install Miri
         run: |
           rustup toolchain install nightly --component miri
@@ -216,9 +216,9 @@ degree documented below):
 - For every other target with OS `linux`, `macos`, or `windows`, Miri should generally work, but we
   make no promises and we don't run tests for such targets.
 - We have unofficial support (not maintained by the Miri team itself) for some further operating systems.
+  - `solaris` / `illumos`: maintained by @devnexen. Supports `std::{env, thread, sync}`, but not `std::fs`.
   - `freebsd`: **maintainer wanted**. Supports `std::env` and parts of `std::{thread, fs}`, but not `std::sync`.
   - `android`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
-  - `solaris` / `illumos`: maintained by @devnexen. Support very incomplete, but a basic "hello world" works.
   - `wasm`: **maintainer wanted**. Support very incomplete, not even standard output works, but an empty `main` function works.
 - For targets on other operating systems, Miri might fail before even reaching the `main` function.
 
@@ -383,7 +383,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   file descriptors will be mixed up.
   This is **work in progress**; currently, only integer arguments and return values are
   supported (and no, pointer/integer casts to work around this limitation will not work;
-  they will fail horribly). It also only works on Linux hosts for now.
+  they will fail horribly). It also only works on Unix hosts for now.
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file inside a directory called `<name>`, and can be processed

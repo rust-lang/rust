@@ -424,42 +424,13 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
-        // A previous implementation for f32/f64 tried to only use bitmask-based checks,
-        // using `to_bits` to transmute the float to its bit repr and match on that.
-        // If we only cared about being "technically" correct, that's an entirely legit
-        // implementation.
-        //
-        // Unfortunately, there are platforms out there that do not correctly implement the IEEE
-        // float semantics Rust relies on: some hardware flushes denormals to zero, and some
-        // platforms convert to `f32` to perform operations without properly rounding back (e.g.
-        // WASM, see llvm/llvm-project#96437). These are platforms bugs, and Rust will misbehave on
-        // such platforms, but we can at least try to make things seem as sane as possible by being
-        // careful here.
-        if self.is_infinite() {
-            // Thus, a value may compare unequal to infinity, despite having a "full" exponent mask.
-            FpCategory::Infinite
-        } else if self.is_nan() {
-            // And it may not be NaN, as it can simply be an "overextended" finite value.
-            FpCategory::Nan
-        } else {
-            // However, std can't simply compare to zero to check for zero, either,
-            // as correctness requires avoiding equality tests that may be Subnormal == -0.0
-            // because it may be wrong under "denormals are zero" and "flush to zero" modes.
-            // Most of std's targets don't use those, but they are used for thumbv7neon.
-            // So, this does use bitpattern matching for the rest. On x87, due to the incorrect
-            // float codegen on this hardware, this doesn't actually return a right answer for NaN
-            // because it cannot correctly discern between a floating point NaN, and some normal
-            // floating point numbers truncated from an x87 FPU -- but we took care of NaN above, so
-            // we are fine.
-            // FIXME(jubilee): This probably could at least answer things correctly for Infinity,
-            // like the f64 version does, but I need to run more checks on how things go on x86.
-            // I fear losing mantissa data that would have answered that differently.
-            let b = self.to_bits();
-            match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
-                (0, 0) => FpCategory::Zero,
-                (_, 0) => FpCategory::Subnormal,
-                _ => FpCategory::Normal,
-            }
+        let b = self.to_bits();
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (_, Self::EXP_MASK) => FpCategory::Nan,
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
+            _ => FpCategory::Normal,
         }
     }
 
@@ -925,7 +896,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_bits(self) -> u16 {
         // SAFETY: `u16` is a plain old datatype so we can always transmute to it.
@@ -973,7 +944,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
     pub const fn from_bits(v: u16) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u16` is a plain old datatype so we can always transmute from it.
@@ -999,7 +970,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_be_bytes(self) -> [u8; 2] {
         self.to_bits().to_be_bytes()
@@ -1024,7 +995,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_le_bytes(self) -> [u8; 2] {
         self.to_bits().to_le_bytes()
@@ -1062,7 +1033,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_ne_bytes(self) -> [u8; 2] {
         self.to_bits().to_ne_bytes()
@@ -1086,7 +1057,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
     pub const fn from_be_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_be_bytes(bytes))
     }
@@ -1109,7 +1080,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
     pub const fn from_le_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_le_bytes(bytes))
     }
@@ -1143,7 +1114,7 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_unstable(feature = "f16_const", issue = "116909")]
     pub const fn from_ne_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_ne_bytes(bytes))
     }

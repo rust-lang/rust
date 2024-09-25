@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::{fmt, iter, mem, ptr, slice};
 
-use rustc_data_structures::aligned::{align_of, Aligned};
+use rustc_data_structures::aligned::{Aligned, align_of};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync::DynSync;
 use rustc_serialize::{Encodable, Encoder};

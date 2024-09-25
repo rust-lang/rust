@@ -8,13 +8,14 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::HashMap;
-#[cfg(not(feature = "bootstrap-self-test"))]
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
+use build_helper::git::warn_old_master_branch;
+
+use crate::Build;
 #[cfg(not(feature = "bootstrap-self-test"))]
 use crate::builder::Builder;
 use crate::builder::Kind;
@@ -22,7 +23,6 @@ use crate::builder::Kind;
 use crate::core::build_steps::tool;
 use crate::core::config::Target;
 use crate::utils::exec::command;
-use crate::Build;
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -34,9 +34,9 @@ pub struct Finder {
 // it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
 //
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
-#[cfg(not(feature = "bootstrap-self-test"))]
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
+    "armv7-rtems-eabihf",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -205,7 +205,6 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
     let stage0_supported_target_list: HashSet<String> = crate::utils::helpers::output(
         command(&build.config.initial_rustc).args(["--print", "target-list"]).as_command_mut(),
     )
@@ -234,7 +233,7 @@ than building it.
         }
 
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        #[cfg(not(feature = "bootstrap-self-test"))]
+        if cfg!(not(feature = "bootstrap-self-test")) && !skip_target_sanity && !build.local_rebuild
         {
             let mut has_target = false;
             let target_str = target.to_string();
@@ -295,19 +294,19 @@ than building it.
         }
     }
 
-    for host in &build.hosts {
-        if !build.config.dry_run() {
+    if !build.config.dry_run() {
+        for host in &build.hosts {
             cmd_finder.must_have(build.cxx(*host).unwrap());
-        }
 
-        if build.config.llvm_enabled(*host) {
-            // Externally configured LLVM requires FileCheck to exist
-            let filecheck = build.llvm_filecheck(build.build);
-            if !filecheck.starts_with(&build.out)
-                && !filecheck.exists()
-                && build.config.codegen_tests
-            {
-                panic!("FileCheck executable {filecheck:?} does not exist");
+            if build.config.llvm_enabled(*host) {
+                // Externally configured LLVM requires FileCheck to exist
+                let filecheck = build.llvm_filecheck(build.build);
+                if !filecheck.starts_with(&build.out)
+                    && !filecheck.exists()
+                    && build.config.codegen_tests
+                {
+                    panic!("FileCheck executable {filecheck:?} does not exist");
+                }
             }
         }
     }
@@ -356,7 +355,8 @@ than building it.
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
-            let out = command("cmake").arg("--help").run_capture_stdout(build).stdout();
+            let out =
+                command("cmake").arg("--help").run_always().run_capture_stdout(build).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "
@@ -379,4 +379,6 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     if let Some(ref s) = build.config.ccache {
         cmd_finder.must_have(s);
     }
+
+    warn_old_master_branch(&build.config.git_config(), &build.config.src);
 }

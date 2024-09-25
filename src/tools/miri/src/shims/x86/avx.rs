@@ -1,14 +1,14 @@
 use rustc_apfloat::{ieee::Double, ieee::Single};
 use rustc_middle::mir;
-use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    bin_op_simd_float_all, conditional_dot_product, convert_float_to_int, horizontal_bin_op,
-    mask_load, mask_store, round_all, test_bits_masked, test_high_bits_masked, unary_op_ps,
-    FloatBinOp, FloatUnaryOp,
+    FloatBinOp, FloatUnaryOp, bin_op_simd_float_all, conditional_dot_product, convert_float_to_int,
+    horizontal_bin_op, mask_load, mask_store, round_all, test_bits_masked, test_high_bits_masked,
+    unary_op_ps,
 };
 use crate::*;
 
@@ -159,9 +159,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [data, control] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (data, data_len) = this.operand_to_simd(data)?;
-                let (control, control_len) = this.operand_to_simd(control)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (data, data_len) = this.project_to_simd(data)?;
+                let (control, control_len) = this.project_to_simd(control)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, data_len);
                 assert_eq!(dest_len, control_len);
@@ -193,9 +193,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [data, control] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (data, data_len) = this.operand_to_simd(data)?;
-                let (control, control_len) = this.operand_to_simd(control)?;
-                let (dest, dest_len) = this.mplace_to_simd(dest)?;
+                let (data, data_len) = this.project_to_simd(data)?;
+                let (control, control_len) = this.project_to_simd(control)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, data_len);
                 assert_eq!(dest_len, control_len);

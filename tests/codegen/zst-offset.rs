@@ -27,7 +27,7 @@ pub fn scalarpair_layout(s: &(u64, u32, ())) {
 }
 
 #[repr(simd)]
-pub struct U64x4(u64, u64, u64, u64);
+pub struct U64x4([u64; 4]);
 
 // Check that we correctly generate a GEP for a ZST that is not included in Vector layout
 // CHECK-LABEL: @vector_layout

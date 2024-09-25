@@ -11,6 +11,7 @@ use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::Span;
+use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff};

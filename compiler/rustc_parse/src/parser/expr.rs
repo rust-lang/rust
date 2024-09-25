@@ -10,25 +10,25 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
-use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
-use rustc_ast::visit::{walk_expr, Visitor};
+use rustc_ast::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
+use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AttrStyle, AttrVec, BinOp, BinOpKind, BlockCheckMode, CaptureBy,
-    ClosureBinder, Expr, ExprField, ExprKind, FnDecl, FnRetTy, Label, MacCall, MetaItemLit,
-    Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp, DUMMY_NODE_ID,
+    ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl, FnRetTy, Label, MacCall,
+    MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
 use rustc_lexer::unescape::unescape_char;
 use rustc_macros::Subdiagnostic;
-use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
-use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
+use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::source_map::{self, Spanned};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, ErrorGuaranteed, Pos, Span};
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
 use super::diagnostics::SnapshotParser;
@@ -41,7 +41,7 @@ use super::{
 use crate::{errors, maybe_recover_from_interpolated_ty_qpath};
 
 #[derive(Debug)]
-enum DestructuredFloat {
+pub(super) enum DestructuredFloat {
     /// 1e2
     Single(Symbol, Span),
     /// 1.
@@ -49,7 +49,7 @@ enum DestructuredFloat {
     /// 1.2 | 1.2e3
     MiddleDot(Symbol, Span, Span, Symbol, Span),
     /// Invalid
-    Error,
+    Error(ErrorGuaranteed),
 }
 
 impl<'a> Parser<'a> {
@@ -811,20 +811,17 @@ impl<'a> Parser<'a> {
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, it is an illegal postfix operator.
         if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) {
-            let msg = format!(
-                "cast cannot be followed by {}",
-                match with_postfix.kind {
-                    ExprKind::Index(..) => "indexing",
-                    ExprKind::Try(_) => "`?`",
-                    ExprKind::Field(_, _) => "a field access",
-                    ExprKind::MethodCall(_) => "a method call",
-                    ExprKind::Call(_, _) => "a function call",
-                    ExprKind::Await(_, _) => "`.await`",
-                    ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
-                    ExprKind::Err(_) => return Ok(with_postfix),
-                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
-                }
-            );
+            let msg = format!("cast cannot be followed by {}", match with_postfix.kind {
+                ExprKind::Index(..) => "indexing",
+                ExprKind::Try(_) => "`?`",
+                ExprKind::Field(_, _) => "a field access",
+                ExprKind::MethodCall(_) => "a method call",
+                ExprKind::Call(_, _) => "a function call",
+                ExprKind::Await(_, _) => "`.await`",
+                ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
+                ExprKind::Err(_) => return Ok(with_postfix),
+                _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
+            });
             let mut err = self.dcx().struct_span_err(span, msg);
 
             let suggest_parens = |err: &mut Diag<'_>| {
@@ -1008,7 +1005,7 @@ impl<'a> Parser<'a> {
                             self.mk_expr_tuple_field_access(lo, ident1_span, base, sym1, None);
                         self.mk_expr_tuple_field_access(lo, ident2_span, base1, sym2, suffix)
                     }
-                    DestructuredFloat::Error => base,
+                    DestructuredFloat::Error(_) => base,
                 })
             }
             _ => {
@@ -1018,7 +1015,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error_unexpected_after_dot(&self) {
+    fn error_unexpected_after_dot(&self) -> ErrorGuaranteed {
         let actual = pprust::token_to_string(&self.token);
         let span = self.token.span;
         let sm = self.psess.source_map();
@@ -1028,18 +1025,20 @@ impl<'a> Parser<'a> {
             }
             _ => (span, actual),
         };
-        self.dcx().emit_err(errors::UnexpectedTokenAfterDot { span, actual });
+        self.dcx().emit_err(errors::UnexpectedTokenAfterDot { span, actual })
     }
 
-    // We need an identifier or integer, but the next token is a float.
-    // Break the float into components to extract the identifier or integer.
+    /// We need an identifier or integer, but the next token is a float.
+    /// Break the float into components to extract the identifier or integer.
+    ///
+    /// See also [`TokenKind::break_two_token_op`] which does similar splitting of `>>` into `>`.
+    //
     // FIXME: With current `TokenCursor` it's hard to break tokens into more than 2
-    // parts unless those parts are processed immediately. `TokenCursor` should either
-    // support pushing "future tokens" (would be also helpful to `break_and_eat`), or
-    // we should break everything including floats into more basic proc-macro style
-    // tokens in the lexer (probably preferable).
-    // See also `TokenKind::break_two_token_op` which does similar splitting of `>>` into `>`.
-    fn break_up_float(&self, float: Symbol, span: Span) -> DestructuredFloat {
+    //  parts unless those parts are processed immediately. `TokenCursor` should either
+    //  support pushing "future tokens" (would be also helpful to `break_and_eat`), or
+    //  we should break everything including floats into more basic proc-macro style
+    //  tokens in the lexer (probably preferable).
+    pub(super) fn break_up_float(&self, float: Symbol, span: Span) -> DestructuredFloat {
         #[derive(Debug)]
         enum FloatComponent {
             IdentLike(String),
@@ -1078,34 +1077,30 @@ impl<'a> Parser<'a> {
                 DestructuredFloat::Single(Symbol::intern(i), span)
             }
             // 1.
-            [IdentLike(i), Punct('.')] => {
-                let (ident_span, dot_span) = if can_take_span_apart() {
-                    let (span, ident_len) = (span.data(), BytePos::from_usize(i.len()));
-                    let ident_span = span.with_hi(span.lo + ident_len);
-                    let dot_span = span.with_lo(span.lo + ident_len);
-                    (ident_span, dot_span)
+            [IdentLike(left), Punct('.')] => {
+                let (left_span, dot_span) = if can_take_span_apart() {
+                    let left_span = span.with_hi(span.lo() + BytePos::from_usize(left.len()));
+                    let dot_span = span.with_lo(left_span.hi());
+                    (left_span, dot_span)
                 } else {
                     (span, span)
                 };
-                let symbol = Symbol::intern(i);
-                DestructuredFloat::TrailingDot(symbol, ident_span, dot_span)
+                let left = Symbol::intern(left);
+                DestructuredFloat::TrailingDot(left, left_span, dot_span)
             }
             // 1.2 | 1.2e3
-            [IdentLike(i1), Punct('.'), IdentLike(i2)] => {
-                let (ident1_span, dot_span, ident2_span) = if can_take_span_apart() {
-                    let (span, ident1_len) = (span.data(), BytePos::from_usize(i1.len()));
-                    let ident1_span = span.with_hi(span.lo + ident1_len);
-                    let dot_span = span
-                        .with_lo(span.lo + ident1_len)
-                        .with_hi(span.lo + ident1_len + BytePos(1));
-                    let ident2_span = self.token.span.with_lo(span.lo + ident1_len + BytePos(1));
-                    (ident1_span, dot_span, ident2_span)
+            [IdentLike(left), Punct('.'), IdentLike(right)] => {
+                let (left_span, dot_span, right_span) = if can_take_span_apart() {
+                    let left_span = span.with_hi(span.lo() + BytePos::from_usize(left.len()));
+                    let dot_span = span.with_lo(left_span.hi()).with_hi(left_span.hi() + BytePos(1));
+                    let right_span = span.with_lo(dot_span.hi());
+                    (left_span, dot_span, right_span)
                 } else {
                     (span, span, span)
                 };
-                let symbol1 = Symbol::intern(i1);
-                let symbol2 = Symbol::intern(i2);
-                DestructuredFloat::MiddleDot(symbol1, ident1_span, dot_span, symbol2, ident2_span)
+                let left = Symbol::intern(left);
+                let right = Symbol::intern(right);
+                DestructuredFloat::MiddleDot(left, left_span, dot_span, right, right_span)
             }
             // 1e+ | 1e- (recovered)
             [IdentLike(_), Punct('+' | '-')] |
@@ -1116,8 +1111,8 @@ impl<'a> Parser<'a> {
             // 1.2e+3 | 1.2e-3
             [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-'), IdentLike(_)] => {
                 // See the FIXME about `TokenCursor` above.
-                self.error_unexpected_after_dot();
-                DestructuredFloat::Error
+                let guar = self.error_unexpected_after_dot();
+                DestructuredFloat::Error(guar)
             }
             _ => panic!("unexpected components in a float token: {components:?}"),
         }
@@ -1183,7 +1178,7 @@ impl<'a> Parser<'a> {
                                 fields.insert(start_idx, Ident::new(symbol2, span2));
                                 fields.insert(start_idx, Ident::new(symbol1, span1));
                             }
-                            DestructuredFloat::Error => {
+                            DestructuredFloat::Error(_) => {
                                 trailing_dot = None;
                                 fields.insert(start_idx, Ident::new(symbol, self.prev_token.span));
                             }
@@ -2050,7 +2045,7 @@ impl<'a> Parser<'a> {
         };
         // On an error path, eagerly consider a lifetime to be an unclosed character lit, if that
         // makes sense.
-        if let Some(ident) = self.token.lifetime()
+        if let Some((ident, IdentIsRaw::No)) = self.token.lifetime()
             && could_be_unclosed_char_literal(ident)
         {
             let lt = self.expect_lifetime();
@@ -2554,13 +2549,12 @@ impl<'a> Parser<'a> {
             let maybe_fatarrow = self.token.clone();
             let block = if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_block()?
+            } else if let Some(block) = recover_block_from_condition(self) {
+                block
             } else {
-                if let Some(block) = recover_block_from_condition(self) {
-                    block
-                } else {
-                    self.error_on_extra_if(&cond)?;
-                    // Parse block, which will always fail, but we can add a nice note to the error
-                    self.parse_block().map_err(|mut err| {
+                self.error_on_extra_if(&cond)?;
+                // Parse block, which will always fail, but we can add a nice note to the error
+                self.parse_block().map_err(|mut err| {
                         if self.prev_token == token::Semi
                             && self.token == token::AndAnd
                             && let maybe_let = self.look_ahead(1, |t| t.clone())
@@ -2592,7 +2586,6 @@ impl<'a> Parser<'a> {
                         }
                         err
                     })?
-                }
             };
             self.error_on_if_block_attrs(lo, false, block.span, attrs);
             block
@@ -2848,10 +2841,13 @@ impl<'a> Parser<'a> {
                 .emit_err(errors::MissingExpressionInForLoop { span: expr.span.shrink_to_lo() });
             let err_expr = self.mk_expr(expr.span, ExprKind::Err(guar));
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
-            return Ok(self.mk_expr(
-                lo.to(self.prev_token.span),
-                ExprKind::ForLoop { pat, iter: err_expr, body: block, label: opt_label, kind },
-            ));
+            return Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::ForLoop {
+                pat,
+                iter: err_expr,
+                body: block,
+                label: opt_label,
+                kind,
+            }));
         }
 
         let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;
@@ -2925,9 +2921,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
-        if let Some(ident) = self.token.lifetime() {
+        if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if ident.without_first_quote().is_reserved() {
+            if matches!(is_raw, IdentIsRaw::No) && ident.without_first_quote().is_reserved() {
                 self.dcx().emit_err(errors::InvalidLabel { span: ident.span, name: ident.name });
             }
 

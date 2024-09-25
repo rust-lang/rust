@@ -1,9 +1,9 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions, base};
 
 // This target is for OpenHarmony on ARMv7 Linux with thumb-mode, but no NEON or
 // hardfloat.
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     // Most of these settings are copied from the armv7_unknown_linux_musleabi
     // target.
     Target {

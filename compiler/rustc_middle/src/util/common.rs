@@ -20,19 +20,3 @@ pub fn to_readable_str(mut val: usize) -> String {
 
     groups.join("_")
 }
-
-// const wrapper for `if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }`
-pub const fn c_name(name: &'static str) -> &'static str {
-    // FIXME Simplify the implementation once more `str` methods get const-stable.
-    // and inline into call site
-    let bytes = name.as_bytes();
-    let mut i = bytes.len();
-    while i > 0 && bytes[i - 1] != b':' {
-        i = i - 1;
-    }
-    let (_, bytes) = bytes.split_at(i);
-    match std::str::from_utf8(bytes) {
-        Ok(name) => name,
-        Err(_) => name,
-    }
-}

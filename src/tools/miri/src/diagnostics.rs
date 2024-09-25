@@ -2,7 +2,7 @@ use std::fmt::{self, Write};
 use std::num::NonZero;
 
 use rustc_errors::{Diag, DiagMessage, Level};
-use rustc_span::{SpanData, Symbol, DUMMY_SP};
+use rustc_span::{DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;

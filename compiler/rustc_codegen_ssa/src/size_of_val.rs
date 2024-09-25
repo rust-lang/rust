@@ -45,11 +45,13 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             (
-                // All slice sizes must fit into `isize`, so this multiplication cannot (signed) wrap.
+                // All slice sizes must fit into `isize`, so this multiplication cannot (signed)
+                // wrap.
                 // NOTE: ideally, we want the effects of both `unchecked_smul` and `unchecked_umul`
                 // (resulting in `mul nsw nuw` in LLVM IR), since we know that the multiplication
-                // cannot signed wrap, and that both operands are non-negative. But at the time of writing,
-                // the `LLVM-C` binding can't do this, and it doesn't seem to enable any further optimizations.
+                // cannot signed wrap, and that both operands are non-negative. But at the time of
+                // writing, the `LLVM-C` binding can't do this, and it doesn't seem to enable any
+                // further optimizations.
                 bx.unchecked_smul(info.unwrap(), bx.const_usize(unit.size.bytes())),
                 bx.const_usize(unit.align.abi.bytes()),
             )
@@ -67,9 +69,9 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let (fn_abi, llfn, _instance) =
                 common::build_langcall(bx, None, LangItem::PanicNounwind);
 
-            // Generate the call.
-            // Cannot use `do_call` since we don't have a MIR terminator so we can't create a `TerminationCodegenHelper`.
-            // (But we are in good company, this code is duplicated plenty of times.)
+            // Generate the call. Cannot use `do_call` since we don't have a MIR terminator so we
+            // can't create a `TerminationCodegenHelper`. (But we are in good company, this code is
+            // duplicated plenty of times.)
             let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
             bx.call(
@@ -148,9 +150,14 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // The full formula for the size would be:
             // let unsized_offset_adjusted = unsized_offset_unadjusted.align_to(unsized_align);
             // let full_size = (unsized_offset_adjusted + unsized_size).align_to(full_align);
-            // However, `unsized_size` is a multiple of `unsized_align`.
-            // Therefore, we can equivalently do the `align_to(unsized_align)` *after* adding `unsized_size`:
-            // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(unsized_align).align_to(full_align);
+            // However, `unsized_size` is a multiple of `unsized_align`. Therefore, we can
+            // equivalently do the `align_to(unsized_align)` *after* adding `unsized_size`:
+            //
+            // let full_size =
+            //     (unsized_offset_unadjusted + unsized_size)
+            //     .align_to(unsized_align)
+            //     .align_to(full_align);
+            //
             // Furthermore, `align >= unsized_align`, and therefore we only need to do:
             // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(full_align);
 

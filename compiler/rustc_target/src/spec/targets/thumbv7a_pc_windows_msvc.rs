@@ -1,6 +1,6 @@
-use crate::spec::{base, LinkerFlavor, Lld, PanicStrategy, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, Lld, PanicStrategy, Target, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     // Prevent error LNK2013: BRANCH24(T) fixup overflow
     // The LBR optimization tries to eliminate branch islands,

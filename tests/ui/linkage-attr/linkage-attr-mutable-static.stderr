@@ -1,5 +1,5 @@
 error: extern mutable statics are not allowed with `#[linkage]`
-  --> $DIR/linkage-attr-mutable-static.rs:9:9
+  --> $DIR/linkage-attr-mutable-static.rs:11:9
    |
 LL |         #[linkage = "extern_weak"]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -3,11 +3,11 @@ use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHa
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::DefPathHash;
-use rustc_session::cstore::Untracked;
 use rustc_session::Session;
+use rustc_session::cstore::Untracked;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData, DUMMY_SP};
+use rustc_span::{BytePos, CachingSourceMapView, DUMMY_SP, SourceFile, Span, SpanData};
 
 use crate::ich;
 

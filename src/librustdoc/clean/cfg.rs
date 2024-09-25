@@ -10,8 +10,8 @@ use rustc_ast::{LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 
 use crate::html::escape::Escape;
 

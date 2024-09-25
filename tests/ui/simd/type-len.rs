@@ -1,7 +1,6 @@
 #![feature(repr_simd)]
 #![allow(non_camel_case_types)]
 
-
 #[repr(simd)]
 struct empty; //~ ERROR SIMD vector cannot be empty
 
@@ -12,12 +11,12 @@ struct empty2([f32; 0]); //~ ERROR SIMD vector cannot be empty
 struct pow2([f32; 7]);
 
 #[repr(simd)]
-struct i64f64(i64, f64); //~ ERROR SIMD vector should be homogeneous
+struct i64f64(i64, f64); //~ ERROR SIMD vector's only field must be an array
 
 struct Foo;
 
 #[repr(simd)]
-struct FooV(Foo, Foo); //~ ERROR SIMD vector element type should be a primitive scalar (integer/float/pointer) type
+struct FooV(Foo, Foo); //~ ERROR SIMD vector's only field must be an array
 
 #[repr(simd)]
 struct FooV2([Foo; 2]); //~ ERROR SIMD vector element type should be a primitive scalar (integer/float/pointer) type
@@ -29,11 +28,11 @@ struct TooBig([f32; 65536]); //~ ERROR SIMD vector cannot have more than 32768 e
 struct JustRight([u128; 32768]);
 
 #[repr(simd)]
-struct RGBA {
+struct RGBA { //~ ERROR SIMD vector's only field must be an array
     r: f32,
     g: f32,
     b: f32,
-    a: f32
+    a: f32,
 }
 
 fn main() {}

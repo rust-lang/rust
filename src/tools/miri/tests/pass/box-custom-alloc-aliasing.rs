@@ -11,7 +11,7 @@ use std::{
     alloc::{AllocError, Allocator, Layout},
     cell::{Cell, UnsafeCell},
     mem,
-    ptr::{self, addr_of, NonNull},
+    ptr::{self, NonNull, addr_of},
     thread::{self, ThreadId},
 };
 

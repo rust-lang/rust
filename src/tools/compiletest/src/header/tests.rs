@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use super::iter_header;
 use crate::common::{Config, Debugger, Mode};
-use crate::header::{parse_normalize_rule, EarlyProps, HeadersCache};
+use crate::header::{EarlyProps, HeadersCache, parse_normalize_rule};
 
 fn make_test_description<R: Read>(
     config: &Config,
@@ -148,6 +148,7 @@ impl ConfigBuilder {
             self.target.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
             "--git-repository=",
             "--nightly-branch=",
+            "--git-merge-commit-email=",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 
@@ -225,10 +226,9 @@ fn revisions() {
     let config: Config = cfg().build();
 
     assert_eq!(parse_rs(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
-    assert_eq!(
-        parse_makefile(&config, "# revisions: hello there").revisions,
-        vec!["hello", "there"],
-    );
+    assert_eq!(parse_makefile(&config, "# revisions: hello there").revisions, vec![
+        "hello", "there"
+    ],);
 }
 
 #[test]

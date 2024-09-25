@@ -288,8 +288,19 @@ marker_impls! {
 /// }
 /// ```
 ///
-/// There is a small difference between the two: the `derive` strategy will also place a `Copy`
-/// bound on type parameters, which isn't always desired.
+/// There is a small difference between the two. The `derive` strategy will also place a `Copy`
+/// bound on type parameters:
+///
+/// ```
+/// #[derive(Clone)]
+/// struct MyStruct<T>(T);
+///
+/// impl<T: Copy> Copy for MyStruct<T> { }
+/// ```
+///
+/// This isn't always desired. For example, shared references (`&T`) can be copied regardless of
+/// whether `T` is `Copy`. Likewise, a generic struct containing markers such as [`PhantomData`]
+/// could potentially be duplicated with a bit-wise copy.
 ///
 /// ## What's the difference between `Copy` and `Clone`?
 ///
@@ -992,7 +1003,7 @@ pub macro ConstParamTy($item:item) {
     /* compiler built-in */
 }
 
-#[cfg_attr(not(bootstrap), lang = "unsized_const_param_ty")]
+#[lang = "unsized_const_param_ty"]
 #[unstable(feature = "unsized_const_params", issue = "95174")]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 /// A marker for types which can be used as types of `const` generic parameters.
@@ -1002,10 +1013,9 @@ pub macro ConstParamTy($item:item) {
 pub trait UnsizedConstParamTy: StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
-#[cfg(not(bootstrap))]
-#[cfg_attr(not(bootstrap), rustc_builtin_macro)]
-#[cfg_attr(not(bootstrap), allow_internal_unstable(unsized_const_params))]
-#[cfg_attr(not(bootstrap), unstable(feature = "unsized_const_params", issue = "95174"))]
+#[rustc_builtin_macro]
+#[allow_internal_unstable(unsized_const_params)]
+#[unstable(feature = "unsized_const_params", issue = "95174")]
 pub macro UnsizedConstParamTy($item:item) {
     /* compiler built-in */
 }
@@ -1020,14 +1030,6 @@ marker_impls! {
         char,
         (),
         {T: ConstParamTy_, const N: usize} [T; N],
-}
-#[cfg(bootstrap)]
-marker_impls! {
-    #[unstable(feature = "adt_const_params", issue = "95174")]
-    ConstParamTy_ for
-        str,
-        {T: ConstParamTy_} [T],
-        {T: ConstParamTy_ + ?Sized} &T,
 }
 
 marker_impls! {

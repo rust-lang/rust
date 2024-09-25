@@ -8,12 +8,12 @@ use rustc_middle::mir::{Body, Promoted};
 use rustc_middle::ty::TyCtxt;
 
 pub use super::constraints::OutlivesConstraint;
-pub use super::dataflow::{calculate_borrows_out_of_scope_at_location, BorrowIndex, Borrows};
+pub use super::dataflow::{BorrowIndex, Borrows, calculate_borrows_out_of_scope_at_location};
 pub use super::facts::{AllFacts as PoloniusInput, RustcFacts};
 pub use super::location::{LocationTable, RichLocation};
 pub use super::nll::PoloniusOutput;
 pub use super::place_ext::PlaceExt;
-pub use super::places_conflict::{places_conflict, PlaceConflictBias};
+pub use super::places_conflict::{PlaceConflictBias, places_conflict};
 pub use super::region_infer::RegionInferenceContext;
 use crate::borrow_set::BorrowSet;
 

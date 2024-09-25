@@ -3,8 +3,8 @@ use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -1405,7 +1405,7 @@ fn panic_on_forbidden_read<D: Deps>(data: &DepGraphData<D>, dep_node_index: DepN
         "Error: trying to record dependency on DepNode {dep_node} in a \
          context that does not allow it (e.g. during query deserialization). \
          The most common case of recording a dependency on a DepNode `foo` is \
-         when the correspondng query `foo` is invoked. Invoking queries is not \
+         when the corresponding query `foo` is invoked. Invoking queries is not \
          allowed as part of loading something from the incremental on-disk cache. \
          See <https://github.com/rust-lang/rust/pull/91919>."
     )

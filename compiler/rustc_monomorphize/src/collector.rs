@@ -210,7 +210,7 @@ mod move_check;
 use std::path::PathBuf;
 
 use move_check::MoveCheckState;
-use rustc_data_structures::sync::{par_for_each_in, LRef, MTLock};
+use rustc_data_structures::sync::{LRef, MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -220,7 +220,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, traversal, Location, MentionedItem};
+use rustc_middle::mir::{self, Location, MentionedItem, traversal};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
@@ -231,23 +231,23 @@ use rustc_middle::ty::{
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::EntryFnType;
 use rustc_session::Limit;
-use rustc_span::source_map::{dummy_spanned, respan, Spanned};
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_session::config::EntryFnType;
+use rustc_span::source_map::{Spanned, dummy_spanned, respan};
+use rustc_span::symbol::{Ident, sym};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::Size;
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit};
 
 #[derive(PartialEq)]
-pub enum MonoItemCollectionStrategy {
+pub(crate) enum MonoItemCollectionStrategy {
     Eager,
     Lazy,
 }
 
-pub struct UsageMap<'tcx> {
+pub(crate) struct UsageMap<'tcx> {
     // Maps every mono item to the mono items used by it.
     used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 
@@ -306,13 +306,17 @@ impl<'tcx> UsageMap<'tcx> {
         assert!(self.used_map.insert(user_item, used_items).is_none());
     }
 
-    pub fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
+    pub(crate) fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
         self.user_map.get(&item).map(|items| items.as_slice()).unwrap_or(&[])
     }
 
     /// Internally iterate over all inlined items used by `item`.
-    pub fn for_each_inlined_used_item<F>(&self, tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>, mut f: F)
-    where
+    pub(crate) fn for_each_inlined_used_item<F>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        item: MonoItem<'tcx>,
+        mut f: F,
+    ) where
         F: FnMut(MonoItem<'tcx>),
     {
         let used_items = self.used_map.get(&item).unwrap();
@@ -393,7 +397,7 @@ fn collect_items_rec<'tcx>(
         MonoItem::Static(def_id) => {
             recursion_depth_reset = None;
 
-            // Statics always get evaluted (which is possible because they can't be generic), so for
+            // Statics always get evaluated (which is possible because they can't be generic), so for
             // `MentionedItems` collection there's nothing to do here.
             if mode == CollectionMode::UsedItems {
                 let instance = Instance::mono(tcx, def_id);
@@ -661,11 +665,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::Unsize),
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _)
+                | mir::CastKind::PointerCoercion(PointerCoercion::DynStar, _),
                 ref operand,
                 target_ty,
-            )
-            | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
+            ) => {
                 let source_ty = operand.ty(self.body, self.tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items
@@ -690,7 +694,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 }
             }
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer),
+                mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _),
                 ref operand,
                 _,
             ) => {
@@ -701,7 +705,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 visit_fn_use(self.tcx, fn_ty, false, span, self.used_items);
             }
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
+                mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _),
                 ref operand,
                 _,
             ) => {
@@ -1037,8 +1041,11 @@ fn find_vtable_types_for_unsizing<'tcx>(
     match (source_ty.kind(), target_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
         | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(a, b),
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
-            ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
+        (_, _)
+            if let Some(source_boxed) = source_ty.boxed_ty()
+                && let Some(target_boxed) = target_ty.boxed_ty() =>
+        {
+            ptr_vtable(source_boxed, target_boxed)
         }
 
         // T as dyn* Trait
@@ -1168,15 +1175,15 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
                 output.push(create_fn_mono_item(tcx, instance, DUMMY_SP));
             }
         }
-        GlobalAlloc::VTable(ty, trait_ref) => {
-            let alloc_id = tcx.vtable_allocation((ty, trait_ref));
+        GlobalAlloc::VTable(ty, dyn_ty) => {
+            let alloc_id = tcx.vtable_allocation((ty, dyn_ty.principal()));
             collect_alloc(tcx, alloc_id, output)
         }
     }
 }
 
 fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
-    for impl_def_id in tcx.inherent_impls(def_id).ok()? {
+    for impl_def_id in tcx.inherent_impls(def_id) {
         if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
             tcx,
             fn_ident,
@@ -1186,7 +1193,7 @@ fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> 
             return Some(new.def_id);
         }
     }
-    return None;
+    None
 }
 
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
@@ -1615,6 +1622,6 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
     (mono_items, state.usage_map.into_inner())
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
 }

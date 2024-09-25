@@ -7,4 +7,4 @@ pub mod thread;
 mod vector_clock;
 pub mod weak_memory;
 
-pub use vector_clock::VClock;
+pub use self::vector_clock::VClock;

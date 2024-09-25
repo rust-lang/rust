@@ -6,6 +6,9 @@
    LL|       |//@ edition: 2018
    LL|       |//@ compile-flags: -Copt-level=1
    LL|       |
+   LL|       |//@ aux-build: executor.rs
+   LL|       |extern crate executor;
+   LL|       |
    LL|      1|async fn c(x: u8) -> u8 {
    LL|      1|    if x == 8 {
    LL|      1|        1
@@ -45,9 +48,9 @@
    LL|      1|                    // executed asynchronously.
    LL|      1|    match x {
    LL|      1|        y if c(x).await == y + 1 => { d().await; }
-                      ^0        ^0                  ^0  ^0
+                      ^0                            ^0
    LL|      1|        y if f().await == y + 1 => (),
-                      ^0       ^0                ^0
+                      ^0                         ^0
    LL|      1|        _ => (),
    LL|       |    }
    LL|      1|}
@@ -100,22 +103,4 @@
    LL|      1|    let _ = m(5);
    LL|      1|    executor::block_on(future.as_mut());
    LL|      1|}
-   LL|       |
-   LL|       |mod executor {
-   LL|       |    use core::future::Future;
-   LL|       |    use core::pin::pin;
-   LL|       |    use core::task::{Context, Poll, Waker};
-   LL|       |
-   LL|       |    #[coverage(off)]
-   LL|       |    pub fn block_on<F: Future>(mut future: F) -> F::Output {
-   LL|       |        let mut future = pin!(future);
-   LL|       |        let mut context = Context::from_waker(Waker::noop());
-   LL|       |
-   LL|       |        loop {
-   LL|       |            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
-   LL|       |                break val;
-   LL|       |            }
-   LL|       |        }
-   LL|       |    }
-   LL|       |}
 

@@ -33,7 +33,7 @@ LL |     println!("{}", scores.sum::<i32>());
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
-             `i32` implements `Sum<&'a i32>`
+             `i32` implements `Sum<&i32>`
              `i32` implements `Sum`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-fixable.rs:14:10
@@ -66,7 +66,7 @@ LL |             .sum::<i32>(),
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
-             `i32` implements `Sum<&'a i32>`
+             `i32` implements `Sum<&i32>`
              `i32` implements `Sum`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-fixable.rs:23:14
@@ -99,7 +99,7 @@ LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
-             `i32` implements `Sum<&'a i32>`
+             `i32` implements `Sum<&i32>`
              `i32` implements `Sum`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-fixable.rs:27:38

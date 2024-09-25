@@ -5,9 +5,9 @@
 // The cdecl ABI is used. It differs from the stdcall or fastcall ABI.
 // "i686-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::spec::{base, Target};
+use crate::spec::{Target, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);

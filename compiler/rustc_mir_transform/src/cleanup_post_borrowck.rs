@@ -18,14 +18,12 @@
 
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{Body, BorrowKind, CastKind, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::adjustment::PointerCoercion;
 
-use crate::MirPass;
+pub(super) struct CleanupPostBorrowck;
 
-pub struct CleanupPostBorrowck;
-
-impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
+impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         for basic_block in body.basic_blocks.as_mut() {
             for statement in basic_block.statements.iter_mut() {
@@ -44,6 +42,7 @@ impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
                             ref mut cast_kind @ CastKind::PointerCoercion(
                                 PointerCoercion::ArrayToPointer
                                 | PointerCoercion::MutToConstPointer,
+                                _,
                             ),
                             ..,
                         ),

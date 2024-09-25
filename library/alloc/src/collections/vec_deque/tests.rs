@@ -1,3 +1,6 @@
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use core::iter::TrustedLen;
 
 use super::*;
@@ -559,10 +562,9 @@ fn make_contiguous_head_to_end() {
         tester.push_front(i as char);
     }
 
-    assert_eq!(
-        tester,
-        ['P', 'O', 'N', 'M', 'L', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
-    );
+    assert_eq!(tester, [
+        'P', 'O', 'N', 'M', 'L', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'
+    ]);
 
     // ABCDEFGHIJKPONML
     let expected_start = 0;

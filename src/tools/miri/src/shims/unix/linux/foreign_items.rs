@@ -5,10 +5,10 @@ use crate::machine::SIGRTMAX;
 use crate::machine::SIGRTMIN;
 use crate::shims::unix::*;
 use crate::*;
-use shims::unix::linux::epoll::EvalContextExt as _;
-use shims::unix::linux::eventfd::EvalContextExt as _;
-use shims::unix::linux::mem::EvalContextExt as _;
-use shims::unix::linux::sync::futex;
+use self::shims::unix::linux::epoll::EvalContextExt as _;
+use self::shims::unix::linux::eventfd::EvalContextExt as _;
+use self::shims::unix::linux::mem::EvalContextExt as _;
+use self::shims::unix::linux::sync::futex;
 
 pub fn is_dyn_sym(name: &str) -> bool {
     matches!(name, "statx")
@@ -62,8 +62,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "epoll_wait" => {
                 let [epfd, events, maxevents, timeout] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.epoll_wait(epfd, events, maxevents, timeout)?;
-                this.write_scalar(result, dest)?;
+                this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
             }
             "eventfd" => {
                 let [val, flag] =

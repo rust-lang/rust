@@ -487,7 +487,7 @@ fn is_break_ty(val: &MdTree<'_>) -> bool {
         || matches!(val, MdTree::PlainText(txt) if txt.trim().is_empty())
 }
 
-/// Perform tranformations to text. This splits paragraphs, replaces patterns,
+/// Perform transformations to text. This splits paragraphs, replaces patterns,
 /// and corrects newlines.
 ///
 /// To avoid allocating strings (and using a different heavier tt type), our
