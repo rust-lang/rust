@@ -71,7 +71,8 @@ impl RandomSource for DefaultRandomSource {
 ///
 /// This is a convenience function for `T::random(&mut DefaultRandomSource)` and
 /// will sample according to the same distribution as the underlying [`Random`]
-/// trait implementation.
+/// trait implementation. See [`DefaultRandomSource`] for more information about
+/// how randomness is sourced.
 ///
 /// **Warning:** Be careful when manipulating random values! The
 /// [`random`](Random::random) method on integers samples them with a uniform
