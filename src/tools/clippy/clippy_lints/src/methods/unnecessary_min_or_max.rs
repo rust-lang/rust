@@ -1,16 +1,15 @@
 use std::cmp::Ordering;
 
 use super::UNNECESSARY_MIN_OR_MAX;
-use clippy_utils::diagnostics::span_lint_and_sugg;
-
 use clippy_utils::consts::{ConstEvalCtxt, Constant, ConstantSource, FullInt};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::Span;
+use rustc_span::{Span, sym};
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -21,26 +20,30 @@ pub(super) fn check<'tcx>(
 ) {
     let typeck_results = cx.typeck_results();
     let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.param_env, typeck_results);
-    if let Some((left, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(recv)
-        && let Some((right, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(arg)
+    if let Some(id) = typeck_results.type_dependent_def_id(expr.hir_id)
+        && (cx.tcx.is_diagnostic_item(sym::cmp_ord_min, id) || cx.tcx.is_diagnostic_item(sym::cmp_ord_max, id))
     {
-        let Some(ord) = Constant::partial_cmp(cx.tcx, typeck_results.expr_ty(recv), &left, &right) else {
-            return;
-        };
+        if let Some((left, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(recv)
+            && let Some((right, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(arg)
+        {
+            let Some(ord) = Constant::partial_cmp(cx.tcx, typeck_results.expr_ty(recv), &left, &right) else {
+                return;
+            };
 
-        lint(cx, expr, name, recv.span, arg.span, ord);
-    } else if let Some(extrema) = detect_extrema(cx, recv) {
-        let ord = match extrema {
-            Extrema::Minimum => Ordering::Less,
-            Extrema::Maximum => Ordering::Greater,
-        };
-        lint(cx, expr, name, recv.span, arg.span, ord);
-    } else if let Some(extrema) = detect_extrema(cx, arg) {
-        let ord = match extrema {
-            Extrema::Minimum => Ordering::Greater,
-            Extrema::Maximum => Ordering::Less,
-        };
-        lint(cx, expr, name, recv.span, arg.span, ord);
+            lint(cx, expr, name, recv.span, arg.span, ord);
+        } else if let Some(extrema) = detect_extrema(cx, recv) {
+            let ord = match extrema {
+                Extrema::Minimum => Ordering::Less,
+                Extrema::Maximum => Ordering::Greater,
+            };
+            lint(cx, expr, name, recv.span, arg.span, ord);
+        } else if let Some(extrema) = detect_extrema(cx, arg) {
+            let ord = match extrema {
+                Extrema::Minimum => Ordering::Greater,
+                Extrema::Maximum => Ordering::Less,
+            };
+            lint(cx, expr, name, recv.span, arg.span, ord);
+        }
     }
 }
 

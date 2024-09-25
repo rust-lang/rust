@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::{snippet, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::{expr_or_init, is_trait_method, pat_is_wild};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, FnDecl, PatKind, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::AdtDef;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use crate::loops::UNUSED_ENUMERATE_INDEX;
 

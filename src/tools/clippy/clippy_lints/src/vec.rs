@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::ops::ControlFlow;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::SpanRangeExt;
@@ -15,7 +15,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, sym};
 
 #[expect(clippy::module_name_repetitions)]
 pub struct UselessVec {

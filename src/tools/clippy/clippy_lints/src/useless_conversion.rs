@@ -12,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 declare_clippy_lint! {
@@ -217,12 +217,12 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             },
                             ExprKind::MethodCall(.., args, _) => {
                                 cx.typeck_results().type_dependent_def_id(parent.hir_id).map(|did| {
-                                    return (
+                                    (
                                         did,
                                         args,
                                         cx.typeck_results().node_args(parent.hir_id),
                                         MethodOrFunction::Method,
-                                    );
+                                    )
                                 })
                             },
                             _ => None,

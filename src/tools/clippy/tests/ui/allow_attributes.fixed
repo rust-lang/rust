@@ -58,3 +58,10 @@ fn msrv_1_80() {
     #[allow(unused)]
     let x = 1;
 }
+
+#[deny(clippy::allow_attributes)]
+fn deny_allow_attributes() -> Option<u8> {
+    let allow = None;
+    allow?;
+    Some(42)
+}

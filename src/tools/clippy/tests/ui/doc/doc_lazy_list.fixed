@@ -7,9 +7,8 @@ fn one() {}
 
 /// 1. first line
 ///    lazy list continuations don't make warnings with this lint
-///
 //~^ ERROR: doc list item without indentation
-/// because they don't have the
+///    because they don't have the
 //~^ ERROR: doc list item without indentation
 fn two() {}
 
@@ -20,9 +19,8 @@ fn three() {}
 
 ///   - first line
 ///     lazy list continuations don't make warnings with this lint
-///
 //~^ ERROR: doc list item without indentation
-/// because they don't have the
+///     because they don't have the
 //~^ ERROR: doc list item without indentation
 fn four() {}
 
@@ -33,9 +31,8 @@ fn five() {}
 
 ///   - - first line
 ///       this will warn on the lazy continuation
-///
 //~^ ERROR: doc list item without indentation
-///     and so should this
+///       and so should this
 //~^ ERROR: doc list item without indentation
 fn six() {}
 

@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 
 use super::OPTION_AS_REF_DEREF;
 
@@ -48,7 +48,9 @@ pub(super) fn check(
                 .map_or(false, |fun_def_id| {
                     cx.tcx.is_diagnostic_item(sym::deref_method, fun_def_id)
                         || cx.tcx.is_diagnostic_item(sym::deref_mut_method, fun_def_id)
-                        || deref_aliases.iter().any(|&sym| cx.tcx.is_diagnostic_item(sym, fun_def_id))
+                        || deref_aliases
+                            .iter()
+                            .any(|&sym| cx.tcx.is_diagnostic_item(sym, fun_def_id))
                 })
         },
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
@@ -69,7 +71,9 @@ pub(super) fn check(
                         let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap();
                         cx.tcx.is_diagnostic_item(sym::deref_method, method_did)
                             || cx.tcx.is_diagnostic_item(sym::deref_mut_method, method_did)
-                            || deref_aliases.iter().any(|&sym| cx.tcx.is_diagnostic_item(sym, method_did))
+                            || deref_aliases
+                                .iter()
+                                .any(|&sym| cx.tcx.is_diagnostic_item(sym, method_did))
                     } else {
                         false
                     }

@@ -1,4 +1,4 @@
-use crate::visitors::{for_each_expr, for_each_expr_without_closures, Descend, Visitable};
+use crate::visitors::{Descend, Visitable, for_each_expr, for_each_expr_without_closures};
 use crate::{self as utils, get_enclosing_loop_or_multi_call_closure};
 use core::ops::ControlFlow;
 use hir::def::Res;

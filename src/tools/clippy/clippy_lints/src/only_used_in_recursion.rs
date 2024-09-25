@@ -9,8 +9,8 @@ use rustc_hir::{Body, Expr, ExprKind, HirId, ImplItem, ImplItemKind, Node, PatKi
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, ConstKind, EarlyBinder, GenericArgKind, GenericArgsRef};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use rustc_span::symbol::{Ident, kw};
 use std::iter;
 
 declare_clippy_lint! {

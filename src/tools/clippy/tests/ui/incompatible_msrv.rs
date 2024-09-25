@@ -2,8 +2,8 @@
 #![feature(custom_inner_attributes)]
 #![clippy::msrv = "1.3.0"]
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::future::Future;
 use std::thread::sleep;
 use std::time::Duration;

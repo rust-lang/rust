@@ -22,15 +22,15 @@ mod while_immutable_condition;
 mod while_let_loop;
 mod while_let_on_iterator;
 
-use clippy_config::msrvs::Msrv;
 use clippy_config::Conf;
+use clippy_config::msrvs::Msrv;
 use clippy_utils::higher;
 use rustc_ast::Label;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
-use utils::{make_iterator_snippet, IncrementVisitor, InitializeVisitor};
+use utils::{IncrementVisitor, InitializeVisitor, make_iterator_snippet};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -188,22 +188,22 @@ declare_clippy_lint! {
     /// The `while let` loop is usually shorter and more
     /// readable.
     ///
-    /// ### Known problems
-    /// Sometimes the wrong binding is displayed ([#383](https://github.com/rust-lang/rust-clippy/issues/383)).
-    ///
     /// ### Example
     /// ```rust,no_run
-    /// # let y = Some(1);
+    /// let y = Some(1);
     /// loop {
     ///     let x = match y {
     ///         Some(x) => x,
     ///         None => break,
     ///     };
-    ///     // .. do something with x
+    ///     // ..
     /// }
-    /// // is easier written as
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    /// let y = Some(1);
     /// while let Some(x) = y {
-    ///     // .. do something with x
+    ///     // ..
     /// };
     /// ```
     #[clippy::version = "pre 1.29.0"]

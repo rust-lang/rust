@@ -6,8 +6,8 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node};
 use rustc_hir_typeck::cast::check_cast;
 use rustc_lint::LateContext;
-use rustc_middle::ty::cast::CastKind;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::cast::CastKind;
 
 /// Checks for `transmutes_expressible_as_ptr_casts` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.

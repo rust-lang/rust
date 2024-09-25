@@ -1,6 +1,6 @@
 use crate::clippy_project_root;
 use itertools::Itertools;
-use rustc_lexer::{tokenize, TokenKind};
+use rustc_lexer::{TokenKind, tokenize};
 use shell_escape::escape;
 use std::ffi::{OsStr, OsString};
 use std::ops::ControlFlow;

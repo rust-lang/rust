@@ -1,4 +1,4 @@
-use super::{Attribute, ALLOW_ATTRIBUTES_WITHOUT_REASON};
+use super::{ALLOW_ATTRIBUTES_WITHOUT_REASON, Attribute};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use rustc_ast::{MetaItemKind, NestedMetaItem};
@@ -26,7 +26,7 @@ pub(super) fn check<'cx>(cx: &LateContext<'cx>, name: Symbol, items: &[NestedMet
         cx,
         ALLOW_ATTRIBUTES_WITHOUT_REASON,
         attr.span,
-        format!("`{}` attribute without specifying a reason", name.as_str()),
+        format!("`{name}` attribute without specifying a reason"),
         |diag| {
             diag.help("try adding a reason at the end with `, reason = \"..\"`");
         },

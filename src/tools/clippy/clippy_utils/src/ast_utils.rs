@@ -242,13 +242,16 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
 }
 
 fn eq_coroutine_kind(a: Option<CoroutineKind>, b: Option<CoroutineKind>) -> bool {
-    match (a, b) {
+    matches!(
+        (a, b),
         (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
-        | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
-        | (Some(CoroutineKind::AsyncGen { .. }), Some(CoroutineKind::AsyncGen { .. }))
-        | (None, None) => true,
-        _ => false,
-    }
+            | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
+            | (
+                Some(CoroutineKind::AsyncGen { .. }),
+                Some(CoroutineKind::AsyncGen { .. })
+            )
+            | (None, None)
+    )
 }
 
 pub fn eq_field(l: &ExprField, r: &ExprField) -> bool {

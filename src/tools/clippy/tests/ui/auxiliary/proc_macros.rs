@@ -5,9 +5,9 @@
 extern crate proc_macro;
 
 use core::mem;
-use proc_macro::token_stream::IntoIter;
 use proc_macro::Delimiter::{self, Brace, Parenthesis};
 use proc_macro::Spacing::{self, Alone, Joint};
+use proc_macro::token_stream::IntoIter;
 use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree as TT};
 use syn::spanned::Spanned;
 

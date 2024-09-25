@@ -3,13 +3,13 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_lint_allowed;
 use itertools::Itertools;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span, SyntaxContext};
-use std::collections::btree_map::Entry;
+use rustc_span::{Span, SyntaxContext, sym};
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 declare_clippy_lint! {
     /// ### What it does

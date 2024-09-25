@@ -1,6 +1,6 @@
 use clippy_utils::{get_attr, higher};
-use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_ast::LitIntType;
+use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     self as hir, ArrayLen, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind,

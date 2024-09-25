@@ -5,7 +5,7 @@ use clippy_utils::{is_doc_hidden, return_ty};
 use rustc_hir::{BodyId, FnSig, OwnerId, Safety};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 pub fn check(
     cx: &LateContext<'_>,

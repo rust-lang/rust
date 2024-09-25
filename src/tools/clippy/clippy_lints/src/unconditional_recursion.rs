@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{walk_body, walk_expr, FnKind, Visitor};
+use rustc_hir::intravisit::{FnKind, Visitor, walk_body, walk_expr};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Node, QPath, TyKind};
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -13,8 +13,8 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, AssocKind, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, Span};
+use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 use std::ops::ControlFlow;
 
@@ -257,13 +257,10 @@ fn is_default_method_on_current_ty<'tcx>(tcx: TyCtxt<'tcx>, qpath: QPath<'tcx>, 
             }
             if matches!(
                 ty.kind,
-                TyKind::Path(QPath::Resolved(
-                    _,
-                    hir::Path {
-                        res: Res::SelfTyAlias { .. },
-                        ..
-                    },
-                ))
+                TyKind::Path(QPath::Resolved(_, hir::Path {
+                    res: Res::SelfTyAlias { .. },
+                    ..
+                },))
             ) {
                 return true;
             }
