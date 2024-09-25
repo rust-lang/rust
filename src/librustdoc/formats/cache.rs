@@ -153,7 +153,8 @@ impl Cache {
 
         // Crawl the crate to build various caches used for the output
         debug!(?cx.cache.crate_version);
-        cx.cache.traits = krate.external_traits.take();
+        assert!(cx.external_traits.is_empty());
+        cx.cache.traits = mem::take(&mut krate.external_traits);
 
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code

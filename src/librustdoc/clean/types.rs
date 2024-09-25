@@ -1,8 +1,6 @@
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::hash::Hash;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
@@ -115,7 +113,7 @@ impl From<DefId> for ItemId {
 pub(crate) struct Crate {
     pub(crate) module: Item,
     /// Only here so that they can be filtered through the rustdoc passes.
-    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
+    pub(crate) external_traits: Box<FxHashMap<DefId, Trait>>,
 }
 
 impl Crate {
