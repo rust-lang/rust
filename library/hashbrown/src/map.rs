@@ -1467,8 +1467,11 @@ where
     /// Attempts to get mutable references to `N` values in the map at once.
     ///
     /// Returns an array of length `N` with the results of each query. For soundness, at most one
-    /// mutable reference will be returned to any value. `None` will be returned if any of the
-    /// keys are duplicates or missing.
+    /// mutable reference will be returned to any value. `None` will be used if the key is missing.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any keys are overlapping.
     ///
     /// # Examples
     ///
@@ -1481,16 +1484,23 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
+    /// // Get Athenæum and Bodleian Library
+    /// let [Some(a), Some(b)] = libraries.get_many_mut([
+    ///     "Athenæum",
+    ///     "Bodleian Library",
+    /// ]) else { panic!() };
+    ///
+    /// // Assert values of Athenæum and Library of Congress
     /// let got = libraries.get_many_mut([
     ///     "Athenæum",
     ///     "Library of Congress",
     /// ]);
     /// assert_eq!(
     ///     got,
-    ///     Some([
-    ///         &mut 1807,
-    ///         &mut 1800,
-    ///     ]),
+    ///     [
+    ///         Some(&mut 1807),
+    ///         Some(&mut 1800),
+    ///     ],
     /// );
     ///
     /// // Missing keys result in None
@@ -1498,16 +1508,28 @@ where
     ///     "Athenæum",
     ///     "New York Public Library",
     /// ]);
-    /// assert_eq!(got, None);
+    /// assert_eq!(
+    ///     got,
+    ///     [
+    ///         Some(&mut 1807),
+    ///         None
+    ///     ]
+    /// );
+    /// ```
     ///
-    /// // Duplicate keys result in None
+    /// ```should_panic
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut libraries = HashMap::new();
+    /// libraries.insert("Athenæum".to_string(), 1807);
+    ///
+    /// // Duplicate keys panic!
     /// let got = libraries.get_many_mut([
     ///     "Athenæum",
     ///     "Athenæum",
     /// ]);
-    /// assert_eq!(got, None);
     /// ```
-    pub fn get_many_mut<Q, const N: usize>(&mut self, ks: [&Q; N]) -> Option<[&'_ mut V; N]>
+    pub fn get_many_mut<Q, const N: usize>(&mut self, ks: [&Q; N]) -> [Option<&'_ mut V>; N]
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
@@ -1517,8 +1539,8 @@ where
     /// Attempts to get mutable references to `N` values in the map at once, without validating that
     /// the values are unique.
     ///
-    /// Returns an array of length `N` with the results of each query. `None` will be returned if
-    /// any of the keys are missing.
+    /// Returns an array of length `N` with the results of each query. `None` will be used if
+    /// the key is missing.
     ///
     /// For a safe alternative see [`get_many_mut`](`HashMap::get_many_mut`).
     ///
@@ -1540,29 +1562,37 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
-    /// let got = libraries.get_many_mut([
+    /// // SAFETY: The keys do not overlap.
+    /// let [Some(a), Some(b)] = (unsafe { libraries.get_many_unchecked_mut([
+    ///     "Athenæum",
+    ///     "Bodleian Library",
+    /// ]) }) else { panic!() };
+    ///
+    /// // SAFETY: The keys do not overlap.
+    /// let got = unsafe { libraries.get_many_unchecked_mut([
     ///     "Athenæum",
     ///     "Library of Congress",
-    /// ]);
+    /// ]) };
     /// assert_eq!(
     ///     got,
-    ///     Some([
-    ///         &mut 1807,
-    ///         &mut 1800,
-    ///     ]),
+    ///     [
+    ///         Some(&mut 1807),
+    ///         Some(&mut 1800),
+    ///     ],
     /// );
     ///
-    /// // Missing keys result in None
-    /// let got = libraries.get_many_mut([
+    /// // SAFETY: The keys do not overlap.
+    /// let got = unsafe { libraries.get_many_unchecked_mut([
     ///     "Athenæum",
     ///     "New York Public Library",
-    /// ]);
-    /// assert_eq!(got, None);
+    /// ]) };
+    /// // Missing keys result in None
+    /// assert_eq!(got, [Some(&mut 1807), None]);
     /// ```
     pub unsafe fn get_many_unchecked_mut<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
-    ) -> Option<[&'_ mut V; N]>
+    ) -> [Option<&'_ mut V>; N]
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
@@ -1574,8 +1604,11 @@ where
     /// references to the corresponding keys.
     ///
     /// Returns an array of length `N` with the results of each query. For soundness, at most one
-    /// mutable reference will be returned to any value. `None` will be returned if any of the keys
-    /// are duplicates or missing.
+    /// mutable reference will be returned to any value. `None` will be used if the key is missing.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any keys are overlapping.
     ///
     /// # Examples
     ///
@@ -1594,30 +1627,37 @@ where
     /// ]);
     /// assert_eq!(
     ///     got,
-    ///     Some([
-    ///         (&"Bodleian Library".to_string(), &mut 1602),
-    ///         (&"Herzogin-Anna-Amalia-Bibliothek".to_string(), &mut 1691),
-    ///     ]),
+    ///     [
+    ///         Some((&"Bodleian Library".to_string(), &mut 1602)),
+    ///         Some((&"Herzogin-Anna-Amalia-Bibliothek".to_string(), &mut 1691)),
+    ///     ],
     /// );
     /// // Missing keys result in None
     /// let got = libraries.get_many_key_value_mut([
     ///     "Bodleian Library",
     ///     "Gewandhaus",
     /// ]);
-    /// assert_eq!(got, None);
+    /// assert_eq!(got, [Some((&"Bodleian Library".to_string(), &mut 1602)), None]);
+    /// ```
     ///
-    /// // Duplicate keys result in None
+    /// ```should_panic
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut libraries = HashMap::new();
+    /// libraries.insert("Bodleian Library".to_string(), 1602);
+    /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
+    ///
+    /// // Duplicate keys result in panic!
     /// let got = libraries.get_many_key_value_mut([
     ///     "Bodleian Library",
     ///     "Herzogin-Anna-Amalia-Bibliothek",
     ///     "Herzogin-Anna-Amalia-Bibliothek",
     /// ]);
-    /// assert_eq!(got, None);
     /// ```
     pub fn get_many_key_value_mut<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
-    ) -> Option<[(&'_ K, &'_ mut V); N]>
+    ) -> [Option<(&'_ K, &'_ mut V)>; N]
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
@@ -1657,22 +1697,28 @@ where
     /// ]);
     /// assert_eq!(
     ///     got,
-    ///     Some([
-    ///         (&"Bodleian Library".to_string(), &mut 1602),
-    ///         (&"Herzogin-Anna-Amalia-Bibliothek".to_string(), &mut 1691),
-    ///     ]),
+    ///     [
+    ///         Some((&"Bodleian Library".to_string(), &mut 1602)),
+    ///         Some((&"Herzogin-Anna-Amalia-Bibliothek".to_string(), &mut 1691)),
+    ///     ],
     /// );
     /// // Missing keys result in None
     /// let got = libraries.get_many_key_value_mut([
     ///     "Bodleian Library",
     ///     "Gewandhaus",
     /// ]);
-    /// assert_eq!(got, None);
+    /// assert_eq!(
+    ///     got,
+    ///     [
+    ///         Some((&"Bodleian Library".to_string(), &mut 1602)),
+    ///         None,
+    ///     ],
+    /// );
     /// ```
     pub unsafe fn get_many_key_value_unchecked_mut<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
-    ) -> Option<[(&'_ K, &'_ mut V); N]>
+    ) -> [Option<(&'_ K, &'_ mut V)>; N]
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
@@ -1680,7 +1726,7 @@ where
             .map(|res| res.map(|(k, v)| (&*k, v)))
     }
 
-    fn get_many_mut_inner<Q, const N: usize>(&mut self, ks: [&Q; N]) -> Option<[&'_ mut (K, V); N]>
+    fn get_many_mut_inner<Q, const N: usize>(&mut self, ks: [&Q; N]) -> [Option<&'_ mut (K, V)>; N]
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
@@ -1692,7 +1738,7 @@ where
     unsafe fn get_many_unchecked_mut_inner<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
-    ) -> Option<[&'_ mut (K, V); N]>
+    ) -> [Option<&'_ mut (K, V)>; N]
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
@@ -5937,7 +5983,7 @@ mod test_map {
     }
 
     #[test]
-    fn test_get_each_mut() {
+    fn test_get_many_mut() {
         let mut map = HashMap::new();
         map.insert("foo".to_owned(), 0);
         map.insert("bar".to_owned(), 10);
@@ -5945,25 +5991,31 @@ mod test_map {
         map.insert("qux".to_owned(), 30);
 
         let xs = map.get_many_mut(["foo", "qux"]);
-        assert_eq!(xs, Some([&mut 0, &mut 30]));
+        assert_eq!(xs, [Some(&mut 0), Some(&mut 30)]);
 
         let xs = map.get_many_mut(["foo", "dud"]);
-        assert_eq!(xs, None);
-
-        let xs = map.get_many_mut(["foo", "foo"]);
-        assert_eq!(xs, None);
+        assert_eq!(xs, [Some(&mut 0), None]);
 
         let ys = map.get_many_key_value_mut(["bar", "baz"]);
         assert_eq!(
             ys,
-            Some([(&"bar".to_owned(), &mut 10), (&"baz".to_owned(), &mut 20),]),
+            [
+                Some((&"bar".to_owned(), &mut 10)),
+                Some((&"baz".to_owned(), &mut 20))
+            ],
         );
 
         let ys = map.get_many_key_value_mut(["bar", "dip"]);
-        assert_eq!(ys, None);
+        assert_eq!(ys, [Some((&"bar".to_string(), &mut 10)), None]);
+    }
 
-        let ys = map.get_many_key_value_mut(["baz", "baz"]);
-        assert_eq!(ys, None);
+    #[test]
+    #[should_panic = "duplicate keys found"]
+    fn test_get_many_mut_duplicate() {
+        let mut map = HashMap::new();
+        map.insert("foo".to_owned(), 0);
+
+        let _xs = map.get_many_mut(["foo", "foo"]);
     }
 
     #[test]

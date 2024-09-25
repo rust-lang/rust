@@ -1,10 +1,10 @@
 use crate::alloc::alloc::{handle_alloc_error, Layout};
 use crate::scopeguard::{guard, ScopeGuard};
 use crate::TryReserveError;
+use core::array;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
-use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 use core::{hint, ptr};
 
@@ -482,6 +482,13 @@ impl<T> Bucket<T> {
         } else {
             unsafe { self.ptr.as_ptr().sub(1) }
         }
+    }
+
+    /// Acquires the underlying non-null pointer `*mut T` to `data`.
+    #[inline]
+    fn as_non_null(&self) -> NonNull<T> {
+        // SAFETY: `self.ptr` is already a `NonNull`
+        unsafe { NonNull::new_unchecked(self.as_ptr()) }
     }
 
     /// Create a new [`Bucket`] that is offset from the `self` by the given
@@ -1291,20 +1298,19 @@ impl<T, A: Allocator> RawTable<T, A> {
         &mut self,
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
-    ) -> Option<[&'_ mut T; N]> {
+    ) -> [Option<&'_ mut T>; N] {
         unsafe {
-            let ptrs = self.get_many_mut_pointers(hashes, eq)?;
+            let ptrs = self.get_many_mut_pointers(hashes, eq);
 
-            for (i, &cur) in ptrs.iter().enumerate() {
-                if ptrs[..i].iter().any(|&prev| ptr::eq::<T>(prev, cur)) {
-                    return None;
+            for (i, cur) in ptrs.iter().enumerate() {
+                if cur.is_some() && ptrs[..i].contains(cur) {
+                    panic!("duplicate keys found");
                 }
             }
             // All bucket are distinct from all previous buckets so we're clear to return the result
             // of the lookup.
 
-            // TODO use `MaybeUninit::array_assume_init` here instead once that's stable.
-            Some(mem::transmute_copy(&ptrs))
+            ptrs.map(|ptr| ptr.map(|mut ptr| ptr.as_mut()))
         }
     }
 
@@ -1312,27 +1318,20 @@ impl<T, A: Allocator> RawTable<T, A> {
         &mut self,
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
-    ) -> Option<[&'_ mut T; N]> {
-        let ptrs = self.get_many_mut_pointers(hashes, eq)?;
-        Some(mem::transmute_copy(&ptrs))
+    ) -> [Option<&'_ mut T>; N] {
+        let ptrs = self.get_many_mut_pointers(hashes, eq);
+        ptrs.map(|ptr| ptr.map(|mut ptr| ptr.as_mut()))
     }
 
     unsafe fn get_many_mut_pointers<const N: usize>(
         &mut self,
         hashes: [u64; N],
         mut eq: impl FnMut(usize, &T) -> bool,
-    ) -> Option<[*mut T; N]> {
-        // TODO use `MaybeUninit::uninit_array` here instead once that's stable.
-        let mut outs: MaybeUninit<[*mut T; N]> = MaybeUninit::uninit();
-        let outs_ptr = outs.as_mut_ptr();
-
-        for (i, &hash) in hashes.iter().enumerate() {
-            let cur = self.find(hash, |k| eq(i, k))?;
-            *(*outs_ptr).get_unchecked_mut(i) = cur.as_mut();
-        }
-
-        // TODO use `MaybeUninit::array_assume_init` here instead once that's stable.
-        Some(outs.assume_init())
+    ) -> [Option<NonNull<T>>; N] {
+        array::from_fn(|i| {
+            self.find(hashes[i], |k| eq(i, k))
+                .map(|cur| cur.as_non_null())
+        })
     }
 
     /// Returns the number of elements the map can hold without reallocating.
