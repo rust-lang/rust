@@ -6,12 +6,12 @@ use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
-    Visitor, walk_fn_decl, walk_generic_arg, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
+    Visitor, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
     walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_where_predicate,
 };
 use rustc_hir::{
-    BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl,
-    ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node, PolyTraitRef,
+    BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind, Generics,
+    Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node, PolyTraitRef,
     PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate, lang_items,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -494,14 +494,14 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
 struct Usage {
     lifetime: Lifetime,
     in_where_predicate: bool,
-    in_generic_arg: bool,
+    in_generics_arg: bool,
 }
 
 struct LifetimeChecker<'cx, 'tcx, F> {
     cx: &'cx LateContext<'tcx>,
     map: FxHashMap<LocalDefId, Vec<Usage>>,
     where_predicate_depth: usize,
-    generic_arg_depth: usize,
+    generic_args_depth: usize,
     phantom: std::marker::PhantomData<F>,
 }
 
@@ -512,7 +512,7 @@ impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F> {
             cx,
             map,
             where_predicate_depth: 0,
-            generic_arg_depth: 0,
+            generic_args_depth: 0,
             phantom: std::marker::PhantomData,
         }
     }
@@ -533,7 +533,7 @@ where
             usages.push(Usage {
                 lifetime: *lifetime,
                 in_where_predicate: self.where_predicate_depth != 0,
-                in_generic_arg: self.generic_arg_depth != 0,
+                in_generics_arg: self.generic_args_depth != 0,
             });
         }
     }
@@ -544,10 +544,10 @@ where
         self.where_predicate_depth -= 1;
     }
 
-    fn visit_generic_arg(&mut self, generic_arg: &'tcx GenericArg<'tcx>) -> Self::Result {
-        self.generic_arg_depth += 1;
-        walk_generic_arg(self, generic_arg);
-        self.generic_arg_depth -= 1;
+    fn visit_generic_args(&mut self, generic_args: &'tcx GenericArgs<'tcx>) -> Self::Result {
+        self.generic_args_depth += 1;
+        walk_generic_args(self, generic_args);
+        self.generic_args_depth -= 1;
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -574,7 +574,7 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
     for (def_id, usages) in checker.map {
         if usages
             .iter()
-            .all(|usage| usage.in_where_predicate && !usage.in_generic_arg)
+            .all(|usage| usage.in_where_predicate && !usage.in_generics_arg)
         {
             span_lint(
                 cx,
@@ -612,7 +612,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
     for (&def_id, usages) in &checker.map {
         if usages
             .iter()
-            .all(|usage| usage.in_where_predicate && !usage.in_generic_arg)
+            .all(|usage| usage.in_where_predicate && !usage.in_generics_arg)
         {
             span_lint(
                 cx,
@@ -646,7 +646,7 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 }
                 | Usage {
                     lifetime,
-                    in_generic_arg: false,
+                    in_generics_arg: false,
                     ..
                 },
             ] = usages.as_slice()
