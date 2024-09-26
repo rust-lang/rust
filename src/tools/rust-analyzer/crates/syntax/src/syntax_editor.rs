@@ -100,6 +100,10 @@ impl SyntaxEditor {
     pub fn finish(self) -> SyntaxEdit {
         edit_algo::apply_edits(self)
     }
+
+    pub fn add_mappings(&mut self, other: SyntaxMapping) {
+        self.mappings.merge(other);
+    }
 }
 
 /// Represents a completed [`SyntaxEditor`] operation.
@@ -319,84 +323,13 @@ fn is_ancestor_or_self_of_element(node: &SyntaxElement, ancestor: &SyntaxNode) -
 #[cfg(test)]
 mod tests {
     use expect_test::expect;
-    use itertools::Itertools;
 
     use crate::{
-        ast::{self, make, HasName},
+        ast::{self, make, syntax_factory::SyntaxFactory},
         AstNode,
     };
 
     use super::*;
-
-    fn make_ident_pat(
-        editor: Option<&mut SyntaxEditor>,
-        ref_: bool,
-        mut_: bool,
-        name: ast::Name,
-    ) -> ast::IdentPat {
-        let ast = make::ident_pat(ref_, mut_, name.clone()).clone_for_update();
-
-        if let Some(editor) = editor {
-            let mut mapping = SyntaxMappingBuilder::new(ast.syntax().clone());
-            mapping.map_node(name.syntax().clone(), ast.name().unwrap().syntax().clone());
-            mapping.finish(editor);
-        }
-
-        ast
-    }
-
-    fn make_let_stmt(
-        editor: Option<&mut SyntaxEditor>,
-        pattern: ast::Pat,
-        ty: Option<ast::Type>,
-        initializer: Option<ast::Expr>,
-    ) -> ast::LetStmt {
-        let ast =
-            make::let_stmt(pattern.clone(), ty.clone(), initializer.clone()).clone_for_update();
-
-        if let Some(editor) = editor {
-            let mut mapping = SyntaxMappingBuilder::new(ast.syntax().clone());
-            mapping.map_node(pattern.syntax().clone(), ast.pat().unwrap().syntax().clone());
-            if let Some(input) = ty {
-                mapping.map_node(input.syntax().clone(), ast.ty().unwrap().syntax().clone());
-            }
-            if let Some(input) = initializer {
-                mapping
-                    .map_node(input.syntax().clone(), ast.initializer().unwrap().syntax().clone());
-            }
-            mapping.finish(editor);
-        }
-
-        ast
-    }
-
-    fn make_block_expr(
-        editor: Option<&mut SyntaxEditor>,
-        stmts: impl IntoIterator<Item = ast::Stmt>,
-        tail_expr: Option<ast::Expr>,
-    ) -> ast::BlockExpr {
-        let stmts = stmts.into_iter().collect_vec();
-        let input = stmts.iter().map(|it| it.syntax().clone()).collect_vec();
-
-        let ast = make::block_expr(stmts, tail_expr.clone()).clone_for_update();
-
-        if let Some((editor, stmt_list)) = editor.zip(ast.stmt_list()) {
-            let mut mapping = SyntaxMappingBuilder::new(stmt_list.syntax().clone());
-
-            mapping.map_children(
-                input.into_iter(),
-                stmt_list.statements().map(|it| it.syntax().clone()),
-            );
-
-            if let Some((input, output)) = tail_expr.zip(stmt_list.tail_expr()) {
-                mapping.map_node(input.syntax().clone(), output.syntax().clone());
-            }
-
-            mapping.finish(editor);
-        }
-
-        ast
-    }
 
     #[test]
     fn basic_usage() {
@@ -417,6 +350,7 @@ mod tests {
         let to_replace = root.syntax().descendants().find_map(ast::BinExpr::cast).unwrap();
 
         let mut editor = SyntaxEditor::new(root.syntax().clone());
+        let make = SyntaxFactory::new();
 
         let name = make::name("var_name");
         let name_ref = make::name_ref("var_name").clone_for_update();
@@ -425,21 +359,20 @@ mod tests {
         editor.add_annotation(name.syntax(), placeholder_snippet);
         editor.add_annotation(name_ref.syntax(), placeholder_snippet);
 
-        let make_ident_pat = make_ident_pat(Some(&mut editor), false, false, name);
-        let make_let_stmt = make_let_stmt(
-            Some(&mut editor),
-            make_ident_pat.into(),
-            None,
-            Some(to_replace.clone().into()),
-        );
-        let new_block = make_block_expr(
-            Some(&mut editor),
-            [make_let_stmt.into()],
+        let new_block = make.block_expr(
+            [make
+                .let_stmt(
+                    make.ident_pat(false, false, name.clone()).into(),
+                    None,
+                    Some(to_replace.clone().into()),
+                )
+                .into()],
             Some(to_wrap.clone().into()),
         );
 
         editor.replace(to_replace.syntax(), name_ref.syntax());
         editor.replace(to_wrap.syntax(), new_block.syntax());
+        editor.add_mappings(make.finish_with_mappings());
 
         let edit = editor.finish();
 
@@ -473,11 +406,11 @@ mod tests {
         let second_let = root.syntax().descendants().find_map(ast::LetStmt::cast).unwrap();
 
         let mut editor = SyntaxEditor::new(root.syntax().clone());
+        let make = SyntaxFactory::without_mappings();
 
         editor.insert(
             Position::first_child_of(root.stmt_list().unwrap().syntax()),
-            make_let_stmt(
-                None,
+            make.let_stmt(
                 make::ext::simple_ident_pat(make::name("first")).into(),
                 None,
                 Some(make::expr_literal("1").into()),
@@ -487,8 +420,7 @@ mod tests {
 
         editor.insert(
             Position::after(second_let.syntax()),
-            make_let_stmt(
-                None,
+            make.let_stmt(
                 make::ext::simple_ident_pat(make::name("third")).into(),
                 None,
                 Some(make::expr_literal("3").into()),
@@ -528,19 +460,17 @@ mod tests {
         let second_let = root.syntax().descendants().find_map(ast::LetStmt::cast).unwrap();
 
         let mut editor = SyntaxEditor::new(root.syntax().clone());
+        let make = SyntaxFactory::new();
 
-        let new_block_expr =
-            make_block_expr(Some(&mut editor), [], Some(ast::Expr::BlockExpr(inner_block.clone())));
+        let new_block_expr = make.block_expr([], Some(ast::Expr::BlockExpr(inner_block.clone())));
 
-        let first_let = make_let_stmt(
-            Some(&mut editor),
+        let first_let = make.let_stmt(
             make::ext::simple_ident_pat(make::name("first")).into(),
             None,
             Some(make::expr_literal("1").into()),
         );
 
-        let third_let = make_let_stmt(
-            Some(&mut editor),
+        let third_let = make.let_stmt(
             make::ext::simple_ident_pat(make::name("third")).into(),
             None,
             Some(make::expr_literal("3").into()),
@@ -552,6 +482,7 @@ mod tests {
         );
         editor.insert(Position::after(second_let.syntax()), third_let.syntax());
         editor.replace(inner_block.syntax(), new_block_expr.syntax());
+        editor.add_mappings(make.finish_with_mappings());
 
         let edit = editor.finish();
 
@@ -581,12 +512,11 @@ mod tests {
         let inner_block = root.clone();
 
         let mut editor = SyntaxEditor::new(root.syntax().clone());
+        let make = SyntaxFactory::new();
 
-        let new_block_expr =
-            make_block_expr(Some(&mut editor), [], Some(ast::Expr::BlockExpr(inner_block.clone())));
+        let new_block_expr = make.block_expr([], Some(ast::Expr::BlockExpr(inner_block.clone())));
 
-        let first_let = make_let_stmt(
-            Some(&mut editor),
+        let first_let = make.let_stmt(
             make::ext::simple_ident_pat(make::name("first")).into(),
             None,
             Some(make::expr_literal("1").into()),
@@ -597,6 +527,7 @@ mod tests {
             first_let.syntax(),
         );
         editor.replace(inner_block.syntax(), new_block_expr.syntax());
+        editor.add_mappings(make.finish_with_mappings());
 
         let edit = editor.finish();
 

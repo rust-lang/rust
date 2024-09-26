@@ -8,6 +8,7 @@ pub mod make;
 mod node_ext;
 mod operators;
 pub mod prec;
+pub mod syntax_factory;
 mod token_ext;
 mod traits;
 
