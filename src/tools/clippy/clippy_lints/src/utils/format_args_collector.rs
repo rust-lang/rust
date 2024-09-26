@@ -3,10 +3,10 @@ use clippy_utils::source::SpanRangeExt;
 use itertools::Itertools;
 use rustc_ast::{Crate, Expr, ExprKind, FormatArgs};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_lexer::{tokenize, TokenKind};
+use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::{hygiene, Span};
+use rustc_span::{Span, hygiene};
 use std::iter::once;
 use std::mem;
 

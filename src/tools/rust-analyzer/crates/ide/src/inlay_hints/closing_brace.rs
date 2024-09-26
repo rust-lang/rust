@@ -18,12 +18,13 @@ pub(super) fn hints(
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
-    mut node: SyntaxNode,
+    original_node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
     let name = |it: ast::Name| it.syntax().text_range();
 
+    let mut node = original_node.clone();
     let mut closing_token;
     let (label, name_range) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
         closing_token = item_list.r_curly_token()?;
@@ -77,7 +78,7 @@ pub(super) fn hints(
         }
         closing_token = block.r_curly_token()?;
 
-        let lifetime = label.lifetime().map_or_else(String::new, |it| it.to_string());
+        let lifetime = label.lifetime()?.to_string();
 
         (lifetime, Some(label.syntax().text_range()))
     } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {
@@ -145,6 +146,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: true,
         pad_right: false,
+        resolve_parent: Some(original_node.text_range()),
     });
 
     None

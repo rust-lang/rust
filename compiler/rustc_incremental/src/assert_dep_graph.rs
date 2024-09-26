@@ -35,7 +35,7 @@
 
 use std::env;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::Write;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::implementation::{Direction, INCOMING, NodeIndex, OUTGOING};
@@ -245,7 +245,7 @@ fn dump_graph(query: &DepGraphQuery) {
     {
         // dump a .txt file with just the edges:
         let txt_path = format!("{path}.txt");
-        let mut file = BufWriter::new(File::create(&txt_path).unwrap());
+        let mut file = File::create_buffered(&txt_path).unwrap();
         for (source, target) in &edges {
             write!(file, "{source:?} -> {target:?}\n").unwrap();
         }

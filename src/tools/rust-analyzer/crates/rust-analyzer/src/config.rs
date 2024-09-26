@@ -24,7 +24,8 @@ use ide_db::{
 use itertools::Itertools;
 use paths::{Utf8Path, Utf8PathBuf};
 use project_model::{
-    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustLibSource,
+    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectJsonFromCommand,
+    ProjectManifest, RustLibSource,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
@@ -59,15 +60,13 @@ mod patch_old_style;
 // However, editor specific config, which the server doesn't know about, should
 // be specified directly in `package.json`.
 //
-// To deprecate an option by replacing it with another name use `new_name | `old_name` so that we keep
+// To deprecate an option by replacing it with another name use `new_name` | `old_name` so that we keep
 // parsing the old name.
 config_data! {
-    /// Configs that apply on a workspace-wide scope. There are 3 levels on which a global configuration can be configured
-    // FIXME: 1. and 3. should be split, some configs do not make sense per project
+    /// Configs that apply on a workspace-wide scope. There are 2 levels on which a global configuration can be configured
     ///
-    /// 1. `rust-analyzer.toml` file under user's config directory (e.g ~/.config/rust-analyzer.toml)
+    /// 1. `rust-analyzer.toml` file under user's config directory (e.g ~/.config/rust-analyzer/rust-analyzer.toml)
     /// 2. Client's own configurations (e.g `settings.json` on VS Code)
-    /// 3. `rust-analyzer.toml` file located at the workspace root
     ///
     /// A config is searched for by traversing a "config tree" in a bottom up fashion. It is chosen by the nearest first principle.
     global: struct GlobalDefaultConfigData <- GlobalConfigInput -> {
@@ -76,178 +75,9 @@ config_data! {
         /// How many worker threads to handle priming caches. The default `0` means to pick automatically.
         cachePriming_numThreads: NumThreads = NumThreads::Physical,
 
-        /// Pass `--all-targets` to cargo invocation.
-        cargo_allTargets: bool           = true,
-        /// Automatically refresh project info via `cargo metadata` on
-        /// `Cargo.toml` or `.cargo/config.toml` changes.
-        pub(crate) cargo_autoreload: bool           = true,
-        /// Run build scripts (`build.rs`) for more precise code analysis.
-        cargo_buildScripts_enable: bool  = true,
-        /// Specifies the invocation strategy to use when running the build scripts command.
-        /// If `per_workspace` is set, the command will be executed for each Rust workspace with the
-        /// workspace as the working directory.
-        /// If `once` is set, the command will be executed once with the opened project as the
-        /// working directory.
-        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-        /// is set.
-        cargo_buildScripts_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
-        /// Override the command rust-analyzer uses to run build scripts and
-        /// build procedural macros. The command is required to output json
-        /// and should therefore include `--message-format=json` or a similar
-        /// option.
-        ///
-        /// If there are multiple linked projects/workspaces, this command is invoked for
-        /// each of them, with the working directory being the workspace root
-        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#`.
-        ///
-        /// By default, a cargo invocation will be constructed for the configured
-        /// targets and features, with the following base command line:
-        ///
-        /// ```bash
-        /// cargo check --quiet --workspace --message-format=json --all-targets --keep-going
-        /// ```
-        /// .
-        cargo_buildScripts_overrideCommand: Option<Vec<String>> = None,
-        /// Rerun proc-macros building/build-scripts running when proc-macro
-        /// or build-script sources change and are saved.
-        cargo_buildScripts_rebuildOnSave: bool = true,
-        /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
-        /// avoid checking unnecessary things.
-        cargo_buildScripts_useRustcWrapper: bool = true,
-        /// List of cfg options to enable with the given values.
-        cargo_cfgs: FxHashMap<String, Option<String>> = {
-            let mut m = FxHashMap::default();
-            m.insert("debug_assertions".to_owned(), None);
-            m.insert("miri".to_owned(), None);
-            m
-        },
-        /// Extra arguments that are passed to every cargo invocation.
-        cargo_extraArgs: Vec<String> = vec![],
-        /// Extra environment variables that will be set when running cargo, rustc
-        /// or other commands within the workspace. Useful for setting RUSTFLAGS.
-        cargo_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
-        /// List of features to activate.
-        ///
-        /// Set this to `"all"` to pass `--all-features` to cargo.
-        cargo_features: CargoFeaturesDef      = CargoFeaturesDef::Selected(vec![]),
-        /// Whether to pass `--no-default-features` to cargo.
-        cargo_noDefaultFeatures: bool    = false,
-        /// Relative path to the sysroot, or "discover" to try to automatically find it via
-        /// "rustc --print sysroot".
-        ///
-        /// Unsetting this disables sysroot loading.
-        ///
-        /// This option does not take effect until rust-analyzer is restarted.
-        cargo_sysroot: Option<String>    = Some("discover".to_owned()),
-        /// Relative path to the sysroot library sources. If left unset, this will default to
-        /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
-        ///
-        /// This option does not take effect until rust-analyzer is restarted.
-        cargo_sysrootSrc: Option<String>    = None,
-        /// Compilation target override (target triple).
-        // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
-        // than `checkOnSave_target`
-        cargo_target: Option<String>     = None,
-        /// Optional path to a rust-analyzer specific target directory.
-        /// This prevents rust-analyzer's `cargo check` and initial build-script and proc-macro
-        /// building from locking the `Cargo.lock` at the expense of duplicating build artifacts.
-        ///
-        /// Set to `true` to use a subdirectory of the existing target directory or
-        /// set to a path relative to the workspace to use that path.
-        cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = None,
+        /// Custom completion snippets.
+        completion_snippets_custom: FxHashMap<String, SnippetDef> = Config::completion_snippets_default(),
 
-        /// Run the check command for diagnostics on save.
-        checkOnSave | checkOnSave_enable: bool                         = true,
-
-        /// Check all targets and tests (`--all-targets`). Defaults to
-        /// `#rust-analyzer.cargo.allTargets#`.
-        check_allTargets | checkOnSave_allTargets: Option<bool>          = None,
-        /// Cargo command to use for `cargo check`.
-        check_command | checkOnSave_command: String                      = "check".to_owned(),
-        /// Extra arguments for `cargo check`.
-        check_extraArgs | checkOnSave_extraArgs: Vec<String>             = vec![],
-        /// Extra environment variables that will be set when running `cargo check`.
-        /// Extends `#rust-analyzer.cargo.extraEnv#`.
-        check_extraEnv | checkOnSave_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
-        /// List of features to activate. Defaults to
-        /// `#rust-analyzer.cargo.features#`.
-        ///
-        /// Set to `"all"` to pass `--all-features` to Cargo.
-        check_features | checkOnSave_features: Option<CargoFeaturesDef>  = None,
-        /// List of `cargo check` (or other command specified in `check.command`) diagnostics to ignore.
-        ///
-        /// For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
-        check_ignore: FxHashSet<String> = FxHashSet::default(),
-        /// Specifies the invocation strategy to use when running the check command.
-        /// If `per_workspace` is set, the command will be executed for each workspace.
-        /// If `once` is set, the command will be executed once.
-        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
-        /// is set.
-        check_invocationStrategy | checkOnSave_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
-        /// Whether to pass `--no-default-features` to Cargo. Defaults to
-        /// `#rust-analyzer.cargo.noDefaultFeatures#`.
-        check_noDefaultFeatures | checkOnSave_noDefaultFeatures: Option<bool>         = None,
-        /// Override the command rust-analyzer uses instead of `cargo check` for
-        /// diagnostics on save. The command is required to output json and
-        /// should therefore include `--message-format=json` or a similar option
-        /// (if your client supports the `colorDiagnosticOutput` experimental
-        /// capability, you can use `--message-format=json-diagnostic-rendered-ansi`).
-        ///
-        /// If you're changing this because you're using some tool wrapping
-        /// Cargo, you might also want to change
-        /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
-        ///
-        /// If there are multiple linked projects/workspaces, this command is invoked for
-        /// each of them, with the working directory being the workspace root
-        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.check.invocationStrategy#`.
-        ///
-        /// If `$saved_file` is part of the command, rust-analyzer will pass
-        /// the absolute path of the saved file to the provided command. This is
-        /// intended to be used with non-Cargo build systems.
-        /// Note that `$saved_file` is experimental and may be removed in the future.
-        ///
-        /// An example command would be:
-        ///
-        /// ```bash
-        /// cargo check --workspace --message-format=json --all-targets
-        /// ```
-        /// .
-        check_overrideCommand | checkOnSave_overrideCommand: Option<Vec<String>>             = None,
-        /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
-        ///
-        /// Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
-        /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
-        ///
-        /// Aliased as `"checkOnSave.targets"`.
-        check_targets | checkOnSave_targets | checkOnSave_target: Option<CheckOnSaveTargets> = None,
-        /// Whether `--workspace` should be passed to `cargo check`.
-        /// If false, `-p <package>` will be passed instead.
-        check_workspace: bool = true,
-
-        /// List of rust-analyzer diagnostics to disable.
-        diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
-        /// Whether to show native rust-analyzer diagnostics.
-        diagnostics_enable: bool                = true,
-        /// Whether to show experimental rust-analyzer diagnostics that might
-        /// have more false positives than usual.
-        diagnostics_experimental_enable: bool    = false,
-        /// Map of prefixes to be substituted when parsing diagnostic file paths.
-        /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
-        diagnostics_remapPrefix: FxHashMap<String, String> = FxHashMap::default(),
-        /// Whether to run additional style lints.
-        diagnostics_styleLints_enable: bool =    false,
-        /// List of warnings that should be displayed with hint severity.
-        ///
-        /// The warnings will be indicated by faded text or three dots in code
-        /// and will not show up in the `Problems Panel`.
-        diagnostics_warningsAsHint: Vec<String> = vec![],
-        /// List of warnings that should be displayed with info severity.
-        ///
-        /// The warnings will be indicated by a blue squiggly underline in code
-        /// and a blue icon in the `Problems Panel`.
-        diagnostics_warningsAsInfo: Vec<String> = vec![],
 
         /// These directories will be ignored by rust-analyzer. They are
         /// relative to the workspace root, and globs are not supported. You may
@@ -255,266 +85,6 @@ config_data! {
         files_excludeDirs: Vec<Utf8PathBuf> = vec![],
 
 
-        /// Disable project auto-discovery in favor of explicitly specified set
-        /// of projects.
-        ///
-        /// Elements must be paths pointing to `Cargo.toml`,
-        /// `rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON
-        /// objects in `rust-project.json` format.
-        linkedProjects: Vec<ManifestOrProjectJson> = vec![],
-
-        /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
-        lru_capacity: Option<u16>                 = None,
-        /// Sets the LRU capacity of the specified queries.
-        lru_query_capacities: FxHashMap<Box<str>, u16> = FxHashMap::default(),
-
-        /// These proc-macros will be ignored when trying to expand them.
-        ///
-        /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
-        procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
-
-        /// Command to be executed instead of 'cargo' for runnables.
-        runnables_command: Option<String> = None,
-        /// Additional arguments to be passed to cargo for runnables such as
-        /// tests or binaries. For example, it may be `--release`.
-        runnables_extraArgs: Vec<String>   = vec![],
-        /// Additional arguments to be passed through Cargo to launched tests, benchmarks, or
-        /// doc-tests.
-        ///
-        /// Unless the launched target uses a
-        /// [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
-        /// they will end up being interpreted as options to
-        /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
-        runnables_extraTestBinaryArgs: Vec<String> = vec!["--show-output".to_owned()],
-
-        /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
-        /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
-        /// is installed.
-        ///
-        /// Any project which uses rust-analyzer with the rustcPrivate
-        /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
-        ///
-        /// This option does not take effect until rust-analyzer is restarted.
-        rustc_source: Option<String> = None,
-
-
-        /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
-        ///
-        /// [`DiscoverWorkspaceConfig`] also requires setting `progress_label` and `files_to_watch`.
-        /// `progress_label` is used for the title in progress indicators, whereas `files_to_watch`
-        /// is used to determine which build system-specific files should be watched in order to
-        /// reload rust-analyzer.
-        ///
-        /// Below is an example of a valid configuration:
-        /// ```json
-        /// "rust-analyzer.workspace.discoverConfig": {
-        ///     "command": [
-        ///         "rust-project",
-        ///         "develop-json"
-        ///     ],
-        ///     "progressLabel": "rust-analyzer",
-        ///     "filesToWatch": [
-        ///         "BUCK"
-        ///     ]
-        /// }
-        /// ```
-        ///
-        /// ## On `DiscoverWorkspaceConfig::command`
-        ///
-        /// **Warning**: This format is provisional and subject to change.
-        ///
-        /// [`DiscoverWorkspaceConfig::command`] *must* return a JSON object
-        /// corresponding to `DiscoverProjectData::Finished`:
-        ///
-        /// ```norun
-        /// #[derive(Debug, Clone, Deserialize, Serialize)]
-        /// #[serde(tag = "kind")]
-        /// #[serde(rename_all = "snake_case")]
-        /// enum DiscoverProjectData {
-        ///     Finished { buildfile: Utf8PathBuf, project: ProjectJsonData },
-        ///     Error { error: String, source: Option<String> },
-        ///     Progress { message: String },
-        /// }
-        /// ```
-        ///
-        /// As JSON, `DiscoverProjectData::Finished` is:
-        ///
-        /// ```json
-        /// {
-        ///     // the internally-tagged representation of the enum.
-        ///     "kind": "finished",
-        ///     // the file used by a non-Cargo build system to define
-        ///     // a package or target.
-        ///     "buildfile": "rust-analyzer/BUILD",
-        ///     // the contents of a rust-project.json, elided for brevity
-        ///     "project": {
-        ///         "sysroot": "foo",
-        ///         "crates": []
-        ///     }
-        /// }
-        /// ```
-        ///
-        /// It is encouraged, but not required, to use the other variants on
-        /// `DiscoverProjectData` to provide a more polished end-user experience.
-        ///
-        /// `DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`,
-        /// which will be substituted with the JSON-serialized form of the following
-        /// enum:
-        ///
-        /// ```norun
-        /// #[derive(PartialEq, Clone, Debug, Serialize)]
-        /// #[serde(rename_all = "camelCase")]
-        /// pub enum DiscoverArgument {
-        ///    Path(AbsPathBuf),
-        ///    Buildfile(AbsPathBuf),
-        /// }
-        /// ```
-        ///
-        /// The JSON representation of `DiscoverArgument::Path` is:
-        ///
-        /// ```json
-        /// {
-        ///     "path": "src/main.rs"
-        /// }
-        /// ```
-        ///
-        /// Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
-        ///
-        /// ```
-        /// {
-        ///     "buildfile": "BUILD"
-        /// }
-        /// ```
-        ///
-        /// `DiscoverArgument::Path` is used to find and generate a `rust-project.json`,
-        /// and therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to
-        /// to update an existing workspace. As a reference for implementors,
-        /// buck2's `rust-project` will likely be useful:
-        /// https://github.com/facebook/buck2/tree/main/integrations/rust-project.
-        workspace_discoverConfig: Option<DiscoverWorkspaceConfig> = None,
-    }
-}
-
-config_data! {
-    /// Local configurations can be defined per `SourceRoot`. This almost always corresponds to a `Crate`.
-    local: struct LocalDefaultConfigData <- LocalConfigInput ->  {
-        /// Whether to insert #[must_use] when generating `as_` methods
-        /// for enum variants.
-        assist_emitMustUse: bool               = false,
-        /// Placeholder expression to use for missing expressions in assists.
-        assist_expressionFillDefault: ExprFillDefaultDef              = ExprFillDefaultDef::Todo,
-        /// Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
-        assist_termSearch_borrowcheck: bool = true,
-        /// Term search fuel in "units of work" for assists (Defaults to 1800).
-        assist_termSearch_fuel: usize = 1800,
-
-        /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
-        imports_granularity_enforce: bool              = false,
-        /// How imports should be grouped into use statements.
-        imports_granularity_group: ImportGranularityDef  = ImportGranularityDef::Crate,
-        /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
-        imports_group_enable: bool                           = true,
-        /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
-        imports_merge_glob: bool           = true,
-        /// Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
-        imports_preferNoStd | imports_prefer_no_std: bool = false,
-         /// Whether to prefer import paths containing a `prelude` module.
-        imports_preferPrelude: bool                       = false,
-        /// The path structure for newly inserted paths to use.
-        imports_prefix: ImportPrefixDef               = ImportPrefixDef::Plain,
-        /// Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
-        imports_prefixExternPrelude: bool = false,
-    }
-}
-
-config_data! {
-    workspace: struct WorkspaceDefaultConfigData <- WorkspaceConfigInput -> {
-
-        /// Additional arguments to `rustfmt`.
-        rustfmt_extraArgs: Vec<String>               = vec![],
-        /// Advanced option, fully override the command rust-analyzer uses for
-        /// formatting. This should be the equivalent of `rustfmt` here, and
-        /// not that of `cargo fmt`. The file contents will be passed on the
-        /// standard input and the formatted result will be read from the
-        /// standard output.
-        rustfmt_overrideCommand: Option<Vec<String>> = None,
-        /// Enables the use of rustfmt's unstable range formatting command for the
-        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
-        /// available on a nightly build.
-        rustfmt_rangeFormatting_enable: bool = false,
-
-    }
-}
-
-config_data! {
-    /// Configs that only make sense when they are set by a client. As such they can only be defined
-    /// by setting them using client's settings (e.g `settings.json` on VS Code).
-    client: struct ClientDefaultConfigData <- ClientConfigInput -> {
-        /// Toggles the additional completions that automatically add imports when completed.
-        /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
-        completion_autoimport_enable: bool       = true,
-        /// Toggles the additional completions that automatically show method calls and field accesses
-        /// with `self` prefixed to them when inside a method.
-        completion_autoself_enable: bool        = true,
-        /// Whether to add parenthesis and argument snippets when completing function.
-        completion_callable_snippets: CallableCompletionDef  = CallableCompletionDef::FillArguments,
-        /// Whether to show full function/method signatures in completion docs.
-        completion_fullFunctionSignatures_enable: bool = false,
-        /// Maximum number of completions to return. If `None`, the limit is infinite.
-        completion_limit: Option<usize> = None,
-        /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
-        completion_postfix_enable: bool         = true,
-        /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
-        completion_privateEditable_enable: bool = false,
-        /// Custom completion snippets.
-        completion_snippets_custom: FxHashMap<String, SnippetDef> = serde_json::from_str(r#"{
-            "Arc::new": {
-                "postfix": "arc",
-                "body": "Arc::new(${receiver})",
-                "requires": "std::sync::Arc",
-                "description": "Put the expression into an `Arc`",
-                "scope": "expr"
-            },
-            "Rc::new": {
-                "postfix": "rc",
-                "body": "Rc::new(${receiver})",
-                "requires": "std::rc::Rc",
-                "description": "Put the expression into an `Rc`",
-                "scope": "expr"
-            },
-            "Box::pin": {
-                "postfix": "pinbox",
-                "body": "Box::pin(${receiver})",
-                "requires": "std::boxed::Box",
-                "description": "Put the expression into a pinned `Box`",
-                "scope": "expr"
-            },
-            "Ok": {
-                "postfix": "ok",
-                "body": "Ok(${receiver})",
-                "description": "Wrap the expression in a `Result::Ok`",
-                "scope": "expr"
-            },
-            "Err": {
-                "postfix": "err",
-                "body": "Err(${receiver})",
-                "description": "Wrap the expression in a `Result::Err`",
-                "scope": "expr"
-            },
-            "Some": {
-                "postfix": "some",
-                "body": "Some(${receiver})",
-                "description": "Wrap the expression in an `Option::Some`",
-                "scope": "expr"
-            }
-        }"#).unwrap(),
-        /// Whether to enable term search based snippets like `Some(foo.bar().baz())`.
-        completion_termSearch_enable: bool = false,
-        /// Term search fuel in "units of work" for autocompletion (Defaults to 1000).
-        completion_termSearch_fuel: usize = 1000,
-
-        /// Controls file watching implementation.
-        files_watcher: FilesWatcherDef = FilesWatcherDef::Client,
 
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = true,
@@ -663,6 +233,19 @@ config_data! {
         /// `#rust-analyzer.lens.enable#` is set.
         lens_run_enable: bool              = true,
 
+        /// Disable project auto-discovery in favor of explicitly specified set
+        /// of projects.
+        ///
+        /// Elements must be paths pointing to `Cargo.toml`,
+        /// `rust-project.json`, `.rs` files (which will be treated as standalone files) or JSON
+        /// objects in `rust-project.json` format.
+        linkedProjects: Vec<ManifestOrProjectJson> = vec![],
+
+        /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
+        lru_capacity: Option<u16>                 = None,
+        /// Sets the LRU capacity of the specified queries.
+        lru_query_capacities: FxHashMap<Box<str>, u16> = FxHashMap::default(),
+
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = true,
 
@@ -727,6 +310,383 @@ config_data! {
         /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
         typing_autoClosingAngleBrackets_enable: bool = false,
 
+
+        /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
+        ///
+        /// [`DiscoverWorkspaceConfig`] also requires setting `progress_label` and `files_to_watch`.
+        /// `progress_label` is used for the title in progress indicators, whereas `files_to_watch`
+        /// is used to determine which build system-specific files should be watched in order to
+        /// reload rust-analyzer.
+        ///
+        /// Below is an example of a valid configuration:
+        /// ```json
+        /// "rust-analyzer.workspace.discoverConfig": {
+        ///     "command": [
+        ///         "rust-project",
+        ///         "develop-json"
+        ///     ],
+        ///     "progressLabel": "rust-analyzer",
+        ///     "filesToWatch": [
+        ///         "BUCK"
+        ///     ]
+        /// }
+        /// ```
+        ///
+        /// ## On `DiscoverWorkspaceConfig::command`
+        ///
+        /// **Warning**: This format is provisional and subject to change.
+        ///
+        /// [`DiscoverWorkspaceConfig::command`] *must* return a JSON object
+        /// corresponding to `DiscoverProjectData::Finished`:
+        ///
+        /// ```norun
+        /// #[derive(Debug, Clone, Deserialize, Serialize)]
+        /// #[serde(tag = "kind")]
+        /// #[serde(rename_all = "snake_case")]
+        /// enum DiscoverProjectData {
+        ///     Finished { buildfile: Utf8PathBuf, project: ProjectJsonData },
+        ///     Error { error: String, source: Option<String> },
+        ///     Progress { message: String },
+        /// }
+        /// ```
+        ///
+        /// As JSON, `DiscoverProjectData::Finished` is:
+        ///
+        /// ```json
+        /// {
+        ///     // the internally-tagged representation of the enum.
+        ///     "kind": "finished",
+        ///     // the file used by a non-Cargo build system to define
+        ///     // a package or target.
+        ///     "buildfile": "rust-analyzer/BUILD",
+        ///     // the contents of a rust-project.json, elided for brevity
+        ///     "project": {
+        ///         "sysroot": "foo",
+        ///         "crates": []
+        ///     }
+        /// }
+        /// ```
+        ///
+        /// It is encouraged, but not required, to use the other variants on
+        /// `DiscoverProjectData` to provide a more polished end-user experience.
+        ///
+        /// `DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`,
+        /// which will be substituted with the JSON-serialized form of the following
+        /// enum:
+        ///
+        /// ```norun
+        /// #[derive(PartialEq, Clone, Debug, Serialize)]
+        /// #[serde(rename_all = "camelCase")]
+        /// pub enum DiscoverArgument {
+        ///    Path(AbsPathBuf),
+        ///    Buildfile(AbsPathBuf),
+        /// }
+        /// ```
+        ///
+        /// The JSON representation of `DiscoverArgument::Path` is:
+        ///
+        /// ```json
+        /// {
+        ///     "path": "src/main.rs"
+        /// }
+        /// ```
+        ///
+        /// Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
+        ///
+        /// ```
+        /// {
+        ///     "buildfile": "BUILD"
+        /// }
+        /// ```
+        ///
+        /// `DiscoverArgument::Path` is used to find and generate a `rust-project.json`,
+        /// and therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to
+        /// to update an existing workspace. As a reference for implementors,
+        /// buck2's `rust-project` will likely be useful:
+        /// https://github.com/facebook/buck2/tree/main/integrations/rust-project.
+        workspace_discoverConfig: Option<DiscoverWorkspaceConfig> = None,
+    }
+}
+
+config_data! {
+    /// Local configurations can be defined per `SourceRoot`. This almost always corresponds to a `Crate`.
+    local: struct LocalDefaultConfigData <- LocalConfigInput ->  {
+        /// Whether to insert #[must_use] when generating `as_` methods
+        /// for enum variants.
+        assist_emitMustUse: bool               = false,
+        /// Placeholder expression to use for missing expressions in assists.
+        assist_expressionFillDefault: ExprFillDefaultDef              = ExprFillDefaultDef::Todo,
+        /// Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
+        assist_termSearch_borrowcheck: bool = true,
+        /// Term search fuel in "units of work" for assists (Defaults to 1800).
+        assist_termSearch_fuel: usize = 1800,
+
+
+        /// Whether to automatically add a semicolon when completing unit-returning functions.
+        ///
+        /// In `match` arms it completes a comma instead.
+        completion_addSemicolonToUnit: bool = true,
+        /// Toggles the additional completions that automatically add imports when completed.
+        /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
+        completion_autoimport_enable: bool       = true,
+        /// Toggles the additional completions that automatically show method calls and field accesses
+        /// with `self` prefixed to them when inside a method.
+        completion_autoself_enable: bool        = true,
+        /// Whether to add parenthesis and argument snippets when completing function.
+        completion_callable_snippets: CallableCompletionDef  = CallableCompletionDef::FillArguments,
+        /// Whether to show full function/method signatures in completion docs.
+        completion_fullFunctionSignatures_enable: bool = false,
+        /// Whether to omit deprecated items from autocompletion. By default they are marked as deprecated but not hidden.
+        completion_hideDeprecated: bool = false,
+        /// Maximum number of completions to return. If `None`, the limit is infinite.
+        completion_limit: Option<usize> = None,
+        /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
+        completion_postfix_enable: bool         = true,
+        /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
+        completion_privateEditable_enable: bool = false,
+        /// Whether to enable term search based snippets like `Some(foo.bar().baz())`.
+        completion_termSearch_enable: bool = false,
+        /// Term search fuel in "units of work" for autocompletion (Defaults to 1000).
+        completion_termSearch_fuel: usize = 1000,
+
+        /// List of rust-analyzer diagnostics to disable.
+        diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
+        /// Whether to show native rust-analyzer diagnostics.
+        diagnostics_enable: bool                = true,
+        /// Whether to show experimental rust-analyzer diagnostics that might
+        /// have more false positives than usual.
+        diagnostics_experimental_enable: bool    = false,
+        /// Map of prefixes to be substituted when parsing diagnostic file paths.
+        /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
+        diagnostics_remapPrefix: FxHashMap<String, String> = FxHashMap::default(),
+        /// Whether to run additional style lints.
+        diagnostics_styleLints_enable: bool =    false,
+        /// List of warnings that should be displayed with hint severity.
+        ///
+        /// The warnings will be indicated by faded text or three dots in code
+        /// and will not show up in the `Problems Panel`.
+        diagnostics_warningsAsHint: Vec<String> = vec![],
+        /// List of warnings that should be displayed with info severity.
+        ///
+        /// The warnings will be indicated by a blue squiggly underline in code
+        /// and a blue icon in the `Problems Panel`.
+        diagnostics_warningsAsInfo: Vec<String> = vec![],
+
+        /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
+        imports_granularity_enforce: bool              = false,
+        /// How imports should be grouped into use statements.
+        imports_granularity_group: ImportGranularityDef  = ImportGranularityDef::Crate,
+        /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
+        imports_group_enable: bool                           = true,
+        /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
+        imports_merge_glob: bool           = true,
+        /// Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
+        imports_preferNoStd | imports_prefer_no_std: bool = false,
+         /// Whether to prefer import paths containing a `prelude` module.
+        imports_preferPrelude: bool                       = false,
+        /// The path structure for newly inserted paths to use.
+        imports_prefix: ImportPrefixDef               = ImportPrefixDef::Plain,
+        /// Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
+        imports_prefixExternPrelude: bool = false,
+    }
+}
+
+config_data! {
+    workspace: struct WorkspaceDefaultConfigData <- WorkspaceConfigInput -> {
+        /// Pass `--all-targets` to cargo invocation.
+        cargo_allTargets: bool           = true,
+        /// Automatically refresh project info via `cargo metadata` on
+        /// `Cargo.toml` or `.cargo/config.toml` changes.
+        cargo_autoreload: bool           = true,
+        /// Run build scripts (`build.rs`) for more precise code analysis.
+        cargo_buildScripts_enable: bool  = true,
+        /// Specifies the invocation strategy to use when running the build scripts command.
+        /// If `per_workspace` is set, the command will be executed for each Rust workspace with the
+        /// workspace as the working directory.
+        /// If `once` is set, the command will be executed once with the opened project as the
+        /// working directory.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        cargo_buildScripts_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
+        /// Override the command rust-analyzer uses to run build scripts and
+        /// build procedural macros. The command is required to output json
+        /// and should therefore include `--message-format=json` or a similar
+        /// option.
+        ///
+        /// If there are multiple linked projects/workspaces, this command is invoked for
+        /// each of them, with the working directory being the workspace root
+        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
+        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#`.
+        ///
+        /// By default, a cargo invocation will be constructed for the configured
+        /// targets and features, with the following base command line:
+        ///
+        /// ```bash
+        /// cargo check --quiet --workspace --message-format=json --all-targets --keep-going
+        /// ```
+        /// .
+        cargo_buildScripts_overrideCommand: Option<Vec<String>> = None,
+        /// Rerun proc-macros building/build-scripts running when proc-macro
+        /// or build-script sources change and are saved.
+        cargo_buildScripts_rebuildOnSave: bool = true,
+        /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
+        /// avoid checking unnecessary things.
+        cargo_buildScripts_useRustcWrapper: bool = true,
+        /// List of cfg options to enable with the given values.
+        cargo_cfgs: FxHashMap<String, Option<String>> = {
+            let mut m = FxHashMap::default();
+            m.insert("debug_assertions".to_owned(), None);
+            m.insert("miri".to_owned(), None);
+            m
+        },
+        /// Extra arguments that are passed to every cargo invocation.
+        cargo_extraArgs: Vec<String> = vec![],
+        /// Extra environment variables that will be set when running cargo, rustc
+        /// or other commands within the workspace. Useful for setting RUSTFLAGS.
+        cargo_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
+        /// List of features to activate.
+        ///
+        /// Set this to `"all"` to pass `--all-features` to cargo.
+        cargo_features: CargoFeaturesDef      = CargoFeaturesDef::Selected(vec![]),
+        /// Whether to pass `--no-default-features` to cargo.
+        cargo_noDefaultFeatures: bool    = false,
+        /// Relative path to the sysroot, or "discover" to try to automatically find it via
+        /// "rustc --print sysroot".
+        ///
+        /// Unsetting this disables sysroot loading.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        cargo_sysroot: Option<String>    = Some("discover".to_owned()),
+        /// Relative path to the sysroot library sources. If left unset, this will default to
+        /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        cargo_sysrootSrc: Option<String>    = None,
+        /// Compilation target override (target triple).
+        // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
+        // than `checkOnSave_target`
+        cargo_target: Option<String>     = None,
+        /// Optional path to a rust-analyzer specific target directory.
+        /// This prevents rust-analyzer's `cargo check` and initial build-script and proc-macro
+        /// building from locking the `Cargo.lock` at the expense of duplicating build artifacts.
+        ///
+        /// Set to `true` to use a subdirectory of the existing target directory or
+        /// set to a path relative to the workspace to use that path.
+        cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = None,
+
+        /// Run the check command for diagnostics on save.
+        checkOnSave | checkOnSave_enable: bool                         = true,
+
+
+        /// Check all targets and tests (`--all-targets`). Defaults to
+        /// `#rust-analyzer.cargo.allTargets#`.
+        check_allTargets | checkOnSave_allTargets: Option<bool>          = None,
+        /// Cargo command to use for `cargo check`.
+        check_command | checkOnSave_command: String                      = "check".to_owned(),
+        /// Extra arguments for `cargo check`.
+        check_extraArgs | checkOnSave_extraArgs: Vec<String>             = vec![],
+        /// Extra environment variables that will be set when running `cargo check`.
+        /// Extends `#rust-analyzer.cargo.extraEnv#`.
+        check_extraEnv | checkOnSave_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
+        /// List of features to activate. Defaults to
+        /// `#rust-analyzer.cargo.features#`.
+        ///
+        /// Set to `"all"` to pass `--all-features` to Cargo.
+        check_features | checkOnSave_features: Option<CargoFeaturesDef>  = None,
+        /// List of `cargo check` (or other command specified in `check.command`) diagnostics to ignore.
+        ///
+        /// For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
+        check_ignore: FxHashSet<String> = FxHashSet::default(),
+        /// Specifies the invocation strategy to use when running the check command.
+        /// If `per_workspace` is set, the command will be executed for each workspace.
+        /// If `once` is set, the command will be executed once.
+        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
+        /// is set.
+        check_invocationStrategy | checkOnSave_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
+        /// Whether to pass `--no-default-features` to Cargo. Defaults to
+        /// `#rust-analyzer.cargo.noDefaultFeatures#`.
+        check_noDefaultFeatures | checkOnSave_noDefaultFeatures: Option<bool>         = None,
+        /// Override the command rust-analyzer uses instead of `cargo check` for
+        /// diagnostics on save. The command is required to output json and
+        /// should therefore include `--message-format=json` or a similar option
+        /// (if your client supports the `colorDiagnosticOutput` experimental
+        /// capability, you can use `--message-format=json-diagnostic-rendered-ansi`).
+        ///
+        /// If you're changing this because you're using some tool wrapping
+        /// Cargo, you might also want to change
+        /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
+        ///
+        /// If there are multiple linked projects/workspaces, this command is invoked for
+        /// each of them, with the working directory being the workspace root
+        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
+        /// by changing `#rust-analyzer.check.invocationStrategy#`.
+        ///
+        /// If `$saved_file` is part of the command, rust-analyzer will pass
+        /// the absolute path of the saved file to the provided command. This is
+        /// intended to be used with non-Cargo build systems.
+        /// Note that `$saved_file` is experimental and may be removed in the future.
+        ///
+        /// An example command would be:
+        ///
+        /// ```bash
+        /// cargo check --workspace --message-format=json --all-targets
+        /// ```
+        /// .
+        check_overrideCommand | checkOnSave_overrideCommand: Option<Vec<String>>             = None,
+        /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+        ///
+        /// Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+        /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+        ///
+        /// Aliased as `"checkOnSave.targets"`.
+        check_targets | checkOnSave_targets | checkOnSave_target: Option<CheckOnSaveTargets> = None,
+        /// Whether `--workspace` should be passed to `cargo check`.
+        /// If false, `-p <package>` will be passed instead.
+        check_workspace: bool = true,
+
+        /// These proc-macros will be ignored when trying to expand them.
+        ///
+        /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
+        procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
+
+        /// Command to be executed instead of 'cargo' for runnables.
+        runnables_command: Option<String> = None,
+        /// Additional arguments to be passed to cargo for runnables such as
+        /// tests or binaries. For example, it may be `--release`.
+        runnables_extraArgs: Vec<String>   = vec![],
+        /// Additional arguments to be passed through Cargo to launched tests, benchmarks, or
+        /// doc-tests.
+        ///
+        /// Unless the launched target uses a
+        /// [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
+        /// they will end up being interpreted as options to
+        /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
+        runnables_extraTestBinaryArgs: Vec<String> = vec!["--show-output".to_owned()],
+
+        /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
+        /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
+        /// is installed.
+        ///
+        /// Any project which uses rust-analyzer with the rustcPrivate
+        /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        rustc_source: Option<String> = None,
+
+        /// Additional arguments to `rustfmt`.
+        rustfmt_extraArgs: Vec<String>               = vec![],
+        /// Advanced option, fully override the command rust-analyzer uses for
+        /// formatting. This should be the equivalent of `rustfmt` here, and
+        /// not that of `cargo fmt`. The file contents will be passed on the
+        /// standard input and the formatted result will be read from the
+        /// standard output.
+        rustfmt_overrideCommand: Option<Vec<String>> = None,
+        /// Enables the use of rustfmt's unstable range formatting command for the
+        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
+        /// available on a nightly build.
+        rustfmt_rangeFormatting_enable: bool = false,
+
+
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = WorkspaceSymbolSearchKindDef::OnlyTypes,
         /// Limits the number of items returned from a workspace symbol search (Defaults to 128).
@@ -735,6 +695,19 @@ config_data! {
         workspace_symbol_search_limit: usize = 128,
         /// Workspace symbol search scope.
         workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = WorkspaceSymbolSearchScopeDef::Workspace,
+
+    }
+}
+
+config_data! {
+    /// Configs that only make sense when they are set by a client. As such they can only be defined
+    /// by setting them using client's settings (e.g `settings.json` on VS Code).
+    client: struct ClientDefaultConfigData <- ClientConfigInput -> {
+
+        /// Controls file watching implementation.
+        files_watcher: FilesWatcherDef = FilesWatcherDef::Client,
+
+
     }
 }
 
@@ -753,7 +726,13 @@ enum RatomlFile {
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    discovered_projects: Vec<ProjectManifest>,
+    /// Projects that have a Cargo.toml or a rust-project.json in a
+    /// parent directory, so we can discover them by walking the
+    /// file system.
+    discovered_projects_from_filesystem: Vec<ProjectManifest>,
+    /// Projects whose configuration was generated by a command
+    /// configured in discoverConfig.
+    discovered_projects_from_command: Vec<ProjectJsonFromCommand>,
     /// The workspace roots as registered by the LSP client
     workspace_roots: Vec<AbsPathBuf>,
     caps: ClientCapabilities,
@@ -1016,7 +995,7 @@ impl Config {
             config.source_root_parent_map = source_root_map;
         }
 
-        if config.check_command().is_empty() {
+        if config.check_command(None).is_empty() {
             config.validation_errors.0.push(Arc::new(ConfigErrorInner::Json {
                 config_key: "/check/command".to_owned(),
                 error: serde_json::Error::custom("expected a non-empty string"),
@@ -1046,19 +1025,19 @@ impl Config {
         (config, e, should_update)
     }
 
-    pub fn add_linked_projects(&mut self, data: ProjectJsonData, buildfile: AbsPathBuf) {
-        let linked_projects = &mut self.client_config.0.global.linkedProjects;
-
-        let new_project = ManifestOrProjectJson::DiscoveredProjectJson { data, buildfile };
-        match linked_projects {
-            Some(projects) => {
-                match projects.iter_mut().find(|p| p.manifest() == new_project.manifest()) {
-                    Some(p) => *p = new_project,
-                    None => projects.push(new_project),
-                }
+    pub fn add_discovered_project_from_command(
+        &mut self,
+        data: ProjectJsonData,
+        buildfile: AbsPathBuf,
+    ) {
+        for proj in self.discovered_projects_from_command.iter_mut() {
+            if proj.buildfile == buildfile {
+                proj.data = data;
+                return;
             }
-            None => *linked_projects = Some(vec![new_project]),
         }
+
+        self.discovered_projects_from_command.push(ProjectJsonFromCommand { data, buildfile });
     }
 }
 
@@ -1251,7 +1230,7 @@ pub struct NotificationsConfig {
     pub cargo_toml_not_found: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum RustfmtConfig {
     Rustfmt { extra_args: Vec<String>, enable_range_formatting: bool },
     CustomCommand { command: String, args: Vec<String> },
@@ -1336,7 +1315,8 @@ impl Config {
 
         Config {
             caps: ClientCapabilities::new(caps),
-            discovered_projects: Vec::new(),
+            discovered_projects_from_filesystem: Vec::new(),
+            discovered_projects_from_command: Vec::new(),
             root_path,
             snippets: Default::default(),
             workspace_roots,
@@ -1357,7 +1337,7 @@ impl Config {
         if discovered.is_empty() {
             tracing::error!("failed to find any projects in {:?}", &self.workspace_roots);
         }
-        self.discovered_projects = discovered;
+        self.discovered_projects_from_filesystem = discovered;
     }
 
     pub fn remove_workspace(&mut self, path: &AbsPath) {
@@ -1412,27 +1392,34 @@ impl Config {
 
     pub fn completion(&self, source_root: Option<SourceRootId>) -> CompletionConfig {
         CompletionConfig {
-            enable_postfix_completions: self.completion_postfix_enable().to_owned(),
-            enable_imports_on_the_fly: self.completion_autoimport_enable().to_owned()
+            enable_postfix_completions: self.completion_postfix_enable(source_root).to_owned(),
+            enable_imports_on_the_fly: self.completion_autoimport_enable(source_root).to_owned()
                 && self.caps.completion_item_edit_resolve(),
-            enable_self_on_the_fly: self.completion_autoself_enable().to_owned(),
-            enable_private_editable: self.completion_privateEditable_enable().to_owned(),
-            full_function_signatures: self.completion_fullFunctionSignatures_enable().to_owned(),
-            callable: match self.completion_callable_snippets() {
+            enable_self_on_the_fly: self.completion_autoself_enable(source_root).to_owned(),
+            enable_private_editable: self.completion_privateEditable_enable(source_root).to_owned(),
+            full_function_signatures: self
+                .completion_fullFunctionSignatures_enable(source_root)
+                .to_owned(),
+            callable: match self.completion_callable_snippets(source_root) {
                 CallableCompletionDef::FillArguments => Some(CallableSnippets::FillArguments),
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
                 CallableCompletionDef::None => None,
             },
+            add_semicolon_to_unit: *self.completion_addSemicolonToUnit(source_root),
             snippet_cap: SnippetCap::new(self.completion_snippet()),
             insert_use: self.insert_use_config(source_root),
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             snippets: self.snippets.clone().to_vec(),
-            limit: self.completion_limit().to_owned(),
-            enable_term_search: self.completion_termSearch_enable().to_owned(),
-            term_search_fuel: self.completion_termSearch_fuel().to_owned() as u64,
+            limit: self.completion_limit(source_root).to_owned(),
+            enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
+            term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
         }
+    }
+
+    pub fn completion_hide_deprecated(&self) -> bool {
+        *self.completion_hideDeprecated(None)
     }
 
     pub fn detached_files(&self) -> &Vec<AbsPathBuf> {
@@ -1443,11 +1430,11 @@ impl Config {
 
     pub fn diagnostics(&self, source_root: Option<SourceRootId>) -> DiagnosticsConfig {
         DiagnosticsConfig {
-            enabled: *self.diagnostics_enable(),
+            enabled: *self.diagnostics_enable(source_root),
             proc_attr_macros_enabled: self.expand_proc_attr_macros(),
             proc_macros_enabled: *self.procMacro_enable(),
-            disable_experimental: !self.diagnostics_experimental_enable(),
-            disabled: self.diagnostics_disabled().clone(),
+            disable_experimental: !self.diagnostics_experimental_enable(source_root),
+            disabled: self.diagnostics_disabled(source_root).clone(),
             expr_fill_default: match self.assist_expressionFillDefault(source_root) {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
@@ -1457,7 +1444,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
-            style_lints: self.diagnostics_styleLints_enable().to_owned(),
+            style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
@@ -1673,78 +1660,95 @@ impl Config {
         self.workspace_discoverConfig().as_ref()
     }
 
-    pub fn linked_or_discovered_projects(&self) -> Vec<LinkedProject> {
-        match self.linkedProjects().as_slice() {
-            [] => {
-                let exclude_dirs: Vec<_> =
-                    self.files_excludeDirs().iter().map(|p| self.root_path.join(p)).collect();
-                self.discovered_projects
-                    .iter()
-                    .filter(|project| {
-                        !exclude_dirs.iter().any(|p| project.manifest_path().starts_with(p))
-                    })
-                    .cloned()
-                    .map(LinkedProject::from)
-                    .collect()
-            }
-            linked_projects => linked_projects
-                .iter()
-                .filter_map(|linked_project| match linked_project {
-                    ManifestOrProjectJson::Manifest(it) => {
-                        let path = self.root_path.join(it);
-                        ProjectManifest::from_manifest_file(path)
-                            .map_err(|e| tracing::error!("failed to load linked project: {}", e))
-                            .ok()
-                            .map(Into::into)
-                    }
-                    ManifestOrProjectJson::DiscoveredProjectJson { data, buildfile } => {
-                        let root_path =
-                            buildfile.parent().expect("Unable to get parent of buildfile");
+    fn discovered_projects(&self) -> Vec<ManifestOrProjectJson> {
+        let exclude_dirs: Vec<_> =
+            self.files_excludeDirs().iter().map(|p| self.root_path.join(p)).collect();
 
-                        Some(ProjectJson::new(None, root_path, data.clone()).into())
-                    }
-                    ManifestOrProjectJson::ProjectJson(it) => {
-                        Some(ProjectJson::new(None, &self.root_path, it.clone()).into())
-                    }
-                })
-                .collect(),
+        let mut projects = vec![];
+        for fs_proj in &self.discovered_projects_from_filesystem {
+            let manifest_path = fs_proj.manifest_path();
+            if exclude_dirs.iter().any(|p| manifest_path.starts_with(p)) {
+                continue;
+            }
+
+            let buf: Utf8PathBuf = manifest_path.to_path_buf().into();
+            projects.push(ManifestOrProjectJson::Manifest(buf));
         }
+
+        for dis_proj in &self.discovered_projects_from_command {
+            projects.push(ManifestOrProjectJson::DiscoveredProjectJson {
+                data: dis_proj.data.clone(),
+                buildfile: dis_proj.buildfile.clone(),
+            });
+        }
+
+        projects
+    }
+
+    pub fn linked_or_discovered_projects(&self) -> Vec<LinkedProject> {
+        let linked_projects = self.linkedProjects();
+        let projects = if linked_projects.is_empty() {
+            self.discovered_projects()
+        } else {
+            linked_projects.clone()
+        };
+
+        projects
+            .iter()
+            .filter_map(|linked_project| match linked_project {
+                ManifestOrProjectJson::Manifest(it) => {
+                    let path = self.root_path.join(it);
+                    ProjectManifest::from_manifest_file(path)
+                        .map_err(|e| tracing::error!("failed to load linked project: {}", e))
+                        .ok()
+                        .map(Into::into)
+                }
+                ManifestOrProjectJson::DiscoveredProjectJson { data, buildfile } => {
+                    let root_path = buildfile.parent().expect("Unable to get parent of buildfile");
+
+                    Some(ProjectJson::new(None, root_path, data.clone()).into())
+                }
+                ManifestOrProjectJson::ProjectJson(it) => {
+                    Some(ProjectJson::new(None, &self.root_path, it.clone()).into())
+                }
+            })
+            .collect()
     }
 
     pub fn prefill_caches(&self) -> bool {
         self.cachePriming_enable().to_owned()
     }
 
-    pub fn publish_diagnostics(&self) -> bool {
-        self.diagnostics_enable().to_owned()
+    pub fn publish_diagnostics(&self, source_root: Option<SourceRootId>) -> bool {
+        self.diagnostics_enable(source_root).to_owned()
     }
 
-    pub fn diagnostics_map(&self) -> DiagnosticsMapConfig {
+    pub fn diagnostics_map(&self, source_root: Option<SourceRootId>) -> DiagnosticsMapConfig {
         DiagnosticsMapConfig {
-            remap_prefix: self.diagnostics_remapPrefix().clone(),
-            warnings_as_info: self.diagnostics_warningsAsInfo().clone(),
-            warnings_as_hint: self.diagnostics_warningsAsHint().clone(),
-            check_ignore: self.check_ignore().clone(),
+            remap_prefix: self.diagnostics_remapPrefix(source_root).clone(),
+            warnings_as_info: self.diagnostics_warningsAsInfo(source_root).clone(),
+            warnings_as_hint: self.diagnostics_warningsAsHint(source_root).clone(),
+            check_ignore: self.check_ignore(source_root).clone(),
         }
     }
 
-    pub fn extra_args(&self) -> &Vec<String> {
-        self.cargo_extraArgs()
+    pub fn extra_args(&self, source_root: Option<SourceRootId>) -> &Vec<String> {
+        self.cargo_extraArgs(source_root)
     }
 
-    pub fn extra_env(&self) -> &FxHashMap<String, String> {
-        self.cargo_extraEnv()
+    pub fn extra_env(&self, source_root: Option<SourceRootId>) -> &FxHashMap<String, String> {
+        self.cargo_extraEnv(source_root)
     }
 
-    pub fn check_extra_args(&self) -> Vec<String> {
-        let mut extra_args = self.extra_args().clone();
-        extra_args.extend_from_slice(self.check_extraArgs());
+    pub fn check_extra_args(&self, source_root: Option<SourceRootId>) -> Vec<String> {
+        let mut extra_args = self.extra_args(source_root).clone();
+        extra_args.extend_from_slice(self.check_extraArgs(source_root));
         extra_args
     }
 
-    pub fn check_extra_env(&self) -> FxHashMap<String, String> {
-        let mut extra_env = self.cargo_extraEnv().clone();
-        extra_env.extend(self.check_extraEnv().clone());
+    pub fn check_extra_env(&self, source_root: Option<SourceRootId>) -> FxHashMap<String, String> {
+        let mut extra_env = self.cargo_extraEnv(source_root).clone();
+        extra_env.extend(self.check_extraEnv(source_root).clone());
         extra_env
     }
 
@@ -1761,8 +1765,11 @@ impl Config {
         Some(AbsPathBuf::try_from(path).unwrap_or_else(|path| self.root_path.join(path)))
     }
 
-    pub fn ignored_proc_macros(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
-        self.procMacro_ignored()
+    pub fn ignored_proc_macros(
+        &self,
+        source_root: Option<SourceRootId>,
+    ) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
+        self.procMacro_ignored(source_root)
     }
 
     pub fn expand_proc_macros(&self) -> bool {
@@ -1787,23 +1794,23 @@ impl Config {
         }
     }
 
-    pub fn cargo_autoreload_config(&self) -> bool {
-        self.cargo_autoreload().to_owned()
+    pub fn cargo_autoreload_config(&self, source_root: Option<SourceRootId>) -> bool {
+        self.cargo_autoreload(source_root).to_owned()
     }
 
-    pub fn run_build_scripts(&self) -> bool {
-        self.cargo_buildScripts_enable().to_owned() || self.procMacro_enable().to_owned()
+    pub fn run_build_scripts(&self, source_root: Option<SourceRootId>) -> bool {
+        self.cargo_buildScripts_enable(source_root).to_owned() || self.procMacro_enable().to_owned()
     }
 
-    pub fn cargo(&self) -> CargoConfig {
-        let rustc_source = self.rustc_source().as_ref().map(|rustc_src| {
+    pub fn cargo(&self, source_root: Option<SourceRootId>) -> CargoConfig {
+        let rustc_source = self.rustc_source(source_root).as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
                 RustLibSource::Discover
             } else {
                 RustLibSource::Path(self.root_path.join(rustc_src))
             }
         });
-        let sysroot = self.cargo_sysroot().as_ref().map(|sysroot| {
+        let sysroot = self.cargo_sysroot(source_root).as_ref().map(|sysroot| {
             if sysroot == "discover" {
                 RustLibSource::Discover
             } else {
@@ -1811,24 +1818,24 @@ impl Config {
             }
         });
         let sysroot_src =
-            self.cargo_sysrootSrc().as_ref().map(|sysroot| self.root_path.join(sysroot));
+            self.cargo_sysrootSrc(source_root).as_ref().map(|sysroot| self.root_path.join(sysroot));
 
         CargoConfig {
-            all_targets: *self.cargo_allTargets(),
-            features: match &self.cargo_features() {
+            all_targets: *self.cargo_allTargets(source_root),
+            features: match &self.cargo_features(source_root) {
                 CargoFeaturesDef::All => CargoFeatures::All,
                 CargoFeaturesDef::Selected(features) => CargoFeatures::Selected {
                     features: features.clone(),
-                    no_default_features: self.cargo_noDefaultFeatures().to_owned(),
+                    no_default_features: self.cargo_noDefaultFeatures(source_root).to_owned(),
                 },
             },
-            target: self.cargo_target().clone(),
+            target: self.cargo_target(source_root).clone(),
             sysroot,
             sysroot_src,
             rustc_source,
             cfg_overrides: project_model::CfgOverrides {
                 global: CfgDiff::new(
-                    self.cargo_cfgs()
+                    self.cargo_cfgs(source_root)
                         .iter()
                         .map(|(key, val)| match val {
                             Some(val) => CfgAtom::KeyValue {
@@ -1843,16 +1850,63 @@ impl Config {
                 .unwrap(),
                 selective: Default::default(),
             },
-            wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(),
-            invocation_strategy: match self.cargo_buildScripts_invocationStrategy() {
+            wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(source_root),
+            invocation_strategy: match self.cargo_buildScripts_invocationStrategy(source_root) {
                 InvocationStrategy::Once => project_model::InvocationStrategy::Once,
                 InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
             },
-            run_build_script_command: self.cargo_buildScripts_overrideCommand().clone(),
-            extra_args: self.cargo_extraArgs().clone(),
-            extra_env: self.cargo_extraEnv().clone(),
-            target_dir: self.target_dir_from_config(),
+            run_build_script_command: self.cargo_buildScripts_overrideCommand(source_root).clone(),
+            extra_args: self.cargo_extraArgs(source_root).clone(),
+            extra_env: self.cargo_extraEnv(source_root).clone(),
+            target_dir: self.target_dir_from_config(source_root),
         }
+    }
+
+    pub(crate) fn completion_snippets_default() -> FxHashMap<String, SnippetDef> {
+        serde_json::from_str(
+            r#"{
+            "Arc::new": {
+                "postfix": "arc",
+                "body": "Arc::new(${receiver})",
+                "requires": "std::sync::Arc",
+                "description": "Put the expression into an `Arc`",
+                "scope": "expr"
+            },
+            "Rc::new": {
+                "postfix": "rc",
+                "body": "Rc::new(${receiver})",
+                "requires": "std::rc::Rc",
+                "description": "Put the expression into an `Rc`",
+                "scope": "expr"
+            },
+            "Box::pin": {
+                "postfix": "pinbox",
+                "body": "Box::pin(${receiver})",
+                "requires": "std::boxed::Box",
+                "description": "Put the expression into a pinned `Box`",
+                "scope": "expr"
+            },
+            "Ok": {
+                "postfix": "ok",
+                "body": "Ok(${receiver})",
+                "description": "Wrap the expression in a `Result::Ok`",
+                "scope": "expr"
+            },
+            "Err": {
+                "postfix": "err",
+                "body": "Err(${receiver})",
+                "description": "Wrap the expression in a `Result::Err`",
+                "scope": "expr"
+            },
+            "Some": {
+                "postfix": "some",
+                "body": "Some(${receiver})",
+                "description": "Wrap the expression in an `Option::Some`",
+                "scope": "expr"
+            }
+        }"#,
+        )
+        .unwrap()
     }
 
     pub fn rustfmt(&self, source_root_id: Option<SourceRootId>) -> RustfmtConfig {
@@ -1869,37 +1923,37 @@ impl Config {
         }
     }
 
-    pub fn flycheck_workspace(&self) -> bool {
-        *self.check_workspace()
+    pub fn flycheck_workspace(&self, source_root: Option<SourceRootId>) -> bool {
+        *self.check_workspace(source_root)
     }
 
-    pub(crate) fn cargo_test_options(&self) -> CargoOptions {
+    pub(crate) fn cargo_test_options(&self, source_root: Option<SourceRootId>) -> CargoOptions {
         CargoOptions {
-            target_triples: self.cargo_target().clone().into_iter().collect(),
+            target_triples: self.cargo_target(source_root).clone().into_iter().collect(),
             all_targets: false,
-            no_default_features: *self.cargo_noDefaultFeatures(),
-            all_features: matches!(self.cargo_features(), CargoFeaturesDef::All),
-            features: match self.cargo_features().clone() {
+            no_default_features: *self.cargo_noDefaultFeatures(source_root),
+            all_features: matches!(self.cargo_features(source_root), CargoFeaturesDef::All),
+            features: match self.cargo_features(source_root).clone() {
                 CargoFeaturesDef::All => vec![],
                 CargoFeaturesDef::Selected(it) => it,
             },
-            extra_args: self.extra_args().clone(),
-            extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
-            extra_env: self.extra_env().clone(),
-            target_dir: self.target_dir_from_config(),
+            extra_args: self.extra_args(source_root).clone(),
+            extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
+            extra_env: self.extra_env(source_root).clone(),
+            target_dir: self.target_dir_from_config(source_root),
         }
     }
 
-    pub(crate) fn flycheck(&self) -> FlycheckConfig {
-        match &self.check_overrideCommand() {
+    pub(crate) fn flycheck(&self, source_root: Option<SourceRootId>) -> FlycheckConfig {
+        match &self.check_overrideCommand(source_root) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
                 FlycheckConfig::CustomCommand {
                     command,
                     args,
-                    extra_env: self.check_extra_env(),
-                    invocation_strategy: match self.check_invocationStrategy() {
+                    extra_env: self.check_extra_env(source_root),
+                    invocation_strategy: match self.check_invocationStrategy(source_root) {
                         InvocationStrategy::Once => crate::flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
                             crate::flycheck::InvocationStrategy::PerWorkspace
@@ -1908,44 +1962,50 @@ impl Config {
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
-                command: self.check_command().clone(),
+                command: self.check_command(source_root).clone(),
                 options: CargoOptions {
                     target_triples: self
-                        .check_targets()
+                        .check_targets(source_root)
                         .clone()
                         .and_then(|targets| match &targets.0[..] {
                             [] => None,
                             targets => Some(targets.into()),
                         })
-                        .unwrap_or_else(|| self.cargo_target().clone().into_iter().collect()),
-                    all_targets: self.check_allTargets().unwrap_or(*self.cargo_allTargets()),
+                        .unwrap_or_else(|| {
+                            self.cargo_target(source_root).clone().into_iter().collect()
+                        }),
+                    all_targets: self
+                        .check_allTargets(source_root)
+                        .unwrap_or(*self.cargo_allTargets(source_root)),
                     no_default_features: self
-                        .check_noDefaultFeatures()
-                        .unwrap_or(*self.cargo_noDefaultFeatures()),
+                        .check_noDefaultFeatures(source_root)
+                        .unwrap_or(*self.cargo_noDefaultFeatures(source_root)),
                     all_features: matches!(
-                        self.check_features().as_ref().unwrap_or(self.cargo_features()),
+                        self.check_features(source_root)
+                            .as_ref()
+                            .unwrap_or(self.cargo_features(source_root)),
                         CargoFeaturesDef::All
                     ),
                     features: match self
-                        .check_features()
+                        .check_features(source_root)
                         .clone()
-                        .unwrap_or_else(|| self.cargo_features().clone())
+                        .unwrap_or_else(|| self.cargo_features(source_root).clone())
                     {
                         CargoFeaturesDef::All => vec![],
                         CargoFeaturesDef::Selected(it) => it,
                     },
-                    extra_args: self.check_extra_args(),
-                    extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
-                    extra_env: self.check_extra_env(),
-                    target_dir: self.target_dir_from_config(),
+                    extra_args: self.check_extra_args(source_root),
+                    extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
+                    extra_env: self.check_extra_env(source_root),
+                    target_dir: self.target_dir_from_config(source_root),
                 },
                 ansi_color_output: self.color_diagnostic_output(),
             },
         }
     }
 
-    fn target_dir_from_config(&self) -> Option<Utf8PathBuf> {
-        self.cargo_targetDir().as_ref().and_then(|target_dir| match target_dir {
+    fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> Option<Utf8PathBuf> {
+        self.cargo_targetDir(source_root).as_ref().and_then(|target_dir| match target_dir {
             TargetDirectory::UseSubdirectory(true) => {
                 Some(Utf8PathBuf::from("target/rust-analyzer"))
             }
@@ -1955,19 +2015,19 @@ impl Config {
         })
     }
 
-    pub fn check_on_save(&self) -> bool {
-        *self.checkOnSave()
+    pub fn check_on_save(&self, source_root: Option<SourceRootId>) -> bool {
+        *self.checkOnSave(source_root)
     }
 
-    pub fn script_rebuild_on_save(&self) -> bool {
-        *self.cargo_buildScripts_rebuildOnSave()
+    pub fn script_rebuild_on_save(&self, source_root: Option<SourceRootId>) -> bool {
+        *self.cargo_buildScripts_rebuildOnSave(source_root)
     }
 
-    pub fn runnables(&self) -> RunnablesConfig {
+    pub fn runnables(&self, source_root: Option<SourceRootId>) -> RunnablesConfig {
         RunnablesConfig {
-            override_cargo: self.runnables_command().clone(),
-            cargo_extra_args: self.runnables_extraArgs().clone(),
-            extra_test_binary_args: self.runnables_extraTestBinaryArgs().clone(),
+            override_cargo: self.runnables_command(source_root).clone(),
+            cargo_extra_args: self.runnables_extraArgs(source_root).clone(),
+            extra_test_binary_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
         }
     }
 
@@ -2006,19 +2066,19 @@ impl Config {
         }
     }
 
-    pub fn workspace_symbol(&self) -> WorkspaceSymbolConfig {
+    pub fn workspace_symbol(&self, source_root: Option<SourceRootId>) -> WorkspaceSymbolConfig {
         WorkspaceSymbolConfig {
-            search_scope: match self.workspace_symbol_search_scope() {
+            search_scope: match self.workspace_symbol_search_scope(source_root) {
                 WorkspaceSymbolSearchScopeDef::Workspace => WorkspaceSymbolSearchScope::Workspace,
                 WorkspaceSymbolSearchScopeDef::WorkspaceAndDependencies => {
                     WorkspaceSymbolSearchScope::WorkspaceAndDependencies
                 }
             },
-            search_kind: match self.workspace_symbol_search_kind() {
+            search_kind: match self.workspace_symbol_search_kind(source_root) {
                 WorkspaceSymbolSearchKindDef::OnlyTypes => WorkspaceSymbolSearchKind::OnlyTypes,
                 WorkspaceSymbolSearchKindDef::AllSymbols => WorkspaceSymbolSearchKind::AllSymbols,
             },
-            search_limit: *self.workspace_symbol_search_limit(),
+            search_limit: *self.workspace_symbol_search_limit(source_root),
         }
     }
 
@@ -2257,18 +2317,6 @@ where
 {
     let path: &Utf8Path = path.as_ref();
     se.serialize_str(path.as_str())
-}
-
-impl ManifestOrProjectJson {
-    fn manifest(&self) -> Option<&Utf8Path> {
-        match self {
-            ManifestOrProjectJson::Manifest(manifest) => Some(manifest),
-            ManifestOrProjectJson::DiscoveredProjectJson { buildfile, .. } => {
-                Some(buildfile.as_ref())
-            }
-            ManifestOrProjectJson::ProjectJson(_) => None,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -3522,9 +3570,9 @@ mod tests {
         }));
 
         (config, _, _) = config.apply_change(change);
-        assert_eq!(config.cargo_targetDir(), &None);
+        assert_eq!(config.cargo_targetDir(None), &None);
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
+            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
         );
     }
 
@@ -3540,9 +3588,9 @@ mod tests {
 
         (config, _, _) = config.apply_change(change);
 
-        assert_eq!(config.cargo_targetDir(), &Some(TargetDirectory::UseSubdirectory(true)));
+        assert_eq!(config.cargo_targetDir(None), &Some(TargetDirectory::UseSubdirectory(true)));
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
+            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
         );
     }
 
@@ -3559,83 +3607,11 @@ mod tests {
         (config, _, _) = config.apply_change(change);
 
         assert_eq!(
-            config.cargo_targetDir(),
+            config.cargo_targetDir(None),
             &Some(TargetDirectory::Directory(Utf8PathBuf::from("other_folder")))
         );
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("other_folder")))
+            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("other_folder")))
         );
-    }
-
-    #[test]
-    fn toml_unknown_key() {
-        let config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
-
-        let mut change = ConfigChange::default();
-
-        change.change_user_config(Some(
-            toml::toml! {
-                [cargo.cfgs]
-                these = "these"
-                should = "should"
-                be = "be"
-                valid = "valid"
-
-                [invalid.config]
-                err = "error"
-
-                [cargo]
-                target = "ok"
-
-                // FIXME: This should be an error
-                [cargo.sysroot]
-                non-table = "expected"
-            }
-            .to_string()
-            .into(),
-        ));
-
-        let (config, e, _) = config.apply_change(change);
-        expect_test::expect![[r#"
-            ConfigErrors(
-                [
-                    Toml {
-                        config_key: "invalid/config/err",
-                        error: Error {
-                            inner: Error {
-                                inner: TomlError {
-                                    message: "unexpected field",
-                                    raw: None,
-                                    keys: [],
-                                    span: None,
-                                },
-                            },
-                        },
-                    },
-                ],
-            )
-        "#]]
-        .assert_debug_eq(&e);
-        let mut change = ConfigChange::default();
-
-        change.change_user_config(Some(
-            toml::toml! {
-                [cargo.cfgs]
-                these = "these"
-                should = "should"
-                be = "be"
-                valid = "valid"
-            }
-            .to_string()
-            .into(),
-        ));
-        let (_, e, _) = config.apply_change(change);
-        expect_test::expect![[r#"
-            ConfigErrors(
-                [],
-            )
-        "#]]
-        .assert_debug_eq(&e);
     }
 }

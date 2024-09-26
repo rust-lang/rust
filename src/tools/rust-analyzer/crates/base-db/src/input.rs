@@ -374,37 +374,6 @@ impl CrateGraph {
         self.arena.alloc(data)
     }
 
-    /// Remove the crate from crate graph. If any crates depend on this crate, the dependency would be replaced
-    /// with the second input.
-    pub fn remove_and_replace(
-        &mut self,
-        id: CrateId,
-        replace_with: CrateId,
-    ) -> Result<(), CyclicDependenciesError> {
-        for (x, data) in self.arena.iter() {
-            if x == id {
-                continue;
-            }
-            for edge in &data.dependencies {
-                if edge.crate_id == id {
-                    self.check_cycle_after_dependency(edge.crate_id, replace_with)?;
-                }
-            }
-        }
-        // if everything was ok, start to replace
-        for (x, data) in self.arena.iter_mut() {
-            if x == id {
-                continue;
-            }
-            for edge in &mut data.dependencies {
-                if edge.crate_id == id {
-                    edge.crate_id = replace_with;
-                }
-            }
-        }
-        Ok(())
-    }
-
     pub fn add_dep(
         &mut self,
         from: CrateId,
@@ -412,26 +381,17 @@ impl CrateGraph {
     ) -> Result<(), CyclicDependenciesError> {
         let _p = tracing::info_span!("add_dep").entered();
 
-        self.check_cycle_after_dependency(from, dep.crate_id)?;
-
-        self.arena[from].add_dep(dep);
-        Ok(())
-    }
-
-    /// Check if adding a dep from `from` to `to` creates a cycle. To figure
-    /// that out, look for a  path in the *opposite* direction, from `to` to
-    /// `from`.
-    fn check_cycle_after_dependency(
-        &self,
-        from: CrateId,
-        to: CrateId,
-    ) -> Result<(), CyclicDependenciesError> {
-        if let Some(path) = self.find_path(&mut FxHashSet::default(), to, from) {
+        // Check if adding a dep from `from` to `to` creates a cycle. To figure
+        // that out, look for a  path in the *opposite* direction, from `to` to
+        // `from`.
+        if let Some(path) = self.find_path(&mut FxHashSet::default(), dep.crate_id, from) {
             let path = path.into_iter().map(|it| (it, self[it].display_name.clone())).collect();
             let err = CyclicDependenciesError { path };
-            assert!(err.from().0 == from && err.to().0 == to);
+            assert!(err.from().0 == from && err.to().0 == dep.crate_id);
             return Err(err);
         }
+
+        self.arena[from].add_dep(dep);
         Ok(())
     }
 
@@ -531,22 +491,15 @@ impl CrateGraph {
             .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
     }
 
-    /// Extends this crate graph by adding a complete disjoint second crate
+    /// Extends this crate graph by adding a complete second crate
     /// graph and adjust the ids in the [`ProcMacroPaths`] accordingly.
     ///
-    /// This will deduplicate the crates of the graph where possible.
-    /// Note that for deduplication to fully work, `self`'s crate dependencies must be sorted by crate id.
-    /// If the crate dependencies were sorted, the resulting graph from this `extend` call will also
-    /// have the crate dependencies sorted.
-    ///
-    /// Returns a mapping from `other`'s crate ids to the new crate ids in `self`.
+    /// Returns a map mapping `other`'s IDs to the new IDs in `self`.
     pub fn extend(
         &mut self,
         mut other: CrateGraph,
         proc_macros: &mut ProcMacroPaths,
-        merge: impl Fn((CrateId, &mut CrateData), (CrateId, &CrateData)) -> bool,
     ) -> FxHashMap<CrateId, CrateId> {
-        let m = self.len();
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
         for topo in topo {
@@ -554,20 +507,13 @@ impl CrateGraph {
 
             crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
             crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
-            let res = self
-                .arena
-                .iter_mut()
-                .take(m)
-                .find_map(|(id, data)| merge((id, data), (topo, crate_data)).then_some(id));
 
-            let new_id =
-                if let Some(res) = res { res } else { self.arena.alloc(crate_data.clone()) };
+            let new_id = self.arena.alloc(crate_data.clone());
             id_map.insert(topo, new_id);
         }
 
         *proc_macros =
             mem::take(proc_macros).into_iter().map(|(id, macros)| (id_map[&id], macros)).collect();
-
         id_map
     }
 

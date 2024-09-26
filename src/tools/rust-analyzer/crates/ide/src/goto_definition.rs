@@ -2750,4 +2750,36 @@ fn foo() {
         "#,
         );
     }
+
+    #[test]
+    fn issue_18138() {
+        check(
+            r#"
+mod foo {
+    macro_rules! x {
+        () => {
+            pub struct Foo;
+                    // ^^^
+        };
+    }
+    pub(crate) use x as m;
+}
+
+mod bar {
+    use crate::m;
+
+    m!();
+ // ^^^^^
+
+    fn qux() {
+        Foo$0;
+    }
+}
+
+mod m {}
+
+use foo::m;
+"#,
+        );
+    }
 }

@@ -1,10 +1,13 @@
 //! Assorted functions shared by several assists.
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::{db::HirDatabase, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
+use hir::{
+    db::{ExpandDatabase, HirDatabase},
+    HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics,
+};
 use ide_db::{
     famous_defs::FamousDefs, path_transform::PathTransform,
-    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase,
+    syntax_helpers::prettify_macro_expansion, RootDatabase,
 };
 use stdx::format_to;
 use syntax::{
@@ -23,7 +26,6 @@ use crate::assist_context::{AssistContext, SourceChangeBuilder};
 
 mod gen_trait_fn_body;
 pub(crate) mod ref_field_expr;
-pub(crate) mod suggest_name;
 
 pub(crate) fn unwrap_trivial_block(block_expr: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block_expr)
@@ -179,10 +181,15 @@ pub fn add_trait_assoc_items_to_impl(
     let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
     let items = original_items.iter().map(|InFile { file_id, value: original_item }| {
         let cloned_item = {
-            if file_id.is_macro() {
-                if let Some(formatted) =
-                    ast::AssocItem::cast(insert_ws_into(original_item.syntax().clone()))
-                {
+            if let Some(macro_file) = file_id.macro_file() {
+                let span_map = sema.db.expansion_span_map(macro_file);
+                let item_prettified = prettify_macro_expansion(
+                    sema.db,
+                    original_item.syntax().clone(),
+                    &span_map,
+                    target_scope.krate().into(),
+                );
+                if let Some(formatted) = ast::AssocItem::cast(item_prettified) {
                     return formatted;
                 } else {
                     stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");

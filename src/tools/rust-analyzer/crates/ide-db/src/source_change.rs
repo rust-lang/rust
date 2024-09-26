@@ -9,10 +9,13 @@ use crate::{assists::Command, SnippetCap};
 use base_db::AnchoredPathBuf;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+use rustc_hash::FxHashMap;
 use span::FileId;
 use stdx::never;
 use syntax::{
-    algo, AstNode, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
+    algo,
+    syntax_editor::{SyntaxAnnotation, SyntaxEditor},
+    AstNode, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
 };
 use text_edit::{TextEdit, TextEditBuilder};
 
@@ -197,6 +200,11 @@ pub struct SourceChangeBuilder {
     pub source_change: SourceChange,
     pub command: Option<Command>,
 
+    /// Keeps track of all edits performed on each file
+    pub file_editors: FxHashMap<FileId, SyntaxEditor>,
+    /// Keeps track of which annotations correspond to which snippets
+    pub snippet_annotations: Vec<(AnnotationSnippet, SyntaxAnnotation)>,
+
     /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
     pub mutated_tree: Option<TreeMutator>,
     /// Keeps track of where to place snippets
@@ -238,6 +246,8 @@ impl SourceChangeBuilder {
             file_id: file_id.into(),
             source_change: SourceChange::default(),
             command: None,
+            file_editors: FxHashMap::default(),
+            snippet_annotations: vec![],
             mutated_tree: None,
             snippet_builder: None,
         }
@@ -248,7 +258,75 @@ impl SourceChangeBuilder {
         self.file_id = file_id.into();
     }
 
+    pub fn make_editor(&self, node: &SyntaxNode) -> SyntaxEditor {
+        SyntaxEditor::new(node.ancestors().last().unwrap_or_else(|| node.clone()))
+    }
+
+    pub fn add_file_edits(&mut self, file_id: impl Into<FileId>, edit: SyntaxEditor) {
+        match self.file_editors.entry(file_id.into()) {
+            Entry::Occupied(mut entry) => entry.get_mut().merge(edit),
+            Entry::Vacant(entry) => {
+                entry.insert(edit);
+            }
+        }
+    }
+
+    pub fn make_placeholder_snippet(&mut self, _cap: SnippetCap) -> SyntaxAnnotation {
+        self.add_snippet_annotation(AnnotationSnippet::Over)
+    }
+
+    pub fn make_tabstop_before(&mut self, _cap: SnippetCap) -> SyntaxAnnotation {
+        self.add_snippet_annotation(AnnotationSnippet::Before)
+    }
+
+    pub fn make_tabstop_after(&mut self, _cap: SnippetCap) -> SyntaxAnnotation {
+        self.add_snippet_annotation(AnnotationSnippet::After)
+    }
+
     fn commit(&mut self) {
+        // Apply syntax editor edits
+        for (file_id, editor) in mem::take(&mut self.file_editors) {
+            let edit_result = editor.finish();
+            let mut snippet_edit = vec![];
+
+            // Find snippet edits
+            for (kind, annotation) in &self.snippet_annotations {
+                let elements = edit_result.find_annotation(*annotation);
+
+                let snippet = match (kind, elements) {
+                    (AnnotationSnippet::Before, [element]) => {
+                        Snippet::Tabstop(element.text_range().start())
+                    }
+                    (AnnotationSnippet::After, [element]) => {
+                        Snippet::Tabstop(element.text_range().end())
+                    }
+                    (AnnotationSnippet::Over, [element]) => {
+                        Snippet::Placeholder(element.text_range())
+                    }
+                    (AnnotationSnippet::Over, elements) if !elements.is_empty() => {
+                        Snippet::PlaceholderGroup(
+                            elements.iter().map(|it| it.text_range()).collect(),
+                        )
+                    }
+                    _ => continue,
+                };
+
+                snippet_edit.push(snippet);
+            }
+
+            let mut edit = TextEdit::builder();
+            algo::diff(edit_result.old_root(), edit_result.new_root()).into_text_edit(&mut edit);
+            let edit = edit.finish();
+
+            let snippet_edit =
+                if !snippet_edit.is_empty() { Some(SnippetEdit::new(snippet_edit)) } else { None };
+
+            if !edit.is_empty() || snippet_edit.is_some() {
+                self.source_change.insert_source_and_snippet_edit(file_id, edit, snippet_edit);
+            }
+        }
+
+        // Apply mutable edits
         let snippet_edit = self.snippet_builder.take().map(|builder| {
             SnippetEdit::new(
                 builder.places.into_iter().flat_map(PlaceSnippet::finalize_position).collect(),
@@ -369,6 +447,13 @@ impl SourceChangeBuilder {
         self.source_change.is_snippet = true;
     }
 
+    fn add_snippet_annotation(&mut self, kind: AnnotationSnippet) -> SyntaxAnnotation {
+        let annotation = SyntaxAnnotation::new();
+        self.snippet_annotations.push((kind, annotation));
+        self.source_change.is_snippet = true;
+        annotation
+    }
+
     pub fn finish(mut self) -> SourceChange {
         self.commit();
 
@@ -414,6 +499,15 @@ pub enum Snippet {
     /// fun(1, 2, 3, ${0:new_var});
     /// ```
     PlaceholderGroup(Vec<TextRange>),
+}
+
+pub enum AnnotationSnippet {
+    /// Place a tabstop before an element
+    Before,
+    /// Place a tabstop before an element
+    After,
+    /// Place a placeholder snippet in place of the element(s)
+    Over,
 }
 
 enum PlaceSnippet {

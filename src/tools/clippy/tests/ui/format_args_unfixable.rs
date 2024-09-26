@@ -2,7 +2,7 @@
 #![allow(unused)]
 #![allow(clippy::assertions_on_constants, clippy::eq_op, clippy::uninlined_format_args)]
 
-use std::io::{stdout, Error, ErrorKind, Write};
+use std::io::{Error, ErrorKind, Write, stdout};
 use std::ops::Deref;
 use std::panic::Location;
 

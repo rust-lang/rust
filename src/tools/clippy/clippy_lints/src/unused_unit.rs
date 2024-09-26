@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{position_before_rarrow, SpanRangeExt};
+use clippy_utils::source::{SpanRangeExt, position_before_rarrow};
 use rustc_ast::visit::FnKind;
-use rustc_ast::{ast, ClosureBinder};
+use rustc_ast::{ClosureBinder, ast};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;

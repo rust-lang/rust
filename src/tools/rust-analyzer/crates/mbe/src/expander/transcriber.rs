@@ -2,12 +2,12 @@
 //! `$ident => foo`, interpolates variables in the template, to get `fn foo() {}`
 
 use intern::{sym, Symbol};
-use span::Span;
+use span::{Edition, Span};
 use tt::Delimiter;
 
 use crate::{
     expander::{Binding, Bindings, Fragment},
-    parser::{MetaVarKind, Op, RepeatKind, Separator},
+    parser::{ConcatMetaVarExprElem, MetaVarKind, Op, RepeatKind, Separator},
     ExpandError, ExpandErrorKind, ExpandResult, MetaTemplate,
 };
 
@@ -97,7 +97,7 @@ impl Bindings {
                     | MetaVarKind::Ty
                     | MetaVarKind::Pat
                     | MetaVarKind::PatParam
-                    | MetaVarKind::Expr
+                    | MetaVarKind::Expr(_)
                     | MetaVarKind::Ident => {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                             sym: sym::missing.clone(),
@@ -311,6 +311,82 @@ fn expand_subtree(
                     })
                     .into(),
                 );
+            }
+            Op::Concat { elements, span: concat_span } => {
+                let mut concatenated = String::new();
+                for element in elements {
+                    match element {
+                        ConcatMetaVarExprElem::Ident(ident) => {
+                            concatenated.push_str(ident.sym.as_str())
+                        }
+                        ConcatMetaVarExprElem::Literal(lit) => {
+                            // FIXME: This isn't really correct wrt. escaping, but that's what rustc does and anyway
+                            // escaping is used most of the times for characters that are invalid in identifiers.
+                            concatenated.push_str(lit.symbol.as_str())
+                        }
+                        ConcatMetaVarExprElem::Var(var) => {
+                            // Handling of repetitions in `${concat}` isn't fleshed out in rustc, so we currently
+                            // err at it.
+                            // FIXME: Do what rustc does for repetitions.
+                            let var_value = match ctx.bindings.get_fragment(
+                                &var.sym,
+                                var.span,
+                                &mut ctx.nesting,
+                                marker,
+                            ) {
+                                Ok(var) => var,
+                                Err(e) => {
+                                    if err.is_none() {
+                                        err = Some(e);
+                                    };
+                                    continue;
+                                }
+                            };
+                            let value = match &var_value {
+                                Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => {
+                                    ident.sym.as_str()
+                                }
+                                Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) => {
+                                    lit.symbol.as_str()
+                                }
+                                _ => {
+                                    if err.is_none() {
+                                        err = Some(ExpandError::binding_error(var.span, "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`"))
+                                    }
+                                    continue;
+                                }
+                            };
+                            concatenated.push_str(value);
+                        }
+                    }
+                }
+
+                // `${concat}` span comes from the macro (at least for now).
+                // See https://github.com/rust-lang/rust/blob/b0af276da341/compiler/rustc_expand/src/mbe/transcribe.rs#L724-L726.
+                let mut result_span = *concat_span;
+                marker(&mut result_span);
+
+                // FIXME: NFC normalize the result.
+                if !rustc_lexer::is_ident(&concatenated) {
+                    if err.is_none() {
+                        err = Some(ExpandError::binding_error(
+                            *concat_span,
+                            "`${concat(..)}` is not generating a valid identifier",
+                        ));
+                    }
+                    // Insert a dummy identifier for better parsing.
+                    concatenated.clear();
+                    concatenated.push_str("__ra_concat_dummy");
+                }
+
+                let needs_raw =
+                    parser::SyntaxKind::from_keyword(&concatenated, Edition::LATEST).is_some();
+                let is_raw = if needs_raw { tt::IdentIsRaw::Yes } else { tt::IdentIsRaw::No };
+                arena.push(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                    is_raw,
+                    span: result_span,
+                    sym: Symbol::intern(&concatenated),
+                })));
             }
         }
     }

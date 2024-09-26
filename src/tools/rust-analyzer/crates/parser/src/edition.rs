@@ -30,6 +30,12 @@ impl Edition {
     pub fn at_least_2018(self) -> bool {
         self >= Edition::Edition2018
     }
+
+    pub fn iter() -> impl Iterator<Item = Edition> {
+        [Edition::Edition2015, Edition::Edition2018, Edition::Edition2021, Edition::Edition2024]
+            .iter()
+            .copied()
+    }
 }
 
 #[derive(Debug)]

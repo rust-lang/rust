@@ -249,7 +249,11 @@ pub(crate) fn render_type_inference(
         ty_string,
         ctx.edition,
     );
-    builder.set_relevance(CompletionRelevance { is_definite: true, ..Default::default() });
+    builder.set_relevance(CompletionRelevance {
+        type_match: Some(CompletionRelevanceTypeMatch::Exact),
+        exact_name_match: true,
+        ..Default::default()
+    });
     builder.build(ctx.db)
 }
 
@@ -756,7 +760,7 @@ mod tests {
                     relevance.postfix_match == Some(CompletionRelevancePostfixMatch::Exact),
                     "snippet",
                 ),
-                (relevance.is_op_method, "op_method"),
+                (relevance.trait_.map_or(false, |it| it.is_op_method), "op_method"),
                 (relevance.requires_import, "requires_import"),
             ]
             .into_iter()
@@ -1181,7 +1185,7 @@ fn main() { fo$0 }
                         label: "main()",
                         source_range: 68..70,
                         delete: 68..70,
-                        insert: "main()$0",
+                        insert: "main();$0",
                         kind: SymbolKind(
                             Function,
                         ),
@@ -1240,7 +1244,7 @@ fn main() { let _: m::Spam = S$0 }
                         label: "main()",
                         source_range: 75..76,
                         delete: 75..76,
-                        insert: "main()$0",
+                        insert: "main();$0",
                         kind: SymbolKind(
                             Function,
                         ),
@@ -1272,14 +1276,11 @@ fn main() { let _: m::Spam = S$0 }
                                 Exact,
                             ),
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: false,
+                            trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: None,
                         },
                         trigger_call_info: true,
@@ -1300,14 +1301,11 @@ fn main() { let _: m::Spam = S$0 }
                                 Exact,
                             ),
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: false,
+                            trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: None,
                         },
                         trigger_call_info: true,
@@ -1333,7 +1331,7 @@ fn main() { som$0 }
                         label: "main()",
                         source_range: 56..59,
                         delete: 56..59,
-                        insert: "main()$0",
+                        insert: "main();$0",
                         kind: SymbolKind(
                             Function,
                         ),
@@ -1344,7 +1342,7 @@ fn main() { som$0 }
                         label: "something_deprecated()",
                         source_range: 56..59,
                         delete: 56..59,
-                        insert: "something_deprecated()$0",
+                        insert: "something_deprecated();$0",
                         kind: SymbolKind(
                             Function,
                         ),
@@ -1380,14 +1378,11 @@ fn foo() { A { the$0 } }
                                 CouldUnify,
                             ),
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: false,
+                            trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: None,
                         },
                     },
@@ -1418,7 +1413,7 @@ impl S {
                         label: "bar()",
                         source_range: 94..94,
                         delete: 94..94,
-                        insert: "bar()$0",
+                        insert: "bar();$0",
                         kind: SymbolKind(
                             Method,
                         ),
@@ -1431,14 +1426,11 @@ impl S {
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: false,
+                            trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: Some(
                                 CompletionRelevanceFn {
                                     has_params: true,
@@ -1548,7 +1540,7 @@ fn foo(s: S) { s.$0 }
                         label: "the_method()",
                         source_range: 81..81,
                         delete: 81..81,
-                        insert: "the_method()$0",
+                        insert: "the_method();$0",
                         kind: SymbolKind(
                             Method,
                         ),
@@ -1558,14 +1550,11 @@ fn foo(s: S) { s.$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: false,
+                            trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: Some(
                                 CompletionRelevanceFn {
                                     has_params: true,
@@ -1774,14 +1763,11 @@ fn f() -> i32 {
                                 Exact,
                             ),
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: false,
+                            trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: None,
                         },
                     },
@@ -2492,14 +2478,11 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: false,
+                            trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: Some(
                                 CompletionRelevanceFn {
                                     has_params: true,
@@ -2574,14 +2557,11 @@ fn foo() {
                                 Exact,
                             ),
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: false,
+                            trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: None,
                         },
                     },
@@ -2624,14 +2604,11 @@ fn main() {
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: false,
+                            trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: Some(
                                 CompletionRelevanceFn {
                                     has_params: false,
@@ -2812,7 +2789,7 @@ fn main() {
             r#"
 mod m { pub fn r#type {} }
 fn main() {
-    m::r#type()$0
+    m::r#type();$0
 }
 "#,
         )
@@ -2986,7 +2963,7 @@ fn main() {
                         label: "flush()",
                         source_range: 193..193,
                         delete: 193..193,
-                        insert: "flush()$0",
+                        insert: "flush();$0",
                         kind: SymbolKind(
                             Method,
                         ),
@@ -2996,14 +2973,16 @@ fn main() {
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: true,
+                            trait_: Some(
+                                CompletionRelevanceTraitInfo {
+                                    notable_trait: true,
+                                    is_op_method: false,
+                                },
+                            ),
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: None,
                         },
                     },
@@ -3011,7 +2990,7 @@ fn main() {
                         label: "write()",
                         source_range: 193..193,
                         delete: 193..193,
-                        insert: "write()$0",
+                        insert: "write();$0",
                         kind: SymbolKind(
                             Method,
                         ),
@@ -3021,14 +3000,16 @@ fn main() {
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
-                            is_item_from_trait: false,
-                            is_item_from_notable_trait: true,
+                            trait_: Some(
+                                CompletionRelevanceTraitInfo {
+                                    notable_trait: true,
+                                    is_op_method: false,
+                                },
+                            ),
                             is_name_already_imported: false,
                             requires_import: false,
-                            is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            is_definite: false,
                             function: None,
                         },
                     },

@@ -3,25 +3,25 @@ use clippy_utils::trait_ref_of_method;
 use itertools::Itertools;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
+use rustc_hir::FnRetTy::Return;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
-    walk_fn_decl, walk_generic_param, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
-    walk_poly_trait_ref, walk_trait_ref, walk_ty, Visitor,
+    Visitor, walk_fn_decl, walk_generic_param, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
+    walk_poly_trait_ref, walk_trait_ref, walk_ty,
 };
-use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
-    lang_items, BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics,
-    Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node, PolyTraitRef,
-    PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
+    BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl,
+    ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node, PolyTraitRef,
+    PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate, lang_items,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
+use rustc_span::symbol::{Ident, Symbol, kw};
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {

@@ -1,3 +1,11 @@
+error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
+  --> $DIR/const-trait-bounds.rs:4:39
+   |
+LL | #![feature(const_trait_impl, effects, generic_const_exprs)]
+   |                                       ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove one of these features
+
 error[E0284]: type annotations needed: cannot normalize `process<T>::{constant#0}`
   --> $DIR/const-trait-bounds.rs:12:35
    |
@@ -16,6 +24,6 @@ error[E0284]: type annotations needed: cannot normalize `process<T>::{constant#1
 LL |     input
    |     ^^^^^ cannot normalize `process<T>::{constant#1}`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0284`.

@@ -1,4 +1,4 @@
-use crate::question_mark::{QuestionMark, QUESTION_MARK};
+use crate::question_mark::{QUESTION_MARK, QuestionMark};
 use clippy_config::msrvs;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_then;
@@ -12,8 +12,8 @@ use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{Symbol, sym};
 use std::slice;
 
 declare_clippy_lint! {

@@ -8,8 +8,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does

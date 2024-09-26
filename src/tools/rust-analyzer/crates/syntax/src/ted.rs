@@ -147,6 +147,11 @@ pub fn append_child_raw(node: &(impl Into<SyntaxNode> + Clone), child: impl Elem
     insert_raw(position, child);
 }
 
+pub fn prepend_child(node: &(impl Into<SyntaxNode> + Clone), child: impl Element) {
+    let position = Position::first_child_of(node);
+    insert(position, child);
+}
+
 fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
     let prev = match &position.repr {
         PositionRepr::FirstChild(_) => return None,

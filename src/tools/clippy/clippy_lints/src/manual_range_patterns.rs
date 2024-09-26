@@ -7,7 +7,7 @@ use rustc_hir::{Expr, ExprKind, PatKind, RangeEnd, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -77,9 +77,10 @@ impl Num {
 impl LateLintPass<'_> for ManualRangePatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &'_ rustc_hir::Pat<'_>) {
         // a pattern like 1 | 2 seems fine, lint if there are at least 3 alternatives
-        // or at least one range
+        // or more then one range (exclude triggering on stylistic using OR with one element
+        // like described https://github.com/rust-lang/rust-clippy/issues/11825)
         if let PatKind::Or(pats) = pat.kind
-            && (pats.len() >= 3 || pats.iter().any(|p| matches!(p.kind, PatKind::Range(..))))
+            && (pats.len() >= 3 || (pats.len() > 1 && pats.iter().any(|p| matches!(p.kind, PatKind::Range(..)))))
             && !in_external_macro(cx.sess(), pat.span)
         {
             let mut min = Num::dummy(i128::MAX);

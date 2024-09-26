@@ -372,6 +372,9 @@
 //@ revisions: powerpc_wrs_vxworks_spe
 //@ [powerpc_wrs_vxworks_spe] compile-flags: --target powerpc-wrs-vxworks-spe
 //@ [powerpc_wrs_vxworks_spe] needs-llvm-components: powerpc
+//@ revisions: riscv32_wrs_vxworks
+//@ [riscv32_wrs_vxworks] compile-flags: --target riscv32-wrs-vxworks
+//@ [riscv32_wrs_vxworks] needs-llvm-components: riscv
 //@ revisions: riscv32gc_unknown_linux_gnu
 //@ [riscv32gc_unknown_linux_gnu] compile-flags: --target riscv32gc-unknown-linux-gnu
 //@ [riscv32gc_unknown_linux_gnu] needs-llvm-components: riscv
@@ -414,6 +417,9 @@
 //@ revisions: riscv64_linux_android
 //@ [riscv64_linux_android] compile-flags: --target riscv64-linux-android
 //@ [riscv64_linux_android] needs-llvm-components: riscv
+//@ revisions: riscv64_wrs_vxworks
+//@ [riscv64_wrs_vxworks] compile-flags: --target riscv64-wrs-vxworks
+//@ [riscv64_wrs_vxworks] needs-llvm-components: riscv
 //@ revisions: riscv64gc_unknown_freebsd
 //@ [riscv64gc_unknown_freebsd] compile-flags: --target riscv64gc-unknown-freebsd
 //@ [riscv64gc_unknown_freebsd] needs-llvm-components: riscv

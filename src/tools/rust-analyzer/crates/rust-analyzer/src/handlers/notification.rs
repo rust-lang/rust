@@ -145,14 +145,18 @@ pub(crate) fn handle_did_save_text_document(
     state: &mut GlobalState,
     params: DidSaveTextDocumentParams,
 ) -> anyhow::Result<()> {
-    if state.config.script_rebuild_on_save() && state.build_deps_changed {
-        state.build_deps_changed = false;
-        state
-            .fetch_build_data_queue
-            .request_op("build_deps_changed - save notification".to_owned(), ());
-    }
-
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
+        let snap = state.snapshot();
+        let file_id = snap.vfs_path_to_file_id(&vfs_path)?;
+        let sr = snap.analysis.source_root_id(file_id)?;
+
+        if state.config.script_rebuild_on_save(Some(sr)) && state.build_deps_changed {
+            state.build_deps_changed = false;
+            state
+                .fetch_build_data_queue
+                .request_op("build_deps_changed - save notification".to_owned(), ());
+        }
+
         // Re-fetch workspaces if a workspace related file has changed
         if let Some(path) = vfs_path.as_path() {
             let additional_files = &state
@@ -182,15 +186,16 @@ pub(crate) fn handle_did_save_text_document(
             }
         }
 
-        if !state.config.check_on_save() || run_flycheck(state, vfs_path) {
+        if !state.config.check_on_save(Some(sr)) || run_flycheck(state, vfs_path) {
             return Ok(());
         }
-    } else if state.config.check_on_save() {
+    } else if state.config.check_on_save(None) {
         // No specific flycheck was triggered, so let's trigger all of them.
         for flycheck in state.flycheck.iter() {
             flycheck.restart_workspace(None);
         }
     }
+
     Ok(())
 }
 
@@ -288,6 +293,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
     let file_id = state.vfs.read().0.file_id(&vfs_path);
     if let Some(file_id) = file_id {
         let world = state.snapshot();
+        let source_root_id = world.analysis.source_root_id(file_id).ok();
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
             // Is the target binary? If so we let flycheck run only for the workspace that contains the crate.
@@ -351,7 +357,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                             .targets
                             .iter()
                             .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()));
-                        has_target_with_root.then(|| cargo[pkg].name.clone())
+                        has_target_with_root.then(|| cargo.package_flag(&cargo[pkg]))
                     }),
                     project_model::ProjectWorkspaceKind::Json(project) => {
                         if !project.crates().any(|(_, krate)| {
@@ -373,9 +379,9 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 for (id, package) in workspace_ids.clone() {
                     if id == flycheck.id() {
                         updated = true;
-                        match package
-                            .filter(|_| !world.config.flycheck_workspace() || target.is_some())
-                        {
+                        match package.filter(|_| {
+                            !world.config.flycheck_workspace(source_root_id) || target.is_some()
+                        }) {
                             Some(package) => flycheck
                                 .restart_for_package(package, target.clone().map(TupleExt::head)),
                             None => flycheck.restart_workspace(saved_file.clone()),

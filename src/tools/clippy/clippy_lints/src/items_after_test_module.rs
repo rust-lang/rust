@@ -6,7 +6,7 @@ use rustc_hir::{HirId, Item, ItemKind, Mod};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::hygiene::AstPass;
-use rustc_span::{sym, ExpnKind};
+use rustc_span::{ExpnKind, sym};
 
 declare_clippy_lint! {
     /// ### What it does

@@ -6,9 +6,9 @@ use rustc_lint::LateContext;
 use rustc_span::sym;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_enum_variant_ctor;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::is_enum_variant_ctor;
 
 use super::SEEK_FROM_CURRENT;
 

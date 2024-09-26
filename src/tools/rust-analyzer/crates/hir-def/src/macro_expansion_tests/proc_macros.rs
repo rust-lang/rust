@@ -16,12 +16,12 @@ fn attribute_macro_attr_censoring() {
 #[attr1] #[proc_macros::identity] #[attr2]
 struct S;
 "#,
-        expect![[r##"
+        expect![[r#"
 #[attr1] #[proc_macros::identity] #[attr2]
 struct S;
 
 #[attr1]
-#[attr2] struct S;"##]],
+#[attr2] struct S;"#]],
     );
 }
 
@@ -39,7 +39,7 @@ fn derive_censoring() {
 #[attr2]
 struct S;
 "#,
-        expect![[r##"
+        expect![[r#"
 #[attr1]
 #[derive(Foo)]
 #[derive(proc_macros::DeriveIdentity)]
@@ -49,7 +49,7 @@ struct S;
 
 #[attr1]
 #[derive(Bar)]
-#[attr2] struct S;"##]],
+#[attr2] struct S;"#]],
     );
 }
 
@@ -62,14 +62,14 @@ fn attribute_macro_syntax_completion_1() {
 #[proc_macros::identity_when_valid]
 fn foo() { bar.baz(); blub }
 "#,
-        expect![[r##"
+        expect![[r#"
 #[proc_macros::identity_when_valid]
 fn foo() { bar.baz(); blub }
 
 fn foo() {
     bar.baz();
     blub
-}"##]],
+}"#]],
     );
 }
 

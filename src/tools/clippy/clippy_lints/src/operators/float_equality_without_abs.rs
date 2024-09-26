@@ -6,7 +6,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{sym, source_map::Spanned};
+use rustc_span::source_map::Spanned;
+use rustc_span::sym;
 
 use super::FLOAT_EQUALITY_WITHOUT_ABS;
 

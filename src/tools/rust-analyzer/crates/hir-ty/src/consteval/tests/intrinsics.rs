@@ -89,7 +89,7 @@ fn size_of_val() {
     );
     check_number(
         r#"
-        //- minicore: coerce_unsized, fmt, builtin_impls
+        //- minicore: coerce_unsized, fmt, builtin_impls, dispatch_from_dyn
         extern "rust-intrinsic" {
             pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
         }
@@ -311,6 +311,7 @@ fn saturating() {
 fn allocator() {
     check_number(
         r#"
+        //- minicore: sized
         extern "Rust" {
             #[rustc_allocator]
             fn __rust_alloc(size: usize, align: usize) -> *mut u8;

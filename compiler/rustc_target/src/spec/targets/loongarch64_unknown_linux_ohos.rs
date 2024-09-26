@@ -2,8 +2,7 @@ use crate::spec::{Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        // LLVM 15 doesn't support OpenHarmony yet, use a linux target instead.
-        llvm_target: "loongarch64-unknown-linux-musl".into(),
+        llvm_target: "loongarch64-unknown-linux-ohos".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("LoongArch64 OpenHarmony".into()),
             tier: Some(3),
