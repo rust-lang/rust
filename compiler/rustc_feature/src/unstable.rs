@@ -407,8 +407,6 @@ declare_features! (
     (unstable, const_for, "1.56.0", Some(87575)),
     /// Be more precise when looking for live drops in a const context.
     (unstable, const_precise_live_drops, "1.46.0", Some(73255)),
-    /// Allows creating pointers and references to `static` items in constants.
-    (unstable, const_refs_to_static, "1.78.0", Some(119618)),
     /// Allows `impl const Trait for T` syntax.
     (unstable, const_trait_impl, "1.42.0", Some(67792)),
     /// Allows the `?` operator in const contexts.
