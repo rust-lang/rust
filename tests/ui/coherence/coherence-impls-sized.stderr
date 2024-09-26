@@ -21,11 +21,11 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
    |
 LL | impl Sized for (MyType, MyType) {}
    | ^^^^^^^^^^^^^^^----------------
-   | |              |
-   | |              this is not defined in the current crate because tuples are always foreign
-   | impl doesn't have any local type before any uncovered type parameters
-   | for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   |                |
+   |                this is not defined in the current crate because tuples are always foreign
    |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    = note: define and implement a trait or new type instead
 
 error[E0322]: explicit impls for the `Sized` trait are not permitted
@@ -45,11 +45,11 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
    |
 LL | impl Sized for [MyType] {}
    | ^^^^^^^^^^^^^^^--------
-   | |              |
-   | |              this is not defined in the current crate because slices are always foreign
-   | impl doesn't have any local type before any uncovered type parameters
-   | for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   |                |
+   |                this is not defined in the current crate because slices are always foreign
    |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    = note: define and implement a trait or new type instead
 
 error[E0322]: explicit impls for the `Sized` trait are not permitted
@@ -63,11 +63,11 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
    |
 LL | impl Sized for &'static [NotSync] {}
    | ^^^^^^^^^^^^^^^------------------
-   | |              |
-   | |              this is not defined in the current crate because slices are always foreign
-   | impl doesn't have any local type before any uncovered type parameters
-   | for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   |                |
+   |                this is not defined in the current crate because slices are always foreign
    |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    = note: define and implement a trait or new type instead
 
 error: aborting due to 9 previous errors
