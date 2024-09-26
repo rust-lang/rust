@@ -138,7 +138,6 @@
 #![feature(const_ptr_is_null)]
 #![feature(const_ptr_sub_ptr)]
 #![feature(const_raw_ptr_comparison)]
-#![feature(const_replace)]
 #![feature(const_size_of_val)]
 #![feature(const_size_of_val_raw)]
 #![feature(const_strict_overflow_ops)]
