@@ -620,7 +620,7 @@ intrinsics! {
 
     #[avr_skip]
     #[ppc_alias = __divkf3]
-    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(f128_enabled)]
     pub extern "C" fn __divtf3(a: f128, b: f128) -> f128 {
         div(a, b)
     }
