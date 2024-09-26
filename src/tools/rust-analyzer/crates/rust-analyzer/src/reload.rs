@@ -743,18 +743,12 @@ impl GlobalState {
             return Ok(());
         };
 
-        if !self.discover_workspace_queue.op_in_progress() {
-            if last_op_result.is_empty() {
-                stdx::format_to!(buf, "rust-analyzer failed to discover workspace");
-            } else {
-                for ws in last_op_result {
-                    if let Err(err) = ws {
-                        stdx::format_to!(
-                            buf,
-                            "rust-analyzer failed to load workspace: {:#}\n",
-                            err
-                        );
-                    }
+        if last_op_result.is_empty() && self.config.discover_workspace_config().is_none() {
+            stdx::format_to!(buf, "rust-analyzer failed to fetch workspace");
+        } else {
+            for ws in last_op_result {
+                if let Err(err) = ws {
+                    stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
                 }
             }
         }
