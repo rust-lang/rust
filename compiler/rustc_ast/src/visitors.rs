@@ -46,13 +46,6 @@ macro_rules! mutability_helpers {
             };
             ($a: expr) => {};
         }
-
-        macro_rules! derive_copy_clone {
-            ($i: item) => {
-                #[derive(Copy, Clone)]
-                $i
-            };
-        }
     };
     (mut) => {
         macro_rules! if_mut_ty {
@@ -84,12 +77,6 @@ macro_rules! mutability_helpers {
                 $a
             };
         }
-
-        macro_rules! derive_copy_clone {
-            ($i: item) => {
-                $i
-            };
-        }
     };
 }
 
@@ -103,6 +90,17 @@ macro_rules! lifetime_helpers {
     ($lt: lifetime) => {
         macro_rules! fn_kind {
             () => { FnKind<$lt> }
+        }
+    };
+}
+
+macro_rules! derive_copy_clone {
+    ($i: item) => {
+        if_mut_item! {
+            $i
+        ,
+            #[derive(Copy, Clone)]
+            $i
         }
     };
 }
