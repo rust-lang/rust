@@ -33,7 +33,7 @@ macro_rules! define_if_mut {
 }
 
 #[rustfmt::skip] // Rustfmt indents this code indefinitely
-macro_rules! lifetime_helpers {
+macro_rules! define_fn_kind {
     () => {
         macro_rules! fn_kind {
             () => { FnKind<'_> }
@@ -200,7 +200,7 @@ macro_rules! make_visit {
 macro_rules! make_ast_visitor {
     ($trait: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
         define_if_mut!($($mut)?);
-        lifetime_helpers!($($lt)?);
+        define_fn_kind!($($lt)?);
 
         macro_rules! ref_t {
             ($t: ty) => { & $($lt)? $($mut)? $t };
