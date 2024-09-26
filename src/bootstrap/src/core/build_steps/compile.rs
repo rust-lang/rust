@@ -2206,6 +2206,8 @@ pub fn stream_cargo(
         return true;
     }
 
+    // HACK: DO NOT MERGE
+    std::thread::sleep(std::time::Duration::from_secs(30));
     let mut child = match cargo.spawn() {
         Ok(child) => child,
         Err(e) => panic!("failed to execute command: {cargo:?}\nERROR: {e}"),
