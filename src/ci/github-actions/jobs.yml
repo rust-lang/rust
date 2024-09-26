@@ -361,13 +361,13 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
       SCRIPT: make ci-msvc
-    <<: *job-windows-8c
+    <<: *job-windows
 
   - image: i686-msvc
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
       SCRIPT: make ci-msvc
-    <<: *job-windows-8c
+    <<: *job-windows
 
   - image: x86_64-msvc-ext
     env:
