@@ -123,6 +123,7 @@ macro_rules! visit_id {
     };
 }
 
+#[rustfmt::skip] // Rustfmt indents this code indefinitely
 macro_rules! mut_only_visit {
     ($name: ident) => {
         macro_rules! $name {
