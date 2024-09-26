@@ -1756,6 +1756,14 @@ pub(crate) struct MissingFnParams {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_invalid_path_sep_in_fn_definition)]
+pub(crate) struct InvalidPathSepInFnDefinition {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_missing_trait_in_trait_impl)]
 pub(crate) struct MissingTraitInTraitImpl {
     #[primary_span]
