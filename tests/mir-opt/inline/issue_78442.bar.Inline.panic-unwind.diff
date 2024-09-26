@@ -15,7 +15,7 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
--         _4 = hide_foo() -> [return: bb1, unwind: bb4];
+-         _4 = hide_foo() -> [return: bb1, unwind unreachable];
 -     }
 - 
 -     bb1: {
