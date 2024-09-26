@@ -192,7 +192,7 @@ impl Socket {
                 buf.as_mut_ptr(),
                 buf.len(),
                 flags,
-                core::ptr::addr_of_mut!(storage) as *mut _,
+                (&raw mut storage) as *mut _,
                 &mut addrlen,
             )
         })?;
@@ -298,7 +298,7 @@ impl Socket {
             netc::ioctl(
                 self.as_raw_fd(),
                 netc::FIONBIO,
-                core::ptr::addr_of_mut!(nonblocking) as *mut core::ffi::c_void,
+                (&raw mut nonblocking) as *mut core::ffi::c_void,
             )
         })
         .map(drop)

@@ -2,7 +2,6 @@
 //! systems: just a `Vec<u8>`/`[u8]`.
 
 use core::clone::CloneToUninit;
-use core::ptr::addr_of_mut;
 
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
@@ -355,6 +354,6 @@ unsafe impl CloneToUninit for Slice {
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         // SAFETY: we're just a wrapper around [u8]
-        unsafe { self.inner.clone_to_uninit(addr_of_mut!((*dst).inner)) }
+        unsafe { self.inner.clone_to_uninit(&raw mut (*dst).inner) }
     }
 }

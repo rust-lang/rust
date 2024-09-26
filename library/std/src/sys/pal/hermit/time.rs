@@ -107,8 +107,7 @@ pub struct Instant(Timespec);
 impl Instant {
     pub fn now() -> Instant {
         let mut time: Timespec = Timespec::zero();
-        let _ =
-            unsafe { hermit_abi::clock_gettime(CLOCK_MONOTONIC, core::ptr::addr_of_mut!(time.t)) };
+        let _ = unsafe { hermit_abi::clock_gettime(CLOCK_MONOTONIC, &raw mut time.t) };
 
         Instant(time)
     }
@@ -209,8 +208,7 @@ impl SystemTime {
 
     pub fn now() -> SystemTime {
         let mut time: Timespec = Timespec::zero();
-        let _ =
-            unsafe { hermit_abi::clock_gettime(CLOCK_REALTIME, core::ptr::addr_of_mut!(time.t)) };
+        let _ = unsafe { hermit_abi::clock_gettime(CLOCK_REALTIME, &raw mut time.t) };
 
         SystemTime(time)
     }

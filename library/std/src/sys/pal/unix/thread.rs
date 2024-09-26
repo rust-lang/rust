@@ -258,7 +258,7 @@ impl Thread {
                     tv_nsec: nsecs,
                 };
                 secs -= ts.tv_sec as u64;
-                let ts_ptr = core::ptr::addr_of_mut!(ts);
+                let ts_ptr = &raw mut ts;
                 if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
                     assert_eq!(os::errno(), libc::EINTR);
                     secs += ts.tv_sec as u64;
@@ -447,8 +447,8 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                     libc::sysctl(
                         mib.as_mut_ptr(),
                         2,
-                        core::ptr::addr_of_mut!(cpus) as *mut _,
-                        core::ptr::addr_of_mut!(cpus_size) as *mut _,
+                        (&raw mut cpus) as *mut _,
+                        (&raw mut cpus_size) as *mut _,
                         ptr::null_mut(),
                         0,
                     )

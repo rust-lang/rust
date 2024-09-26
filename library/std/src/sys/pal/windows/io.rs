@@ -122,7 +122,7 @@ fn msys_tty_on(handle: BorrowedHandle<'_>) -> bool {
         c::GetFileInformationByHandleEx(
             handle.as_raw_handle(),
             c::FileNameInfo,
-            core::ptr::addr_of_mut!(name_info) as *mut c_void,
+            (&raw mut name_info) as *mut c_void,
             size_of::<FILE_NAME_INFO>() as u32,
         )
     };
